@@ -222,6 +222,8 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond)
         return false;
       }
   }
+
+  return false;   // To shut up compiler warning; should never come here
 }
 
 // ============================================================================

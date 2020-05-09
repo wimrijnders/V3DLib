@@ -8,6 +8,14 @@
 #include "Source/Syntax.h"
 
 namespace QPULib {
+  //
+  // Extra declaration to prevent error:
+  //
+  //   error: there are no arguments to ‘assign’ that depend on a template parameter,
+  //          so a declaration of ‘assign’ must be available [-fpermissive]
+  //          
+  void assign(Expr* lhs, Expr* rhs);
+
 
 // ============================================================================
 // Types                   

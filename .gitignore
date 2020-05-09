@@ -4,3 +4,4 @@ obj*
 .directory
 *.log
 *.pgm
+*.swp
