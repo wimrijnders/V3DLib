@@ -113,19 +113,26 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
-#ifdef QPU_MODE
-	// Show hardware revision code
+	printf("\n");
+
+#ifndef QPU_MODE
+	printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
+	return 1;
+#endif
+
+	if (geteuid() != 0) {  // Only do this as root (sudo)
+		printf("You need to run this with `sudo` to access the device file\n\n");
+		return 1;
+	}
+
 	int mb = getMailbox();	
 	unsigned revision = get_version(mb);
-	printf("Hardware revision: %04x\n", revision);
+	printf("Hardware revision        : %04x\n", revision);
 
-	if (geteuid() == 0) {  // Only do this as root (sudo)
-		printf("Number of slices: %d\n", RegisterMap::numSlices());
-		printf("Number of QPU's per slice: %d\n", RegisterMap::numQPUPerSlice());
-	} else {
-		printf("You can see more if you use sudo\n");
-  }
-#endif  // QPU_MODE
+	printf("Number of slices         : %d\n",   RegisterMap::numSlices());
+	printf("Number of QPU's per slice: %d\n",   RegisterMap::numQPUPerSlice());
+	printf("Number of TMU's per slice: %d\n",   RegisterMap::numTMUPerSlice());
+	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
 
 	return 0;
 }

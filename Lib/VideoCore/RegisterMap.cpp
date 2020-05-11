@@ -72,6 +72,19 @@ int RegisterMap::numQPUPerSlice() {
 }
 
 
+int RegisterMap::numTMUPerSlice() {
+	return (readRegister(V3D_IDENT1) >> 12) & 0xf;
+}
+
+
+/**
+ * @return VPM memory size in KB
+ */
+int RegisterMap::VPMMemorySize() {
+	return (readRegister(V3D_IDENT1) >> 28) & 0xf;
+}
+
+
 RegisterMap *RegisterMap::instance() {
 	if (m_instance.get() == nullptr) {
 		m_instance.reset(new RegisterMap);
