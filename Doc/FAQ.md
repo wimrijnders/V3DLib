@@ -3,6 +3,14 @@ Frequently Asked Questions
 
 This also serves as a central location for essential info.
 
+# Table of Contents
+
+- [What are the differences between VideoCore IV and VI?](what-are-the-differences-between-VideoCore-IV-and-VI?)
+- [Function `compile()` is not Thread-Safe](function-compile()-is-not-thread-safe)
+
+-----
+
+
 # What are the differences between VideoCore IV and VI?
 
 There is no architecture specification available yet for VC5 and/or VC6.
@@ -54,11 +62,22 @@ Indication that the number of QPU's has dropped to 8 (from 12).
 ### Calculated theoretical max FLOPs per QPU
 Assuming theoretical max FLOPs per QPU per cycle is the same:
 
-: - Pi3+ 12x2x400mhz = 9.6 GFLOPs
-: - Pi4:  8x2x500mhz = 8.0 GFLOPs (less!)
+  - Pi3+ 12x2x400mhz = 9.6 GFLOPs
+  - Pi4:  8x2x500mhz = 8.0 GFLOPs (less!)
 
 Perhaps the driver is not reporting the correct number of QPUs.
 But the improved hardware may compensate for this.
 
 > vc6 does add multi-gpu-core support, each with their own set of QPUs, but the driver only appears to be reporting one core with 8 QPUs). My pi4 hasn't arrived yet so I haven't tested myself.
-> However, I wouldn't be too surprised if the supporting hardware has been improved enough to extract more of the theoretical QPU performance into actual realised performance, allowing rendering performance improvements with less QPUs. 
+> However, I wouldn't be too surprised if the supporting hardware has been improved enough to extract more of the theoretical QPU performance into actual realised performance, allowing rendering performance improvements with less QPUs.
+
+
+## Function `compile()` is not Thread-Safe
+Function `compile()` is used to compile a kernel from a class generator definition into a format that is runnable on a QPU. This uses *global* heaps internally for e.g. generating the AST and for storing the resulting statements.
+
+Because the heaps are global, running `compile()` parallel on different threads will lead to problems. The result of the compile, however, should be fine, so it's possible to have multiple kernel instances on different threads.
+
+As long a you run `compile()` on a single thread at a time, you're OK.
+
+
+*TODO:* examine further.
