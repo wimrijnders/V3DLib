@@ -5,8 +5,9 @@ This also serves as a central location for essential info.
 
 # Table of Contents
 
-- [What are the differences between VideoCore IV and VI?](what-are-the-differences-between-VideoCore-IV-and-VI?)
-- [Function `compile()` is not Thread-Safe](function-compile()-is-not-thread-safe)
+- [What are the differences between VideoCore IV and VI?](#whatarethedifferencesbetweenvideocoreivandvi)
+- [Function `compile()` is not Thread-Safe](#functioncompileisnotthreadsafe)
+- [Float multiplication on the QPU always rounds downwards](#floatmultiplicationontheqpualwaysroundsdownwards)
 
 -----
 
@@ -72,7 +73,8 @@ But the improved hardware may compensate for this.
 > However, I wouldn't be too surprised if the supporting hardware has been improved enough to extract more of the theoretical QPU performance into actual realised performance, allowing rendering performance improvements with less QPUs.
 
 
-## Function `compile()` is not Thread-Safe
+-----
+# Function `compile()` is not Thread-Safe
 Function `compile()` is used to compile a kernel from a class generator definition into a format that is runnable on a QPU. This uses *global* heaps internally for e.g. generating the AST and for storing the resulting statements.
 
 Because the heaps are global, running `compile()` parallel on different threads will lead to problems. The result of the compile, however, should be fine, so it's possible to have multiple kernel instances on different threads.
@@ -81,3 +83,15 @@ As long a you run `compile()` on a single thread at a time, you're OK.
 
 
 *TODO:* examine further.
+
+
+-----
+# Float multiplication on the QPU always rounds downwards
+
+Most CPU's make an effort to round up or down to the value nearest to the actual result of a multiplication. The `ARM` is one of those. The QPU's of the `VideoCore`, however, do not make such an effort: *they always round downward*.
+
+This means that there will be small differences in the outputs of the exact same calculation on the CPU and a QPU; at first only in the least significant bits, but if you continue calculating, the differences will accumulate.
+
+**Expect results to differ between CPU and QPU calculations.**
+
+Of special note, the results between the `QPULib` interpreter and the actual hardware `VideoCore` will likely be different.
