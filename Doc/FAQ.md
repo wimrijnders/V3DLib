@@ -9,6 +9,7 @@ This also serves as a central location for essential info.
 - [Function `compile()` is not Thread-Safe](#functioncompileisnotthreadsafe)
 - [Float multiplication on the QPU always rounds downwards](#floatmultiplicationontheqpualwaysroundsdownwards)
 - [Handling privileges](#handlingprivileges)
+- [Known limitations for old distributions](#knownlimitationsforolddistributions)
 
 -----
 
@@ -118,3 +119,52 @@ The solution for this is to become a member of group `video`:
 Where you fill in  a relevant user name for `<user>`. To enable this, logout and login, or start a new shell.
 
 Unfortunately, this solution will not work for access to `/dev/mem`. You will still need to run with `sudo` for any application that uses the `VideoCore` hardware.
+
+
+----
+# Known limitations for old distributions
+
+Following is known to occur with `Raspbian wheezy`.
+
+## Certain expected functions are not defined yet
+
+Notably, missing in in `/opt/vc/include/bcm_host.h`:
+
+- `bcm_host_get_peripheral_address()`
+-  `bcm_host_get_peripheral_size()`
+
+There is a check on the presence of these function definitions in the Makefile; if not detected,
+drop-in local functions will be used instead.
+
+ However, the detection is not foolproof. If you get compilation errors anyway due to absence of these `bcm` functions, force the following makefile variable to 'no':
+
+```make
+#USE_BCM_HEADERS:= $(shell grep bcm_host_get_peripheral_address /opt/vc/include/bcm_host.h && echo "no" || echo "yes")
+USE_BCM_HEADERS:=no       # <---- use this instead
+```
+
+## Known limitations with compiler
+
+`Raspbian wheezy` uses `gcc` version *(@mn416 please supply your gcc version here!)*.
+At time of writing, the code is compiled with `-std=c++0x`.
+
+* This gcc version does not compile inline initialization of class variables (`C++11`standard):
+
+```c++
+class Klass {
+   Klass(): m_value(0) {}   // <-- Use this instead
+
+  int m_value{0};           // <-- This won't compile
+}
+```
+
+* Some function definitions, which are found automatically in `c++11`, need explicit includes.
+
+Known cases (there may be more):
+
+| Function | Needs include |
+|-|-|
+| `exit(int)` | `#include <stdlib.h>` |
+| `errno()` | `#include <errno.h>` |
+| `printf()` etc | `#include <stdio.h>` |
+
