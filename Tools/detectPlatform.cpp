@@ -4,6 +4,7 @@
 #include <fstream>
 #include <streambuf>
 #include "QPULib.h"
+#include "VideoCore/VideoCore.h"
 #include "VideoCore/RegisterMap.h"
 
 using namespace QPULib;
@@ -118,8 +119,7 @@ int main(int argc, char *argv[]) {
 #ifndef QPU_MODE
 	printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
 	return 1;
-#endif
-
+#else
 	if (geteuid() != 0) {  // Only do this as root (sudo)
 		printf("You need to run this with `sudo` to access the device file\n\n");
 		return 1;
@@ -133,6 +133,8 @@ int main(int argc, char *argv[]) {
 	printf("Number of QPU's per slice: %d\n",   RegisterMap::numQPUPerSlice());
 	printf("Number of TMU's per slice: %d\n",   RegisterMap::numTMUPerSlice());
 	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
+	printf("\n");
+#endif
 
 	return 0;
 }
