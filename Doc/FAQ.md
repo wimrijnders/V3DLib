@@ -8,6 +8,7 @@ This also serves as a central location for essential info.
 - [What are the differences between VideoCore IV and VI?](#whatarethedifferencesbetweenvideocoreivandvi)
 - [Function `compile()` is not Thread-Safe](#functioncompileisnotthreadsafe)
 - [Float multiplication on the QPU always rounds downwards](#floatmultiplicationontheqpualwaysroundsdownwards)
+- [Handling privileges](#handlingprivileges)
 
 -----
 
@@ -82,7 +83,7 @@ Because the heaps are global, running `compile()` parallel on different threads 
 As long a you run `compile()` on a single thread at a time, you're OK.
 
 
-*TODO:* examine further.
+**TODO:** examine further.
 
 
 -----
@@ -95,3 +96,25 @@ This means that there will be small differences in the outputs of the exact same
 **Expect results to differ between CPU and QPU calculations.**
 
 Of special note, the results between the `QPULib` interpreter and the actual hardware `VideoCore` will likely be different.
+
+
+-----
+# Handling privileges
+
+In order to use the `VideoCore`, special privileges are required to access certain devices files.  The default way is to run the applications with `sudo`.
+
+You might run into the following situation (e.g.):
+```
+> obj-qpu/bin/detectPlatform 
+Detected platform: Raspberry Pi 2 Model B Rev 1.1
+Can't open device file: /dev/vcio
+Try creating a device file with: sudo mknod /dev/vcio c 100 0
+```
+The solution for this is to become a member of group `video`:
+```
+> sudo useradd -g video <user>
+```
+
+Where you fill in  a relevant user name for `<user>`. To enable this, logout and login, or start a new shell.
+
+Unfortunately, this solution will not work for access to `/dev/mem`. You will still need to run with `sudo` for any application that uses the `VideoCore` hardware.
