@@ -51,13 +51,23 @@ uint32_t RegisterMap::read(int offset) const {
 }
 
 
+void RegisterMap::write(int offset, uint32_t value) {
+	m_addr[V3D_BASE + offset] = value;
+}
+
+
 /**
  * @brief Convenience function for getting a register value.
  *
  * This avoids having to use `instance()->` for every read access.
  */
 uint32_t RegisterMap::readRegister(int offset) {
-	return instance()->read(V3D_IDENT1);
+	return instance()->read(offset);
+}
+
+
+void RegisterMap::writeRegister(int offset, uint32_t value) {
+	return instance()->write(offset, value);
 }
 
 
@@ -88,12 +98,13 @@ int RegisterMap::VPMMemorySize() {
 
 
 /**
- * @brief Get the scheduler register values for all QPU's
+ * @brief Read the scheduler register values for all QPU's.
  *
  * This reads both scheduler registers.
- * Note that these values are read/write.
  *
- * @brief struct with 'do not use' values for all possible values
+ * *NOTE:*  The scheduler registers are read/write
+ *
+ * @return struct with 'do not use' values for all possible values
  */
 SchedulerRegisterValues RegisterMap::SchedulerRegisters() {
 	SchedulerRegisterValues ret;
@@ -120,6 +131,47 @@ SchedulerRegisterValues RegisterMap::SchedulerRegisters() {
 	ret.qpu[16] = reg1 >> 28 & 0x0f;
 
 	return ret;
+}
+
+
+/**
+ * @brief Write scheduler register values for selected QPU's.
+ *
+ * This sets values in both scheduler registers.
+ *
+ * **NOTE:**  The scheduler registers are read/write
+ *
+ * **TODO:** Not tested yet!
+ */
+void RegisterMap::SchedulerRegisters(SchedulerRegisterValues values) {
+	uint32_t reg0 = readRegister(V3D_SQRSV0);
+	uint32_t reg1 = readRegister(V3D_SQRSV1);
+	uint32_t new_reg0 = reg0;
+	uint32_t new_reg1 = reg1;
+
+	for (int i = 0; i < MAX_AVAILABLE_QPUS/2; ++i) {
+		int offset = 4*i;
+
+		if (values.set_qpu[i]) {
+			new_reg0 = (reg0 & ~(0x0f << offset)) | (values.qpu[i] << offset);
+		}
+	}
+
+	for (int i = MAX_AVAILABLE_QPUS/2; i < MAX_AVAILABLE_QPUS; ++i) {
+		int offset = 4*i - MAX_AVAILABLE_QPUS/2;
+
+		if (values.set_qpu[i]) {
+			new_reg1 = (reg1 & ~(0x0f << offset)) | (values.qpu[i] << offset);
+		}
+	}
+
+	if (reg0 != new_reg0) {  // Value reg0 changed
+		writeRegister(V3D_SQRSV0, new_reg0);
+	}
+
+	if (reg1 != new_reg1) {  // Value reg1 changed
+		writeRegister(V3D_SQRSV1, new_reg1);
+	}
 }
 
 

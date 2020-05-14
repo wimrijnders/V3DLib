@@ -20,7 +20,14 @@ const int MAX_AVAILABLE_QPUS = 16;
 // Data structure for returning scheduler register values.
 // Length is max available slots, not the actual number of QPU's
 struct SchedulerRegisterValues {
-	int qpu[MAX_AVAILABLE_QPUS];
+	int  qpu[MAX_AVAILABLE_QPUS];
+	bool set_qpu[MAX_AVAILABLE_QPUS];  // Used for write option
+
+	SchedulerRegisterValues() {
+		for (int i = 0; i < MAX_AVAILABLE_QPUS; ++i) {
+			set_qpu[i] = false;
+		}
+	}
 };
 
 
@@ -46,6 +53,7 @@ public:
 	static int numTMUPerSlice();
 	static int VPMMemorySize();
 	static SchedulerRegisterValues SchedulerRegisters();
+	static void SchedulerRegisters(SchedulerRegisterValues values);
 
 private:
 	RegisterMap();
@@ -56,7 +64,9 @@ private:
 	static std::unique_ptr<RegisterMap> m_instance;
 
 	uint32_t read(int offset) const;
+	void write(int offset, uint32_t value);
 	static uint32_t readRegister(int offset);
+	static void writeRegister(int offset, uint32_t value);
 
 	static RegisterMap *instance();
 	static void check_page_align(unsigned addr);
