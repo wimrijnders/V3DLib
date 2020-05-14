@@ -14,7 +14,9 @@ enum {
 	V3D_BASE = (0xc00000 >> 2),
 	V3D_IDENT0 = 0,
 	V3D_IDENT1,
-	V3D_IDENT2
+	V3D_IDENT2,
+	V3D_SQRSV0 = (0x00410 >> 2 ),  // Scheduler Register QPUS 0-7
+	V3D_SQRSV1                     // Scheduler Register QPUS 8-15
 };
 
 std::unique_ptr<RegisterMap> RegisterMap::m_instance;
@@ -82,6 +84,42 @@ int RegisterMap::numTMUPerSlice() {
  */
 int RegisterMap::VPMMemorySize() {
 	return (readRegister(V3D_IDENT1) >> 28) & 0xf;
+}
+
+
+/**
+ * @brief Get the scheduler register values for all QPU's
+ *
+ * This reads both scheduler registers.
+ * Note that these values are read/write.
+ *
+ * @brief struct with 'do not use' values for all possible values
+ */
+SchedulerRegisterValues RegisterMap::SchedulerRegisters() {
+	SchedulerRegisterValues ret;
+
+	uint32_t reg0 = readRegister(V3D_SQRSV0);
+	uint32_t reg1 = readRegister(V3D_SQRSV1);
+
+	ret.qpu[ 0] = reg0       & 0x0f;
+	ret.qpu[ 1] = reg0 >>  4 & 0x0f;
+	ret.qpu[ 2] = reg0 >>  8 & 0x0f;
+	ret.qpu[ 3] = reg0 >> 12 & 0x0f;
+	ret.qpu[ 4] = reg0 >> 16 & 0x0f;
+	ret.qpu[ 5] = reg0 >> 20 & 0x0f;
+	ret.qpu[ 6] = reg0 >> 24 & 0x0f;
+	ret.qpu[ 7] = reg0 >> 28 & 0x0f;
+
+	ret.qpu[ 8] = reg1       & 0x0f;
+	ret.qpu[ 9] = reg1 >>  4 & 0x0f;
+	ret.qpu[10] = reg1 >>  8 & 0x0f;
+	ret.qpu[11] = reg1 >> 12 & 0x0f;
+	ret.qpu[12] = reg1 >> 16 & 0x0f;
+	ret.qpu[13] = reg1 >> 20 & 0x0f;
+	ret.qpu[14] = reg1 >> 24 & 0x0f;
+	ret.qpu[16] = reg1 >> 28 & 0x0f;
+
+	return ret;
 }
 
 

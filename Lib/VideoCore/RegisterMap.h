@@ -7,6 +7,23 @@
 
 namespace QPULib {
 
+// Masks for scheduler registers
+enum SchedulerMasks : int {
+	DO_NOT_USE_FOR_USER_PROGRAMS = 1,
+	DO_NOT_USE_FOR_FRAGMENT_SHADERS = 2,
+	DO_NOT_USE_FOR_VERTEX_SHADERS = 4,
+	DO_NOT_USE_FOR_COORDINATE = 8
+};
+
+const int MAX_AVAILABLE_QPUS = 16;
+
+// Data structure for returning scheduler register values.
+// Length is max available slots, not the actual number of QPU's
+struct SchedulerRegisterValues {
+	int qpu[MAX_AVAILABLE_QPUS];
+};
+
+
 /**
  * @brief interface for the VideoCore registers.
  *
@@ -28,6 +45,7 @@ public:
 	static int numQPUPerSlice();
 	static int numTMUPerSlice();
 	static int VPMMemorySize();
+	static SchedulerRegisterValues SchedulerRegisters();
 
 private:
 	RegisterMap();

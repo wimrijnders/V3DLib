@@ -103,6 +103,38 @@ bool detect_from_proc() {
 }
 
 
+void showSchedulerRegisters() {
+	int numQPUs = RegisterMap::numSlices() * RegisterMap::numQPUPerSlice();
+	SchedulerRegisterValues values = RegisterMap::SchedulerRegisters();
+
+	printf("Scheduler registers, do not use:");
+
+	for (int i = 0; i < numQPUs; ++i ) {
+		printf("\n  QPU %02d: ", i);
+
+		int val = values.qpu[i];
+
+		if (val & DO_NOT_USE_FOR_USER_PROGRAMS) {
+			printf("user programs, ");
+		}
+
+		if (val & DO_NOT_USE_FOR_FRAGMENT_SHADERS) {
+			printf("fragment shaders, ");
+		}
+
+		if (val & DO_NOT_USE_FOR_VERTEX_SHADERS) {
+			printf("vertex shaders, ");
+		}
+
+		if (val & DO_NOT_USE_FOR_COORDINATE) {
+			printf("coordinate");
+		}
+	}
+
+	printf("\n");
+}
+
+
 /**
  * @brief Detect if this is running on a Rpi.
  *
@@ -133,6 +165,7 @@ int main(int argc, char *argv[]) {
 	printf("Number of QPU's per slice: %d\n",   RegisterMap::numQPUPerSlice());
 	printf("Number of TMU's per slice: %d\n",   RegisterMap::numTMUPerSlice());
 	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
+	showSchedulerRegisters();
 	printf("\n");
 #endif
 
