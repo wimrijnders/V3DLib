@@ -71,6 +71,27 @@ void RegisterMap::writeRegister(int offset, uint32_t value) {
 }
 
 
+int RegisterMap::TechnologyVersion() {
+	uint32_t reg = readRegister(V3D_IDENT0);
+	char buf[4];
+	const char *ident = "V3D";
+
+	int ret = (reg >> 24) & 0xf;
+	buf[0] = reg & 0xff;
+	buf[1] = (reg >> 8)  & 0xff;
+	buf[2] = (reg >> 16)  & 0xff;
+	buf[3] = '\0';
+	
+	if (strncmp(ident, buf, 3)) {
+		printf("Id string is not the expected 'V3D'!\n");
+	} else {
+		printf("Id string checks out\n");
+	}
+
+	return ret;
+}
+
+
 int RegisterMap::numSlices() {
 	uint32_t reg = readRegister(V3D_IDENT1);
 	// printf("reg V3D_IDENT1: %08X\n", reg);

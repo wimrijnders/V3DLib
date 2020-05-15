@@ -48,6 +48,7 @@ public:
 
 	~RegisterMap();
 
+	static int TechnologyVersion();
 	static int numSlices();
 	static int numQPUPerSlice();
 	static int numTMUPerSlice();
