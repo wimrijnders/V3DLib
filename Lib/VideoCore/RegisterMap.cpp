@@ -83,7 +83,7 @@ int RegisterMap::TechnologyVersion() {
 	buf[3] = '\0';
 	
 	if (strncmp(ident, buf, 3)) {
-		printf("Id string is not the expected 'V3D'!\n");
+		printf("Id string is not the expected 'V3D' but '%s'!\n", buf);
 	} else {
 		printf("Id string checks out\n");
 	}

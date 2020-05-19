@@ -244,6 +244,8 @@ unsigned qpu_enable(int file_desc, unsigned enable)
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
    mbox_property(file_desc, p);
+
+   printf("qpu_enable returns %d\n", p[5]);
    return p[5];
 }
 
