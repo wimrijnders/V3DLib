@@ -8,6 +8,7 @@
 #include <bcm_host.h>
 #include "Mailbox.h"  // for mapmem()
 
+
 namespace QPULib {
 
 enum {
@@ -25,6 +26,8 @@ std::unique_ptr<RegisterMap> RegisterMap::m_instance;
 RegisterMap::RegisterMap() {
 	bcm_host_init();
 	unsigned addr = bcm_host_get_peripheral_address();
+	printf("Peripheral base: %08X\n", addr);
+
 	m_size = bcm_host_get_peripheral_size();
 
 	check_page_align(addr);
@@ -32,14 +35,16 @@ RegisterMap::RegisterMap() {
 	// Following succeeds if it returns.
 	m_addr = (uint32_t *) mapmem(addr, m_size);
 	assert(m_addr != nullptr);
-	// printf("init address: %08X, size: %u\n", m_addr, m_size);
+	printf("init address: %08X, size: %u\n", m_addr, m_size);
+
+	bcm_host_deinit();
 }
 
 
 RegisterMap::~RegisterMap() {
 	// printf("Closing down register map\n");
 	unmapmem((void *) m_addr, m_size);
-	bcm_host_deinit();
+//	bcm_host_deinit();
 }
 
 
@@ -71,12 +76,30 @@ void RegisterMap::writeRegister(int offset, uint32_t value) {
 }
 
 
+uint32_t *RegisterMap::adress() {
+	return (uint32_t *) instance()->m_addr;
+}
+
+
+unsigned RegisterMap::size() {
+	return instance()->m_size;
+}
+
+
 int RegisterMap::TechnologyVersion() {
 	uint32_t reg = readRegister(V3D_IDENT0);
-	char buf[4];
-	const char *ident = "V3D";
+
+	checkVersionString(reg);
 
 	int ret = (reg >> 24) & 0xf;
+	return ret;
+}
+
+
+void RegisterMap::checkVersionString(uint32_t  reg) {
+	const char *ident = "V3D";
+	char buf[4];
+
 	buf[0] = reg & 0xff;
 	buf[1] = (reg >> 8)  & 0xff;
 	buf[2] = (reg >> 16)  & 0xff;
@@ -88,7 +111,32 @@ int RegisterMap::TechnologyVersion() {
 		printf("Id string checks out\n");
 	}
 
-	return ret;
+/*
+	uint32_t buf2 = 0;
+	buf2 |= (ident[0]);
+	buf2 |= (ident[1] <<  8) & 0x00ff00;
+	buf2 |= (ident[2] << 16) & 0xff0000;
+
+
+  // Search the memory area for the given string
+	const unsigned STEP = 1000;
+	const unsigned MAX = 102400;
+	unsigned length = size() >> 2;
+	if (length > MAX) length = MAX;
+
+	for (unsigned s = 0; s < length; ++s) {
+		if (s % STEP == 0) {
+			printf("%u,",s);
+		}
+
+		uint32_t val = instance()->m_addr[s];
+		if ((val & 0x00ffffff) == buf2) {
+			printf("Found '%s' at register: %08X\n", buf,  s);
+		}
+	}
+
+	printf("\n");
+*/
 }
 
 

@@ -103,6 +103,7 @@ bool detect_from_proc() {
 }
 
 
+#ifdef QPU_MODE
 void showSchedulerRegisters() {
 	int numQPUs = RegisterMap::numSlices() * RegisterMap::numQPUPerSlice();
 	SchedulerRegisterValues values = RegisterMap::SchedulerRegisters();
@@ -133,6 +134,7 @@ void showSchedulerRegisters() {
 
 	printf("\n");
 }
+#endif  // QPU_MODE
 
 
 /**
@@ -148,6 +150,8 @@ int main(int argc, char *argv[]) {
 
 	printf("\n");
 
+
+
 #ifndef QPU_MODE
 	printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
 	return 1;
@@ -156,6 +160,8 @@ int main(int argc, char *argv[]) {
 		printf("You need to run this with `sudo` to access the device file\n\n");
 		return 1;
 	}
+
+	enableQPUs();
 
 	int mb = getMailbox();	
 	unsigned revision = get_version(mb);
@@ -168,6 +174,8 @@ int main(int argc, char *argv[]) {
 	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
 	showSchedulerRegisters();
 	printf("\n");
+
+	disableQPUs();
 #endif
 
 	return 0;

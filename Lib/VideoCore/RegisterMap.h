@@ -71,6 +71,9 @@ private:
 
 	static RegisterMap *instance();
 	static void check_page_align(unsigned addr);
+	static void checkVersionString(uint32_t reg);
+	static uint32_t *adress();
+	static unsigned size();
 };
 
 }  // namespace QPULib
