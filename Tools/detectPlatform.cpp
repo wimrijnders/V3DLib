@@ -6,6 +6,7 @@
 #include "QPULib.h"
 #include "VideoCore/VideoCore.h"
 #include "VideoCore/RegisterMap.h"
+#include "VideoCore/vc6/RegisterMapping.h"
 
 using namespace QPULib;
 
@@ -134,6 +135,69 @@ void showSchedulerRegisters() {
 
 	printf("\n");
 }
+
+
+void detect_vc4() {
+	printf("Tech version             : %d\n", RegisterMap::TechnologyVersion());
+	printf("Number of slices         : %d\n",   RegisterMap::numSlices());
+	printf("Number of QPU's per slice: %d\n",   RegisterMap::numQPUPerSlice());
+	printf("Number of TMU's per slice: %d\n",   RegisterMap::numTMUPerSlice());
+	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
+	showSchedulerRegisters();
+	printf("\n");
+}
+
+
+/**
+ * This should compare with:
+ *
+ *     > sudo cat /sys/kernel/debug/dri/0/v3d_ident
+ *     Revision:   4.2.14.0
+ *     MMU:        yes
+ *     TFU:        yes
+ *     TSY:        yes
+ *     MSO:        yes
+ *     L3C:        no (0kb)
+ *     Core 0:
+ *       Revision:     4.2
+ *       Slices:       2
+ *       TMUs:         2
+ *       QPUs:         8
+ *       Semaphores:   0
+ *       BCG int:      0
+ *       Override TMU: 0
+ *      
+ *
+ * However, at time of writing, while testing this method, this generated multiple
+ * errors:
+ *
+ *     ....quite a few more before this....
+ *     Message from syslogd@pi4-3 at Jun  1 12:10:59 ...
+ *     kernel:[69733.669058] 1fe0: 0000006c be858550 0001438c b6e9b880 60000010 00000003 00000000 00000000
+ *    
+ *    Message from syslogd@pi4-3 at Jun  1 12:10:59 ...
+ *     kernel:[69733.669496] Code: e5933000 e593300c e5933018 e5933014 (e5933008) 
+ *    Segmentation fault
+ */
+void detect_vc6() {
+	vc6::RegisterMapping map_vc6;
+	map_vc6.init();
+	
+	unsigned ncores = map_vc6.num_cores();
+	printf("Number of cores    : %d\n",   ncores);
+
+	for (unsigned core = 0; core < ncores; ++core) {
+		auto info = map_vc6.core_info(core);
+
+		printf("Core index      : %d\n",   info.index);
+		printf("VPM size        : %d\n",   info.vpm_size);
+		printf("Num slices      : %d\n",   info.num_slice);
+		printf("Num TMU's       : %d\n",   info.num_tmu);
+		printf("Num QPU's       : %d\n",   info.num_qpu);
+
+	}
+}
+
 #endif  // QPU_MODE
 
 
@@ -150,8 +214,6 @@ int main(int argc, char *argv[]) {
 
 	printf("\n");
 
-
-
 #ifndef QPU_MODE
 	printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
 	return 1;
@@ -161,21 +223,23 @@ int main(int argc, char *argv[]) {
 		return 1;
 	}
 
+	bool vc6 = true;
+
+	if (vc6) {
+		detect_vc6();
+	} else {
+
 	enableQPUs();
 
 	int mb = getMailbox();	
 	unsigned revision = get_version(mb);
 	printf("Hardware revision        : %04x\n", revision);
 
-	printf("Tech version             : %d\n", RegisterMap::TechnologyVersion());
-	printf("Number of slices         : %d\n",   RegisterMap::numSlices());
-	printf("Number of QPU's per slice: %d\n",   RegisterMap::numQPUPerSlice());
-	printf("Number of TMU's per slice: %d\n",   RegisterMap::numTMUPerSlice());
-	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
-	showSchedulerRegisters();
-	printf("\n");
+	detect_vc4();
 
 	disableQPUs();
+
+	}  // vc6
 #endif
 
 	return 0;
