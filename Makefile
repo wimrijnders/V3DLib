@@ -73,8 +73,10 @@ OBJ =                         \
   Target/Emulator.o           \
   Target/Encode.o             \
   VideoCore/Mailbox.o         \
-  VideoCore/vc6/RegisterMapping.o     \
-  VideoCore/vc6/readwrite4.o     \
+  VideoCore/vc6/RegisterMapping.o \
+  VideoCore/vc6/readwrite4.o  \
+  VideoCore/vc6/DRM_V3D.o     \
+  VideoCore/vc6/Driver.o      \
   VideoCore/RegisterMap.o     \
   VideoCore/Invoke.o          \
   VideoCore/VideoCore.o
