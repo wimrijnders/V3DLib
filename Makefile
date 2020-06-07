@@ -6,7 +6,6 @@
 #   obj-qpu          - using hardware
 #   obj-debug-qpu    - output debug info, using hardware
 #
-# To compile for debugging, add flag '-g' to CXX_FLAGS.
 #
 ###########################################################
 
@@ -17,7 +16,8 @@ ROOT = Lib
 CXX = g++
 
 # -I is for access to bcm functionality
-CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) -MMD -MP -MF"$(@:%.o=%.d)" -g  # Add debug info: -g
+# To compile for debugging, add flag '-g'
+CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) -MMD -MP -MF"$(@:%.o=%.d)" -g
 
 # Object directory
 OBJ_DIR = obj
@@ -31,7 +31,8 @@ endif
 # QPU or emulation mode
 ifeq ($(QPU), 1)
 
-# Check platform before building. Can't be indented, otherwise make complains.
+# Check platform before building.
+# Can't be indented, otherwise make complains.
 RET := $(shell Tools/detectPlatform.sh 1>/dev/null && echo "yes" || echo "no")
 #$(info  info: '$(RET)')
 ifneq ($(RET), yes)
@@ -47,57 +48,9 @@ else
   CXX_FLAGS += -DEMULATION_MODE
 endif
 
-# Library Object files
-OBJ =                         \
-  Kernel.o                    \
-  Source/Syntax.o             \
-  Source/Int.o                \
-  Source/Float.o              \
-  Source/Stmt.o               \
-  Source/Pretty.o             \
-  Source/Translate.o          \
-  Source/Interpreter.o        \
-  Source/Gen.o                \
-  Target/Syntax.o             \
-  Target/SmallLiteral.o       \
-  Target/Pretty.o             \
-  Target/RemoveLabels.o       \
-  Target/CFG.o                \
-  Target/Liveness.o           \
-  Target/RegAlloc.o           \
-  Target/ReachingDefs.o       \
-  Target/Subst.o              \
-  Target/LiveRangeSplit.o     \
-  Target/Satisfy.o            \
-  Target/LoadStore.o          \
-  Target/Emulator.o           \
-  Target/Encode.o             \
-  VideoCore/Mailbox.o         \
-  VideoCore/RegisterMap.o     \
-  VideoCore/Invoke.o          \
-  VideoCore/VideoCore.o
+-include obj/sources.mk
 
 LIB = $(patsubst %,$(OBJ_DIR)/%,$(OBJ))
-
-
-# All programs in the Examples directory
-# NOTE: detectPlatform is in the 'Tools' directory, not in 'Examples'
-EXAMPLES =  \
-	Mandelbrot \
-	detectPlatform \
-	Tri       \
-	GCD       \
-	Print     \
-	MultiTri  \
-	AutoTest  \
-	OET       \
-	Hello     \
-	ReqRecv   \
-	Rot3D     \
-	Rot3DLib  \
-	ID        \
-	HeatMap   \
-	DMA
 
 EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
 
@@ -107,7 +60,7 @@ EXAMPLES_EXTRA = \
 	Rot3DLib/Rot3DKernels.o
 
 EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
-#$(info $(EXAMPLES_OBJ))
+$(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files
 DEPS := $(LIB:.o=.d)
@@ -154,7 +107,7 @@ help:
 	@echo '    DEBUG=1       - If specified, the source code and target code is shown on stdout when running a test'
 	@echo
 
-all: $(EXAMPLE_TARGETS) $(OBJ_DIR)
+all: $(OBJ_DIR) $(EXAMPLE_TARGETS)
 
 clean:
 	rm -rf obj obj-debug obj-qpu obj-debug-qpu
@@ -249,3 +202,13 @@ $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)/Examples
 	@mkdir -p $(OBJ_DIR)/Tools
 	@mkdir -p $(OBJ_DIR)/bin
+
+
+###############################
+# Gen stuff
+###############################
+
+gen : $(OBJ_DIR)/sources.mk
+
+$(OBJ_DIR)/sources.mk : $(OBJ_DIR)
+	script/gen.sh

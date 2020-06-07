@@ -2,8 +2,8 @@
 #include <stdlib.h>
 #include <sys/time.h>
 
-// Heat dissapation constant
-#define K 0.25
+// Heat dissipation constant
+#define K 0.25f
 
 // ============================================================================
 // Scalar version
@@ -18,7 +18,7 @@ void step(float** map, float** mapOut, int width, int height)
         map[y-1][x-1] + map[y-1][x]   + map[y-1][x+1] +
         map[y][x-1]   +                 map[y][x+1]   +
         map[y+1][x-1] + map[y+1][x]   + map[y+1][x+1];
-      surroundings *= 0.125;
+      surroundings *= 0.125f;
       mapOut[y][x] = map[y][x] - (K * (map[y][x] - surroundings));
     }
   }
@@ -58,7 +58,7 @@ int main()
     int t = rand() % 256;
     int x = 1 + rand() % (WIDTH-2);
     int y = 1 + rand() % (HEIGHT-2);
-    map2D[y][x] = (float) 1000*t;
+    map2D[y][x] = 1000.0f*((float) t);
   }
 
   // Simulate

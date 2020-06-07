@@ -154,11 +154,11 @@ int main(int argc, char *argv[]) {
 
 #ifndef QPU_MODE
 	printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
-	return 1;
+	return 0;
 #else
 	if (geteuid() != 0) {  // Only do this as root (sudo)
 		printf("You need to run this with `sudo` to access the device file\n\n");
-		return 1;
+		return 0;
 	}
 
 	enableQPUs();
