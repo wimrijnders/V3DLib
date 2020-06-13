@@ -1,6 +1,6 @@
 # Getting started
 
-** TODO: Get rid of this page
+**TODO: Get rid of this page**
 
 
 The `QPU=1` flag to `make` indicates that the physical QPUs on the

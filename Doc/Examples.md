@@ -283,7 +283,7 @@ with &theta; = 180 degrees, then we get
 
 <img src="Doc/teapot180.png" alt="Newell's teapot" width=30%>
 
-### <a name="vector-version-1-1">  Vector version 1
+### <a name="vector-version-1-1"></a>  Vector version 1
 
 Our first vector version is almost identical to the scalar version
 above: the only difference is that each loop iteration now processes
