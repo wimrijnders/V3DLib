@@ -12,7 +12,7 @@ introduces and documents QPULib.  For build instructions, see the
 
 `QPULib` should work out-of-the-box for recent Raspbian distributions (`wheezy` and onward).
 It has been tested on the `Pi 1 Model B`, the `Pi 2` and the `Pi 3 Model B`.
-It will *Not* work on Pi 4, due to changes in the GPU (but I'm working hard to fix that).
+It will **NOT** work on Pi 4, due to changes in the GPU (but I'm working hard to fix that).
 
 ## Local Links
 

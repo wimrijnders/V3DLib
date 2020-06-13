@@ -255,7 +255,7 @@ ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md)
 would be a much better path for doing efficient graphics; this is just
 for illustration purposes.)
 
-### <a name="scalar-version-1></a> Scalar version
+### <a name="scalar-version-1"></a> Scalar version
 
 The following function will rotate `n` vertices about the Z axis by
 &theta; degrees.
@@ -283,7 +283,7 @@ with &theta; = 180 degrees, then we get
 
 <img src="Doc/teapot180.png" alt="Newell's teapot" width=30%>
 
-### <a name="vector-version-1-1>  Vector version 1
+### <a name="vector-version-1-1">  Vector version 1
 
 Our first vector version is almost identical to the scalar version
 above: the only difference is that each loop iteration now processes
@@ -460,7 +460,7 @@ our 2D surface to be a seperate object, and the ambient temperature of
 each object to be the average of the temperatures of the 8 surrounding
 objects.  This is very similar to 2D convolution using a mean filter.
 
-### <a name="scalar-version-2></a> Scalar version
+### <a name="scalar-version-2"></a> Scalar version
 
 The following function simulates a single time-step of the
 differential equation, applied to each object in the 2D grid.
