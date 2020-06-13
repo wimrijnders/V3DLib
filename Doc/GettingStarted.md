@@ -1,18 +1,7 @@
-### Getting started
+# Getting started
 
-On recent Raspbian distributions, QPULib should work out-of-the-box.
-It's been tested on the `Pi 1 Model B`, the `Pi 2` and the `Pi 3 Model B`.
+** TODO: Get rid of this page
 
-##### Building and running the GCD example
-
-To build and run the `GCD` example, enter the following commands:
-
-```
-sudo apt-get install git
-git clone https://github.com/mn416/QPULib
-make QPU=1 GCD
-sudo obj-qpu/bin/GCD
-```
 
 The `QPU=1` flag to `make` indicates that the physical QPUs on the
 Raspberry Pi should be used to run QPULib kernels.  Using
@@ -22,32 +11,15 @@ this means that QPU code will be emulated in software.  This is useful
 for debugging, and also allows you to run QPULib programs on other platforms
 than a Pi.
 
-Running `make all` will build all the examples under `Examples`.  The output directory
+The output directory
 depends on the make flags passed.  For example, `make all` will output to directory
-`obj`, `make QPU=1 all` will output to directory `obj-qpu`.  Running `make clean` will
-clear out all these output directories.
+`obj`, `make QPU=1 all` will output to directory `obj-qpu`.
 
 Strictly speaking, any program that works in emulation mode but not on
 the Pi's physical QPUs is probably a bug in QPULib and should be
 reported, although there may be valid explanations for such
 differences.
 
-##### Overview of Examples
-
-To build and run (assuming that the repo is cloned):
-
-```
-make QPU=1 <name>
-sudo obj-qpu/bin/<name>
-```
-
-- **GCD**       - [Euclid's algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm), The GCD's of some random pairs of integers
-- **Tri**       - Computes the first 16 [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number)
-- **MultiTri**  - Like **Tri**, but uses 4 QPUs instead of 1, to computertThe first 64 triangular numbers
-- **TriFloat**  - Like **Tri**, but casts floats to integers and back for the first 16 triangular numbers
-- **OET**       - [Odd-even transposition sorter](https://en.wikipedia.org/wiki/Odd%E2%80%93even_sort) for 32 integers
-- **HeatMap**   - Modelling heat flow across a 2D surface; outputs an image in [pgm](http://netpbm.sourceforge.net/doc/pgm.html) format, and notes the time taken
-- **Rot3D**     -  3D rotation of a random objecti; outputs the time taken
 
 ##### AutoTest: specification-based testing of the compiler
 

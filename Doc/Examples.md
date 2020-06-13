@@ -1,22 +1,46 @@
+[//]: # (Construct `<a name="performance-1"></a>` is used to disambiguate internal links)
+[//]: # (This is not required for unambiguous links, `markdown` and/or `gitlit` can deal with these)
+
+
+
 # Examples
 
 ## Contents
 
-* [Example 1: Euclid's Algorithm](#example-1-euclids-algorithm)
-    * [Scalar version](#scalar-version)
-    * [Vector version 1](#vector-version-1)
-    * [Invoking the QPUs](#invoking-the-qpus)
-    * [Vector version 2: loop unrolling](#vector-version-2-loop-unrolling)
-* [Example 2: 3D Rotation](#example-2-3d-rotation)
-    * [Scalar version](#scalar-version-1)
-    * [Vector version 1](#vector-version-1-1)
-    * [Vector version 2: non-blocking loads and stores](#vector-version-2-non-blocking-loads-and-stores)
-    * [Vector version 3: multiple QPUs](#vector-version-3-multiple-qpus)
+* [Overview of Examples](#overviewofexamples)
+* [Example 1: Euclid's Algorithm](#example1euclidsalgorithm)
+    * [Scalar version](#scalarversion)
+    * [Vector version 1](#vectorversion1)
+    * [Invoking the QPUs](#invokingtheqpus)
+    * [Vector version 2: loop unrolling](#vectorversion2loopunrolling)
+* [Example 2: 3D Rotation](#example23drotation)
+    * [Scalar version](#scalarversion1)
+    * [Vector version 1](#vectorversion11)
+    * [Vector version 2: non-blocking loads and stores](#vectorversion2nonblockingloadsandstores)
+    * [Vector version 3: multiple QPUs](#vectorversion3multipleqpus)
     * [Performance](#performance)
-* [Example 3: 2D Convolution (Heat Transfer)](#example-3-2d-convolution-heat-transfer)
-    * [Scalar version](#scalar-version-2)
-    * [Vector version](#vector-version)
+* [Example 3: 2D Convolution (Heat Transfer)](#example32dconvolutionheattransfer)
+    * [Scalar version](#scalarversion2)
+    * [Vector version](#vectorversion)
     * [Performance](#performance-1)
+
+
+## Overview of Examples
+
+To build and an example run (assuming that the repo is cloned):
+
+```
+make QPU=1 <name>
+sudo obj-qpu/bin/<name>
+```
+
+- **GCD**       - [Euclid's algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm), The GCD's of some random pairs of integers
+- **Tri**       - Computes the first 16 [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number)
+- **MultiTri**  - Like **Tri**, but uses 4 QPUs instead of 1, to computertThe first 64 triangular numbers
+- **TriFloat**  - Like **Tri**, but casts floats to integers and back for the first 16 triangular numbers
+- **OET**       - [Odd-even transposition sorter](https://en.wikipedia.org/wiki/Odd%E2%80%93even_sort) for 32 integers
+- **HeatMap**   - Modelling heat flow across a 2D surface; outputs an image in [pgm](http://netpbm.sourceforge.net/doc/pgm.html) format, and notes the time taken
+- **Rot3D**     -  3D rotation of a random objecti; outputs the time taken
 
 
 ## Example 1: Euclid's Algorithm
@@ -231,7 +255,7 @@ ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md)
 would be a much better path for doing efficient graphics; this is just
 for illustration purposes.)
 
-### Scalar version
+### <a name="scalar-version-1></a> Scalar version
 
 The following function will rotate `n` vertices about the Z axis by
 &theta; degrees.
@@ -259,7 +283,7 @@ with &theta; = 180 degrees, then we get
 
 <img src="Doc/teapot180.png" alt="Newell's teapot" width=30%>
 
-### Vector version 1
+### <a name="vector-version-1-1>  Vector version 1
 
 Our first vector version is almost identical to the scalar version
 above: the only difference is that each loop iteration now processes
@@ -436,7 +460,7 @@ our 2D surface to be a seperate object, and the ambient temperature of
 each object to be the average of the temperatures of the 8 surrounding
 objects.  This is very similar to 2D convolution using a mean filter.
 
-### Scalar version
+### <a name="scalar-version-2></a> Scalar version
 
 The following function simulates a single time-step of the
 differential equation, applied to each object in the 2D grid.

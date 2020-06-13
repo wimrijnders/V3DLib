@@ -9,7 +9,12 @@ generating and offloading programs to the QPUs at runtime.  This page
 introduces and documents QPULib.  For build instructions, see the
 [Getting Started Guide](Doc/GettingStarted.md).
 
-## Contents
+
+`QPULib` should work out-of-the-box for recent Raspbian distributions (`wheezy` and onward).
+It has been tested on the `Pi 1 Model B`, the `Pi 2` and the `Pi 3 Model B`.
+It will *Not* work on Pi 4, due to changes in the GPU (but I'm working hard to fix that).
+
+## Local Links
 
 * [Background](#background)
 * [Examples](Doc/Examples.md).
@@ -22,12 +27,15 @@ sudo apt-get install git
 git clone https://github.com/mn416/QPULib
 make QPU=1 all
 make test
+...
+make clean
 ```
 
-- *QPU=1* will use the GPU to run kernels.
-- Any other value, notably *QPU=0* will run the kernels in an emulator
+- `QPU=1` will use the GPU to run kernels.
+- Any other value, notably `QPU=0`, will run the kernels in an emulator
 
 
+`make QPU=1 all` will build all the examples.
 To build a specific example (e.g. `QCD`):
 
 ```
