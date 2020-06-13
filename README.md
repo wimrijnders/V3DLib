@@ -18,7 +18,7 @@ It will **NOT** work on Pi 4, due to changes in the GPU (but I'm working hard to
 
 * [Background](#background)
 * [Examples](Doc/Examples.md).
-* [References](#user-content-references)
+* [References](#references)
 
 ## Getting Started
 
