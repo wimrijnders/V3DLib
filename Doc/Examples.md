@@ -14,13 +14,13 @@
     * [Invoking the QPUs](#invokingtheqpus)
     * [Vector version 2: loop unrolling](#vectorversion2loopunrolling)
 * [Example 2: 3D Rotation](#example23drotation)
-    * [Scalar version](#scalarversion1)
-    * [Vector version 1](#vectorversion11)
+    * [Scalar version](#scalar-version-1)
+    * [Vector version 1](#vector-version-1-1)
     * [Vector version 2: non-blocking loads and stores](#vectorversion2nonblockingloadsandstores)
     * [Vector version 3: multiple QPUs](#vectorversion3multipleqpus)
     * [Performance](#performance)
 * [Example 3: 2D Convolution (Heat Transfer)](#example32dconvolutionheattransfer)
-    * [Scalar version](#scalarversion2)
+    * [Scalar version](#scalar-version-2)
     * [Vector version](#vectorversion)
     * [Performance](#performance-1)
 
@@ -423,6 +423,7 @@ void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
 
 Times taken to rotate an object with 192,000 vertices:
 
+```
   Version  | Number of QPUs | Run-time (s) |
   ---------| -------------: | -----------: |
   Scalar   | 0              | 0.018        |
@@ -430,6 +431,7 @@ Times taken to rotate an object with 192,000 vertices:
   Vector 2 | 1              | 0.018        |
   Vector 3 | 1              | 0.018        |
   Vector 3 | 2              | 0.016        |
+```
 
 Non-blocking loads and stores (vector version 2) give a
 significant performance boost: in this case a factor of 2.
@@ -630,9 +632,11 @@ void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height)
 
 Times taken to simulate a 512x512 surface for 2000 steps:
 
+```
   Version | Number of QPUs | Run-time (s) |
   --------| -------------: | -----------: |
   Scalar  | 0              | 431.46       |
   Vector  | 1              | 49.34        |
   Vector  | 2              | 24.91        |
   Vector  | 4              | 20.36        |
+```
