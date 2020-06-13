@@ -602,7 +602,7 @@ void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height)
 }
 ```
 
-### Performance
+### <a name="performance-1"></a> Performance
 
 Times taken to simulate a 512x512 surface for 2000 steps:
 

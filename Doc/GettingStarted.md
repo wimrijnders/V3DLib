@@ -32,20 +32,22 @@ the Pi's physical QPUs is probably a bug in QPULib and should be
 reported, although there may be valid explanations for such
 differences.
 
-##### Other examples
+##### Overview of Examples
 
-Here is a quick overview of some the other examples, which can be
-built in the same way as GCD:
+To build and run (assuming that the repo is cloned):
 
-  Example   | Description | Output
-  --------- | ----------- | ------
-  GCD       | [Euclid's algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm) | The GCD's of some random pairs of integers
-  Tri       | Computes [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number) | The first 16 triangular numbers
-  MultiTri  | Like Tri, but uses 4 QPUs instead of 1 | The first 64 triangular numbers
-  TriFloat  | Like Tri but casts floats to integers and back | The first 16 triangular numbers
-  OET       | [Odd-even transposition sorter](https://en.wikipedia.org/wiki/Odd%E2%80%93even_sort) | 32 integers, sorted
-  HeatMap   | Modelling heat flow across a 2D surface | An image in [pgm](http://netpbm.sourceforge.net/doc/pgm.html) format, and the time taken
-  Rot3D     | 3D rotation of a random object | The time taken
+```
+make QPU=1 <name>
+sudo obj-qpu/bin/<name>
+```
+
+- **GCD**       - [Euclid's algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm), The GCD's of some random pairs of integers
+- **Tri**       - Computes the first 16 [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number)
+- **MultiTri**  - Like **Tri**, but uses 4 QPUs instead of 1, to computertThe first 64 triangular numbers
+- **TriFloat**  - Like **Tri**, but casts floats to integers and back for the first 16 triangular numbers
+- **OET**       - [Odd-even transposition sorter](https://en.wikipedia.org/wiki/Odd%E2%80%93even_sort) for 32 integers
+- **HeatMap**   - Modelling heat flow across a 2D surface; outputs an image in [pgm](http://netpbm.sourceforge.net/doc/pgm.html) format, and notes the time taken
+- **Rot3D**     -  3D rotation of a random objecti; outputs the time taken
 
 ##### AutoTest: specification-based testing of the compiler
 

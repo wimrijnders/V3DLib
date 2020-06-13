@@ -15,6 +15,26 @@ introduces and documents QPULib.  For build instructions, see the
 * [Examples](Doc/Examples.md).
 * [References](#user-content-references)
 
+## Getting Started
+
+```
+sudo apt-get install git
+git clone https://github.com/mn416/QPULib
+make QPU=1 all
+make test
+```
+
+- *QPU=1* will use the GPU to run kernels.
+- Any other value, notably *QPU=0* will run the kernels in an emulator
+
+
+To build a specific example (e.g. `QCD`):
+
+```
+make QPU=1 QCD
+sudo obj-qpu/bin/GCD
+```
+
 ## Background
 
 The
