@@ -1,10 +1,60 @@
 #include <sys/time.h>
+#include <string>
 #include <QPULib.h>
-
+#include <CmdParameters.h>
 
 using namespace QPULib;
+using std::string;
 
-//#define USE_SCALAR_VERSION
+
+CmdParameters params = {
+  "Mandelbrot generator\n\n"
+	"Calculates mandelbrot for a given region and outputs the result as a pgm graphics file.",
+  {{
+    "Kernel",
+    "-k=",
+    { "2", "1", "scalar", "all" },
+    "Select the kernel to use"
+  }}
+};
+
+
+struct Settings {
+	int kernel;
+	string kernel_name;
+
+  // Initialize constants for the kernels
+  const int numStepsWidth     = 1024;
+  const int numStepsHeight    = 1024;
+  const int numIterations     = 1024;
+  const float topLeftReal     = -2.5f;
+  const float topLeftIm       = 2.0f;
+  const float bottomRightReal = 1.5f;
+  const float bottomRightIm   = -2.0f;
+  const int NUM_ITEMS = numStepsWidth*numStepsHeight;
+
+	void output() {
+		printf("Settings:\n");
+		printf("  kernel index: %d\n", kernel);
+		printf("  kernel name : %s\n", kernel_name.c_str());
+		printf("  Num items   : %d\n", NUM_ITEMS);
+	}
+} settings;
+
+
+int init_settings(int argc, const char *argv[]) {
+	auto ret = params.handle_commandline(argc, argv, false);
+	if (ret != CmdParameters::ALL_IS_WELL) {
+		return ret;
+	}
+
+	settings.kernel      = params.parameters()[0]->get_int_value();
+	settings.kernel_name = params.parameters()[0]->get_string_value();
+	settings.output();
+
+	return ret;
+}
+
 
 
 /**
@@ -14,7 +64,11 @@ using namespace QPULib;
  * - Max gray value of 65536
  */
 template<class Array>
-void output_pgm(Array &result, int width, int height, int numIterations) {
+void output_pgm(Array &result) {
+  int width  = settings.numStepsWidth;
+	int height = settings.numStepsHeight;
+	int numIterations = settings.numIterations;
+
 	const int GrayLimit = 65536;
 	float factor = -1.0f;
 	int maxGray = numIterations;
@@ -59,6 +113,15 @@ void output_pgm(Array &result, int width, int height, int numIterations) {
 }
 
 
+void end_timer(timeval tvStart) {
+  timeval tvEnd, tvDiff;
+  gettimeofday(&tvEnd, NULL);
+  timersub(&tvEnd, &tvStart, &tvDiff);
+
+  printf("%ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
+}
+
+
 // ============================================================================
 // Scalar version
 // ============================================================================
@@ -68,8 +131,7 @@ void mandelbrot(
   float bottomRightReal, float bottomRightIm,
   int numStepsWidth, int numStepsHeight,
   int numIterations,
-  int *result)
-{
+  int *result) {
   float offsetX = (bottomRightReal - topLeftReal)/((float) numStepsWidth - 1);
   float offsetY = (topLeftIm - bottomRightIm)/((float) numStepsHeight - 1);
 
@@ -195,55 +257,68 @@ void mandelbrot_2(
 // Main
 // ============================================================================
 
-int main()
-{
-  // Timestamps
-  timeval tvStart, tvEnd, tvDiff;
+int main(int argc, const char *argv[]) {
+	auto ret = init_settings(argc, argv);
+	if (ret != CmdParameters::ALL_IS_WELL) {
+		return ret;
+	}
 
-  // Initialize constants for the kernels
-  const int numStepsWidth     = 1024;
-  const int numStepsHeight    = 1024;
-  const int numIterations     = 1024;
-  const float topLeftReal     = -2.5f;
-  const float topLeftIm       = 2.0f;
-  const float bottomRightReal = 1.5f;
-  const float bottomRightIm   = -2.0f;
+  timeval tvStart;
 
-#ifdef USE_SCALAR_VERSION
+
   // Allocate and initialise
-  int *result = new int [numStepsWidth*numStepsHeight];
-#else
-  const int NUM_ITEMS = numStepsWidth*numStepsHeight;
-  SharedArray<int> result(NUM_ITEMS);
+  SharedArray<int> result(settings.NUM_ITEMS);
+
+	printf("Running kernel %s\n", settings.kernel_name.c_str());
+  gettimeofday(&tvStart, NULL);
 
   // Construct kernel
-  auto k = compile(mandelbrot_2);
+  auto k = compile(mandelbrot_2);		// Using this as default
+
+	switch (settings.kernel) {
+		case 0: /* as is */                 break;	
+		case 1: k = compile(mandelbrot_1);  break;
+		case 2: {
+  						// Allocate and initialise
+  						int *result = new int [settings.NUM_ITEMS];
+
+  						mandelbrot(
+								settings.topLeftReal,
+								settings.topLeftIm,
+								settings.bottomRightReal,
+								settings.bottomRightIm,
+								settings.numStepsWidth,
+								settings.numStepsHeight,
+								settings.numIterations,
+								result);
+
+							end_timer(tvStart);
+						  output_pgm(result);
+						}
+						break;
+	}
+
   k.setNumQPUs(12);
 
-#endif
+#if 0
 
-  gettimeofday(&tvStart, NULL);
-#ifdef USE_SCALAR_VERSION
-  mandelbrot(topLeftReal, topLeftIm,bottomRightReal, bottomRightIm, numStepsWidth, numStepsHeight, numIterations, result);
-#else
-  assert(0 == numStepsWidth % 16);  // width needs to be a multiple of 16
-  float offsetX = (bottomRightReal - topLeftReal)/((float) numStepsWidth - 1);
-  float offsetY = (topLeftIm - bottomRightIm)/((float) numStepsHeight - 1);
+// QPU stuff
+
+  assert(0 == settings.numStepsWidth % 16);  // width needs to be a multiple of 16
+  float offsetX = (settings.bottomRightReal - settings.topLeftReal)/((float) settings.numStepsWidth - 1);
+  float offsetY = (settings.topLeftIm - settings.bottomRightIm)/((float) settings.numStepsHeight - 1);
+
 
   k(
-    topLeftReal, topLeftIm,
+    settings.topLeftReal, settings.topLeftIm,
     offsetX, offsetY,
-    numStepsWidth, numStepsHeight,
-    numIterations,
+    settings.numStepsWidth, settings.numStepsHeight,
+    settings.numIterations,
     &result);
 
+	end_timer(tvStart);
+  output_pgm(result);
 #endif
-
-  gettimeofday(&tvEnd, NULL);
-  timersub(&tvEnd, &tvStart, &tvDiff);
-
-  printf("%ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
-  output_pgm(result, numStepsWidth, numStepsHeight, numIterations);
 
   return 0;
 }

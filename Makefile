@@ -10,14 +10,25 @@
 #
 ###########################################################
 
+#
+# Stuff for external libraries
+#
+INCLUDE_EXTERN=-I ../CmdParameter/Lib
+LINK_DIR_EXTERN=-L ../CmdParameter/obj
+LIB_EXTERN = -l ../CmdParameter/obj/libCmdParameter.a
+
+
 # Root directory of QPULib repository
 ROOT = Lib
 
 # Compiler and default flags
 CXX = g++
+LINK= $(CXX) $(CXX_FLAGS)
+
+LIBS := $(LINK_DIR_EXTERN)$(LIB_EXTERN)
 
 # -I is for access to bcm functionality
-CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) -MMD -MP -MF"$(@:%.o=%.d)" -g  # Add debug info: -g
+CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
 
 # Object directory
 OBJ_DIR = obj
@@ -42,7 +53,7 @@ endif
 
   CXX_FLAGS += -DQPU_MODE -I /opt/vc/include
   OBJ_DIR := $(OBJ_DIR)-qpu
-	LIBS := -L /opt/vc/lib -l bcm_host
+	LIBS += -L /opt/vc/lib -l bcm_host
 else
   CXX_FLAGS += -DEMULATION_MODE
 endif
@@ -185,15 +196,15 @@ $(OBJ_DIR)/bin/Rot3DLib: $(OBJ_DIR)/Examples/Rot3DLib/Rot3DKernels.o
 
 $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPU_LIB)
 	@echo Linking $@...
-	@$(CXX) $(CXX_FLAGS) $^ -o $@
+	@$(LINK) $^ -o $@
 
 $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(QPU_LIB)
 	@echo Linking $@...
-	@$(CXX) $(CXX_FLAGS) $^ $(LIBS) -o $@
+	@$(LINK) $^ $(LIBS) -o $@
 
 $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPU_LIB)
 	@echo Linking $@...
-	@$(CXX) $(CXX_FLAGS) $^ $(LIBS) -o $@
+	@$(LINK) $^ $(LIBS) -o $@
 
 # General compilation of cpp files
 # Keep in mind that the % will take into account subdirectories under OBJ_DIR.
