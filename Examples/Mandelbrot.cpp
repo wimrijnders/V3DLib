@@ -6,21 +6,34 @@
 using namespace QPULib;
 using std::string;
 
+std::vector<const char *> const kernels = { "2", "1", "scalar", "all" };
+
 
 CmdParameters params = {
   "Mandelbrot generator\n\n"
-	"Calculates mandelbrot for a given region and outputs the result as a pgm graphics file.",
+	"Calculates mandelbrot for a given region and outputs the result as a pgm graphics file.\n"
+	"Because this calculation is purely hardware-bound, it is a good indication of overall speed.\n"
+	"It will therefore be used for performance comparisons of platforms and configurations.\n",
   {{
     "Kernel",
     "-k=",
-    { "2", "1", "scalar", "all" },
+		kernels,
     "Select the kernel to use"
+	}, {
+    "Num QPU's",
+    "-n=",
+		INTEGER,
+    "Number of QPU's to use. Must be a value between 1 an 12 inclusive (TODO: not enforced yet)",
+		12
   }}
 };
 
 
 struct Settings {
+	const int ALL = 3;
+
 	int kernel;
+	int num_qpus;
 	string kernel_name;
 
   // Initialize constants for the kernels
@@ -37,10 +50,110 @@ struct Settings {
 		printf("Settings:\n");
 		printf("  kernel index: %d\n", kernel);
 		printf("  kernel name : %s\n", kernel_name.c_str());
+		printf("  Num QPU's   : %d\n", num_qpus);
 		printf("  Num items   : %d\n", NUM_ITEMS);
+		printf("\n");
 	}
 } settings;
 
+
+// ============================================================================
+// Vector version
+// ============================================================================
+
+void mandelbrotCore(
+  Float reC, Float imC,
+  Int &resultIndex,
+  Int &numIterations,
+  Ptr<Int> &result)
+{
+  Float re = reC;
+  Float im = imC;
+  Int count = 0;
+
+  Float reSquare = re*re;
+  Float imSquare = im*im;
+
+  // Following is a float version of boolean expression: ((reSquare + imSquare) < 4 && count < numIterations)
+  // It works because `count` increments monotonically.
+  FloatExpr condition = (4.0f - (reSquare + imSquare))*toFloat(numIterations - count);
+  Float checkvar = condition;
+
+  While (any(checkvar > 0))
+    Where (checkvar > 0)
+      Float imTmp = 2*re*im;
+      re   = (reSquare - imSquare) + reC;
+      im   = imTmp  + imC;
+
+      reSquare = re*re;
+      imSquare = im*im;
+      count++;
+
+      checkvar = condition; 
+    End
+  End
+
+  store(count, result + resultIndex);
+  //result[resultIndex] = count;
+}
+
+
+void mandelbrot_1(
+  Float topLeftReal, Float topLeftIm,
+  Float offsetX, Float offsetY,
+  Int numStepsWidth, Int numStepsHeight,
+  Int numIterations,
+  Ptr<Int> result)
+{
+  For (Int yStep = 0, yStep < numStepsHeight, yStep++)
+    For (Int xStep = 0, xStep < numStepsWidth, xStep = xStep + 16)
+      Int xIndex = index() + xStep;
+      Int resultIndex = xIndex + yStep*numStepsWidth;
+
+      mandelbrotCore(
+        (topLeftReal + offsetX*toFloat(xIndex)),
+        (topLeftIm   - offsetY*toFloat(yStep)),
+				resultIndex,
+        numIterations,
+        result);
+    End
+  End
+}
+
+
+/**
+ * @brief Multi-QPU version
+ */
+void mandelbrot_2(
+  Float topLeftReal, Float topLeftIm,
+  Float offsetX, Float offsetY,
+  Int numStepsWidth, Int numStepsHeight,
+  Int numIterations,
+  Ptr<Int> result)
+{
+  Int inc = numQPUs();
+
+  For (Int yStep = 0, yStep < numStepsHeight, yStep = yStep + inc)
+    Int yIndex = me() + yStep;
+
+    For (Int xStep = 0, xStep < numStepsWidth && yIndex < numStepsHeight, xStep = xStep + 16)
+      Int xIndex = index() + xStep;
+      Int resultIndex = xIndex + yIndex*numStepsWidth;
+
+      mandelbrotCore(
+        (topLeftReal + offsetX*toFloat(xIndex)),
+        (topLeftIm   - offsetY*toFloat(yIndex)),
+        resultIndex,
+        numIterations,
+        result);
+    End
+  End
+}
+
+
+// ============================================================================
+// Local functions
+// ============================================================================
 
 int init_settings(int argc, const char *argv[]) {
 	auto ret = params.handle_commandline(argc, argv, false);
@@ -50,6 +163,7 @@ int init_settings(int argc, const char *argv[]) {
 
 	settings.kernel      = params.parameters()[0]->get_int_value();
 	settings.kernel_name = params.parameters()[0]->get_string_value();
+	settings.num_qpus    = params.parameters()[1]->get_int_value();
 	settings.output();
 
 	return ret;
@@ -160,140 +274,45 @@ void mandelbrot(
 }
 
 
-// ============================================================================
-// Vector version
-// ============================================================================
+void run_qpu_kernel( decltype(mandelbrot_1) &kernel) {
+  // Construct kernel
+  auto k = compile(kernel);		// Using this as default
 
-void mandelbrotCore(
-  Float reC, Float imC,
-  Int &resultIndex,
-  Int &numIterations,
-  Ptr<Int> &result)
-{
-  Float re = reC;
-  Float im = imC;
-  Int count = 0;
+	// Allocate and initialise
+	SharedArray<int> result(settings.NUM_ITEMS);
 
-  Float reSquare = re*re;
-  Float imSquare = im*im;
+  assert(0 == settings.numStepsWidth % 16);  // width needs to be a multiple of 16
+	float offsetX = (settings.bottomRightReal - settings.topLeftReal)/((float) settings.numStepsWidth - 1);
+	float offsetY = (settings.topLeftIm - settings.bottomRightIm)/((float) settings.numStepsHeight - 1);
 
-  // Following is a float version of boolean expression: ((reSquare + imSquare) < 4 && count < numIterations)
-  // It works because `count` increments monotonically.
-  FloatExpr condition = (4.0f - (reSquare + imSquare))*toFloat(numIterations - count);
-  Float checkvar = condition;
+  k.setNumQPUs(settings.num_qpus);
 
-  While (any(checkvar > 0))
-    Where (checkvar > 0)
-      Float imTmp = 2*re*im;
-      re   = (reSquare - imSquare) + reC;
-      im   = imTmp  + imC;
+	k(
+		settings.topLeftReal, settings.topLeftIm,
+		offsetX, offsetY,
+		settings.numStepsWidth, settings.numStepsHeight,
+		settings.numIterations,
+		&result);
 
-      reSquare = re*re;
-      imSquare = im*im;
-      count++;
-
-      checkvar = condition; 
-    End
-  End
-
-  store(count, result + resultIndex);
-  //result[resultIndex] = count;
+	output_pgm(result);
 }
 
-
-void mandelbrot_1(
-  Float topLeftReal, Float topLeftIm,
-  Float offsetX, Float offsetY,
-  Int numStepsWidth, Int numStepsHeight,
-  Int numIterations,
-  Ptr<Int> result)
-{
-  For (Int yStep = 0, yStep < numStepsHeight, yStep++)
-    For (Int xStep = 0, xStep < numStepsWidth, xStep = xStep + 16)
-      Int xIndex = index() + xStep;
-      Int resultIndex = xIndex + yStep*numStepsWidth;
-
-      mandelbrotCore(
-        (topLeftReal + offsetX*toFloat(xIndex)),
-        (topLeftIm   - offsetY*toFloat(yStep)),
-				resultIndex,
-        numIterations,
-        result);
-    End
-  End
-}
 
 
 /**
- * @brief Multi-QPU version
+ * TODO: time includes the creation of the PGM. We need to remove this from the time.
+ *       OR make the output conditional.
  */
-void mandelbrot_2(
-  Float topLeftReal, Float topLeftIm,
-  Float offsetX, Float offsetY,
-  Int numStepsWidth, Int numStepsHeight,
-  Int numIterations,
-  Ptr<Int> result)
-{
-  Int inc = numQPUs();
-
-  For (Int yStep = 0, yStep < numStepsHeight, yStep = yStep + inc)
-    Int yIndex = me() + yStep;
-
-    For (Int xStep = 0, xStep < numStepsWidth && yIndex < numStepsHeight, xStep = xStep + 16)
-      Int xIndex = index() + xStep;
-      Int resultIndex = xIndex + yIndex*numStepsWidth;
-
-      mandelbrotCore(
-        (topLeftReal + offsetX*toFloat(xIndex)),
-        (topLeftIm   - offsetY*toFloat(yIndex)),
-        resultIndex,
-        numIterations,
-        result);
-    End
-  End
-}
-
-// ============================================================================
-// Main
-// ============================================================================
-
-int main(int argc, const char *argv[]) {
-	auto ret = init_settings(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) {
-		return ret;
-	}
-
+void run_kernel(int kernel_index) {
   timeval tvStart;
-
-
-  // Allocate and initialise
-  SharedArray<int> result(settings.NUM_ITEMS);
-
-	printf("Running kernel %s\n", settings.kernel_name.c_str());
   gettimeofday(&tvStart, NULL);
 
-  // Construct kernel
-  auto k = compile(mandelbrot_2);		// Using this as default
-  k.setNumQPUs(12);
-
-	switch (settings.kernel) {
-		case 1: k = compile(mandelbrot_1);  // Fall-thru
-		case 0: /* as is */
-						{
-  						assert(0 == settings.numStepsWidth % 16);  // width needs to be a multiple of 16
-						  float offsetX = (settings.bottomRightReal - settings.topLeftReal)/((float) settings.numStepsWidth - 1);
-						  float offsetY = (settings.topLeftIm - settings.bottomRightIm)/((float) settings.numStepsHeight - 1);
-
-						  k(
-						    settings.topLeftReal, settings.topLeftIm,
-						    offsetX, offsetY,
-						    settings.numStepsWidth, settings.numStepsHeight,
-						    settings.numIterations,
-						    &result);
-
-							end_timer(tvStart);
-						  output_pgm(result);
-						}
+	switch (kernel_index) {
+		case 1: 
+						run_qpu_kernel(mandelbrot_1);
+						break;
+		case 0: 
+						run_qpu_kernel(mandelbrot_2);
 						break;	
 		case 2: {
   						// Allocate and initialise
@@ -309,12 +328,35 @@ int main(int argc, const char *argv[]) {
 								settings.numIterations,
 								result);
 
-							end_timer(tvStart);
 						  output_pgm(result);
 						}
 						break;
 	}
 
+	//auto name = settings.kernel_name.c_str();
+	auto name = kernels[kernel_index];
 
+	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
+	end_timer(tvStart);
+}
+
+
+// ============================================================================
+// Main
+// ============================================================================
+
+int main(int argc, const char *argv[]) {
+	auto ret = init_settings(argc, argv);
+	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+	if (settings.kernel == settings.ALL) {
+		for (int i = 0; i < settings.ALL; ++i ) {
+			run_kernel(i);
+		}
+	} else {
+		run_kernel(settings.kernel);
+	}
+
+	printf("\n");
   return 0;
 }
