@@ -19,7 +19,7 @@ std::vector<const char *> const kernels = { "2", "1", "scalar", "all" };
 
 
 CmdParameters params = {
-  "Mandelbrot generator\n\n"
+  "Mandelbrot Generator\n\n"
 	"Calculates mandelbrot for a given region and outputs the result as a pgm graphics file.\n"
 	"Because this calculation is purely hardware-bound, it is a good indication of overall speed.\n"
 	"It will therefore be used for performance comparisons of platforms and configurations.\n",
@@ -38,9 +38,9 @@ CmdParameters params = {
     "Output PGM file",
 		"-pgm",
 		ParamType::NONE,   // Need to disambiguate
-    "Output a PGM bitmap of the calculation resulti.\n"
-    "If enabled, a PGM bitmap  named 'mandelbrot.pgm' will be created in the current working directory.\n"
-    "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled.\n",
+    "Output a PGM bitmap of the calculation results.\n"
+    "If enabled, a PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
+    "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled\n",
   }}
 };
 
@@ -54,9 +54,9 @@ struct Settings {
 	bool   output_pgm;
 
   // Initialize constants for the kernels
-  const int numStepsWidth     = 1024;
-  const int numStepsHeight    = 1024;
-  const int numIterations     = 1024;
+  const int   numStepsWidth   = 1024;
+  const int   numStepsHeight  = 1024;
+  const int   numIterations   = 1024;
   const float topLeftReal     = -2.5f;
   const float topLeftIm       = 2.0f;
   const float bottomRightReal = 1.5f;
@@ -68,9 +68,7 @@ struct Settings {
 
 	int init(int argc, const char *argv[]) {
 		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != CmdParameters::ALL_IS_WELL) {
-			return ret;
-		}
+		if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 		kernel      = params.parameters()[0]->get_int_value();
 		kernel_name = params.parameters()[0]->get_string_value();
