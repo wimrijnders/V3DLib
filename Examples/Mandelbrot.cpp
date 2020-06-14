@@ -15,12 +15,12 @@
 using namespace QPULib;
 using std::string;
 
-std::vector<const char *> const kernels = { "2", "1", "scalar", "all" };
+std::vector<const char *> const kernels = { "2", "1", "scalar", "all" };  // Order important! '2' at front by necessity, 'all' must be last
 
 
 CmdParameters params = {
   "Mandelbrot Generator\n\n"
-	"Calculates mandelbrot for a given region and outputs the result as a pgm graphics file.\n"
+	"Calculates Mandelbrot for a given region and outputs the result as a PGM bitmap file.\n"
 	"Because this calculation is purely hardware-bound, it is a good indication of overall speed.\n"
 	"It will therefore be used for performance comparisons of platforms and configurations.\n",
   {{
@@ -37,7 +37,7 @@ CmdParameters params = {
 	}, {
     "Output PGM file",
 		"-pgm",
-		ParamType::NONE,   // Need to disambiguate
+		ParamType::NONE,   // Prefix needed to dsambiguate
     "Output a PGM bitmap of the calculation results.\n"
     "If enabled, a PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
     "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled\n",
@@ -316,8 +316,7 @@ void run_qpu_kernel( decltype(mandelbrot_1) &kernel) {
 
 
 /**
- * TODO: time includes the creation of the PGM. We need to remove this from the time.
- *       OR make the output conditional.
+ * Run a kernel as specified by the passed kernel index
  */
 void run_kernel(int kernel_index) {
   timeval tvStart;
