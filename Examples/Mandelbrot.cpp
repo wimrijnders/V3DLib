@@ -274,10 +274,27 @@ int main(int argc, const char *argv[]) {
 
   // Construct kernel
   auto k = compile(mandelbrot_2);		// Using this as default
+  k.setNumQPUs(12);
 
 	switch (settings.kernel) {
-		case 0: /* as is */                 break;	
-		case 1: k = compile(mandelbrot_1);  break;
+		case 1: k = compile(mandelbrot_1);  // Fall-thru
+		case 0: /* as is */
+						{
+  						assert(0 == settings.numStepsWidth % 16);  // width needs to be a multiple of 16
+						  float offsetX = (settings.bottomRightReal - settings.topLeftReal)/((float) settings.numStepsWidth - 1);
+						  float offsetY = (settings.topLeftIm - settings.bottomRightIm)/((float) settings.numStepsHeight - 1);
+
+						  k(
+						    settings.topLeftReal, settings.topLeftIm,
+						    offsetX, offsetY,
+						    settings.numStepsWidth, settings.numStepsHeight,
+						    settings.numIterations,
+						    &result);
+
+							end_timer(tvStart);
+						  output_pgm(result);
+						}
+						break;	
 		case 2: {
   						// Allocate and initialise
   						int *result = new int [settings.NUM_ITEMS];
@@ -298,27 +315,6 @@ int main(int argc, const char *argv[]) {
 						break;
 	}
 
-  k.setNumQPUs(12);
-
-#if 0
-
-// QPU stuff
-
-  assert(0 == settings.numStepsWidth % 16);  // width needs to be a multiple of 16
-  float offsetX = (settings.bottomRightReal - settings.topLeftReal)/((float) settings.numStepsWidth - 1);
-  float offsetY = (settings.topLeftIm - settings.bottomRightIm)/((float) settings.numStepsHeight - 1);
-
-
-  k(
-    settings.topLeftReal, settings.topLeftIm,
-    offsetX, offsetY,
-    settings.numStepsWidth, settings.numStepsHeight,
-    settings.numIterations,
-    &result);
-
-	end_timer(tvStart);
-  output_pgm(result);
-#endif
 
   return 0;
 }
