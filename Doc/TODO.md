@@ -19,9 +19,9 @@ Feel free to add points here.
   - [ ] 16-item vectors
   - [ ] Code generation, not direct execution
 - [ ] Drill-down of the bare essentials for understanding `VideoCore`
-- [ ] Examples to separate page under Docs
+- [x] Examples to separate page under Docs
 - [ ] Mailbox functions link to reference and explanation two size fields
-- [ ] QPUs always round *downward* *(in Issue)*
+- [x] QPUs always round *downward* *(in Issue)*
 - [ ] DSL: Use of 'Expr'-constructs, e.g. `BoolExpr`, as a kind of lambda
 
 

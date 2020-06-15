@@ -37,6 +37,8 @@ OBJ_DIR = obj
 ifeq ($(DEBUG), 1)
   CXX_FLAGS += -DDEBUG
   OBJ_DIR := $(OBJ_DIR)-debug
+else
+  CXX_FLAGS += -DNDEBUG		# Disable assertions
 endif
 
 # QPU or emulation mode
@@ -115,7 +117,8 @@ EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
 
 # Example object files
 EXAMPLES_EXTRA = \
-	Rot3DLib/Rot3DKernels.o
+	Rot3DLib/Rot3DKernels.o \
+	Support/Settings.o
 
 EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
 #$(info $(EXAMPLES_OBJ))
@@ -198,7 +201,7 @@ $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPU_LIB)
 	@echo Linking $@...
 	@$(LINK) $^ -o $@
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(QPU_LIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(QPU_LIB) $(OBJ_DIR)/Examples/Support/Settings.o
 	@echo Linking $@...
 	@$(LINK) $^ $(LIBS) -o $@
 
@@ -257,6 +260,6 @@ $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)/Target
 	@mkdir -p $(OBJ_DIR)/VideoCore
 	@mkdir -p $(OBJ_DIR)/Examples/Rot3DLib   # Creates Examples as well
-	@mkdir -p $(OBJ_DIR)/Examples
+	@mkdir -p $(OBJ_DIR)/Examples/Support
 	@mkdir -p $(OBJ_DIR)/Tools
 	@mkdir -p $(OBJ_DIR)/bin
