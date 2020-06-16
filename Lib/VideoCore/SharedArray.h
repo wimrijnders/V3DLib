@@ -17,9 +17,13 @@
 #include "VideoCore/Mailbox.h"
 #include "VideoCore/VideoCore.h"
 
+#ifdef EMULATION_MODE
+#include "Target/Emulator.h"
+#endif  // EMULATION_MODE
+
 namespace QPULib {
 
-#ifdef EMULATION_MODE
+#ifndef QPU_MODE
 
 // ============================================================================
 // Emulation mode
@@ -27,7 +31,6 @@ namespace QPULib {
 
 // When in EMULATION_MODE allocate memory from a pre-allocated pool.
 
-#include "Target/Emulator.h"
 
 // Implementation
 template <typename T> class SharedArray {
@@ -85,7 +88,9 @@ template <typename T> class SharedArray {
   }
 };
 
-#else
+
+#else  // QPU_MODE
+
 
 // ============================================================================
 // Not emulation mode
@@ -172,7 +177,7 @@ template <typename T> class SharedArray {
   }
 };
 
-#endif
+#endif  // QPU_MODE
 
 }  // namespace QPULib
 

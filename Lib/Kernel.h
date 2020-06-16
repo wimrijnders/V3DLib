@@ -140,6 +140,7 @@ template <> inline bool passParam< Ptr<Ptr<Float>>, SharedArray<float*>* >
   return true;
 }
 
+
 // ============================================================================
 // Functions on kernels
 // ============================================================================
@@ -173,11 +174,11 @@ template <typename... ts> struct Kernel {
   // Number of QPUs to run on
   int numQPUs;
 
+#ifdef QPU_MODE
   // Memory region for QPU code and parameters
-  #ifdef QPU_MODE
   SharedArray<uint32_t>* qpuCodeMem;
   int qpuCodeMemOffset;
-  #endif
+#endif
 
   // Construct kernel out of C++ function
   Kernel(void (*f)(ts... params)) {
@@ -219,7 +220,7 @@ template <typename... ts> struct Kernel {
     // Remember the number of variables used
     numVars = getFreshVarCount();
 
-    #ifdef QPU_MODE
+#ifdef QPU_MODE
     enableQPUs();
 
     // Allocate code mem
@@ -239,10 +240,10 @@ template <typename... ts> struct Kernel {
       (*qpuCodeMem)[offset++] = code.elems[i];
     }
     qpuCodeMemOffset = offset;
-    #endif
+#endif
   }
 
-  #ifdef EMULATION_MODE
+#ifdef EMULATION_MODE
   template <typename... us> void emu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
@@ -256,10 +257,10 @@ template <typename... ts> struct Kernel {
       , NULL             // Use stdout
       );
   }
-  #endif
+#endif
 
+#ifdef EMULATION_MODE
   // Invoke the interpreter
-  #ifdef EMULATION_MODE
   template <typename... us> void interpret(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
@@ -273,10 +274,10 @@ template <typename... ts> struct Kernel {
       , NULL             // Use stdout
       );
   }
-  #endif
+#endif
 
+#ifdef QPU_MODE
   // Invoke kernel on physical QPU hardware
-  #ifdef QPU_MODE
   template <typename... us> void qpu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
@@ -285,17 +286,17 @@ template <typename... ts> struct Kernel {
     // Invoke kernel on QPUs
     invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
   }
-  #endif
+#endif
  
   // Invoke the kernel
   template <typename... us> void call(us... args) {
-    #ifdef EMULATION_MODE
+#ifdef EMULATION_MODE
       emu(args...);
-    #else
-      #ifdef QPU_MODE
+#else
+	#ifdef QPU_MODE
         qpu(args...);
-      #endif
-    #endif
+	#endif
+#endif
   };
 
   // Overload function application operator

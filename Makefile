@@ -10,6 +10,8 @@
 #
 ###########################################################
 
+#QPU := 1
+
 #
 # Stuff for external libraries
 #
@@ -28,7 +30,10 @@ LINK= $(CXX) $(CXX_FLAGS)
 LIBS := $(LINK_DIR_EXTERN)$(LIB_EXTERN)
 
 # -I is for access to bcm functionality
-CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
+# Emulation mode always on!
+CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g \
+  -DEMULATION_MODE
+
 
 # Object directory
 OBJ_DIR = obj
@@ -43,6 +48,7 @@ endif
 
 # QPU or emulation mode
 ifeq ($(QPU), 1)
+$(info Building for QPU)
 
 # Check platform before building. Can't be indented, otherwise make complains.
 RET := $(shell Tools/detectPlatform.sh 1>/dev/null && echo "yes" || echo "no")
@@ -56,8 +62,6 @@ endif
   CXX_FLAGS += -DQPU_MODE -I /opt/vc/include
   OBJ_DIR := $(OBJ_DIR)-qpu
 	LIBS += -L /opt/vc/lib -l bcm_host
-else
-  CXX_FLAGS += -DEMULATION_MODE
 endif
 
 # Library Object files

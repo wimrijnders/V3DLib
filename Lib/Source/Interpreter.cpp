@@ -56,6 +56,7 @@ Vec evalVar(CoreState* s, Var v)
   }
 
   assert(false);
+	return Vec();
 }
 
 // ============================================================================
@@ -154,7 +155,9 @@ Vec eval(CoreState* s, Expr* e)
       }
       return v;
   }
+
   assert(false);
+	return Vec();
 }
 
 // ============================================================================
@@ -239,7 +242,9 @@ Vec evalBool(CoreState* s, BExpr* e)
 
   // Unreachable
   assert(false);
+	return Vec();
 }
+
 
 // ============================================================================
 // Evaulate condition
@@ -267,6 +272,7 @@ bool evalCond(CoreState* s, CExpr* e)
 
   // Unreachable
   assert(false);
+	return false;
 }
 
 // ============================================================================

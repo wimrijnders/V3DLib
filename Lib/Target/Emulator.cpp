@@ -165,6 +165,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
 
   // Unreachable
   assert(false);
+	return v;
 }
 
 // ============================================================================
@@ -190,6 +191,7 @@ inline bool checkAssignCond(QPUState* s, AssignCond cond, int i)
 
   // Unreachable
   assert(false);
+	return false;
 }
 
 // Given a branch condition, determine if it evaluates to true using
@@ -421,6 +423,7 @@ Vec evalImm(Imm imm)
 
   // Unreachable
   assert(false);
+	return v;
 }
 
 // ============================================================================
@@ -458,6 +461,7 @@ Vec evalSmallImm(QPUState* s, SmallImm imm)
 
   // Unreachable
   assert(false);
+	return v;
 }
 
 Vec readRegOrImm(QPUState* s, State* g, RegOrImm src)
@@ -469,6 +473,7 @@ Vec readRegOrImm(QPUState* s, State* g, RegOrImm src)
 
   // Unreachable
   assert(false);
+	return Vec();
 }
 
 // ============================================================================

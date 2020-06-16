@@ -1,3 +1,4 @@
+#include <cassert>
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
@@ -45,6 +46,10 @@ ALUOp opcode(Op op)
       default:     assert(false);
     }
   }
+
+  // Not reachable
+  assert(false);
+	return NOP;
 }
 
 // Translate variable to source register.
@@ -80,6 +85,7 @@ Reg srcReg(Var v)
 
   // Not reachable
   assert(false);
+	return r;
 }
 
 // Translate variable to target register.
@@ -109,6 +115,7 @@ Reg dstReg(Var v)
 
   // Not reachable
   assert(false);
+	return r;
 }
 
 // Translate the argument of an operator (either a variable or a small
@@ -431,6 +438,7 @@ Flag negFlag(Flag flag)
 
   // Not reachable
   assert(false);
+	return ZS;
 }
 
 // Function to negate an assignment condition.
@@ -445,6 +453,7 @@ AssignCond negAssignCond(AssignCond cond)
 
   // Not reachable
   assert(false);
+	return cond;
 }
 
 // Function to negate a branch condition.
@@ -464,6 +473,7 @@ BranchCond negBranchCond(BranchCond cond)
 
   // Not reachable
   assert(false);
+	return cond;
 }
 
 
@@ -482,6 +492,7 @@ int setFlag(Flag f)
 
   // Not reachable
   assert(false);
+	return -1;
 }
 
 // Set the condition vector using given variable.
@@ -743,6 +754,7 @@ AssignCond boolExp( Seq<Instr>* seq
 
   // Not reachable
   assert(false);
+	return always;
 }
 
 
@@ -773,6 +785,7 @@ BranchCond condExp(Seq<Instr>* seq, CExpr* c)
 
   // Not reachable
   assert(false);
+	return bcond;
 }
 
 // ============================================================================
