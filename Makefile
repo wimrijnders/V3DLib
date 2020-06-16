@@ -31,8 +31,9 @@ LIBS := $(LINK_DIR_EXTERN)$(LIB_EXTERN)
 
 # -I is for access to bcm functionality
 # Emulation mode always on!
-CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g \
-  -DEMULATION_MODE
+CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
+
+#  -DEMULATION_MODE
 
 
 # Object directory
@@ -62,6 +63,8 @@ endif
   CXX_FLAGS += -DQPU_MODE -I /opt/vc/include
   OBJ_DIR := $(OBJ_DIR)-qpu
 	LIBS += -L /opt/vc/lib -l bcm_host
+else
+  CXX_FLAGS += -DEMULATION_MODE
 endif
 
 # Library Object files

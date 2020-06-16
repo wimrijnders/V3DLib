@@ -3,11 +3,46 @@
 #include <string>
 #include <fstream>
 #include <streambuf>
+#include <CmdParameters.h>
 #include "QPULib.h"
 #include "VideoCore/VideoCore.h"
 #include "VideoCore/RegisterMap.h"
 
 using namespace QPULib;
+
+CmdParameters params = {
+	"Show info on the platform and the VideoCore.\n\n"
+	"This mostly reads the VideoCore registers to retrieve information about the device\n"
+	"There is limited possibility to manipulate these registers.",
+	{{
+		"Reset Scheduler Registers",
+		"-r", // "--reset-scheduler",
+		ParamType::NONE,
+		"Clear the prohibition bits in the scheduler registers that determine what kind"
+		"of program can run."
+	}}
+};
+
+
+struct Settings {
+	bool reset_scheduler;
+
+	int init(int argc, const char *argv[]) {
+		auto ret = params.handle_commandline(argc, argv, false);
+		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+		reset_scheduler = params.parameters()[0]->get_bool_value();
+		output();
+
+		return ret;
+	}
+
+	void output() {
+		printf("Settings:\n");
+		printf("  Reset Scheduler  : %s\n", reset_scheduler?"true":"false");
+		printf("\n");
+	}
+} settings;
 
 
 /**
@@ -142,15 +177,13 @@ void showSchedulerRegisters() {
  *
  * @returns 0 if this is so, 1 if it's a different platform.
  */
-int main(int argc, char *argv[]) {
+int main(int argc, char const *argv[]) {
 	if (!detect_from_sys() && !detect_from_proc()) {
 		printf("This is not a Pi platform\n");
 		return 1;
 	}
 
 	printf("\n");
-
-
 
 #ifndef QPU_MODE
 	printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
@@ -159,6 +192,13 @@ int main(int argc, char *argv[]) {
 	if (geteuid() != 0) {  // Only do this as root (sudo)
 		printf("You need to run this with `sudo` to access the device file\n\n");
 		return 1;
+	}
+
+	auto ret = settings.init(argc, argv);
+	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+	if (settings.reset_scheduler) {
+		RegisterMap::resetAllSchedulerRegisters();
 	}
 
 	enableQPUs();

@@ -21,6 +21,9 @@ CmdParameters params = {
 }  // anon namespace
 
 
+namespace QPULib {
+
+
 int Settings::init(int argc, const char *argv[]) {
 	auto ret = params.handle_commandline(argc, argv, false);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
@@ -44,3 +47,5 @@ void Settings::output() {
 	printf("  Output Code : %s\n", output_code?"true":"false");
 	printf("\n");
 }
+
+}  // namespace QPULib;

@@ -11,11 +11,13 @@
 #include <string>
 #include <QPULib.h>
 #include <CmdParameters.h>
+#include "VideoCore/RegisterMap.h"
+
 
 using namespace QPULib;
 using std::string;
 
-std::vector<const char *> const kernels = { "2", "1", "scalar", "all" };  // Order important! '2' at front by necessity, 'all' must be last
+std::vector<const char *> const kernels = { "multi", "single", "cpu", "all" };  // Order important! First is default, 'all' must be last
 
 
 CmdParameters params = {
@@ -45,7 +47,7 @@ CmdParameters params = {
 };
 
 
-struct Settings {
+struct MandSettings {
 	const int ALL = 3;
 
 	int    kernel;
@@ -101,7 +103,7 @@ struct Settings {
  *
  * This runs on the CPU
  */
-void mandelbrot(int *result) {
+void mandelbrot_cpu(int *result) {
   float offsetX = (settings.bottomRightReal - settings.topLeftReal)/((float) settings.numStepsWidth - 1);
   float offsetY = (settings.topLeftIm - settings.bottomRightIm)/((float) settings.numStepsHeight - 1);
 
@@ -169,7 +171,7 @@ void mandelbrotCore(
 }
 
 
-void mandelbrot_1(
+void mandelbrot_single(
   Float topLeftReal, Float topLeftIm,
   Float offsetX, Float offsetY,
   Int numStepsWidth, Int numStepsHeight,
@@ -194,7 +196,7 @@ void mandelbrot_1(
 /**
  * @brief Multi-QPU version
  */
-void mandelbrot_2(
+void mandelbrot_multi(
   Float topLeftReal, Float topLeftIm,
   Float offsetX, Float offsetY,
   Int numStepsWidth, Int numStepsHeight,
@@ -293,7 +295,7 @@ void end_timer(timeval tvStart) {
 }
 
 
-void run_qpu_kernel( decltype(mandelbrot_1) &kernel) {
+void run_qpu_kernel( decltype(mandelbrot_single) &kernel) {
   auto k = compile(kernel);
 
 	SharedArray<int> result(settings.num_items());  // Allocate and initialise
@@ -323,16 +325,12 @@ void run_kernel(int kernel_index) {
   gettimeofday(&tvStart, NULL);
 
 	switch (kernel_index) {
-		case 0: 
-			run_qpu_kernel(mandelbrot_2);
-			break;	
-		case 1: 
-			run_qpu_kernel(mandelbrot_1);
-			break;
+		case 0: run_qpu_kernel(mandelbrot_multi);  break;	
+		case 1: run_qpu_kernel(mandelbrot_single); break;
 		case 2: {
   			int *result = new int [settings.num_items()];  // Allocate and initialise
 
-  			mandelbrot(result);
+  			mandelbrot_cpu(result);
 				output_pgm(result);
 
 				delete result;
@@ -353,6 +351,9 @@ void run_kernel(int kernel_index) {
 // ============================================================================
 
 int main(int argc, const char *argv[]) {
+	printf("Check pre\n");
+	RegisterMap::checkThreadErrors();
+
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
@@ -363,6 +364,9 @@ int main(int argc, const char *argv[]) {
 	} else {
 		run_kernel(settings.kernel);
 	}
+
+	printf("Check post\n");
+	RegisterMap::checkThreadErrors();
 
 	printf("\n");
   return 0;

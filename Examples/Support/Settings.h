@@ -2,6 +2,8 @@
 #define _EXAMPLE_SUPPORT_SETINGS_H
 #include <CmdParameters.h>
 
+namespace QPULib {
+
 struct Settings {
 	bool output_code;
 
@@ -17,5 +19,8 @@ struct Settings {
 		}
 	}
 };
+
+
+}  // namespace
 
 #endif  // _EXAMPLE_SUPPORT_SETINGS_H

@@ -17,8 +17,11 @@ enum {
 	V3D_IDENT1,
 	V3D_IDENT2,
 	V3D_SQRSV0 = (0x00410 >> 2 ),  // Scheduler Register QPUS 0-7
-	V3D_SQRSV1                     // Scheduler Register QPUS 8-15
-};
+	V3D_SQRSV1,                    // Scheduler Register QPUS 8-15
+
+	V3D_CT0CS = (0x00100 >> 2),    // Control List Executor Thread 0 Control and Status.
+	V3D_CT1CS,                     // Control List Executor Thread 0 Control and Status.
+}; 
 
 std::unique_ptr<RegisterMap> RegisterMap::m_instance;
 
@@ -222,7 +225,8 @@ void RegisterMap::SchedulerRegisters(SchedulerRegisterValues values) {
 		int offset = 4*i;
 
 		if (values.set_qpu[i]) {
-			new_reg0 = (reg0 & ~(0x0f << offset)) | (values.qpu[i] << offset);
+			//new_reg0 = (reg0 & ~(0x0f << offset)) | (values.qpu[i] << offset);
+			new_reg0 = (0x0f & values.qpu[i]) << offset;
 		}
 	}
 
@@ -230,7 +234,8 @@ void RegisterMap::SchedulerRegisters(SchedulerRegisterValues values) {
 		int offset = 4*i - MAX_AVAILABLE_QPUS/2;
 
 		if (values.set_qpu[i]) {
-			new_reg1 = (reg1 & ~(0x0f << offset)) | (values.qpu[i] << offset);
+			//new_reg1 = (reg1 & ~(0x0f << offset)) | (values.qpu[i] << offset);
+			new_reg1 = (0x0f & values.qpu[i]) << offset;
 		}
 	}
 
@@ -241,6 +246,18 @@ void RegisterMap::SchedulerRegisters(SchedulerRegisterValues values) {
 	if (reg1 != new_reg1) {  // Value reg1 changed
 		writeRegister(V3D_SQRSV1, new_reg1);
 	}
+}
+
+
+void RegisterMap::resetAllSchedulerRegisters() {
+	SchedulerRegisterValues values;
+
+	for (int i = 0; i < MAX_AVAILABLE_QPUS; ++i) {
+		values.set_qpu[i] = true;   // write for all QPU's
+		values.qpu[i]     = 0;      // allow all program types (eg 0)
+	}
+
+	SchedulerRegisters(values);
 }
 
 
@@ -266,6 +283,32 @@ void RegisterMap::check_page_align(unsigned addr) {
 		exit(-1);
 	}
 }
+
+
+/**
+ * @return true if errors present, false otherwise
+ */
+bool RegisterMap::checkThreadErrors() {
+	uint32_t ERROR_BITMASK = 0x08;	// If set, control thread error
+
+	uint32_t reg0 = readRegister(V3D_CT0CS);
+	uint32_t reg1 = readRegister(V3D_CT1CS);
+
+	bool ret = false;
+
+	if (reg0 & ERROR_BITMASK) {
+		printf("Control thread error for thread 0\n");
+		ret = true;
+	}
+
+	if (reg1 & ERROR_BITMASK) {
+		printf("Control thread error for thread 1\n");
+		ret = true;
+	}
+
+	return ret;
+}
+
 
 }  // namespace QPULib
 

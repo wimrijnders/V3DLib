@@ -3,7 +3,7 @@
 
 using namespace QPULib;
 
-Settings settings;
+QPULib::Settings settings;
 
 
 // Define function that runs on the GPU.

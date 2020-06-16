@@ -55,6 +55,9 @@ public:
 	static int VPMMemorySize();
 	static SchedulerRegisterValues SchedulerRegisters();
 	static void SchedulerRegisters(SchedulerRegisterValues values);
+	static void resetAllSchedulerRegisters();
+
+	static bool checkThreadErrors();
 
 private:
 	RegisterMap();
