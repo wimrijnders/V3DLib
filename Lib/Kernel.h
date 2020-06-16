@@ -40,7 +40,19 @@ namespace QPULib {
 //                     in EMULATION_MODE *and* QPU_MODE, same as emulate(...)
 
 // Notice it is OK to compile with both -D EMULATION_MODE *and*
-// -D QPU_MODE.  This feature is provided for doing equivalance
+// -D QPU_MODE.
+//
+// --------------------------------------------------------------------
+// **UPDATE 20200616**: Using both flags will compile, but
+//                      leads to segmentation Faults.
+//
+// A possible reason for this is that emulation and QPU require
+// differing implementations of `SharedArray<>`, which can not be used
+// both at the same time. Hence, the QPU implementation was used, which
+// might (far-fetched) have something to do with the segmentation faults.
+// --------------------------------------------------------------------
+//
+// This feature is provided for doing equivalance
 // testing between the physical QPU and the QPU emulator.  However,
 // EMULATION_MODE introduces a performance penalty and should be used
 // only for testing and debugging purposes.
