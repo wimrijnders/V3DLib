@@ -6,7 +6,6 @@
 #   obj-qpu          - using hardware
 #   obj-debug-qpu    - output debug info, using hardware
 #
-# To compile for debugging, add flag '-g' to CXX_FLAGS.
 #
 ###########################################################
 
@@ -30,11 +29,7 @@ LINK= $(CXX) $(CXX_FLAGS)
 LIBS := $(LINK_DIR_EXTERN)$(LIB_EXTERN)
 
 # -I is for access to bcm functionality
-# Emulation mode always on!
 CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
-
-#  -DEMULATION_MODE
-
 
 # Object directory
 OBJ_DIR = obj
@@ -51,7 +46,8 @@ endif
 ifeq ($(QPU), 1)
 $(info Building for QPU)
 
-# Check platform before building. Can't be indented, otherwise make complains.
+# Check platform before building.
+# Can't be indented, otherwise make complains.
 RET := $(shell Tools/detectPlatform.sh 1>/dev/null && echo "yes" || echo "no")
 #$(info  info: '$(RET)')
 ifneq ($(RET), yes)
@@ -68,6 +64,10 @@ else
 endif
 
 # Library Object files
+# TODO: see if this can be replaced by:
+#
+#-include obj/sources.mk
+#
 OBJ =                         \
   Kernel.o                    \
   Source/Syntax.o             \
@@ -103,26 +103,6 @@ OBJ =                         \
 
 LIB = $(patsubst %,$(OBJ_DIR)/%,$(OBJ))
 
-
-# All programs in the Examples directory
-# NOTE: detectPlatform is in the 'Tools' directory, not in 'Examples'
-EXAMPLES =  \
-	Mandelbrot \
-	detectPlatform \
-	Tri       \
-	GCD       \
-	Print     \
-	MultiTri  \
-	AutoTest  \
-	OET       \
-	Hello     \
-	ReqRecv   \
-	Rot3D     \
-	Rot3DLib  \
-	ID        \
-	HeatMap   \
-	DMA
-
 EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
 
 
@@ -132,7 +112,7 @@ EXAMPLES_EXTRA = \
 	Support/Settings.o
 
 EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
-#$(info $(EXAMPLES_OBJ))
+$(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files
 DEPS := $(LIB:.o=.d)
@@ -180,7 +160,7 @@ help:
 	@echo '    DEBUG=1       - If specified, the source code and target code is shown on stdout when running a test'
 	@echo
 
-all: $(EXAMPLE_TARGETS) $(OBJ_DIR)
+all: $(OBJ_DIR) $(EXAMPLE_TARGETS)
 
 clean:
 	rm -rf obj obj-debug obj-qpu obj-debug-qpu
@@ -280,3 +260,13 @@ $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)/Examples/Support
 	@mkdir -p $(OBJ_DIR)/Tools
 	@mkdir -p $(OBJ_DIR)/bin
+
+
+###############################
+# Gen stuff
+###############################
+
+gen : $(OBJ_DIR)/sources.mk
+
+$(OBJ_DIR)/sources.mk : $(OBJ_DIR)
+	script/gen.sh

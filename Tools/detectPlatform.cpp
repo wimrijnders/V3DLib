@@ -313,8 +313,6 @@ void detect_vc4() {
 	disableQPUs();
 }
 
-#endif  // QPU_MODE
-
 
 /**
  * @brief Detect if this is running on a Rpi.
