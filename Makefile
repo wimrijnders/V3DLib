@@ -93,6 +93,10 @@ OBJ =                         \
   Target/Emulator.o           \
   Target/Encode.o             \
   VideoCore/Mailbox.o         \
+  VideoCore/vc6/RegisterMapping.o \
+  VideoCore/vc6/readwrite4.o  \
+  VideoCore/vc6/DRM_V3D.o     \
+  VideoCore/vc6/Driver.o      \
   VideoCore/RegisterMap.o     \
   VideoCore/Invoke.o          \
   VideoCore/VideoCore.o
@@ -138,7 +142,7 @@ DEPS := $(LIB:.o=.d)
 # Dependencies for the include files in the Examples directory.
 # Basically, every .h file under examples has a .d in the build directory
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
-#$(info $(EXAMPLES_DEPS))
+$(info $(EXAMPLES_DEPS))
 -include $(EXAMPLES_DEPS)
 
 
@@ -152,6 +156,7 @@ EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
 	$(OBJ_DIR)/Source/%.o    \
 	$(OBJ_DIR)/Target/%.o    \
 	$(OBJ_DIR)/VideoCore/%.o \
+	$(OBJ_DIR)/VideoCore/vc6/%.o \
 	$(OBJ_DIR)/Examples/%.o
 
 
@@ -196,6 +201,11 @@ $(OBJ_DIR)/%.o: $(ROOT)/%.cpp | $(OBJ_DIR)
 	@echo Compiling $<
 	@$(CXX) -c -o $@ $< $(CXX_FLAGS)
 
+
+# Same thing for C-files
+$(OBJ_DIR)/%.o: $(ROOT)/%.c | $(OBJ_DIR)
+	@echo Compiling $<
+	@$(CXX) -c -o $@ $< $(CXX_FLAGS)
 
 #
 # Targets for Examples and Tools
@@ -265,7 +275,7 @@ test : | make_test AutoTest
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)/Source
 	@mkdir -p $(OBJ_DIR)/Target
-	@mkdir -p $(OBJ_DIR)/VideoCore
+	@mkdir -p $(OBJ_DIR)/VideoCore/vc6
 	@mkdir -p $(OBJ_DIR)/Examples/Rot3DLib   # Creates Examples as well
 	@mkdir -p $(OBJ_DIR)/Examples/Support
 	@mkdir -p $(OBJ_DIR)/Tools
