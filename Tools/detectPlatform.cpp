@@ -40,26 +40,27 @@ bool loadFileInString(const char *filename, std::string & out_str) {
 /**
  * @brief Detect Pi platform for newer Pi versions.
  *
- * On success, it displays a string with the model version.
+ * @param content - output; store platform string here if found
  *
- * @return true if Pi detected, false otherwise
+ * @return true if string describing platform found,
+ *         false otherwise.
  */
-bool detect_from_sys() {
+bool get_platform_string(std::string &content) {
 	const char *filename = "/sys/firmware/devicetree/base/model";
 
-	std::string content;
 	bool success = loadFileInString(filename, content);
-	if (success && !content.empty()) {
-		printf("Detected platform: %s\n", content.c_str());
-    return true;
+	if (!success) {
+		content == "";
 	}
 
-	return false;
+	return success;
 }
 
 
 /**
- * @brief Detect Pi platform for older Pi versions.
+ * @brief Retrieve the VideoCore chip number.
+ *
+ * This is the way to detect the Pi platform for older Pi versions/distributions.
  *
  * Detects if this is a VideoCore. This should be sufficient for detecting Pi,
  * since it's the only thing to date(!) using this particular chip version.
@@ -81,9 +82,12 @@ bool detect_from_sys() {
  *  - BCM2837
  *  - BCM2837B0
  */
-bool detect_from_proc() {
+
+bool get_chip_version(std::string &output) {
 	const char *BCM_VERSION_PREFIX = "BCM2";
 	const char *filename = "/proc/cpuinfo";
+
+	output.clear();
 
 	std::ifstream t(filename);
 	if (!t.is_open()) return false;
@@ -95,13 +99,87 @@ bool detect_from_proc() {
 		if (strstr(line.c_str(), BCM_VERSION_PREFIX)) {
 	  	// For now, don't try to exactly specify the model.
 			// This could be done with field "Revision' in current input.
-			printf("This is a Pi platform\n");
+
+			size_t pos = line.find(BCM_VERSION_PREFIX);
+			if (pos != line.npos) {
+				output = line.substr(pos);
+			}
+
 			return true;
 		}
   }
 
 	return false;
 }
+
+
+/**
+ * @brief Collect and make general information available on the current platform
+ *
+ * In time, this struct will be made generic for all QPULib programs
+ */
+struct Settings {
+	std::string platform_id; 
+	std::string chip_version;
+	bool is_pi_platform;
+	bool has_vc4 = false;
+
+
+	/**
+   * @brief Collect all the info we want
+	 *
+	 * @return 0 if all is well and program can continue,
+	 *         non-zer if program should abort
+   */
+	int init() {
+		is_pi_platform = get_platform_string(platform_id);
+		if (get_chip_version(chip_version)) {
+			is_pi_platform = true;
+		}
+
+		if (!platform_id.empty() && is_pi_platform) {
+			has_vc4 = (platform_id.npos == platform_id.find("Pi 4"));
+		}
+		output();
+
+#ifndef QPU_MODE
+		printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
+		return 1;
+#else
+		if (geteuid() != 0) {  // Only do this as root (sudo)
+			printf("You need to run this with `sudo` to access the device file\n\n");
+			return 1;
+		}
+#endif  // QPU_MODE
+
+		return 0;
+	}
+
+	void output() {
+		if (!platform_id.empty()) {
+			printf("Platform: %s\n", platform_id.c_str());
+		} else {
+			printf("Platform: %s\n", "Unknown");
+		}
+
+		printf("Chip version: %s\n", chip_version.c_str());
+
+		if (is_pi_platform) {
+			printf("This is a pi platform.\n");
+		} else {
+			printf("This is NOT a pi platform!\n");
+		}
+
+		if (has_vc4) {
+			printf("GPU: vc4\n");
+		} else {
+			printf("GPU: vc6\n");
+		}
+
+		printf("\n");
+	}
+	
+} settings;
 
 
 #ifdef QPU_MODE
@@ -133,17 +211,6 @@ void showSchedulerRegisters() {
 		}
 	}
 
-	printf("\n");
-}
-
-
-void detect_vc4() {
-	printf("Tech version             : %d\n", RegisterMap::TechnologyVersion());
-	printf("Number of slices         : %d\n",   RegisterMap::numSlices());
-	printf("Number of QPU's per slice: %d\n",   RegisterMap::numQPUPerSlice());
-	printf("Number of TMU's per slice: %d\n",   RegisterMap::numTMUPerSlice());
-	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
-	showSchedulerRegisters();
 	printf("\n");
 }
 
@@ -198,6 +265,32 @@ void detect_vc6() {
 	}
 }
 
+
+
+void detect_vc4() {
+	enableQPUs();
+
+/*
+	if (settings.reset_scheduler) {
+		RegisterMap::resetAllSchedulerRegisters();
+	}
+*/
+
+	int mb = getMailbox();	
+	unsigned revision = get_version(mb);
+	printf("Hardware revision        : %04x\n", revision);
+
+	printf("Tech version             : %d\n", RegisterMap::TechnologyVersion());
+	printf("Number of slices         : %d\n",   RegisterMap::numSlices());
+	printf("Number of QPU's per slice: %d\n",   RegisterMap::numQPUPerSlice());
+	printf("Number of TMU's per slice: %d\n",   RegisterMap::numTMUPerSlice());
+	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
+	showSchedulerRegisters();
+	printf("\n");
+
+	disableQPUs();
+}
+
 #endif  // QPU_MODE
 
 
@@ -207,40 +300,16 @@ void detect_vc6() {
  * @returns 0 if this is so, 1 if it's a different platform.
  */
 int main(int argc, char *argv[]) {
-	if (!detect_from_sys() && !detect_from_proc()) {
-		printf("This is not a Pi platform\n");
-		return 1;
-	}
+	int ret = settings.init();
+	if (ret != 0) return ret;
 
-	printf("\n");
-
-#ifndef QPU_MODE
-	printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
-	return 1;
-#else
-	if (geteuid() != 0) {  // Only do this as root (sudo)
-		printf("You need to run this with `sudo` to access the device file\n\n");
-		return 1;
-	}
-
-	bool vc6 = true;
-
-	if (vc6) {
-		detect_vc6();
+#ifdef  QPU_MODE
+	if (settings.has_vc4) {
+		detect_vc4();
 	} else {
-
-	enableQPUs();
-
-	int mb = getMailbox();	
-	unsigned revision = get_version(mb);
-	printf("Hardware revision        : %04x\n", revision);
-
-	detect_vc4();
-
-	disableQPUs();
-
-	}  // vc6
-#endif
+		detect_vc6();
+	}
+#endif  // QPU_MODE
 
 	return 0;
 }
