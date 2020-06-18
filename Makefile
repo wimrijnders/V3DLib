@@ -1,13 +1,17 @@
 #
+# Before using make, you need to create the file dependencies:
+#
+# > script/gen.sh
+#
 # There are four builds possible, with output directories:
 #
-#   obj              - using emulator
-#   obj-debug        - output debug info, using emulator
-#   obj-qpu          - using hardware
-#   obj-debug-qpu    - output debug info, using hardware
+#   obj/emu          - using emulator
+#   obj/emu-debug    - output debug info, using emulator
+#   obj/qpu          - using hardware
+#   objiqpu-debug    - output debug info, using hardware
 #
 #
-###########################################################
+###############################################################################
 
 #QPU := 1
 
@@ -34,13 +38,6 @@ CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(
 # Object directory
 OBJ_DIR = obj
 
-# Debug mode
-ifeq ($(DEBUG), 1)
-  CXX_FLAGS += -DDEBUG
-  OBJ_DIR := $(OBJ_DIR)-debug
-else
-  CXX_FLAGS += -DNDEBUG		# Disable assertions
-endif
 
 # QPU or emulation mode
 ifeq ($(QPU), 1)
@@ -57,49 +54,22 @@ $(info Building on a Pi platform)
 endif
 
   CXX_FLAGS += -DQPU_MODE -I /opt/vc/include
-  OBJ_DIR := $(OBJ_DIR)-qpu
+  OBJ_DIR := $(OBJ_DIR)/qpu
 	LIBS += -L /opt/vc/lib -l bcm_host
 else
+  OBJ_DIR := $(OBJ_DIR)/emu
   CXX_FLAGS += -DEMULATION_MODE
 endif
 
-# Library Object files
-# TODO: see if this can be replaced by:
-#
-#-include obj/sources.mk
-#
-OBJ =                         \
-  Kernel.o                    \
-  Source/Syntax.o             \
-  Source/Int.o                \
-  Source/Float.o              \
-  Source/Stmt.o               \
-  Source/Pretty.o             \
-  Source/Translate.o          \
-  Source/Interpreter.o        \
-  Source/Gen.o                \
-  Target/Syntax.o             \
-  Target/SmallLiteral.o       \
-  Target/Pretty.o             \
-  Target/RemoveLabels.o       \
-  Target/CFG.o                \
-  Target/Liveness.o           \
-  Target/RegAlloc.o           \
-  Target/ReachingDefs.o       \
-  Target/Subst.o              \
-  Target/LiveRangeSplit.o     \
-  Target/Satisfy.o            \
-  Target/LoadStore.o          \
-  Target/Emulator.o           \
-  Target/Encode.o             \
-  VideoCore/Mailbox.o         \
-  VideoCore/vc6/RegisterMapping.o \
-  VideoCore/vc6/readwrite4.o  \
-  VideoCore/vc6/DRM_V3D.o     \
-  VideoCore/vc6/Driver.o      \
-  VideoCore/RegisterMap.o     \
-  VideoCore/Invoke.o          \
-  VideoCore/VideoCore.o
+# Debug mode
+ifeq ($(DEBUG), 1)
+  CXX_FLAGS += -DDEBUG
+  OBJ_DIR := $(OBJ_DIR)-debug
+else
+  CXX_FLAGS += -DNDEBUG		# Disable assertions
+endif
+
+-include obj/sources.mk
 
 LIB = $(patsubst %,$(OBJ_DIR)/%,$(OBJ))
 
@@ -163,7 +133,7 @@ help:
 all: $(OBJ_DIR) $(EXAMPLE_TARGETS)
 
 clean:
-	rm -rf obj obj-debug obj-qpu obj-debug-qpu
+	rm -rf obj/emu obj/emu-debug obj/qpu obji/qpu-debug
 
 
 #

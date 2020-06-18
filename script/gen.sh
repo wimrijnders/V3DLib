@@ -42,6 +42,8 @@ EXAMPLES=$(echo "$EXE2" | sed "s/^.*\//  /g")
 #OBJ_DIRS1=$(find . -name *cpp | xargs dirname | sort | uniq | grep -v old | sed "s/^\.\//\$(OBJ_DIR)\//")
 #OBJ_DIRS=$(echo "$OBJ_DIRS1" | sed "s/^/	@mkdir -p /g")
 
+mkdir -p obj
+
 cat << END > obj/sources.mk
 # Generated on: $(date)
 #
