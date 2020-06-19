@@ -8,7 +8,7 @@
 
 namespace {
 
-CmdParameters params = {
+const char *blurb =
 	"Example Program\n"			// TODO Perhaps fill this in dynamically
 #ifdef EMULATION_MODE
 	"\nRunning in emulation mode.\n"
@@ -19,7 +19,10 @@ CmdParameters params = {
 #ifdef QPU_MODE
 	"\nRunning in QPU mode.\n"
 #endif
-	,
+;
+
+CmdParameters params = {
+	blurb,
 	{{
 		"Output Generated Code",
 		"-c",
