@@ -29,6 +29,13 @@ Run the following to pull it in:
 script/install.sh
 ```
 
+In addition, the file depencies must be generated:
+
+```
+script/gen.sh
+```
+As long as the files don't change, you need to run this script only once.
+
 
 Then:
 

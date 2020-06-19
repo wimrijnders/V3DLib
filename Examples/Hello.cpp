@@ -26,12 +26,13 @@ int main(int argc, const char *argv[]) {
   for (int i = 0; i < 16; i++)
     array[i] = 100;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  //// Invoke the kernel and display the result
+//  k(&array);
+
+	settings.process(k, &array);  
+
   for (int i = 0; i < 16; i++) {
     printf("%i: %i\n", i, array[i]);
   }
-
-	settings.process(k);  
   return 0;
 }
