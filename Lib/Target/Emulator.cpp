@@ -1,7 +1,7 @@
 #include "Target/Emulator.h"
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
-#include "VideoCore/SharedArray.h"
+#include "Common/SharedArray.h"
 
 #include <math.h>
 #include <string.h>

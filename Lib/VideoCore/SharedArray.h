@@ -1,96 +1,16 @@
-#ifndef _QPULIB_SHAREDARRAY_H_
-#define _QPULIB_SHAREDARRAY_H_
+#ifndef _QPULIB_VIDEOCORE_SHAREDARRAY_H_
+#define _QPULIB_VIDEOCORE_SHAREDARRAY_H_
 
-#if !defined(QPU_MODE) && !defined(EMULATION_MODE)
-//
-// Detect mode, set default if none defined.
-// This is the best place to test it in the code, since it's
-// the first of the header files to be compiled.
-//
-#pragma message "WARNING: QPU_MODE and EMULATION_MODE not defined, defaulting to EMULATION_MODE"
-#define EMULATION_MODE
-#endif
-
+/*
+#include <assert.h>
+*/
 #include <stdint.h>
 #include <stdio.h>
-#include <assert.h>
 #include "VideoCore/Mailbox.h"
 #include "VideoCore/VideoCore.h"
 
-#ifdef EMULATION_MODE
-#include "Target/Emulator.h"
-#endif  // EMULATION_MODE
 
 namespace QPULib {
-
-#ifndef QPU_MODE
-
-// ============================================================================
-// Emulation mode
-// ============================================================================
-
-// When in EMULATION_MODE allocate memory from a pre-allocated pool.
-
-
-// Implementation
-template <typename T> class SharedArray {
- private:
-   // Disallow assignment
-   void operator=(SharedArray<T> a);
-   void operator=(SharedArray<T>& a);
-
- public:
-
-  uint32_t address;
-  uint32_t size;
-
-  // Allocation
-  void alloc(uint32_t n) {
-    if (emuHeap == NULL) {
-      emuHeapEnd = 0;
-      emuHeap = new int32_t [EMULATOR_HEAP_SIZE];
-    }
-    if (emuHeapEnd+n >= EMULATOR_HEAP_SIZE) {
-      printf("QPULib: heap overflow (increase EMULATOR_HEAP_SIZE)\n");
-      abort();
-    }
-    else {
-      address = emuHeapEnd;
-      emuHeapEnd += n;
-      size = n;
-    }
-  }
-
-  // Constructor
-  SharedArray(uint32_t n) {
-    alloc(n);
-  }
-
-  uint32_t getAddress() {
-    return address*4;
-  }
-
-  T* getPointer() {
-    return (T*) &emuHeap[address];
-  }
-
-  // Deallocation (does nothing in emulation mode)
-  void dealloc() {}
-
-  // Subscript
-  T& operator[] (int i) {
-    if (address+i >= EMULATOR_HEAP_SIZE) {
-      printf("QPULib: accessing off end of heap\n");
-      exit(EXIT_FAILURE);
-    }
-    else
-      return (T&) emuHeap[address+i];
-  }
-};
-
-
-#else  // QPU_MODE
-
 
 // ============================================================================
 // Not emulation mode
@@ -177,8 +97,6 @@ template <typename T> class SharedArray {
   }
 };
 
-#endif  // QPU_MODE
-
 }  // namespace QPULib
 
-#endif  // _QPULIB_SHAREDARRAY_H_
+#endif // _QPULIB_VIDEOCORE_SHAREDARRAY_H_

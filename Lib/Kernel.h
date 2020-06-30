@@ -4,7 +4,7 @@
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
 #include "Target/Encode.h"
-#include "VideoCore/SharedArray.h"
+#include "Common/SharedArray.h"
 #include "VideoCore/Invoke.h"
 #include "VideoCore/VideoCore.h"
 #include "Source/Pretty.h"

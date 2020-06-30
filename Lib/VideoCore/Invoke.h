@@ -4,7 +4,7 @@
 #define _QPULIB_INVOKE_H_
 
 #include "Common/Seq.h"
-#include "VideoCore/SharedArray.h"
+#include "Common/SharedArray.h"
 #include <stdint.h>
 
 namespace QPULib {

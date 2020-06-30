@@ -147,7 +147,7 @@ struct Settings {
    * @brief Collect all the info we want
 	 *
 	 * @return ALL_IS_WELL if all is well and program can continue,
-	 *         any other value  if program should abort
+	 *         any other value if program should abort
    */
 	int init(int argc, const char *argv[]) {
 		is_pi_platform = get_platform_string(platform_id);
@@ -161,12 +161,12 @@ struct Settings {
 		output();
 
 #ifndef QPU_MODE
-		printf("QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
-		return 1;
+		printf("Note: QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
+		return CmdParameters::EXIT_NO_ERROR;
 #else
 		if (geteuid() != 0) {  // Only do this as root (sudo)
 			printf("You need to run this with `sudo` to access the device file\n\n");
-			return 1;
+			return CmdParameters::EXIT_NO_ERROR;
 		}
 #endif  // QPU_MODE
 
