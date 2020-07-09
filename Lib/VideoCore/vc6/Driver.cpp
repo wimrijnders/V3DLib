@@ -46,26 +46,24 @@ namespace vc6 {
 			
 
 		Cfg cfg = {
-    	// WGS X, Y, Z and settings
-      workgroup.wg_x << 16,
-      workgroup.wg_y << 16,
-      workgroup.wg_z << 16,
-      ((roundup(wgs_per_sg * workgroup.wg_size(), 16) - 1) << 12) |
-        (wgs_per_sg << 8) |
-        (workgroup.wg_size() & 0xff),
-      // Number of batches minus 1
-      thread - 1,
-      // Shader address, pnan, singleseg, threading
-      code.addresses()[0],
-      // Uniforms address
-      (uniforms == nullptr)? 0: ((uint32_t) uniforms)
-    };
+	    	// WGS X, Y, Z and settings
+	      workgroup.wg_x << 16,
+	      workgroup.wg_y << 16,
+	      workgroup.wg_z << 16,
+	      (
+					(roundup(wgs_per_sg * workgroup.wg_size(), 16) - 1) << 12) |
+	        (wgs_per_sg << 8) |
+	        (workgroup.wg_size() & 0xff
+				),
+	      thread - 1,          // Number of batches minus 1
+	      code.addresses()[0]  // Shader address, pnan, singleseg, threading
+		};
 
 		Coef coef = {0,0,0,0};
 
-
     m_drm.v3d_submit_csd(
 			cfg,
+			uniforms,
 			coef,  // Not used in the driver.
 
 			// TODO sort this out
@@ -109,6 +107,7 @@ void Driver::v3d_wait_bo(uint32_t bo_handle, int timeout) {
 
 void Driver::v3d_submit_csd(
 	Cfg cfg,
+	Uniforms *uniforms,
 	Coef coef,
 	BoHandles bo_handles,
 	int bo_handle_count,

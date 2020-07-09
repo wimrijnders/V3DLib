@@ -7,13 +7,7 @@
 namespace QPULib {
 namespace vc6 {
 
-
 class Dispatcher {
-//	using DRM_V3D = QPULib::vc6::DRM_V3D;
-//	using Cfg = QPULib::vc6::Cfg;
-//	using Coef = QPULib::vc6::Coef;
-//	using BoHandles = QPULib::vc6::BoHandles;
-
 public:
    Dispatcher(DRM_V3D &drm, BoHandles bo_handles, int timeout_sec = 10);
 
@@ -32,12 +26,12 @@ private:
   int m_timeout_sec = -1;
 };
 
-class Driver {
-public:
 
+class Driver {
 private:
 	void v3d_submit_csd(
 		Cfg cfg,
+		Uniforms *uniforms,
 		Coef coef,
 		BoHandles bo_handles,
 		int bo_handle_count,

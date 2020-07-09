@@ -12,7 +12,9 @@
 namespace QPULib {
 namespace vc6 {
 
-typedef uint32_t Cfg[7];
+class Uniforms {};
+typedef uint32_t Cfg[6];
+
 typedef uint32_t Coef[4];
 typedef uint32_t *BoHandles;
 
@@ -25,8 +27,6 @@ public:
 	}
 };
 
-
-class Uniforms {};
 
 struct WorkGroup {
 	uint32_t wg_x = 0;

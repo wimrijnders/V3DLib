@@ -11,6 +11,7 @@ public:
 	void v3d_wait_bo(uint32_t bo_handle, int timeout);
   void v3d_submit_csd(
 		Cfg cfg,
+		Uniforms *uniforms,
 		Coef coef,
 		BoHandles bo_handles,
 		int bo_handle_count,
