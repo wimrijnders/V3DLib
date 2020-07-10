@@ -39,7 +39,7 @@ CmdParameters params = {
 	}, {
     "Output PGM file",
 		"-pgm",
-		ParamType::NONE,   // Prefix needed to dsambiguate
+		ParamType::NONE,   // Prefix needed to disambiguate
     "Output a PGM bitmap of the calculation results.\n"
     "If enabled, a PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
     "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled\n",
@@ -226,7 +226,6 @@ void mandelbrot_multi(
 // Local functions
 // ============================================================================
 
-
 /**
  * Two format limits need to be taken into account:
  *
@@ -236,7 +235,6 @@ void mandelbrot_multi(
 template<class Array>
 void output_pgm(Array &result) {
 	if (!settings.output_pgm) return;
-
 
   int width  = settings.numStepsWidth;
 	int height = settings.numStepsHeight;
@@ -338,7 +336,6 @@ void run_kernel(int kernel_index) {
 			break;
 	}
 
-	//auto name = settings.kernel_name.c_str();
 	auto name = kernels[kernel_index];
 
 	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
