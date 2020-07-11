@@ -160,8 +160,12 @@ struct Settings {
 		}
 		output();
 
+		if (!is_pi_platform) {
+			return CmdParameters::EXIT_ERROR;
+		}
+
 #ifndef QPU_MODE
-		printf("Note: QPU code is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
+		printf("Note: QPU mode is not enabled for this build. To enable, recompile with QPU=1 defined.\n\n");
 		return CmdParameters::EXIT_NO_ERROR;
 #else
 		if (geteuid() != 0) {  // Only do this as root (sudo)
@@ -188,16 +192,16 @@ struct Settings {
 
 		printf("Chip version: %s\n", chip_version.c_str());
 
-		if (is_pi_platform) {
-			printf("This is a pi platform.\n");
-		} else {
+		if (!is_pi_platform) {
 			printf("This is NOT a pi platform!\n");
-		}
-
-		if (has_vc4) {
-			printf("GPU: vc4\n");
 		} else {
-			printf("GPU: vc6\n");
+			printf("This is a pi platform.\n");
+
+			if (has_vc4) {
+				printf("GPU: vc4\n");
+			} else {
+				printf("GPU: vc6\n");
+			}
 		}
 
 		printf("\nCmdline param's:\n");
