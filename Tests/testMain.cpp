@@ -37,7 +37,7 @@ using RegMap = QPULib::RegisterMap;
 	#define POSTFIX_QPU "emu"
 #endif
 
-#define BIN_PATH "obj/" POSTFIX_DEBUG POSTFIX_QPU "/bin"
+#define BIN_PATH "obj/" POSTFIX_QPU POSTFIX_DEBUG "/bin"
 
 
 

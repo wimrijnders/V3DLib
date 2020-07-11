@@ -1,4 +1,5 @@
 #include "catch.hpp"
+#include <iostream>
 #include <vector>
 #include <string>
 #include <sstream>
@@ -12,7 +13,8 @@ using namespace std;
 // Helper methods
 //=============================================================================
 
-string showResult(SharedArray<int> &result, int index) {
+template<typename Array>
+string showResult(Array &result, int index) {
   ostringstream buf;
 
   buf << "result  : ";
@@ -142,6 +144,86 @@ void kernelIfWhen(Ptr<Int> result) {
 }
 
 
+class Complex;
+
+namespace QPULib {
+
+struct ComplexExpr {
+  // Abstract syntax tree
+  Expr* expr;
+  // Constructors
+  ComplexExpr();
+  //Complex(float x);
+};
+
+template <> inline Ptr<Complex> mkArg< Ptr<Complex> >() {
+  Ptr<Complex> x;
+  x = getUniformPtr<Complex>();
+  return x;
+}
+
+template <> inline bool passParam< Ptr<Complex>, SharedArray<Complex>* >
+  (Seq<int32_t>* uniforms, SharedArray<Complex>* p)
+{
+  uniforms->append(p->getAddress());
+  return true;
+}
+
+}
+
+
+class Complex {
+public:
+  enum {
+    size = 2  // Size of instance in 32-bit values
+  };
+
+  Complex() {}
+
+  Complex(const Complex &rhs) : Re(rhs.Re), Im(rhs.Im) {}
+
+  Complex(PtrExpr<Float> input) {
+    Re = *input;
+    Im = *(input + 1);
+  }
+
+  Complex operator *(Complex rhs) {
+    Complex tmp;
+    tmp.Re = Re*rhs.Re - Im*rhs.Im;
+    tmp.Im = Re*rhs.Im + Im*rhs.Re;
+
+    return tmp;
+  }
+
+  Complex operator *=(Complex rhs) {
+    Complex tmp;
+
+    //FloatExpr tmpRe = Re*rhs.Re - Im*rhs.Im;
+    tmp.Re = Re*rhs.Re - Im*rhs.Im;
+    tmp.Im = Re*rhs.Im + Im*rhs.Re;
+
+    return tmp;
+  }
+
+  Float Re;
+  Float Im;
+};
+
+
+void kernelComplex(Ptr<Float> input, Ptr<Float> result) {
+  auto inp = input + 2*index();
+  auto out = result + 2*index();
+
+  //Complex a(input + 2*index());
+  Complex a;
+  a.Re = *inp;
+  a.Im = *(inp + 1);
+  Complex b = a*a;
+  *out = b.Re;
+  *(out + 1) = b.Im;
+}
+
+
 //=============================================================================
 // Unit tests
 //=============================================================================
@@ -227,5 +309,30 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
     assertResult(result, 22, {0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1});
     assertResult(result, 23, allOnes);
     assertResult(result, 24, allZeroes);
+  }
+}
+
+
+TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
+  SECTION("Test Complex composed type") {
+		// TODO: No assertion in this part, need any?
+
+    const int N = 1;  // Number Complex items in vectors
+
+    // Construct kernel
+    auto k = compile(kernelComplex);
+
+    // Allocate and array for input and result values
+    SharedArray<float> input(2*16*N);
+    input[ 0] = 1; input[ 1] = 0;
+    input[ 2] = 0; input[ 3] = 1;
+    input[ 3] = 1; input[ 4] = 1;
+
+    SharedArray<float> result(2*16*N);
+
+    // Run kernel
+    k(&input, &result);
+
+    cout << showResult(result, 0) << endl;
   }
 }
