@@ -3,10 +3,14 @@
 #include <math.h>
 #include <QPULib.h>
 #include <CmdParameters.h>
+
+#ifdef QPU_MODE
 #include "VideoCore/PerformanceCounters.h"
 
-using namespace QPULib;
 using PC = PerformanceCounters;
+#endif  // QPU_MODE
+
+using namespace QPULib;
 
 // Number of vertices and angle of rotation
 const int N = 192000; // 192000
@@ -38,11 +42,13 @@ CmdParameters params = {
     "-d",
 		ParamType::NONE,   // Prefix needed to disambiguate
     "Show the results of the calculations"
+#ifdef QPU_MODE
 	}, {
     "Performance Counters",
     "-c",
 		ParamType::NONE,   // Prefix needed to disambiguate
     "Show the values of the performance counters"
+#endif  // QPU_MODE
   }}
 };
 
@@ -51,7 +57,9 @@ struct Settings {
 	int    kernel;
 	int    num_qpus;
 	bool   show_results;
+#ifdef QPU_MODE
 	bool   show_perf_counters;
+#endif  // QPU_MODE
 
 	int init(int argc, const char *argv[]) {
 		auto ret = params.handle_commandline(argc, argv, false);
@@ -61,7 +69,9 @@ struct Settings {
 		//kernel_name       = params.parameters()[0]->get_string_value();
 		num_qpus            = params.parameters()[1]->get_int_value();
 		show_results        = params.parameters()[2]->get_bool_value();
+#ifdef QPU_MODE
 		show_perf_counters  = params.parameters()[3]->get_bool_value();
+#endif  // QPU_MODE
 
 		return ret;
 	}
@@ -152,6 +162,7 @@ using KernelType = decltype(rot3D_3);
 // Local functions
 // ============================================================================
 
+#ifdef QPU_MODE
 /**
  * @brief Enable the counters we are interested in
  */
@@ -180,6 +191,7 @@ void initPerfCounters() {
 	//std::string output = PC::showEnabled();
 	//printf("%s\n", output.c_str());
 }
+#endif  // QPU_MODE
 
 
 /**
@@ -268,15 +280,19 @@ int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
+#ifdef QPU_MODE
 	initPerfCounters();
+#endif
 
 	run_kernel(settings.kernel);
 
+#ifdef QPU_MODE
 	if (settings.show_perf_counters) {
 		// Show values current counters
 		std::string output = PC::showEnabled();
 		printf("%s\n", output.c_str());
 	}
+#endif
 
   return 0;
 }
