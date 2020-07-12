@@ -176,6 +176,11 @@ int RegisterMap::VPMMemorySize() {
 }
 
 
+int RegisterMap::L2CacheEnabled() {
+	return (readRegister(V3D_L2CACTL) & 0x1);
+}
+
+
 /**
  * @brief Read the scheduler register values for all QPU's.
  *

@@ -53,6 +53,7 @@ public:
 	static int numTMUPerSlice();
 	static int VPMMemorySize();
 	static int L2CacheEnabled();
+
 	static SchedulerRegisterValues SchedulerRegisters();
 	static void SchedulerRegisters(SchedulerRegisterValues values);
 	static void resetAllSchedulerRegisters();
