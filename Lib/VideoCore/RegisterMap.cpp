@@ -11,19 +11,6 @@
 
 namespace QPULib {
 
-enum {
-	V3D_BASE    = (0xc00000 >> 2),
-	V3D_IDENT0  = 0,
-	V3D_IDENT1,
-	V3D_IDENT2,
-	V3D_L2CACTL = (0x00020 >> 2),
-	V3D_SQRSV0  = (0x00410 >> 2 ), // Scheduler Register QPUS 0-7
-	V3D_SQRSV1,                    // Scheduler Register QPUS 8-15
-
-	V3D_CT0CS   = (0x00100 >> 2),  // Control List Executor Thread 0 Control and Status.
-	V3D_CT1CS,                     // Control List Executor Thread 0 Control and Status.
-}; 
-
 std::unique_ptr<RegisterMap> RegisterMap::m_instance;
 
 
@@ -53,13 +40,16 @@ RegisterMap::~RegisterMap() {
 
 
 /**
- * @brief Get the 32-bit value at the given offset in the map
+ * @brief Get the 32-bit value of the register at the given offset in the map
  */
 uint32_t RegisterMap::read(int offset) const {
 	return m_addr[V3D_BASE + offset];
 }
 
 
+/**
+ * @brief Set the 32-bit value of the register at the given offset in the map
+ */
 void RegisterMap::write(int offset, uint32_t value) {
 	m_addr[V3D_BASE + offset] = value;
 }
@@ -75,6 +65,11 @@ uint32_t RegisterMap::readRegister(int offset) {
 }
 
 
+/**
+ * @brief Convenience function for setting a register value.
+ *
+ * This avoids having to use `instance()->` for every write access.
+ */
 void RegisterMap::writeRegister(int offset, uint32_t value) {
 	return instance()->write(offset, value);
 }

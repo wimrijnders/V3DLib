@@ -1,11 +1,16 @@
 #include <sys/time.h>
+#include <unistd.h>  // sleep()
 #include <math.h>
 #include <QPULib.h>
 #include <CmdParameters.h>
+#include "VideoCore/PerformanceCounters.h"
 
 using namespace QPULib;
+using PC = PerformanceCounters;
 
-// #define USE_SCALAR_VERSION
+// Number of vertices and angle of rotation
+const int N = 192000; // 192000
+const float THETA = (float) 3.14159;
 
 
 // ============================================================================
@@ -32,8 +37,12 @@ CmdParameters params = {
     "Display Results",
     "-d",
 		ParamType::NONE,   // Prefix needed to disambiguate
-    "Show the results of the calculations",
-		12
+    "Show the results of the calculations"
+	}, {
+    "Performance Counters",
+    "-c",
+		ParamType::NONE,   // Prefix needed to disambiguate
+    "Show the values of the performance counters"
   }}
 };
 
@@ -42,15 +51,17 @@ struct Settings {
 	int    kernel;
 	int    num_qpus;
 	bool   show_results;
+	bool   show_perf_counters;
 
 	int init(int argc, const char *argv[]) {
 		auto ret = params.handle_commandline(argc, argv, false);
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-		kernel        = params.parameters()[0]->get_int_value();
-		//kernel_name = params.parameters()[0]->get_string_value();
-		num_qpus      = params.parameters()[1]->get_int_value();
-		show_results  = params.parameters()[2]->get_bool_value();
+		kernel              = params.parameters()[0]->get_int_value();
+		//kernel_name       = params.parameters()[0]->get_string_value();
+		num_qpus            = params.parameters()[1]->get_int_value();
+		show_results        = params.parameters()[2]->get_bool_value();
+		show_perf_counters  = params.parameters()[3]->get_bool_value();
 
 		return ret;
 	}
@@ -141,9 +152,34 @@ using KernelType = decltype(rot3D_3);
 // Local functions
 // ============================================================================
 
-// Number of vertices and angle of rotation
-const int N = 192000; // 192000
-const float THETA = (float) 3.14159;
+/**
+ * @brief Enable the counters we are interested in
+ */
+void initPerfCounters() {
+	PC::Init list[] = {
+		{ 0, PC::QPU_INSTRUCTIONS },
+		{ 1, PC::QPU_STALLED_TMU },
+		{ 2, PC::L2C_CACHE_HITS },
+		{ 3, PC::L2C_CACHE_MISSES },
+		{ 4, PC::QPU_INSTRUCTION_CACHE_HITS },
+		{ 5, PC::QPU_INSTRUCTION_CACHE_MISSES },
+		{ 6, PC::QPU_CACHE_HITS },
+		{ 7, PC::QPU_CACHE_MISSES },
+		{ 8, PC::QPU_IDLE },
+		{ PC::END_MARKER, PC::END_MARKER }
+	};
+
+	PC::enable(list);
+	PC::clear(PC::enabled());
+
+	//printf("Perf Count mask: %0X\n", PC::enabled());
+
+	// The following will show zeroes for all counters, *except*
+	// for QPU_IDLE, because this was running from the clear statement.
+	// Perhaps there are more counters like that.
+	//std::string output = PC::showEnabled();
+	//printf("%s\n", output.c_str());
+}
 
 
 /**
@@ -154,11 +190,14 @@ void end_timer(timeval tvStart) {
   gettimeofday(&tvEnd, NULL);
   timersub(&tvEnd, &tvStart, &tvDiff);
 
-  printf("%ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
+  printf("Run time: %ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
 }
 
 
 void run_qpu_kernel(KernelType &kernel) {
+  timeval tvStart;
+  gettimeofday(&tvStart, NULL);
+
   auto k = compile(rot3D_3);  // Construct kernel
 
   k.setNumQPUs(settings.num_qpus);
@@ -172,6 +211,8 @@ void run_qpu_kernel(KernelType &kernel) {
 
   k(N, cosf(THETA), sinf(THETA), &x, &y);
 
+	end_timer(tvStart);
+
 	if (settings.show_results) {
   	for (int i = 0; i < N; i++)
   		printf("%f %f\n", x[i], y[i]);
@@ -180,6 +221,9 @@ void run_qpu_kernel(KernelType &kernel) {
 
 
 void run_scalar_kernel() {
+  timeval tvStart;
+  gettimeofday(&tvStart, NULL);
+
   // Allocate and initialise
   float* x = new float [N];
   float* y = new float [N];
@@ -189,6 +233,8 @@ void run_scalar_kernel() {
   }
 
   rot3D(N, cosf(THETA), sinf(THETA), x, y);
+
+	end_timer(tvStart);
 
 	if (settings.show_results) {
   	for (int i = 0; i < N; i++)
@@ -201,9 +247,6 @@ void run_scalar_kernel() {
  * Run a kernel as specified by the passed kernel index
  */
 void run_kernel(int kernel_index) {
-  timeval tvStart;
-  gettimeofday(&tvStart, NULL);
-
 	switch (kernel_index) {
 		case 0: run_qpu_kernel(rot3D_3);  break;	
 		case 1: run_qpu_kernel(rot3D_2);  break;	
@@ -213,8 +256,7 @@ void run_kernel(int kernel_index) {
 
 	auto name = kernels[kernel_index];
 
-	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
-	end_timer(tvStart);
+	printf("Ran kernel '%s' with %d QPU's.\n", name, settings.num_qpus);
 }
 
 
@@ -226,7 +268,15 @@ int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
+	initPerfCounters();
+
 	run_kernel(settings.kernel);
- 
+
+	if (settings.show_perf_counters) {
+		// Show values current counters
+		std::string output = PC::showEnabled();
+		printf("%s\n", output.c_str());
+	}
+
   return 0;
 }
