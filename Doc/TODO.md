@@ -58,7 +58,7 @@ Feel free to add points here.
 
 ## Other
 
-- [ ] `Rot3D` make various versions selectable on command line *(in progress)*
+- [x] `Rot3D` make various versions selectable on command line *(in progress)*
 - [ ] enable `-Wall` on compilation and deal with all the fallout
 - [ ] Scan current docs for typos, good language
 - [ ] enable build for QPU and Emulation mode together
