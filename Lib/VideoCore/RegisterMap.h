@@ -34,9 +34,8 @@ struct SchedulerRegisterValues {
 /**
  * @brief interface for the VideoCore registers.
  *
- * This implementation is far from complete. It only reads
- * two fields from a single register. Regard it as a proof of
- * concept which can be expanded as needed.
+ * This implementation is far from complete.
+ * The reading of more registers can be added as needed.
  *
  * Implemented as singleton with lazy load, so that it's 
  * not initialized when it's not used.
@@ -53,6 +52,7 @@ public:
 	static int numQPUPerSlice();
 	static int numTMUPerSlice();
 	static int VPMMemorySize();
+	static int L2CacheEnabled();
 	static SchedulerRegisterValues SchedulerRegisters();
 	static void SchedulerRegisters(SchedulerRegisterValues values);
 	static void resetAllSchedulerRegisters();
