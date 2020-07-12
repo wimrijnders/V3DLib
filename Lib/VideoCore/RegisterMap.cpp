@@ -12,14 +12,15 @@
 namespace QPULib {
 
 enum {
-	V3D_BASE = (0xc00000 >> 2),
-	V3D_IDENT0 = 0,
+	V3D_BASE    = (0xc00000 >> 2),
+	V3D_IDENT0  = 0,
 	V3D_IDENT1,
 	V3D_IDENT2,
-	V3D_SQRSV0 = (0x00410 >> 2 ),  // Scheduler Register QPUS 0-7
+	V3D_L2CACTL = (0x00020 >> 2),
+	V3D_SQRSV0  = (0x00410 >> 2 ), // Scheduler Register QPUS 0-7
 	V3D_SQRSV1,                    // Scheduler Register QPUS 8-15
 
-	V3D_CT0CS = (0x00100 >> 2),    // Control List Executor Thread 0 Control and Status.
+	V3D_CT0CS   = (0x00100 >> 2),  // Control List Executor Thread 0 Control and Status.
 	V3D_CT1CS,                     // Control List Executor Thread 0 Control and Status.
 }; 
 
@@ -105,7 +106,7 @@ void RegisterMap::checkVersionString(uint32_t  reg) {
 
 	buf[0] = reg & 0xff;
 	buf[1] = (reg >> 8)  & 0xff;
-	buf[2] = (reg >> 16)  & 0xff;
+buf[2] = (reg >> 16)  & 0xff;
 	buf[3] = '\0';
 	
 	if (strncmp(ident, buf, 3)) {
@@ -162,10 +163,16 @@ int RegisterMap::numTMUPerSlice() {
 
 
 /**
- * @return VPM memory size in KB
+ * @brief get the size of the VPM.
+ *
+ * @return Size of VPM in KB
  */
 int RegisterMap::VPMMemorySize() {
-	return (readRegister(V3D_IDENT1) >> 28) & 0xf;
+	uint32_t reg = readRegister(V3D_IDENT1);
+	int value = (reg >> 28) & 0xf;
+
+	if (value == 0) return 16;  // According to reference doc p.97
+	return value;
 }
 
 
