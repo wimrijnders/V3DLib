@@ -3,14 +3,15 @@
 #include <math.h>
 #include <QPULib.h>
 #include <CmdParameters.h>
-
 #ifdef QPU_MODE
 #include "VideoCore/PerformanceCounters.h"
-
-using PC = PerformanceCounters;
 #endif  // QPU_MODE
 
 using namespace QPULib;
+
+#ifdef QPU_MODE
+using PC = PerformanceCounters;
+#endif  // QPU_MODE
 
 // Number of vertices and angle of rotation
 const int N = 192000; // 192000
