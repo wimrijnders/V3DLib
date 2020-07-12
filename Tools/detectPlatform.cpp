@@ -307,10 +307,11 @@ void detect_vc4() {
 	printf("Hardware revision        : %04x\n", revision);
 
 	printf("Tech version             : %d\n", RegisterMap::TechnologyVersion());
-	printf("Number of slices         : %d\n",   RegisterMap::numSlices());
-	printf("Number of QPU's per slice: %d\n",   RegisterMap::numQPUPerSlice());
-	printf("Number of TMU's per slice: %d\n",   RegisterMap::numTMUPerSlice());
-	printf("VPM memory size (KB)     : %d\n",   RegisterMap::VPMMemorySize());
+	printf("Number of slices         : %d\n", RegisterMap::numSlices());
+	printf("Number of QPU's per slice: %d\n", RegisterMap::numQPUPerSlice());
+	printf("Number of TMU's per slice: %d\n", RegisterMap::numTMUPerSlice());
+	printf("VPM memory size (KB)     : %d\n", RegisterMap::VPMMemorySize());
+	printf("L2 Cache enabled         : %s\n", (RegisterMap::L2CacheEnabled())? "yes": "no");
 	showSchedulerRegisters();
 	printf("\n");
 

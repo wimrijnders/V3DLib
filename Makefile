@@ -63,7 +63,7 @@ endif
 
 # Debug mode
 ifeq ($(DEBUG), 1)
-  CXX_FLAGS += -DDEBUG
+  CXX_FLAGS += -DDEBUG    # -Wall
   OBJ_DIR := $(OBJ_DIR)-debug
 else
   CXX_FLAGS += -DNDEBUG		# Disable assertions
