@@ -7,16 +7,22 @@
 
 #ifndef _VC6_DRM_TYPES_H_
 #define _VC6_DRM_TYPES_H_
+#include <sys/ioctl.h>
 #include <stdint.h>
+#include <array>
+
 
 namespace QPULib {
 namespace vc6 {
 
 class Uniforms {};
-typedef uint32_t Cfg[6];
+//typedef uint32_t Cfg[6];
+using Cfg = std::array<uint32_t, 7>;
 
-typedef uint32_t Coef[4];
-typedef uint32_t *BoHandles;
+//typedef uint32_t Coef[4];
+using Coef = std::array<uint32_t, 4>;
+
+using BoHandles = uint32_t *;
 
 
 class Code {

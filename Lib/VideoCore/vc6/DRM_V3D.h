@@ -9,15 +9,14 @@ namespace vc6 {
 class DRM_V3D {
 public:
 	void v3d_wait_bo(uint32_t bo_handle, int timeout);
-  void v3d_submit_csd(
-		Cfg cfg,
-		Uniforms *uniforms,
-		Coef coef,
+
+	void v3d_submit_csd(
+		Cfg &cfg,
+		Coef &coef,
 		BoHandles bo_handles,
-		int bo_handle_count,
-		int in_sync,
-		int out_sync
-	);
+		uint32_t bo_handle_count,
+		uint32_t in_sync,
+		uint32_t out_sync);
 
 private:
 	int m_fd = -1;

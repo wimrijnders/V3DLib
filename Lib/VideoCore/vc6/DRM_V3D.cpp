@@ -12,6 +12,9 @@
 
 
 namespace {
+	using QPULib::vc6::Cfg;
+	using QPULib::vc6::Coef;
+
 	const char *CARD_0  =  "/dev/dri/card0";
 	const char *CARD_1  =  "/dev/dri/card0";
 
@@ -37,6 +40,19 @@ namespace {
     const unsigned V3D_PARAM_SUPPORTS_TFU = 7;
     const unsigned V3D_PARAM_SUPPORTS_CSD = 8;
 
+	struct st_v3d_submit_csd {
+		Cfg    cfg; // c_uint32 * 7
+		Coef   coef;  // c_uint32 * 4
+		uint64_t bo_handles;
+		uint32_t bo_handle_count;
+		uint32_t in_sync;
+		uint32_t out_sync;
+	};
+
+
+	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD,
+                               sizeof(st_v3d_submit_csd));
+
 } // anon namespace
 
 
@@ -59,6 +75,31 @@ void DRM_V3D::done() {
 		assert(ret >= 0);
 		m_fd == -1;
 	}
+}
+
+
+void DRM_V3D::v3d_submit_csd(
+	Cfg &cfg,
+	Coef &coef,
+	BoHandles bo_handles,
+	uint32_t bo_handle_count,
+	uint32_t in_sync,
+	uint32_t out_sync) {
+
+	assert(false); // DEBUG
+	 // TODO: check if usage std::array is as we expect (zero overhead)
+
+	st_v3d_submit_csd st = {
+		// XXX: Dirty hack!
+		cfg,
+		coef,
+		(uint64_t) bo_handles,
+		bo_handle_count,
+		in_sync,
+		out_sync
+	};
+
+	ioctl(m_fd, IOCTL_V3D_SUBMIT_CSD, st);
 }
 
 }  // vc6
