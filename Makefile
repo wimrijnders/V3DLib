@@ -86,7 +86,7 @@ $(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files
 DEPS := $(LIB:.o=.d)
-#$(info $(DEPS))
+$(info $(DEPS))
 -include $(DEPS)
 
 # Dependencies for the include files in the Examples directory.
@@ -105,6 +105,7 @@ $(info $(EXAMPLES_DEPS))
 .PRECIOUS: $(OBJ_DIR)/%.o  \
 	$(OBJ_DIR)/Source/%.o    \
 	$(OBJ_DIR)/Target/%.o    \
+	$(OBJ_DIR)/Support/%.o \
 	$(OBJ_DIR)/VideoCore/%.o \
 	$(OBJ_DIR)/VideoCore/vc6/%.o \
 	$(OBJ_DIR)/Examples/%.o
@@ -225,6 +226,7 @@ test : | make_test AutoTest
 $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)/Source
 	@mkdir -p $(OBJ_DIR)/Target
+	@mkdir -p $(OBJ_DIR)/Support
 	@mkdir -p $(OBJ_DIR)/VideoCore/vc6
 	@mkdir -p $(OBJ_DIR)/Examples/Rot3DLib   # Creates Examples as well
 	@mkdir -p $(OBJ_DIR)/Examples/Support
