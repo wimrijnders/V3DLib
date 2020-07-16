@@ -4,7 +4,7 @@
 #include <streambuf>
 #include <CmdParameters.h>
 #include "QPULib.h"
-#include "Support/PlatformInfo.h"
+#include "Support/Platform.h"
 #include "VideoCore/VideoCore.h"
 #include "VideoCore/RegisterMap.h"
 #include "VideoCore/vc6/RegisterMapping.h"
@@ -30,7 +30,7 @@ CmdParameters params = {
  *
  * In time, this struct will be made generic for all QPULib programs
  */
-struct Settings : public PlatformInfo {
+struct Settings {
 
 	// cmdline param's
 	bool reset_scheduler;
@@ -43,9 +43,12 @@ struct Settings : public PlatformInfo {
 	 *         any other value if program should abort
    */
 	int init(int argc, const char *argv[]) {
+		auto platform = Platform::instance();
+
+		platform.output();
 		output();
 
-		if (!is_pi_platform) {
+		if (!platform.is_pi_platform) {
 			return CmdParameters::EXIT_ERROR;
 		}
 
@@ -69,7 +72,6 @@ struct Settings : public PlatformInfo {
 
 
 	void output() {
-		PlatformInfo::output();
 
 		printf("\nCmdline param's:\n");
 		printf("  Reset Scheduler  : %s\n", reset_scheduler?"true":"false");
@@ -148,16 +150,16 @@ void detect_vc6() {
 	map_vc6.init();
 	
 	unsigned ncores = map_vc6.num_cores();
-	printf("Number of cores    : %d\n",   ncores);
+	printf("Number of cores : %d\n",   ncores);
 
 	for (unsigned core = 0; core < ncores; ++core) {
 		auto info = map_vc6.core_info(core);
 
-		printf("Core index      : %d\n",   info.index);
-		printf("VPM size        : %d\n",   info.vpm_size);
-		printf("Num slices      : %d\n",   info.num_slice);
-		printf("Num TMU's       : %d\n",   info.num_tmu);
-		printf("Num QPU's       : %d\n",   info.num_qpu);
+		printf("Core index %d:\n", info.index);
+		printf("  VPM size      : %d\n", info.vpm_size);
+		printf("  Num slices    : %d\n", info.num_slice);
+		printf("  Num TMU's     : %d\n", info.num_tmu);
+		printf("  Num QPU's     : %d\n", info.num_qpu);
 	}
 }
 
@@ -207,7 +209,7 @@ int main(int argc, char const *argv[]) {
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 #ifdef  QPU_MODE
-	if (settings.has_vc4) {
+	if (Platform::instance().has_vc4) {
 		detect_vc4();
 	} else {
 		detect_vc6();

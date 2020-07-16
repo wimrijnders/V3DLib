@@ -86,7 +86,7 @@ $(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files
 DEPS := $(LIB:.o=.d)
-$(info $(DEPS))
+#$(info $(DEPS))
 -include $(DEPS)
 
 # Dependencies for the include files in the Examples directory.

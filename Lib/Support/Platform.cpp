@@ -1,6 +1,6 @@
 #include <fstream>
 #include <string.h>  // strstr()
-#include "PlatformInfo.h"
+#include "Platform.h"
 
 namespace {
 
@@ -105,6 +105,9 @@ bool get_chip_version(std::string &output) {
 	return false;
 }
 
+
+PlatformInfo local_instance;
+
 }  // anon namespace
 
 
@@ -141,3 +144,7 @@ void PlatformInfo::output() {
 		}
 	}
 }
+
+
+const PlatformInfo &Platform::instance() { return local_instance; }
+

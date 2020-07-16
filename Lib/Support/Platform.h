@@ -1,5 +1,5 @@
-#ifndef _SUPPORT_PLATFORMINFO_H
-#define _SUPPORT_PLATFORMINFO_H
+#ifndef _SUPPORT_PLATFORM_H
+#define _SUPPORT_PLATFORM_H
 
 struct PlatformInfo {
 	std::string platform_id; 
@@ -11,4 +11,10 @@ struct PlatformInfo {
 	void output(); 
 };
 
-#endif  // _SUPPORT_PLATFORMINFO_H
+
+class Platform {
+public:
+	static const PlatformInfo &instance();
+};
+
+#endif  // _SUPPORT_PLATFORM_H
