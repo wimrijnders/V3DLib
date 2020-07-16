@@ -11,6 +11,7 @@
 
 
 namespace QPULib {
+namespace VideoCore {
 
 // ============================================================================
 // Not emulation mode
@@ -97,6 +98,7 @@ template <typename T> class SharedArray {
   }
 };
 
+}  // namespace VideoCore
 }  // namespace QPULib
 
 #endif // _QPULIB_VIDEOCORE_SHAREDARRAY_H_

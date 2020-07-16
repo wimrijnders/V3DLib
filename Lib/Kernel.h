@@ -5,10 +5,12 @@
 #include "Target/Emulator.h"
 #include "Target/Encode.h"
 #include "Common/SharedArray.h"
+#include "VideoCore/vc6/Invoke.h"
 #include "VideoCore/Invoke.h"
 #include "VideoCore/VideoCore.h"
 #include "Source/Pretty.h"
 #include "Target/Pretty.h"
+#include "Support/Platform.h"
 
 
 namespace QPULib {
@@ -296,7 +298,11 @@ template <typename... ts> struct Kernel {
     nothing(passParam<ts, us>(&uniforms, args)...);
 
     // Invoke kernel on QPUs
-    invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
+		if (Platform::instance().has_vc4) {
+	    invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
+		} else {
+	    vc6::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
+		}
   }
 #endif
  

@@ -1,5 +1,6 @@
 #ifndef _SUPPORT_PLATFORM_H
 #define _SUPPORT_PLATFORM_H
+#include <string>
 
 struct PlatformInfo {
 	std::string platform_id; 

@@ -5,7 +5,12 @@
 #ifndef _QPULIB_EMULATOR_SHAREDARRAY_H_
 #define _QPULIB_EMULATOR_SHAREDARRAY_H_
 
+extern uint32_t emuHeapEnd;
+extern int32_t* emuHeap;
+
+
 namespace QPULib {
+namespace Target {
 
 // ============================================================================
 // Emulation mode
@@ -72,6 +77,7 @@ template <typename T> class SharedArray {
 };
 
 
+}  // namespace Target
 }  // namespace QPULib
 
 
