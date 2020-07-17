@@ -1,8 +1,8 @@
 #ifdef QPU_MODE
 
-#include "VideoCore/Invoke.h"
-#include "VideoCore/Mailbox.h"
-#include "VideoCore/VideoCore.h"
+#include "Invoke.h"
+#include "Mailbox.h"
+#include "VideoCore.h"
 
 #define QPU_TIMEOUT 10000
 
@@ -10,7 +10,7 @@ namespace QPULib {
 
 void invoke(
   int numQPUs,
-  SharedArray<uint32_t> &codeMem,
+  VideoCore::SharedArray<uint32_t> &codeMem,
   int qpuCodeMemOffset,
   Seq<int32_t>* params)
 {

@@ -1,9 +1,6 @@
 #ifndef _QPULIB_VIDEOCORE_SHAREDARRAY_H_
 #define _QPULIB_VIDEOCORE_SHAREDARRAY_H_
-
-/*
-#include <assert.h>
-*/
+#include <cassert>
 #include <stdint.h>
 #include <stdio.h>
 #include "VideoCore/Mailbox.h"
@@ -27,15 +24,22 @@ template <typename T> class SharedArray {
   void operator=(SharedArray<T>& a);
   SharedArray(const SharedArray<T>& a);
 
-  uint32_t handle;
-  void* arm_base;
-  void* gpu_base;
+  uint32_t handle = 0;
+  void* arm_base = NULL;
+  void* gpu_base = NULL;
 
  public:
-  uint32_t size;
+  uint32_t size = 0;
 
-  /* Allocate GPU memory and map it into ARM address space */
+  /**
+	 * Allocate GPU memory and map it into ARM address space
+	 */
   void alloc(uint32_t n) {
+		if (n == 0) {
+			assert(size == 0 && handle == 0 && arm_base == NULL && gpu_base == NULL);
+			return;
+		}
+
     // Mailbox, for talking to VideoCore
     int mb = getMailbox();
 
@@ -51,15 +55,11 @@ template <typename T> class SharedArray {
   }
 
   // Constructor
-  SharedArray() {
-    size = handle = 0;
-    arm_base = gpu_base = NULL;
-  }
+  SharedArray() {}
 
   // Constructor
   SharedArray(uint32_t n) {
-    size = handle = 0;
-    alloc(n);
+	  alloc(n);
   }  
 
   uint32_t getAddress() {

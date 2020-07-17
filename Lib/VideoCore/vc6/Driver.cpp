@@ -24,13 +24,13 @@ Dispatcher::Dispatcher(
 	m_timeout_sec(timeout_sec) {}
 
 
-void Dispatcher::exit() {
+Dispatcher::~Dispatcher() {
 	assert(m_bo_handles != nullptr);
 
 	// Assume bo_handles array zero-terminated
 	for (int index = 0; m_bo_handles[index] != 0; ++index) {
 		auto bo_handle = m_bo_handles[index];
-		m_drm.v3d_wait_bo(bo_handle, int(m_timeout_sec / 1e-9));
+		m_drm.v3d_wait_bo(bo_handle, (uint64_t) (m_timeout_sec / 1e-9));
 	}
 }
 
@@ -41,8 +41,8 @@ void Dispatcher::exit() {
 * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
 */
 void Dispatcher::dispatch(
-	Code &code,
-	Uniforms *uniforms,
+	SharedArray &code,
+	SharedArray *uniforms,
 	WorkGroup workgroup,
 	uint32_t wgs_per_sg,
 	uint32_t thread
@@ -66,7 +66,7 @@ void Dispatcher::dispatch(
 			(workgroup.wg_size() & 0xff
 		),
 		thread - 1,           // Number of batches minus 1
-		code.addresses()[0],  // Shader address, pnan, singleseg, threading
+		code.getAddress(),  // Shader address, pnan, singleseg, threading
 		(uint32_t) uniforms
 	};
 
@@ -94,8 +94,8 @@ Dispatcher Driver::compute_shader_dispatcher(int timeout_sec) {
 
 
 void Driver::execute(
-	Code &code,
-	Uniforms *uniforms,
+	SharedArray &code,
+	SharedArray *uniforms,
 	int timeout_sec,
 	WorkGroup workgroup,
 	int wgs_per_sg,
@@ -104,12 +104,6 @@ void Driver::execute(
 	auto csd = compute_shader_dispatcher(timeout_sec);
   csd.dispatch(code, uniforms, workgroup, wgs_per_sg, thread);
 }
-
-
-void Driver::v3d_wait_bo(uint32_t bo_handle, int timeout) {
-	assert(false);  // TODO
-}
-
 
 }  // vc6
 }  // QPULib

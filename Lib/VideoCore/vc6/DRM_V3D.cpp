@@ -50,8 +50,14 @@ namespace {
 	};
 
 
-	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD,
-                               sizeof(st_v3d_submit_csd));
+	struct st_v3d_wait_bo {
+		uint32_t handler;
+		uint32_t pad;
+		uint64_t timeout_ns;
+	};
+
+  const unsigned IOCTL_V3D_WAIT_BO    = _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, sizeof(st_v3d_wait_bo));
+	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, sizeof(st_v3d_submit_csd));
 
 } // anon namespace
 
@@ -77,6 +83,18 @@ void DRM_V3D::done() {
 	}
 }
 
+
+void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
+	assert(false);  // TODO
+
+	st_v3d_wait_bo st = {
+		handle,
+		0,
+		timeout_ns,
+	};
+
+	ioctl(m_fd, IOCTL_V3D_WAIT_BO, st);
+}
 
 void DRM_V3D::v3d_submit_csd(
 	Cfg &cfg,

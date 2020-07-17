@@ -10,29 +10,15 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <array>
+#include "../../Target/SharedArray.h"
 
 
 namespace QPULib {
 namespace vc6 {
 
-class Uniforms {};
-//typedef uint32_t Cfg[6];
 using Cfg = std::array<uint32_t, 7>;
-
-//typedef uint32_t Coef[4];
 using Coef = std::array<uint32_t, 4>;
-
 using BoHandles = uint32_t *;
-
-
-class Code {
-public:
-	uint32_t *addresses() {
-		assert(false);  // TODO
-		return nullptr;
-	}
-};
-
 
 struct WorkGroup {
 	uint32_t wg_x = 0;

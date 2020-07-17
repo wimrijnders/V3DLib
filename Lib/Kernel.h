@@ -235,7 +235,9 @@ template <typename... ts> struct Kernel {
     numVars = getFreshVarCount();
 
 #ifdef QPU_MODE
-    enableQPUs();
+		if (Platform::instance().has_vc4) {
+    	enableQPUs();
+		}
 
     // Allocate code mem
     qpuCodeMem = new SharedArray<uint32_t>;
@@ -331,7 +333,9 @@ template <typename... ts> struct Kernel {
   ~Kernel() {
     #ifdef QPU_MODE
       delete qpuCodeMem;
-      disableQPUs();
+			if (Platform::instance().has_vc4) {
+      	disableQPUs();
+			}
     #endif
   }
 

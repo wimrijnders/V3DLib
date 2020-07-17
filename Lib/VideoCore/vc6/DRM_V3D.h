@@ -8,7 +8,7 @@ namespace vc6 {
 
 class DRM_V3D {
 public:
-	void v3d_wait_bo(uint32_t bo_handle, int timeout);
+	void v3d_wait_bo(uint32_t handle, uint64_t timeout_ns);
 
 	void v3d_submit_csd(
 		Cfg &cfg,

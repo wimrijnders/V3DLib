@@ -1,6 +1,6 @@
 #ifndef _VC6_INVOKE_H
 #define _VC6_INVOKE_H
-//#include "Target/SharedArray.h"
+#include "Target/SharedArray.h"
 #include "Common/SharedArray.h"
 #include "Common/Seq.h"
 
@@ -14,7 +14,7 @@ namespace vc6 {
 
 void invoke(
   int numQPUs,
-  SharedArray<uint32_t> &codeMem,
+  Target::SharedArray<uint32_t> &codeMem,
   int qpuCodeMemOffset,
   Seq<int32_t>* params);
 
