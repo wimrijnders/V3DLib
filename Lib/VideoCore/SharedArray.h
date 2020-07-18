@@ -25,18 +25,20 @@ template <typename T> class SharedArray {
   SharedArray(const SharedArray<T>& a);
 
   uint32_t handle = 0;
+  uint32_t m_size = 0;
   void* arm_base = NULL;
   void* gpu_base = NULL;
 
  public:
-  uint32_t size = 0;
+
+  uint32_t size() { return m_size; }
 
   /**
 	 * Allocate GPU memory and map it into ARM address space
 	 */
   void alloc(uint32_t n) {
 		if (n == 0) {
-			assert(size == 0 && handle == 0 && arm_base == NULL && gpu_base == NULL);
+			assert(m_size == 0 && handle == 0 && arm_base == NULL && gpu_base == NULL);
 			return;
 		}
 
@@ -49,7 +51,7 @@ template <typename T> class SharedArray {
       fprintf(stderr, "Failed to allocate GPU memory.");
       exit(EXIT_FAILURE);
     }
-    size = n;
+    m_size = n;
     gpu_base = (void*) mem_lock(mb, handle);
     arm_base = mapmem(BUS_TO_PHYS((uint32_t) gpu_base+GPU_MEM_MAP), n*4);
   }
@@ -76,18 +78,22 @@ template <typename T> class SharedArray {
     int mb = getMailbox();
 
     // Free memory
-    if (arm_base) unmapmem(arm_base, size);
+    if (arm_base) unmapmem(arm_base, m_size);
     if (handle) {
       mem_unlock(mb, handle);
       mem_free(mb, handle);
     }
-    size = handle = 0;
+    m_size = handle = 0;
     gpu_base = NULL;
     arm_base = NULL;
   }
 
   // Subscript
   inline T& operator[] (int i) {
+		assert(i >= 0);
+		assert(m_size > 0);
+		assert(i < m_size);
+
     uint32_t* base = (uint32_t*) arm_base;
     return (T&) base[i];
   }

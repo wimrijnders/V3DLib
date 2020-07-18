@@ -27,19 +27,22 @@ namespace Target {
 // Implementation
 template <typename T> class SharedArray {
  private:
-   // Disallow assignment
-   void operator=(SharedArray<T> a);
-   void operator=(SharedArray<T>& a);
+	// Disallow assignment
+	void operator=(SharedArray<T> a);
+	void operator=(SharedArray<T>& a);
+
+  uint32_t m_size = 0;
 
  public:
 
   uint32_t address;
-  uint32_t size = 0;
+  uint32_t size() { return m_size; }
 
   // Allocation
   void alloc(uint32_t n) {
+    //printf("Allocating %d\n", n);
 		if (n == 0) {
-			assert(size == 0);
+			assert(m_size == 0);
 			return;
 		}
 
@@ -54,7 +57,7 @@ template <typename T> class SharedArray {
     else {
       address = emuHeapEnd;
       emuHeapEnd += n;
-      size = n;
+      m_size = n;
     }
   }
 
@@ -80,12 +83,17 @@ template <typename T> class SharedArray {
 	 * The data still remains on the heap (no method to remove it)
 	 */ 
   void dealloc() {
-		size = 0;
+		m_size = 0;
 	}
 
   // Subscript
   T& operator[] (int i) {
-		assert(size > 0);
+		assert(i >= 0);
+		assert(m_size > 0);
+		if (i >= m_size) {
+			printf("i: %d, size: %d\n", i, m_size);
+		}
+		assert(i < m_size);
 
     if (address+i >= EMULATOR_HEAP_SIZE) {
       printf("QPULib: accessing off end of heap\n");

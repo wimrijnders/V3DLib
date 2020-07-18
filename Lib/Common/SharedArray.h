@@ -50,13 +50,14 @@ namespace QPULib {
 template <typename T>
 class SharedArray {
 public:
-
 	SharedArray() {}
 
   SharedArray(uint32_t n) :
 		m_main_array(m_gpu_array_leading?0:n),
 		m_gpu_array(m_gpu_array_leading?n:0)
 	{}
+
+  uint32_t size() { return m_size; }
 
   uint32_t getAddress() {
 		if (m_gpu_array_leading) {
@@ -67,11 +68,18 @@ public:
   }
 
   void alloc(uint32_t n) {
+		assert(n > 0);
+		assert(m_size == 0);
+
 		if (m_gpu_array_leading) {
+			assert(m_gpu_array.size() == 0);
 			return m_gpu_array.alloc(n);
 		} else {
+			assert(m_main_array.size() == 0);
 			return m_main_array.alloc(n);
 		}
+
+		m_size = n;
   }
 
   T& operator[] (int i) {
@@ -88,9 +96,11 @@ public:
 		}
 
 		// Transfer data to other buffer
-		m_gpu_array.alloc(m_main_array.size);
+		assert(m_gpu_array.size() != 0);
+		assert(m_main_array.size() == 0);
+		m_gpu_array.alloc(m_main_array.size());
 
-		for (int n = 0; n < m_main_array.size; ++n) {
+		for (int n = 0; n < m_main_array.size(); ++n) {
 			m_gpu_array[n] = m_main_array[n];
 		}
 
@@ -106,9 +116,11 @@ public:
 		}
 
 		// Transfer data to other buffer
-		m_main_array.alloc(m_gpu_array.size);
+		assert(m_main_array.size() != 0);
+		assert(m_gpu_array.size() == 0);
+		m_main_array.alloc(m_gpu_array.size());
 
-		for (int n = 0; n < m_gpu_array.size; ++n) {
+		for (int n = 0; n < m_gpu_array.size(); ++n) {
 			m_main_array[n] = m_gpu_array[n];
 		}
 
@@ -124,6 +136,7 @@ private:
   SharedArray(const SharedArray<T>& a);
 
 	bool m_gpu_array_leading = false;  // If false, use array in  main memory
+  uint32_t m_size = 0;
 	Target::SharedArray<T>   m_main_array;
 	VideoCore::SharedArray<T> m_gpu_array;
 };

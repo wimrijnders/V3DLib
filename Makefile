@@ -213,7 +213,7 @@ $(OBJ_DIR)/bin/runTests: $(UNIT_TESTS) $(EXAMPLES_OBJ) | $(QPU_LIB)
 	@echo Compiling unit tests
 	@$(CXX) $(CXX_FLAGS) -Wno-psabi $^ -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
-make_test: $(OBJ_DIR)/bin/runTests
+make_test: $(OBJ_DIR)/bin/runTests $(OBJ_DIR)/bin/detectPlatform
 
 test : | make_test AutoTest
 	@echo Running unit tests with '$(RUN_TESTS)'
