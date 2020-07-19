@@ -202,7 +202,8 @@ endif
 UNIT_TESTS =          \
 	Tests/testMain.cpp  \
 	Tests/testRot3D.cpp \
-	Tests/testDSL.cpp
+	Tests/testDSL.cpp   \
+	Tests/testV3d.cpp
 
 # For some reason, doing an interim step to .o results in linkage errors (undefined references).
 # So this target compiles the source files directly to the executable.
