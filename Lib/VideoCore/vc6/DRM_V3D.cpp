@@ -51,7 +51,7 @@ namespace {
 
 
 	struct st_v3d_wait_bo {
-		uint32_t handler;
+		uint32_t handle;
 		uint32_t pad;
 		uint64_t timeout_ns;
 	};
