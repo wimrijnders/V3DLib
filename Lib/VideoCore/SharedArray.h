@@ -60,7 +60,8 @@ template <typename T> class SharedArray {
   SharedArray() {}
 
   // Constructor
-  SharedArray(uint32_t n) {
+  SharedArray(uint32_t n) : m_size(n) {
+		assert(n >= 0);
 	  alloc(n);
   }  
 

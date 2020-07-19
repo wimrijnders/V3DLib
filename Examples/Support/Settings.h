@@ -6,9 +6,9 @@ namespace QPULib {
 
 struct Settings {
 	bool output_code;
-#ifdef EMULATION_MODE
+//#ifdef EMULATION_MODE
 	int run_type;
-#endif
+//#endif
 
 	const char *code_filename = "target_code.txt";
 
@@ -18,16 +18,16 @@ struct Settings {
 	template<typename Kernel, typename... us>
 	void process(Kernel &k, us... args) {
 
-#ifdef EMULATION_MODE
+//#ifdef EMULATION_MODE
 		switch (run_type) {
 			case 0: k(args...); break;
 			case 1: k.emu(args...); break;
 			case 2: k.interpret(args...); break;
 		}
-#endif
-#ifdef QPU_MODE
-		k(args...);
-#endif
+//#endif
+//#ifdef QPU_MODE
+//		k(args...);
+//#endif
 
 		if (output_code) {
 			k.pretty(code_filename);

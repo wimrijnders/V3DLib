@@ -1,5 +1,27 @@
+/**
+
+The emulator heap is tightly coupled to the emulator (and interpreter).
+Notably, the SharedArray's in the heap are assumed to be in the same contiguous address space.
+This is not the case for QPU mode SharedArray's
+
+There is no way to use the QPU mode SharedArray without a serious rewrite.
+
+*/
 #ifndef _QPULIB_SHAREDARRAY_H_
 #define _QPULIB_SHAREDARRAY_H_
+#include <signal.h>  // raise(SIGTRAP);
+
+
+namespace QPULib {
+
+enum BufferType : int {
+	HeapBuffer,
+	Vc4Buffer //,
+//	V3dBuffer
+};
+
+}
+
 
 #if !defined(QPU_MODE) && !defined(EMULATION_MODE)
 //
@@ -10,6 +32,8 @@
 #pragma message "WARNING: QPU_MODE and EMULATION_MODE not defined, defaulting to EMULATION_MODE"
 #define EMULATION_MODE
 #endif
+
+#pragma message "Debugging"
 
 #include "../Target/SharedArray.h"
 
@@ -30,6 +54,12 @@ using SharedArray=Target::SharedArray<T>;
 
 
 #ifdef QPU_MODE
+
+/*
+Not working yet.
+
+This bricked the Pi3 during testing. Needs more debugging
+*/
 
 namespace QPULib {
 
@@ -52,80 +82,113 @@ class SharedArray {
 public:
 	SharedArray() {}
 
-  SharedArray(uint32_t n) :
-		m_main_array(m_gpu_array_leading?0:n),
-		m_gpu_array(m_gpu_array_leading?n:0)
-	{}
+  SharedArray(uint32_t n, BufferType buftype = HeapBuffer) :
+		m_buftype(buftype),
+		m_size(n),
+		m_main_array((buftype == HeapBuffer)?n:0),
+		m_gpu_array((buftype == Vc4Buffer) ?n:0)
+	{
+		assert(m_size > 0);
+	}
 
-  uint32_t size() { return m_size; }
+
+  uint32_t size() {
+raise(SIGTRAP);
+		return m_size;
+	}
+
 
   uint32_t getAddress() {
-		if (m_gpu_array_leading) {
-			return m_gpu_array.getAddress();
-		} else {
-			return m_main_array.getAddress();
+		uint32_t ret;
+
+		switch(m_buftype) {
+		case HeapBuffer:
+			ret = m_main_array.getAddress();
+			break;
+		case Vc4Buffer:
+raise(SIGTRAP);
+			ret = m_gpu_array.getAddress();
+			break;
 		}
+
+		return ret;
   }
+
+
+	void setType(BufferType buftype) {
+		switch(buftype) {
+		case HeapBuffer:
+			switch(m_buftype) {
+			case HeapBuffer:
+				// Nothing to do
+				break;
+			case Vc4Buffer:
+				moveTo(m_gpu_array, m_main_array);
+				break;
+			}
+			break;
+		case Vc4Buffer:
+			switch(m_buftype) {
+			case HeapBuffer:
+				moveTo(m_main_array, m_gpu_array);
+				break;
+			case Vc4Buffer:
+				// Nothing to do
+				break;
+			}
+			break;
+		}
+
+		m_buftype = buftype;
+	}
+
 
   void alloc(uint32_t n) {
 		assert(n > 0);
 		assert(m_size == 0);
 
-		if (m_gpu_array_leading) {
-			assert(m_gpu_array.size() == 0);
-			return m_gpu_array.alloc(n);
-		} else {
+		switch(m_buftype) {
+		case HeapBuffer:
 			assert(m_main_array.size() == 0);
-			return m_main_array.alloc(n);
+			m_main_array.alloc(n);
+			break;
+		case Vc4Buffer:
+raise(SIGTRAP);
+			assert(m_gpu_array.size() == 0);
+			m_gpu_array.alloc(n);
+			break;
 		}
 
 		m_size = n;
   }
 
   T& operator[] (int i) {
-		if (m_gpu_array_leading) {
-			return m_gpu_array[i];
-		} else {
-			return m_main_array[i];
+		assert(i >= 0 && i < m_size);
+
+		T *ret = nullptr;
+
+		switch(m_buftype) {
+		case HeapBuffer:
+			ret = &m_main_array[i];
+			break;
+		case Vc4Buffer:
+			ret = &m_gpu_array[i];
+			break;
 		}
+
+		assert(ret != nullptr);
+		return *ret;
 	}
 
 	operator VideoCore::SharedArray<T> &() {
-		if (m_gpu_array_leading) {
-			return m_gpu_array;
-		}
-
-		// Transfer data to other buffer
-		assert(m_gpu_array.size() != 0);
-		assert(m_main_array.size() == 0);
-		m_gpu_array.alloc(m_main_array.size());
-
-		for (int n = 0; n < m_main_array.size(); ++n) {
-			m_gpu_array[n] = m_main_array[n];
-		}
-
-		m_gpu_array_leading = true;
-		m_main_array.dealloc();
+		setType(Vc4Buffer);	
 		return m_gpu_array;
 	}
 
 
 	operator Target::SharedArray<T> &() {
-		if (!m_gpu_array_leading) {
-			return m_main_array;
-		}
-
-		// Transfer data to other buffer
-		assert(m_main_array.size() != 0);
-		assert(m_gpu_array.size() == 0);
-		m_main_array.alloc(m_gpu_array.size());
-
-		for (int n = 0; n < m_gpu_array.size(); ++n) {
-			m_main_array[n] = m_gpu_array[n];
-		}
-
-		m_gpu_array_leading = false;
-		m_gpu_array.dealloc();
+raise(SIGTRAP);
+		setType(HeapBuffer);	
 		return m_main_array;
 	}
 
@@ -135,10 +198,33 @@ private:
   void operator=(SharedArray<T>& a);
   SharedArray(const SharedArray<T>& a);
 
-	bool m_gpu_array_leading = false;  // If false, use array in  main memory
+	BufferType m_buftype = HeapBuffer;
   uint32_t m_size = 0;
+
 	Target::SharedArray<T>   m_main_array;
 	VideoCore::SharedArray<T> m_gpu_array;
+
+
+	template<typename Src, typename Dst>
+	void moveTo(Src &src, Dst &dst) {
+		if (src.size() == 0) {
+raise(SIGTRAP);
+			// Nothing to transfer
+			assert(dst.size() == 0);
+			return;
+		}
+
+		// Transfer data to other buffer
+raise(SIGTRAP);
+		assert(dst.size() == 0);
+		dst.alloc(src.size());
+
+		for (int n = 0; n < src.size(); ++n) {
+			dst[n] = src[n];
+		}
+
+		src.dealloc();
+	}
 };
 
 
