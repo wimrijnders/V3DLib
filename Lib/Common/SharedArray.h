@@ -9,7 +9,7 @@ There is no way to use the QPU mode SharedArray without a serious rewrite.
 */
 #ifndef _QPULIB_SHAREDARRAY_H_
 #define _QPULIB_SHAREDARRAY_H_
-#include <signal.h>  // raise(SIGTRAP);
+#include <debug.h>
 
 
 namespace QPULib {
@@ -93,7 +93,7 @@ public:
 
 
   uint32_t size() {
-raise(SIGTRAP);
+		breakpoint
 		return m_size;
 	}
 
@@ -106,7 +106,6 @@ raise(SIGTRAP);
 			ret = m_main_array.getAddress();
 			break;
 		case Vc4Buffer:
-raise(SIGTRAP);
 			ret = m_gpu_array.getAddress();
 			break;
 		}
@@ -153,7 +152,7 @@ raise(SIGTRAP);
 			m_main_array.alloc(n);
 			break;
 		case Vc4Buffer:
-raise(SIGTRAP);
+			breakpoint
 			assert(m_gpu_array.size() == 0);
 			m_gpu_array.alloc(n);
 			break;
@@ -187,7 +186,7 @@ raise(SIGTRAP);
 
 
 	operator Target::SharedArray<T> &() {
-raise(SIGTRAP);
+		breakpoint
 		setType(HeapBuffer);	
 		return m_main_array;
 	}
@@ -208,14 +207,13 @@ private:
 	template<typename Src, typename Dst>
 	void moveTo(Src &src, Dst &dst) {
 		if (src.size() == 0) {
-raise(SIGTRAP);
+			breakpoint
 			// Nothing to transfer
 			assert(dst.size() == 0);
 			return;
 		}
 
 		// Transfer data to other buffer
-raise(SIGTRAP);
 		assert(dst.size() == 0);
 		dst.alloc(src.size());
 
