@@ -93,7 +93,6 @@ public:
 
 
   uint32_t size() {
-		breakpoint
 		return m_size;
 	}
 
