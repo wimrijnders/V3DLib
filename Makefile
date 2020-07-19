@@ -134,7 +134,7 @@ help:
 all: $(OBJ_DIR) $(EXAMPLE_TARGETS)
 
 clean:
-	rm -rf obj/emu obj/emu-debug obj/qpu obji/qpu-debug
+	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug
 
 
 #

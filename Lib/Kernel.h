@@ -103,11 +103,11 @@ template <typename... ts> inline void nothing(ts... args) {}
 // Pass argument of ARM type 'u' as parameter of QPU type 't'.
 
 template <typename t, typename u> inline bool
-  passParam(Seq<int32_t>* uniforms, u x);
+  passParam(Seq<int32_t>* uniforms, u x, BufferType buftype);
 
 // Pass an int
 template <> inline bool passParam<Int, int>
-  (Seq<int32_t>* uniforms, int x)
+  (Seq<int32_t>* uniforms, int x, BufferType buftype)
 {
   uniforms->append((int32_t) x);
   return true;
@@ -115,7 +115,7 @@ template <> inline bool passParam<Int, int>
 
 // Pass a float
 template <> inline bool passParam<Float, float>
-  (Seq<int32_t>* uniforms, float x)
+  (Seq<int32_t>* uniforms, float x, BufferType buftype)
 {
   int32_t* bits = (int32_t*) &x;
   uniforms->append(*bits);
@@ -124,32 +124,36 @@ template <> inline bool passParam<Float, float>
 
 // Pass a SharedArray<int>*
 template <> inline bool passParam< Ptr<Int>, SharedArray<int>* >
-  (Seq<int32_t>* uniforms, SharedArray<int>* p)
+  (Seq<int32_t>* uniforms, SharedArray<int>* p, BufferType buftype)
 {
+	p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
 
 // Pass a SharedArray<int*>*
 template <> inline bool passParam< Ptr<Ptr<Int>>, SharedArray<int*>* >
-  (Seq<int32_t>* uniforms, SharedArray<int*>* p)
+  (Seq<int32_t>* uniforms, SharedArray<int*>* p, BufferType buftype)
 {
+	p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
 
 // Pass a SharedArray<float>*
 template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
-  (Seq<int32_t>* uniforms, SharedArray<float>* p)
+  (Seq<int32_t>* uniforms, SharedArray<float>* p, BufferType buftype)
 {
+	p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
 
 // Pass a SharedArray<float*>*
 template <> inline bool passParam< Ptr<Ptr<Float>>, SharedArray<float*>* >
-  (Seq<int32_t>* uniforms, SharedArray<float*>* p)
+  (Seq<int32_t>* uniforms, SharedArray<float*>* p, BufferType buftype)
 {
+	p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
@@ -259,11 +263,11 @@ template <typename... ts> struct Kernel {
 #endif
   }
 
-#ifdef EMULATION_MODE
+//#ifdef EMULATION_MODE
   template <typename... us> void emu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args)...);
+    nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);
 
     emulate
       ( numQPUs          // Number of QPUs active
@@ -273,14 +277,14 @@ template <typename... ts> struct Kernel {
       , NULL             // Use stdout
       );
   }
-#endif
+//#endif
 
-#ifdef EMULATION_MODE
+//#ifdef EMULATION_MODE
   // Invoke the interpreter
   template <typename... us> void interpret(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args)...);
+    nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);
 
     interpreter
       ( numQPUs          // Number of QPUs active
@@ -290,22 +294,32 @@ template <typename... ts> struct Kernel {
       , NULL             // Use stdout
       );
   }
-#endif
+//#endif
 
 #ifdef QPU_MODE
   // Invoke kernel on physical QPU hardware
   template <typename... us> void qpu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args)...);
+    nothing(passParam<ts, us>(&uniforms, args, BufferType::Vc4Buffer)...);
 
     // Invoke kernel on QPUs
-		if (Platform::instance().has_vc4) {
-	    invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
-		} else {
-	    vc6::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
-		}
+		assert(Platform::instance().has_vc4);
+		invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
   }
+
+
+#if 0
+  template <typename... us> void v3d(us... args) {
+    // Pass params, checking arguments types us against parameter types ts
+    uniforms.clear();
+    nothing(passParam<ts, us>(&uniforms, args, BufferType::V3dBuffer)...);
+
+    // Invoke kernel on QPUs
+		assert(!Platform::instance().has_vc4));
+		vc6::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
+  }
+#endif
 #endif
  
   // Invoke the kernel

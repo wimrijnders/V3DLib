@@ -163,8 +163,9 @@ template <> inline Ptr<Complex> mkArg< Ptr<Complex> >() {
 }
 
 template <> inline bool passParam< Ptr<Complex>, SharedArray<Complex>* >
-  (Seq<int32_t>* uniforms, SharedArray<Complex>* p)
+  (Seq<int32_t>* uniforms, SharedArray<Complex>* p, BufferType buftype)
 {
+	p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
