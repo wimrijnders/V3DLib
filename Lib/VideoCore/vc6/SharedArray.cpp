@@ -41,7 +41,7 @@ void SharedArrayBase::dealloc_mem() {
 
 		// TODO: what to do about phyaddr here???	
 		usraddr = nullptr;
-		handle = 0
+		handle = 0;
 		m_mem_size = 0;
 	} else {
 		// TODO: should  phyaddr be here???	

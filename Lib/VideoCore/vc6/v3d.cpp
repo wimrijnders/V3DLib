@@ -108,6 +108,12 @@ int fd = 0;
 }  // anon namespace
 
 
+/**
+ * Apparently, you don't need to close afterwards.
+ * If you try, then you get the perror:
+ *
+ *    Inappropriate ioctl for device
+ */
 bool v3d_open() {
 	if (fd == 0) {
 		// It appears to be a random crap shoot which device card0 and card1 address
@@ -116,24 +122,6 @@ bool v3d_open() {
 	}
 
 	return (fd > 0);
-}
-
-
-/**
- * Not sure if needed, if wasn't in the original code.
- * Doing it anyway.
- */
-bool v3d_close() {
-	breakpoint
-
-	int ret = 0;
-
-	if (fd != 0) {
-		ret = close(fd);
-		fd = 0;
-	}
-
-	return ret;
 }
 
 

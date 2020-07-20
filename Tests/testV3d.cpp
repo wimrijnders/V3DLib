@@ -10,7 +10,7 @@
 
 namespace {
 
-static uint64_t do_nothing[] = {
+uint64_t do_nothing[] = {
     0x3c203186bb800000, // nop; thrsw
     0x3c203186bb800000, // nop; thrsw
     0x3c003186bb800000, // nop
@@ -49,7 +49,6 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
 		// Note that do_nothing is an array of 64-bit values!
 		uint32_t array_length = sizeof(do_nothing)/sizeof(uint64_t);
-		printf("array_length: %d\n", array_length);
 		assert(array_length == 8);
 
     memcpy(usraddr, do_nothing, sizeof(do_nothing));
@@ -80,7 +79,6 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		printf("[submit done: %.6lf sec]\n", end - start);
 
 		REQUIRE(v3d_unmap(sizeof(do_nothing), handle, usraddr));
-		REQUIRE(v3d_close());
 	}
 
 	SECTION("v3d SharedArray should work as expected") {

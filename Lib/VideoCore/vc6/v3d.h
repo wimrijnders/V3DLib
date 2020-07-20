@@ -4,7 +4,6 @@
 
 bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle);
 bool v3d_open();
-bool v3d_close();
 bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr);
 bool v3d_unmap(uint32_t size, uint32_t handle, void *usraddr);
 
