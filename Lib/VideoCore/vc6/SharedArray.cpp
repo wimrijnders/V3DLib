@@ -7,7 +7,6 @@ namespace QPULib {
 namespace v3d {
 
 SharedArrayBase::~SharedArrayBase() {
-	breakpoint
 	dealloc_mem();
 }
 

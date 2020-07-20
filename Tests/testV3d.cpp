@@ -59,12 +59,6 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 			codeMem[offset] = do_nothing[offset];
 		}
 
-		for(int offset = 0; offset < array_length; ++offset) {
-			REQUIRE(codeMem[offset] == do_nothing[offset]);
-		}
-		breakpoint
-
-
 		//
 		// NOTE: During testing, execution time shot up from 0.1 sec to 10 sec.
 		//       This probably due to the gpu hanging because of previously job faulty (too short)
@@ -82,11 +76,27 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 	}
 
 	SECTION("v3d SharedArray should work as expected") {
-		const int size = 16;
+		const int SIZE = 16;
 
-		breakpoint
-		QPULib::v3d::SharedArray<uint32_t> arr(size);
-		REQUIRE(arr.size() == size);
+		QPULib::v3d::SharedArray<uint32_t> arr(SIZE);
+		REQUIRE(arr.size() == SIZE);
+
+		for(int offset = 0; offset < SIZE; ++offset) {
+			arr[offset] = 0;
+		}
+
+		for(int offset = 0; offset < SIZE; ++offset) {
+			REQUIRE(arr[offset] == 0);
+		}
+
+
+		for(int offset = 0; offset < SIZE; ++offset) {
+			arr[offset] = 127;
+		}
+
+		for(int offset = 0; offset < SIZE; ++offset) {
+			REQUIRE(arr[offset] == 127);
+		}
 
 		arr.dealloc();
 		REQUIRE(arr.size() == 0);

@@ -4,11 +4,12 @@
 #include "v3d.h"
 #include <cassert>
 #include <sys/ioctl.h>
-#include <cstddef>  // NULL
+#include <cstddef>   // NULL
 #include <fcntl.h>
 #include <sys/mman.h>
+#include <stdlib.h>  // exit()
 #include <stdio.h>
-#include <unistd.h>  // close
+//#include <unistd.h>  // close
 #include "../../debug.h"
 
 namespace {
@@ -105,32 +106,9 @@ int wait_bo(int fd, uint32_t handle) {
 
 int fd = 0;
 
-}  // anon namespace
 
-
-/**
- * Apparently, you don't need to close afterwards.
- * If you try, then you get the perror:
- *
- *    Inappropriate ioctl for device
- */
-bool v3d_open() {
-	if (fd == 0) {
-		// It appears to be a random crap shoot which device card0 and card1 address
-		// TODO: Find a way to determine correct device entry
-		fd = open("/dev/dri/card0", O_RDWR);
-	}
-
-	return (fd > 0);
-}
-
-
-bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
+bool alloc_intern(int fd, uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
 		assert(fd != 0);
-		assert(size > 0);
-		assert(handle == 0);
-		assert(phyaddr == 0);
-		assert(*usraddr == nullptr);
 
     drm_v3d_create_bo create_bo;
     create_bo.size = size;
@@ -159,6 +137,81 @@ bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usradd
     return (usraddr != MAP_FAILED);
 }
 
+int open_card(char const *card) {
+	int fd = open(card , O_RDWR);
+
+	if (fd == 0) {
+		printf("FATAL: Can't open card device (sudo?)\n");
+		exit(-1);
+	}
+
+	//
+	// Perform an operation on the device: allocate 16 bytes of memory.
+	// The 'wrong' card will fail here
+	//
+	{
+		const uint32_t ALLOC_SIZE = 16;
+
+		// Place a call on it see if it works
+    uint32_t handle = 0;
+    uint32_t phyaddr = 0;
+		void *usraddr = nullptr;
+
+		if (alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr)) {
+			// worked! clean up
+			v3d_unmap(ALLOC_SIZE, handle, usraddr);
+		} else {
+			// fail
+			fd = 0;
+		}
+	}
+
+	return fd;
+}
+
+}  // anon namespace
+
+/**
+ * Apparently, you don't need to close afterwards.
+ * If you try, then you get the perror:
+ *
+ *    Inappropriate ioctl for device
+ */
+bool v3d_open() {
+	if (fd != 0) {
+		// Already open, all is well
+		return true;
+	}
+
+	// It appears to be a random crap shoot which device card0 and card1 address
+	// So we try both, test them and pick the one that works (if any)
+	int fd0 = open_card("/dev/dri/card0");
+	int fd1 = open_card("/dev/dri/card1");
+
+	if (fd0 == 0) {
+		assert(fd1 != 0);
+		fd = fd1;
+	} else if (fd1 == 0) {
+		assert(fd0 != 0);
+		fd = fd0;
+	} else {
+		printf("FATAL: could not open card device\n");
+		exit(-1);
+	}
+
+	return (fd > 0);
+}
+
+
+bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
+		assert(size > 0);
+		assert(handle == 0);
+		assert(phyaddr == 0);
+		assert(*usraddr == nullptr);
+
+	return  alloc_intern(fd, size, handle, phyaddr, usraddr);
+}
+
 
 bool v3d_unmap(uint32_t size, uint32_t handle,  void *usraddr) {
 	assert(size > 0);
@@ -177,8 +230,6 @@ bool v3d_unmap(uint32_t size, uint32_t handle,  void *usraddr) {
 
 
 bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle) {
-	breakpoint
-
 	assert(fd > 0);	
 
 	if (submit_csd(fd, phyaddr, handle)) {
@@ -186,7 +237,9 @@ bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle) {
 		return false;
 	}
 
-	wait_bo(fd, handle);
+	if (0 != wait_bo(fd, handle)) {
+		assert(false);
+	}
 	return true;
 }
 

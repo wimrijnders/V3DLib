@@ -48,7 +48,6 @@ public:
 
 
 	void dealloc() {
-		breakpoint
 		if (m_size > 0) {
 			dealloc_mem();
 			m_size = 0;
