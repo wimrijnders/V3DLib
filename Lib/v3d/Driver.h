@@ -5,7 +5,7 @@
 
 
 namespace QPULib {
-namespace vc6 {
+namespace v3d {
 
 class Dispatcher {
   using SharedArray = Target::SharedArray<uint32_t>;
@@ -55,7 +55,7 @@ private:
 
 };  // class Driver
 
-}  // vc6
+}  // v3d
 }  // QPULib
 
 #endif // _VC6_DRIVER_H_

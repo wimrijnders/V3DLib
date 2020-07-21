@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>     /* abort, NULL */
+#include "Common/BufferType.h"
 
 
 extern uint32_t emuHeapEnd;
@@ -67,6 +68,10 @@ template <typename T> class SharedArray {
 		assert(n >= 0);
 		alloc(n);
   }
+
+	void setType(BufferType buftype) {
+		assert(HeapBuffer == buftype);
+	}
 
   uint32_t getAddress() {
     return address*4;

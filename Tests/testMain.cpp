@@ -16,7 +16,7 @@
 #ifdef QPU_MODE
 #include "../Lib/Target/Emulator.h"  // MAX_QPUS
 #include "../Lib/VideoCore/RegisterMap.h"
-#include "../Lib/VideoCore/vc6/RegisterMapping.h"
+#include "../Lib/v3d/RegisterMapping.h"
 #include "../Lib/Support/Platform.h"
 
 using RegMap = QPULib::RegisterMap;
@@ -88,10 +88,10 @@ TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
 			printf("Checking num QPU's v3d\n");
 			const int MAX_QPUS_V3D = 8;
 
-			QPULib::vc6::RegisterMapping map_vc6;
-			map_vc6.init();
-			REQUIRE(1 == map_vc6.num_cores());  // This is a canary; warn me if this ever changes
-			REQUIRE(MAX_QPUS_V3D == map_vc6.core_info(0).num_qpu);
+			QPULib::v3d::RegisterMapping map_v3d;
+			map_v3d.init();
+			REQUIRE(1 == map_v3d.num_cores());  // This is a canary; warn me if this ever changes
+			REQUIRE(MAX_QPUS_V3D == map_v3d.core_info(0).num_qpu);
 		}
 	}
 }

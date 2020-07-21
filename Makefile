@@ -228,7 +228,8 @@ $(OBJ_DIR):
 	@mkdir -p $(OBJ_DIR)/Source
 	@mkdir -p $(OBJ_DIR)/Target
 	@mkdir -p $(OBJ_DIR)/Support
-	@mkdir -p $(OBJ_DIR)/VideoCore/vc6
+	@mkdir -p $(OBJ_DIR)/v3d
+	@mkdir -p $(OBJ_DIR)/VideoCore
 	@mkdir -p $(OBJ_DIR)/Examples/Rot3DLib   # Creates Examples as well
 	@mkdir -p $(OBJ_DIR)/Examples/Support
 	@mkdir -p $(OBJ_DIR)/Tools

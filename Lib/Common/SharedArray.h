@@ -10,17 +10,7 @@ There is no way to use the QPU mode SharedArray without a serious rewrite.
 #ifndef _QPULIB_SHAREDARRAY_H_
 #define _QPULIB_SHAREDARRAY_H_
 #include <debug.h>
-
-
-namespace QPULib {
-
-enum BufferType : int {
-	HeapBuffer,
-	Vc4Buffer //,
-//	V3dBuffer
-};
-
-}
+#include "BufferType.h"
 
 
 #if !defined(QPU_MODE) && !defined(EMULATION_MODE)
@@ -50,6 +40,9 @@ using SharedArray=Target::SharedArray<T>;
 
 //template <typename T>
 //using SharedArray=QPULib::VideoCore::SharedArray<T>;
+
+#include "../v3d/SharedArray.h"
+
 #endif  // QPU_MODE
 
 
@@ -107,6 +100,9 @@ public:
 		case Vc4Buffer:
 			ret = m_gpu_array.getAddress();
 			break;
+		case V3dBuffer:
+			ret = m_v3d_array.getAddress();
+			break;
 		}
 
 		return ret;
@@ -123,6 +119,9 @@ public:
 			case Vc4Buffer:
 				moveTo(m_gpu_array, m_main_array);
 				break;
+			case V3dBuffer:
+				moveTo(m_v3d_array, m_main_array);
+				break;
 			}
 			break;
 		case Vc4Buffer:
@@ -131,6 +130,22 @@ public:
 				moveTo(m_main_array, m_gpu_array);
 				break;
 			case Vc4Buffer:
+				// Nothing to do
+				break;
+			case V3dBuffer:
+				moveTo(m_v3d_array, m_gpu_array);
+				break;
+			}
+			break;
+		case V3dBuffer:
+			switch(m_buftype) {
+			case HeapBuffer:
+				moveTo(m_main_array, m_v3d_array);
+				break;
+			case Vc4Buffer:
+				moveTo(m_gpu_array, m_v3d_array);
+				break;
+			case V3dBuffer:
 				// Nothing to do
 				break;
 			}
@@ -155,10 +170,17 @@ public:
 			assert(m_gpu_array.size() == 0);
 			m_gpu_array.alloc(n);
 			break;
+		case V3dBuffer:
+			breakpoint
+			assert(m_v3d_array.size() == 0);
+			m_v3d_array.alloc(n);
+			break;
+			break;
 		}
 
 		m_size = n;
   }
+
 
   T& operator[] (int i) {
 		assert(i >= 0 && i < m_size);
@@ -171,6 +193,10 @@ public:
 			break;
 		case Vc4Buffer:
 			ret = &m_gpu_array[i];
+			break;
+		case V3dBuffer:
+			breakpoint
+			ret = &m_v3d_array[i];
 			break;
 		}
 
@@ -190,6 +216,14 @@ public:
 		return m_main_array;
 	}
 
+
+	operator v3d::SharedArray<T> &() {
+		breakpoint
+		setType(V3dBuffer);	
+		return m_v3d_array;
+	}
+
+
 private:
   // Disallow assignment & copying
   void operator=(SharedArray<T> a);
@@ -199,8 +233,9 @@ private:
 	BufferType m_buftype = HeapBuffer;
   uint32_t m_size = 0;
 
-	Target::SharedArray<T>   m_main_array;
+	Target::SharedArray<T>    m_main_array;
 	VideoCore::SharedArray<T> m_gpu_array;
+	v3d::SharedArray<T>       m_v3d_array;
 
 
 	template<typename Src, typename Dst>

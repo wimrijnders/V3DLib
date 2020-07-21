@@ -6,7 +6,7 @@
 #include "Driver.h"
 
 namespace QPULib {
-namespace vc6 {
+namespace v3d {
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -105,5 +105,5 @@ void Driver::execute(
   csd.dispatch(code, uniforms, workgroup, wgs_per_sg, thread);
 }
 
-}  // vc6
+}  // v3d
 }  // QPULib

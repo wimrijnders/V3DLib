@@ -7,7 +7,7 @@
 #include "Support/Platform.h"
 #include "VideoCore/VideoCore.h"
 #include "VideoCore/RegisterMap.h"
-#include "VideoCore/vc6/RegisterMapping.h"
+#include "v3d/RegisterMapping.h"
 
 using namespace QPULib;
 
@@ -145,15 +145,15 @@ void showSchedulerRegisters() {
  *     kernel:[69733.669496] Code: e5933000 e593300c e5933018 e5933014 (e5933008) 
  *    Segmentation fault
  */
-void detect_vc6() {
-	vc6::RegisterMapping map_vc6;
-	map_vc6.init();
+void detect_v3d() {
+	v3d::RegisterMapping map_v3d;
+	map_v3d.init();
 	
-	unsigned ncores = map_vc6.num_cores();
+	unsigned ncores = map_v3d.num_cores();
 	printf("Number of cores : %d\n",   ncores);
 
 	for (unsigned core = 0; core < ncores; ++core) {
-		auto info = map_vc6.core_info(core);
+		auto info = map_v3d.core_info(core);
 
 		printf("Core index %d:\n", info.index);
 		printf("  VPM size      : %d\n", info.vpm_size);
@@ -212,7 +212,7 @@ int main(int argc, char const *argv[]) {
 	if (Platform::instance().has_vc4) {
 		detect_vc4();
 	} else {
-		detect_vc6();
+		detect_v3d();
 	}
 #endif  // QPU_MODE
 

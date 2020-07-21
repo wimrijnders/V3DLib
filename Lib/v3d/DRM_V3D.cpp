@@ -12,8 +12,8 @@
 
 
 namespace {
-	using QPULib::vc6::Cfg;
-	using QPULib::vc6::Coef;
+	using QPULib::v3d::Cfg;
+	using QPULib::v3d::Coef;
 
 	const char *CARD_0  =  "/dev/dri/card0";
 	const char *CARD_1  =  "/dev/dri/card0";
@@ -63,7 +63,7 @@ namespace {
 
 
 namespace QPULib {
-namespace vc6 {
+namespace v3d {
 
 void DRM_V3D::init(int card) {
 	assert(card == 0 || card ==1);
@@ -120,5 +120,5 @@ void DRM_V3D::v3d_submit_csd(
 	ioctl(m_fd, IOCTL_V3D_SUBMIT_CSD, st);
 }
 
-}  // vc6
+}  // v3d
 }  // QPULib

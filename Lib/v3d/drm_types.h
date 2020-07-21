@@ -10,11 +10,11 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <array>
-#include "../../Target/SharedArray.h"
+#include "../Target/SharedArray.h"
 
 
 namespace QPULib {
-namespace vc6 {
+namespace v3d {
 
 using Cfg = std::array<uint32_t, 7>;
 using Coef = std::array<uint32_t, 4>;
@@ -34,7 +34,7 @@ struct WorkGroup {
 };
 
 
-}  // vc6
+}  // v3d
 }  // QPULib
 
 

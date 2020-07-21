@@ -2,8 +2,8 @@
 #ifdef QPU_MODE
 #include <sys/time.h>
 #include <cstring>
-#include "VideoCore/vc6/SharedArray.h"
-#include "VideoCore/vc6/v3d.h"
+#include "v3d/SharedArray.h"
+#include "v3d/v3d.h"
 #include "debug.h"
 
 

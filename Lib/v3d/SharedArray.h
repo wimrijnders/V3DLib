@@ -2,7 +2,7 @@
 #define _QPULIB_V3D_SHAREDARRAY_H_
 #include <cassert>
 #include <stdint.h>
-#include "../../debug.h"
+#include "../debug.h"
 
 
 namespace QPULib {

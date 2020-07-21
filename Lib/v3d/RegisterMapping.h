@@ -4,7 +4,7 @@
 
 
 namespace QPULib {
-namespace vc6 {
+namespace v3d {
 
 class RegisterMapping {
 public:
@@ -33,7 +33,7 @@ private:
 };
 
 
-}  // vc6
+}  // v3d
 }  // QPULib
 
 #endif  // _VC6_REGISTERMAPPING_H

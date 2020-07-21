@@ -4,7 +4,7 @@
 #include <stdio.h>
 #include "RegisterMapping.h"
 #include "readwrite4.h"
-#include "../Mailbox.h"  // for mapmem()
+#include "../VideoCore/Mailbox.h"  // for mapmem()
 
 
 namespace {
@@ -29,7 +29,7 @@ uint32_t HubField(uint32_t reg, unsigned high, unsigned low) {
 
 
 namespace QPULib {
-namespace vc6 {
+namespace v3d {
 
 
 //
@@ -95,5 +95,5 @@ RegisterMapping::CoreInfo RegisterMapping::core_info(unsigned core_index) {
 	return ret;
 }
 
-}  // vc6
+}  // v3d
 }  // QPULib

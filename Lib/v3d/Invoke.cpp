@@ -4,18 +4,20 @@
 
 
 namespace QPULib {
-namespace vc6 {
-  using SharedArray = Target::SharedArray<uint32_t>;
+namespace v3d {
 
 void invoke(
   int numQPUs,
-  SharedArray &codeMem,
+  SharedArray<uint32_t> &codeMem,
   int qpuCodeMemOffset,
   Seq<int32_t>* params) {
 
 	printf("============================\n");
-	printf("This would run the vc6 code!\n");
+	printf("This would run the v3d code!\n");
 	printf("============================\n");
+
+#if NOT_DONE_YET
+	assert(codeMem.size() != 0);
 
   Driver drv;
 
@@ -42,7 +44,8 @@ void invoke(
 */
 	auto csd = drv.compute_shader_dispatcher();
 	csd.dispatch(codeMem, &unif);
+#endif // NOT_DONE_YET
 }
 
-}  // vc6
+}  // v3d
 }  // QPULib

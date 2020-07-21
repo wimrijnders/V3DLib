@@ -1,6 +1,6 @@
 #include "SharedArray.h"
 #include <sys/mman.h>
-#include "../../debug.h"
+#include "../debug.h"
 #include "v3d.h"
 
 namespace QPULib {

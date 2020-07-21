@@ -4,7 +4,7 @@
 
 
 namespace QPULib {
-namespace vc6 {
+namespace v3d {
 
 class DRM_V3D {
 public:
@@ -25,7 +25,7 @@ private:
 	void done();
 };
 
-}  // vc6
+}  // v3d
 }  // QPULib
 
 #endif // _VC6_DRM_V3D_H_

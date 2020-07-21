@@ -5,7 +5,7 @@
 #include "Target/Emulator.h"
 #include "Target/Encode.h"
 #include "Common/SharedArray.h"
-#include "VideoCore/vc6/Invoke.h"
+#include "v3d/Invoke.h"
 #include "VideoCore/Invoke.h"
 #include "VideoCore/VideoCore.h"
 #include "Source/Pretty.h"
@@ -309,17 +309,15 @@ template <typename... ts> struct Kernel {
   }
 
 
-#if 0
   template <typename... us> void v3d(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args, BufferType::V3dBuffer)...);
 
     // Invoke kernel on QPUs
-		assert(!Platform::instance().has_vc4));
-		vc6::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
+		assert(!Platform::instance().has_vc4);
+		v3d::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
   }
-#endif
 #endif
  
   // Invoke the kernel
@@ -328,7 +326,11 @@ template <typename... ts> struct Kernel {
       emu(args...);
 #else
 	#ifdef QPU_MODE
+		if (Platform::instance().has_vc4) {
         qpu(args...);
+		} else {
+        v3d(args...);
+		}
 	#endif
 #endif
   };
