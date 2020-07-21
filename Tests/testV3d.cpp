@@ -5,6 +5,7 @@
 #include "v3d/SharedArray.h"
 #include "v3d/v3d.h"
 #include "debug.h"
+#include "Support/Platform.h"
 
 
 
@@ -36,6 +37,12 @@ double get_time() {
  */
 TEST_CASE("Check v3d code is working properly", "[v3d]") {
 	SECTION("Direct v3d calls should work properly") {
+		if (Platform::instance().has_vc4) {
+			// Skip test if not on Pi4
+			printf("Skipping v3d tests\n");
+			return;
+		}
+
 		REQUIRE(v3d_open());
 
     uint32_t handle = 0;
@@ -76,6 +83,11 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 	}
 
 	SECTION("v3d SharedArray should work as expected") {
+		if (Platform::instance().has_vc4) {
+			// Skip test if not on Pi4
+			return;
+		}
+
 		const int SIZE = 16;
 
 		QPULib::v3d::SharedArray<uint32_t> arr(SIZE);
