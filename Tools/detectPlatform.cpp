@@ -149,17 +149,27 @@ void detect_v3d() {
 	v3d::RegisterMapping map_v3d;
 	map_v3d.init();
 	
-	unsigned ncores = map_v3d.num_cores();
-	printf("Number of cores : %d\n",   ncores);
+	auto info = map_v3d.info();
+	printf("Revision        : %d.%d.%d.%d\n", info.tver, info.rev, info.iprev, info.ipidx);
+	printf("Number of cores : %d\n",   info.num_cores);
+	printf("MMU             : %s\n", (info.mmu)?"yes":"no");
+	printf("TFU             : %s\n", (info.tfu)?"yes":"no");
+	printf("TSY             : %s\n", (info.tsy)?"yes":"no");
+	printf("MSO             : %s\n", (info.mso)?"yes":"no");
+	printf("L3C             : %s (%dkb)\n\n", (info.l3c)?"yes":"no", info.l3c_nkb);
 
-	for (unsigned core = 0; core < ncores; ++core) {
-		auto info = map_v3d.core_info(core);
+	for (unsigned core = 0; core < info.num_cores; ++core) {
+		auto info = map_v3d.info_per_core(core);
 
 		printf("Core index %d:\n", info.index);
+		printf("  Revision      : %d.%d\n", info.ver, info.rev);
 		printf("  VPM size      : %d\n", info.vpm_size);
 		printf("  Num slices    : %d\n", info.num_slice);
-		printf("  Num TMU's     : %d\n", info.num_tmu);
-		printf("  Num QPU's     : %d\n", info.num_qpu);
+		printf("  Num TMU's     : %d (all slices)\n", info.num_tmu);
+		printf("  Num QPU's     : %d (all slices)\n", info.num_qpu);
+		printf("  Num semaphores: %d\n", info.num_semaphore);
+		printf("  BCG int       : %s\n", (info.bcg_int)?"yes":"no");
+		printf("  Override TMU  : %s\n", (info.override_tmu)?"yes":"no");
 	}
 }
 
