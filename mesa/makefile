@@ -16,16 +16,29 @@ MAINDIR = ../obj/mesa/main
 XX_FLAGS = -MMD -MP -MF"$(@:%.o=%.d)"
 
 INCLUDES = \
--I ./libdrm/ \
+-I ./src/drm/ \
 -I ./include/ \
+-I ./include/drm-uapi \
 -I ./src/ \
 -I ./src/compiler/ \
 -I ./src/mesa/ \
 -I ./src/broadcom/ \
+-I ./src/util/ \
 -I ./src/gallium/include/ \
 -I ./src/gallium/auxiliary/
 
-CFLAGS = -g -Wall -O3 \
+# expat is an XML parser library
+#/usr/lib/arm-linux-gnueabihf/libexpat.so
+LIBS = \
+-l mesa \
+-l pthread \
+-l z \
+-l expat
+
+
+CFLAGS = -g -Wall -O3 -pthread \
+-D_GNU_SOURCE \
+-D MAJOR_IN_SYSMACROS \
 -D HAVE_PTHREAD \
 -D HAVE_TIMESPEC_GET \
 -D HAVE_ENDIAN_H \
@@ -69,15 +82,6 @@ DEPS := $(LIB:.o=.d)
 #$(info deps:  $(DEPS))
 -include $(DEPS)
 
-#NIR := \
-#	nir_builder.h \
-#	nir_builder_opcodes.h \
-#	nir_opcodes.h \
-#	nir_intrinsics.h
-
-#NIR_INCLUDES := $(addprefix $(SRCDIR)/compiler/nir/,$(NIR))
-##$(info nir: $(NIR_INCLUDES))
-
 MESA_LIB=$(BINDIR)/libmesa.a
 
 ###############
@@ -104,7 +108,6 @@ $(OBJDIR)/%.o: $(SRCDIR)/%.cpp
 	mkdir -p $(@D)
 	g++ $(CFLAGS) -c $< -o $@
 
-
 $(MESA_LIB): $(OBJFILES)
 	@echo Creating $@
 	mkdir -p $(@D)
@@ -118,4 +121,4 @@ $(MAINDIR)/%.o: main/%.c
 
 $(BINDIR)/main: $(MAINDIR)/main.o $(MESA_LIB)
 	@echo Linking $@...
-	$(LINK) -L $(BINDIR) -l mesa -lpthread $^ -o $@
+	$(LINK) -L $(BINDIR) $(LIBS) $^ -o $@
