@@ -6,15 +6,14 @@
 #include "gallium/drivers/v3d/v3d_context.h"
 
 /*
+// TEST1
+
 #include "broadcom/compiler/v3d_compiler.h"
 
 void debug_output(const char *msg, void *debug_output_data) {
 }
-*/
 
-int main(int argc, char *argv[]) {
-
-/*
+void compile1() {
 	struct v3d_compiler compiler;
 	struct v3d_key key;
 	struct v3d_prog_data *prog_data = 0;
@@ -35,11 +34,27 @@ int main(int argc, char *argv[]) {
 		&final_assembly_size);
 
 	printf("ret: %llu\n", *ret);
-*/
+}
 
-	
+// TEST2
+
+void compile2() {
 	struct v3d_context v3d;
 	v3d_update_compiled_cs(&v3d);
+*/
+
+int main(int argc, char *argv[]) {
+	int fd = 0;
+	struct pipe_screen_config *config = 0;
+	struct renderonly *ro = 0;
+
+	struct pipe_screen *pscreen;
+	void *priv = 0;
+	unsigned flags = 0;
+	struct pipe_context *pcontext;
+
+	pscreen = v3d_screen_create(fd, config, ro);
+	pcontext = v3d_context_create(pscreen, priv, flags);
 
 	return 0;
 }

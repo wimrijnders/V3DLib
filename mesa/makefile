@@ -5,9 +5,17 @@
 #
 # This assumes -I./include
 #
+# ------------------------------------------------------------------------------
+# 
+# * The v3d simulator is **closed source**. You need to register with MESA to use it.
+#
+#   So there is no point in enabling `-DUSE_V3D_SIMULATOR`
+#
+# * Compute shaders are only used for versions >= 41
+#
+#   See `v3d_launch_grid()` in `gallium/drivers/v3d/v3dX_draw.c`
+#
 ################################################################################
-#SRCDIR = arch/arm/include drivers 
-#SRCDIR = drivers/gpu/drm
 SRCDIR = src
 OBJDIR = ../obj/mesa/src
 BINDIR = ../obj/mesa/bin
@@ -84,9 +92,10 @@ DEPS := $(LIB:.o=.d)
 
 MESA_LIB=$(BINDIR)/libmesa.a
 
-###############
+
+################################################################################
 # Rules
-###############
+################################################################################
 
 #compile: $(NIR_INCLUDES) $(OBJFILES)
 compile: $(BINDIR)/main
