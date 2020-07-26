@@ -29,9 +29,12 @@ INCLUDES = \
 -I ./include/drm-uapi \
 -I ./src/ \
 -I ./src/compiler/ \
+-I ./src/loader/ \
 -I ./src/mesa/ \
 -I ./src/broadcom/ \
 -I ./src/util/ \
+-I ./src/gallium/winsys/ \
+-I ./src/gallium/drivers/ \
 -I ./src/gallium/include/ \
 -I ./src/gallium/auxiliary/
 
@@ -41,6 +44,7 @@ LIBS = \
 -l mesa \
 -l pthread \
 -l z \
+-l dl \
 -l expat
 
 
@@ -51,6 +55,7 @@ CFLAGS = -g -Wall -O3 -pthread \
 -D HAVE_TIMESPEC_GET \
 -D HAVE_ENDIAN_H \
 -D V3D_VERSION=33 \
+-D GALLIUM_STATIC_TARGETS \
 $(INCLUDES) \
 $(XX_FLAGS)
 

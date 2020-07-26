@@ -36,6 +36,7 @@ void compile1() {
 	printf("ret: %llu\n", *ret);
 }
 
+
 // TEST2
 
 void compile2() {
@@ -43,17 +44,61 @@ void compile2() {
 	v3d_update_compiled_cs(&v3d);
 */
 
-int main(int argc, char *argv[]) {
-	int fd = 0;
-	struct pipe_screen_config *config = 0;
-	struct renderonly *ro = 0;
 
-	struct pipe_screen *pscreen;
+// TEST3
+
+// NOTE:
+// pipe_loader_create_screen() in gallium/auxiliary/pipe-loader/pipe_loader.c
+
+#include "gallium/include/frontend/drm_driver.h"
+#include "gallium/winsys/v3d/drm/v3d_drm_public.h"
+#include "util/driconf.h"
+#include "gallium/auxiliary/pipe-loader/pipe_loader.h"
+
+// Adjusted from gallium/auxiliary/target-helpers/drm_helper.h
+struct pipe_screen *
+pipe_v3d_create_screen(int fd, const struct pipe_screen_config *config)
+{
+   struct pipe_screen *screen;
+
+   screen = v3d_drm_screen_create(fd, config);
+   //return screen ? debug_screen_wrap(screen) : NULL;
+   return screen;
+}
+
+const char *v3d_driconf_xml =
+      //#include "v3d/v3d_driinfo.h"  // WR: Is this a typo in the mesa code??
+      #include "gallium/drivers/v3d/driinfo_v3d.h"
+      ;
+
+// from gallium/auxiliary/pipe-loader/pipe_loader_drm.c
+const struct drm_driver_descriptor driver_descriptor = {
+        .driver_name = "v3d",
+        .create_screen = pipe_v3d_create_screen,
+        .driconf_xml = &v3d_driconf_xml,
+};
+
+
+int main(int argc, char *argv[]) {
+	int fd;  // TODO initialize
+
+	struct pipe_screen_config *config = 0;
+	struct renderonly *ro = 0;  // can be passed as null
+
+	struct pipe_screen *pscreen = 0;
 	void *priv = 0;
 	unsigned flags = 0;
 	struct pipe_context *pcontext;
 
-	pscreen = v3d_screen_create(fd, config, ro);
+	// Called in v3d_drm_screen_create()
+	//pscreen = v3d_screen_create(fd, config, ro);
+
+	struct pipe_loader_device *dev = 0;
+	if (!pipe_loader_drm_probe_fd(&dev, fd)) {
+		exit(-1);  // FAIL
+	}
+
+
 	pcontext = v3d_context_create(pscreen, priv, flags);
 
 	return 0;
