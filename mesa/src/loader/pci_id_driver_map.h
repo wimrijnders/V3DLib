@@ -56,7 +56,8 @@ static const int vmwgfx_chip_ids[] = {
 #undef CHIPSET
 };
 
-bool is_nouveau_vieux(int fd);
+// WRI change: bool is_nouveau_vieux(int fd);
+bool is_nouveau_vieux(int fd) { return false; }
 bool is_kernel_i915(int fd);
 
 static const struct {

@@ -42,6 +42,8 @@
 #include "frontend/drisw_api.h"
 #include "frontend/sw_driver.h"
 #include "frontend/sw_winsys.h"
+#include "../target-helpers/sw_helper.h"  // WRI addition
+
 
 struct pipe_loader_sw_device {
    struct pipe_loader_device base;

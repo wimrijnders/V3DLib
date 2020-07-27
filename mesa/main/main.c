@@ -4,6 +4,10 @@
  */
 #include <stdio.h>
 #include "gallium/drivers/v3d/v3d_context.h"
+#include "loader/loader.h"
+
+#include <signal.h>  // raise(SIGTRAP);
+#define breakpoint raise(SIGTRAP);
 
 /*
 // TEST1
@@ -79,7 +83,17 @@ const struct drm_driver_descriptor driver_descriptor = {
 };
 
 
+/**
+ prob TODO: call one/bothof following to clean up
+
+gallium/auxiliary/pipe-loader/pipe_loader.h:pipe_loader_release(struct pipe_loader_device **devs, int ndev);
+gallium/auxiliary/pipe-loader/pipe_loader_drm.c:   pipe_loader_base_release(dev);
+ */
+
 int main(int argc, char *argv[]) {
+  const char *CARD_0  =  "/dev/dri/card0";
+  const char *CARD_1  =  "/dev/dri/card1";
+
 	int fd;  // TODO initialize
 
 	struct pipe_screen_config *config = 0;
@@ -93,12 +107,18 @@ int main(int argc, char *argv[]) {
 	// Called in v3d_drm_screen_create()
 	//pscreen = v3d_screen_create(fd, config, ro);
 
+	fd	= loader_open_device(CARD_0);
+	if (fd == -1) {
+		exit(-1);
+	}
+
 	struct pipe_loader_device *dev = 0;
 	if (!pipe_loader_drm_probe_fd(&dev, fd)) {
 		exit(-1);  // FAIL
 	}
 
-
+	breakpoint
+	pscreen = pipe_loader_create_screen(dev);
 	pcontext = v3d_context_create(pscreen, priv, flags);
 
 	return 0;

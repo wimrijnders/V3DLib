@@ -146,6 +146,14 @@ static const struct drm_driver_descriptor driver_descriptors[] = {
 #endif  // WRI_DISABLED
 };
 
+// WRI from gallium/auxiliary/target-helpers/drm_helper.h
+struct pipe_screen *
+pipe_kmsro_create_screen(int fd, const struct pipe_screen_config *config)
+{
+   return NULL;
+}
+
+
 static const struct drm_driver_descriptor default_driver_descriptor = {
         .driver_name = "kmsro",
         .create_screen = pipe_kmsro_create_screen,
