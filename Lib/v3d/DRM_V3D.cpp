@@ -16,7 +16,7 @@ namespace {
 	using QPULib::v3d::Coef;
 
 	const char *CARD_0  =  "/dev/dri/card0";
-	const char *CARD_1  =  "/dev/dri/card0";
+	const char *CARD_1  =  "/dev/dri/card1";
 
 		// Derived from linux/include/uapi/drm/drm.h
     const unsigned DRM_IOCTL_BASE = 'd';
