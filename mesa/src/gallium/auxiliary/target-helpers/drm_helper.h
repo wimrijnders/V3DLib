@@ -305,7 +305,8 @@ pipe_v3d_create_screen(int fd, const struct pipe_screen_config *config)
 }
 
 const char *v3d_driconf_xml =
-      #include "v3d/v3d_driinfo.h"
+      //#include "v3d/v3d_driinfo.h"  // WR: typo???
+      #include "v3d/driinfo_gallium.h"
       ;
 
 #else

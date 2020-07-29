@@ -51,11 +51,17 @@ static int (*backends[])(struct pipe_loader_device **, int) = {
    &pipe_loader_sw_probe
 };
 
+#ifdef WRI_DISABLE
 const char gallium_driinfo_xml[] =
    DRI_CONF_BEGIN
 #include "driinfo_gallium.h"
    DRI_CONF_END
 ;
+#else
+const char gallium_driinfo_xml[] =
+#include "driinfo_gallium.h"
+;
+#endif  // WRI_DISABLE
 
 int
 pipe_loader_probe(struct pipe_loader_device **devs, int ndev)
@@ -93,9 +99,13 @@ pipe_loader_load_options(struct pipe_loader_device *dev)
    if (dev->option_info.info)
       return;
 
+#ifdef WRI_DISABLE
    const char *xml_options = dev->ops->get_driconf_xml(dev);
    if (!xml_options)
       xml_options = gallium_driinfo_xml;
+#else
+		const char *xml_options = gallium_driinfo_xml;
+#endif // WRI_DISABLE
 
    driParseOptionInfo(&dev->option_info, xml_options);
    driParseConfigFiles(&dev->option_cache, &dev->option_info, 0,

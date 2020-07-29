@@ -47,7 +47,6 @@ LIBS = \
 -l dl \
 -l expat
 
-# GALLIUM_V3D
 CFLAGS = -g -Wall -O3 -pthread \
 -D_GNU_SOURCE \
 -D MAJOR_IN_SYSMACROS \
@@ -58,6 +57,7 @@ CFLAGS = -g -Wall -O3 -pthread \
 -D GALLIUM_STATIC_TARGETS \
 -D HAVE_LIBDRM \
 -D USE_DRICONF \
+-D GALLIUM_V3D \
 $(INCLUDES) \
 $(XX_FLAGS)
 
