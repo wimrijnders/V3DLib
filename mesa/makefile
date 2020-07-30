@@ -105,7 +105,7 @@ MESA_LIB=$(BINDIR)/libmesa.a
 ################################################################################
 
 #compile: $(NIR_INCLUDES) $(OBJFILES)
-compile: $(BINDIR)/main
+compile: $(BINDIR)/main $(BINDIR)/qpu_disasm
 
 clean:
 	rm -rf $(OBJDIR)/*
@@ -135,6 +135,6 @@ $(MAINDIR)/%.o: main/%.c
 	mkdir -p $(@D)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-$(BINDIR)/main: $(MAINDIR)/main.o $(MESA_LIB)
+$(BINDIR)/%: $(MAINDIR)/%.o $(MESA_LIB)
 	@echo Linking $@...
 	$(LINK) -L $(BINDIR) $(LIBS) $^ -o $@

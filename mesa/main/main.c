@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
 	// Called in v3d_drm_screen_create()
 	//pscreen = v3d_screen_create(fd, config, ro);
 
-	fd	= loader_open_device(CARD_0);
+	fd	= loader_open_device(CARD_0);  // TODO check if we possibly need CARD1 here
 	if (fd == -1) {
 		exit(-1);
 	}
