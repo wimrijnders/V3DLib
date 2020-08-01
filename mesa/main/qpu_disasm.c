@@ -748,12 +748,10 @@ static void swap_pack(enum v3d_qpu_input_unpack *a, enum v3d_qpu_input_unpack *b
 }
 
 
-static int test_instr(
-	struct v3d_device_info *devinfo, uint64_t in_code 
-) {
+static int test_instr(struct v3d_device_info *devinfo, uint64_t in_code) {
 		struct v3d_qpu_instr instr;
 		if (!v3d_qpu_instr_unpack(devinfo, in_code, &instr)) {
-			printf("FAIL (unpack)\n");
+			printf(" - FAIL (unpack)");
 			return 2;
 		}
 
@@ -779,14 +777,14 @@ static int test_instr(
 
 		uint64_t repack;
 		if (!v3d_qpu_instr_pack(devinfo, &instr, &repack)) {
-			printf("FAIL (pack)\n");
+			printf(" - FAIL (pack)");
 			return 1;
 		}
 
 		if (repack != in_code) {
-			printf("Repack FAILED 0x%016llx: ", (long long)repack);
+			printf("- Repack FAILED: 0x%016llx: ", (long long)repack);
 			const char *redisasm = v3d_qpu_disasm(devinfo, repack);
-			printf("\"%s\"\n", redisasm);
+			printf("\"%s\"", redisasm);
 			return 2;
 		}
 
@@ -804,10 +802,10 @@ int main(int argc, char **argv) {
 	printf("version v%d.%d\n", devinfo.ver / 10, devinfo.ver % 10);
 
 	for (int i = 0; i < ARRAY_SIZE(code); i++) {
-		printf("0x%016llx : ", (long long)code[i]);
+		printf("\t0x%016llx", (long long)code[i]);
 
 		const char *disasm_output = v3d_qpu_disasm(&devinfo, code[i]);
-		printf("\"%-56s\"; ", disasm_output);
+		printf(",  // %-56s", disasm_output);
 
 		int ret = test_instr(&devinfo, code[i]);
 		if (ret == 1) {

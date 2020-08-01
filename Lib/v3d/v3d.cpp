@@ -227,7 +227,11 @@ bool v3d_unmap(uint32_t size, uint32_t handle,  void *usraddr) {
 	return (ioctl(fd, IOCTL_GEM_CLOSE, &cl) == 0);
 }
 
-
+/**
+ * Run the code at the given address specification
+ *
+ * Note that the passed memory may contain data as well.
+ */
 bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle) {
 	assert(fd > 0);	
 

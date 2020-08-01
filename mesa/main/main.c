@@ -84,7 +84,7 @@ const struct drm_driver_descriptor driver_descriptor = {
 
 
 /**
- prob TODO: call one/bothof following to clean up
+ prob TODO: call one/both of following to clean up
 
 gallium/auxiliary/pipe-loader/pipe_loader.h:pipe_loader_release(struct pipe_loader_device **devs, int ndev);
 gallium/auxiliary/pipe-loader/pipe_loader_drm.c:   pipe_loader_base_release(dev);
@@ -112,6 +112,7 @@ int main(int argc, char *argv[]) {
 		exit(-1);
 	}
 
+	// This is the highest level init call I can find.
 	struct pipe_loader_device *dev = 0;
 	if (!pipe_loader_drm_probe_fd(&dev, fd)) {
 		exit(-1);  // FAIL
@@ -119,6 +120,8 @@ int main(int argc, char *argv[]) {
 
 	breakpoint
 	pscreen = pipe_loader_create_screen(dev);
+
+	// Not sure if this already called in previous
 	pcontext = v3d_context_create(pscreen, priv, flags);
 
 	return 0;

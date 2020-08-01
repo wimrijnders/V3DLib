@@ -21,6 +21,9 @@ void SharedArrayBase::alloc_mem(uint32_t n) {
 	if (!v3d_alloc(n, handle, phyaddr, &usraddr)) {
 		assert(false);
 	}
+	assert(handle != 0);
+	assert(phyaddr != 0);
+	assert(usraddr != nullptr);
 
 	m_mem_size = n;
 }
@@ -37,6 +40,7 @@ void SharedArrayBase::dealloc_mem() {
 		if (!v3d_unmap(m_mem_size, handle, usraddr)) {
 			assert(false);
 		}
+		debug("v3d_unmap() called");
 
 		// TODO: what to do about phyaddr here???	
 		usraddr = nullptr;
@@ -48,6 +52,14 @@ void SharedArrayBase::dealloc_mem() {
 		assert(handle == 0);
 	}
 } 
+
+
+/*
+void SharedArrayBase::copyFrom(SharedArrayBase const &src, uint32_t offset) {
+	assert(m_mem_size >= offset + src.m_mem_size);
+  memcpy(usraddr + offset, src.usraddr, src.m_mem_size);
+}
+*/
 
 }  // namespace v3d
 }  // namespace QPULib

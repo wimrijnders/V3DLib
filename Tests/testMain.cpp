@@ -91,7 +91,7 @@ TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
 			QPULib::v3d::RegisterMapping map_v3d;
 			map_v3d.init();
 			REQUIRE(1 == map_v3d.num_cores());  // This is a canary; warn me if this ever changes
-			REQUIRE(MAX_QPUS_V3D == map_v3d.core_info(0).num_qpu);
+			REQUIRE(MAX_QPUS_V3D == map_v3d.info_per_core(0).num_qpu);
 		}
 	}
 }
