@@ -7,8 +7,10 @@
 #include "debug.h"
 #include "Support/Platform.h"
 
-
 #define ARRAY_LENGTH(arr, type) (sizeof(arr)/sizeof(type))
+
+using Data = QPULib::v3d::SharedArray<uint32_t>;
+
 
 namespace {
 
@@ -735,6 +737,33 @@ double get_time() {
     return (double)t.tv_sec + t.tv_usec * 1e-6;
 }
 
+
+template<typename T>
+void dump_data(T const &arr) {
+	const int DISP_LENGTH = 4;
+
+	int first_size = (int) arr.size();
+	if (first_size > DISP_LENGTH) {
+		first_size = DISP_LENGTH;
+	}
+		
+	for (int offset = 0; offset < first_size; ++offset) {
+		printf("%8d: %8d\n", offset, arr[offset]);
+	}
+
+	if (first_size == arr.size()) {
+		return;
+	}
+
+	printf("      ...\n");
+
+	for (int offset = arr.size() - DISP_LENGTH; offset < (int) arr.size(); ++offset) {
+		printf("%8d: %8d\n", offset, arr[offset]);
+	}
+
+	printf("\n");
+}
+
 }  // anon namespace
 
 
@@ -848,8 +877,6 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 	// example here.
 	//
 	SECTION("Summation example should work") {
-		using Data = QPULib::v3d::SharedArray<uint32_t>;
-
 		uint32_t length = 32 * 1024 * 1024;
 		int num_qpus = 8;
 		int unroll_shift = 5;
@@ -857,7 +884,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
     REQUIRE(length > 0);
     REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
 
-    printf("==== summaton example (%lld Mi elements) ====", (length / 1024 / 1024));
+    printf("==== summation example (%lld Mi elements) ====\n", (length / 1024 / 1024));
 
     //with Driver(data_area_size=(length + 1024) * 4) as drv:
     uint32_t code_area_size = DEFAULT_CODE_AREA_SIZE;
@@ -876,9 +903,13 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 			X[offset] = offset;
 		}
 
+		dump_data(X); 
+
 		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
 			Y[offset] = 0;
 		}
+
+		dump_data(Y); 
 
 		auto sumY = [&Y] () -> uint32_t {
 			uint32_t ret = 0;
@@ -905,6 +936,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		//REQUIRE(v3d_submit_csd(combinedMem));
 		REQUIRE(false);  // TODO
 
+		dump_data(Y); 
     REQUIRE(sumY() % (1ull << 32) == (length - 1) * length); // 2 % 2**32
 		double end = get_time();
 		printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));

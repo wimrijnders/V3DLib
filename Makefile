@@ -92,7 +92,7 @@ DEPS := $(LIB:.o=.d)
 # Dependencies for the include files in the Examples directory.
 # Basically, every .h file under examples has a .d in the build directory
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
-$(info $(EXAMPLES_DEPS))
+#$(info $(EXAMPLES_DEPS))
 -include $(EXAMPLES_DEPS)
 
 

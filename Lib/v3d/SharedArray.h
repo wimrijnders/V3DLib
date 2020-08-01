@@ -10,6 +10,7 @@ namespace v3d {
 
 class SharedArrayBase;
 
+
 template<typename T>
 class ArrayView {
 public:
@@ -33,6 +34,16 @@ public:
 	}
 
   // Subscript
+  inline const T operator[] (int i) const {
+		assert(i >= 0);
+		assert(m_size > 0);
+		assert(i < m_size);
+
+    T* base = (T *) m_base;
+    return (T) base[i];
+  }
+
+
   inline T& operator[] (int i) {
 		assert(i >= 0);
 		assert(m_size > 0);
