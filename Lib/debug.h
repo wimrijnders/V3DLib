@@ -1,7 +1,13 @@
 #ifndef _LIB_DEBUG_H
 #define _LIB_DEBUG_H
-#include <cassert>
 #include <signal.h>  // raise(SIGTRAP);
+
+#if defined __cplusplus
+#include <cassert>
+#else
+#include <assert.h>
+#endif
+
 
 #ifdef DEBUG
 #include <stdio.h>

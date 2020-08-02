@@ -48,6 +48,7 @@ LIBS = \
 -l expat
 
 CFLAGS = -g -Wall -O3 -pthread \
+-D DEBUG \
 -D_GNU_SOURCE \
 -D MAJOR_IN_SYSMACROS \
 -D HAVE_PTHREAD \
