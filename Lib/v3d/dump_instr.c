@@ -1,7 +1,6 @@
 #include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "broadcom/qpu/qpu_instr.h"
 #include "dump_instr.h"
 
 
@@ -398,3 +397,14 @@ void instr_dump(char *buffer, struct v3d_qpu_instr *instr) {
 
 #undef TF
 }
+
+
+/**
+ * Wrapper for the actual call we want to make.
+ *
+ * This is here to beat the external linkage issues I've been having.
+ */
+bool instr_unpack(const struct v3d_device_info *devinfo, uint64_t packed_instr, struct v3d_qpu_instr *instr) {
+	return v3d_qpu_instr_unpack(devinfo, packed_instr, instr);
+}
+

@@ -26,7 +26,7 @@ INCLUDE_EXTERN= \
 
 LIB_EXTERN= \
  -L ../CmdParameter/obj -lCmdParameter \
- -L ./obj/mesa/bin -l:mesa.a
+ -Lobj/mesa/bin -lmesa
 
 
 # Root directory of QPULib repository

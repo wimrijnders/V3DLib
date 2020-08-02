@@ -985,7 +985,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		uint64_t nop = 0x3d803186bb800000;  // nop                  ; nop               ; ldunifrf.rf0 
 
 		struct v3d_qpu_instr instr;
-		REQUIRE(!v3d_qpu_instr_unpack(&devinfo, nop, &instr));
+		REQUIRE(instr_unpack(&devinfo, nop, &instr));
 
 		char buffer[10*1024];
 		instr_dump(buffer, &instr);
