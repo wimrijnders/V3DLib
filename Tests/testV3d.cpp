@@ -4,6 +4,7 @@
 #include <cstring>
 #include "v3d/SharedArray.h"
 #include "v3d/v3d.h"
+#include "v3d/dump_instr.h"
 #include "debug.h"
 #include "Support/Platform.h"
 
@@ -940,6 +941,58 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
     REQUIRE(sumY() % (1ull << 32) == (length - 1) * length); // 2 % 2**32
 		double end = get_time();
 		printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
+	}
+}
+
+
+TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
+	SECTION("Correct output of dump program") {
+		struct v3d_device_info devinfo;  // NOTE: uninitialized struct! For test OK
+		devinfo.ver = 42;               //        <-- only this needs to be set
+
+		const char *expected = "\n{\n\
+  type: INSTR_TYPE_ALU,\n\
+  sig: {ldunifrf },\n\
+  sig_addr: 0,\n\
+  sig_magic: false,\n\
+  raddr_a: 0 ,\n\
+  raddr_b: 0,\n\
+  flags: {ac: COND_NONE, mc: COND_NONE, apf: PF_NONE, mpf: PF_NONE, auf: UF_NONE, muf: UF_NONE},\n\
+  alu: {\n\
+    add: {\n\
+      op: A_NOP,\n\
+      a: MUX_R0,\n\
+      b: MUX_R0,\n\
+      waddr: 6,\n\
+      magic_write: true,\n\
+      output_pack: PACK_NONE,\n\
+      a_unpack: UNPACK_NONE, \n\
+      b_unpack: UNPACK_NONE\n\
+    },\n\
+    mul: {\n\
+      op: M_NOP,\n\
+      a: MUX_R0,\n\
+      b: MUX_R4,\n\
+      waddr: 6,\n\
+      magic_write: true,\n\
+      output_pack: PACK_NONE,\n\
+      a_unpack: UNPACK_NONE, \n\
+      b_unpack: UNPACK_NONE\n\
+    }\n\
+  }\n\
+}\n";
+
+		uint64_t nop = 0x3d803186bb800000;  // nop                  ; nop               ; ldunifrf.rf0 
+
+		struct v3d_qpu_instr instr;
+		REQUIRE(!v3d_qpu_instr_unpack(&devinfo, nop, &instr));
+
+		char buffer[10*1024];
+		instr_dump(buffer, &instr);
+
+		INFO("Expected:\n" << expected);
+		INFO("Output:\n" << buffer);
+		REQUIRE(!strcmp(expected, buffer));
 	}
 }
 

@@ -22,10 +22,16 @@
 ################################################################################
 
 # Make list of Library object files
-OBJ1=$(find Lib -name '*.cpp')
-OBJ2=$(echo "$OBJ1" | sed "s/\\.cpp$/\\.o  \\\\/g")
+CPP_FILES=$(find Lib -name '*.cpp')
+OBJ_CPP=$(echo "$CPP_FILES" | sed "s/\\.cpp$/\\.o  \\\\/g")
+
+C_FILES=$(find Lib -name '*.c')
+OBJ_C=$(echo "$C_FILES" | sed "s/\\.c$/\\.o  \\\\/g")
 #echo ====
-OBJ=$(echo "$OBJ2" | sed "s/^Lib\\//  /g")
+OBJ_TMP=$(echo "$OBJ_CPP
+$OBJ_C
+")
+OBJ=$(echo "$OBJ_TMP" | sed "s/^Lib\\//  /g")
 #echo $OBJ
 
 # Get list of executables

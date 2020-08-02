@@ -13,27 +13,33 @@
 #
 ###############################################################################
 
-#QPU := 1
+PWD:=$(shell pwd)
+$(info  pwd: '$(PWD)')
 
 #
 # Stuff for external libraries
 #
-INCLUDE_EXTERN=-I ../CmdParameter/Lib
-LINK_DIR_EXTERN=-L ../CmdParameter/obj
-LIB_EXTERN = -l ../CmdParameter/obj/libCmdParameter.a
+INCLUDE_EXTERN= \
+ -I ../CmdParameter/Lib \
+ -I mesa/include \
+ -I mesa/src
+
+LIB_EXTERN= \
+ -L ../CmdParameter/obj -lCmdParameter \
+ -L ./obj/mesa/bin -l:mesa.a
 
 
 # Root directory of QPULib repository
-ROOT = Lib
+ROOT= Lib
 
 # Compiler and default flags
-CXX = g++
+CXX= g++
 LINK= $(CXX) $(CXX_FLAGS)
 
-LIBS := $(LINK_DIR_EXTERN)$(LIB_EXTERN)
+LIBS := $(LIB_EXTERN)
 
 # -I is for access to bcm functionality
-CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
+CXX_FLAGS = -Wconversion -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
 
 # Object directory
 OBJ_DIR = obj
@@ -150,13 +156,13 @@ $(QPU_LIB): $(LIB)
 
 $(OBJ_DIR)/%.o: $(ROOT)/%.cpp | $(OBJ_DIR)
 	@echo Compiling $<
-	@$(CXX) -c -o $@ $< $(CXX_FLAGS)
+	@$(CXX) -std=c++0x -c -o $@ $< $(CXX_FLAGS)
 
 
 # Same thing for C-files
 $(OBJ_DIR)/%.o: $(ROOT)/%.c | $(OBJ_DIR)
 	@echo Compiling $<
-	@$(CXX) -c -o $@ $< $(CXX_FLAGS)
+	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
 #
 # Targets for Examples and Tools

@@ -24,8 +24,8 @@
 /*
  * Adapted from: broadcom/qpu/tests/qpu_disasm.c
  */
-#include <stdio.h>
-#include <string.h>
+//#include <stdio.h>
+//#include <string.h>
 #include "util/macros.h"
 #include "broadcom/common/v3d_device_info.h"
 #include "broadcom/qpu/qpu_disasm.h"
@@ -748,182 +748,6 @@ static void swap_pack(enum v3d_qpu_input_unpack *a, enum v3d_qpu_input_unpack *b
 	*b = t;
 }
 
-#define CASE(l)	case V3D_QPU_##l: ret = #l; break;
-
-static const char *dump_cond(enum v3d_qpu_cond cond) {
-	char *ret = 0;
-
-	switch (cond) {
-		CASE(COND_NONE)
-		CASE(COND_IFA)
-		CASE(COND_IFB)
-		CASE(COND_IFNA)
-		CASE(COND_IFNB)
-	}
-
-	assert(ret != 0);
-	return ret;
-}
-
-
-const char *dump_pf(enum v3d_qpu_pf pf) {
-	char *ret = 0;
-
-	switch (pf) {
-		CASE(PF_NONE)
-		CASE(PF_PUSHZ)
-		CASE(PF_PUSHN)
-		CASE(PF_PUSHC)
-	}
-
-	assert(ret != 0);
-	return ret;
-}
-
-
-#undef CASE
-
-static void instr_dump(struct v3d_qpu_instr *instr) {
-
-#define TF(v) (v)?"true":"false"
-
-	const char *base = "\n{\n\
-  type = INSTR_TYPE_ALU,\n\
-  sig = {ldunifrf },\n\
-  sig_addr = 0,\n\
-  sig_magic = false,\n\
-  raddr_a = 0 ,\n\
-  raddr_b = 0,\n\
-  flags = {ac = COND_NONE, mc = COND_NONE, apf = PF_NONE, mpf = PF_NONE, auf = UF_NONE, muf = UF_NONE},\n\
-  {\n\
-    alu = {\n\
-      add = {\n\
-        op = A_NOP,\n\
-        a = MUX_R0,\n\
-        b = MUX_R0,\n\
-        waddr = 6,\n\
-        magic_write = true,\n\
-        output_pack = PACK_NONE,\n\
-         a_unpack = UNPACK_NONE, \n\
-        b_unpack = UNPACK_NONE\n\
-      },\n\
-      mul = {\n\
-        op = M_NOP,\n\
-        a = MUX_R0,\n\
-        b = MUX_R4,\n\
-        waddr = 6,\n\
-        magic_write = true,\n\
-        output_pack = PACK_NONE,\n\
-        a_unpack = UNPACK_NONE, \n\
-        b_unpack = UNPACK_NONE\n\
-    }\n\
-  },\n\
-  branch = {\n\
-    cond = 30,\n\
-    msfign = MSFIGN_NONE,\n\
-    bdi = BRANCH_DEST_ABS,\n\
-    bdu = 3070165254,\n\
-    ub = false,\n\
-    raddr_a = 0,\n\
-    offset = 0\n\
-  }\n\
-}\n";
-
-
-	const char *type = NULL;
-	switch(instr->type) {
-		case V3D_QPU_INSTR_TYPE_ALU   : type = "INSTR_TYPE_ALU"  ; break;
-		case V3D_QPU_INSTR_TYPE_BRANCH: type = "INSTR_TYPE_BRANCH"; break;
-	}
-
-
-	char buffer_sig[1024] = "\0";;
-	if (instr->sig.thrsw) strcat(buffer_sig, "thrsw ");
-	if (instr->sig.ldunif) strcat(buffer_sig, "ldunif ");
-	if (instr->sig.ldunifa) strcat(buffer_sig, "ldunifa ");
-	if (instr->sig.ldunifrf) strcat(buffer_sig, "ldunifrf ");
-	if (instr->sig.ldunifarf) strcat(buffer_sig, "ldunifarf ");
-	if (instr->sig.ldtmu) strcat(buffer_sig, "ldtmu ");
-	if (instr->sig.ldvary) strcat(buffer_sig, "ldvary ");
-	if (instr->sig.ldvpm) strcat(buffer_sig, "ldvpm ");
-	if (instr->sig.ldtlb) strcat(buffer_sig, "ldtlb ");
-	if (instr->sig.ldtlbu) strcat(buffer_sig, "ldtlbu ");
-	if (instr->sig.small_imm) strcat(buffer_sig, "small_imm ");
-	if (instr->sig.ucb) strcat(buffer_sig, "ucb ");
-	if (instr->sig.rotate) strcat(buffer_sig, "rotate ");
-	if (instr->sig.wrtmuc) strcat(buffer_sig, "wrtmuc ");
-
-
-	const char *format = "\n{\n\
-  type = %s,\n\
-  sig = {%s},\n\
-  sig_addr = %u,\n\
-  sig_magic = %s,\n\
-  raddr_a = %u ,\n\
-  raddr_b = %u,\n\
-  flags = {ac = %s, mc = %s, apf = %s, mpf = %s, auf = UF_NONE, muf = UF_NONE},\n\
-  {\n\
-    alu = {\n\
-      add = {\n\
-        op = A_NOP,\n\
-        a = MUX_R0,\n\
-        b = MUX_R0,\n\
-        waddr = 6,\n\
-        magic_write = true,\n\
-        output_pack = PACK_NONE,\n\
-         a_unpack = UNPACK_NONE, \n\
-        b_unpack = UNPACK_NONE\n\
-      },\n\
-      mul = {\n\
-        op = M_NOP,\n\
-        a = MUX_R0,\n\
-        b = MUX_R4,\n\
-        waddr = 6,\n\
-        magic_write = true,\n\
-        output_pack = PACK_NONE,\n\
-        a_unpack = UNPACK_NONE, \n\
-        b_unpack = UNPACK_NONE\n\
-    }\n\
-  },\n\
-  branch = {\n\
-    cond = 30,\n\
-    msfign = MSFIGN_NONE,\n\
-    bdi = BRANCH_DEST_ABS,\n\
-    bdu = 3070165254,\n\
-    ub = false,\n\
-    raddr_a = 0,\n\
-    offset = 0\n\
-  }\n\
-}\n";
-
-	printf(base);
-
-
-	char buffer[10*1024];
-	sprintf(buffer, format,
-		type,
-		buffer_sig,
-		instr->sig_addr,
-		TF(instr->sig_magic),
-		instr->raddr_a,
-		instr->raddr_b,
-		// flags
-		dump_cond(instr->flags.ac),
-		dump_cond(instr->flags.mc),
-		dump_pf(instr->flags.apf),
-		dump_pf(instr->flags.mpf)
-	);
-
-	if (strcmp(base, buffer)) {
-		printf("different\n");
-		printf(buffer);
-	} else {
-		printf("same\n");
-	}
-	assert(!strcmp(base, buffer));
-
-#undef TF
-}
 
 
 static int test_instr(struct v3d_device_info *devinfo, uint64_t in_code) {
@@ -932,9 +756,6 @@ static int test_instr(struct v3d_device_info *devinfo, uint64_t in_code) {
 			printf(" - FAIL (unpack)");
 			return 2;
 		}
-
-		instr_dump(&instr);
-		return 0;
 
 		if (instr.type == V3D_QPU_INSTR_TYPE_ALU) {
 			switch (instr.alu.add.op) {
@@ -989,7 +810,6 @@ int main(int argc, char **argv) {
 		printf(",  // %-56s", disasm_output);
 
 		int ret = test_instr(&devinfo, code[i]);
-		return 0; // WRI DEBUG
 		if (ret == 1) {
 			retval = 1;
 			continue;
