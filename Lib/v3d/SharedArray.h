@@ -1,6 +1,7 @@
 #ifndef _QPULIB_V3D_SHAREDARRAY_H_
 #define _QPULIB_V3D_SHAREDARRAY_H_
 #include <cassert>
+#include <vector>
 #include <stdint.h>
 #include "../debug.h"
 
@@ -29,7 +30,18 @@ public:
 
 		// TODO: consider using memcpy() instead
 		for (uint32_t offset = 0; offset < size; ++offset) {
-			(*this)[offset] = offset;
+			(*this)[offset] = src[offset];
+		}
+	}
+
+
+	void copyFrom(std::vector<T> const &src) {
+		assert(!src.empty());
+		assert(src.size() < m_size);
+
+		// TODO: consider using memcpy() instead
+		for (uint32_t offset = 0; offset < src.size(); ++offset) {
+			(*this)[offset] = src[offset];
 		}
 	}
 

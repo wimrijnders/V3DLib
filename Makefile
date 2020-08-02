@@ -13,9 +13,6 @@
 #
 ###############################################################################
 
-PWD:=$(shell pwd)
-$(info  pwd: '$(PWD)')
-
 #
 # Stuff for external libraries
 #
@@ -42,7 +39,7 @@ LIBS := $(LIB_EXTERN)
 CXX_FLAGS = -Wconversion -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
 
 # Object directory
-OBJ_DIR = obj
+OBJ_DIR := obj
 
 
 # QPU or emulation mode
@@ -88,7 +85,7 @@ EXAMPLES_EXTRA = \
 	Support/Settings.o
 
 EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
-$(info $(EXAMPLES_OBJ))
+#$(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files
 DEPS := $(LIB:.o=.d)
@@ -100,6 +97,9 @@ DEPS := $(LIB:.o=.d)
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
 #$(info $(EXAMPLES_DEPS))
 -include $(EXAMPLES_DEPS)
+
+
+QPU_LIB=$(OBJ_DIR)/libQPULib.a
 
 
 # Top-level targets
@@ -137,7 +137,7 @@ help:
 	@echo '    DEBUG=1       - If specified, the source code and target code is shown on stdout when running a test'
 	@echo
 
-all: $(OBJ_DIR) $(EXAMPLE_TARGETS)
+all: $(QPU_LIB) $(EXAMPLES)
 
 clean:
 	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug
@@ -147,26 +147,39 @@ clean:
 # Targets for static library
 #
 
-QPU_LIB=$(OBJ_DIR)/libQPULib.a
 #$(info LIB: $(LIB))
 
 $(QPU_LIB): $(LIB)
 	@echo Creating $@
 	@ar rcs $@ $^
 
-$(OBJ_DIR)/%.o: $(ROOT)/%.cpp | $(OBJ_DIR)
+# Rule for library object files
+$(OBJ_DIR)/%.o: $(ROOT)/%.cpp
 	@echo Compiling $<
+	@mkdir -p $(@D)
 	@$(CXX) -std=c++0x -c -o $@ $< $(CXX_FLAGS)
 
 
 # Same thing for C-files
-$(OBJ_DIR)/%.o: $(ROOT)/%.c | $(OBJ_DIR)
+$(OBJ_DIR)/%.o: $(ROOT)/%.c
 	@echo Compiling $<
+	@mkdir -p $(@D)
 	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
 #
-# Targets for Examples and Tools
+# Rule for the other object files (Examples and Tools)
 #
+# Leaving it out results in the following enigmatic error:
+#
+#     make: *** No rule to make target 'obj/qpu-debug/bin/HeatMap', needed by 'HeatMap'.  Stop.
+#
+# This is confusing, because the error says something about the executable,
+# and this rule is about building the object file.
+# 
+$(OBJ_DIR)/%.o: %.cpp
+	@echo Compiling $<
+	@mkdir -p $(@D)
+	@$(CXX) -std=c++0x -c -o $@ $< $(CXX_FLAGS)
 
 $(OBJ_DIR)/bin/Rot3DLib: $(OBJ_DIR)/Examples/Rot3DLib/Rot3DKernels.o
 
@@ -175,21 +188,19 @@ $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPU_LIB)
 	@echo Linking $@...
 	@$(LINK) $^ -o $@
 
+
 $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(QPU_LIB) $(OBJ_DIR)/Examples/Support/Settings.o
 	@echo Linking $@...
+	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
 $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPU_LIB)
 	@echo Linking $@...
+	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
-# General compilation of cpp files
-# Keep in mind that the % will take into account subdirectories under OBJ_DIR.
-$(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR)
-	@echo Compiling $<
-	@$(CXX) -c $(CXX_FLAGS) -o $@ $<
 
-$(EXAMPLES) :% :$(OBJ_DIR)/bin/%
+$(EXAMPLES) :% : $(OBJ_DIR)/bin/%
 
 
 #
@@ -198,7 +209,7 @@ $(EXAMPLES) :% :$(OBJ_DIR)/bin/%
 
 RUN_TESTS := $(OBJ_DIR)/bin/runTests
 
-# sudo required for QPU-mode on Pi
+## sudo required for QPU-mode on Pi
 ifeq ($(QPU), 1)
 	RUN_TESTS := sudo $(RUN_TESTS)
 endif
@@ -209,7 +220,8 @@ UNIT_TESTS =          \
 	Tests/testMain.cpp  \
 	Tests/testRot3D.cpp \
 	Tests/testDSL.cpp   \
-	Tests/testV3d.cpp
+	Tests/testV3d.cpp \
+	Tests/support/summation.cpp
 
 # For some reason, doing an interim step to .o results in linkage errors (undefined references).
 # So this target compiles the source files directly to the executable.
@@ -226,27 +238,13 @@ test : | make_test AutoTest
 	@echo Running unit tests with '$(RUN_TESTS)'
 	@$(RUN_TESTS)
 
-#
-# Other targets
-#
-
-$(OBJ_DIR):
-	@mkdir -p $(OBJ_DIR)/Source
-	@mkdir -p $(OBJ_DIR)/Target
-	@mkdir -p $(OBJ_DIR)/Support
-	@mkdir -p $(OBJ_DIR)/v3d
-	@mkdir -p $(OBJ_DIR)/VideoCore
-	@mkdir -p $(OBJ_DIR)/Examples/Rot3DLib   # Creates Examples as well
-	@mkdir -p $(OBJ_DIR)/Examples/Support
-	@mkdir -p $(OBJ_DIR)/Tools
-	@mkdir -p $(OBJ_DIR)/bin
-
 
 ###############################
 # Gen stuff
-###############################
+################################
 
 gen : $(OBJ_DIR)/sources.mk
 
-$(OBJ_DIR)/sources.mk : $(OBJ_DIR)
-	script/gen.sh
+$(OBJ_DIR)/sources.mk :
+	@mkdir -p $(@D)
+	@script/gen.sh
