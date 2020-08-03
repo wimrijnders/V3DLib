@@ -35,8 +35,19 @@ LINK= $(CXX) $(CXX_FLAGS)
 
 LIBS := $(LIB_EXTERN)
 
+#
 # -I is for access to bcm functionality
-CXX_FLAGS = -Wconversion -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
+#
+# -Wno-psabi avoids following note (happens in unit tests):
+#
+#    note: parameter passing for argument of type ‘std::move_iterator<Catch::SectionEndInfo*>’ changed in GCC 7.1
+#
+#    It is benign: https://stackoverflow.com/a/48149400 
+#
+CXX_FLAGS = \
+ -Wconversion \
+ -Wno-psabi \
+ -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
 
 # Object directory
 OBJ_DIR := obj
@@ -74,7 +85,7 @@ endif
 
 -include obj/sources.mk
 
-LIB = $(patsubst %,$(OBJ_DIR)/%,$(OBJ))
+LIB = $(patsubst %,$(OBJ_DIR)/Lib/%,$(OBJ))
 
 EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
 
@@ -108,13 +119,14 @@ QPU_LIB=$(OBJ_DIR)/libQPULib.a
 
 # Following prevents deletion of object files after linking
 # Otherwise, deletion happens for targets of the form '%.o'
-.PRECIOUS: $(OBJ_DIR)/%.o  \
-	$(OBJ_DIR)/Source/%.o    \
-	$(OBJ_DIR)/Target/%.o    \
-	$(OBJ_DIR)/Support/%.o \
-	$(OBJ_DIR)/VideoCore/%.o \
-	$(OBJ_DIR)/VideoCore/vc6/%.o \
-	$(OBJ_DIR)/Examples/%.o
+.PRECIOUS: $(OBJ_DIR)/%.o  #\
+
+#	$(OBJ_DIR)/Source/%.o    \
+#	$(OBJ_DIR)/Target/%.o    \
+#	$(OBJ_DIR)/Support/%.o \
+#	$(OBJ_DIR)/VideoCore/%.o \
+#	$(OBJ_DIR)/VideoCore/vc6/%.o \
+#	$(OBJ_DIR)/Examples/%.o
 
 
 help:
@@ -153,37 +165,23 @@ $(QPU_LIB): $(LIB)
 	@echo Creating $@
 	@ar rcs $@ $^
 
-# Rule for library object files
-$(OBJ_DIR)/%.o: $(ROOT)/%.cpp
+
+# Rule for creating object files
+$(OBJ_DIR)/%.o: %.cpp
 	@echo Compiling $<
 	@mkdir -p $(@D)
-	@$(CXX) -std=c++0x -c -o $@ $< $(CXX_FLAGS)
-
+	@$(CXX) -std=c++11 -c -o $@ $< $(CXX_FLAGS)
 
 # Same thing for C-files
-$(OBJ_DIR)/%.o: $(ROOT)/%.c
+$(OBJ_DIR)/%.o: %.c
 	@echo Compiling $<
 	@mkdir -p $(@D)
 	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
-#
-# Rule for the other object files (Examples and Tools)
-#
-# Leaving it out results in the following enigmatic error:
-#
-#     make: *** No rule to make target 'obj/qpu-debug/bin/HeatMap', needed by 'HeatMap'.  Stop.
-#
-# This is confusing, because the error says something about the executable,
-# and this rule is about building the object file.
-# 
-$(OBJ_DIR)/%.o: %.cpp
-	@echo Compiling $<
-	@mkdir -p $(@D)
-	@$(CXX) -std=c++0x -c -o $@ $< $(CXX_FLAGS)
-
 $(OBJ_DIR)/bin/Rot3DLib: $(OBJ_DIR)/Examples/Rot3DLib/Rot3DKernels.o
 
 
+# Leaving this out means Rot3DLib does not get compiled, and there's no warning
 $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPU_LIB)
 	@echo Linking $@...
 	@$(LINK) $^ -o $@
@@ -215,22 +213,17 @@ ifeq ($(QPU), 1)
 endif
 
 
-# Source files with unit tests to include in compilation
-UNIT_TESTS =          \
-	Tests/testMain.cpp  \
-	Tests/testRot3D.cpp \
-	Tests/testDSL.cpp   \
-	Tests/testV3d.cpp \
-	Tests/support/summation.cpp
+TESTS_OBJ = \
+  $(EXAMPLES_OBJ) \
+	$(OBJ_DIR)/Tests/testMain.o \
+	$(OBJ_DIR)/Tests/testRot3D.o \
+	$(OBJ_DIR)/Tests/testDSL.o \
+	$(OBJ_DIR)/Tests/testV3d.o \
+	$(OBJ_DIR)/Tests/support/summation.o
 
-# For some reason, doing an interim step to .o results in linkage errors (undefined references).
-# So this target compiles the source files directly to the executable.
-#
-# Flag `-Wno-psabi` is to surpress a superfluous warning when compiling with GCC 6.3.0
-#
-$(OBJ_DIR)/bin/runTests: $(UNIT_TESTS) $(EXAMPLES_OBJ) | $(QPU_LIB)
+$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) | $(QPU_LIB)
 	@echo Compiling unit tests
-	@$(CXX) $(CXX_FLAGS) -Wno-psabi $^ -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
+	@$(CXX) $(CXX_FLAGS) $^ -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
 make_test: $(OBJ_DIR)/bin/runTests $(OBJ_DIR)/bin/detectPlatform AutoTest
 
