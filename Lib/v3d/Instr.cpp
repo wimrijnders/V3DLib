@@ -62,6 +62,26 @@ void Instr::init(uint64_t code) {
 }
 
 
+//////////////////////////////////////////////////////
+// Calls to set the mult part of the instruction
+//////////////////////////////////////////////////////
+
+Instr Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, v3d_qpu_mux reg3) {
+	raddr_b       = rf_addr1; 
+	alu.mul.op    = V3D_QPU_M_ADD;
+	alu.mul.a     = V3D_QPU_MUX_B;
+	alu.mul.b     = reg3;
+	alu.mul.waddr = rf_addr2;
+	alu.mul.magic_write = false;
+
+	return *this;
+}
+
+
+//////////////////////////////////////////////////////
+// Top-level opcodes
+//////////////////////////////////////////////////////
+
 Instr ldunifrf(uint8_t rf_address) {
 	Instr instr(nop);
 
@@ -86,15 +106,31 @@ Instr tidx(v3d_qpu_waddr reg) {
 
 
 // TODO: where should reg2 go??
-Instr shr(v3d_qpu_waddr reg1, v3d_qpu_waddr reg2, uint8_t val) {
+Instr shr(v3d_qpu_waddr reg1, Register const &reg2, uint8_t val) {
 	Instr instr(nop);
 
 	instr.sig.small_imm = true; 
 	instr.sig_magic     = true; 
+	instr.raddr_a       = reg2.to_waddr(); 
 	instr.raddr_b       = val; 
 	instr.alu.add.op    = V3D_QPU_A_SHR;
 	instr.alu.add.waddr = reg1;
 	instr.alu.add.b     = V3D_QPU_MUX_B;
+
+	return instr;
+}
+
+
+Instr shl(v3d_qpu_waddr reg1, Register const &reg2, uint8_t val) {
+	Instr instr(nop);
+
+	instr.sig.small_imm = true; 
+	instr.raddr_a       = reg1; 
+	instr.raddr_b       = val; 
+	instr.alu.add.op    = V3D_QPU_A_SHL;
+	instr.alu.add.a     = reg2;
+	instr.alu.add.b     = V3D_QPU_MUX_B;
+	instr.alu.add.waddr = reg1;
 
 	return instr;
 }
@@ -141,6 +177,33 @@ Instr eidx(v3d_qpu_waddr reg) {
 
 	return instr;
 }
+
+
+Instr add(v3d_qpu_waddr reg1, Register const &reg2, v3d_qpu_mux reg3) {
+	Instr instr(nop);
+
+	instr.alu.add.op    = V3D_QPU_A_ADD;
+	instr.alu.add.waddr = reg1;
+	instr.alu.add.a     = reg2.to_mux();
+	instr.alu.add.b     = reg3;
+
+	return instr;
+}
+
+
+Instr add(uint8_t rf_addr1, uint8_t rf_addr2, v3d_qpu_mux reg3) {
+	Instr instr(nop);
+
+	instr.raddr_a       = rf_addr1; 
+	instr.alu.add.op    = V3D_QPU_A_ADD;
+	instr.alu.add.a     = V3D_QPU_MUX_A;
+	instr.alu.add.b     = reg3;
+	instr.alu.add.waddr = rf_addr1;
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
 
 }  // instr
 }  // v3d

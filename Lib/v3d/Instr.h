@@ -17,6 +17,9 @@ public:
 
 	operator uint64_t() const { return code(); }
 
+	// Calls to set the mult part of the instruction
+	Instr add(uint8_t rf_addr1, uint8_t rf_addr2, v3d_qpu_mux reg3);
+
 private:
 	void init_ver() const;
 	void init(uint64_t code);
@@ -30,6 +33,8 @@ public:
 		m_mux_val(mux_val)
 	{}
 
+	v3d_qpu_waddr to_waddr() const { return m_waddr_val; }
+	v3d_qpu_mux to_mux() const { return m_mux_val; }
 	operator v3d_qpu_waddr() const { return m_waddr_val; }
 	operator v3d_qpu_mux() const { return m_mux_val; }
 
@@ -45,10 +50,13 @@ extern Instr const nop;
 
 Instr ldunifrf(uint8_t rf_address);
 Instr tidx(v3d_qpu_waddr reg);
-Instr shr(v3d_qpu_waddr reg1, v3d_qpu_waddr reg2, uint8_t val);
+Instr shr(v3d_qpu_waddr reg1, Register const &reg2, uint8_t val);
+Instr shl(v3d_qpu_waddr reg1, Register const & reg2, uint8_t val);
 Instr shl(v3d_qpu_waddr reg1, uint8_t rf_addr, uint8_t val);
 Instr band(uint8_t rf_address, v3d_qpu_mux reg, uint8_t val);
 Instr eidx(v3d_qpu_waddr reg);
+Instr add(v3d_qpu_waddr reg1, Register const &reg2, v3d_qpu_mux reg3);
+Instr add(uint8_t rf_addr1, uint8_t rf_addr2, v3d_qpu_mux reg3);
 
 }  // instr
 }  // v3d

@@ -732,7 +732,7 @@ Vec &operator<<(Vec &a, Vec const &b) {
 std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
 	using namespace QPULib::v3d::instr;
 
-	uint64_t op = 0x3c003181bb802000;  // eidx  r1             ; nop                              
+	uint64_t op = 0x3de02184b683f001;  // or  rf4, 1, 1        ; nop                              
 	nop.dump();
 	Instr::show(op);
 
@@ -745,6 +745,7 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
 		reg_stride,
 		reg_sum
 	};
+
 
 	std::vector<uint64_t> ret;
 	
@@ -771,11 +772,15 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
 
 	// addr += 4 * (thread_num + 16 * qpu_num)
 	ret << shl(r0, reg_qpu_num, 4)
-	    << eidx(r1);
-/*
+	    << eidx(r1)
 	    << add(r0, r0, r1)
 	    << shl(r0, r0, 2)
 	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0);
+
+/*
+   // stride = 4 * 16 * num_qpus
+   ret << mov(reg_stride, 1)
+       << shl(reg_stride, reg_stride, 6 + num_qpus_shift);
 */
 
 	return ret;
