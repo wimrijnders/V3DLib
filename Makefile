@@ -88,6 +88,8 @@ endif
 LIB = $(patsubst %,$(OBJ_DIR)/Lib/%,$(OBJ))
 
 EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
+TESTS_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(TESTS_FILES))
+$(info $(TESTS_OBJ))
 
 
 # Example object files
@@ -100,13 +102,11 @@ EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
 
 # Dependencies from list of object files
 DEPS := $(LIB:.o=.d)
-#$(info $(DEPS))
 -include $(DEPS)
 
 # Dependencies for the include files in the Examples directory.
 # Basically, every .h file under examples has a .d in the build directory
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
-#$(info $(EXAMPLES_DEPS))
 -include $(EXAMPLES_DEPS)
 
 
@@ -119,14 +119,7 @@ QPU_LIB=$(OBJ_DIR)/libQPULib.a
 
 # Following prevents deletion of object files after linking
 # Otherwise, deletion happens for targets of the form '%.o'
-.PRECIOUS: $(OBJ_DIR)/%.o  #\
-
-#	$(OBJ_DIR)/Source/%.o    \
-#	$(OBJ_DIR)/Target/%.o    \
-#	$(OBJ_DIR)/Support/%.o \
-#	$(OBJ_DIR)/VideoCore/%.o \
-#	$(OBJ_DIR)/VideoCore/vc6/%.o \
-#	$(OBJ_DIR)/Examples/%.o
+.PRECIOUS: $(OBJ_DIR)/%.o
 
 
 help:
@@ -158,8 +151,6 @@ clean:
 #
 # Targets for static library
 #
-
-#$(info LIB: $(LIB))
 
 $(QPU_LIB): $(LIB)
 	@echo Creating $@
@@ -213,16 +204,8 @@ ifeq ($(QPU), 1)
 endif
 
 
-TESTS_OBJ = \
-  $(EXAMPLES_OBJ) \
-	$(OBJ_DIR)/Tests/testMain.o \
-	$(OBJ_DIR)/Tests/testRot3D.o \
-	$(OBJ_DIR)/Tests/testDSL.o \
-	$(OBJ_DIR)/Tests/testV3d.o \
-	$(OBJ_DIR)/Tests/support/summation.o
-
-$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) | $(QPU_LIB)
-	@echo Compiling unit tests
+$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) | $(QPU_LIB)
+	@echo Linking unit tests
 	@$(CXX) $(CXX_FLAGS) $^ -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
 make_test: $(OBJ_DIR)/bin/runTests $(OBJ_DIR)/bin/detectPlatform AutoTest
