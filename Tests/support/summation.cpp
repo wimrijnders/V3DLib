@@ -706,7 +706,13 @@ std::vector<uint64_t> summation = {
 
 namespace {
 using Vec = std::vector<uint64_t>;
+
 struct v3d_device_info devinfo;  // NOTE: uninitialized struct, field 'ver' must be set! For test OK
+
+bool is_power_of_2(int x) {
+    return x > 0 && !(x & (x - 1));
+}
+
 
 class Instr : public v3d_qpu_instr {
 public:
@@ -754,8 +760,26 @@ private:
 };
 
 
-v3d_qpu_waddr r0 = V3D_QPU_WADDR_R0;
-v3d_qpu_mux mux_r0 = V3D_QPU_MUX_R0; // TODO: get rid of prefix
+//v3d_qpu_waddr r0 = V3D_QPU_WADDR_R0;
+//v3d_qpu_mux mux_r0 = V3D_QPU_MUX_R0; // TODO: get rid of prefix
+
+class Register {
+public: 
+	Register(v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val) :
+		m_waddr_val(waddr_val),
+		m_mux_val(mux_val)
+	{}
+
+	operator v3d_qpu_waddr() const { return m_waddr_val; }
+	operator v3d_qpu_mux() const { return m_mux_val; }
+
+private:
+	v3d_qpu_waddr m_waddr_val;
+	v3d_qpu_mux   m_mux_val;
+};
+
+Register const r0(V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0);
+
 
 Instr const nop(0x3c003186bb800000);  // This is actually 'nop nop'
 
@@ -873,10 +897,19 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
 
 		ret << tidx(r0)
 		    << shr(r0, r0, 2)
-		    << band(reg_qpu_num, mux_r0, 0b1111);
+		    << band(reg_qpu_num, r0, 0b1111);
 	} else {
-		assert(false);  // num_qpus must be 1 or 8A
+		assert(false);  // num_qpus must be 1 or 8
 	}
+
+/*
+	// addr += 4 * (thread_num + 16 * qpu_num)
+	ret << shl(r0, reg_qpu_num, 4)
+	    << eidx(r1)
+	    << add(r0, r0, r1)
+	    << shl(r0, r0, 2)
+	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0);
+*/
 
 	return ret;
 }
