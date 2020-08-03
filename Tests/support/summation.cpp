@@ -1,7 +1,6 @@
-#include "v3d/dump_instr.h"
+#include "v3d/Instr.h"
 #include <cstdio>
 #include "summation.h"
-
 
 std::vector<uint64_t> summation = {
 	0x3d803186bb800000,  // nop                  ; nop               ; ldunifrf.rf0 
@@ -705,138 +704,8 @@ std::vector<uint64_t> summation = {
 
 
 namespace {
+
 using Vec = std::vector<uint64_t>;
-
-struct v3d_device_info devinfo;  // NOTE: uninitialized struct, field 'ver' must be set! For test OK
-
-bool is_power_of_2(int x) {
-    return x > 0 && !(x & (x - 1));
-}
-
-
-class Instr : public v3d_qpu_instr {
-public:
-	Instr(uint64_t code) {
-		init(code);
-	}
-
-	void dump() const {
-		char buffer[10*1024];
-		instr_dump(buffer, const_cast<Instr *>(this));
-
-		printf("%llu:\n%s", code(), buffer);
-	}
-
-	uint64_t code() const {
-		init_ver();
-
-    uint64_t repack = instr_pack(&devinfo, const_cast<Instr *>(this));
-		return repack;
-	}
-
-
-	operator uint64_t() const {
-		return code();
-	}
-
-
-private:
-	void init_ver() const {
-		if (devinfo.ver != 42) {               //        <-- only this needs to be set
-			devinfo.ver = 42;
-		}
-	}
-
-	void init(uint64_t code) {
-		init_ver();
-
-		// These do not get initialized in unpack
-		sig_addr = 0;
-
-		if (!instr_unpack(&devinfo, code, this)) {
-			assert(false);
-		}
-	}
-};
-
-
-//v3d_qpu_waddr r0 = V3D_QPU_WADDR_R0;
-//v3d_qpu_mux mux_r0 = V3D_QPU_MUX_R0; // TODO: get rid of prefix
-
-class Register {
-public: 
-	Register(v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val) :
-		m_waddr_val(waddr_val),
-		m_mux_val(mux_val)
-	{}
-
-	operator v3d_qpu_waddr() const { return m_waddr_val; }
-	operator v3d_qpu_mux() const { return m_mux_val; }
-
-private:
-	v3d_qpu_waddr m_waddr_val;
-	v3d_qpu_mux   m_mux_val;
-};
-
-Register const r0(V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0);
-
-
-Instr const nop(0x3c003186bb800000);  // This is actually 'nop nop'
-
-
-Instr ldunifrf(uint8_t rf_address) {
-	Instr instr(nop);
-
-	instr.sig.ldunifrf = true; 
-	instr.sig_addr = rf_address; 
-
-	return instr;
-}
-
-
-Instr tidx(v3d_qpu_waddr reg) {
-	Instr instr(nop);
-
-	instr.sig_magic  = true; 
-	instr.alu.add.op = V3D_QPU_A_TIDX;
-	instr.alu.add.waddr = reg;
-	instr.alu.add.a  = V3D_QPU_MUX_R1;
-	instr.alu.add.b  = V3D_QPU_MUX_R0;
-
-	return instr;
-}
-
-
-// TODO: where should reg2 go??
-Instr shr(v3d_qpu_waddr reg1, v3d_qpu_waddr reg2, uint8_t val) {
-	Instr instr(nop);
-
-	instr.sig.small_imm = true; 
-	instr.sig_magic     = true; 
-	instr.raddr_b       = val; 
-	instr.alu.add.op    = V3D_QPU_A_SHR;
-	instr.alu.add.waddr = reg1;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-
-	return instr;
-}
-
-
-// 'and' is a keyword
-Instr band(uint8_t rf_address, v3d_qpu_mux reg, uint8_t val) {
-	Instr instr(nop);
-
-	instr.sig.small_imm = true; 
-	instr.raddr_b       = val; 
-	instr.alu.add.op    = V3D_QPU_A_AND;
-	instr.alu.add.waddr = rf_address;
-	instr.alu.add.a     = reg;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.magic_write = false;
-
-	return instr;
-}
-
 
 Vec &operator<<(Vec &a, uint64_t val) {
 	a.push_back(val);	
@@ -850,10 +719,6 @@ Vec &operator<<(Vec &a, Vec const &b) {
 }
 
 
-void show_instr(uint64_t code) {
-	Instr instr(code);
-	instr.dump();
-}
 
 
 }  // anon namespace
@@ -865,9 +730,11 @@ void show_instr(uint64_t code) {
  * Source: https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L11
  */
 std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
-	uint64_t op = 0x3de031807c83e0c4;  // shl  r0, rf3, 4      ; nop                              
+	using namespace QPULib::v3d::instr;
+
+	uint64_t op = 0x3c003181bb802000;  // eidx  r1             ; nop                              
 	nop.dump();
-	show_instr(op);
+	Instr::show(op);
 
 	// adresses of uniforms in the register file
 	enum : uint8_t {
@@ -902,10 +769,10 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
 		assert(false);  // num_qpus must be 1 or 8
 	}
 
-/*
 	// addr += 4 * (thread_num + 16 * qpu_num)
 	ret << shl(r0, reg_qpu_num, 4)
-	    << eidx(r1)
+	    << eidx(r1);
+/*
 	    << add(r0, r0, r1)
 	    << shl(r0, r0, 2)
 	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0);
