@@ -729,12 +729,14 @@ Vec &operator<<(Vec &a, Vec const &b) {
  *
  * Source: https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L11
  */
-std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
+std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift) {
 	using namespace QPULib::v3d::instr;
 
-	uint64_t op = 0x3de02184b683f001;  // or  rf4, 1, 1        ; nop                              
-	nop.dump();
+	uint64_t op = 0x3d803186bb800000;  // nop                  ; nop               ; ldunifrf.rf0 
+	nop().dump();
 	Instr::show(op);
+
+	Instr::show(0x3d903186bb800000);
 
 	// adresses of uniforms in the register file
 	enum : uint8_t {
@@ -746,8 +748,9 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
 		reg_sum
 	};
 
-
 	std::vector<uint64_t> ret;
+
+	ldunifrf(reg_length).dump();
 	
 	ret << ldunifrf(reg_length)
 	    << ldunifrf(reg_src)
@@ -758,8 +761,7 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
 	if (num_qpus == 1) {
 		num_qpus_shift = 0;
 
-		assert(false);  // TODO
-		//ret << mov(reg_qpu_num, 0);
+		ret << mov(reg_qpu_num, 0);
 	} else if (num_qpus == 8) {
 		num_qpus_shift = 3;
 
@@ -777,11 +779,28 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus) {
 	    << shl(r0, r0, 2)
 	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0);
 
-/*
    // stride = 4 * 16 * num_qpus
    ret << mov(reg_stride, 1)
        << shl(reg_stride, reg_stride, 6 + num_qpus_shift);
-*/
+
+	// The QPU performs shifts and rotates modulo 32, so it actually supports
+	// shift amounts [0, 31] only with small immediates.
+  int num_shifts[] = {
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+		-16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1};
+
+	// length /= 16 * 8 * num_qpus * unroll
+  ret << shr(reg_length, reg_length, num_shifts[7 + num_qpus_shift + unroll_shift]);
+
+    bxor(reg_sum, 1, 1).mov(r1, 1).dump();
+
+	// This single thread switch and two instructions just before the loop are
+	// really important for TMU read to achieve a better performance.
+	// This also enables TMU read requests without the thread switch signal, and
+	// the eight-depth TMU read request queue.
+	ret << nop().thrsw(true)
+	    << nop() 
+	    << bxor(reg_sum, 1, 1).mov(r1, 1);
 
 	return ret;
 }

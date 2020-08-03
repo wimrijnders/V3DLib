@@ -19,7 +19,8 @@ namespace instr {
 
 Register const r0(V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0);
 Register const r1(V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1);
-Instr const nop(0x3c003186bb800000);  // This is actually 'nop nop'
+
+uint64_t const Instr::NOP = 0x3c003186bb800000;  // This is actually 'nop nop'
 
 void Instr::dump() const {
 	char buffer[10*1024];
@@ -32,7 +33,7 @@ void Instr::dump() const {
 uint64_t Instr::code() const {
 	init_ver();
 
-   uint64_t repack = instr_pack(&devinfo, const_cast<Instr *>(this));
+  uint64_t repack = instr_pack(&devinfo, const_cast<Instr *>(this));
 	return repack;
 }
 
@@ -66,13 +67,23 @@ void Instr::init(uint64_t code) {
 // Calls to set the mult part of the instruction
 //////////////////////////////////////////////////////
 
-Instr Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, v3d_qpu_mux reg3) {
+Instr Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 	raddr_b       = rf_addr1; 
 	alu.mul.op    = V3D_QPU_M_ADD;
 	alu.mul.a     = V3D_QPU_MUX_B;
-	alu.mul.b     = reg3;
+	alu.mul.b     = reg3.to_mux();
 	alu.mul.waddr = rf_addr2;
 	alu.mul.magic_write = false;
+
+	return *this;
+}
+
+
+Instr Instr::mov(Register const &reg,  uint8_t val) {
+	alu.mul.op    = V3D_QPU_M_MOV;
+	alu.mul.a     = V3D_QPU_MUX_B;
+	alu.mul.b     = V3D_QPU_MUX_B;
+	alu.mul.waddr = reg.to_waddr();
 
 	return *this;
 }
@@ -82,9 +93,16 @@ Instr Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, v3d_qpu_mux reg3) {
 // Top-level opcodes
 //////////////////////////////////////////////////////
 
-Instr ldunifrf(uint8_t rf_address) {
-	Instr instr(nop);
+Instr nop() {
+	Instr instr;
+	return instr;
+}
 
+
+Instr ldunifrf(uint8_t rf_address) {
+	Instr instr;
+
+	//instr.sig_magic    = false; 
 	instr.sig.ldunifrf = true; 
 	instr.sig_addr = rf_address; 
 
@@ -92,12 +110,12 @@ Instr ldunifrf(uint8_t rf_address) {
 }
 
 
-Instr tidx(v3d_qpu_waddr reg) {
-	Instr instr(nop);
+Instr tidx(Register const &reg) {
+	Instr instr;
 
 	instr.sig_magic  = true; 
 	instr.alu.add.op = V3D_QPU_A_TIDX;
-	instr.alu.add.waddr = reg;
+	instr.alu.add.waddr = reg.to_waddr();
 	instr.alu.add.a  = V3D_QPU_MUX_R1;
 	instr.alu.add.b  = V3D_QPU_MUX_R0;
 
@@ -105,39 +123,55 @@ Instr tidx(v3d_qpu_waddr reg) {
 }
 
 
-// TODO: where should reg2 go??
-Instr shr(v3d_qpu_waddr reg1, Register const &reg2, uint8_t val) {
-	Instr instr(nop);
+Instr shr(Register const &reg1, Register const &reg2, uint8_t val) {
+	Instr instr;
 
 	instr.sig.small_imm = true; 
 	instr.sig_magic     = true; 
 	instr.raddr_a       = reg2.to_waddr(); 
 	instr.raddr_b       = val; 
 	instr.alu.add.op    = V3D_QPU_A_SHR;
-	instr.alu.add.waddr = reg1;
+	instr.alu.add.waddr = reg1.to_waddr();
 	instr.alu.add.b     = V3D_QPU_MUX_B;
 
 	return instr;
 }
 
 
-Instr shl(v3d_qpu_waddr reg1, Register const &reg2, uint8_t val) {
-	Instr instr(nop);
+Instr shr(uint8_t rf_addr1, uint8_t rf_addr2, int val) {
+	Instr instr;
 
 	instr.sig.small_imm = true; 
-	instr.raddr_a       = reg1; 
-	instr.raddr_b       = val; 
-	instr.alu.add.op    = V3D_QPU_A_SHL;
-	instr.alu.add.a     = reg2;
+	instr.sig_magic     = true; 
+	instr.raddr_a       = rf_addr1; 
+	instr.raddr_b       = (uint8_t) val; 
+	instr.alu.add.op    = V3D_QPU_A_SHR;
+	instr.alu.add.waddr = rf_addr2;
+	instr.alu.add.magic_write = false;
+	instr.alu.add.a     = V3D_QPU_MUX_A;
 	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = reg1;
 
 	return instr;
 }
 
 
-Instr shl(v3d_qpu_waddr reg1, uint8_t rf_addr, uint8_t val) {
-	Instr instr(nop);
+Instr shl(Register const &reg1, Register const &reg2, uint8_t val) {
+	Instr instr;
+
+	instr.sig.small_imm = true; 
+	instr.raddr_a       = reg1.to_waddr(); 
+	instr.raddr_b       = val; 
+	instr.alu.add.op    = V3D_QPU_A_SHL;
+	instr.alu.add.a     = reg2.to_mux();
+	instr.alu.add.b     = V3D_QPU_MUX_B;
+	instr.alu.add.waddr = reg1.to_waddr();
+
+	return instr;
+}
+
+
+Instr shl(Register const &reg1, uint8_t rf_addr, uint8_t val) {
+	Instr instr;
 
 	instr.sig.small_imm = true; 
 	instr.raddr_a       = rf_addr; 
@@ -145,21 +179,37 @@ Instr shl(v3d_qpu_waddr reg1, uint8_t rf_addr, uint8_t val) {
 	instr.alu.add.op    = V3D_QPU_A_SHL;
 	instr.alu.add.a     = V3D_QPU_MUX_A;
 	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = reg1;
+	instr.alu.add.waddr = reg1.to_waddr();
 
 	return instr;
 }
 
 
+Instr shl(uint8_t rf_addr1, uint8_t rf_addr2, int  val) {
+	Instr instr;
+
+	instr.sig.small_imm = true; 
+	instr.raddr_a       = rf_addr1; 
+	instr.raddr_b       = (uint8_t) val; 
+	instr.sig_magic     = true; 
+	instr.alu.add.op    = V3D_QPU_A_SHL;
+	instr.alu.add.a     = V3D_QPU_MUX_A;
+	instr.alu.add.b     = V3D_QPU_MUX_B;
+	instr.alu.add.waddr = rf_addr2;
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
 // 'and' is a keyword
-Instr band(uint8_t rf_address, v3d_qpu_mux reg, uint8_t val) {
-	Instr instr(nop);
+Instr band(uint8_t rf_address, Register const &reg, uint8_t val) {
+	Instr instr;
 
 	instr.sig.small_imm = true; 
 	instr.raddr_b       = val; 
 	instr.alu.add.op    = V3D_QPU_A_AND;
 	instr.alu.add.waddr = rf_address;
-	instr.alu.add.a     = reg;
+	instr.alu.add.a     = reg.to_mux();
 	instr.alu.add.b     = V3D_QPU_MUX_B;
 	instr.alu.add.magic_write = false;
 
@@ -167,11 +217,11 @@ Instr band(uint8_t rf_address, v3d_qpu_mux reg, uint8_t val) {
 }
 
 
-Instr eidx(v3d_qpu_waddr reg) {
-	Instr instr(nop);
+Instr eidx(Register const &reg) {
+	Instr instr;
 
 	instr.alu.add.op    = V3D_QPU_A_EIDX;
-	instr.alu.add.waddr = reg;
+	instr.alu.add.waddr = reg.to_waddr();
 	instr.alu.add.a     = V3D_QPU_MUX_R2;
 	instr.alu.add.b     = V3D_QPU_MUX_R0;
 
@@ -179,26 +229,56 @@ Instr eidx(v3d_qpu_waddr reg) {
 }
 
 
-Instr add(v3d_qpu_waddr reg1, Register const &reg2, v3d_qpu_mux reg3) {
-	Instr instr(nop);
+Instr add(Register const &reg1, Register const &reg2, Register const &reg3) {
+	Instr instr;
 
 	instr.alu.add.op    = V3D_QPU_A_ADD;
-	instr.alu.add.waddr = reg1;
+	instr.alu.add.waddr = reg1.to_waddr();
 	instr.alu.add.a     = reg2.to_mux();
-	instr.alu.add.b     = reg3;
+	instr.alu.add.b     = reg3.to_mux();
 
 	return instr;
 }
 
 
-Instr add(uint8_t rf_addr1, uint8_t rf_addr2, v3d_qpu_mux reg3) {
-	Instr instr(nop);
+Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
+	Instr instr;
 
 	instr.raddr_a       = rf_addr1; 
 	instr.alu.add.op    = V3D_QPU_A_ADD;
 	instr.alu.add.a     = V3D_QPU_MUX_A;
-	instr.alu.add.b     = reg3;
+	instr.alu.add.b     = reg3.to_mux();
 	instr.alu.add.waddr = rf_addr1;
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
+
+Instr mov(uint8_t rf_addr, uint8_t val) {
+	Instr instr;
+
+	instr.sig.small_imm = true; 
+	instr.raddr_b       = val; 
+	instr.alu.add.op    = V3D_QPU_A_OR;
+	instr.alu.add.a     = V3D_QPU_MUX_B;
+	instr.alu.add.b     = V3D_QPU_MUX_B;
+	instr.alu.add.waddr = rf_addr;
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
+
+Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
+	Instr instr;
+
+	instr.sig.small_imm = true; 
+	instr.raddr_b       = val1; 
+	instr.alu.add.op    = V3D_QPU_A_XOR;
+	instr.alu.add.a     = V3D_QPU_MUX_B;
+	instr.alu.add.b     = V3D_QPU_MUX_B;
+	instr.alu.add.waddr = rf_addr;
 	instr.alu.add.magic_write = false;
 
 	return instr;

@@ -298,7 +298,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("Summation kernel generates correct assembled output") {
-		std::vector<uint64_t> arr = summation_kernel(8);
+		std::vector<uint64_t> arr = summation_kernel(8, 5);
 		REQUIRE(arr.size() > 0);
 
 		// Arrays should match exactly, including length
