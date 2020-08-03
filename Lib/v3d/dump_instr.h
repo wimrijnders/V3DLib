@@ -9,7 +9,8 @@ extern "C" {
 
 
 void instr_dump(char *buffer, struct v3d_qpu_instr *instr);
-bool instr_unpack(const struct v3d_device_info *devinfo, uint64_t packed_instr, struct v3d_qpu_instr *instr);
+bool instr_unpack(struct v3d_device_info const *devinfo, uint64_t packed_instr, struct v3d_qpu_instr *instr);
+uint64_t instr_pack(struct v3d_device_info const *devinfo, struct v3d_qpu_instr const *instr);
 
 #ifdef __cplusplus
 }

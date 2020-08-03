@@ -399,12 +399,20 @@ void instr_dump(char *buffer, struct v3d_qpu_instr *instr) {
 }
 
 
-/**
- * Wrapper for the actual call we want to make.
- *
- * This is here to beat the external linkage issues I've been having.
- */
-bool instr_unpack(const struct v3d_device_info *devinfo, uint64_t packed_instr, struct v3d_qpu_instr *instr) {
+///////////////////////////////////////////////////////////////////////////////
+// Wrappers for the actual calls we want to make.
+// 
+// These are here to beat the external linkage issues I've been having.
+///////////////////////////////////////////////////////////////////////////////
+
+bool instr_unpack(struct v3d_device_info const *devinfo, uint64_t packed_instr, struct v3d_qpu_instr *instr) {
 	return v3d_qpu_instr_unpack(devinfo, packed_instr, instr);
+}
+
+
+uint64_t instr_pack(struct v3d_device_info const *devinfo, struct v3d_qpu_instr const *instr) {
+	uint64_t packed_instr;
+	v3d_qpu_instr_pack(devinfo, instr, &packed_instr);
+	return packed_instr;
 }
 

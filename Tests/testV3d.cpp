@@ -295,6 +295,25 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		INFO("Output:\n" << buffer);
 		REQUIRE(!strcmp(expected, buffer));
 	}
+
+
+	SECTION("Summation kernel generates correct assembled output") {
+		std::vector<uint64_t> arr = summation_kernel(8);
+		REQUIRE(arr.size() > 0);
+
+		// Arrays should match exactly, including length
+		// For now, just check progress
+		uint32_t len = summation.size();
+		if (len > arr.size()) {
+			len = arr.size();
+		}
+
+		// Outputs should match exactly
+		for (uint32_t n = 0; n < len; ++n) {
+			INFO("Comparing assembly index: " << n);
+			REQUIRE(arr[n] == summation[n]);
+		}
+	}
 }
 
 #undef ARRAY_LENGTH
