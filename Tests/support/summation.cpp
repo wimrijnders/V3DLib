@@ -787,7 +787,7 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int c
 		-16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1};
 
 	// length /= 16 * 8 * num_qpus * unroll
-  ret << shr(reg_length, reg_length, num_shifts[7 + num_qpus_shift + unroll_shift]);
+	ret << shr(reg_length, reg_length, num_shifts[7 + num_qpus_shift + unroll_shift]);
 
 	// This single thread switch and two instructions just before the loop are
 	// really important for TMU read to achieve a better performance.
@@ -834,12 +834,14 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int c
 	ret << mov(tmud, reg_sum)
       << mov(tmua, reg_dst);
 
+/*
 	// Useful little code snippet for debugging
 	nop().dump(true);
 	uint64_t op = 0x3c203192bb814000;  // barrierid  syncb     ; nop               ; thrsw        
 	Instr::show(op);
 	//auto tmp_op = branch(loop_start, ret.size());
 	//tmp_op.dump(true);
+*/
 
 	// This synchronization is needed between the last TMU operation and the
 	// program end with the thread switch just before the loop above.

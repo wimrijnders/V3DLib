@@ -318,7 +318,8 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 				"\nExpected: " << Instr(summation[n]).dump() <<
 				"Received: " << Instr(arr[n]).dump()
 			);
-			REQUIRE(summation[n] == arr[n]);
+			//REQUIRE(summation[n] == arr[n]);
+			REQUIRE(Instr::compare_codes(summation[n], arr[n]));
 		}
 
 
@@ -336,6 +337,19 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		// tmua has no mux usage
 		REQUIRE_NOTHROW(tmua.to_waddr());
 		REQUIRE_THROWS(tmua.to_mux());
+	}
+
+
+	SECTION("Opcode compare should work") {
+		using namespace QPULib::v3d::instr;
+
+		// Non-branch instructions: direct compare
+		REQUIRE(Instr::compare_codes(0x3d803186bb800000, 0x3d803186bb800000));  // nop-nop
+		REQUIRE(!Instr::compare_codes(0x3d803186bb800000, 0x3c003181bb802000));  // nop-eidx
+
+		// Special case: branch with field bu == false: ignore bdu field
+		// This should succeed!
+		REQUIRE(Instr::compare_codes(0x02ffeff3ff009000, 0x02ffeff3ff001000)); // 2x b.na0  -4112
 	}
 }
 

@@ -20,8 +20,7 @@ namespace instr {
 struct Exception : public std::exception {
    std::string s;
    Exception(std::string ss) : s(ss) {}
-   ~Exception() throw () {} // Updated
-   const char* what() const throw() { return s.c_str(); }
+   ~Exception() throw () {} // Updated   const char* what() const throw() { return s.c_str(); }
 };
 
 
@@ -91,15 +90,6 @@ uint64_t Instr::code() const {
 	init_ver();
 
   uint64_t repack = instr_pack(&devinfo, const_cast<Instr *>(this));
-
-	if (type == V3D_QPU_INSTR_TYPE_BRANCH) {
-		if (!branch.ub) {
-			// take over the value anyway
-			uint64_t mask = 0b111 << 15;
-			//repack = (repack & ~mask) | (((uint64_t) branch.bdu) & 0b111) << 15;
-			repack = (repack & ~mask) | ((((uint64_t) branch.bdu) << 15) & mask);
-		}
-	}
 	return repack;
 }
 
@@ -123,11 +113,7 @@ void Instr::init(uint64_t in_code) {
 	// These do not always get initialized in unpack
 	sig_addr = 0;
 	sig_magic = false;
-
-	// Not set for branch
-	raddr_b = 0; 
-//	branch.ub  = false;
-//	branch.bdu = V3D_QPU_BRANCH_DEST_ABS;  // dummy value, first in enum
+	raddr_b = 0; // Not set for branch
 
 	if (!instr_unpack(&devinfo, in_code, this)) {
 		assert(false);
@@ -138,14 +124,52 @@ void Instr::init(uint64_t in_code) {
 			// take over the value anyway
 			branch.bdu = (v3d_qpu_branch_dest) ((in_code >> 15) & 0b111);
 		}
+	}
+
 }
 
-/*
-	// WRI DEBUG
-	if (sig_magic) {
-		printf("sig_magic changed to true!\n");
+
+bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
+	if (code1 == code2) {
+		return true;
 	}
-*/
+
+	// Here's the issue:
+	// For the branch instruction, if field branch.ub != true, then field branch bdu is not used
+	// and can have any value.
+	// So for a truthful compare, in this special case the field needs to be ignored.
+	// Determine if this is a branch
+	auto is_branch = [] (uint64_t code) -> bool {
+		uint64_t mul_op_mask = ((uint64_t) 0xb11111) << 58;
+		bool is_mul_op = 0 != ((code & mul_op_mask) >> 58);
+
+		uint64_t branch_sig_mask = ((uint64_t) 1) << 57;
+		bool has_branch_sig = 0 != (code & branch_sig_mask) >> 57;
+
+		return (!is_mul_op && has_branch_sig);
+	};
+
+
+	if (!is_branch(code1) || !is_branch(code2)) {
+		return false;  // Not the special case we're looking for
+	}
+
+	// Check if bu flag is set; if so, ignore bdu field
+	auto is_bu_set = [] (uint64_t code) -> bool {
+		uint64_t bu_mask = ((uint64_t) 1) << 14;
+		return 0 != (code & bu_mask);
+	};
+
+	if (is_bu_set(code1) || is_bu_set(code2)) {
+		return false;  // bdu may be used
+	}
+
+	// Zap out the bdu field and compare again
+	uint64_t bdu_mask = ((uint64_t) 0b111) << 15;
+	code1 = code1 & ~bdu_mask;
+	code2 = code1 & ~bdu_mask;
+
+	return code1 == code2;
 }
 
 

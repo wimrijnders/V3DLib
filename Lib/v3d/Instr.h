@@ -46,6 +46,8 @@ public:
 
 	Instr &mov(Register const &reg, uint8_t val);
 
+	static bool compare_codes(uint64_t code1, uint64_t code2);
+
 private:
 	static uint64_t const NOP;
 
