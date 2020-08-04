@@ -729,14 +729,13 @@ Vec &operator<<(Vec &a, Vec const &b) {
  *
  * Source: https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L11
  */
-std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift) {
+std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	using namespace QPULib::v3d::instr;
 
-	uint64_t op = 0x3d803186bb800000;  // nop                  ; nop               ; ldunifrf.rf0 
-	nop().dump();
-	Instr::show(op);
-
-	Instr::show(0x3d903186bb800000);
+	// This is actually the default of a parameter in the python version
+	auto align_cond = [] (int pos) -> bool {
+		return (pos % 512) == 170;
+	};
 
 	// adresses of uniforms in the register file
 	enum : uint8_t {
@@ -750,8 +749,6 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift) {
 
 	std::vector<uint64_t> ret;
 
-	ldunifrf(reg_length).dump();
-	
 	ret << ldunifrf(reg_length)
 	    << ldunifrf(reg_src)
 	    << ldunifrf(reg_dst);
@@ -792,8 +789,6 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift) {
 	// length /= 16 * 8 * num_qpus * unroll
   ret << shr(reg_length, reg_length, num_shifts[7 + num_qpus_shift + unroll_shift]);
 
-    bxor(reg_sum, 1, 1).mov(r1, 1).dump();
-
 	// This single thread switch and two instructions just before the loop are
 	// really important for TMU read to achieve a better performance.
 	// This also enables TMU read requests without the thread switch signal, and
@@ -801,6 +796,47 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift) {
 	ret << nop().thrsw(true)
 	    << nop() 
 	    << bxor(reg_sum, 1, 1).mov(r1, 1);
+
+	// TODO: what is asm?
+	// Assumption: length of code till now
+	//while not align_cond(code_offset + len(asm)):
+	while (!align_cond(code_offset + ret.size())) {
+		ret << nop();
+	}
+
+	nop().dump(true);
+	uint64_t op = 0x3c9021813883e044;  // add  rf1, rf1, rf4   ; nop               ; ldtmu.r0     
+	Instr::show(op);
+
+	auto tmp_op = add(reg_src, reg_src, reg_stride).ldtmu(r0);
+//	tmp_op.dump(true);
+
+//with loop as l:
+
+	int unroll = 1 << unroll_shift;
+
+//     for i in range(7):
+	for (int i = 0; i < 7; ++i) {
+		ret << mov(tmua, reg_src).add(reg_src, reg_src, reg_stride);
+	}
+
+	ret << mov(tmua, reg_src).sub(reg_length, reg_length, r1).pushz()
+			<< add(reg_src, reg_src, reg_stride).ldtmu(r0);
+
+/*
+        for j in range(unroll - 1):
+            for i in range(8):
+                mov(tmua, reg_src).add(reg_src, reg_src, reg_stride)
+                add(reg_sum, reg_sum, r0, sig=ldtmu(r0))
+
+        for i in range(5):
+            add(reg_sum, reg_sum, r0, sig=ldtmu(r0))
+
+        l.b(cond='na0')
+        add(reg_sum, reg_sum, r0, sig=ldtmu(r0))  # delay slot
+        add(reg_sum, reg_sum, r0, sig=ldtmu(r0))  # delay slot
+        add(reg_sum, reg_sum, r0)                 # delay slot
+*/
 
 	return ret;
 }

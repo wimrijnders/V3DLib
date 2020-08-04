@@ -4,7 +4,8 @@
 #include <cstring>
 #include "v3d/SharedArray.h"
 #include "v3d/v3d.h"
-#include "v3d/dump_instr.h"
+//#include "v3d/dump_instr.h"
+#include "v3d/Instr.h"
 #include "debug.h"
 #include "Support/Platform.h"
 #include "support/summation.h"
@@ -298,7 +299,10 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("Summation kernel generates correct assembled output") {
-		std::vector<uint64_t> arr = summation_kernel(8, 5);
+		using namespace QPULib::v3d::instr;  // for nop();
+		REQUIRE(nop() == 0x3c003186bb800000); // nop; nop - to catch uninitialized fields (happened)
+
+		std::vector<uint64_t> arr = summation_kernel(8, 5, 0);
 		REQUIRE(arr.size() > 0);
 
 		// Arrays should match exactly, including length
@@ -310,9 +314,24 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 		// Outputs should match exactly
 		for (uint32_t n = 0; n < len; ++n) {
-			INFO("Comparing assembly index: " << n);
+			INFO("Comparing assembly index: " << n <<
+				"\nExpected: " << Instr(arr[n]).dump() <<
+				"Received: " << Instr(summation[n]).dump()
+			);
 			REQUIRE(arr[n] == summation[n]);
 		}
+	}
+
+
+	SECTION("Register without mux definition should throw on usage") {
+		using namespace QPULib::v3d::instr;
+
+		REQUIRE_NOTHROW(r0.to_waddr());
+		REQUIRE_NOTHROW(r0.to_mux());
+
+		// tmua has no mux usage
+		REQUIRE_NOTHROW(tmua.to_waddr());
+		REQUIRE_THROWS(tmua.to_mux());
 	}
 }
 
