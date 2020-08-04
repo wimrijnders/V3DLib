@@ -26,11 +26,12 @@ private:
 
 class Instr : public v3d_qpu_instr {
 public:
-	Instr(uint64_t code = NOP) { init(code); }
+	Instr(uint64_t in_code = NOP);
+//	Instr(Instr &s) = default;
 
 	std::string dump(bool to_stdout = false) const; 
 	uint64_t code() const;
-	static void show(uint64_t code);
+	static void show(uint64_t in_code);
 
 	operator uint64_t() const { return code(); }
 
@@ -49,13 +50,14 @@ private:
 	static uint64_t const NOP;
 
 	void init_ver() const;
-	void init(uint64_t code);
+	void init(uint64_t in_code);
 };
 
 
 extern Register const r0;
 extern Register const r1;
 extern Register const tmua;
+extern Register const tmud;
 
 Instr nop();
 Instr ldunifrf(uint8_t rf_address);
@@ -78,8 +80,13 @@ Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t ref_addr3);
 Instr mov(uint8_t rf_addr, uint8_t val);
 Instr mov(Register const &reg, uint8_t rf_addr);
 
-
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
+
+Instr branch(int target, int current);
+
+v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
+
+Instr barrierid(v3d_qpu_waddr waddr);
 
 }  // instr
 }  // v3d

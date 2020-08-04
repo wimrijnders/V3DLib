@@ -59,6 +59,7 @@ v3d_qpu_mux Register::to_mux() const {
 Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0);
 Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1);
 Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
+Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -66,6 +67,10 @@ Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
 ///////////////////////////////////////////////////////////////////////////////
 
 uint64_t const Instr::NOP = 0x3c003186bb800000;  // This is actually 'nop nop'
+
+Instr::Instr(uint64_t in_code) {
+	init(in_code);
+}
 
 std::string Instr::dump(bool to_stdout) const {
 	std::string ret;
@@ -86,12 +91,21 @@ uint64_t Instr::code() const {
 	init_ver();
 
   uint64_t repack = instr_pack(&devinfo, const_cast<Instr *>(this));
+
+	if (type == V3D_QPU_INSTR_TYPE_BRANCH) {
+		if (!branch.ub) {
+			// take over the value anyway
+			uint64_t mask = 0b111 << 15;
+			//repack = (repack & ~mask) | (((uint64_t) branch.bdu) & 0b111) << 15;
+			repack = (repack & ~mask) | ((((uint64_t) branch.bdu) << 15) & mask);
+		}
+	}
 	return repack;
 }
 
 
-void Instr::show(uint64_t code) {
-	Instr instr(code);
+void Instr::show(uint64_t in_code) {
+	Instr instr(in_code);
 	instr.dump(true);
 }
 
@@ -103,16 +117,28 @@ void Instr::init_ver() const {
 }
 
 
-void Instr::init(uint64_t code) {
+void Instr::init(uint64_t in_code) {
 	init_ver();
 
 	// These do not always get initialized in unpack
 	sig_addr = 0;
 	sig_magic = false;
 
-	if (!instr_unpack(&devinfo, code, this)) {
+	// Not set for branch
+	raddr_b = 0; 
+//	branch.ub  = false;
+//	branch.bdu = V3D_QPU_BRANCH_DEST_ABS;  // dummy value, first in enum
+
+	if (!instr_unpack(&devinfo, in_code, this)) {
 		assert(false);
 	}
+
+	if (type == V3D_QPU_INSTR_TYPE_BRANCH) {
+		if (!branch.ub) {
+			// take over the value anyway
+			branch.bdu = (v3d_qpu_branch_dest) ((in_code >> 15) & 0b111);
+		}
+}
 
 /*
 	// WRI DEBUG
@@ -133,10 +159,10 @@ Instr &Instr::pushz() {
 }
 
 
-// TODO: Where does reg go?
+// TODO: Where does reg go??
 Instr &Instr::ldtmu(Register const &reg) {
 	sig.ldtmu = true;
-	raddr_b   = reg.to_waddr(); 
+	sig_addr  = reg.to_waddr(); 
 
 	return *this;
 }
@@ -345,10 +371,11 @@ Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 	Instr instr;
 
 	instr.raddr_a       = rf_addr1; 
+	instr.sig_magic     = true;
 	instr.alu.add.op    = V3D_QPU_A_ADD;
 	instr.alu.add.a     = V3D_QPU_MUX_A;
 	instr.alu.add.b     = reg3.to_mux();
-	instr.alu.add.waddr = rf_addr1;
+	instr.alu.add.waddr = rf_addr2;
 	instr.alu.add.magic_write = false;
 
 	return instr;
@@ -356,15 +383,17 @@ Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 
 
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
+	//printf("add() called addr1: %x,  addr3: %x\n", rf_addr1, rf_addr3);
 	Instr instr;
 
 	instr.raddr_a       = rf_addr1; 
+	instr.raddr_b       = rf_addr3; 
 	instr.sig_magic     = true;
 	instr.alu.add.op    = V3D_QPU_A_ADD;
 	instr.alu.add.a     = V3D_QPU_MUX_A;
 	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = rf_addr3;
-	instr.alu.add.magic_write = true;
+	instr.alu.add.waddr = rf_addr2;
+	instr.alu.add.magic_write = false;
 
 	return instr;
 }
@@ -413,6 +442,43 @@ Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
 	return instr;
 }
 
+
+Instr branch(int target, int current) {
+	Instr instr;
+
+	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
+
+	instr.branch.cond = V3D_QPU_BRANCH_COND_NA0;  // TODO should be a parameter;  TODO fix in dump output
+	instr.branch.msfign = V3D_QPU_MSFIGN_NONE;
+	instr.branch.bdi = V3D_QPU_BRANCH_DEST_REL;  // branch dest
+	instr.branch.bdu = V3D_QPU_BRANCH_DEST_REL;  // not used when branch.ub == false, just set a value for now
+	instr.branch.ub = false;
+	instr.branch.raddr_a = 0;
+
+	// branch needs 4 delay slots before executing, hence the 4
+	// This means that 3 more instructions will execute after the loop before jumping
+	instr.branch.offset = (unsigned) 8*(target - (current + 4));
+
+	return instr;
+}
+
+
+Instr barrierid(v3d_qpu_waddr waddr) {
+	Instr instr;
+
+	instr.alu.add.op    = V3D_QPU_A_BARRIERID;
+	instr.alu.add.a     = V3D_QPU_MUX_R4;
+	instr.alu.add.b     = V3D_QPU_MUX_R2;
+	instr.alu.add.waddr = waddr;
+
+/*
+	instr.sig.small_imm = true; 
+	instr.raddr_b       = val1; 
+	instr.alu.add.magic_write = false;
+*/
+
+	return instr;
+}
 
 }  // instr
 }  // v3d

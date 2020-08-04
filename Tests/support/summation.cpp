@@ -797,25 +797,14 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int c
 	    << nop() 
 	    << bxor(reg_sum, 1, 1).mov(r1, 1);
 
-	// TODO: what is asm?
-	// Assumption: length of code till now
-	//while not align_cond(code_offset + len(asm)):
 	while (!align_cond(code_offset + ret.size())) {
 		ret << nop();
 	}
 
-	nop().dump(true);
-	uint64_t op = 0x3c9021813883e044;  // add  rf1, rf1, rf4   ; nop               ; ldtmu.r0     
-	Instr::show(op);
-
-	auto tmp_op = add(reg_src, reg_src, reg_stride).ldtmu(r0);
-//	tmp_op.dump(true);
-
-//with loop as l:
+	int loop_start = ret.size();
 
 	int unroll = 1 << unroll_shift;
 
-//     for i in range(7):
 	for (int i = 0; i < 7; ++i) {
 		ret << mov(tmua, reg_src).add(reg_src, reg_src, reg_stride);
 	}
@@ -823,20 +812,51 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int c
 	ret << mov(tmua, reg_src).sub(reg_length, reg_length, r1).pushz()
 			<< add(reg_src, reg_src, reg_stride).ldtmu(r0);
 
-/*
-        for j in range(unroll - 1):
-            for i in range(8):
-                mov(tmua, reg_src).add(reg_src, reg_src, reg_stride)
-                add(reg_sum, reg_sum, r0, sig=ldtmu(r0))
+	for (int j = 0; j < unroll - 1; ++j) {
+		for (int i = 0; i < 8; ++i) {
+			ret << mov(tmua, reg_src).add(reg_src, reg_src, reg_stride)
+			    << add(reg_sum, reg_sum, r0).ldtmu(r0);
+		}
+	}
 
-        for i in range(5):
-            add(reg_sum, reg_sum, r0, sig=ldtmu(r0))
+	for (int i = 0; i < 5; ++i) {
+		ret << add(reg_sum, reg_sum, r0).ldtmu(r0);
+	}
 
-        l.b(cond='na0')
-        add(reg_sum, reg_sum, r0, sig=ldtmu(r0))  # delay slot
-        add(reg_sum, reg_sum, r0, sig=ldtmu(r0))  # delay slot
-        add(reg_sum, reg_sum, r0)                 # delay slot
-*/
+	//	Original: l.b(cond='na0')
+	//	          the condition 'na0' is taken to be implicit for now
+	// TODO: Fix
+	ret << branch(loop_start, ret.size());
+	ret << add(reg_sum, reg_sum, r0).ldtmu(r0)  // delay slot
+	    << add(reg_sum, reg_sum, r0).ldtmu(r0)  // delay slot
+	    << add(reg_sum, reg_sum, r0);           // delay slot
+
+	ret << mov(tmud, reg_sum)
+      << mov(tmua, reg_dst);
+
+	// Useful little code snippet for debugging
+	nop().dump(true);
+	uint64_t op = 0x3c203192bb814000;  // barrierid  syncb     ; nop               ; thrsw        
+	Instr::show(op);
+	//auto tmp_op = branch(loop_start, ret.size());
+	//tmp_op.dump(true);
+
+	// This synchronization is needed between the last TMU operation and the
+	// program end with the thread switch just before the loop above.
+	ret << barrierid(syncb).thrsw(true)
+	    << nop()
+	    << nop();
+
+	// Program tail
+	ret << nop().thrsw(true)
+	    << nop().thrsw(true)
+	    << nop()
+	    << nop()
+	    << nop().thrsw(true)
+	    << nop()
+	    << nop()
+	    << nop();
+
 
 	return ret;
 }

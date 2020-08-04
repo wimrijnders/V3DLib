@@ -314,20 +314,24 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 		// Outputs should match exactly
 		for (uint32_t n = 0; n < len; ++n) {
-			INFO("Comparing assembly index: " << n <<
-				"\nExpected: " << Instr(arr[n]).dump() <<
-				"Received: " << Instr(summation[n]).dump()
+			INFO("Comparing assembly index: " << n << ", code length: " << arr.size() <<
+				"\nExpected: " << Instr(summation[n]).dump() <<
+				"Received: " << Instr(arr[n]).dump()
 			);
-			REQUIRE(arr[n] == summation[n]);
+			REQUIRE(summation[n] == arr[n]);
 		}
-	}
 
+
+		REQUIRE(summation.size() == arr.size());
+	}
 
 	SECTION("Register without mux definition should throw on usage") {
 		using namespace QPULib::v3d::instr;
 
 		REQUIRE_NOTHROW(r0.to_waddr());
 		REQUIRE_NOTHROW(r0.to_mux());
+		REQUIRE_NOTHROW(r1.to_waddr());
+		REQUIRE_NOTHROW(r1.to_mux());
 
 		// tmua has no mux usage
 		REQUIRE_NOTHROW(tmua.to_waddr());
