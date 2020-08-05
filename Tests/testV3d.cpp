@@ -241,13 +241,15 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		printf("Executing on QPU...\n");
 		double start = get_time();
 
-		breakpoint
+		//breakpoint
 		QPULib::v3d::Driver drv;
 		drv.execute(heap, &unif, num_qpus);
-		//REQUIRE(v3d_submit_csd(combinedMem));
 
 		dump_data(Y); 
+
+		// Check if values supplied
     REQUIRE(sumY() % (1ull << 32) == (length - 1) * length); // 2 % 2**32
+
 		double end = get_time();
 		printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
 	}

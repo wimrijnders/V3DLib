@@ -23,8 +23,6 @@ Dispatcher::Dispatcher(
 
 
 Dispatcher::~Dispatcher() {
-	breakpoint;
-
 	for (int index = 0; index < m_bo_handles.size(); ++index) {
 		auto bo_handle = m_bo_handles[index];
 		m_drm.v3d_wait_bo(bo_handle, (uint64_t) (m_timeout_sec / 1e-9));

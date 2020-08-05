@@ -104,8 +104,6 @@ void DRM_V3D::v3d_submit_csd(
 	uint32_t in_sync,
 	uint32_t out_sync) {
 
-	breakpoint
-
 	st_v3d_submit_csd st = {
 		// XXX: Dirty hack!
 		cfg,
