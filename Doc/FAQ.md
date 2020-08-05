@@ -84,10 +84,10 @@ So, calculation:
     flop/clock = 4 [PPU's] x 2 [ALU's] = 8
     GFLOPs = [Clock Speed (MHz)]x[num slices]x[qpu/slice]x[op/clock]
 
-- VideoCore IV @ 250MHz: 250x3x4x8 = 24   GFLOPs
-- VideoCore IV @ 300MHz: 300x3x4x8 = 28.8 GFLOPs
-- Pi3+                 : 400x3x4x8 = 38.4 GFLOPs
-- VideoCore VI @ 500MHz: 500x2x4x8 = 32   GFLOPs (less!)
+- Pi2  : 250x3x4x8 = 24.0 GFLOPs
+- Pi3  : 300x3x4x8 = 28.8 GFLOPs
+- Pi3+ : 400x3x4x8 = 38.4 GFLOPs
+- Pi4  : 500x2x4x8 = 32.0 GFLOPs (less!)
 
 - The improved hardware in `v3d` may compensate for performance.
 - v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
