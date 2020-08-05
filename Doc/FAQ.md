@@ -67,24 +67,24 @@ Further:
 - With the threading improvements, the QPUs should spent much less time idle waiting for memory requests.
 
 ### Calculated theoretical max FLOPs per QPU
-Assuming theoretical max FLOPs per QPU per cycle is the same:
+Assuming theoretical max FLOPs per QPU per cycle (2 op/clock) is the same:
 
-  - Pi3+ 12x2x400mhz = 9.6 GFLOPs
-  - Pi4:  8x2x500mhz = 8.0 GFLOPs (less!)
+- Each QPU has 2 ALUs, which can work in parallel (Is this the 2 op/clock? Then calc is wrong
+- GFLOPs = [Clock Speed (MHz)]x[num slices]x[qpu/slice[ALU's per QPU]x[op/clock]
 
-Other list:
+- VideoCore IV @ 250MHz: 250x3x4x2x2 = 12   GFLOPs (prev double?)
+- VideoCore IV @ 300MHz: 300x3x4x2x2 = 14.4 GFLOPs (idem)
+- Pi3+                 : 400x3x4x2x2 = 19.2 GFLOPs (idem)
+- VideoCore VI @ 500MHz: 500x2x4x2x2 = 16   GFLOPs (less! Apparently advertized as 24 GFLOPs)
 
-> The correct theoretical performance of the GPUs is as follows:
+- Prev calculation:
 
-- VideoCore IV @ 250MHz: 250 [MHz] x 3 [slice] x 4 [qpu/slice] x 4 [processor] x 2 [op/clock] = 24 Gflop/s
-- VideoCore IV @ 300MHz: 300 [MHz] x 3 [slice] x 4 [qpu/slice] x 4 [processor] x 2 [op/clock] = 28.8 Gflop/s
-- VideoCore VI @ 500MHz: 500 [MHz] x 2 [slice] x 4 [qpu/slice] x 4 [processor] x 2 [op/clock] = 32 Gflop/s
+    VideoCore IV @ 250MHz: 250 [MHz] x 3 [slice] x 4 [qpu/slice] x 4 [processor] x 2 [op/clock] 
 
-Perhaps the driver is not reporting the correct number of QPUs.
-But the improved hardware may compensate for this.
+		- 'processor' is vague here
 
-v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
-It is still faster due to hardware improvements.
+- The improved hardware in `v3d` may compensate for performance.
+- v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
 
 -----
 # Function `compile()` is not Thread-Safe
