@@ -37,7 +37,7 @@ Here is an overview for the easily comparable stuff:
 |---------------------|--------------|-----|-|
 | **Clock speed :**   | 400MHz  | 500MHz | |
 | **Num QPU's:**      | 12  | 8 | |
-| **Threads per QPU** | 1 using 64 registers | *not supported* | *Shows  num registers from register file per thread* |
+| **Threads per QPU** | | | *Shows  num registers from register file per thread* |
 | 1 thread | 64 registers |  *not supported* | 
 | 2 threads     | 32 registers | 64 registers | |
 | 4 threads | *not supported* | 32 registers | |
