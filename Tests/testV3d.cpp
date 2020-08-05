@@ -33,6 +33,22 @@ uint64_t do_nothing[] = {
 };
 
 
+bool v3d_init() {
+	static bool did_first = false;
+
+	// Skip test if not on Pi4
+	if (Platform::instance().has_vc4) {
+		if (!did_first) {
+			printf("Skipping v3d tests with calls to driver\n");
+			did_first = true;
+		}
+		return false;;
+	}
+
+	REQUIRE(v3d_open());
+	return true;
+}
+
 
 double get_time() {
     struct timeval t;
@@ -75,13 +91,7 @@ void dump_data(T const &arr) {
  */
 TEST_CASE("Check v3d code is working properly", "[v3d]") {
 	SECTION("Direct v3d calls should work properly") {
-		if (Platform::instance().has_vc4) {
-			// Skip test if not on Pi4
-			printf("Skipping v3d tests\n");
-			return;
-		}
-
-		REQUIRE(v3d_open());
+		if (!v3d_init()) return;
 
     uint32_t handle = 0;
     uint32_t phyaddr = 0;
@@ -113,12 +123,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
 
 	SECTION("Direct v3d calls should work with SharedArray") {
-		if (Platform::instance().has_vc4) {
-			// Skip test if not on Pi4
-			return;
-		}
-
-		REQUIRE(v3d_open());
+		if (!v3d_init()) return;
 
 		uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
 		assert(array_length == 8);
@@ -140,10 +145,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
 
 	SECTION("v3d SharedArray should work as expected") {
-		if (Platform::instance().has_vc4) {
-			// Skip test if not on Pi4
-			return;
-		}
+		if (!v3d_init()) return;
 
 		const int SIZE = 16;
 
@@ -182,6 +184,8 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	// example here.
 	//
 	SECTION("Summation example should work") {
+		if (!v3d_init()) return;
+
 		uint32_t length = 32 * 1024 * 1024;
 		int num_qpus = 1; //8;
 		int unroll_shift = 5;
