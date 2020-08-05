@@ -67,21 +67,27 @@ Further:
 - With the threading improvements, the QPUs should spent much less time idle waiting for memory requests.
 
 ### Calculated theoretical max FLOPs per QPU
-Assuming theoretical max FLOPs per QPU per cycle (2 op/clock) is the same:
 
-- Each QPU has 2 ALUs, which can work in parallel (Is this the 2 op/clock? Then calc is wrong
-- GFLOPs = [Clock Speed (MHz)]x[num slices]x[qpu/slice[ALU's per QPU]x[op/clock]
+From the [VideoCore® IV 3D Architecture Reference Guide](https://docs.broadcom.com/doc/12358545):
 
-- VideoCore IV @ 250MHz: 250x3x4x2x2 = 12   GFLOPs (prev double?)
-- VideoCore IV @ 300MHz: 300x3x4x2x2 = 14.4 GFLOPs (idem)
-- Pi3+                 : 400x3x4x2x2 = 19.2 GFLOPs (idem)
-- VideoCore VI @ 500MHz: 500x2x4x2x2 = 16   GFLOPs (less! Apparently advertized as 24 GFLOPs)
+- The QPU is a 16-way SIMD processor.
+- Each processor has two vector floating-point ALUs which carry out multiply and non-multiply operations in parallel with single instruction cycle latency.
+- Internally the QPU is a 4-way SIMD processor multiplexed 4× (over PPU's) over four cycles, making it particularly suited to processing streams of quads of pixels.
 
-- Prev calculation:
+So:
 
-    VideoCore IV @ 250MHz: 250 [MHz] x 3 [slice] x 4 [qpu/slice] x 4 [processor] x 2 [op/clock] 
+- 4 operations per clock cycle, when properly pipelined
+- 2 ALU's per operation
 
-		- 'processor' is vague here
+So, calculation:
+
+    flop/clock = 4 [PPU's] x 2 [ALU's] = 8
+    GFLOPs = [Clock Speed (MHz)]x[num slices]x[qpu/slice]x[op/clock]
+
+- VideoCore IV @ 250MHz: 250x3x4x8 = 24   GFLOPs
+- VideoCore IV @ 300MHz: 300x3x4x8 = 28.8 GFLOPs
+- Pi3+                 : 400x3x4x8 = 38.4 GFLOPs
+- VideoCore VI @ 500MHz: 500x2x4x8 = 32   GFLOPs (less!)
 
 - The improved hardware in `v3d` may compensate for performance.
 - v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
