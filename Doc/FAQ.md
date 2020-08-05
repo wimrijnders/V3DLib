@@ -33,13 +33,13 @@ The strategy appears to be to investigate the available open source drivers.
 
 Here is an overview for the easily comparable stuff:
 
-| | vc4 | v3d |
-|-------------------|--------------|-|
-| **Clock speed :** | 400MHz  | 500MHz |
-| **Num QPU's:** | 12  | 8 |
+|                     | vc4          | v3d |
+|---------------------|--------------|-----|
+| **Clock speed :**   | 400MHz  | 500MHz |
+| **Num QPU's:**      | 12  | 8 |
 | **Threads per QPU** | 1 thread, 64 registers in register file | *No 1 thread per QPU* |
-|| 2 threads, 32 registers | 2 threads, 64 registers
-|| *no 4 threads* | 4 threads, 32 registers |
+|                     | 2 threads, 32 registers | 2 threads, 64 registers |
+|                     | *no 4 threads* | 4 threads, 32 registers |
 
 - vc5 added a four thread per QPU mode, with 16 registers per thread. vc5 was skipped in the Pi's.
 - v3d doubled the size of the register file.
