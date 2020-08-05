@@ -9,6 +9,7 @@
 #include <unistd.h>  // close()
 #include <stdint.h>
 #include "DRM_V3D.h"
+#include "debug.h"
 
 
 namespace {
@@ -104,8 +105,7 @@ void DRM_V3D::v3d_submit_csd(
 	uint32_t in_sync,
 	uint32_t out_sync) {
 
-	assert(false); // DEBUG
-	 // TODO: check if usage std::array is as we expect (zero overhead)
+	breakpoint
 
 	st_v3d_submit_csd st = {
 		// XXX: Dirty hack!
