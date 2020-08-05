@@ -170,8 +170,10 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		arr.dealloc();
 		REQUIRE(arr.size() == 0);
 	}
+}
 
 
+TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	//
 	// Adapted from: https://github.com/Idein/py-videocore6/blob/master/examples/summation.py
 	//
