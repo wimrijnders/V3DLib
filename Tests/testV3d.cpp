@@ -4,11 +4,11 @@
 #include <cstring>
 #include "v3d/SharedArray.h"
 #include "v3d/v3d.h"
-//#include "v3d/dump_instr.h"
 #include "v3d/Instr.h"
 #include "debug.h"
 #include "Support/Platform.h"
 #include "support/summation.h"
+#include "v3d/Driver.h"
 
 #define ARRAY_LENGTH(arr, type) (sizeof(arr)/sizeof(type))
 
@@ -175,13 +175,13 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 	//
 	// Adapted from: https://github.com/Idein/py-videocore6/blob/master/examples/summation.py
 	//
-	// This uses a shared array for code and data.
-	// This might not be necessary due to usage of BO's, but we're sticking to the original
+	// This uses a single shared array for code and data.
+	// It might be possible to use muliple arrays, but we're sticking to the original
 	// example here.
 	//
 	SECTION("Summation example should work") {
 		uint32_t length = 32 * 1024 * 1024;
-		int num_qpus = 8;
+		int num_qpus = 1; //8;
 		int unroll_shift = 5;
 
     REQUIRE(length > 0);
@@ -235,9 +235,10 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		printf("Executing on QPU...\n");
 		double start = get_time();
 
-		// drv.execute(code, unif.addresses()[0], thread=num_qpus)
+		breakpoint
+		QPULib::v3d::Driver drv;
+		drv.execute(heap, &unif, num_qpus);
 		//REQUIRE(v3d_submit_csd(combinedMem));
-		REQUIRE(false);  // TODO
 
 		dump_data(Y); 
     REQUIRE(sumY() % (1ull << 32) == (length - 1) * length); // 2 % 2**32

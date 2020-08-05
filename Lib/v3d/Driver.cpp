@@ -41,8 +41,8 @@ Dispatcher::~Dispatcher() {
 * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
 */
 void Dispatcher::dispatch(
-	SharedArray &code,
-	SharedArray *uniforms,
+	Array &code,
+	Array *uniforms,
 	WorkGroup workgroup,
 	uint32_t wgs_per_sg,
 	uint32_t thread
@@ -94,13 +94,13 @@ Dispatcher Driver::compute_shader_dispatcher(int timeout_sec) {
 
 
 void Driver::execute(
-	SharedArray &code,
-	SharedArray *uniforms,
+	Array &code,
+	Array *uniforms,
+	int thread,
 	int timeout_sec,
 	WorkGroup workgroup,
-	int wgs_per_sg,
-	int thread
-) {
+	int wgs_per_sg) {
+
 	auto csd = compute_shader_dispatcher(timeout_sec);
   csd.dispatch(code, uniforms, workgroup, wgs_per_sg, thread);
 }
