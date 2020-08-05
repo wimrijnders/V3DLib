@@ -13,8 +13,7 @@ public:
 	void v3d_submit_csd(
 		Cfg &cfg,
 		Coef &coef,
-		BoHandles bo_handles,
-		uint32_t bo_handle_count,
+		BoHandles &bo_handles,
 		uint32_t in_sync,
 		uint32_t out_sync);
 

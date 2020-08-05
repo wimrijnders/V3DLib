@@ -15,20 +15,17 @@ namespace v3d {
 
 Dispatcher::Dispatcher(
 	DRM_V3D &drm,
-	BoHandles bo_handles,
-	uint32_t bo_handle_count,
+	BoHandles &bo_handles,
 	int timeout_sec) :
 	m_drm(drm),
 	m_bo_handles(bo_handles),
-	m_bo_handle_count(bo_handle_count),
 	m_timeout_sec(timeout_sec) {}
 
 
 Dispatcher::~Dispatcher() {
-	assert(m_bo_handles != nullptr);
+	breakpoint;
 
-	// Assume bo_handles array zero-terminated
-	for (int index = 0; m_bo_handles[index] != 0; ++index) {
+	for (int index = 0; index < m_bo_handles.size(); ++index) {
 		auto bo_handle = m_bo_handles[index];
 		m_drm.v3d_wait_bo(bo_handle, (uint64_t) (m_timeout_sec / 1e-9));
 	}
@@ -66,7 +63,7 @@ void Dispatcher::dispatch(
 			(workgroup.wg_size() & 0xff
 		),
 		thread - 1,           // Number of batches minus 1
-		code.getAddress(),  // Shader address, pnan, singleseg, threading
+		code.getAddress(),    // Shader address, pnan, singleseg, threading
 		(uint32_t) uniforms
 	};
 
@@ -76,11 +73,10 @@ void Dispatcher::dispatch(
 		cfg,
 		coef,
 		m_bo_handles,
-		m_bo_handle_count,
 		0,
 		0
-		);
-	}
+	);
+}
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -89,7 +85,7 @@ void Dispatcher::dispatch(
 
 
 Dispatcher Driver::compute_shader_dispatcher(int timeout_sec) {
-	return Dispatcher(m_drm, m_bo_handles, m_bo_handle_count, timeout_sec);
+	return Dispatcher(m_drm, m_bo_handles, timeout_sec);
 }
 
 

@@ -100,8 +100,7 @@ void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
 void DRM_V3D::v3d_submit_csd(
 	Cfg &cfg,
 	Coef &coef,
-	BoHandles bo_handles,
-	uint32_t bo_handle_count,
+	BoHandles &bo_handles,
 	uint32_t in_sync,
 	uint32_t out_sync) {
 
@@ -111,8 +110,8 @@ void DRM_V3D::v3d_submit_csd(
 		// XXX: Dirty hack!
 		cfg,
 		coef,
-		(uint64_t) bo_handles,
-		bo_handle_count,
+		(uint64_t) bo_handles.data(),
+		bo_handles.size(),
 		in_sync,
 		out_sync
 	};

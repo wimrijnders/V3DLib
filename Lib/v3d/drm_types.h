@@ -10,6 +10,7 @@
 #include <sys/ioctl.h>
 #include <stdint.h>
 #include <array>
+#include <vector>
 #include "../Target/SharedArray.h"
 
 
@@ -18,7 +19,7 @@ namespace v3d {
 
 using Cfg = std::array<uint32_t, 7>;
 using Coef = std::array<uint32_t, 4>;
-using BoHandles = uint32_t *;
+using BoHandles = std::vector<uint32_t>;
 
 struct WorkGroup {
 	uint32_t wg_x = 0;

@@ -13,8 +13,7 @@ class Dispatcher {
 public:
 	Dispatcher(
 		DRM_V3D &drm,
-		BoHandles bo_handles,
-		uint32_t bo_handle_count,
+		BoHandles &bo_handles,
 		int timeout_sec);
 
 	~Dispatcher(); 
@@ -27,13 +26,19 @@ public:
 		uint32_t thread = 1);
 
 private:
-	DRM_V3D &m_drm;
-	BoHandles m_bo_handles = 0;
-	uint32_t m_bo_handle_count = 0;
-  int m_timeout_sec = -1;
+	DRM_V3D   &m_drm;
+	BoHandles  m_bo_handles;
+  int        m_timeout_sec = -1;
 };
 
 
+/**
+ * NOTE: In python call, following was done in ctor:
+ *
+ *         self.bo_handles = np.array([self.memory.handle], dtype=np.uint32)
+ *
+ * TODO: check if this is relevant
+ */
 class Driver {
   using Array = SharedArray<uint32_t>;
 
@@ -50,8 +55,7 @@ public:
 
 private:
 	DRM_V3D m_drm;
-	BoHandles m_bo_handles = nullptr;
-	uint32_t m_bo_handle_count = 0;
+	BoHandles m_bo_handles;
 
 };  // class Driver
 
