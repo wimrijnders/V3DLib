@@ -30,7 +30,13 @@ The strategy appears to be to investigate the available open source drivers.
 
 
 ## What is different
-- Clock speed up to 500MHz from 400MHz
+
+Here is an overview for the easily comparable stuff:
+
+| | `vc4` | `v3d` |
+|-|-|-|
+| **Clock spped** | 400MHz  | 500MHz |
+
 - vc6 is clearly derived from vc4, but it is significantly different. vc6 is only a slight extension over vc5
 - The instruction encoding for the QPUs is different, but the core instructions are the same.
 - Instructions for packed 8 bit int math has been dropped, along with most of the pack modes.
