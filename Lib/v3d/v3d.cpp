@@ -286,8 +286,10 @@ bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> bo_handles, uint32_t
 
 
 	for (auto &handle : bo_handles) {
-		if (0 != v3d_wait_bo(fd, handle)) {
-			assert(false);
+		int ret = v3d_wait_bo(fd, handle);
+		if (0 != ret) {
+			printf("v3d_wait_bo() returned %d\n", ret);
+			//assert(false);
 		}
 	}
 	printf("Done calling v3d_wait_bo()\n");

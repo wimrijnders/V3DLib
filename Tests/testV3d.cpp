@@ -200,7 +200,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
     uint32_t data_area_size = (length + 1024) * 4;
 
 		printf("Preparing for buffers...\n");
-		breakpoint
+
 		// Code and data is combined in one buffer
 		Data heap(code_area_size + data_area_size);
 		auto code = heap.alloc_view<uint64_t>(code_area_size);
@@ -236,8 +236,8 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		//Data unif(3);
 		auto unif = heap.alloc_view<uint32_t>(3*4);  // grumbl size in bytes TODO: change, this is confusing
 		unif[0] = length;
-		unif[1] = X.getAddress();  // TODO: is this correct?
-		unif[2] = Y.getAddress();  // TODO: is this correct?
+		unif[1] = X.getPhyAddr();  // TODO: is this correct?
+		unif[2] = Y.getPhyAddr();  // TODO: is this correct?
 
 
 		printf("Executing on QPU...\n");
