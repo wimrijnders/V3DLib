@@ -37,7 +37,7 @@ Dispatcher::~Dispatcher() {
 */
 void Dispatcher::dispatch(
 	Code &code,
-	Array *uniforms,
+	Array &uniforms,
 	WorkGroup workgroup,
 	uint32_t wgs_per_sg,
 	uint32_t thread
@@ -62,7 +62,7 @@ void Dispatcher::dispatch(
 		),
 		thread - 1,           // Number of batches minus 1
 		code.getAddress(),    // Shader address, pnan, singleseg, threading
-		(uint32_t) uniforms
+		(uint32_t) (uniforms.size() > 0)?uniforms.getAddress(): 0
 	};
 
 	Coef coef = {0,0,0,0};
@@ -89,7 +89,7 @@ Dispatcher Driver::compute_shader_dispatcher(int timeout_sec) {
 
 void Driver::execute(
 	Code &code,
-	Array *uniforms,
+	Array &uniforms,
 	int thread,
 	int timeout_sec,
 	WorkGroup workgroup,
