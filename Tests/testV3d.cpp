@@ -205,6 +205,10 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		Data heap(code_area_size + data_area_size);
 		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
 
+		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
+			heap[offset] = 0xdeadbeef;
+		}
+
 		auto code = heap.alloc_view<uint64_t>(code_area_size);
 		code.copyFrom(summation);
 		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
@@ -220,9 +224,11 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 		dump_data(X); 
 
+/*
 		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
 			Y[offset] = 0;
 		}
+*/
 
 		dump_data(Y); 
 
@@ -236,7 +242,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 			return ret;
 		};
 
-		REQUIRE(sumY() == 0);
+//		REQUIRE(sumY() == 0);
 
 		//Data unif(3);
 		auto unif = heap.alloc_view<uint32_t>(3*4);  // grumbl size in bytes TODO: change, this is confusing
@@ -253,6 +259,22 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		drv.execute(heap, unif, num_qpus);
 
 		dump_data(Y);
+
+
+		bool have_block = false;
+		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
+			if (have_block) {
+				if (heap[offset] == 0xdeadbeef) {
+					printf("block end at %u\n", 4*offset);
+					have_block = false;
+				}
+			} else {
+				if (heap[offset] != 0xdeadbeef) {
+					printf("block start at %u\n", 4*offset);
+					have_block = true;
+				}
+			}
+		}
 
 		// Check if code not overwritten
 		for (uint32_t offset = 0; offset < summation.size(); ++offset) {
