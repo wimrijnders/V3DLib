@@ -51,7 +51,7 @@ struct st_v3d_wait_bo {
 	struct st_v3d_submit_csd {
 		Cfg    cfg; // c_uint32 * 7
 		Coef   coef;  // c_uint32 * 4
-		uint64_t bo_handles;
+		uint32_t bo_handles;
 		uint32_t bo_handle_count;
 		uint32_t in_sync;
 		uint32_t out_sync;
@@ -59,8 +59,8 @@ struct st_v3d_wait_bo {
 
 
 
-	const unsigned IOCTL_V3D_WAIT_BO    = _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, sizeof(st_v3d_wait_bo));
-	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, sizeof(st_v3d_submit_csd));
+	const unsigned IOCTL_V3D_WAIT_BO    = _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, st_v3d_wait_bo);
+	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, st_v3d_submit_csd);
 
 } // anon namespace
 
@@ -98,7 +98,7 @@ void DRM_V3D::v3d_submit_csd(
 		// XXX: Dirty hack!
 		cfg,
 		coef,
-		(uint64_t) bo_handles.data(),
+		(uint32_t) bo_handles.data(),
 		bo_handles.size(),
 		in_sync,
 		out_sync
