@@ -58,10 +58,18 @@ double get_time() {
 
 
 template<typename T>
-void dump_data(T const &arr) {
-	const int DISP_LENGTH = 4;
-
+void dump_data(T const &arr, bool do_all = false) {
 	int first_size = (int) arr.size();
+
+	if (do_all) {
+		for (int offset = 0; offset < first_size; ++offset) {
+			printf("%8d: %8d\n", offset, arr[offset]);
+		}
+		return;
+	}
+
+	const int DISP_LENGTH = 8;
+
 	if (first_size > DISP_LENGTH) {
 		first_size = DISP_LENGTH;
 	}
@@ -214,7 +222,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
 
 		auto X = heap.alloc_view<uint32_t>(4*length);
-		auto Y = heap.alloc_view<uint32_t>(4* 16 * num_qpus);
+		auto Y = heap.alloc_view<uint32_t>(4* 16 * 8 /*num_qpus*/);
 		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
 		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
 
@@ -249,6 +257,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		unif[0] = length;
 		unif[1] = X.getPhyAddr();  // TODO: is this correct?
 		unif[2] = Y.getPhyAddr();  // TODO: is this correct?
+		printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
 
 
 		printf("Executing on QPU...\n");
@@ -258,7 +267,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		drv.add_bo(heap);
 		drv.execute(heap, unif, num_qpus);
 
-		dump_data(Y);
+		dump_data(Y, true);
 
 
 		bool have_block = false;
@@ -270,7 +279,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 				}
 			} else {
 				if (heap[offset] != 0xdeadbeef) {
-					printf("block start at %u\n", 4*offset);
+					printf("Block at %u, value: %d - %x\n", 4*offset, heap[offset], heap[offset]);
 					have_block = true;
 				}
 			}
@@ -292,7 +301,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		uint32_t val = 8388604u; // 4278190080u;
 		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
 			if (val == heap[offset]) {
-				printf("Found %u at %u", val, offset);
+				printf("Found %u at %u, value: %d - %x\n", val, offset, heap[offset], heap[offset]);
 			}
 		}
 	
