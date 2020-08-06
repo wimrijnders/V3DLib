@@ -8,7 +8,8 @@ namespace QPULib {
 namespace v3d {
 
 class Dispatcher {
-  using Array = SharedArray<uint32_t>;
+  using Code  = ISharedArray; //<uint64_t>;
+  using Array = ISharedArray;  //<uint32_t>;
 
 public:
 	Dispatcher(
@@ -19,7 +20,7 @@ public:
 	~Dispatcher(); 
 
 	void dispatch(
-		Array &code,
+		Code &code,
 		Array *uniforms = nullptr,
 		WorkGroup workgroup = WorkGroup(),
 		uint32_t wgs_per_sg = 16,
@@ -40,13 +41,14 @@ private:
  * TODO: check if this is relevant
  */
 class Driver {
-  using Array = SharedArray<uint32_t>;
+  using Code  = ISharedArray; //<uint64_t>;
+  using Array = ISharedArray;  //<uint32_t>;
 
 public:
 	Dispatcher compute_shader_dispatcher(int timeout_sec= 10);
 
 	void execute(
-		Array &code,
+		Code &code,
 		Array *uniforms,
 		int thread = 1,
 		int timeout_sec = 10,

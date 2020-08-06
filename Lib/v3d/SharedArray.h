@@ -9,11 +9,20 @@
 namespace QPULib {
 namespace v3d {
 
+
+class ISharedArray {
+public: 
+	virtual ~ISharedArray() {}
+
+  virtual uint32_t getAddress() const = 0;
+};
+
+
 class SharedArrayBase;
 
 
 template<typename T>
-class ArrayView {
+class ArrayView : public ISharedArray {
 public:
 	ArrayView(char *base, uint32_t size) : m_base(base), m_size(size/sizeof(T)) {
 		assert(base != nullptr);
@@ -22,7 +31,7 @@ public:
 
 
 	uint32_t size() const { return m_size; }
-  uint32_t getAddress() const { return  (uint32_t) m_base; }
+  uint32_t getAddress() const override { return  (uint32_t) m_base; }
 
 	void copyFrom(T const *src, uint32_t size) {
 		assert(src != nullptr);
@@ -44,6 +53,7 @@ public:
 			(*this)[offset] = src[offset];
 		}
 	}
+
 
   // Subscript
   inline const T operator[] (int i) const {
@@ -76,7 +86,10 @@ public:
 	SharedArrayBase() {} 
 	~SharedArrayBase(); 
 
+protected:
   uint32_t getAddress() const { return  (uint32_t) usraddr; }
+
+public:
   uint32_t getPhyAddr() const { return  (uint32_t) phyaddr; }
   uint32_t getHandle()  const { return  (uint32_t) handle; }
 
@@ -107,12 +120,13 @@ private:
 };
 
 
-template <typename T> class SharedArray : public SharedArrayBase {
+template <typename T> class SharedArray : public SharedArrayBase,  public ISharedArray {
 public:
 	SharedArray() {} 	SharedArray(uint32_t n) { alloc(n); } 
 	~SharedArray() { dealloc(); } 
 
 	uint32_t size() const { return m_size; }
+  uint32_t getAddress() const override { return  SharedArrayBase::getAddress(); }
 
 	/**
 	 * @param n number of 4-byte elements to allocate (so NOT memory size!)

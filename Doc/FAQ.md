@@ -35,7 +35,7 @@ Here is an overview for the easily comparable stuff:
 
 | Item                | vc4          | v3d | Comment |
 |---------------------|--------------|-----|-|
-| **Clock speed :**   | 400MHz  | 500MHz | |
+| **Clock speed :**   | 400MHz (Pi3+)  | 500MHz | |
 | **Num QPU's:**      | 12  | 8 | |
 | **Threads per QPU** | | | *Shows  num registers from register file per thread* |
 | 1 thread | 64 registers |  *not supported* | 
@@ -43,7 +43,7 @@ Here is an overview for the easily comparable stuff:
 | 4 threads | *not supported* | 32 registers | |
 
 - vc5 added a four thread per QPU mode, with 16 registers per thread. vc5 was skipped in the Pi's.
-- v3d doubled the size of the register file.
+- v3d doubled the size of the register file (A and B combined, see note below).
 
 
 Further:
@@ -77,12 +77,12 @@ From the [VideoCore® IV 3D Architecture Reference Guide](https://docs.broadcom.
 So:
 
 - 4 operations per clock cycle, when properly pipelined
-- 2 ALU's per operation
+- 2 ALU's per operation, when instructions uses both
 
 So, calculation:
 
-    flop/clock = 4 [PPU's] x 2 [ALU's] = 8
-    GFLOPs = [Clock Speed (MHz)]x[num slices]x[qpu/slice]x[op/clock]
+    op/clock per QPU = 4 [PPU's] x 2 [ALU's] = 8
+    GFLOPs           = [Clock Speed (MHz)]x[num slices]x[qpu/slice]x[op/clock]
 
 - Pi2  : 250x3x4x8 = 24.0 GFLOPs
 - Pi3  : 300x3x4x8 = 28.8 GFLOPs
