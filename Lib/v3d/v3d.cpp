@@ -120,7 +120,7 @@ bool alloc_intern(int fd, uint32_t size, uint32_t &handle, uint32_t &phyaddr, vo
 					return false;
 				}
     }
-    handle = create_bo.handle;
+    handle  = create_bo.handle;
     phyaddr = create_bo.offset;
 
     drm_v3d_mmap_bo mmap_bo;
@@ -290,17 +290,19 @@ bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> bo_handles, uint32_t
 			assert(false);
 		}
 	}
+	printf("Done calling v3d_wait_bo()\n");
 	return true;
 }
 
 
 bool v3d_submit_csd(
-	QPULib::v3d::ISharedArray const &codeMem,
+	QPULib::v3d::SharedArrayBase const &codeMem,
 	std::vector<uint32_t> const &bo_handles,
 	QPULib::v3d::ISharedArray const &uniforms
 ) {
 	auto index = std::find(bo_handles.begin(), bo_handles.end(), codeMem.getHandle());
 	assert(index != bo_handles.end());  // Expecting handle of code to have been added beforehand
 
-	return v3d_submit_csd(codeMem.getPhyAddr(), bo_handles, uniforms.getPhyAddr());
+	//return v3d_submit_csd(codeMem.getPhyAddr(), bo_handles, uniforms.getPhyAddr());
+	return v3d_submit_csd(codeMem.getPhyAddr(), bo_handles, uniforms.getAddress());
 }

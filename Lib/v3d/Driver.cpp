@@ -24,10 +24,12 @@ Dispatcher::Dispatcher(
 
 
 Dispatcher::~Dispatcher() {
+/*
 	for (int index = 0; index < m_bo_handles.size(); ++index) {
 		auto bo_handle = m_bo_handles[index];
 		m_drm.v3d_wait_bo(bo_handle, (uint64_t) (m_timeout_sec / 1e-9));
 	}
+*/
 }
 
 
@@ -62,12 +64,15 @@ void Dispatcher::dispatch(
 			(workgroup.wg_size() & 0xff
 		),
 		thread - 1,           // Number of batches minus 1
-		code.getPhyAddr(),    // Shader address, pnan, singleseg, threading
-		uniforms.getPhyAddr()
+		//code.getPhyAddr(),    // Shader address, pnan, singleseg, threading
+		//uniforms.getPhyAddr()
+		code.getAddress(),    // Shader address, pnan, singleseg, threading
+		uniforms.getAddress()
 	};
 
 	Coef coef = {0,0,0,0};
 
+/*
 	m_drm.v3d_submit_csd(
 		cfg,
 		coef,
@@ -75,8 +80,9 @@ void Dispatcher::dispatch(
 		0,
 		0
 	);
+*/
 
-//	::v3d_submit_csd(code, m_bo_handles, uniforms);
+	::v3d_submit_csd(code, m_bo_handles, uniforms);
 }
 
 

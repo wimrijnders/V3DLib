@@ -8,7 +8,7 @@ namespace QPULib {
 namespace v3d {
 
 class Dispatcher {
-  using Code  = ISharedArray; //<uint64_t>;
+  using Code  = SharedArrayBase; //  ISharedArray; //<uint64_t>;
   using Array = ISharedArray; //<uint32_t>;
 
 public:
@@ -41,7 +41,7 @@ private:
  * TODO: check if this is relevant
  */
 class Driver {
-  using Code  = ISharedArray; //<uint64_t>;
+  using Code  = SharedArrayBase; //  ISharedArray; //<uint64_t>;
   using Array = ISharedArray; //<uint32_t>;
 
 public:

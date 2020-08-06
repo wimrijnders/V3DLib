@@ -14,9 +14,9 @@ class ISharedArray {
 public: 
 	virtual ~ISharedArray() {}
 
-  //virtual uint32_t getAddress() const = 0;
+  virtual uint32_t getAddress() const = 0;
   virtual uint32_t getHandle()  const { assert(false); return 0; }
-  virtual uint32_t getPhyAddr() const = 0;
+  //virtual uint32_t getPhyAddr() const = 0;
 };
 
 
@@ -33,8 +33,8 @@ public:
 
 
 	uint32_t size() const { return m_size; }
-  //uint32_t getAddress() const override { return  (uint32_t) m_base; }
-  uint32_t getPhyAddr() const override { return  (uint32_t) m_base; }
+  uint32_t getAddress() const override { return  (uint32_t) m_base; }
+  //uint32_t getPhyAddr() const override { return  (uint32_t) m_base; }
 
 	void copyFrom(T const *src, uint32_t size) {
 		assert(src != nullptr);
@@ -126,7 +126,7 @@ public:
 	~SharedArray() { dealloc(); } 
 
 	uint32_t size() const { return m_size; }
-  uint32_t getPhyAddr() const override { return SharedArrayBase::getPhyAddr(); }
+  uint32_t getAddress() const override { return SharedArrayBase::getAddress(); }
   uint32_t getHandle()  const override { return SharedArrayBase::getHandle(); }
 
 	/**
