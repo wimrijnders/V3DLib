@@ -243,7 +243,8 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 		//breakpoint
 		QPULib::v3d::Driver drv;
-		drv.execute(heap, &unif, num_qpus);
+		drv.add_bo(heap);
+		drv.execute(code, &unif, num_qpus);
 
 		dump_data(Y); 
 

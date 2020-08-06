@@ -47,6 +47,10 @@ class Driver {
 public:
 	Dispatcher compute_shader_dispatcher(int timeout_sec= 10);
 
+	void add_bo(Array &bo) {
+		m_bo_handles.push_back(bo.getAddress());
+	}
+
 	void execute(
 		Code &code,
 		Array *uniforms,
