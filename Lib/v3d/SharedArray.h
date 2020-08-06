@@ -26,7 +26,7 @@ class SharedArrayBase;
 template<typename T>
 class ArrayView : public ISharedArray {
 public:
-	ArrayView(char *usraddr, uint32_t phyaddr, uint32_t size_in_bytes) :
+	ArrayView(uint8_t *usraddr, uint32_t phyaddr, uint32_t size_in_bytes) :
 		m_usraddr(usraddr),
 		m_phyaddr(phyaddr),
 		m_size(size_in_bytes/sizeof(T)) {
@@ -81,7 +81,7 @@ public:
   }
 
 private:
-  char *   m_usraddr  = nullptr;
+  uint8_t *m_usraddr  = nullptr;
 	uint32_t m_phyaddr = 0;
 	uint32_t m_size  = 0;        // size array in element types
 };
@@ -105,11 +105,11 @@ public:
 		uint32_t prev_offset = m_offset;
 		m_offset += size_in_bytes;
 
-		return ArrayView<T>((char *) usraddr, phyaddr + prev_offset, size_in_bytes);
+		return ArrayView<T>(usraddr + prev_offset, phyaddr + prev_offset, size_in_bytes);
 	}
 
 protected:
-  void *   usraddr    = nullptr;
+  uint8_t *usraddr    = nullptr;
 	uint32_t m_offset   = 0;
   uint32_t m_mem_size = 0;  // Memory size in bytes
 

@@ -186,7 +186,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	SECTION("Summation example should work") {
 		if (!v3d_init()) return;
 
-		uint32_t length = 32 * 1024 * 1024;
+		uint32_t length = 32 * 1024; // * 1024;
 		int num_qpus = 1; //8;
 		int unroll_shift = 5;
 
@@ -203,11 +203,16 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 		// Code and data is combined in one buffer
 		Data heap(code_area_size + data_area_size);
+		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
+
 		auto code = heap.alloc_view<uint64_t>(code_area_size);
 		code.copyFrom(summation);
+		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
 
-		auto X = heap.alloc_view<uint32_t>(length);
-		auto Y = heap.alloc_view<uint32_t>(16 * num_qpus);
+		auto X = heap.alloc_view<uint32_t>(4*length);
+		auto Y = heap.alloc_view<uint32_t>(4* 16 * num_qpus);
+		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
+		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
 
 		for (uint32_t offset = 0; offset < X.size(); ++offset) {
 			X[offset] = offset;
@@ -247,7 +252,28 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		drv.add_bo(heap);
 		drv.execute(heap, unif, num_qpus);
 
-		dump_data(Y); 
+		dump_data(Y);
+
+		// Check if code not overwritten
+		for (uint32_t offset = 0; offset < summation.size(); ++offset) {
+			INFO("Code offset: " << offset);
+			REQUIRE(code[offset] == summation[offset]);
+		}
+
+		// Check if X not overwritten
+		for (uint32_t offset = 0; offset < X.size(); ++offset) {
+			INFO("X offset: " << offset);
+			REQUIRE(X[offset] == offset);
+		}
+
+		// scan for known value
+		uint32_t val = 8388604u; // 4278190080u;
+		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
+			if (val == heap[offset]) {
+				printf("Found %u at %u", val, offset);
+			}
+		}
+	
 
 		// Check if values supplied
     REQUIRE(sumY() % (1ull << 32) == (length - 1) * length); // 2 % 2**32

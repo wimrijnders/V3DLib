@@ -18,9 +18,13 @@ void SharedArrayBase::alloc_mem(uint32_t n) {
 	assert(n > 0);
 
 
-	if (!v3d_alloc(n, handle, phyaddr, &usraddr)) {
+	void *tmp_addr = nullptr;
+
+	if (!v3d_alloc(n, handle, phyaddr, &tmp_addr)) {
 		assert(false);
 	}
+	usraddr = (uint8_t *) tmp_addr;
+
 	assert(handle != 0);
 	assert(phyaddr != 0);
 	assert(usraddr != nullptr);
