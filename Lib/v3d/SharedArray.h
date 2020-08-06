@@ -15,6 +15,7 @@ public:
 	virtual ~ISharedArray() {}
 
   //virtual uint32_t getAddress() const = 0;
+  virtual uint32_t getHandle()  const { assert(false); return 0; }
   virtual uint32_t getPhyAddr() const = 0;
 };
 
@@ -125,8 +126,8 @@ public:
 	~SharedArray() { dealloc(); } 
 
 	uint32_t size() const { return m_size; }
-  uint32_t getPhyAddr() const { return SharedArray::getPhyAddr(); }
-  //uint32_t getAddress() const override { return  SharedArrayBase::getAddress(); }
+  uint32_t getPhyAddr() const override { return SharedArray::getPhyAddr(); }
+  uint32_t getHandle()  const override { return SharedArray::getHandle(); }
 
 	/**
 	 * @param n number of 4-byte elements to allocate (so NOT memory size!)

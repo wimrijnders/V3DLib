@@ -295,9 +295,9 @@ bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> bo_handles, uint32_t
 
 
 bool v3d_submit_csd(
-	QPULib::v3d::SharedArrayBase const &codeMem,
-	std::vector<uint32_t> &bo_handles,
-	QPULib::v3d::ISharedArray &uniforms
+	QPULib::v3d::ISharedArray const &codeMem,
+	std::vector<uint32_t> const &bo_handles,
+	QPULib::v3d::ISharedArray const &uniforms
 ) {
 	auto index = std::find(bo_handles.begin(), bo_handles.end(), codeMem.getHandle());
 	assert(index != bo_handles.end());  // Expecting handle of code to have been added beforehand

@@ -184,7 +184,6 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	// example here.
 	//
 	SECTION("Summation example should work") {
-		return; /// WRI DISABLED
 		if (!v3d_init()) return;
 
 		uint32_t length = 32 * 1024 * 1024;

@@ -4,6 +4,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include <cassert>
 #include "Driver.h"
+#include "v3d.h"
 
 namespace QPULib {
 namespace v3d {
@@ -68,6 +69,7 @@ void Dispatcher::dispatch(
 
 	Coef coef = {0,0,0,0};
 
+/**
 	m_drm.v3d_submit_csd(
 		cfg,
 		coef,
@@ -75,6 +77,9 @@ void Dispatcher::dispatch(
 		0,
 		0
 	);
+*/
+
+	::v3d_submit_csd(code, m_bo_handles, uniforms);
 }
 
 
