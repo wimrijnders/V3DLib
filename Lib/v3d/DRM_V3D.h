@@ -18,9 +18,7 @@ public:
 		uint32_t out_sync);
 
 private:
-	int m_fd = -1;
-
-	void init(int card = 0);
+	//void init();
 	void done();
 };
 

@@ -9,6 +9,7 @@
 #include <unistd.h>  // close()
 #include <stdint.h>
 #include "DRM_V3D.h"
+#include "v3d.h"
 #include "debug.h"
 
 
@@ -41,6 +42,12 @@ namespace {
     const unsigned V3D_PARAM_SUPPORTS_TFU = 7;
     const unsigned V3D_PARAM_SUPPORTS_CSD = 8;
 
+struct st_v3d_wait_bo {
+	uint32_t handle;
+	uint32_t pad;
+	uint64_t timeout_ns;
+};
+
 	struct st_v3d_submit_csd {
 		Cfg    cfg; // c_uint32 * 7
 		Coef   coef;  // c_uint32 * 4
@@ -51,13 +58,8 @@ namespace {
 	};
 
 
-	struct st_v3d_wait_bo {
-		uint32_t handle;
-		uint32_t pad;
-		uint64_t timeout_ns;
-	};
 
-  const unsigned IOCTL_V3D_WAIT_BO    = _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, sizeof(st_v3d_wait_bo));
+	const unsigned IOCTL_V3D_WAIT_BO    = _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, sizeof(st_v3d_wait_bo));
 	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, sizeof(st_v3d_submit_csd));
 
 } // anon namespace
@@ -66,27 +68,8 @@ namespace {
 namespace QPULib {
 namespace v3d {
 
-void DRM_V3D::init(int card) {
-	assert(card == 0 || card ==1);
-
-	const char *path = (card == 0)? CARD_0: CARD_1;
-
-	m_fd = open(path, O_RDWR);
-	assert(m_fd >= 0);
-}
-
-
-void DRM_V3D::done() {
-	if (m_fd != -1 ) {
-		int ret = close(m_fd);
-		assert(ret >= 0);
-		m_fd == -1;
-	}
-}
-
-
 void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
-	assert(false);  // TODO
+	//assert(false);  // TODO
 
 	st_v3d_wait_bo st = {
 		handle,
@@ -94,9 +77,16 @@ void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
 		timeout_ns,
 	};
 
-	ioctl(m_fd, IOCTL_V3D_WAIT_BO, st);
+	if(ioctl(v3d_fd(), IOCTL_V3D_WAIT_BO, st)) {
+		perror(NULL);
+		assert(false);
+	}
 }
 
+
+/**
+ * TODO: There also a submit_csd() in `v3d.cpp`, consolidate
+ */
 void DRM_V3D::v3d_submit_csd(
 	Cfg &cfg,
 	Coef &coef,
@@ -114,7 +104,10 @@ void DRM_V3D::v3d_submit_csd(
 		out_sync
 	};
 
-	ioctl(m_fd, IOCTL_V3D_SUBMIT_CSD, st);
+	if(ioctl(v3d_fd(), IOCTL_V3D_SUBMIT_CSD, st)) {
+		perror(NULL);
+		assert(false);
+	}
 }
 
 }  // v3d

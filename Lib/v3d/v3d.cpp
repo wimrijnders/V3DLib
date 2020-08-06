@@ -9,9 +9,12 @@
 #include <sys/mman.h>
 #include <stdlib.h>  // exit()
 #include <stdio.h>
+#include <unistd.h>  // close()
 #include "../debug.h"
 
 namespace {
+
+int fd = 0;
 
 typedef struct {
     uint32_t size;
@@ -93,17 +96,7 @@ int submit_csd(int fd, uint32_t phyaddr, uint32_t handle) {
 }
 
 
-int wait_bo(int fd, uint32_t handle) {
-    drm_v3d_wait_bo wait;
-    wait.handle = handle;
-    wait.pad = 0;
-    wait.timeout_ns = 10e9;
-    return ioctl(fd, IOCTL_V3D_WAIT_BO, &wait);
-}
 
-/////////////////////////////////////////////////////////////////////////
-
-int fd = 0;
 
 
 bool alloc_intern(int fd, uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
@@ -170,6 +163,8 @@ int open_card(char const *card) {
 
 }  // anon namespace
 
+
+
 /**
  * Apparently, you don't need to close afterwards.
  * If you try, then you get the perror:
@@ -201,6 +196,23 @@ bool v3d_open() {
 	return (fd > 0);
 }
 
+void v3d_close() {
+	if (fd != -1 ) {
+		int ret = close(fd);
+		assert(ret >= 0);
+		fd = 0;
+	}
+}
+
+
+int v3d_fd() {
+	if (!v3d_open()) {
+		assert(false);
+	}
+
+	return fd;
+}
+
 
 bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
 		assert(size > 0);
@@ -227,10 +239,23 @@ bool v3d_unmap(uint32_t size, uint32_t handle,  void *usraddr) {
 	return (ioctl(fd, IOCTL_GEM_CLOSE, &cl) == 0);
 }
 
+
+int v3d_wait_bo(int fd, uint32_t handle) {
+    drm_v3d_wait_bo wait;
+    wait.handle = handle;
+    wait.pad = 0;
+    wait.timeout_ns = 10e9;
+    return ioctl(fd, IOCTL_V3D_WAIT_BO, &wait);
+}
+
+
 /**
  * Run the code at the given address specification
  *
  * Note that the passed memory may contain data as well.
+ *
+ * TODO: There also a submit_csd() in `DRM_V3D.cpp`, consolidate
+ *
  */
 bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle) {
 	assert(fd > 0);	
@@ -240,7 +265,7 @@ bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle) {
 		return false;
 	}
 
-	if (0 != wait_bo(fd, handle)) {
+	if (0 != v3d_wait_bo(fd, handle)) {
 		assert(false);
 	}
 	return true;
