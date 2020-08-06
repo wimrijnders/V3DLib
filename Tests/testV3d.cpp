@@ -184,7 +184,6 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	// example here.
 	//
 	SECTION("Summation example should work") {
-return; //WRI DEBUG
 		if (!v3d_init()) return;
 
 		uint32_t length = 32 * 1024 * 1024;
@@ -201,6 +200,7 @@ return; //WRI DEBUG
     uint32_t data_area_size = (length + 1024) * 4;
 
 		printf("Preparing for buffers...\n");
+		breakpoint
 		// Code and data is combined in one buffer
 		Data heap(code_area_size + data_area_size);
 		auto code = heap.alloc_view<uint64_t>(code_area_size);
@@ -243,7 +243,6 @@ return; //WRI DEBUG
 		printf("Executing on QPU...\n");
 		double start = get_time();
 
-		//breakpoint
 		QPULib::v3d::Driver drv;
 		drv.add_bo(heap);
 		drv.execute(heap, unif, num_qpus);

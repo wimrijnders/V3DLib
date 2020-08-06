@@ -14,9 +14,9 @@ class ISharedArray {
 public: 
 	virtual ~ISharedArray() {}
 
-  virtual uint32_t getAddress() const = 0;
+  //virtual uint32_t getAddress() const = 0;
   virtual uint32_t getHandle()  const { assert(false); return 0; }
-  //virtual uint32_t getPhyAddr() const = 0;
+  virtual uint32_t getPhyAddr() const = 0;
 };
 
 
@@ -26,15 +26,17 @@ class SharedArrayBase;
 template<typename T>
 class ArrayView : public ISharedArray {
 public:
-	ArrayView(char *base, uint32_t size_in_bytes) : m_base(base), m_size(size_in_bytes/sizeof(T)) {
-		assert(base != nullptr);
+	ArrayView(char *usraddr, uint32_t phyaddr, uint32_t size_in_bytes) :
+		m_usraddr(usraddr),
+		m_phyaddr(phyaddr),
+		m_size(size_in_bytes/sizeof(T)) {
+		assert(usraddr != nullptr);
 		assert(size_in_bytes > 0);
 	}
 
 
 	uint32_t size() const { return m_size; }
-  uint32_t getAddress() const override { return  (uint32_t) m_base; }
-  //uint32_t getPhyAddr() const override { return  (uint32_t) m_base; }
+  uint32_t getPhyAddr() const override { return  (uint32_t) m_phyaddr; }
 
 	void copyFrom(T const *src, uint32_t size) {
 		assert(src != nullptr);
@@ -64,7 +66,7 @@ public:
 		assert(m_size > 0);
 		assert(i < m_size);
 
-    T* base = (T *) m_base;
+    T* base = (T *) m_usraddr;
     return (T) base[i];
   }
 
@@ -74,12 +76,13 @@ public:
 		assert(m_size > 0);
 		assert(i < m_size);
 
-    T* base = (T *) m_base;
+    T* base = (T *) m_usraddr;
     return (T&) base[i];
   }
 
 private:
-  char *   m_base  = nullptr;
+  char *   m_usraddr  = nullptr;
+	uint32_t m_phyaddr = 0;
 	uint32_t m_size  = 0;        // size array in element types
 };
 
@@ -102,7 +105,7 @@ public:
 		uint32_t prev_offset = m_offset;
 		m_offset += size_in_bytes;
 
-		return ArrayView<T>( ((char *) usraddr) + prev_offset, size_in_bytes);
+		return ArrayView<T>((char *) usraddr, phyaddr + prev_offset, size_in_bytes);
 	}
 
 protected:
@@ -126,7 +129,7 @@ public:
 	~SharedArray() { dealloc(); } 
 
 	uint32_t size() const { return m_size; }
-  uint32_t getAddress() const override { return SharedArrayBase::getAddress(); }
+  uint32_t getPhyAddr() const override { return SharedArrayBase::getPhyAddr(); }
   uint32_t getHandle()  const override { return SharedArrayBase::getHandle(); }
 
 	/**

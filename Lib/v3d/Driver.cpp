@@ -64,10 +64,8 @@ void Dispatcher::dispatch(
 			(workgroup.wg_size() & 0xff
 		),
 		thread - 1,           // Number of batches minus 1
-		//code.getPhyAddr(),    // Shader address, pnan, singleseg, threading
-		//uniforms.getPhyAddr()
-		code.getAddress(),    // Shader address, pnan, singleseg, threading
-		uniforms.getAddress()
+		code.getPhyAddr(),    // Shader address, pnan, singleseg, threading
+		uniforms.getPhyAddr()
 	};
 
 	Coef coef = {0,0,0,0};

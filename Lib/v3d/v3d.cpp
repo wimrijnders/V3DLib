@@ -303,6 +303,5 @@ bool v3d_submit_csd(
 	auto index = std::find(bo_handles.begin(), bo_handles.end(), codeMem.getHandle());
 	assert(index != bo_handles.end());  // Expecting handle of code to have been added beforehand
 
-	//return v3d_submit_csd(codeMem.getPhyAddr(), bo_handles, uniforms.getPhyAddr());
-	return v3d_submit_csd(codeMem.getPhyAddr(), bo_handles, uniforms.getAddress());
+	return v3d_submit_csd(codeMem.getPhyAddr(), bo_handles, uniforms.getPhyAddr());
 }
