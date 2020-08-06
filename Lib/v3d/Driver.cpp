@@ -63,13 +63,11 @@ void Dispatcher::dispatch(
 		),
 		thread - 1,           // Number of batches minus 1
 		code.getPhyAddr(),    // Shader address, pnan, singleseg, threading
-		uniforms.getPhyAddr(),
-		//(uint32_t) (uniforms.size() > 0)?uniforms.getAddress(): 0
+		uniforms.getPhyAddr()
 	};
 
 	Coef coef = {0,0,0,0};
 
-/**
 	m_drm.v3d_submit_csd(
 		cfg,
 		coef,
@@ -77,9 +75,8 @@ void Dispatcher::dispatch(
 		0,
 		0
 	);
-*/
 
-	::v3d_submit_csd(code, m_bo_handles, uniforms);
+//	::v3d_submit_csd(code, m_bo_handles, uniforms);
 }
 
 

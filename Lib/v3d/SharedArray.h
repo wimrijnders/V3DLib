@@ -126,8 +126,8 @@ public:
 	~SharedArray() { dealloc(); } 
 
 	uint32_t size() const { return m_size; }
-  uint32_t getPhyAddr() const override { return SharedArray::getPhyAddr(); }
-  uint32_t getHandle()  const override { return SharedArray::getHandle(); }
+  uint32_t getPhyAddr() const override { return SharedArrayBase::getPhyAddr(); }
+  uint32_t getHandle()  const override { return SharedArrayBase::getHandle(); }
 
 	/**
 	 * @param n number of 4-byte elements to allocate (so NOT memory size!)
