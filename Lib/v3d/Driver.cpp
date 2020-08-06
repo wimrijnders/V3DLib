@@ -62,7 +62,8 @@ void Dispatcher::dispatch(
 		),
 		thread - 1,           // Number of batches minus 1
 		code.getAddress(),    // Shader address, pnan, singleseg, threading
-		(uint32_t) (uniforms.size() > 0)?uniforms.getAddress(): 0
+		uniforms.getAddress(),
+		//(uint32_t) (uniforms.size() > 0)?uniforms.getAddress(): 0
 	};
 
 	Coef coef = {0,0,0,0};

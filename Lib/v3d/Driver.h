@@ -9,7 +9,7 @@ namespace v3d {
 
 class Dispatcher {
   using Code  = ISharedArray; //<uint64_t>;
-  using Array = SharedArray<uint32_t>;
+  using Array = ISharedArray; //<uint32_t>;
 
 public:
 	Dispatcher(
@@ -42,12 +42,12 @@ private:
  */
 class Driver {
   using Code  = ISharedArray; //<uint64_t>;
-  using Array = SharedArray<uint32_t>;
+  using Array = ISharedArray; //<uint32_t>;
 
 public:
 	Dispatcher compute_shader_dispatcher(int timeout_sec= 10);
 
-	void add_bo(Array &bo) {
+	void add_bo(SharedArray<uint32_t> &bo) {
 		m_bo_handles.push_back(bo.getHandle());
 	}
 

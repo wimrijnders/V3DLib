@@ -232,7 +232,8 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 		REQUIRE(sumY() == 0);
 
-		Data unif(3);
+		//Data unif(3);
+		auto unif = heap.alloc_view<uint32_t>(3);
 		unif[0] = length;
 		unif[1] = X.getAddress();  // TODO: is this correct?
 		unif[2] = Y.getAddress();  // TODO: is this correct?
