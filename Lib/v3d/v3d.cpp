@@ -4,12 +4,13 @@
 #include "v3d.h"
 #include <cassert>
 #include <sys/ioctl.h>
-#include <cstddef>   // NULL
+#include <cstddef>    // NULL
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <stdlib.h>  // exit()
+#include <stdlib.h>   // exit()
 #include <stdio.h>
-#include <unistd.h>  // close()
+#include <unistd.h>   // close()
+#include <algorithm>  // find()
 #include "../debug.h"
 
 namespace {
@@ -66,13 +67,20 @@ typedef struct {
 #define IOCTL_V3D_SUBMIT_CSD _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, drm_v3d_submit_csd)
 
 
-int submit_csd(int fd, uint32_t phyaddr, uint32_t handle) {
+int submit_csd(
+	int fd,
+	uint32_t phyaddr,
+	std::vector<uint32_t> &bo_handles,
+	uint32_t uniforms_address
+) {
+		assert(bo_handles.size() > 0);  // There should be at least one, for the code
+
     const uint32_t wg_x = 1;
     const uint32_t wg_y = 1;
     const uint32_t wg_z = 1;
     const uint32_t wg_size = wg_x * wg_y * wg_z;
     const uint32_t wgs_per_sg = 1;
-    const uint32_t bo_handles[] = { handle };
+
     drm_v3d_submit_csd csd;
     csd.cfg[0] = wg_x << 16;
     csd.cfg[1] = wg_y << 16;
@@ -83,13 +91,13 @@ int submit_csd(int fd, uint32_t phyaddr, uint32_t handle) {
         (wg_size & 0xff);
     csd.cfg[4] = 0;
     csd.cfg[5] = phyaddr;
-    csd.cfg[6] = 0;
+    csd.cfg[6] = uniforms_address;  // allowed to be 0
     csd.coef[0] = 0;
     csd.coef[1] = 0;
     csd.coef[2] = 0;
     csd.coef[3] = 0;
-    csd.bo_handles = (uintptr_t)bo_handles;
-    csd.bo_handle_count = sizeof(bo_handles)/sizeof(bo_handles[0]);
+    csd.bo_handles = (uintptr_t) bo_handles.data();
+    csd.bo_handle_count = bo_handles.size();
     csd.in_sync = 0;
     csd.out_sync = 0;
     return ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &csd);
@@ -257,17 +265,42 @@ int v3d_wait_bo(int fd, uint32_t handle) {
  * TODO: There also a submit_csd() in `DRM_V3D.cpp`, consolidate
  *
  */
-bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle) {
+bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms) {
 	assert(fd > 0);	
 
-	if (submit_csd(fd, phyaddr, handle)) {
+	std::vector<uint32_t> bo_handles;
+	bo_handles.push_back(handle);
+
+	return v3d_submit_csd(phyaddr, bo_handles, uniforms); 
+}
+
+
+bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> bo_handles, uint32_t uniforms) {
+		assert(bo_handles.size() > 0);  // There should be at least one handle for the code
+
+ 
+	if (submit_csd(fd, phyaddr, bo_handles, uniforms)) {
 		perror(NULL);
 		return false;
 	}
 
-	if (0 != v3d_wait_bo(fd, handle)) {
-		assert(false);
+
+	for (auto &handle : bo_handles) {
+		if (0 != v3d_wait_bo(fd, handle)) {
+			assert(false);
+		}
 	}
 	return true;
 }
 
+
+bool v3d_submit_csd(
+	QPULib::v3d::SharedArrayBase const &codeMem,
+	std::vector<uint32_t> &bo_handles,
+	QPULib::v3d::ISharedArray &uniforms
+) {
+	auto index = std::find(bo_handles.begin(), bo_handles.end(), codeMem.getHandle());
+	assert(index != bo_handles.end());  // Expecting handle of code to have been added beforehand
+
+	return v3d_submit_csd(codeMem.getPhyAddr(), bo_handles, uniforms.getPhyAddr());
+}

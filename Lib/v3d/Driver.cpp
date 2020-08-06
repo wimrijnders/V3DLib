@@ -61,8 +61,8 @@ void Dispatcher::dispatch(
 			(workgroup.wg_size() & 0xff
 		),
 		thread - 1,           // Number of batches minus 1
-		code.getAddress(),    // Shader address, pnan, singleseg, threading
-		uniforms.getAddress(),
+		code.getPhyAddr(),    // Shader address, pnan, singleseg, threading
+		uniforms.getPhyAddr(),
 		//(uint32_t) (uniforms.size() > 0)?uniforms.getAddress(): 0
 	};
 

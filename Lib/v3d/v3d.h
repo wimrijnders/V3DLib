@@ -4,7 +4,14 @@
 #include "SharedArray.h"
 
 
-bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle);
+bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms = 0);
+bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> bo_handles, uint32_t uniforms);
+bool v3d_submit_csd(
+	QPULib::v3d::SharedArrayBase const &codeMem,
+	std::vector<uint32_t> &bo_handles,
+	QPULib::v3d::ISharedArray &uniforms
+);
+
 inline bool v3d_submit_csd(QPULib::v3d::SharedArrayBase const &codeMem) {
 	return v3d_submit_csd(codeMem.getPhyAddr(), codeMem.getHandle());
 }
