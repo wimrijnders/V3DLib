@@ -24,9 +24,9 @@ class SharedArrayBase;
 template<typename T>
 class ArrayView : public ISharedArray {
 public:
-	ArrayView(char *base, uint32_t size) : m_base(base), m_size(size) {  //  m_size(size/sizeof(T)) {
+	ArrayView(char *base, uint32_t size_in_bytes) : m_base(base), m_size(size_in_bytes/sizeof(T)) {
 		assert(base != nullptr);
-		assert(size > 0);
+		assert(size_in_bytes > 0);
 	}
 
 
