@@ -100,7 +100,14 @@ int submit_csd(
     csd.bo_handle_count = bo_handles.size();
     csd.in_sync = 0;
     csd.out_sync = 0;
-    return ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &csd);
+
+	int ret =  ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &csd);
+	if (ret) {
+		perror(NULL);
+		assert(false);
+	}
+
+	return ret;
 }
 
 
@@ -285,7 +292,7 @@ bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> bo_handles, uint32_t
 	}
 
 
-	for (auto &handle : bo_handles) {
+	for (auto handle : bo_handles) {
 		int ret = v3d_wait_bo(fd, handle);
 		if (0 != ret) {
 			printf("v3d_wait_bo() returned %d\n", ret);

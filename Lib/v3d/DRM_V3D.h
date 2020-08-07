@@ -9,13 +9,7 @@ namespace v3d {
 class DRM_V3D {
 public:
 	void v3d_wait_bo(uint32_t handle, uint64_t timeout_ns);
-
-	void v3d_submit_csd(
-		Cfg &cfg,
-		Coef &coef,
-		BoHandles &bo_handles,
-		uint32_t in_sync,
-		uint32_t out_sync);
+	void v3d_submit_csd( st_v3d_submit_csd &st);
 
 private:
 	//void init();

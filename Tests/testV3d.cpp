@@ -59,11 +59,18 @@ double get_time() {
 
 template<typename T>
 void dump_data(T const &arr, bool do_all = false) {
+	char const *format = "%8d: 0x%x - %d\n";
+
+	if (sizeof(arr[0]) == 8) {
+		format = "%8d: 0x%llx- %lld\n";
+	}
+
+
 	int first_size = (int) arr.size();
 
 	if (do_all) {
 		for (int offset = 0; offset < first_size; ++offset) {
-			printf("%8d: %8d\n", offset, arr[offset]);
+			printf(format, offset, arr[offset], arr[offset]);
 		}
 		return;
 	}
@@ -75,7 +82,7 @@ void dump_data(T const &arr, bool do_all = false) {
 	}
 		
 	for (int offset = 0; offset < first_size; ++offset) {
-		printf("%8d: %8d\n", offset, arr[offset]);
+		printf(format, offset, arr[offset], arr[offset]);
 	}
 
 	if (first_size == arr.size()) {
@@ -85,7 +92,7 @@ void dump_data(T const &arr, bool do_all = false) {
 	printf("      ...\n");
 
 	for (int offset = arr.size() - DISP_LENGTH; offset < (int) arr.size(); ++offset) {
-		printf("%8d: %8d\n", offset, arr[offset]);
+		printf(format, offset, arr[offset], arr[offset]);
 	}
 
 	printf("\n");
@@ -220,6 +227,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		auto code = heap.alloc_view<uint64_t>(code_area_size);
 		code.copyFrom(summation);
 		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
+		dump_data(code); 
 
 		auto X = heap.alloc_view<uint32_t>(4*length);
 		auto Y = heap.alloc_view<uint32_t>(4* 16 * 8 /*num_qpus*/);

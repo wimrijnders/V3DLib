@@ -16,7 +16,7 @@ SharedArrayBase::~SharedArrayBase() {
  */
 void SharedArrayBase::alloc_mem(uint32_t n) {
 	assert(n > 0);
-
+	assert(handle == 0);
 
 	void *tmp_addr = nullptr;
 

@@ -10,6 +10,7 @@
 #include <stdint.h>
 #include "DRM_V3D.h"
 #include "v3d.h"
+#include "drm_types.h"
 #include "debug.h"
 
 
@@ -48,19 +49,11 @@ struct st_v3d_wait_bo {
 	uint64_t timeout_ns;
 };
 
-	struct st_v3d_submit_csd {
-		Cfg    cfg; // c_uint32 * 7
-		Coef   coef;  // c_uint32 * 4
-		uint32_t bo_handles;
-		uint32_t bo_handle_count;
-		uint32_t in_sync;
-		uint32_t out_sync;
-	};
 
 
 
 	const unsigned IOCTL_V3D_WAIT_BO    = _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, st_v3d_wait_bo);
-	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, st_v3d_submit_csd);
+	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, QPULib::v3d::st_v3d_submit_csd);
 
 } // anon namespace
 
@@ -69,8 +62,6 @@ namespace QPULib {
 namespace v3d {
 
 void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
-	//assert(false);  // TODO
-
 	st_v3d_wait_bo st = {
 		handle,
 		0,
@@ -87,22 +78,7 @@ void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
 /**
  * TODO: There also a submit_csd() in `v3d.cpp`, consolidate
  */
-void DRM_V3D::v3d_submit_csd(
-	Cfg &cfg,
-	Coef &coef,
-	BoHandles &bo_handles,
-	uint32_t in_sync,
-	uint32_t out_sync) {
-
-	st_v3d_submit_csd st = {
-		// XXX: Dirty hack!
-		cfg,
-		coef,
-		(uint32_t) bo_handles.data(),
-		bo_handles.size(),
-		in_sync,
-		out_sync
-	};
+void DRM_V3D::v3d_submit_csd( st_v3d_submit_csd &st) {
 
 	if(ioctl(v3d_fd(), IOCTL_V3D_SUBMIT_CSD, st)) {
 		perror(NULL);
