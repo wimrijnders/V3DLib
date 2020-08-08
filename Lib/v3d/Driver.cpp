@@ -50,7 +50,7 @@ void Dispatcher::dispatch(
 
 	auto roundup = [] (uint32_t n, uint32_t d) -> int {
 		assert(n+d > 0);
-		return (n + d - 1); // d
+		return (n + d - 1) / d;
 	};
 			
 
@@ -70,15 +70,17 @@ void Dispatcher::dispatch(
 			uniforms.getPhyAddr()
 		},
 		{0,0,0,0},
-		//(uint64_t) m_bo_handles.data(),
-		(uintptr_t) m_bo_handles.data(),
+		(uint64_t) m_bo_handles.data(),
+		//(uintptr_t) m_bo_handles.data(),
 		m_bo_handles.size(),
 		0,
 		0
 	};
 
-	//m_drm.v3d_submit_csd(st);
-	//m_drm.v3d_wait_bo(m_bo_handles[0], 10llu*1e9);
+ uint64_t  timeout_ns = 1000000000llu * m_timeout_sec;
+
+	m_drm.v3d_submit_csd(st);
+	m_drm.v3d_wait_bo(m_bo_handles[0], timeout_ns);
 
 	//::v3d_submit_csd(code, m_bo_handles, uniforms);
 }

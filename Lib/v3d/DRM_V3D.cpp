@@ -15,8 +15,8 @@
 
 
 namespace {
-	using QPULib::v3d::Cfg;
-	using QPULib::v3d::Coef;
+	//using QPULib::v3d::Cfg;
+	//using QPULib::v3d::Coef;
 
 	const char *CARD_0  =  "/dev/dri/card0";
 	const char *CARD_1  =  "/dev/dri/card1";
@@ -68,7 +68,7 @@ void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
 		timeout_ns,
 	};
 
-	if(ioctl(v3d_fd(), IOCTL_V3D_WAIT_BO, st)) {
+	if(ioctl(v3d_fd(), IOCTL_V3D_WAIT_BO, &st)) {
 		perror(NULL);
 		assert(false);
 	}
@@ -80,7 +80,7 @@ void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
  */
 void DRM_V3D::v3d_submit_csd( st_v3d_submit_csd &st) {
 
-	if(ioctl(v3d_fd(), IOCTL_V3D_SUBMIT_CSD, st)) {
+	if(ioctl(v3d_fd(), IOCTL_V3D_SUBMIT_CSD, &st)) {
 		perror(NULL);
 		assert(false);
 	}

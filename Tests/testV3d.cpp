@@ -1,3 +1,9 @@
+/*
+#include <chrono>  // sleep_for()
+#include <thread>  // this_thread()
+
+//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+*/
 #include "catch.hpp"
 #ifdef QPU_MODE
 #include <sys/time.h>
@@ -32,6 +38,23 @@ uint64_t do_nothing[] = {
 	0x3c003186bb800000, // nop
 };
 
+
+//////////////////////////////////
+// Test support routines
+//////////////////////////////////
+
+// scan heap for known value
+void find_value(Data &heap, uint32_t val) {
+		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
+			if (val == heap[offset]) {
+				printf("Found %u at %u, value: %d - %x\n", val, offset, heap[offset], heap[offset]);
+			}
+		}
+}
+
+//////////////////////////////////
+// v3d routines
+//////////////////////////////////
 
 bool v3d_init() {
 	static bool did_first = false;
@@ -201,14 +224,14 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	SECTION("Summation example should work") {
 		if (!v3d_init()) return;
 
-		uint32_t length = 32 * 1024; // * 1024;
-		int num_qpus = 1; //8;
+		uint32_t length = 32 * 1024 * 128; // * 1024;
+		int num_qpus = 8;
 		int unroll_shift = 5;
 
     REQUIRE(length > 0);
     REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
 
-    printf("==== summation example (%lld Mi elements) ====\n", (length / 1024 / 1024));
+    printf("==== summation example (%dK elements) ====\n", (length / 1024));
 
     //with Driver(data_area_size=(length + 1024) * 4) as drv:
     uint32_t code_area_size = DEFAULT_CODE_AREA_SIZE;
@@ -230,7 +253,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		dump_data(code); 
 
 		auto X = heap.alloc_view<uint32_t>(4*length);
-		auto Y = heap.alloc_view<uint32_t>(4* 16 * 8 /*num_qpus*/);
+		auto Y = heap.alloc_view<uint32_t>(4* 16 * num_qpus);
 		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
 		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
 
@@ -248,11 +271,12 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 		dump_data(Y); 
 
-		auto sumY = [&Y] () -> uint32_t {
-			uint32_t ret = 0;
+		auto sumY = [&Y] () -> uint64_t {
+			uint64_t ret = 0;
 
 			for (uint32_t offset = 0; offset < Y.size(); ++offset) {
 				ret += Y[offset];
+				ret %= (1llu << 32) - 1;
 			}
 
 			return ret;
@@ -275,6 +299,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		drv.add_bo(heap);
 		drv.execute(heap, unif, num_qpus);
 
+
 		dump_data(Y, true);
 
 
@@ -293,6 +318,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 			}
 		}
 
+/*
 		// Check if code not overwritten
 		for (uint32_t offset = 0; offset < summation.size(); ++offset) {
 			INFO("Code offset: " << offset);
@@ -304,19 +330,16 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 			INFO("X offset: " << offset);
 			REQUIRE(X[offset] == offset);
 		}
-
-		// scan for known value
-		uint32_t val = 8388604u; // 4278190080u;
-		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
-			if (val == heap[offset]) {
-				printf("Found %u at %u, value: %d - %x\n", val, offset, heap[offset], heap[offset]);
-			}
-		}
+*/
+		//find_value(heap, 1736704u); // 4278190080u;
 	
 
 		// Check if values supplied
-    REQUIRE(sumY() % (1ull << 32) == (length - 1) * length); // 2 % 2**32
+    REQUIRE(sumY()  == 1llu * (length - 1) * length);
+    //REQUIRE(sumY() % (1ull << 32) == (length - 1) * length); // 2 % 2**32
+    //REQUIRE(sumY() == (1llu * (length - 1) * length / 2) % ( (1llu << 32) -1)); // 2 % 2**32
 
+		
 		double end = get_time();
 		printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
 	}

@@ -70,7 +70,7 @@ typedef struct {
 int submit_csd(
 	int fd,
 	uint32_t phyaddr,
-	std::vector<uint32_t> &bo_handles,
+	std::vector<uint32_t> const &bo_handles,
 	uint32_t uniforms_address
 ) {
 		assert(bo_handles.size() > 0);  // There should be at least one, for the code
@@ -101,7 +101,7 @@ int submit_csd(
     csd.in_sync = 0;
     csd.out_sync = 0;
 
-	int ret =  ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &csd);
+	int ret =  ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &csd);  // !!!!! pass a pointer! (IDIOT)
 	if (ret) {
 		perror(NULL);
 		assert(false);
@@ -259,8 +259,15 @@ int v3d_wait_bo(int fd, uint32_t handle) {
     drm_v3d_wait_bo wait;
     wait.handle = handle;
     wait.pad = 0;
-    wait.timeout_ns = 10e9;
-    return ioctl(fd, IOCTL_V3D_WAIT_BO, &wait);
+    wait.timeout_ns = 10llu * 1000000000llu;
+    int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &wait);
+
+	if(ret) {
+		perror(NULL);
+		assert(false);
+	}
+
+	return ret;
 }
 
 
@@ -282,7 +289,7 @@ bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms) {
 }
 
 
-bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> bo_handles, uint32_t uniforms) {
+bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> const &bo_handles, uint32_t uniforms) {
 		assert(bo_handles.size() > 0);  // There should be at least one handle for the code
 
  

@@ -19,8 +19,8 @@ namespace v3d {
 
 //using Cfg = std::array<uint32_t, 7>;
 //using Coef = std::array<uint32_t, 4>;
-typedef uint32_t Cfg[7];
-typedef uint32_t Coef[4];
+//typedef uint32_t Cfg[7];
+//typedef uint32_t Coef[4];
 using BoHandles = std::vector<uint32_t>;
 
 struct WorkGroup {
@@ -37,8 +37,10 @@ struct WorkGroup {
 };
 
 	struct st_v3d_submit_csd {
-		Cfg    cfg; // c_uint32 * 7
-		Coef   coef;  // c_uint32 * 4
+		//Cfg    cfg; // c_uint32 * 7
+		//Coef   coef;  // c_uint32 * 4
+		uint32_t cfg[7];
+		uint32_t coef[4];
 		uint64_t bo_handles;
 		uint32_t bo_handle_count;
 		uint32_t in_sync;

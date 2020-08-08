@@ -22,13 +22,13 @@ public:
 	void dispatch(
 		Code &code,
 		Array &uniforms,
-		WorkGroup workgroup = WorkGroup(),
-		uint32_t wgs_per_sg = 16,
-		uint32_t thread = 1);
+		WorkGroup workgroup,
+		uint32_t wgs_per_sg,
+		uint32_t thread);
 
 private:
 	DRM_V3D   &m_drm;
-	BoHandles  m_bo_handles;
+	BoHandles  &m_bo_handles;
   int        m_timeout_sec = -1;
 };
 
@@ -56,8 +56,8 @@ public:
 		Array &uniforms,
 		int thread = 1,
 		int timeout_sec = 10,
-		WorkGroup workgroup = (16, 1, 1),
-		int wgs_per_sg = 16);
+		WorkGroup workgroup = (1, 1, 0),
+		int wgs_per_sg = 3);  // Has an effect on number of registers used per QPU (max 16)
 
 private:
 	DRM_V3D m_drm;

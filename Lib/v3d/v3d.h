@@ -5,7 +5,7 @@
 
 
 bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms = 0);
-bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> bo_handles, uint32_t uniforms);
+bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> const &bo_handles, uint32_t uniforms);
 
 bool v3d_submit_csd(
 	QPULib::v3d::SharedArrayBase const &codeMem,
