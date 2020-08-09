@@ -1,6 +1,37 @@
 // 
 // Converted from: https://github.com/Idein/py-videocore6/blob/ec275f668f8aa4c89839fb8095b74f402260b1a6/videocore6/driver.py
 //
+// Note 1:
+//
+// Setting workgroup value to non-zero has the effect that:
+//
+ //  - Some QPU's don't return anything, which QPU's varies
+ //  - Other QPU's return 1 or a limited number of registers, which QPU's varies
+ //  - The reg's that *are* returned, have the correct value
+//
+// special observed cases:
+//
+// (1,7,1)     0
+// (1,1,1)     0
+// (2,2,1)     0
+//  - consistently 1 qpu with only reg 0 filled, rest filled
+//
+// 1,1,2     0
+//  - consistently one QPU with first 4 re'gs filled, which QPU varies
+//
+// 1,1,1     1
+//	- 4-6 QPU's return with only reg 0 filled, which QPU's vary
+//
+// 1,1,2     1
+//	- 5-6 QPU's return with only reg 0 and 1 filled, which QPU's vary
+//
+//1,1,7     1
+//	- >= 4 QPU's return with only reg's 0-6 filled, which QPU's vary
+// 
+// 1,7,2     3
+// 0,7,2     3
+//	- 3-5 QPU's return with only reg's 0-5 filled, which QPU's vary
+//
 ///////////////////////////////////////////////////////////////////////////////
 #include <cassert>
 #include <algorithm>  // find()
@@ -24,23 +55,19 @@ bool Driver::dispatch(
 	uint32_t code_phyaddr,
 	uint32_t code_handle,  // Only passed in for check
 	uint32_t unif_phyaddr,
-	uint32_t thread,
-	WorkGroup workgroup,
-	uint32_t wgs_per_sg
+	uint32_t thread
 ) {
 	assert(m_timeout_sec > 0);
 	assert(m_bo_handles.size() > 0);  // There should be at least one, for the code
 	auto index = std::find(m_bo_handles.begin(), m_bo_handles.end(), code_handle);
 	assert(index != m_bo_handles.end());  // Expecting handle of code to have been added beforehand
 
-//	auto roundup = [] (uint32_t n, uint32_t d) -> int {
-//		assert(n+d > 0);
-//		return (n + d - 1) / d;
-//	};
+	// See Note 1
+	WorkGroup workgroup = (1, 1, 0);  // Setting last val to 0 ensures all QPU's return all registers
+	uint32_t wgs_per_sg = 16;         // Has no effect if previous (1, 1, 0)
 
 	st_v3d_submit_csd st = {
 		{
-			// WGS X, Y, Z and settings
 			workgroup.wg_x << 16,
 			workgroup.wg_y << 16,
 			workgroup.wg_z << 16,

@@ -260,7 +260,7 @@ bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns) {
 			ret = false;
 		}
 	}
-	printf("Done calling v3d_wait_bo()\n");
+	//printf("Done calling v3d_wait_bo()\n");
 
 	return ret;
 }

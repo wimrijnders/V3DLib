@@ -37,9 +37,7 @@ public:
 		uint32_t code_phyaddr,
 		uint32_t code_handle,  // Only passed in for check
 		uint32_t unif_phyaddr,
-		uint32_t thread = 1,
-		WorkGroup workgroup = (1, 1, 0),
-		uint32_t wgs_per_sg = 3);  // Has an effect on number of registers used per QPU (max 16)
+		uint32_t thread = 1);
 
 private:
 	BoHandles m_bo_handles;

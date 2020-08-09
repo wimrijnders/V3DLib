@@ -1,9 +1,20 @@
-/*
-#include <chrono>  // sleep_for()
-#include <thread>  // this_thread()
-
-//std::this_thread::sleep_for(std::chrono::milliseconds(1000));
-*/
+/******************************************************************************
+ * NOTES
+ * =====
+ *
+ * * Note 1: During testing, execution time shot up from 0.1 sec to 10 sec.
+ *	         This probably due to the gpu hanging because of previously job
+ *           faulty (too short). The 10 sec is likely the timeout.
+ *		       TODO: Find a way to reset the v3d
+ *
+ * * Note 2: Following might be useful
+ *
+ *    #include <chrono>  // sleep_for()
+ *    #include <thread>  // this_thread()
+ *
+ *    std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+ *
+ ******************************************************************************/
 #include "catch.hpp"
 #ifdef QPU_MODE
 #include <sys/time.h>
@@ -18,7 +29,10 @@
 
 #define ARRAY_LENGTH(arr, type) (sizeof(arr)/sizeof(type))
 
-using Data = QPULib::v3d::SharedArray<uint32_t>;
+// NOTE: This is not the actual BufferObject implementation
+//       This definition adds useful API calls
+using BufferObject = QPULib::v3d::SharedArray<uint32_t>;
+
 
 namespace {
 
@@ -44,7 +58,7 @@ uint64_t do_nothing[] = {
 //////////////////////////////////
 
 // scan heap for known value
-void find_value(Data &heap, uint32_t val) {
+void find_value(BufferObject &heap, uint32_t val) {
 		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
 			if (val == heap[offset]) {
 				printf("Found %u at %u, value: %d - %x\n", val, offset, heap[offset], heap[offset]);
@@ -53,28 +67,50 @@ void find_value(Data &heap, uint32_t val) {
 }
 
 
-void set_unused_code(Data &heap) {
+void set_unused_code(BufferObject &heap) {
 		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
 			heap[offset] = 0xdeadbeef;
 		}
 }
 
 
-void detect_used_blocks(Data &heap) {
-		bool have_block = false;
-		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
-			if (have_block) {
-				if (heap[offset] == 0xdeadbeef) {
-					printf("block end at %u\n", 4*offset);
-					have_block = false;
-				}
-			} else {
-				if (heap[offset] != 0xdeadbeef) {
-					printf("Block at %u, value: %d - %x\n", 4*offset, heap[offset], heap[offset]);
-					have_block = true;
-				}
+void detect_used_blocks(BufferObject &heap) {
+	bool have_block = false;
+	for (uint32_t offset = 0; offset < heap.size(); ++offset) {
+		if (have_block) {
+			if (heap[offset] == 0xdeadbeef) {
+				printf("block end at %u\n", 4*offset);
+				have_block = false;
+			}
+		} else {
+			if (heap[offset] != 0xdeadbeef) {
+				printf("Block at %u, value: %d - %x\n", 4*offset, heap[offset], heap[offset]);
+				have_block = true;
 			}
 		}
+	}
+}
+
+
+void check_returned_registers(QPULib::v3d::ArrayView<uint32_t> &Y) {
+	uint32_t cur_QPU;
+
+	for (uint32_t offset = 0; offset < Y.size(); ++offset) {
+		uint32_t this_QPU = offset / 16;
+
+		if (this_QPU != cur_QPU) {
+			printf("\n");
+			cur_QPU = this_QPU;
+			printf("%u: ", cur_QPU);	
+		} 
+
+		bool used = Y[offset] != 0;
+		if (used) {
+			printf("%u, ", offset % 16);	
+		}
+	}
+
+	printf("\n");
 }
 
 
@@ -169,13 +205,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
     memcpy(usraddr, do_nothing, sizeof(do_nothing));
 
-		//
-		// NOTE: During testing, execution time shot up from 0.1 sec to 10 sec.
-		//       This probably due to the gpu hanging because of previously job faulty (too short)
-		//       The 10 sec is likely the timeout.
-		//
-		// TODO: Find a way to reset the v3d
-		//
+		// See Note 1
 		double start = get_time();
 
 		REQUIRE(QPULib::v3d::v3d_submit_csd(phyaddr, handle));
@@ -199,9 +229,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 			codeMem[offset] = do_nothing[offset];
 		}
 
-		//
-		// See note previous test
-		//
+		// See Note 1
 		double start = get_time();
 		REQUIRE(QPULib::v3d::v3d_submit_csd(codeMem));
 		double end = get_time();
@@ -253,8 +281,9 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 		uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in QPU's and CPU
 		                                   // The python version went to 32*1024*1024 and did some modulo magic.
-		int num_qpus = 8;
-		int unroll_shift = 5;
+
+		int num_qpus = 8;                  // Don't change these value! That's how the summation kernel bytcode
+		int unroll_shift = 5;              // was compiled.
 
     REQUIRE(length > 0);
     REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
@@ -268,20 +297,20 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		printf("Preparing for buffers...\n");
 
 		// Code and data is combined in one buffer
-		Data heap(code_area_size + data_area_size);
-		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
+		BufferObject heap(code_area_size + data_area_size);
+		//printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
 
 		set_unused_code(heap);
 
 		auto code = heap.alloc_view<uint64_t>(code_area_size);
 		code.copyFrom(summation);
-		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
-		dump_data(code); 
+		//printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
+		//dump_data(code); 
 
 		auto X = heap.alloc_view<uint32_t>(4*length);
 		auto Y = heap.alloc_view<uint32_t>(4* 16 * num_qpus);
-		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
-		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
+		//printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
+		//printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
 
 		auto sumY = [&Y] () -> uint64_t {
 			uint64_t ret = 0;
@@ -304,12 +333,11 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		//dump_data(Y); 
 		REQUIRE(sumY() == 0);
 
-		//Data unif(3);
 		auto unif = heap.alloc_view<uint32_t>(3*4);  // grumbl size in bytes TODO: change, this is confusing
 		unif[0] = length;
 		unif[1] = X.getPhyAddr();
 		unif[2] = Y.getPhyAddr();
-		printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
+		//printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
 
 
 		printf("Executing on QPU...\n");
@@ -319,8 +347,9 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		drv.add_bo(heap);
 		drv.execute(heap, &unif, num_qpus);
 
-		dump_data(Y, true);
-		detect_used_blocks(heap);
+		//dump_data(Y, true);
+		//check_returned_registers(Y);
+		//detect_used_blocks(heap);
 
 /*
 		// Check if code not overwritten

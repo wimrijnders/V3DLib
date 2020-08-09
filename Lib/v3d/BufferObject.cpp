@@ -44,7 +44,7 @@ void BufferObject::dealloc_mem() {
 		if (!v3d_unmap(m_mem_size, handle, usraddr)) {
 			assert(false);
 		}
-		debug("v3d_unmap() called");
+		//debug("v3d_unmap() called");
 
 		// TODO: what to do about phyaddr here???	
 		usraddr = nullptr;
