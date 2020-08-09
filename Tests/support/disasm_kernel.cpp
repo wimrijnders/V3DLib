@@ -30,10 +30,10 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x1857d3c219825000ull; //, "faddnf.norc  r2.l, r5.l, r4; vfmul.ifb  rf15, r0.ll, r4; ldunif" },
+	uint64_t op = 0x600b8b87fb4d1000ull; //, "fdx.ifnb  rf7.h, r1.l; fmul.pushn  rf46, r3.l, r2.abs" },
 	Instr::show(op);
 	auto tmp_op =
-		fmax(rf(46), r4.l(), r2.l()).nornn().vfmul(rf(45), r3, r5).ifnb()
+		vfpack(rf(43), rf(15).l(), r0.h()).andnc().fmul(rf(10).h(), r4.l(), r5.abs()).ifna()
 	;
 	tmp_op.dump(true);
 
@@ -42,21 +42,24 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< fadd(r1, r1, r5).thrsw()
 		<< vpmsetup(r5).ldunif()
 		<< nop().ldunifa()  // NB for version 33 this is `nop().ldvpm()`
-		<< bor(0 /*rf0 */, r3, r3).mov(vpm, r3)
+		<< bor(rf(0), r3, r3).mov(vpm, r3)
 		// ver 42, error in instr_unpack():
 		// { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
 		<< ffloor(ifb,  rf(30).l(), r3).fmul(rf(43).l(), r5, r1.h()).pushz()
 		<< flpop(rf(22), rf(33)).fmul(rf(49).l(), r4.h(), r1.abs()).pushz()
+
 		/* vfmul input packing */
 		<< fmax(rf(46), r4.l(), r2.l()).nornn().vfmul(rf(45), r3, r5).ifnb()
+		<< faddnf(r2.l(), r5.l(), r4).norc().vfmul(rf(15), r0.ll(), r4).ldunif().ifb()
+		<< fcmp(rf(61).h(), r4.abs(), r2.l()).ifna().vfmul(rf(55), r2.hh(), r1)
+
+		// ver 42 all flags get reset in output bytecode. Also happens for fsub -> add, and also if I remove *all* postfixes
+		// << fsub(rf(27), r4.abs(), r1.abs()).norz().vfmul(rf(34), r3.swp(), r1).ifa()
+
+		<< vfpack(rf(43), rf(15).l(), r0.h()).andnc().fmul(rf(10).h(), r4.l(), r5.abs()).ifna()
 	;
 
 #if 0
-        { 33, 0x1857d3c219825000ull, "faddnf.norc  r2.l, r5.l, r4; vfmul.ifb  rf15, r0.ll, r4; ldunif" },
-        { 33, 0x1c0a0dfde2294000ull, "fcmp.ifna  rf61.h, r4.abs, r2.l; vfmul  rf55, r2.hh, r1" },
-        { 33, 0x2011c89b402cc000ull, "fsub.norz  rf27, r4.abs, r1.abs; vfmul.ifa  rf34, r3.swp, r1" },
-
-        { 33, 0xe01b42ab3bb063c0ull, "vfpack.andnc  rf43, rf15.l, r0.h; fmul.ifna  rf10.h, r4.l, r5.abs" },
         { 33, 0x600b8b87fb4d1000ull, "fdx.ifnb  rf7.h, r1.l; fmul.pushn  rf46, r3.l, r2.abs" },
 
         /* small immediates */

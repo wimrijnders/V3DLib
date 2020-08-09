@@ -9,25 +9,51 @@ namespace QPULib {
 namespace v3d {
 namespace instr {
 
-class Register {
+class Location {
+public:
+	virtual v3d_qpu_waddr to_waddr() const = 0;
+	virtual v3d_qpu_mux to_mux() const = 0;
+
+	v3d_qpu_output_pack output_pack() const { return m_output_pack; }
+	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
+
+protected:
+	v3d_qpu_output_pack m_output_pack = V3D_QPU_PACK_NONE;
+	v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
+};
+
+
+class Register : public Location {
 public: 
 	Register(const char *name, v3d_qpu_waddr waddr_val);
 	Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val);
-//	Register(Register const &rhs) = default;
 
-	v3d_qpu_waddr to_waddr() const { return m_waddr_val; }
-	v3d_qpu_mux to_mux() const;
-	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
+	v3d_qpu_waddr to_waddr() const override { return m_waddr_val; }
+	v3d_qpu_mux to_mux() const override;
 
 	Register l() const {
 		Register ret(*this);
 		ret.m_input_unpack = V3D_QPU_UNPACK_L;
+		ret.m_output_pack  = V3D_QPU_PACK_L;
+		return ret;
+	}
+
+	Register ll() const {
+		Register ret(*this);
+		ret.m_input_unpack = V3D_QPU_UNPACK_REPLICATE_L_16;
+		return ret;
+	}
+
+	Register hh() const {
+		Register ret(*this);
+		ret.m_input_unpack = V3D_QPU_UNPACK_REPLICATE_H_16;
 		return ret;
 	}
 
 	Register h() const {
 		Register ret(*this);
 		ret.m_input_unpack = V3D_QPU_UNPACK_H;
+		ret.m_output_pack  = V3D_QPU_PACK_H;
 		return ret;
 	}
 
@@ -37,24 +63,30 @@ public:
 		return ret;
 	}
 
+	Register swp() const {
+		Register ret(*this);
+		ret.m_input_unpack = V3D_QPU_UNPACK_SWAP_16;
+		return ret;
+	}
+
 private:
 	std::string   m_name;
 	v3d_qpu_waddr m_waddr_val;
 	v3d_qpu_mux   m_mux_val;
 	bool          m_mux_is_set = false;
-	v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
 };
 
 
-class RFAddress {
+class RFAddress : public Location {
 public:
 	RFAddress(uint8_t val) : m_val(val) {}
 
-	uint8_t to_waddr() const { return m_val; }
-	v3d_qpu_output_pack output_pack() const { return m_output_pack; }
+	v3d_qpu_waddr to_waddr() const override { return (v3d_qpu_waddr) m_val; }
+	v3d_qpu_mux to_mux() const override { assert(false); return (v3d_qpu_mux) 0; } // Not expecting this to be called
 
 	RFAddress l() const {
 		RFAddress ret(m_val);
+		ret.m_input_unpack = V3D_QPU_UNPACK_L;
 		ret.m_output_pack = V3D_QPU_PACK_L;
 
 		return ret;
@@ -62,6 +94,7 @@ public:
 
 	RFAddress h() const {
 		RFAddress ret(m_val);
+		ret.m_input_unpack = V3D_QPU_UNPACK_H;
 		ret.m_output_pack = V3D_QPU_PACK_H;
 
 		return ret;
@@ -69,7 +102,6 @@ public:
 
 private:
 	uint8_t m_val;
-	v3d_qpu_output_pack m_output_pack = V3D_QPU_PACK_NONE;
 };
 
 using rf = RFAddress;
@@ -92,8 +124,14 @@ public:
 	Instr &ldunif(bool val = true);
 	Instr &ldunifa(bool val = true);
 	Instr &ldvpm(bool val = true);
-	Instr &nornn(bool val = true);
-	Instr &ifnb(bool val = true);
+	Instr &nornn();
+	Instr &ifnb();
+	Instr &norc();
+	Instr &norz();
+	Instr &ifb();
+	Instr &ifna();
+	Instr &ifa();
+	Instr &andnc();
 
 	// Calls to set the mul part of the instruction
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
@@ -104,15 +142,17 @@ public:
 	Instr &mov(uint8_t rf_addr, Register const &reg);
 
 	Instr &fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
-	Instr &vfmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
+	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
-	void alu_add_set(RFAddress rf_addr1, Register const &reg2, Register const &reg3); 
-	void alu_mul_set(RFAddress rf_addr1, Register const &reg2, Register const &reg3); 
+	void alu_add_set(Location const &loc1, Location const &reg2, Location const &reg3); 
+	void alu_mul_set(Location const &rf_addr1, Register const &reg2, Register const &reg3); 
 
 private:
 	static uint64_t const NOP;
+
+	bool m_doing_add = true;
 
 	void init_ver() const;
 	void init(uint64_t in_code);
@@ -154,7 +194,7 @@ Instr fadd(Register const &reg1, Register const &reg2, Register const &reg3);
 Instr mov(uint8_t rf_addr, uint8_t val);
 Instr mov(Register const &reg, uint8_t rf_addr);
 
-Instr bor(uint8_t rf_addr1, Register const &reg2, Register const &reg3);
+Instr bor(Location const &rf_addr1, Location const &reg2, Location const &reg3);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);
@@ -166,7 +206,11 @@ Instr vpmsetup(Register const &reg2);
 
 Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3);
 Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2);
-Instr fmax(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
+Instr fmax(Location const &rf_addr1, Location const &reg2, Location const &reg3);
+Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
+Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3);
+Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
+Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
 
 }  // instr
 }  // v3d

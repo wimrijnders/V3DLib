@@ -57,7 +57,7 @@ v3d_qpu_mux Register::to_mux() const {
 
 Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0);
 Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1);
-Register const r2("r2", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R2);
+Register const r2("r2", V3D_QPU_WADDR_R2, V3D_QPU_MUX_R2);
 Register const r3("r3", V3D_QPU_WADDR_R3, V3D_QPU_MUX_R3);
 Register const r4("r4", V3D_QPU_WADDR_R4, V3D_QPU_MUX_R4);
 Register const r5("r5", V3D_QPU_WADDR_R5, V3D_QPU_MUX_R5);
@@ -227,29 +227,90 @@ Instr &Instr::ldvpm(bool val) {
 }
 
 
-Instr &Instr::nornn(bool val) {
-	if (val) {
+Instr &Instr::nornn() {
+	if (m_doing_add) {
 		flags.auf = V3D_QPU_UF_NORNN;
 	} else {
-		flags.auf = V3D_QPU_UF_NONE;
+		flags.muf = V3D_QPU_UF_NORNN;
 	}
 
 	return *this;
 }
 
 
-Instr &Instr::ifnb(bool val) {
-	if (val) {
-		flags.mc = V3D_QPU_COND_IFNB;
+Instr &Instr::ifnb() {
+	if (m_doing_add) {
+		flags.ac = V3D_QPU_COND_IFNB;
 	} else {
-		flags.mc = V3D_QPU_COND_NONE;
+		flags.mc = V3D_QPU_COND_IFNB;
 	}
 
+	return *this;
+}
+
+
+Instr &Instr::norc() {
+	if (m_doing_add) {
+		flags.auf = V3D_QPU_UF_NORC;
+	} else {
+		flags.muf = V3D_QPU_UF_NORC;
+	}
+
+	return *this;
+}
+
+
+Instr &Instr::norz() {
+	if (m_doing_add) {
+		flags.auf = V3D_QPU_UF_NORZ;
+	} else {
+		flags.muf = V3D_QPU_UF_NORZ;
+	}
+	return *this;
+}
+
+
+Instr &Instr::ifb() {
+	if (m_doing_add) {
+		flags.ac = V3D_QPU_COND_IFB;
+	} else {
+		flags.mc = V3D_QPU_COND_IFB;
+	}
+
+	return *this;
+}
+
+
+Instr &Instr::ifna() {
+	if (m_doing_add) {
+		flags.ac = V3D_QPU_COND_IFNA;
+	} else {
+		flags.mc = V3D_QPU_COND_IFNA;
+	}
+
+	return *this;
+}
+
+
+Instr &Instr::ifa() {
+	if (m_doing_add) {
+		flags.ac = V3D_QPU_COND_IFA;
+	} else {
+		flags.mc = V3D_QPU_COND_IFA;
+	}
+	return *this;
+}
+
+
+Instr &Instr::andnc() {
+	flags.auf = V3D_QPU_UF_ANDNC;
 	return *this;
 }
 
 
 Instr &Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, Register const &reg3) {
+	m_doing_add = false;
+
 	raddr_b       = rf_addr1; 
 	alu.mul.op    = V3D_QPU_M_ADD;
 	alu.mul.a     = V3D_QPU_MUX_B;
@@ -263,6 +324,8 @@ Instr &Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 
 // TODO: where does 1 go??
 Instr &Instr::add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
+	m_doing_add = false;
+
 	raddr_b       = rf_addr3; 
 	alu.mul.op    = V3D_QPU_M_ADD;
 	alu.mul.a     = V3D_QPU_MUX_A;
@@ -275,6 +338,8 @@ Instr &Instr::add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
 
 
 Instr &Instr::sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
+	m_doing_add = false;
+
 	raddr_b       = rf_addr1; 
 	alu.mul.op    = V3D_QPU_M_SUB;
 	alu.mul.a     = V3D_QPU_MUX_B;
@@ -287,6 +352,8 @@ Instr &Instr::sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 
 
 Instr &Instr::mov(Register const &reg,  uint8_t val) {
+	m_doing_add = false;
+
 	alu.mul.op    = V3D_QPU_M_MOV;
 	alu.mul.a     = V3D_QPU_MUX_B;
 	alu.mul.b     = V3D_QPU_MUX_B;
@@ -297,6 +364,8 @@ Instr &Instr::mov(Register const &reg,  uint8_t val) {
 
 
 Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
+	m_doing_add = false;
+
 	alu.mul.op    = V3D_QPU_M_MOV;
 	alu.mul.a     = reg.to_mux();
 	alu.mul.b     = V3D_QPU_MUX_B;
@@ -307,6 +376,8 @@ Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
 
 
 Instr &Instr::fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+	m_doing_add = false;
+
 	alu_mul_set(rf_addr1, reg2, reg3);
 
 	alu.mul.op    = V3D_QPU_M_FMUL;
@@ -316,7 +387,9 @@ Instr &Instr::fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg
 }
 
 
-Instr &Instr::vfmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3) {
+	m_doing_add = false;
+
 	alu_mul_set(rf_addr1, reg2, reg3);
 
 	alu.mul.op    = V3D_QPU_M_VFMUL;
@@ -326,17 +399,17 @@ Instr &Instr::vfmul(RFAddress rf_addr1, Register const &reg2, Register const &re
 }
 
 
-void Instr::alu_add_set(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+void Instr::alu_add_set(Location const &loc1, Location const &reg2, Location const &reg3) {
 	alu.add.a     = reg2.to_mux();
 	alu.add.b     = reg3.to_mux();
-	alu.add.waddr = rf_addr1.to_waddr();
-	alu.add.output_pack = rf_addr1.output_pack();
+	alu.add.waddr = loc1.to_waddr();
+	alu.add.output_pack = loc1.output_pack();
 	alu.add.a_unpack = reg2.input_unpack();
 	alu.add.b_unpack = reg3.input_unpack();
 }
 
 
-void Instr::alu_mul_set(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+void Instr::alu_mul_set(Location const &rf_addr1, Register const &reg2, Register const &reg3) {
 	alu.mul.a     = reg2.to_mux();
 	alu.mul.b     = reg3.to_mux();
 	alu.mul.waddr = rf_addr1.to_waddr();
@@ -572,7 +645,7 @@ Instr mov(Register const &reg, uint8_t rf_addr) {
 
 
 // or is reserved keyword
-Instr bor(uint8_t rf_addr1, Register const &reg2, Register const &reg3) {
+Instr bor(Location const &rf_addr1, Location const &reg2, Location const &reg3) {
 	Instr instr;
 	instr.alu_add_set(rf_addr1, reg2, reg3);
 
@@ -676,12 +749,61 @@ Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2) {
 }
 
 
-Instr fmax(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+Instr fmax(Location const &rf_addr1, Location const &reg2, Location const &reg3) {
 	Instr instr;
 	instr.alu_add_set(rf_addr1, reg2, reg3);
 
 	instr.alu.add.op    = V3D_QPU_A_FMAX;
 	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
+
+Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3) {
+	Instr instr;
+	instr.alu_add_set(loc1, reg2, reg3);
+
+	instr.alu.add.op    = V3D_QPU_A_FADDNF;
+
+	return instr;
+}
+
+
+Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3) {
+	Instr instr;
+	instr.alu_add_set(loc1, reg2, reg3);
+
+	instr.alu.add.op    = V3D_QPU_A_FCMP;
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
+
+Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3) {
+	Instr instr;
+	instr.alu_add_set(loc1, reg2, reg3);
+
+	instr.alu.add.op    = V3D_QPU_A_FSUB;
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
+
+Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3) {
+	Instr instr;
+	//Can't use here: instr.alu_add_set(loc1, loc2, loc3);
+
+	instr.raddr_a       = loc2.to_waddr();
+	instr.alu.add.op    = V3D_QPU_A_VFPACK;
+	instr.alu.add.a     = V3D_QPU_MUX_A;
+	instr.alu.add.b     = loc3.to_mux();
+	instr.alu.add.waddr = loc1.to_waddr();
+	instr.alu.add.magic_write = false;
+	instr.alu.add.a_unpack = loc2.input_unpack();
+	instr.alu.add.b_unpack = loc3.input_unpack();
 
 	return instr;
 }
