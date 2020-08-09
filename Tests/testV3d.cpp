@@ -184,6 +184,13 @@ bool v3d_init() {
 }
 
 
+//
+// Adapted from: https://github.com/Idein/py-videocore6/blob/master/examples/summation.py
+//
+// This uses a single shared array for code and data.
+// It might be possible to use muliple arrays, but we're sticking to the original
+// example here.
+//
 void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unroll_shift) {
     uint32_t code_area_size = DEFAULT_CODE_AREA_SIZE;
 
@@ -362,13 +369,6 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
 
 TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
-	//
-	// Adapted from: https://github.com/Idein/py-videocore6/blob/master/examples/summation.py
-	//
-	// This uses a single shared array for code and data.
-	// It might be possible to use muliple arrays, but we're sticking to the original
-	// example here.
-	//
 	SECTION("Summation example should work from bytecode") {
 		if (!v3d_init()) return;
 
