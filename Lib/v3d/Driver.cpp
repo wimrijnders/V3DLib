@@ -12,31 +12,23 @@ namespace v3d {
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Class Dispatcher
+// Class Driver
 ///////////////////////////////////////////////////////////////////////////////
-
-Dispatcher::Dispatcher(
-	DRM_V3D &drm,
-	BoHandles &bo_handles,
-	int timeout_sec) :
-	m_drm(drm),
-	m_bo_handles(bo_handles),
-	m_timeout_sec(timeout_sec) {}
-
 
 /**
 * TODO: use following for next step:
 *
 * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
 */
-bool Dispatcher::dispatch(
+bool Driver::dispatch(
 	uint32_t code_phyaddr,
 	uint32_t code_handle,  // Only passed in for check
 	uint32_t unif_phyaddr,
-	WorkGroup workgroup,  // default 16, 1, 1};
-	uint32_t wgs_per_sg,
-	uint32_t thread
+	uint32_t thread,
+	WorkGroup workgroup,
+	uint32_t wgs_per_sg
 ) {
+	assert(m_timeout_sec > 0);
 	assert(m_bo_handles.size() > 0);  // There should be at least one, for the code
 	auto index = std::find(m_bo_handles.begin(), m_bo_handles.end(), code_handle);
 	assert(index != m_bo_handles.end());  // Expecting handle of code to have been added beforehand
@@ -45,7 +37,6 @@ bool Dispatcher::dispatch(
 		assert(n+d > 0);
 		return (n + d - 1) / d;
 	};
-			
 
 	st_v3d_submit_csd st = {
 		{
@@ -78,44 +69,18 @@ bool Dispatcher::dispatch(
 }
 
 
-///////////////////////////////////////////////////////////////////////////////
-// Class Driver
-///////////////////////////////////////////////////////////////////////////////
-
-
-Dispatcher Driver::compute_shader_dispatcher(int timeout_sec) {
-	return Dispatcher(m_drm, m_bo_handles, timeout_sec);
-}
-
 void Driver::execute(
-		Code &code,
-		Array *uniforms,
-		int thread,
-		int timeout_sec,
-		WorkGroup workgroup,
-		int wgs_per_sg) {
-		execute_intern(
-			code.getPhyAddr(),
-			code.getHandle(),
-			((uniforms == nullptr)?0u:uniforms->getPhyAddr()),
-			thread,
-			timeout_sec,
-			workgroup,
-			wgs_per_sg);
-	}
+	Code &code,
+	Array *uniforms,
+	int thread) {
 
-bool Driver::execute_intern(
-	uint32_t code_phyaddr,
-	uint32_t code_handle,  // Only passed in for check
-	uint32_t unif_phyaddr,
-	int thread,
-	int timeout_sec,
-	WorkGroup workgroup,
-	int wgs_per_sg) {
-
-	auto csd = compute_shader_dispatcher(timeout_sec);
-  return csd.dispatch(code_phyaddr, code_handle, unif_phyaddr, workgroup, wgs_per_sg, thread);
+	dispatch(
+		code.getPhyAddr(),
+		code.getHandle(),
+		((uniforms == nullptr)?0u:uniforms->getPhyAddr()),
+		thread);
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // Legacy call(s)
@@ -124,7 +89,7 @@ bool Driver::execute_intern(
 bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms) {
 	Driver drv;
 	drv.add_bo(handle);
-	return drv.execute_intern(phyaddr, handle, uniforms);
+	return drv.dispatch(phyaddr, handle, uniforms);
 }
 
 }  // v3d
