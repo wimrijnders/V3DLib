@@ -17,10 +17,6 @@
 namespace QPULib {
 namespace v3d {
 
-//using Cfg = std::array<uint32_t, 7>;
-//using Coef = std::array<uint32_t, 4>;
-//typedef uint32_t Cfg[7];
-//typedef uint32_t Coef[4];
 using BoHandles = std::vector<uint32_t>;
 
 struct WorkGroup {

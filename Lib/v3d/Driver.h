@@ -17,11 +17,10 @@ public:
 		BoHandles &bo_handles,
 		int timeout_sec);
 
-	~Dispatcher(); 
-
-	void dispatch(
-		Code &code,
-		Array &uniforms,
+	bool dispatch(
+		uint32_t code_phyaddr,
+		uint32_t code_handle,  // Only passed in for check
+		uint32_t unif_phyaddr,
 		WorkGroup workgroup,
 		uint32_t wgs_per_sg,
 		uint32_t thread);
@@ -51,19 +50,39 @@ public:
 		m_bo_handles.push_back(bo.getHandle());
 	}
 
+	void add_bo(uint32_t bo_handle) {
+		m_bo_handles.push_back(bo_handle);
+	}
+
 	void execute(
 		Code &code,
-		Array &uniforms,
+		Array *uniforms = nullptr,
+		int thread = 1,
+		int timeout_sec = 10,
+		WorkGroup workgroup = (1, 1, 0),
+		int wgs_per_sg = 3);
+
+
+	bool execute_intern(
+		uint32_t code_phyaddr,
+		uint32_t code_handle,  // Only passed in for check
+		uint32_t unif_phyaddr,
 		int thread = 1,
 		int timeout_sec = 10,
 		WorkGroup workgroup = (1, 1, 0),
 		int wgs_per_sg = 3);  // Has an effect on number of registers used per QPU (max 16)
 
 private:
-	DRM_V3D m_drm;
+	DRM_V3D   m_drm;
 	BoHandles m_bo_handles;
 
 };  // class Driver
+
+// Legacy call(s)
+bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms = 0);
+inline bool v3d_submit_csd(SharedArrayBase &codeMem) {
+	return v3d_submit_csd(codeMem.getPhyAddr(), codeMem.getHandle());
+}
 
 }  // v3d
 }  // QPULib

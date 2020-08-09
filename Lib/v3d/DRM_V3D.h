@@ -8,8 +8,8 @@ namespace v3d {
 
 class DRM_V3D {
 public:
-	void v3d_wait_bo(uint32_t handle, uint64_t timeout_ns);
-	void v3d_submit_csd( st_v3d_submit_csd &st);
+	bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns);
+	int v3d_submit_csd( st_v3d_submit_csd &st);
 
 private:
 	//void init();

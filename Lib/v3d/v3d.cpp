@@ -10,7 +10,6 @@
 #include <stdlib.h>   // exit()
 #include <stdio.h>
 #include <unistd.h>   // close()
-#include <algorithm>  // find()
 #include "../debug.h"
 
 namespace {
@@ -268,56 +267,4 @@ int v3d_wait_bo(int fd, uint32_t handle) {
 	}
 
 	return ret;
-}
-
-
-/**
- * Run the code at the given address specification
- *
- * Note that the passed memory may contain data as well.
- *
- * TODO: There also a submit_csd() in `DRM_V3D.cpp`, consolidate
- *
- */
-bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms) {
-	assert(fd > 0);	
-
-	std::vector<uint32_t> bo_handles;
-	bo_handles.push_back(handle);
-
-	return v3d_submit_csd(phyaddr, bo_handles, uniforms); 
-}
-
-
-bool v3d_submit_csd(uint32_t phyaddr, std::vector<uint32_t> const &bo_handles, uint32_t uniforms) {
-		assert(bo_handles.size() > 0);  // There should be at least one handle for the code
-
- 
-	if (submit_csd(fd, phyaddr, bo_handles, uniforms)) {
-		perror(NULL);
-		return false;
-	}
-
-
-	for (auto handle : bo_handles) {
-		int ret = v3d_wait_bo(fd, handle);
-		if (0 != ret) {
-			printf("v3d_wait_bo() returned %d\n", ret);
-			//assert(false);
-		}
-	}
-	printf("Done calling v3d_wait_bo()\n");
-	return true;
-}
-
-
-bool v3d_submit_csd(
-	QPULib::v3d::SharedArrayBase const &codeMem,
-	std::vector<uint32_t> const &bo_handles,
-	QPULib::v3d::ISharedArray const &uniforms
-) {
-	auto index = std::find(bo_handles.begin(), bo_handles.end(), codeMem.getHandle());
-	assert(index != bo_handles.end());  // Expecting handle of code to have been added beforehand
-
-	return v3d_submit_csd(codeMem.getPhyAddr(), bo_handles, uniforms.getPhyAddr());
 }

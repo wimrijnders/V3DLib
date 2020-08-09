@@ -52,24 +52,29 @@ void find_value(Data &heap, uint32_t val) {
 		}
 }
 
-//////////////////////////////////
-// v3d routines
-//////////////////////////////////
 
-bool v3d_init() {
-	static bool did_first = false;
-
-	// Skip test if not on Pi4
-	if (Platform::instance().has_vc4) {
-		if (!did_first) {
-			printf("Skipping v3d tests with calls to driver\n");
-			did_first = true;
+void set_unused_code(Data &heap) {
+		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
+			heap[offset] = 0xdeadbeef;
 		}
-		return false;;
-	}
+}
 
-	REQUIRE(v3d_open());
-	return true;
+
+void detect_used_blocks(Data &heap) {
+		bool have_block = false;
+		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
+			if (have_block) {
+				if (heap[offset] == 0xdeadbeef) {
+					printf("block end at %u\n", 4*offset);
+					have_block = false;
+				}
+			} else {
+				if (heap[offset] != 0xdeadbeef) {
+					printf("Block at %u, value: %d - %x\n", 4*offset, heap[offset], heap[offset]);
+					have_block = true;
+				}
+			}
+		}
 }
 
 
@@ -82,6 +87,7 @@ double get_time() {
 
 template<typename T>
 void dump_data(T const &arr, bool do_all = false) {
+	int const DISP_LENGTH = 4;
 	char const *format = "%8d: 0x%x - %d\n";
 
 	if (sizeof(arr[0]) == 8) {
@@ -98,7 +104,6 @@ void dump_data(T const &arr, bool do_all = false) {
 		return;
 	}
 
-	const int DISP_LENGTH = 8;
 
 	if (first_size > DISP_LENGTH) {
 		first_size = DISP_LENGTH;
@@ -121,6 +126,26 @@ void dump_data(T const &arr, bool do_all = false) {
 	printf("\n");
 }
 
+
+//////////////////////////////////
+// v3d routines
+//////////////////////////////////
+
+bool v3d_init() {
+	static bool did_first = false;
+
+	// Skip test if not on Pi4
+	if (Platform::instance().has_vc4) {
+		if (!did_first) {
+			printf("Skipping v3d tests with calls to driver\n");
+			did_first = true;
+		}
+		return false;;
+	}
+
+	REQUIRE(v3d_open());
+	return true;
+}
 }  // anon namespace
 
 
@@ -152,7 +177,9 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		// TODO: Find a way to reset the v3d
 		//
 		double start = get_time();
-		REQUIRE(v3d_submit_csd(phyaddr, handle));
+
+		REQUIRE(QPULib::v3d::v3d_submit_csd(phyaddr, handle));
+
 		double end = get_time();
 		printf("[submit done: %.6lf sec]\n", end - start);
 
@@ -176,7 +203,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		// See note previous test
 		//
 		double start = get_time();
-		REQUIRE(v3d_submit_csd(codeMem));
+		REQUIRE(QPULib::v3d::v3d_submit_csd(codeMem));
 		double end = get_time();
 		printf("[submit done: %.6lf sec]\n", end - start);
 	}
@@ -224,16 +251,17 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	SECTION("Summation example should work") {
 		if (!v3d_init()) return;
 
-		uint32_t length = 32 * 1024 * 128; // * 1024;
+		uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in QPU's and CPU
+		                                   // The python version went to 32*1024*1024 and did some modulo magic.
 		int num_qpus = 8;
 		int unroll_shift = 5;
 
     REQUIRE(length > 0);
     REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
 
+
     printf("==== summation example (%dK elements) ====\n", (length / 1024));
 
-    //with Driver(data_area_size=(length + 1024) * 4) as drv:
     uint32_t code_area_size = DEFAULT_CODE_AREA_SIZE;
     uint32_t data_area_size = (length + 1024) * 4;
 
@@ -243,9 +271,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		Data heap(code_area_size + data_area_size);
 		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
 
-		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
-			heap[offset] = 0xdeadbeef;
-		}
+		set_unused_code(heap);
 
 		auto code = heap.alloc_view<uint64_t>(code_area_size);
 		code.copyFrom(summation);
@@ -257,38 +283,36 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
 		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
 
+		auto sumY = [&Y] () -> uint64_t {
+			uint64_t ret = 0;
+
+			for (uint32_t offset = 0; offset < Y.size(); ++offset) {
+				ret += Y[offset];
+			}
+
+			return ret;
+		};
+
 		for (uint32_t offset = 0; offset < X.size(); ++offset) {
 			X[offset] = offset;
 		}
 
 		dump_data(X); 
 
-/*
 		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
 			Y[offset] = 0;
 		}
-*/
 
 		dump_data(Y); 
 
-		auto sumY = [&Y] () -> uint64_t {
-			uint64_t ret = 0;
 
-			for (uint32_t offset = 0; offset < Y.size(); ++offset) {
-				ret += Y[offset];
-				ret %= (1llu << 32) - 1;
-			}
-
-			return ret;
-		};
-
-//		REQUIRE(sumY() == 0);
+		REQUIRE(sumY() == 0);
 
 		//Data unif(3);
 		auto unif = heap.alloc_view<uint32_t>(3*4);  // grumbl size in bytes TODO: change, this is confusing
 		unif[0] = length;
-		unif[1] = X.getPhyAddr();  // TODO: is this correct?
-		unif[2] = Y.getPhyAddr();  // TODO: is this correct?
+		unif[1] = X.getPhyAddr();
+		unif[2] = Y.getPhyAddr();
 		printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
 
 
@@ -297,26 +321,11 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 		QPULib::v3d::Driver drv;
 		drv.add_bo(heap);
-		drv.execute(heap, unif, num_qpus);
+		drv.execute(heap, &unif, num_qpus);
 
 
 		dump_data(Y, true);
-
-
-		bool have_block = false;
-		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
-			if (have_block) {
-				if (heap[offset] == 0xdeadbeef) {
-					printf("block end at %u\n", 4*offset);
-					have_block = false;
-				}
-			} else {
-				if (heap[offset] != 0xdeadbeef) {
-					printf("Block at %u, value: %d - %x\n", 4*offset, heap[offset], heap[offset]);
-					have_block = true;
-				}
-			}
-		}
+		detect_used_blocks(heap);
 
 /*
 		// Check if code not overwritten
@@ -331,14 +340,11 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 			REQUIRE(X[offset] == offset);
 		}
 */
+
 		//find_value(heap, 1736704u); // 4278190080u;
 	
-
 		// Check if values supplied
-    REQUIRE(sumY()  == 1llu * (length - 1) * length);
-    //REQUIRE(sumY() % (1ull << 32) == (length - 1) * length); // 2 % 2**32
-    //REQUIRE(sumY() == (1llu * (length - 1) * length / 2) % ( (1llu << 32) -1)); // 2 % 2**32
-
+    REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
 		
 		double end = get_time();
 		printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));

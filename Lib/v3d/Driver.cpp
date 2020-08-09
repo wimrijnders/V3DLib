@@ -3,6 +3,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 #include <cassert>
+#include <algorithm>  // find()
 #include "Driver.h"
 #include "v3d.h"
 
@@ -23,30 +24,22 @@ Dispatcher::Dispatcher(
 	m_timeout_sec(timeout_sec) {}
 
 
-Dispatcher::~Dispatcher() {
-/*
-	for (int index = 0; index < m_bo_handles.size(); ++index) {
-		auto bo_handle = m_bo_handles[index];
-		m_drm.v3d_wait_bo(bo_handle, (uint64_t) (m_timeout_sec / 1e-9));
-	}
-*/
-}
-
-
 /**
 * TODO: use following for next step:
 *
 * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
 */
-void Dispatcher::dispatch(
-	Code &code,
-	Array &uniforms,
+bool Dispatcher::dispatch(
+	uint32_t code_phyaddr,
+	uint32_t code_handle,  // Only passed in for check
+	uint32_t unif_phyaddr,
 	WorkGroup workgroup,  // default 16, 1, 1};
 	uint32_t wgs_per_sg,
 	uint32_t thread
 ) {
-	//assert(m_bo_handles.size() > 0);  // There should be at least one, for the code
-	assert(m_bo_handles.size() == 1);  // Expecting exactly one for now
+	assert(m_bo_handles.size() > 0);  // There should be at least one, for the code
+	auto index = std::find(m_bo_handles.begin(), m_bo_handles.end(), code_handle);
+	assert(index != m_bo_handles.end());  // Expecting handle of code to have been added beforehand
 
 	auto roundup = [] (uint32_t n, uint32_t d) -> int {
 		assert(n+d > 0);
@@ -66,12 +59,11 @@ void Dispatcher::dispatch(
 				(workgroup.wg_size() & 0xff
 			),
 			thread - 1,           // Number of batches minus 1
-			code.getPhyAddr(),    // Shader address, pnan, singleseg, threading
-			uniforms.getPhyAddr()
+			code_phyaddr,    // Shader address, pnan, singleseg, threading
+			unif_phyaddr
 		},
 		{0,0,0,0},
 		(uint64_t) m_bo_handles.data(),
-		//(uintptr_t) m_bo_handles.data(),
 		m_bo_handles.size(),
 		0,
 		0
@@ -79,10 +71,10 @@ void Dispatcher::dispatch(
 
  uint64_t  timeout_ns = 1000000000llu * m_timeout_sec;
 
-	m_drm.v3d_submit_csd(st);
-	m_drm.v3d_wait_bo(m_bo_handles[0], timeout_ns);
+	int ret = m_drm.v3d_submit_csd(st);
+	m_drm.v3d_wait_bo(m_bo_handles, timeout_ns);
 
-	//::v3d_submit_csd(code, m_bo_handles, uniforms);
+	return ret == 0;
 }
 
 
@@ -95,17 +87,44 @@ Dispatcher Driver::compute_shader_dispatcher(int timeout_sec) {
 	return Dispatcher(m_drm, m_bo_handles, timeout_sec);
 }
 
-
 void Driver::execute(
-	Code &code,
-	Array &uniforms,
+		Code &code,
+		Array *uniforms,
+		int thread,
+		int timeout_sec,
+		WorkGroup workgroup,
+		int wgs_per_sg) {
+		execute_intern(
+			code.getPhyAddr(),
+			code.getHandle(),
+			((uniforms == nullptr)?0u:uniforms->getPhyAddr()),
+			thread,
+			timeout_sec,
+			workgroup,
+			wgs_per_sg);
+	}
+
+bool Driver::execute_intern(
+	uint32_t code_phyaddr,
+	uint32_t code_handle,  // Only passed in for check
+	uint32_t unif_phyaddr,
 	int thread,
 	int timeout_sec,
 	WorkGroup workgroup,
 	int wgs_per_sg) {
 
 	auto csd = compute_shader_dispatcher(timeout_sec);
-  csd.dispatch(code, uniforms, workgroup, wgs_per_sg, thread);
+  return csd.dispatch(code_phyaddr, code_handle, unif_phyaddr, workgroup, wgs_per_sg, thread);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// Legacy call(s)
+///////////////////////////////////////////////////////////////////////////////
+
+bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms) {
+	Driver drv;
+	drv.add_bo(handle);
+	return drv.execute_intern(phyaddr, handle, uniforms);
 }
 
 }  // v3d

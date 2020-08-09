@@ -55,35 +55,60 @@ struct st_v3d_wait_bo {
 	const unsigned IOCTL_V3D_WAIT_BO    = _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, st_v3d_wait_bo);
 	const unsigned IOCTL_V3D_SUBMIT_CSD = _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, QPULib::v3d::st_v3d_submit_csd);
 
-} // anon namespace
-
-
-namespace QPULib {
-namespace v3d {
-
-void DRM_V3D::v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
+int v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
 	st_v3d_wait_bo st = {
 		handle,
 		0,
 		timeout_ns,
 	};
 
-	if(ioctl(v3d_fd(), IOCTL_V3D_WAIT_BO, &st)) {
+	int ret = ioctl(v3d_fd(), IOCTL_V3D_WAIT_BO, &st);
+	if (ret) {
 		perror(NULL);
 		assert(false);
 	}
+
+	return ret;
+}
+
+} // anon namespace
+
+
+namespace QPULib {
+namespace v3d {
+
+
+/**
+ * @return true if wait succeeded, false otherwise
+ */
+bool DRM_V3D::v3d_wait_bo( std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns) {
+	int ret = true;
+
+	for (auto handle : bo_handles) {
+		int result = ::v3d_wait_bo(handle, timeout_ns);
+		if (0 != result) {
+			printf("v3d_wait_bo() returned %d\n", ret);
+			ret = false;
+		}
+	}
+	printf("Done calling v3d_wait_bo()\n");
+
+	return ret;
 }
 
 
 /**
  * TODO: There also a submit_csd() in `v3d.cpp`, consolidate
  */
-void DRM_V3D::v3d_submit_csd( st_v3d_submit_csd &st) {
+int DRM_V3D::v3d_submit_csd( st_v3d_submit_csd &st) {
+	int ret = ioctl(v3d_fd(), IOCTL_V3D_SUBMIT_CSD, &st);
 
-	if(ioctl(v3d_fd(), IOCTL_V3D_SUBMIT_CSD, &st)) {
+	if(ret) {
 		perror(NULL);
 		assert(false);
 	}
+
+	return ret;
 }
 
 }  // v3d
