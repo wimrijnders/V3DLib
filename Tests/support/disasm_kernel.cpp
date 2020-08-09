@@ -19,6 +19,10 @@ std::vector<uint64_t> &qpu_disasm_bytecode() {
 	return bytecode;
 }
 
+/**
+ * DON'T execute this kernel on the QPU's!
+ * It is just a sequence of instructions from a test
+ */
 std::vector<uint64_t> qpu_disasm_kernel() {
 	using namespace QPULib::v3d::instr;
 
@@ -26,19 +30,24 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x3c20318105829000ull;  //, "fadd  r1, r1, r5     ; nop               ; thrsw" },
+	uint64_t op = 0x9c094adef634b000ull; // "ffloor.ifb  rf30.l, r3; fmul.pushz  rf43.l, r5, r1.h" },
 	Instr::show(op);
-	//auto tmp_op = branch(loop_start, ret.size());
-	//tmp_op.dump(true);
+	auto tmp_op =
+		ffloor(ifb,  rf(30).l(), r3).fmul(rf(43).l(), r5, r1.h()).pushz();
+	;
+	tmp_op.dump(true);
 
-	ret << nop().ldvary();
+	ret
+		<< nop().ldvary()
+		<< fadd(r1, r1, r5).thrsw()
+		<< vpmsetup(r5).ldunif()
+		<< nop().ldunifa()  // NB for version 33 this is `nop().ldvpm()`
+		<< bor(0 /*rf0 */, r3, r3).mov(vpm, r3)
+   // ver 42, error in instr_unpack():     { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
+		<< ffloor(ifb,  rf(30).l(), r3).fmul(rf(43).l(), r5, r1.h()).pushz()
+	;
 
 #if 0
-        { 33, 0x3c403186bb81d000ull, "vpmsetup  -, r5      ; nop               ; ldunif" },
-        { 33, 0x3f003186bb800000ull, "nop                  ; nop               ; ldvpm" },
-        { 33, 0x3c002380b6edb000ull, "or  rf0, r3, r3      ; mov  vpm, r3" },
-        { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
-        { 33, 0x9c094adef634b000ull, "ffloor.ifb  rf30.l, r3; fmul.pushz  rf43.l, r5, r1.h" },
         { 33, 0xb0044c56ba326840ull, "flpop  rf22, rf33    ; fmul.pushz  rf49.l, r4.h, r1.abs" },
 
         /* vfmul input packing */

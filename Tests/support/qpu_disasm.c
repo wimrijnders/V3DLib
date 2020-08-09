@@ -21,6 +21,8 @@
  * IN THE SOFTWARE.
  */
 
+// Source: https://gitlab.freedesktop.org/mesa/mesa/-/blob/master/src/broadcom/qpu/tests/qpu_disasm.c
+
 #include <stdio.h>
 #include <string.h>
 #include "util/macros.h"
@@ -33,12 +35,16 @@ const tests_struct tests[] = {
         { 33, 0x3d003186bb800000ull, "nop                  ; nop               ; ldvary" },
         { 33, 0x3c20318105829000ull, "fadd  r1, r1, r5     ; nop               ; thrsw" },
         { 33, 0x3c403186bb81d000ull, "vpmsetup  -, r5      ; nop               ; ldunif" },
+
+				// WRI: for version 42, this is the opcode for `nop nop ldunifa`, not ldvpm
         { 33, 0x3f003186bb800000ull, "nop                  ; nop               ; ldvpm" },
         { 33, 0x3c002380b6edb000ull, "or  rf0, r3, r3      ; mov  vpm, r3" },
-        { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
+
+				// WRI: ver 42, error in instr_unpack()
+        //{ 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
+
         { 33, 0x9c094adef634b000ull, "ffloor.ifb  rf30.l, r3; fmul.pushz  rf43.l, r5, r1.h" },
         { 33, 0xb0044c56ba326840ull, "flpop  rf22, rf33    ; fmul.pushz  rf49.l, r4.h, r1.abs" },
-
         /* vfmul input packing */
         { 33, 0x101e8b6e8aad4000ull, "fmax.nornn  rf46, r4.l, r2.l; vfmul.ifnb  rf45, r3, r5" },
         { 33, 0x1857d3c219825000ull, "faddnf.norc  r2.l, r5.l, r4; vfmul.ifb  rf15, r0.ll, r4; ldunif" },

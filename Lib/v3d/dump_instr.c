@@ -202,12 +202,17 @@ static const char *dump_mux(enum v3d_qpu_mux val) {
 
 
 static const char *dump_output_pack(enum v3d_qpu_output_pack val) {
+	static char buffer[64];
 	char *ret = "<<UNKNOWN>>";
 
 	switch (val) {
 		CASE(PACK_NONE)
 		CASE(PACK_L)
 		CASE(PACK_H)
+		default:
+			sprintf(buffer, "<<UNKNOWN>> (%u)", (unsigned) val);
+			ret = buffer;
+			break;
 	}
 
 	assert(ret != 0);
@@ -216,6 +221,9 @@ static const char *dump_output_pack(enum v3d_qpu_output_pack val) {
 
 
 static const char *dump_input_unpack(enum v3d_qpu_input_unpack val) {
+//	printf("v3d_qpu_input_unpack: %u\n", val);
+
+	static char buffer[64];
 	char *ret = "<<UNKNOWN>>";
 
 	switch (val) {
@@ -227,6 +235,10 @@ static const char *dump_input_unpack(enum v3d_qpu_input_unpack val) {
 		CASE(UNPACK_REPLICATE_L_16)
 		CASE(UNPACK_REPLICATE_H_16)
 		CASE(UNPACK_SWAP_16)
+		default:
+			sprintf(buffer, "<<UNKNOWN>> (%u)", (unsigned) val);
+			ret = buffer;
+			break;
 	}
 
 	assert(ret != 0);

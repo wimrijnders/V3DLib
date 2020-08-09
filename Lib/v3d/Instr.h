@@ -13,16 +13,54 @@ class Register {
 public: 
 	Register(const char *name, v3d_qpu_waddr waddr_val);
 	Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val);
+//	Register(Register const &rhs) = default;
 
 	v3d_qpu_waddr to_waddr() const { return m_waddr_val; }
 	v3d_qpu_mux to_mux() const;
+	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
+
+	Register h() const {
+		Register ret(*this);
+		ret.m_input_unpack = V3D_QPU_UNPACK_H;
+		return ret;
+	}
 
 private:
 	std::string   m_name;
 	v3d_qpu_waddr m_waddr_val;
 	v3d_qpu_mux   m_mux_val;
 	bool          m_mux_is_set = false;
+	v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
 };
+
+
+class RFAddress {
+public:
+	RFAddress(uint8_t val) : m_val(val) {}
+
+	uint8_t to_waddr() const { return m_val; }
+	v3d_qpu_output_pack output_pack() const { return m_output_pack; }
+
+	RFAddress l() const {
+		RFAddress ret(m_val);
+		ret.m_output_pack = V3D_QPU_PACK_L;
+
+		return ret;
+	}
+
+	RFAddress h() const {
+		RFAddress ret(m_val);
+		ret.m_output_pack = V3D_QPU_PACK_H;
+
+		return ret;
+	}
+
+private:
+	uint8_t m_val;
+	v3d_qpu_output_pack m_output_pack = V3D_QPU_PACK_NONE;
+};
+
+using rf = RFAddress;
 
 
 class Instr : public v3d_qpu_instr {
@@ -35,10 +73,13 @@ public:
 
 	operator uint64_t() const { return code(); }
 
-	Instr &thrsw(bool val) { sig.thrsw = val; return *this; }
+	Instr &thrsw(bool val = true);
 	Instr &pushz();
 	Instr &ldtmu(Register const &reg);
 	Instr &ldvary(bool val = true);
+	Instr &ldunif(bool val = true);
+	Instr &ldunifa(bool val = true);
+	Instr &ldvpm(bool val = true);
 
 	// Calls to set the mul part of the instruction
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
@@ -46,6 +87,9 @@ public:
 	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 
 	Instr &mov(Register const &reg, uint8_t val);
+	Instr &mov(uint8_t rf_addr, Register const &reg);
+
+	Instr &fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
@@ -59,8 +103,12 @@ private:
 
 extern Register const r0;
 extern Register const r1;
+extern Register const r3;
+extern Register const r5;
 extern Register const tmua;
 extern Register const tmud;
+const uint8_t vpm = 14;
+const uint32_t ifb = 3145728000;  // Value according to dump; No idea what this value is supposed to be and what it does!
 
 Instr nop();
 Instr ldunifrf(uint8_t rf_address);
@@ -80,9 +128,12 @@ Instr add(Register const &reg1, Register const &reg2, Register const &reg3);
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t ref_addr3);
 
+Instr fadd(Register const &reg1, Register const &reg2, Register const &reg3);
+
 Instr mov(uint8_t rf_addr, uint8_t val);
 Instr mov(Register const &reg, uint8_t rf_addr);
 
+Instr bor(uint8_t rf_addr1, Register const &reg2, Register const &reg3);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);
@@ -90,8 +141,9 @@ Instr branch(int target, int current);
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 
 Instr barrierid(v3d_qpu_waddr waddr);
+Instr vpmsetup(Register const &reg2);
 
-
+Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3);
 
 }  // instr
 }  // v3d

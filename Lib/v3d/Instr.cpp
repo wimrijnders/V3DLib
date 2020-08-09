@@ -57,6 +57,8 @@ v3d_qpu_mux Register::to_mux() const {
 
 Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0);
 Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1);
+Register const r3("r3", V3D_QPU_WADDR_R3, V3D_QPU_MUX_R3);
+Register const r5("r5", V3D_QPU_WADDR_R5, V3D_QPU_MUX_R5);
 Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
 Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
 
@@ -177,6 +179,13 @@ bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 // Calls to set the mult part of the instruction
 //////////////////////////////////////////////////////
 
+
+Instr &Instr::thrsw(bool val) {
+	sig.thrsw = val;
+	return *this;
+}
+
+
 Instr &Instr::pushz() {
 	flags.mpf = V3D_QPU_PF_PUSHZ;
 	return *this;
@@ -194,6 +203,24 @@ Instr &Instr::ldtmu(Register const &reg) {
 
 Instr &Instr::ldvary(bool val) {
 	sig.ldvary = val;
+	return *this;
+}
+
+
+Instr &Instr::ldunif(bool val) {
+	sig.ldunif = val;
+	return *this;
+}
+
+
+Instr &Instr::ldunifa(bool val) {
+	sig.ldunifa = val;
+	return *this;
+}
+
+
+Instr &Instr::ldvpm(bool val) {
+	sig.ldvpm = val;
 	return *this;
 }
 
@@ -223,7 +250,7 @@ Instr &Instr::add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
 }
 
 
-Instr &Instr::sub(uint8_t  rf_addr1, uint8_t rf_addr2, Register const &reg3) {
+Instr &Instr::sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 	raddr_b       = rf_addr1; 
 	alu.mul.op    = V3D_QPU_M_SUB;
 	alu.mul.a     = V3D_QPU_MUX_B;
@@ -244,6 +271,28 @@ Instr &Instr::mov(Register const &reg,  uint8_t val) {
 	return *this;
 }
 
+
+Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
+	alu.mul.op    = V3D_QPU_M_MOV;
+	alu.mul.a     = reg.to_mux();
+	alu.mul.b     = V3D_QPU_MUX_B;
+	alu.mul.waddr = rf_addr;
+
+	return *this;
+}
+
+
+Instr &Instr::fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+	alu.mul.op    = V3D_QPU_M_FMUL;
+	alu.mul.a     = reg2.to_mux();
+	alu.mul.b     = reg3.to_mux();
+	alu.mul.waddr = rf_addr1.to_waddr();
+	alu.mul.output_pack = rf_addr1.output_pack();
+	alu.mul.magic_write = false;
+	alu.mul.b_unpack = reg3.input_unpack();
+
+	return *this;
+}
 
 //////////////////////////////////////////////////////
 // Top-level opcodes
@@ -389,9 +438,21 @@ Instr add(Register const &reg1, Register const &reg2, Register const &reg3) {
 	Instr instr;
 
 	instr.alu.add.op    = V3D_QPU_A_ADD;
-	instr.alu.add.waddr = reg1.to_waddr();
 	instr.alu.add.a     = reg2.to_mux();
 	instr.alu.add.b     = reg3.to_mux();
+	instr.alu.add.waddr = reg1.to_waddr();
+
+	return instr;
+}
+
+
+Instr fadd(Register const &reg1, Register const &reg2, Register const &reg3) {
+	Instr instr;
+
+	instr.alu.add.op    = V3D_QPU_A_FADD;
+	instr.alu.add.a     = reg2.to_mux();
+	instr.alu.add.b     = reg3.to_mux();
+	instr.alu.add.waddr = reg1.to_waddr();
 
 	return instr;
 }
@@ -458,6 +519,20 @@ Instr mov(Register const &reg, uint8_t rf_addr) {
 }
 
 
+// or is reserved keyword
+Instr bor(uint8_t rf_addr1, Register const &reg2, Register const &reg3) {
+	Instr instr;
+
+	instr.alu.add.op    = V3D_QPU_A_OR;
+	instr.alu.add.a     = reg2.to_mux();
+	instr.alu.add.b     = reg3.to_mux();
+	instr.alu.add.waddr = rf_addr1;
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
+
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
 	Instr instr;
 
@@ -501,11 +576,37 @@ Instr barrierid(v3d_qpu_waddr waddr) {
 	instr.alu.add.b     = V3D_QPU_MUX_R2;
 	instr.alu.add.waddr = waddr;
 
-/*
-	instr.sig.small_imm = true; 
-	instr.raddr_b       = val1; 
+	return instr;
+}
+
+
+Instr vpmsetup(Register const &reg2) {
+	Instr instr;
+
+	instr.alu.add.op    = V3D_QPU_A_VPMSETUP;
+	instr.alu.add.a     = reg2.to_mux();
+	instr.alu.add.b     = V3D_QPU_MUX_R3;
+
+	return instr;
+}
+
+
+// First param ignored??
+Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3) {
+	Instr instr;
+
+	if (magic_value == ifb) {
+		instr.flags.ac = V3D_QPU_COND_IFB;
+	}
+
+
+	instr.alu.add.op    = V3D_QPU_A_FFLOOR;
+	instr.alu.add.a     = reg3.to_mux();
+	instr.alu.add.b     = V3D_QPU_MUX_R1;
+	instr.alu.add.waddr = rf_addr2.to_waddr();
 	instr.alu.add.magic_write = false;
-*/
+	instr.alu.add.output_pack = rf_addr2.output_pack();
+	instr.alu.add.b_unpack = (v3d_qpu_input_unpack) magic_value;
 
 	return instr;
 }
