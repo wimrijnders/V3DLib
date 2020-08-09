@@ -6,7 +6,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include "RegisterMapping.h"
-#include "readwrite4.h"
 #include "../VideoCore/Mailbox.h"  // for mapmem()
 
 

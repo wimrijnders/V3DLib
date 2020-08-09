@@ -34,83 +34,39 @@ typedef struct {
     uint32_t  pad;
 } gem_close;
 
-typedef struct {
-    uint32_t handle;
-    uint32_t pad;
-    uint64_t timeout_ns;
-} drm_v3d_wait_bo;
+struct st_v3d_wait_bo {
+	uint32_t handle;
+	uint32_t pad;
+	uint64_t timeout_ns;
+};
 
-typedef struct {
-    uint32_t cfg[7];
-    uint32_t coef[4];
-    uint64_t bo_handles;
-    uint32_t bo_handle_count;
-    uint32_t in_sync;
-    uint32_t out_sync;
-} drm_v3d_submit_csd;
-
+// Derived from linux/include/uapi/drm/drm.h
 #define DRM_IOCTL_BASE   'd'
 #define DRM_COMMAND_BASE 0x40
 #define DRM_GEM_CLOSE    0x09
 
+// Derived from linux/include/uapi/drm/v3d_drm.h
 #define DRM_V3D_WAIT_BO    (DRM_COMMAND_BASE + 0x01)
 #define DRM_V3D_CREATE_BO  (DRM_COMMAND_BASE + 0x02)
 #define DRM_V3D_MMAP_BO    (DRM_COMMAND_BASE + 0x03)
-#define DRM_V3D_WAIT_BO    (DRM_COMMAND_BASE + 0x01)
+#define DRM_V3D_GET_PARAM  (DRM_COMMAND_BASE + 0x04)
 #define DRM_V3D_SUBMIT_CSD (DRM_COMMAND_BASE + 0x07)
 
 #define IOCTL_GEM_CLOSE      _IOW(DRM_IOCTL_BASE, DRM_GEM_CLOSE, gem_close)
 #define IOCTL_V3D_CREATE_BO  _IOWR(DRM_IOCTL_BASE, DRM_V3D_CREATE_BO, drm_v3d_create_bo)
 #define IOCTL_V3D_MMAP_BO    _IOWR(DRM_IOCTL_BASE, DRM_V3D_MMAP_BO, drm_v3d_mmap_bo)
-#define IOCTL_V3D_WAIT_BO    _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, drm_v3d_wait_bo)
-#define IOCTL_V3D_SUBMIT_CSD _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, drm_v3d_submit_csd)
+#define IOCTL_V3D_WAIT_BO    _IOWR(DRM_IOCTL_BASE, DRM_V3D_WAIT_BO, st_v3d_wait_bo)
+#define IOCTL_V3D_SUBMIT_CSD _IOW(DRM_IOCTL_BASE, DRM_V3D_SUBMIT_CSD, st_v3d_submit_csd)
 
-
-int submit_csd(
-	int fd,
-	uint32_t phyaddr,
-	std::vector<uint32_t> const &bo_handles,
-	uint32_t uniforms_address
-) {
-		assert(bo_handles.size() > 0);  // There should be at least one, for the code
-
-    const uint32_t wg_x = 1;
-    const uint32_t wg_y = 1;
-    const uint32_t wg_z = 1;
-    const uint32_t wg_size = wg_x * wg_y * wg_z;
-    const uint32_t wgs_per_sg = 1;
-
-    drm_v3d_submit_csd csd;
-    csd.cfg[0] = wg_x << 16;
-    csd.cfg[1] = wg_y << 16;
-    csd.cfg[2] = wg_z << 16;
-    csd.cfg[3] =
-        ((((wgs_per_sg * wg_size + 16u - 1u) / 16u) - 1u) << 12) |
-        (wgs_per_sg << 8) |
-        (wg_size & 0xff);
-    csd.cfg[4] = 0;
-    csd.cfg[5] = phyaddr;
-    csd.cfg[6] = uniforms_address;  // allowed to be 0
-    csd.coef[0] = 0;
-    csd.coef[1] = 0;
-    csd.coef[2] = 0;
-    csd.coef[3] = 0;
-    csd.bo_handles = (uintptr_t) bo_handles.data();
-    csd.bo_handle_count = bo_handles.size();
-    csd.in_sync = 0;
-    csd.out_sync = 0;
-
-	int ret =  ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &csd);  // !!!!! pass a pointer! (IDIOT)
-	if (ret) {
-		perror(NULL);
-		assert(false);
-	}
-
-	return ret;
-}
-
-
-
+const unsigned V3D_PARAM_V3D_UIFCFG = 0;
+const unsigned V3D_PARAM_V3D_HUB_IDENT1 = 1;
+const unsigned V3D_PARAM_V3D_HUB_IDENT2 = 2;
+const unsigned V3D_PARAM_V3D_HUB_IDENT3 = 3;
+const unsigned V3D_PARAM_V3D_CORE0_IDENT0 = 4;
+const unsigned V3D_PARAM_V3D_CORE0_IDENT1 = 5;
+const unsigned V3D_PARAM_V3D_CORE0_IDENT2 = 6;
+const unsigned V3D_PARAM_SUPPORTS_TFU = 7;
+const unsigned V3D_PARAM_SUPPORTS_CSD = 8;
 
 
 bool alloc_intern(int fd, uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
@@ -178,6 +134,20 @@ int open_card(char const *card) {
 }  // anon namespace
 
 
+/**
+ *
+ */
+int v3d_submit_csd(st_v3d_submit_csd &st) {
+	int ret = ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &st);
+
+	if(ret) {
+		perror(NULL);
+		assert(false);
+	}
+
+	return ret;
+}
+
 
 /**
  * Apparently, you don't need to close afterwards.
@@ -229,10 +199,10 @@ int v3d_fd() {
 
 
 bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
-		assert(size > 0);
-		assert(handle == 0);
-		assert(phyaddr == 0);
-		assert(*usraddr == nullptr);
+	assert(size > 0);
+	assert(handle == 0);
+	assert(phyaddr == 0);
+	assert(*usraddr == nullptr);
 
 	return  alloc_intern(fd, size, handle, phyaddr, usraddr);
 }
@@ -254,17 +224,43 @@ bool v3d_unmap(uint32_t size, uint32_t handle,  void *usraddr) {
 }
 
 
-int v3d_wait_bo(int fd, uint32_t handle) {
-    drm_v3d_wait_bo wait;
-    wait.handle = handle;
-    wait.pad = 0;
-    wait.timeout_ns = 10llu * 1000000000llu;
-    int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &wait);
+int v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
+	assert(handle != 0);
+	assert(timeout_ns > 0);
 
-	if(ret) {
+	st_v3d_wait_bo st = {
+		handle,
+		0,
+		timeout_ns,
+	};
+
+	int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
+	if (ret) {
 		perror(NULL);
 		assert(false);
 	}
+
+	return ret;
+}
+
+
+/**
+ * @return true if wait succeeded, false otherwise
+ */
+bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns) {
+	assert(bo_handles.size() > 0);
+	assert(timeout_ns > 0);
+
+	int ret = true;
+
+	for (auto handle : bo_handles) {
+		int result = v3d_wait_bo(handle, timeout_ns);
+		if (0 != result) {
+			printf("v3d_wait_bo() returned %d\n", ret);
+			ret = false;
+		}
+	}
+	printf("Done calling v3d_wait_bo()\n");
 
 	return ret;
 }

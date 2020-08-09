@@ -1,7 +1,7 @@
 #ifndef _VC6_DRIVER_H_
 #define _VC6_DRIVER_H_
 #include "v3d/SharedArray.h"
-#include "DRM_V3D.h"
+#include "v3d.h"
 
 
 namespace QPULib {
@@ -17,6 +17,7 @@ namespace v3d {
 class Driver {
   using Code  = SharedArrayBase;
   using Array = ISharedArray;
+	using BoHandles = std::vector<uint32_t>;
 
 public:
 	void add_bo(SharedArray<uint32_t> &bo) {
@@ -42,7 +43,6 @@ public:
 		uint32_t wgs_per_sg = 3);  // Has an effect on number of registers used per QPU (max 16)
 
 private:
-	DRM_V3D   m_drm;
 	BoHandles m_bo_handles;
   int       m_timeout_sec = 10;
 

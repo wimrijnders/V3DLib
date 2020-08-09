@@ -296,16 +296,12 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		for (uint32_t offset = 0; offset < X.size(); ++offset) {
 			X[offset] = offset;
 		}
-
-		dump_data(X); 
+		//dump_data(X); 
 
 		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
 			Y[offset] = 0;
 		}
-
-		dump_data(Y); 
-
-
+		//dump_data(Y); 
 		REQUIRE(sumY() == 0);
 
 		//Data unif(3);
@@ -323,7 +319,6 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		drv.add_bo(heap);
 		drv.execute(heap, &unif, num_qpus);
 
-
 		dump_data(Y, true);
 		detect_used_blocks(heap);
 
@@ -339,9 +334,9 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 			INFO("X offset: " << offset);
 			REQUIRE(X[offset] == offset);
 		}
-*/
 
-		//find_value(heap, 1736704u); // 4278190080u;
+		find_value(heap, 1736704u); // 4278190080u;
+*/
 	
 		// Check if values supplied
     REQUIRE(sumY()  == 1llu*(length - 1)*length/2);

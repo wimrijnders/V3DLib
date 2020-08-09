@@ -33,10 +33,10 @@ bool Driver::dispatch(
 	auto index = std::find(m_bo_handles.begin(), m_bo_handles.end(), code_handle);
 	assert(index != m_bo_handles.end());  // Expecting handle of code to have been added beforehand
 
-	auto roundup = [] (uint32_t n, uint32_t d) -> int {
-		assert(n+d > 0);
-		return (n + d - 1) / d;
-	};
+//	auto roundup = [] (uint32_t n, uint32_t d) -> int {
+//		assert(n+d > 0);
+//		return (n + d - 1) / d;
+//	};
 
 	st_v3d_submit_csd st = {
 		{
@@ -45,9 +45,10 @@ bool Driver::dispatch(
 			workgroup.wg_y << 16,
 			workgroup.wg_z << 16,
 			(
-				(roundup(wgs_per_sg * workgroup.wg_size(), 16) - 1) << 12) |
+				//(roundup(wgs_per_sg * workgroup.wg_size(), 16) - 1) << 12) |
+        ((((wgs_per_sg * workgroup.wg_size() + 16u - 1u) / 16u) - 1u) << 12) |
 				(wgs_per_sg << 8) |
-				(workgroup.wg_size() & 0xff
+				workgroup.wg_size() & 0xff
 			),
 			thread - 1,           // Number of batches minus 1
 			code_phyaddr,    // Shader address, pnan, singleseg, threading
@@ -60,10 +61,10 @@ bool Driver::dispatch(
 		0
 	};
 
- uint64_t  timeout_ns = 1000000000llu * m_timeout_sec;
+	uint64_t  timeout_ns = 1000000000llu * m_timeout_sec;
 
-	int ret = m_drm.v3d_submit_csd(st);
-	m_drm.v3d_wait_bo(m_bo_handles, timeout_ns);
+	int ret = v3d_submit_csd(st);
+	v3d_wait_bo(m_bo_handles, timeout_ns);
 
 	return ret == 0;
 }
