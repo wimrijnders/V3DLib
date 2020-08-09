@@ -182,10 +182,103 @@ bool v3d_init() {
 	REQUIRE(v3d_open());
 	return true;
 }
-}  // anon namespace
 
 
-/**
+void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unroll_shift) {
+    uint32_t code_area_size = DEFAULT_CODE_AREA_SIZE;
+
+		uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in QPU's and CPU
+		                                   // The python version went to 32*1024*1024 and did some modulo magic.
+
+    REQUIRE(length > 0);
+    REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
+
+    uint32_t data_area_size = (length + 1024) * 4;
+
+    printf("==== summation example (%dK elements) ====\n", (length / 1024));
+
+		// Code and data is combined in one buffer
+		BufferObject heap(code_area_size + data_area_size);
+		//printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
+
+		//set_unused_code(heap);
+
+		auto code = heap.alloc_view<uint64_t>(code_area_size);
+		code.copyFrom(summation);
+		//printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
+		//dump_data(code); 
+
+		auto X = heap.alloc_view<uint32_t>(4*length);
+		auto Y = heap.alloc_view<uint32_t>(4* 16 * num_qpus);
+		//printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
+		//printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
+
+		auto sumY = [&Y] () -> uint64_t {
+			uint64_t ret = 0;
+
+			for (uint32_t offset = 0; offset < Y.size(); ++offset) {
+				ret += Y[offset];
+			}
+
+			return ret;
+		};
+
+		for (uint32_t offset = 0; offset < X.size(); ++offset) {
+			X[offset] = offset;
+		}
+		//dump_data(X); 
+
+		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
+			Y[offset] = 0;
+		}
+		//dump_data(Y); 
+		REQUIRE(sumY() == 0);
+
+		auto unif = heap.alloc_view<uint32_t>(3*4);  // grumbl size in bytes TODO: change, this is confusing
+		unif[0] = length;
+		unif[1] = X.getPhyAddr();
+		unif[2] = Y.getPhyAddr();
+		//printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
+
+
+		printf("Executing on QPU...\n");
+		double start = get_time();
+
+		QPULib::v3d::Driver drv;
+		drv.add_bo(heap);
+		drv.execute(heap, &unif, num_qpus);
+
+		//dump_data(Y, true);
+		//check_returned_registers(Y);
+		//detect_used_blocks(heap);
+
+/*
+		// Check if code not overwritten
+		for (uint32_t offset = 0; offset < summation.size(); ++offset) {
+			INFO("Code offset: " << offset);
+			REQUIRE(code[offset] == summation[offset]);
+		}
+
+		// Check if X not overwritten
+		for (uint32_t offset = 0; offset < X.size(); ++offset) {
+			INFO("X offset: " << offset);
+			REQUIRE(X[offset] == offset);
+		}
+
+		find_value(heap, 1736704u); // 4278190080u;
+*/
+	
+		// Check if values supplied
+    REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
+		
+		double end = get_time();
+		printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
+}
+
+}  // anon 
+
+
+/*
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
 TEST_CASE("Check v3d code is working properly", "[v3d]") {
@@ -276,102 +369,24 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	// It might be possible to use muliple arrays, but we're sticking to the original
 	// example here.
 	//
-	SECTION("Summation example should work") {
+	SECTION("Summation example should work from bytecode") {
 		if (!v3d_init()) return;
 
-		uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in QPU's and CPU
-		                                   // The python version went to 32*1024*1024 and did some modulo magic.
+		uint8_t num_qpus = 8;  // Don't change these value! That's how the summation kernel bytecode
+		int unroll_shift = 5;  // was compiled.
 
-		int num_qpus = 8;                  // Don't change these value! That's how the summation kernel bytcode
-		int unroll_shift = 5;              // was compiled.
-
-    REQUIRE(length > 0);
-    REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
+		run_summation_kernel(summation, num_qpus, unroll_shift);
+	}
 
 
-    printf("==== summation example (%dK elements) ====\n", (length / 1024));
+	SECTION("Summation example should work from kernel output") {
+		if (!v3d_init()) return;
 
-    uint32_t code_area_size = DEFAULT_CODE_AREA_SIZE;
-    uint32_t data_area_size = (length + 1024) * 4;
+		uint8_t num_qpus = 8;  // TODO: test changing these
+		int unroll_shift = 5;
 
-		printf("Preparing for buffers...\n");
-
-		// Code and data is combined in one buffer
-		BufferObject heap(code_area_size + data_area_size);
-		//printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
-
-		set_unused_code(heap);
-
-		auto code = heap.alloc_view<uint64_t>(code_area_size);
-		code.copyFrom(summation);
-		//printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
-		//dump_data(code); 
-
-		auto X = heap.alloc_view<uint32_t>(4*length);
-		auto Y = heap.alloc_view<uint32_t>(4* 16 * num_qpus);
-		//printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
-		//printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
-
-		auto sumY = [&Y] () -> uint64_t {
-			uint64_t ret = 0;
-
-			for (uint32_t offset = 0; offset < Y.size(); ++offset) {
-				ret += Y[offset];
-			}
-
-			return ret;
-		};
-
-		for (uint32_t offset = 0; offset < X.size(); ++offset) {
-			X[offset] = offset;
-		}
-		//dump_data(X); 
-
-		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
-			Y[offset] = 0;
-		}
-		//dump_data(Y); 
-		REQUIRE(sumY() == 0);
-
-		auto unif = heap.alloc_view<uint32_t>(3*4);  // grumbl size in bytes TODO: change, this is confusing
-		unif[0] = length;
-		unif[1] = X.getPhyAddr();
-		unif[2] = Y.getPhyAddr();
-		//printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
-
-
-		printf("Executing on QPU...\n");
-		double start = get_time();
-
-		QPULib::v3d::Driver drv;
-		drv.add_bo(heap);
-		drv.execute(heap, &unif, num_qpus);
-
-		//dump_data(Y, true);
-		//check_returned_registers(Y);
-		//detect_used_blocks(heap);
-
-/*
-		// Check if code not overwritten
-		for (uint32_t offset = 0; offset < summation.size(); ++offset) {
-			INFO("Code offset: " << offset);
-			REQUIRE(code[offset] == summation[offset]);
-		}
-
-		// Check if X not overwritten
-		for (uint32_t offset = 0; offset < X.size(); ++offset) {
-			INFO("X offset: " << offset);
-			REQUIRE(X[offset] == offset);
-		}
-
-		find_value(heap, 1736704u); // 4278190080u;
-*/
-	
-		// Check if values supplied
-    REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
-		
-		double end = get_time();
-		printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
+		std::vector<uint64_t> data = summation_kernel(num_qpus, unroll_shift);
+		run_summation_kernel(data, num_qpus, unroll_shift);
 	}
 }
 
@@ -428,8 +443,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("Summation kernel generates correct assembled output") {
-		using namespace QPULib::v3d::instr;  // for nop();
-		REQUIRE(nop() == 0x3c003186bb800000); // nop; nop - to catch uninitialized fields (happened)
+		using namespace QPULib::v3d::instr;
 
 		std::vector<uint64_t> arr = summation_kernel(8, 5, 0);
 		REQUIRE(arr.size() > 0);
@@ -455,6 +469,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		REQUIRE(summation.size() == arr.size());
 	}
 
+
 	SECTION("Register without mux definition should throw on usage") {
 		using namespace QPULib::v3d::instr;
 
@@ -471,6 +486,8 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 	SECTION("Opcode compare should work") {
 		using namespace QPULib::v3d::instr;
+
+		REQUIRE(nop() == 0x3c003186bb800000); // nop; nop - to catch uninitialized fields (happened)
 
 		// Non-branch instructions: direct compare
 		REQUIRE(Instr::compare_codes(0x3d803186bb800000, 0x3d803186bb800000));  // nop-nop
