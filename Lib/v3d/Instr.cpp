@@ -57,7 +57,9 @@ v3d_qpu_mux Register::to_mux() const {
 
 Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0);
 Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1);
+Register const r2("r2", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R2);
 Register const r3("r3", V3D_QPU_WADDR_R3, V3D_QPU_MUX_R3);
+Register const r4("r4", V3D_QPU_WADDR_R4, V3D_QPU_MUX_R4);
 Register const r5("r5", V3D_QPU_WADDR_R5, V3D_QPU_MUX_R5);
 Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
 Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
@@ -225,6 +227,28 @@ Instr &Instr::ldvpm(bool val) {
 }
 
 
+Instr &Instr::nornn(bool val) {
+	if (val) {
+		flags.auf = V3D_QPU_UF_NORNN;
+	} else {
+		flags.auf = V3D_QPU_UF_NONE;
+	}
+
+	return *this;
+}
+
+
+Instr &Instr::ifnb(bool val) {
+	if (val) {
+		flags.mc = V3D_QPU_COND_IFNB;
+	} else {
+		flags.mc = V3D_QPU_COND_NONE;
+	}
+
+	return *this;
+}
+
+
 Instr &Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 	raddr_b       = rf_addr1; 
 	alu.mul.op    = V3D_QPU_M_ADD;
@@ -283,16 +307,44 @@ Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
 
 
 Instr &Instr::fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+	alu_mul_set(rf_addr1, reg2, reg3);
+
 	alu.mul.op    = V3D_QPU_M_FMUL;
+	alu.mul.magic_write = false;
+
+	return *this;
+}
+
+
+Instr &Instr::vfmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+	alu_mul_set(rf_addr1, reg2, reg3);
+
+	alu.mul.op    = V3D_QPU_M_VFMUL;
+	alu.mul.magic_write = false;
+
+	return *this;
+}
+
+
+void Instr::alu_add_set(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+	alu.add.a     = reg2.to_mux();
+	alu.add.b     = reg3.to_mux();
+	alu.add.waddr = rf_addr1.to_waddr();
+	alu.add.output_pack = rf_addr1.output_pack();
+	alu.add.a_unpack = reg2.input_unpack();
+	alu.add.b_unpack = reg3.input_unpack();
+}
+
+
+void Instr::alu_mul_set(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
 	alu.mul.a     = reg2.to_mux();
 	alu.mul.b     = reg3.to_mux();
 	alu.mul.waddr = rf_addr1.to_waddr();
 	alu.mul.output_pack = rf_addr1.output_pack();
-	alu.mul.magic_write = false;
+	alu.mul.a_unpack = reg2.input_unpack();
 	alu.mul.b_unpack = reg3.input_unpack();
-
-	return *this;
 }
+
 
 //////////////////////////////////////////////////////
 // Top-level opcodes
@@ -522,11 +574,9 @@ Instr mov(Register const &reg, uint8_t rf_addr) {
 // or is reserved keyword
 Instr bor(uint8_t rf_addr1, Register const &reg2, Register const &reg3) {
 	Instr instr;
+	instr.alu_add_set(rf_addr1, reg2, reg3);
 
 	instr.alu.add.op    = V3D_QPU_A_OR;
-	instr.alu.add.a     = reg2.to_mux();
-	instr.alu.add.b     = reg3.to_mux();
-	instr.alu.add.waddr = rf_addr1;
 	instr.alu.add.magic_write = false;
 
 	return instr;
@@ -607,6 +657,31 @@ Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3) {
 	instr.alu.add.magic_write = false;
 	instr.alu.add.output_pack = rf_addr2.output_pack();
 	instr.alu.add.b_unpack = (v3d_qpu_input_unpack) magic_value;
+
+	return instr;
+}
+
+
+Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2) {
+	Instr instr;
+
+	instr.raddr_a       = rf_addr2.to_waddr();
+	instr.alu.add.op    = V3D_QPU_A_FLPOP;
+	instr.alu.add.a     = V3D_QPU_MUX_A;
+	instr.alu.add.b     = V3D_QPU_MUX_R4;
+	instr.alu.add.waddr = rf_addr1.to_waddr();
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
+
+Instr fmax(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+	Instr instr;
+	instr.alu_add_set(rf_addr1, reg2, reg3);
+
+	instr.alu.add.op    = V3D_QPU_A_FMAX;
+	instr.alu.add.magic_write = false;
 
 	return instr;
 }

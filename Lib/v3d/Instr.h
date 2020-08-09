@@ -19,9 +19,21 @@ public:
 	v3d_qpu_mux to_mux() const;
 	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
 
+	Register l() const {
+		Register ret(*this);
+		ret.m_input_unpack = V3D_QPU_UNPACK_L;
+		return ret;
+	}
+
 	Register h() const {
 		Register ret(*this);
 		ret.m_input_unpack = V3D_QPU_UNPACK_H;
+		return ret;
+	}
+
+	Register abs() const {
+		Register ret(*this);
+		ret.m_input_unpack = V3D_QPU_UNPACK_ABS;
 		return ret;
 	}
 
@@ -80,6 +92,8 @@ public:
 	Instr &ldunif(bool val = true);
 	Instr &ldunifa(bool val = true);
 	Instr &ldvpm(bool val = true);
+	Instr &nornn(bool val = true);
+	Instr &ifnb(bool val = true);
 
 	// Calls to set the mul part of the instruction
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
@@ -90,20 +104,27 @@ public:
 	Instr &mov(uint8_t rf_addr, Register const &reg);
 
 	Instr &fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
+	Instr &vfmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
+
+	void alu_add_set(RFAddress rf_addr1, Register const &reg2, Register const &reg3); 
+	void alu_mul_set(RFAddress rf_addr1, Register const &reg2, Register const &reg3); 
 
 private:
 	static uint64_t const NOP;
 
 	void init_ver() const;
 	void init(uint64_t in_code);
+
 };
 
 
 extern Register const r0;
 extern Register const r1;
+extern Register const r2;
 extern Register const r3;
+extern Register const r4;
 extern Register const r5;
 extern Register const tmua;
 extern Register const tmud;
@@ -144,6 +165,8 @@ Instr barrierid(v3d_qpu_waddr waddr);
 Instr vpmsetup(Register const &reg2);
 
 Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3);
+Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2);
+Instr fmax(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
 
 }  // instr
 }  // v3d

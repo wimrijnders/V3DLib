@@ -30,10 +30,10 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x9c094adef634b000ull; // "ffloor.ifb  rf30.l, r3; fmul.pushz  rf43.l, r5, r1.h" },
+	uint64_t op = 0x1857d3c219825000ull; //, "faddnf.norc  r2.l, r5.l, r4; vfmul.ifb  rf15, r0.ll, r4; ldunif" },
 	Instr::show(op);
 	auto tmp_op =
-		ffloor(ifb,  rf(30).l(), r3).fmul(rf(43).l(), r5, r1.h()).pushz();
+		fmax(rf(46), r4.l(), r2.l()).nornn().vfmul(rf(45), r3, r5).ifnb()
 	;
 	tmp_op.dump(true);
 
@@ -43,15 +43,15 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< vpmsetup(r5).ldunif()
 		<< nop().ldunifa()  // NB for version 33 this is `nop().ldvpm()`
 		<< bor(0 /*rf0 */, r3, r3).mov(vpm, r3)
-   // ver 42, error in instr_unpack():     { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
+		// ver 42, error in instr_unpack():
+		// { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
 		<< ffloor(ifb,  rf(30).l(), r3).fmul(rf(43).l(), r5, r1.h()).pushz()
+		<< flpop(rf(22), rf(33)).fmul(rf(49).l(), r4.h(), r1.abs()).pushz()
+		/* vfmul input packing */
+		<< fmax(rf(46), r4.l(), r2.l()).nornn().vfmul(rf(45), r3, r5).ifnb()
 	;
 
 #if 0
-        { 33, 0xb0044c56ba326840ull, "flpop  rf22, rf33    ; fmul.pushz  rf49.l, r4.h, r1.abs" },
-
-        /* vfmul input packing */
-        { 33, 0x101e8b6e8aad4000ull, "fmax.nornn  rf46, r4.l, r2.l; vfmul.ifnb  rf45, r3, r5" },
         { 33, 0x1857d3c219825000ull, "faddnf.norc  r2.l, r5.l, r4; vfmul.ifb  rf15, r0.ll, r4; ldunif" },
         { 33, 0x1c0a0dfde2294000ull, "fcmp.ifna  rf61.h, r4.abs, r2.l; vfmul  rf55, r2.hh, r1" },
         { 33, 0x2011c89b402cc000ull, "fsub.norz  rf27, r4.abs, r1.abs; vfmul.ifa  rf34, r3.swp, r1" },
