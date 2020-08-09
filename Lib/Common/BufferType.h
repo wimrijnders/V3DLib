@@ -5,8 +5,12 @@ namespace QPULib {
 
 enum BufferType : int {
 	HeapBuffer,
+#ifdef USE_V3D_BUFFERS
 	Vc4Buffer,
-	V3dBuffer  // Not used yet!
+	V3dBuffer
+#else
+	Vc4Buffer
+#endif
 };
 
 }  // namespace QPULib

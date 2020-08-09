@@ -10,8 +10,14 @@ There is no way to use the QPU mode SharedArray without a serious rewrite.
 #ifndef _QPULIB_SHAREDARRAY_H_
 #define _QPULIB_SHAREDARRAY_H_
 #include <debug.h>
-#include "BufferType.h"
 
+//
+// SharedArray's for v3d have not been properly implemented yet
+// They are currently actually Buffer Objects (BO's), this needs to change
+//
+//#define USE_V3D_BUFFERS
+
+#include "BufferType.h"
 
 #if !defined(QPU_MODE) && !defined(EMULATION_MODE)
 //
@@ -22,8 +28,6 @@ There is no way to use the QPU mode SharedArray without a serious rewrite.
 #pragma message "WARNING: QPU_MODE and EMULATION_MODE not defined, defaulting to EMULATION_MODE"
 #define EMULATION_MODE
 #endif
-
-#pragma message "Debugging"
 
 #include "../Target/SharedArray.h"
 
@@ -38,21 +42,14 @@ using SharedArray=Target::SharedArray<T>;
 #else  // QPU_MODE
 #include "../VideoCore/SharedArray.h"
 
-//template <typename T>
-//using SharedArray=QPULib::VideoCore::SharedArray<T>;
-
+#ifdef USE_V3D_BUFFERS
 #include "../v3d/SharedArray.h"
+#endif
 
 #endif  // QPU_MODE
 
 
 #ifdef QPU_MODE
-
-/*
-Not working yet.
-
-This bricked the Pi3 during testing. Needs more debugging
-*/
 
 namespace QPULib {
 
@@ -100,9 +97,11 @@ public:
 		case Vc4Buffer:
 			ret = m_gpu_array.getAddress();
 			break;
+#ifdef USE_V3D_BUFFERS
 		case V3dBuffer:
 			ret = m_v3d_array.getAddress();
 			break;
+#endif
 		}
 
 		return ret;
@@ -119,9 +118,11 @@ public:
 			case Vc4Buffer:
 				moveTo(m_gpu_array, m_main_array);
 				break;
+#ifdef USE_V3D_BUFFERS
 			case V3dBuffer:
 				moveTo(m_v3d_array, m_main_array);
 				break;
+#endif
 			}
 			break;
 		case Vc4Buffer:
@@ -132,11 +133,14 @@ public:
 			case Vc4Buffer:
 				// Nothing to do
 				break;
+#ifdef USE_V3D_BUFFERS
 			case V3dBuffer:
 				moveTo(m_v3d_array, m_gpu_array);
 				break;
+#endif
 			}
 			break;
+#ifdef USE_V3D_BUFFERS
 		case V3dBuffer:
 			switch(m_buftype) {
 			case HeapBuffer:
@@ -150,6 +154,7 @@ public:
 				break;
 			}
 			break;
+#endif
 		}
 
 		m_buftype = buftype;
@@ -170,11 +175,12 @@ public:
 			assert(m_gpu_array.size() == 0);
 			m_gpu_array.alloc(n);
 			break;
+#ifdef USE_V3D_BUFFERS
 		case V3dBuffer:
 			breakpoint
 			assert(m_v3d_array.size() == 0);
 			m_v3d_array.alloc(n);
-			break;
+#endif
 			break;
 		}
 
@@ -194,10 +200,12 @@ public:
 		case Vc4Buffer:
 			ret = &m_gpu_array[i];
 			break;
+#ifdef USE_V3D_BUFFERS
 		case V3dBuffer:
 			breakpoint
 			ret = &m_v3d_array[i];
 			break;
+#endif
 		}
 
 		assert(ret != nullptr);
@@ -217,11 +225,13 @@ public:
 	}
 
 
+#ifdef USE_V3D_BUFFERS
 	operator v3d::SharedArray<T> &() {
 		breakpoint
 		setType(V3dBuffer);	
 		return m_v3d_array;
 	}
+#endif
 
 
 private:
@@ -235,7 +245,9 @@ private:
 
 	Target::SharedArray<T>    m_main_array;
 	VideoCore::SharedArray<T> m_gpu_array;
+#ifdef USE_V3D_BUFFERS
 	v3d::SharedArray<T>       m_v3d_array;
+#endif
 
 
 	template<typename Src, typename Dst>

@@ -45,7 +45,6 @@ bool Driver::dispatch(
 			workgroup.wg_y << 16,
 			workgroup.wg_z << 16,
 			(
-				//(roundup(wgs_per_sg * workgroup.wg_size(), 16) - 1) << 12) |
         ((((wgs_per_sg * workgroup.wg_size() + 16u - 1u) / 16u) - 1u) << 12) |
 				(wgs_per_sg << 8) |
 				workgroup.wg_size() & 0xff
@@ -71,7 +70,7 @@ bool Driver::dispatch(
 
 
 void Driver::execute(
-	Code &code,
+	BufferObject const &code,
 	Array *uniforms,
 	int thread) {
 

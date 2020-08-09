@@ -309,6 +309,7 @@ template <typename... ts> struct Kernel {
   }
 
 
+#ifdef USE_V3D_BUFFERS
   template <typename... us> void v3d(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
@@ -319,19 +320,26 @@ template <typename... ts> struct Kernel {
 		v3d::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
   }
 #endif
+
+#endif  // QPU_MODE
  
   // Invoke the kernel
   template <typename... us> void call(us... args) {
 #ifdef EMULATION_MODE
       emu(args...);
 #else
-	#ifdef QPU_MODE
+#ifdef QPU_MODE
+#ifdef USE_V3D_BUFFERS
 		if (Platform::instance().has_vc4) {
         qpu(args...);
 		} else {
         v3d(args...);
 		}
-	#endif
+#else
+		assert(Platform::instance().has_vc4);
+    qpu(args...);
+#endif  // USE_V3D_BUFFERS
+#endif
 #endif
   };
 

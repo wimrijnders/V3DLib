@@ -15,7 +15,6 @@ namespace v3d {
  * TODO: check if this is relevant
  */
 class Driver {
-  using Code  = SharedArrayBase;
   using Array = ISharedArray;
 	using BoHandles = std::vector<uint32_t>;
 
@@ -29,7 +28,7 @@ public:
 	}
 
 	void execute(
-		Code &code,
+		BufferObject const &code,
 		Array *uniforms = nullptr,
 		int thread = 1);
 
@@ -50,7 +49,7 @@ private:
 
 // Legacy call(s)
 bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms = 0);
-inline bool v3d_submit_csd(SharedArrayBase &codeMem) {
+inline bool v3d_submit_csd(BufferObject const &codeMem) {
 	return v3d_submit_csd(codeMem.getPhyAddr(), codeMem.getHandle());
 }
 
