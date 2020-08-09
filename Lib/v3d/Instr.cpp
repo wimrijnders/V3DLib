@@ -192,6 +192,12 @@ Instr &Instr::ldtmu(Register const &reg) {
 }
 
 
+Instr &Instr::ldvary(bool val) {
+	sig.ldvary = val;
+	return *this;
+}
+
+
 Instr &Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 	raddr_b       = rf_addr1; 
 	alu.mul.op    = V3D_QPU_M_ADD;

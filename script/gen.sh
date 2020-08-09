@@ -36,7 +36,14 @@ OBJ=$(echo "$OBJ_TMP" | sed "s/^Lib\\//  /g")
 
 
 TEST_FILES=$(find Tests -name '*.cpp')
-OBJ_TEST_TMP=$(echo "$TEST_FILES" | sed "s/\\.cpp$/\\.o  \\\\/g")
+CPP_OBJ_TEST_TMP=$(echo "$TEST_FILES" | sed "s/\\.cpp$/\\.o  \\\\/g")
+
+C_TEST_FILES=$(find Tests -name '*.c')
+C_OBJ_TEST_TMP=$(echo "$C_TEST_FILES" | sed "s/\\.c$/\\.o  \\\\/g")
+
+OBJ_TEST_TMP=$(echo "$CPP_OBJ_TEST_TMP
+$C_OBJ_TEST_TMP
+")
 OBJ_TEST=$(echo "$OBJ_TEST_TMP" | sed "s/^/  /g")
 
 # Get list of executables

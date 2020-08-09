@@ -2,6 +2,7 @@
 #define _QPULIB_V3D_INSTR_H
 #include <cstdint>
 #include <string>
+#include <vector>
 #include "dump_instr.h"
 
 namespace QPULib {
@@ -27,7 +28,6 @@ private:
 class Instr : public v3d_qpu_instr {
 public:
 	Instr(uint64_t in_code = NOP);
-//	Instr(Instr &s) = default;
 
 	std::string dump(bool to_stdout = false) const; 
 	uint64_t code() const;
@@ -38,6 +38,7 @@ public:
 	Instr &thrsw(bool val) { sig.thrsw = val; return *this; }
 	Instr &pushz();
 	Instr &ldtmu(Register const &reg);
+	Instr &ldvary(bool val = true);
 
 	// Calls to set the mul part of the instruction
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
@@ -90,9 +91,26 @@ v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 
 Instr barrierid(v3d_qpu_waddr waddr);
 
+
+
 }  // instr
 }  // v3d
 }  // QPULib
 
+
+// Useful definitions for outputting opcodes
+// (pretty generic, though)
+using Vec = std::vector<uint64_t>;
+
+inline Vec &operator<<(Vec &a, uint64_t val) {
+	a.push_back(val);	
+	return a;
+}
+
+
+inline Vec &operator<<(Vec &a, Vec const &b) {
+	a.insert(a.end(), b.begin(), b.end());
+	return a;
+}
 
 #endif // _QPULIB_V3D_INSTR_H

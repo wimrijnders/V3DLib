@@ -22,10 +22,11 @@
 #include "v3d/SharedArray.h"
 #include "v3d/v3d.h"
 #include "v3d/Instr.h"
+#include "v3d/Driver.h"
 #include "debug.h"
 #include "Support/Platform.h"
 #include "support/summation.h"
-#include "v3d/Driver.h"
+#include "support/disasm_kernel.h"
 
 #define ARRAY_LENGTH(arr, type) (sizeof(arr)/sizeof(type))
 
@@ -160,6 +161,28 @@ void dump_data(T const &arr, bool do_all = false) {
 	}
 
 	printf("\n");
+}
+
+
+void match_kernel_outputs(std::vector<uint64_t> const &expected, std::vector<uint64_t> const &received) {
+		using namespace QPULib::v3d::instr;
+
+		// Arrays should eventually match exactly, including length
+		// For now, just check progress
+		uint32_t len = expected.size();
+		if (len > received.size()) {
+			len = received.size();
+		}
+
+		// Outputs should match exactly
+		for (uint32_t n = 0; n < len; ++n) {
+			INFO("Comparing assembly index: " << n << ", code length: " << received.size() <<
+				"\nExpected: " << Instr(expected[n]).dump() <<
+				"Received: " << Instr(received[n]).dump()
+			);
+
+			REQUIRE(Instr::compare_codes(expected[n], received[n]));
+		}
 }
 
 
@@ -443,29 +466,10 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("Summation kernel generates correct assembled output") {
-		using namespace QPULib::v3d::instr;
-
 		std::vector<uint64_t> arr = summation_kernel(8, 5, 0);
 		REQUIRE(arr.size() > 0);
 
-		// Arrays should match exactly, including length
-		// For now, just check progress
-		uint32_t len = summation.size();
-		if (len > arr.size()) {
-			len = arr.size();
-		}
-
-		// Outputs should match exactly
-		for (uint32_t n = 0; n < len; ++n) {
-			INFO("Comparing assembly index: " << n << ", code length: " << arr.size() <<
-				"\nExpected: " << Instr(summation[n]).dump() <<
-				"Received: " << Instr(arr[n]).dump()
-			);
-			//REQUIRE(summation[n] == arr[n]);
-			REQUIRE(Instr::compare_codes(summation[n], arr[n]));
-		}
-
-
+		match_kernel_outputs(summation, arr);
 		REQUIRE(summation.size() == arr.size());
 	}
 
@@ -496,6 +500,16 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		// Special case: branch with field bu == false: ignore bdu field
 		// This should succeed!
 		REQUIRE(Instr::compare_codes(0x02ffeff3ff009000, 0x02ffeff3ff001000)); // 2x b.na0  -4112
+	}
+
+
+	SECTION("qpu_disasm opcodes should be constructed correctly in kernel") {
+		auto &bytecode      = qpu_disasm_bytecode();
+		auto  kernel_output = qpu_disasm_kernel();
+		REQUIRE(kernel_output.size() > 0);
+
+		match_kernel_outputs(bytecode, kernel_output);
+		//REQUIRE(summation.size() == arr.size());
 	}
 }
 
