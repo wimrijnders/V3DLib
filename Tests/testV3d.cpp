@@ -227,10 +227,16 @@ bool v3d_init() {
 // example here.
 //
 void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unroll_shift) {
+    REQUIRE((num_qpus == 1 || num_qpus == 8));
+
     uint32_t code_area_size = DEFAULT_CODE_AREA_SIZE;
 
-		uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in QPU's and CPU
+		uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in 8  QPU's and CPU
 		                                   // The python version went to 32*1024*1024 and did some modulo magic.
+
+		if (num_qpus == 1) {
+			length = 32 * 1024 * 8;  // Highest number without overflows for 1 QPU
+		}
 
     REQUIRE(length > 0);
     REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
@@ -246,7 +252,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 		//set_unused_code(heap);
 
 		auto code = heap.alloc_view<uint64_t>(code_area_size);
-		code.copyFrom(summation);
+		code.copyFrom(data);
 		//printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
 		//dump_data(code); 
 
@@ -421,6 +427,12 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		int unroll_shift = 5;
 
 		std::vector<uint64_t> data = summation_kernel(num_qpus, unroll_shift);
+		run_summation_kernel(data, num_qpus, unroll_shift);
+
+		// Try different parameters. The bytcode is different but results should be the same
+		num_qpus = 1;  // TODO: test changing these
+		unroll_shift = 1;
+		data = summation_kernel(num_qpus, unroll_shift);
 		run_summation_kernel(data, num_qpus, unroll_shift);
 	}
 }
