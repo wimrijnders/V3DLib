@@ -132,6 +132,7 @@ public:
 	Instr &ifna();
 	Instr &ifa();
 	Instr &andnc();
+	Instr &cond_na0();
 
 	// Calls to set the mul part of the instruction
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);

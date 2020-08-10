@@ -308,6 +308,12 @@ Instr &Instr::andnc() {
 }
 
 
+Instr &Instr::cond_na0() {
+	branch.cond = V3D_QPU_BRANCH_COND_NA0;
+	return *this;
+}
+
+
 Instr &Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 	m_doing_add = false;
 
@@ -671,12 +677,15 @@ Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
 }
 
 
+/**
+ * NOTE: needs condition set to work!
+ *       eg. `cond na0`
+ */
 Instr branch(int target, int current) {
 	Instr instr;
 
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
 
-	instr.branch.cond = V3D_QPU_BRANCH_COND_NA0;  // TODO should be a parameter;  TODO fix in dump output
 	instr.branch.msfign = V3D_QPU_MSFIGN_NONE;
 	instr.branch.bdi = V3D_QPU_BRANCH_DEST_REL;  // branch dest
 	instr.branch.bdu = V3D_QPU_BRANCH_DEST_REL;  // not used when branch.ub == false, just set a value for now

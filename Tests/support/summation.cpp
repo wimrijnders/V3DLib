@@ -703,34 +703,45 @@ std::vector<uint64_t> summation = {
 };
 
 
+namespace {
+
+using namespace QPULib::v3d::instr;
+using ByteCode = std::vector<uint64_t>; 
+
+
+ByteCode end_program() {
+	ByteCode ret;
+
+	// Program tail
+	ret << nop().thrsw(true)
+	    << nop().thrsw(true)
+	    << nop()
+	    << nop()
+	    << nop().thrsw(true)
+	    << nop()
+	    << nop()
+	    << nop();
+
+	return ret;
+}
+
+
 /**
- * This follows the kernel from the python `vodeocore6` project
+ * Calculates stride and also start address per QPU
  *
- * Source: https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L11
+ * Also sets the address offset for src and dsg registers
+ * (Would prefer to have that outside of this routine)
  */
-std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
-	using namespace QPULib::v3d::instr;
-
-	// This is actually the default of a parameter in the python version
-	auto align_cond = [] (int pos) -> bool {
-		return (pos % 512) == 170;
-	};
-
-	// adresses of uniforms in the register file
-	enum : uint8_t {
-		reg_length = 0,
-		reg_src,
-		reg_dst,
-		reg_qpu_num,
-		reg_stride,
-		reg_sum
-	};
-
-	std::vector<uint64_t> ret;
-
-	ret << ldunifrf(reg_length)
-	    << ldunifrf(reg_src)
-	    << ldunifrf(reg_dst);
+ByteCode calc_stride(
+	uint8_t num_qpus,
+	int     unroll_shift,
+	uint8_t reg_qpu_num,
+	uint8_t reg_src,
+	uint8_t reg_dst,
+	uint8_t reg_stride,
+	uint8_t reg_length
+) {
+	ByteCode ret;
 
 	uint8_t num_qpus_shift = 0;
 
@@ -768,51 +779,30 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int c
 	// length /= 16 * 8 * num_qpus * unroll
 	ret << shr(reg_length, reg_length, num_shifts[7 + num_qpus_shift + unroll_shift]);
 
+	return ret;
+}
+
+
+/**
+ * An instruction is passed in to make use of a waiting slot.
+ */
+ByteCode enable_tmu_read(Instr const &last_slot) {
+	ByteCode ret;
+
 	// This single thread switch and two instructions just before the loop are
 	// really important for TMU read to achieve a better performance.
 	// This also enables TMU read requests without the thread switch signal, and
 	// the eight-depth TMU read request queue.
 	ret << nop().thrsw(true)
 	    << nop() 
-	    << bxor(reg_sum, 1, 1).mov(r1, 1);
+			<< last_slot;
 
-	while (!align_cond(code_offset + ret.size())) {
-		ret << nop();
-	}
+	return ret;
+}
 
-	int loop_start = ret.size();
 
-	int unroll = 1 << unroll_shift;
-
-	for (int i = 0; i < 7; ++i) {
-		ret << mov(tmua, reg_src).add(reg_src, reg_src, reg_stride);
-	}
-
-	ret << mov(tmua, reg_src).sub(reg_length, reg_length, r1).pushz()
-			<< add(reg_src, reg_src, reg_stride).ldtmu(r0);
-
-	for (int j = 0; j < unroll - 1; ++j) {
-		for (int i = 0; i < 8; ++i) {
-			ret << mov(tmua, reg_src).add(reg_src, reg_src, reg_stride)
-			    << add(reg_sum, reg_sum, r0).ldtmu(r0);
-		}
-	}
-
-	for (int i = 0; i < 5; ++i) {
-		ret << add(reg_sum, reg_sum, r0).ldtmu(r0);
-	}
-
-	//	Original: l.b(cond='na0')
-	//	          the condition 'na0' is taken to be implicit for now
-	// TODO: Fix
-	ret << branch(loop_start, ret.size());
-	ret << add(reg_sum, reg_sum, r0).ldtmu(r0)  // delay slot
-	    << add(reg_sum, reg_sum, r0).ldtmu(r0)  // delay slot
-	    << add(reg_sum, reg_sum, r0);           // delay slot
-
-	ret << mov(tmud, reg_sum)
-      << mov(tmua, reg_dst);
-
+ByteCode sync_tmu() {
+	ByteCode ret;
 
 	// This synchronization is needed between the last TMU operation and the
 	// program end with the thread switch just before the loop above.
@@ -820,16 +810,126 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int c
 	    << nop()
 	    << nop();
 
-	// Program tail
-	ret << nop().thrsw(true)
-	    << nop().thrsw(true)
-	    << nop()
-	    << nop()
-	    << nop().thrsw(true)
-	    << nop()
-	    << nop()
-	    << nop();
+	return ret;
+}
 
+
+/**
+ * @param code_offset  absolute offset of current instruction in the BO
+ */
+ByteCode align_code(int code_offset, int target_offset) {
+	ByteCode ret;
+
+	// This was actually the default of a parameter in the python version
+	auto align_cond = [target_offset] (int pos) -> bool {
+		return (pos % 512) == target_offset;
+	};
+
+	while (!align_cond(code_offset)) {
+		ret << nop();
+		code_offset++;
+	}
+
+	return ret;
+}
+
+
+ByteCode emit_unroll(int unroll, ByteCode block) {
+	ByteCode ret;
+
+	for (int j = 0; j < unroll - 1; ++j) {
+		for (int i = 0; i < 8; ++i) {
+			ret << block;
+		}
+	}
+
+	return ret;
+}
+
+}  // anon namespace
+
+
+/**
+ * This follows the kernel from the python `vodeocore6` project
+ *
+ * Source: https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L11
+ */
+std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
+	using namespace QPULib::v3d::instr;
+
+	std::vector<uint64_t> ret;
+	int unroll = 1 << unroll_shift;
+
+	// adresses of uniforms in the register file
+	enum : uint8_t {
+		reg_length = 0,
+		reg_src,
+		reg_dst,
+		reg_qpu_num,
+		reg_stride,
+		reg_sum
+	};
+
+	//
+	// Recurring operations
+	//
+
+	// alu's are working in parallel
+	//   add: load TMU slot with address in reg_src
+	//   mul: reg_src += reg_stride
+	auto prefetch = mov(tmua, reg_src).add(reg_src, reg_src, reg_stride);
+
+	// alu's are working in parallel
+	//   add: reg_sum += r0
+	//   mul: load next slice in r0
+	auto sum_and_load =	add(reg_sum, reg_sum, r0).ldtmu(r0);
+
+
+	//
+	// Start of program emission
+	//
+	ret << ldunifrf(reg_length)
+	    << ldunifrf(reg_src)
+	    << ldunifrf(reg_dst)
+	    << calc_stride(num_qpus, unroll_shift, reg_qpu_num, reg_src, reg_dst, reg_stride, reg_length)
+
+	    << enable_tmu_read(
+	       	bxor(reg_sum, 1, 1).mov(r1, 1)                       // Fills last delay slot
+	       )
+
+	    << align_code(ret.size() + code_offset, 170);            // Why the magic number?
+	                                                             // TODO: See what happens if this is left out
+
+	int loop_start = ret.size();                                 // Remember cur pos so that the loop can jump to it
+
+	// Preload the slots in the TMU for faster accessing.
+	// Note that one slot is left open, for later loads.
+	for (int i = 0; i < 7; ++i) {
+		ret << prefetch;
+	}
+
+	ret << mov(tmua, reg_src).sub(reg_length, reg_length, r1).pushz()  // Apparently pushz sets flag for cond na0
+			<< add(reg_src, reg_src, reg_stride).ldtmu(r0);
+
+	ret << emit_unroll(unroll, {
+			prefetch,
+			sum_and_load
+	});
+
+	for (int i = 0; i < 5; ++i) {
+		ret << sum_and_load;
+	}
+
+	ret << branch(loop_start, ret.size()).cond_na0()  // Loop condition
+	    << sum_and_load                               // delay slot
+	    << sum_and_load                               // delay slot
+	    << add(reg_sum, reg_sum, r0)                  // delay slot, last sum without load
+
+	    << mov(tmud, reg_sum)                         // Write final result back to main mem
+      << mov(tmua, reg_dst)
+
+	    << sync_tmu()
+	    << end_program();
 
 	return ret;
 }
