@@ -41,7 +41,7 @@ const tests_struct tests[] = {
         { 33, 0x3c002380b6edb000ull, "or  rf0, r3, r3      ; mov  vpm, r3" },
 
 				// WRI: ver 42, error in instr_unpack()
-        //{ 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
+        { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
 
         { 33, 0x9c094adef634b000ull, "ffloor.ifb  rf30.l, r3; fmul.pushz  rf43.l, r5, r1.h" },
         { 33, 0xb0044c56ba326840ull, "flpop  rf22, rf33    ; fmul.pushz  rf49.l, r4.h, r1.abs" },
@@ -50,8 +50,8 @@ const tests_struct tests[] = {
         { 33, 0x1857d3c219825000ull, "faddnf.norc  r2.l, r5.l, r4; vfmul.ifb  rf15, r0.ll, r4; ldunif" },
         { 33, 0x1c0a0dfde2294000ull, "fcmp.ifna  rf61.h, r4.abs, r2.l; vfmul  rf55, r2.hh, r1" },
 
-				// ver 42 all flags get reset in output bytecode. Also happens for fsub -> add, and also if I remove *all* postfixes
-        //{ 33, 0x2011c89b402cc000ull, "fsub.norz  rf27, r4.abs, r1.abs; vfmul.ifa  rf34, r3.swp, r1" },
+				// WRI Following doesn't work for ver 42, all flags reset
+        { 33, 0x2011c89b402cc000ull, "fsub.norz  rf27, r4.abs, r1.abs; vfmul.ifa  rf34, r3.swp, r1" },
 
         { 33, 0xe01b42ab3bb063c0ull, "vfpack.andnc  rf43, rf15.l, r0.h; fmul.ifna  rf10.h, r4.l, r5.abs" },
         { 33, 0x600b8b87fb4d1000ull, "fdx.ifnb  rf7.h, r1.l; fmul.pushn  rf46, r3.l, r2.abs" },

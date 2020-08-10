@@ -22,6 +22,9 @@ std::vector<uint64_t> &qpu_disasm_bytecode() {
 /**
  * DON'T execute this kernel on the QPU's!
  * It is just a sequence of instructions from a test
+ *
+ * Instructions which can't be translated, get replaced by `nop`.
+ * The calling unit test must take this into account.
  */
 std::vector<uint64_t> qpu_disasm_kernel() {
 	using namespace QPULib::v3d::instr;
@@ -43,8 +46,11 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< vpmsetup(r5).ldunif()
 		<< nop().ldunifa()  // NB for version 33 this is `nop().ldvpm()`
 		<< bor(rf(0), r3, r3).mov(vpm, r3)
+
 		// ver 42, error in instr_unpack():
 		// { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
+		<< nop()
+
 		<< ffloor(ifb,  rf(30).l(), r3).fmul(rf(43).l(), r5, r1.h()).pushz()
 		<< flpop(rf(22), rf(33)).fmul(rf(49).l(), r4.h(), r1.abs()).pushz()
 
@@ -53,8 +59,10 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< faddnf(r2.l(), r5.l(), r4).norc().vfmul(rf(15), r0.ll(), r4).ldunif().ifb()
 		<< fcmp(rf(61).h(), r4.abs(), r2.l()).ifna().vfmul(rf(55), r2.hh(), r1)
 
-		// ver 42 all flags get reset in output bytecode. Also happens for fsub -> add, and also if I remove *all* postfixes
+		// ver 42 all flags get reset in output bytecode.
+		// Also happens for fsub -> add, and also if I remove *all* postfixes
 		// << fsub(rf(27), r4.abs(), r1.abs()).norz().vfmul(rf(34), r3.swp(), r1).ifa()
+		<< nop()
 
 		<< vfpack(rf(43), rf(15).l(), r0.h()).andnc().fmul(rf(10).h(), r4.l(), r5.abs()).ifna()
 	;
