@@ -119,6 +119,7 @@ public:
 
 	Instr &thrsw(bool val = true);
 	Instr &pushz();
+	Instr &pushn();
 	Instr &ldtmu(Register const &reg);
 	Instr &ldvary(bool val = true);
 	Instr &ldunif(bool val = true);
@@ -132,6 +133,7 @@ public:
 	Instr &ifna();
 	Instr &ifa();
 	Instr &andnc();
+	Instr &andnn();
 	Instr &cond_na0();
 
 	// Calls to set the mul part of the instruction
@@ -143,12 +145,14 @@ public:
 	Instr &mov(uint8_t rf_addr, Register const &reg);
 
 	Instr &fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
+	Instr &fmul(Location const &loc1, char imm2, Location const &loc3);
+	Instr &smul24(Location const &loc1, Location const &loc2, Location const &loc3); 
 	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
-	void alu_add_set(Location const &loc1, Location const &reg2, Location const &reg3); 
-	void alu_mul_set(Location const &rf_addr1, Register const &reg2, Register const &reg3); 
+	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
+	void alu_mul_set(Location const &loc11, Location const &loc2, Location const &loc3); 
 
 private:
 	static uint64_t const NOP;
@@ -212,6 +216,9 @@ Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
+Instr fdx(Location const &loc1, Location const &loc2);
+Instr vflb(Location const &loc1);
+Instr vfmin(Location const &loc1, char imm2, Location const &loc3);
 
 }  // instr
 }  // v3d

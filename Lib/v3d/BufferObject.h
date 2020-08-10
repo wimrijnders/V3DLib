@@ -52,7 +52,7 @@ public:
 
 	void copyFrom(std::vector<T> const &src) {
 		assert(!src.empty());
-		assert(src.size() < m_size);
+		assert(src.size() <= m_size);
 
 		// TODO: consider using memcpy() instead
 		for (uint32_t offset = 0; offset < src.size(); ++offset) {

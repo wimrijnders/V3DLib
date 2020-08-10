@@ -1,5 +1,6 @@
 #include "Instr.h"
 #include <cstdio>
+#include <cstdlib>  // abs()
 
 namespace {
 
@@ -189,7 +190,20 @@ Instr &Instr::thrsw(bool val) {
 
 
 Instr &Instr::pushz() {
-	flags.mpf = V3D_QPU_PF_PUSHZ;
+	if (m_doing_add) {
+		flags.apf = V3D_QPU_PF_PUSHZ;
+	} else {
+		flags.mpf = V3D_QPU_PF_PUSHZ;
+	}
+	return *this;
+}
+
+Instr &Instr::pushn() {
+	if (m_doing_add) {
+		flags.apf = V3D_QPU_PF_PUSHN;
+	} else {
+		flags.mpf = V3D_QPU_PF_PUSHN;
+	}
 	return *this;
 }
 
@@ -308,6 +322,12 @@ Instr &Instr::andnc() {
 }
 
 
+Instr &Instr::andnn() {
+	flags.auf = V3D_QPU_UF_ANDNN;
+	return *this;
+}
+
+
 Instr &Instr::cond_na0() {
 	branch.cond = V3D_QPU_BRANCH_COND_NA0;
 	return *this;
@@ -383,10 +403,39 @@ Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
 
 Instr &Instr::fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
 	m_doing_add = false;
-
 	alu_mul_set(rf_addr1, reg2, reg3);
 
 	alu.mul.op    = V3D_QPU_M_FMUL;
+	alu.mul.magic_write = false;
+
+	return *this;
+}
+
+
+// TODO: how does small imm value get used?
+Instr &Instr::fmul(Location const &loc1, char imm2, Location const &loc3) {
+	m_doing_add = false;
+
+	sig.small_imm = true;
+	raddr_a = loc3.to_waddr();  // Or this:  abs(imm2);  // TODO: so how can you use a negative value?
+	alu.mul.op    = V3D_QPU_M_FMUL;
+	alu.mul.a     = V3D_QPU_MUX_B;
+	alu.mul.b     = V3D_QPU_MUX_A;
+	alu.mul.waddr = loc1.to_waddr();
+	alu.mul.magic_write = false;
+	alu.mul.b_unpack = loc3.input_unpack();
+
+	return *this;
+}
+
+
+Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const &loc3) {
+	m_doing_add = false;
+	alu_mul_set(loc1, loc2, loc3);
+
+	sig.small_imm = true;
+	raddr_b = loc1.to_waddr();
+	alu.mul.op    = V3D_QPU_M_SMUL24;
 	alu.mul.magic_write = false;
 
 	return *this;
@@ -405,23 +454,23 @@ Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register con
 }
 
 
-void Instr::alu_add_set(Location const &loc1, Location const &reg2, Location const &reg3) {
-	alu.add.a     = reg2.to_mux();
-	alu.add.b     = reg3.to_mux();
+void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+	alu.add.a     = loc2.to_mux();
+	alu.add.b     = loc3.to_mux();
 	alu.add.waddr = loc1.to_waddr();
 	alu.add.output_pack = loc1.output_pack();
-	alu.add.a_unpack = reg2.input_unpack();
-	alu.add.b_unpack = reg3.input_unpack();
+	alu.add.a_unpack = loc2.input_unpack();
+	alu.add.b_unpack = loc3.input_unpack();
 }
 
 
-void Instr::alu_mul_set(Location const &rf_addr1, Register const &reg2, Register const &reg3) {
-	alu.mul.a     = reg2.to_mux();
-	alu.mul.b     = reg3.to_mux();
-	alu.mul.waddr = rf_addr1.to_waddr();
-	alu.mul.output_pack = rf_addr1.output_pack();
-	alu.mul.a_unpack = reg2.input_unpack();
-	alu.mul.b_unpack = reg3.input_unpack();
+void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+	alu.mul.a     = loc2.to_mux();
+	alu.mul.b     = loc3.to_mux();
+	alu.mul.waddr = loc1.to_waddr();
+	alu.mul.output_pack = loc1.output_pack();
+	alu.mul.a_unpack = loc2.input_unpack();
+	alu.mul.b_unpack = loc3.input_unpack();
 }
 
 
@@ -813,6 +862,52 @@ Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3) {
 	instr.alu.add.magic_write = false;
 	instr.alu.add.a_unpack = loc2.input_unpack();
 	instr.alu.add.b_unpack = loc3.input_unpack();
+
+	return instr;
+}
+
+
+Instr fdx(Location const &loc1, Location const &loc2) {
+	Instr instr;
+
+	instr.alu.add.op    = V3D_QPU_A_FDX;
+	instr.alu.add.a     = loc2.to_mux();
+	instr.alu.add.b     = V3D_QPU_MUX_R2;
+	instr.alu.add.waddr = loc1.to_waddr();
+	instr.alu.add.magic_write = false;
+	instr.alu.add.output_pack = loc1.output_pack();
+	instr.alu.add.a_unpack = loc2.input_unpack();
+
+	return instr;
+}
+
+
+Instr vflb(Location const &loc1) {
+	Instr instr;
+
+	instr.raddr_b       = loc1.to_waddr();
+	instr.alu.add.op    = V3D_QPU_A_VFLB;
+	instr.alu.add.a     = V3D_QPU_MUX_A;
+	instr.alu.add.b     = V3D_QPU_MUX_R0;
+	instr.alu.add.waddr = loc1.to_waddr();
+	instr.alu.add.magic_write = false;
+
+	return instr;
+}
+
+
+Instr vfmin(Location const &loc1, char imm2, Location const &loc3) {
+	Instr instr;
+
+	//instr.raddr_b       = loc1.to_waddr();
+
+	instr.sig.small_imm = true;
+	instr.alu.add.op    = V3D_QPU_A_VFMIN;
+	instr.alu.add.a     = V3D_QPU_MUX_B;
+	instr.alu.add.b     = loc3.to_mux();
+	instr.alu.add.magic_write = false;
+	instr.alu.add.waddr = loc1.to_waddr();
+	instr.alu.add.a_unpack = V3D_QPU_UNPACK_REPLICATE_32F_16;
 
 	return instr;
 }

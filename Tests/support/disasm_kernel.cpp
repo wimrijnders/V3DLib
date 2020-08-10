@@ -33,10 +33,10 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x600b8b87fb4d1000ull; //, "fdx.ifnb  rf7.h, r1.l; fmul.pushn  rf46, r3.l, r2.abs" },
+	uint64_t op = 0x25ef83d8b166f00full;  //, "vfmin.pushn  rf24, 15.ff, r5; smul24.ifnb  rf15, r1, r3" },
 	Instr::show(op);
 	auto tmp_op =
-		vfpack(rf(43), rf(15).l(), r0.h()).andnc().fmul(rf(10).h(), r4.l(), r5.abs()).ifna()
+		vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()
 	;
 	tmp_op.dump(true);
 
@@ -65,14 +65,14 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< nop()
 
 		<< vfpack(rf(43), rf(15).l(), r0.h()).andnc().fmul(rf(10).h(), r4.l(), r5.abs()).ifna()
+		<< fdx(rf(7).h(), r1.l()).ifnb().fmul(rf(46), r3.l(), r2.abs()).pushn()
+
+		/* small immediates */
+		<< vflb(rf(24)).andnn().fmul(rf(14), -8, rf(8).h())  // small imm, how used?? Not internally
+		<< vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()  // idem
 	;
 
 #if 0
-        { 33, 0x600b8b87fb4d1000ull, "fdx.ifnb  rf7.h, r1.l; fmul.pushn  rf46, r3.l, r2.abs" },
-
-        /* small immediates */
-        { 33, 0x5de24398bbdc6218ull, "vflb.andnn  rf24     ; fmul  rf14, -8, rf8.h" },
-        { 33, 0x25ef83d8b166f00full, "vfmin.pushn  rf24, 15.ff, r5; smul24.ifnb  rf15, r1, r3" },
         { 33, 0xadedcdf70839f990ull, "faddnf.pushc  rf55, -16.l, r3.abs; fmul.ifb  rf55.l, rf38.l, r1.h" },
         { 33, 0x7dff89fa6a01f020ull, "fsub.nornc  rf58.h, 0x3b800000.l, r3.l; fmul.ifnb  rf39, r0.h, r0.h" },
 

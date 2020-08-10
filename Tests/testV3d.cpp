@@ -229,7 +229,7 @@ bool v3d_init() {
 void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unroll_shift) {
     REQUIRE((num_qpus == 1 || num_qpus == 8));
 
-    uint32_t code_area_size = DEFAULT_CODE_AREA_SIZE;
+    uint32_t code_area_size = 8*data.size();
 
 		uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in 8  QPU's and CPU
 		                                   // The python version went to 32*1024*1024 and did some modulo magic.
@@ -429,8 +429,8 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		std::vector<uint64_t> data = summation_kernel(num_qpus, unroll_shift);
 		run_summation_kernel(data, num_qpus, unroll_shift);
 
-		// Try different parameters. The bytcode is different but results should be the same
-		num_qpus = 1;  // TODO: test changing these
+		// Try different parameters. The bytecode is different but results should be the same
+		num_qpus = 1;
 		unroll_shift = 1;
 		data = summation_kernel(num_qpus, unroll_shift);
 		run_summation_kernel(data, num_qpus, unroll_shift);
