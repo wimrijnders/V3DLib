@@ -1,6 +1,6 @@
 #ifndef _VC6_INVOKE_H
 #define _VC6_INVOKE_H
-#include "SharedArray.h"
+#include "BufferObject.h"
 #include "Common/Seq.h"
 
 
@@ -9,7 +9,7 @@ namespace v3d {
 
 void invoke(
   int numQPUs,
-  SharedArray<uint64_t> &codeMem,
+  ArrayView<uint64_t> &codeMem,
   int qpuCodeMemOffset,
   Seq<int32_t>* params);
 

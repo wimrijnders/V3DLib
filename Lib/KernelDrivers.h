@@ -1,8 +1,9 @@
 #ifndef _LIB_KERNELDRIVERS_h
 #define _LIB_KERNELDRIVERS_h
+#include "Target/CFG.h"
 #include "VideoCore/SharedArray.h"
 #include "v3d/SharedArray.h"
-#include "Target/CFG.h"
+#include "v3d/BufferObject.h"  // ArrayView<>
 
 
 namespace QPULib {
@@ -46,6 +47,8 @@ private:
 namespace v3d {
 
 class KernelDriver : public QPULib::KernelDriver {
+	using CodeArray = ArrayView<uint64_t>;
+
 public:
 	KernelDriver();
 	~KernelDriver() override;
@@ -54,7 +57,8 @@ public:
 	void invoke(int numQPUs, Seq<int32_t>* params) override;
 
 private:
-  v3d::SharedArray<uint64_t>* qpuCodeMem = nullptr;
+  CodeArray *qpuCodeMem = nullptr;
+
 };
 
 }  // namespace v3d
