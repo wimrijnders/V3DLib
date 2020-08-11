@@ -6,6 +6,7 @@ namespace QPULib {
 
 struct Settings {
 	bool output_code;
+	bool compile_only;
 //#ifdef EMULATION_MODE
 	int run_type;
 //#endif
@@ -18,16 +19,18 @@ struct Settings {
 	template<typename Kernel, typename... us>
 	void process(Kernel &k, us... args) {
 
+		if (!compile_only) {
 //#ifdef EMULATION_MODE
-		switch (run_type) {
-			case 0: k(args...); break;
-			case 1: k.emu(args...); break;
-			case 2: k.interpret(args...); break;
-		}
+			switch (run_type) {
+				case 0: k(args...); break;
+				case 1: k.emu(args...); break;
+				case 2: k.interpret(args...); break;
+			}
 //#endif
 //#ifdef QPU_MODE
 //		k(args...);
 //#endif
+		}
 
 		if (output_code) {
 			k.pretty(code_filename);

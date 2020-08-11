@@ -8,7 +8,7 @@ namespace v3d {
 
 void invoke(
   int numQPUs,
-  SharedArray<uint32_t> &codeMem,
+  SharedArray<uint64_t> &codeMem,
   int qpuCodeMemOffset,
   Seq<int32_t>* params) {
 

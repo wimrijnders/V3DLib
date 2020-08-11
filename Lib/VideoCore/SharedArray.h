@@ -1,6 +1,7 @@
 #ifndef _QPULIB_VIDEOCORE_SHAREDARRAY_H_
 #define _QPULIB_VIDEOCORE_SHAREDARRAY_H_
 #include <cassert>
+#include <cstdlib>  // exit(), EXIT_FAILURE
 #include <stdint.h>
 #include <stdio.h>
 #include "VideoCore/Mailbox.h"

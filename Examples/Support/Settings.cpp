@@ -25,16 +25,21 @@ CmdParameters params = {
 	blurb,
 	{{
 		"Output Generated Code",
-		"-c",
+		"-f",
 		ParamType::NONE,     // Prefix needed to dsambiguate
 		"Write representations of the generated code to file"
+	}, { 
+		"Compile Only",
+		"-c",
+		ParamType::NONE,     // Prefix needed to dsambiguate
+		"Compile the kernel but do not run it"
 	}
 //#ifdef EMULATION_MODE
 	, {
 		"Select run type",
 		"-r=",
 		{"default", "emulator", "interpreter"},
-		"Run on the QPU emulator or run on the emulator"
+		"Run on the QPU emulator or run on the interpreter"
 	}
 //#endif
 	}
@@ -54,8 +59,9 @@ int Settings::init(int argc, const char *argv[]) {
 	kernel_name = params.parameters()[0]->get_string_value();
 */
 	output_code  = params.parameters()[0]->get_bool_value();
+	compile_only = params.parameters()[1]->get_bool_value();
 //#ifdef EMULATION_MODE
-	run_type     = params.parameters()[1]->get_int_value();
+	run_type     = params.parameters()[2]->get_int_value();
 //#endif
 
 #ifdef DEBUG

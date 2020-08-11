@@ -3,14 +3,13 @@
 
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
-#include "Target/Encode.h"
 #include "Common/SharedArray.h"
 #include "v3d/Invoke.h"
-#include "VideoCore/Invoke.h"
 #include "VideoCore/VideoCore.h"
 #include "Source/Pretty.h"
 #include "Target/Pretty.h"
 #include "Support/Platform.h"
+#include "KernelDrivers.h"
 
 
 namespace QPULib {
@@ -59,8 +58,6 @@ namespace QPULib {
 // EMULATION_MODE introduces a performance penalty and should be used
 // only for testing and debugging purposes.
 
-// Maximum number of kernel parameters allowed
-#define MAX_KERNEL_PARAMS 128
 
 // ============================================================================
 // Kernel arguments
@@ -177,6 +174,14 @@ void compileKernel(Seq<Instr>* targetCode, Stmt* s);
 // types 'ts'.  It applies the function to constuct an AST.
 
 template <typename... ts> struct Kernel {
+#ifdef QPU_MODE
+private:
+	KernelDriver *m_kernel_driver = nullptr;
+
+#endif
+
+public:
+
   // AST representing the source code
   Stmt* sourceCode;
 
@@ -192,14 +197,16 @@ template <typename... ts> struct Kernel {
   // Number of QPUs to run on
   int numQPUs;
 
-#ifdef QPU_MODE
-  // Memory region for QPU code and parameters
-  SharedArray<uint32_t>* qpuCodeMem;
-  int qpuCodeMemOffset;
-#endif
-
   // Construct kernel out of C++ function
   Kernel(void (*f)(ts... params)) {
+#ifdef QPU_MODE
+		if (Platform::instance().has_vc4) {
+			m_kernel_driver = new vc4::KernelDriver;
+		} else {
+			m_kernel_driver = new v3d::KernelDriver;
+		}
+#endif
+
     numQPUs = 1;
 
     // We can clear the AST heap if we're sure the source program is not being
@@ -221,8 +228,7 @@ template <typename... ts> struct Kernel {
     // Construct the AST
     f(mkArg<ts>()...);
 
-    // QPU code to cleanly exit
-    kernelFinish();
+		m_kernel_driver->kernelFinish();
 
     // Obtain the AST
     Stmt* body = stmtStack.top();
@@ -237,30 +243,6 @@ template <typename... ts> struct Kernel {
 
     // Remember the number of variables used
     numVars = getFreshVarCount();
-
-#ifdef QPU_MODE
-		if (Platform::instance().has_vc4) {
-    	enableQPUs();
-		}
-
-    // Allocate code mem
-    qpuCodeMem = new SharedArray<uint32_t>;
-
-    // Encode target instrs into array of 32-bit ints
-    Seq<uint32_t> code;
-    encode(&targetCode, &code);
-
-    // Allocate memory for QPU code and parameters
-    int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
-    qpuCodeMem->alloc(numWords);
-
-    // Copy kernel to code memory
-    int offset = 0;
-    for (int i = 0; i < code.numElems; i++) {
-      (*qpuCodeMem)[offset++] = code.elems[i];
-    }
-    qpuCodeMemOffset = offset;
-#endif
   }
 
 //#ifdef EMULATION_MODE
@@ -303,42 +285,20 @@ template <typename... ts> struct Kernel {
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args, BufferType::Vc4Buffer)...);
 
-    // Invoke kernel on QPUs
-		assert(Platform::instance().has_vc4);
-		invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
-  }
-
-
-#ifdef USE_V3D_BUFFERS
-  template <typename... us> void v3d(us... args) {
-    // Pass params, checking arguments types us against parameter types ts
-    uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args, BufferType::V3dBuffer)...);
+		m_kernel_driver->encode(targetCode);
 
     // Invoke kernel on QPUs
-		assert(!Platform::instance().has_vc4);
-		v3d::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
+		m_kernel_driver->invoke(numQPUs,  &uniforms);
   }
-#endif
-
 #endif  // QPU_MODE
  
   // Invoke the kernel
   template <typename... us> void call(us... args) {
 #ifdef EMULATION_MODE
-      emu(args...);
+		emu(args...);
 #else
 #ifdef QPU_MODE
-#ifdef USE_V3D_BUFFERS
-		if (Platform::instance().has_vc4) {
-        qpu(args...);
-		} else {
-        v3d(args...);
-		}
-#else
-		assert(Platform::instance().has_vc4);
     qpu(args...);
-#endif  // USE_V3D_BUFFERS
 #endif
 #endif
   };
@@ -356,10 +316,7 @@ template <typename... ts> struct Kernel {
   // Deconstructor
   ~Kernel() {
     #ifdef QPU_MODE
-      delete qpuCodeMem;
-			if (Platform::instance().has_vc4) {
-      	disableQPUs();
-			}
+			delete m_kernel_driver;
     #endif
   }
 
@@ -407,6 +364,8 @@ template <typename... ts> struct Kernel {
     }
     fprintf(f, "\n");
     fflush(f);
+
+		m_kernel_driver->pretty(f);
 
     if (filename != nullptr) {
       assert(f != nullptr);
