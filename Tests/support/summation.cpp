@@ -850,7 +850,7 @@ ByteCode emit_unroll(int unroll, ByteCode block) {
 
 
 /**
- * This follows the kernel from the python `vodeocore6` project
+ * This follows the kernel from the python `videocore6` project
  *
  * Source: https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L11
  */
@@ -903,7 +903,7 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int c
 	int loop_start = ret.size();                                 // Remember cur pos so that the loop can jump to it
 
 	// Preload the slots in the TMU for faster accessing.
-	// Note that one slot is left open, for later loads.
+	// the eighth slot is filled in the next statements
 	for (int i = 0; i < 7; ++i) {
 		ret << prefetch;
 	}
