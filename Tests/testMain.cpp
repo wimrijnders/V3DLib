@@ -42,15 +42,6 @@ using RegMap = QPULib::RegisterMap;
 #define BIN_PATH "obj/" POSTFIX_QPU POSTFIX_DEBUG "/bin"
 
 
-
-TEST_CASE("Check random specifications for interpreter and emulator2", "[specs][cmdline]") {
-	const char *AUTOTEST_PATH = BIN_PATH "/AutoTest";
-
-	printf("Running AutoTest from '%s'\n", AUTOTEST_PATH);
-	REQUIRE(system(AUTOTEST_PATH) == 0);
-}
-
-
 //
 // This test is fairly useless; it just checks if both the shell script and the C++ program
 // fail or succeed at the same time.
