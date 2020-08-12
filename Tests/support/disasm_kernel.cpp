@@ -6,6 +6,16 @@ namespace {
 
 std::vector<uint64_t> bytecode;
 
+/**
+ * Check if there's nothing special with this particular code
+ */
+void test_unpack_pack(uint64_t in_code) {
+	using namespace QPULib::v3d::instr;
+
+	Instr instr(in_code);  // will assert on unpack error
+	assert(in_code == instr.code());
+}
+
 }  // anon namespace
 
 
@@ -18,6 +28,7 @@ std::vector<uint64_t> &qpu_disasm_bytecode() {
 
 	return bytecode;
 }
+
 
 /**
  * DON'T execute this kernel on the QPU's!
@@ -33,10 +44,12 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x25ef83d8b166f00full;  //, "vfmin.pushn  rf24, 15.ff, r5; smul24.ifnb  rf15, r1, r3" },
+	uint64_t op = 0xadedcdf70839f990ull;  //, "faddnf.pushc  rf55, -16.l, r3.abs; fmul.ifb  rf55.l, rf38.l, r1.h" },
+	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-		vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()
+	//	vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()
+		faddnf(rf(55), SmallImm(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb()
 	;
 	tmp_op.dump(true);
 
@@ -47,6 +60,7 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< nop().ldunifa()  // NB for version 33 this is `nop().ldvpm()`
 		<< bor(rf(0), r3, r3).mov(vpm, r3)
 
+
 		// ver 42, error in instr_unpack():
 		// { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
 		<< nop()
@@ -56,6 +70,8 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 		/* vfmul input packing */
 		<< fmax(rf(46), r4.l(), r2.l()).nornn().vfmul(rf(45), r3, r5).ifnb()
+
+//; printf("here\n"); ret
 		<< faddnf(r2.l(), r5.l(), r4).norc().vfmul(rf(15), r0.ll(), r4).ldunif().ifb()
 		<< fcmp(rf(61).h(), r4.abs(), r2.l()).ifna().vfmul(rf(55), r2.hh(), r1)
 
@@ -70,10 +86,10 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		/* small immediates */
 		<< vflb(rf(24)).andnn().fmul(rf(14), -8, rf(8).h())  // small imm, how used?? Not internally
 		<< vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()  // idem
+		<< faddnf(rf(55), SmallImm(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb()
 	;
 
 #if 0
-        { 33, 0xadedcdf70839f990ull, "faddnf.pushc  rf55, -16.l, r3.abs; fmul.ifb  rf55.l, rf38.l, r1.h" },
         { 33, 0x7dff89fa6a01f020ull, "fsub.nornc  rf58.h, 0x3b800000.l, r3.l; fmul.ifnb  rf39, r0.h, r0.h" },
 
         /* branch conditions */

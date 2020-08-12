@@ -12,7 +12,8 @@ namespace v3d {
 
 template <typename T> class SharedArray : public BufferObject,  public ISharedArray {
 public:
-	SharedArray() {} 	SharedArray(uint32_t n) { alloc(n); } 
+	SharedArray() {}
+	SharedArray(uint32_t n) { alloc(n); } 
 	~SharedArray() { dealloc(); } 
 
 	uint32_t size() const { return m_size; }

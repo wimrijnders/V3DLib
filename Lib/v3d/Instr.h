@@ -16,9 +16,30 @@ public:
 
 	v3d_qpu_output_pack output_pack() const { return m_output_pack; }
 	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
+	bool is_rf() const { return m_is_rf; }
 
 protected:
 	v3d_qpu_output_pack m_output_pack = V3D_QPU_PACK_NONE;
+	v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
+	bool m_is_rf = false;
+};
+
+
+class SmallImm {
+public:
+	SmallImm(int val) : m_val(val) {}
+
+	uint8_t to_raddr() const;
+	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
+
+	SmallImm l() const {
+		SmallImm ret(*this);
+		ret.m_input_unpack = V3D_QPU_UNPACK_L;
+		return ret;
+	}
+
+private:
+	int m_val = 0;
 	v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
 };
 
@@ -79,7 +100,7 @@ private:
 
 class RFAddress : public Location {
 public:
-	RFAddress(uint8_t val) : m_val(val) {}
+	RFAddress(uint8_t val) : m_val(val) { m_is_rf = true; }
 
 	v3d_qpu_waddr to_waddr() const override { return (v3d_qpu_waddr) m_val; }
 	v3d_qpu_mux to_mux() const override { assert(false); return (v3d_qpu_mux) 0; } // Not expecting this to be called
@@ -88,6 +109,7 @@ public:
 		RFAddress ret(m_val);
 		ret.m_input_unpack = V3D_QPU_UNPACK_L;
 		ret.m_output_pack = V3D_QPU_PACK_L;
+		assert(ret.is_rf());
 
 		return ret;
 	}
@@ -119,6 +141,7 @@ public:
 
 	Instr &thrsw(bool val = true);
 	Instr &pushz();
+	Instr &pushc();
 	Instr &pushn();
 	Instr &ldtmu(Register const &reg);
 	Instr &ldvary(bool val = true);
@@ -144,8 +167,8 @@ public:
 	Instr &mov(Register const &reg, uint8_t val);
 	Instr &mov(uint8_t rf_addr, Register const &reg);
 
-	Instr &fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3);
-	Instr &fmul(Location const &loc1, char imm2, Location const &loc3);
+	Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
+	Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
 	Instr &smul24(Location const &loc1, Location const &loc2, Location const &loc3); 
 	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
 
@@ -218,7 +241,8 @@ Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr fdx(Location const &loc1, Location const &loc2);
 Instr vflb(Location const &loc1);
-Instr vfmin(Location const &loc1, char imm2, Location const &loc3);
+Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3);
+Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 
 }  // instr
 }  // v3d

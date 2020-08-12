@@ -11,6 +11,16 @@ bool is_power_of_2(int x) {
     return x > 0 && !(x & (x - 1));
 }
 
+
+const int SMALLIMM_SIZE = 32;
+int smallimm_values[SMALLIMM_SIZE] = {
+		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+		-16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1};
+
+struct SmallImm {
+
+};
+
 }  // anon namespace
 
 
@@ -26,7 +36,25 @@ struct Exception : public std::exception {
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Class Instr
+// Class SmallImm
+///////////////////////////////////////////////////////////////////////////////
+
+uint8_t SmallImm::to_raddr() const {
+	assert(-16 <= m_val && m_val <= 15);
+
+	for (uint8_t index = 0; index < SMALLIMM_SIZE; ++index) {
+		if (smallimm_values[index] == m_val) {
+			return index;
+		}
+	}
+
+	assert(false);
+	return (uint8_t) 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Register
 ///////////////////////////////////////////////////////////////////////////////
 
 Register::Register(const char *name, v3d_qpu_waddr waddr_val) :
@@ -72,6 +100,7 @@ Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
 
 uint64_t const Instr::NOP = 0x3c003186bb800000;  // This is actually 'nop nop'
 
+
 Instr::Instr(uint64_t in_code) {
 	init(in_code);
 }
@@ -114,6 +143,8 @@ void Instr::init_ver() const {
 
 void Instr::init(uint64_t in_code) {
 	init_ver();
+
+	raddr_a = 0;
 
 	// These do not always get initialized in unpack
 	sig_addr = 0;
@@ -182,7 +213,6 @@ bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 // Calls to set the mult part of the instruction
 //////////////////////////////////////////////////////
 
-
 Instr &Instr::thrsw(bool val) {
 	sig.thrsw = val;
 	return *this;
@@ -197,6 +227,17 @@ Instr &Instr::pushz() {
 	}
 	return *this;
 }
+
+
+Instr &Instr::pushc() {
+	if (m_doing_add) {
+		flags.apf = V3D_QPU_PF_PUSHC;
+	} else {
+		flags.mpf = V3D_QPU_PF_PUSHC;
+	}
+	return *this;
+}
+
 
 Instr &Instr::pushn() {
 	if (m_doing_add) {
@@ -401,9 +442,9 @@ Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
 }
 
 
-Instr &Instr::fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg3) {
+Instr &Instr::fmul(Location const &loc1, Location const &loc2, Location const &loc3) {
 	m_doing_add = false;
-	alu_mul_set(rf_addr1, reg2, reg3);
+	alu_mul_set(loc1, loc2, loc3);
 
 	alu.mul.op    = V3D_QPU_M_FMUL;
 	alu.mul.magic_write = false;
@@ -413,7 +454,7 @@ Instr &Instr::fmul(RFAddress rf_addr1, Register const &reg2, Register const &reg
 
 
 // TODO: how does small imm value get used?
-Instr &Instr::fmul(Location const &loc1, char imm2, Location const &loc3) {
+Instr &Instr::fmul(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	m_doing_add = false;
 
 	sig.small_imm = true;
@@ -465,7 +506,14 @@ void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location con
 
 
 void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3) {
-	alu.mul.a     = loc2.to_mux();
+	if (loc2.is_rf()) {
+		raddr_a = loc2.to_waddr();
+		alu.mul.a     = V3D_QPU_MUX_A;
+	} else {
+		//raddr_a = 0; - NO! Stupid idea
+		alu.mul.a     = loc2.to_mux();
+	}
+
 	alu.mul.b     = loc3.to_mux();
 	alu.mul.waddr = loc1.to_waddr();
 	alu.mul.output_pack = loc1.output_pack();
@@ -896,18 +944,39 @@ Instr vflb(Location const &loc1) {
 }
 
 
-Instr vfmin(Location const &loc1, char imm2, Location const &loc3) {
+Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	Instr instr;
 
-	//instr.raddr_b       = loc1.to_waddr();
-
 	instr.sig.small_imm = true;
+	instr.raddr_b = imm2.to_raddr();
 	instr.alu.add.op    = V3D_QPU_A_VFMIN;
 	instr.alu.add.a     = V3D_QPU_MUX_B;
 	instr.alu.add.b     = loc3.to_mux();
 	instr.alu.add.magic_write = false;
 	instr.alu.add.waddr = loc1.to_waddr();
+	instr.alu.add.a_unpack = imm2.input_unpack();
 	instr.alu.add.a_unpack = V3D_QPU_UNPACK_REPLICATE_32F_16;
+
+	return instr;
+}
+
+
+Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
+	Instr instr;
+
+	instr.sig.small_imm = true;
+	instr.raddr_b = imm2.to_raddr();
+	instr.alu.add.op    = V3D_QPU_A_FADDNF;
+	instr.alu.add.a     = V3D_QPU_MUX_B;
+	instr.alu.add.b     = loc3.to_mux();
+	instr.alu.add.magic_write = false;
+	instr.alu.add.waddr = loc1.to_waddr();
+	instr.alu.add.a_unpack = imm2.input_unpack();
+	instr.alu.add.b_unpack = loc3.input_unpack();
+
+/*
+	instr.alu.add.a_unpack = V3D_QPU_UNPACK_REPLICATE_32F_16;
+*/
 
 	return instr;
 }
