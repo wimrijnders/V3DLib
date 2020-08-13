@@ -32,7 +32,8 @@
 
 // NOTE: This is not the actual BufferObject implementation
 //       This definition adds useful API calls
-using BufferObject = QPULib::v3d::SharedArray<uint32_t>;
+//using BufferObject = QPULib::v3d::SharedArray<uint32_t>;
+using BufferObject = QPULib::v3d::BufferObject;
 
 
 namespace {
@@ -59,18 +60,11 @@ uint64_t do_nothing[] = {
 //////////////////////////////////
 
 // scan heap for known value
-void find_value(BufferObject &heap, uint32_t val) {
+void find_value(BufferObject const &heap, uint32_t val) {
 		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
-			if (val == heap[offset]) {
+			if (heap[offset] == val) {
 				printf("Found %u at %u, value: %d - %x\n", val, offset, heap[offset], heap[offset]);
 			}
-		}
-}
-
-
-void set_unused_code(BufferObject &heap) {
-		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
-			heap[offset] = 0xdeadbeef;
 		}
 }
 
@@ -227,6 +221,8 @@ bool v3d_init() {
 // example here.
 //
 void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unroll_shift) {
+	using namespace QPULib::v3d;
+
     REQUIRE((num_qpus == 1 || num_qpus == 8));
 
     uint32_t code_area_size = 8*data.size();
@@ -249,17 +245,17 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 		BufferObject heap(code_area_size + data_area_size);
 		//printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
 
-		//set_unused_code(heap);
+		heap.fill(0xdeadbeef);
 
-		auto code = heap.alloc_view<uint64_t>(code_area_size);
+		SharedArray<uint64_t> code(code_area_size/8, heap);
 		code.copyFrom(data);
-		//printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
-		//dump_data(code); 
+		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
+		dump_data(code); 
 
-		auto X = heap.alloc_view<uint32_t>(4*length);
-		auto Y = heap.alloc_view<uint32_t>(4* 16 * num_qpus);
-		//printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
-		//printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
+		SharedArray<uint32_t> X(length, heap);
+		SharedArray<uint32_t> Y(16 * num_qpus, heap);
+		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
+		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
 
 		auto sumY = [&Y] () -> uint64_t {
 			uint64_t ret = 0;
@@ -282,7 +278,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 		//dump_data(Y); 
 		REQUIRE(sumY() == 0);
 
-		auto unif = heap.alloc_view<uint32_t>(3*4);  // grumbl size in bytes TODO: change, this is confusing
+		SharedArray<uint32_t> unif(3, heap);
 		unif[0] = length;
 		unif[1] = X.getPhyAddr();
 		unif[2] = Y.getPhyAddr();
@@ -294,7 +290,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 
 		QPULib::v3d::Driver drv;
 		drv.add_bo(heap);
-		drv.execute(heap, &unif, num_qpus);
+		drv.execute(code, &unif, num_qpus);
 
 		//dump_data(Y, true);
 		//check_returned_registers(Y);
@@ -330,6 +326,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
 TEST_CASE("Check v3d code is working properly", "[v3d]") {
+/*
 	SECTION("Direct v3d calls should work properly") {
 		if (!v3d_init()) return;
 
@@ -356,23 +353,25 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
 		REQUIRE(v3d_unmap(sizeof(do_nothing), handle, usraddr));
 	}
-
+*/
 
 	SECTION("Direct v3d calls should work with SharedArray") {
+		using namespace QPULib::v3d;
+
 		if (!v3d_init()) return;
 
 		uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
 		assert(array_length == 8);
 
-		QPULib::v3d::SharedArray<uint64_t> codeMem(array_length);
-
-		for (int offset = 0; offset < array_length; ++offset) {
-			codeMem[offset] = do_nothing[offset];
-		}
+		BufferObject heap(1024*1024);
+		SharedArray<uint64_t> codeMem(array_length, heap);
+		codeMem.copyFrom(do_nothing, array_length);
 
 		// See Note 1
 		double start = get_time();
-		REQUIRE(QPULib::v3d::v3d_submit_csd(codeMem));
+		Driver driver;
+		driver.add_bo(heap);
+		REQUIRE(driver.execute(codeMem));
 		double end = get_time();
 		printf("[submit done: %.6lf sec]\n", end - start);
 	}
@@ -423,7 +422,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	SECTION("Summation example should work from kernel output") {
 		if (!v3d_init()) return;
 
-		uint8_t num_qpus = 8;  // TODO: test changing these
+		uint8_t num_qpus = 8;
 		int unroll_shift = 5;
 
 		std::vector<uint64_t> data = summation_kernel(num_qpus, unroll_shift);
@@ -514,8 +513,6 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 	SECTION("Opcode compare should work") {
 		using namespace QPULib::v3d::instr;
-
-		REQUIRE(nop() == 0x3c003186bb800000); // nop; nop - to catch uninitialized fields (happened)
 
 		// Non-branch instructions: direct compare
 		REQUIRE(Instr::compare_codes(0x3d803186bb800000, 0x3d803186bb800000));  // nop-nop

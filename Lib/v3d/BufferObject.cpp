@@ -58,13 +58,34 @@ void BufferObject::dealloc_mem() {
 } 
 
 
-/*
-void BufferObject::copyFrom(SharedArrayBase const &src, uint32_t offset) {
-	assert(m_mem_size >= offset + src.m_mem_size);
-  memcpy(usraddr + offset, src.usraddr, src.m_mem_size);
-}
-*/
+/**
+ * @return physical address for array  if allocated, 
+ *         0 if could not allocate.
+ */
+uint32_t BufferObject::alloc_array(uint32_t size_in_bytes) {
+	assert(m_mem_size > 0);
+	assert(m_offset + size_in_bytes < m_mem_size);
+	assert(size_in_bytes % 4 == 0);
+	uint32_t prev_offset = m_offset;
+	m_offset += size_in_bytes;
 
+	return phyaddr + prev_offset;
+}
+
+
+void BufferObject::fill(uint32_t value) {
+	for (uint32_t offset = 0; offset < size(); ++offset) {
+		(*this)[offset] = value;
+	}
+}
+
+namespace {
+
+BufferObject mainHeap;
+
+}
+
+BufferObject &getMainHeap() { return mainHeap; }
 
 }  // namespace v3d
 }  // namespace QPULib

@@ -47,8 +47,6 @@ private:
 namespace v3d {
 
 class KernelDriver : public QPULib::KernelDriver {
-	using CodeArray = ArrayView<uint64_t>;
-
 public:
 	KernelDriver();
 	~KernelDriver() override;
@@ -57,8 +55,7 @@ public:
 	void invoke(int numQPUs, Seq<int32_t>* params) override;
 
 private:
-  CodeArray *qpuCodeMem = nullptr;
-
+  v3d::SharedArray<uint64_t>* qpuCodeMem = nullptr;
 };
 
 }  // namespace v3d

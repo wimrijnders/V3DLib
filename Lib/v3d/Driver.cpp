@@ -53,14 +53,15 @@ namespace v3d {
 */
 bool Driver::dispatch(
 	uint32_t code_phyaddr,
-	uint32_t code_handle,  // Only passed in for check
+//	uint32_t code_handle,  // Only passed in for check
 	uint32_t unif_phyaddr,
 	uint32_t thread
 ) {
 	assert(m_timeout_sec > 0);
 	assert(m_bo_handles.size() > 0);  // There should be at least one, for the code
-	auto index = std::find(m_bo_handles.begin(), m_bo_handles.end(), code_handle);
-	assert(index != m_bo_handles.end());  // Expecting handle of code to have been added beforehand
+
+//	auto index = std::find(m_bo_handles.begin(), m_bo_handles.end(), code_handle);
+//	assert(index != m_bo_handles.end());  // Expecting handle of code to have been added beforehand
 
 	// See Note 1
 	WorkGroup workgroup = (1, 1, 0);  // Setting last val to 0 ensures all QPU's return all registers
@@ -96,27 +97,16 @@ bool Driver::dispatch(
 }
 
 
-void Driver::execute(
-	BufferObject const &code,
-	Array *uniforms,
+bool Driver::execute(
+	SharedArray<uint64_t> &code,
+	SharedArray<uint32_t> *uniforms,
 	int thread) {
 
-	dispatch(
+	return dispatch(
 		code.getPhyAddr(),
-		code.getHandle(),
+//		code.getHandle(),
 		((uniforms == nullptr)?0u:uniforms->getPhyAddr()),
 		thread);
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Legacy call(s)
-///////////////////////////////////////////////////////////////////////////////
-
-bool v3d_submit_csd(uint32_t phyaddr, uint32_t handle, uint32_t uniforms) {
-	Driver drv;
-	drv.add_bo(handle);
-	return drv.dispatch(phyaddr, handle, uniforms);
 }
 
 }  // v3d
