@@ -69,7 +69,12 @@ const unsigned V3D_PARAM_SUPPORTS_TFU = 7;
 const unsigned V3D_PARAM_SUPPORTS_CSD = 8;
 
 
-bool alloc_intern(int fd, uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
+bool alloc_intern(
+	int fd, uint32_t size,
+	uint32_t &handle,
+	uint32_t &phyaddr,
+	void **usraddr,
+	bool show_perror = true) {
 		assert(fd != 0);
 
     drm_v3d_create_bo create_bo;
@@ -78,7 +83,9 @@ bool alloc_intern(int fd, uint32_t size, uint32_t &handle, uint32_t &phyaddr, vo
     {
         int res = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
 				if (res != 0) {
-					perror(NULL);
+					if (show_perror) {
+						perror(NULL);
+					}
 					return false;
 				}
     }
@@ -128,15 +135,15 @@ int open_card(char const *card) {
     uint32_t phyaddr = 0;
 		void *usraddr = nullptr;
 
-		if (alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr)) {
+		if (alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr, false)) {
 			// worked! clean up
 			v3d_unmap(ALLOC_SIZE, handle, usraddr);
-			printf("open_card(): alloc test succeeded for card %s\n", card);
+			//printf("open_card(): alloc test succeeded for card %s\n", card);
 		} else {
 			// fail
 			fd_close(fd);
 			fd = 0;
-			printf("open_card(): alloc test FAILED for card %s\n", card);
+			//printf("open_card(): alloc test FAILED for card %s\n", card);
 		}
 	}
 

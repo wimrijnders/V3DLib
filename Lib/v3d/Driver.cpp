@@ -91,6 +91,7 @@ bool Driver::dispatch(
 	uint64_t  timeout_ns = 1000000000llu * m_timeout_sec;
 
 	int ret = v3d_submit_csd(st);
+	assert(ret == 0);
 	v3d_wait_bo(m_bo_handles, timeout_ns);
 
 	return ret == 0;

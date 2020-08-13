@@ -342,6 +342,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		SharedArray<uint64_t> codeMem(array_length, heap);
 		printf("codeMem phyaddr: %u, length: %u\n", codeMem.getPhyAddr(), codeMem.size());
 		codeMem.copyFrom(do_nothing, array_length);
+		dump_data(codeMem);
 
 		// See Note 1
 		double start = get_time();

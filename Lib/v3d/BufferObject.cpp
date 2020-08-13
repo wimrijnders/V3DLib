@@ -50,14 +50,16 @@ void BufferObject::dealloc_mem() {
 		}
 		//debug("v3d_unmap() called");
 
-		// TODO: what to do about phyaddr here???	
-		usraddr = nullptr;
-		handle = 0;
 		m_mem_size = 0;
+		handle = 0;
+		usraddr = nullptr;
+		phyaddr = 0;
+		m_offset = 0;
 	} else {
-		// TODO: should  phyaddr be here???	
 		assert(m_mem_size == 0);
 		assert(handle == 0);
+		assert(phyaddr == 0);
+		assert(m_offset == 0);
 	}
 } 
 
@@ -68,7 +70,7 @@ void BufferObject::dealloc_mem() {
  */
 uint32_t BufferObject::alloc_array(uint32_t size_in_bytes) {
 	assert(m_mem_size > 0);
-	assert(m_offset + size_in_bytes < m_mem_size);
+	assert(m_offset + size_in_bytes <= m_mem_size);
 	assert(size_in_bytes % 4 == 0);
 	uint32_t prev_offset = m_offset;
 	m_offset += size_in_bytes;
