@@ -30,9 +30,6 @@
 
 #define ARRAY_LENGTH(arr, type) (sizeof(arr)/sizeof(type))
 
-// NOTE: This is not the actual BufferObject implementation
-//       This definition adds useful API calls
-//using BufferObject = QPULib::v3d::SharedArray<uint32_t>;
 using BufferObject = QPULib::v3d::BufferObject;
 
 
@@ -192,42 +189,46 @@ bool v3d_init() {
 // It might be possible to use muliple arrays, but we're sticking to the original
 // example here.
 //
-void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unroll_shift) {
+void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int unroll_shift) {
 	using namespace QPULib::v3d;
 
-    REQUIRE((num_qpus == 1 || num_qpus == 8));
+	printf("bytecode size: %u\n", bytecode.size());
 
-    uint32_t code_area_size = 8*data.size();
+	REQUIRE((num_qpus == 1 || num_qpus == 8));
 
-		uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in 8  QPU's and CPU
-		                                   // The python version went to 32*1024*1024 and did some modulo magic.
+	uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in 8  QPU's and CPU
+	                                   // The python version went to 32*1024*1024 and did some modulo magic.
 
-		if (num_qpus == 1) {
-			length = 32 * 1024 * 8;  // Highest number without overflows for 1 QPU
-		}
+	if (num_qpus == 1) {
+		length = 32 * 1024 * 8;  // Highest number without overflows for 1 QPU
+	}
 
-    REQUIRE(length > 0);
-    REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
+	REQUIRE(length > 0);
+	REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
 
-    uint32_t data_area_size = (length + 1024) * 4;
 
-    printf("==== summation example (%dK elements) ====\n", (length / 1024));
+	printf("==== summation example (%dK elements) ====\n", (length / 1024));
 
-		// Code and data is combined in one buffer
-		BufferObject heap(code_area_size + data_area_size);
-		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size());
+	// Code and data is combined in one buffer
+	uint32_t code_area_size = 8*bytecode.size();  // size in bytes
+	printf("code_area_size size: %u\n", code_area_size);
+	uint32_t data_area_size = (length + 1024) * 4;
+	printf("data_area_size size: %u\n", data_area_size);
+
+	BufferObject heap(code_area_size + data_area_size);
+	printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size_bytes());
 
 		heap.fill(0xdeadbeef);
 
-		SharedArray<uint64_t> code(code_area_size/8, heap);
-		code.copyFrom(data);
-		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), code.size());
+		SharedArray<uint64_t> code(bytecode.size(), heap);
+		code.copyFrom(bytecode);
+		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
 		dump_data(code); 
 
 		SharedArray<uint32_t> X(length, heap);
 		SharedArray<uint32_t> Y(16 * num_qpus, heap);
-		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), X.size());
-		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), Y.size());
+		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
+		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
 
 		auto sumY = [&Y] () -> uint64_t {
 			uint64_t ret = 0;
@@ -254,7 +255,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 		unif[0] = length;
 		unif[1] = X.getPhyAddr();
 		unif[2] = Y.getPhyAddr();
-		printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), unif.size());
+		printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
 
 
 		printf("Executing on QPU...\n");
@@ -265,7 +266,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 		drv.execute(code, &unif, num_qpus);
 
 		dump_data(Y, true);
-		//check_returned_registers(Y);
+		check_returned_registers(Y);
 		heap.detect_used_blocks();
 
 /*
@@ -336,9 +337,10 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		assert(array_length == 8);
 
 		BufferObject heap(1024);
-		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size());
+		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size_bytes());
 
 		SharedArray<uint64_t> codeMem(array_length, heap);
+		printf("codeMem phyaddr: %u, length: %u\n", codeMem.getPhyAddr(), codeMem.size());
 		codeMem.copyFrom(do_nothing, array_length);
 
 		// See Note 1

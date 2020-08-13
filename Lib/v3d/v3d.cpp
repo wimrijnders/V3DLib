@@ -99,6 +99,15 @@ bool alloc_intern(int fd, uint32_t size, uint32_t &handle, uint32_t &phyaddr, vo
     return (usraddr != MAP_FAILED);
 }
 
+
+void fd_close(int fd) {
+	if (fd > 0 ) {
+		int ret = close(fd);
+		assert(ret >= 0);
+	}
+}
+
+
 int open_card(char const *card) {
 	int fd = open(card , O_RDWR);
 
@@ -122,9 +131,12 @@ int open_card(char const *card) {
 		if (alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr)) {
 			// worked! clean up
 			v3d_unmap(ALLOC_SIZE, handle, usraddr);
+			printf("open_card(): alloc test succeeded for card %s\n", card);
 		} else {
 			// fail
+			fd_close(fd);
 			fd = 0;
+			printf("open_card(): alloc test FAILED for card %s\n", card);
 		}
 	}
 
@@ -179,16 +191,19 @@ bool v3d_open() {
 		exit(-1);
 	}
 
+	if (fd > 0) {
+		printf("v3d_open() succeeded\n");
+	}
+
 	return (fd > 0);
 }
 
+
 void v3d_close() {
-	if (fd != -1 ) {
-		int ret = close(fd);
-		assert(ret >= 0);
-		fd = 0;
-	}
+	fd_close(fd);
+	fd = 0;
 }
+
 
 bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
 	assert(size > 0);

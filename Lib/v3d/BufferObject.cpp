@@ -14,17 +14,17 @@ BufferObject::~BufferObject() {
 /**
  * @param n number of 4-byte elements to allocate (so NOT memory size!)
  */
-void BufferObject::alloc_mem(uint32_t n) {
+void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 	if (!v3d_open()) {
 		assert(false);   // Open device if not already done so
 	}
 
-	assert(n > 0);
+	assert(size_in_bytes > 0);
 	assert(handle == 0);
 
 	void *tmp_addr = nullptr;
 
-	if (!v3d_alloc(n, handle, phyaddr, &tmp_addr)) {
+	if (!v3d_alloc(size_in_bytes, handle, phyaddr, &tmp_addr)) {
 		assert(false);
 	}
 	usraddr = (uint8_t *) tmp_addr;
@@ -33,7 +33,7 @@ void BufferObject::alloc_mem(uint32_t n) {
 	assert(phyaddr != 0);
 	assert(usraddr != nullptr);
 
-	m_mem_size = n;
+	m_mem_size = size_in_bytes;
 }
 
 
