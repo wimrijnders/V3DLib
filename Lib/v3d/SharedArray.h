@@ -26,7 +26,11 @@ public:
 	 */
 	void alloc(uint32_t n) {
 		assert(m_size == 0);
-		m_phyaddr = m_heap.alloc_array(sizeof(T)*n);
+		assert(m_usraddr == nullptr);
+
+		m_phyaddr = m_heap.alloc_array(sizeof(T)*n, m_usraddr);
+		assert(m_usraddr != nullptr);
+		assert(m_phyaddr > 0);
 		assert(m_phyaddr > 0);
 		m_size = n;
 	}
@@ -41,6 +45,7 @@ public:
 		if (m_size > 0) {
 			m_phyaddr = 0;
 			m_size = 0;
+			m_usraddr = nullptr;
 		}
 	}
 
@@ -71,8 +76,9 @@ public:
 		assert(i >= 0);
 		assert(m_size > 0);
 		assert(i < m_size);
+		assert(m_usraddr != nullptr);
 
-    T* base = (T *) m_heap.getAddress();
+    T* base = (T *) m_usraddr;
     return (T) base[i];
   }
 
@@ -82,8 +88,9 @@ public:
 		assert(i >= 0);
 		assert(m_size > 0);
 		assert(i < m_size);
+		assert(m_usraddr != nullptr);
 
-    T* base = (T *) m_heap.getAddress();
+    T* base = (T *) m_usraddr;
     return (T&) base[i];
   }
 
@@ -93,6 +100,7 @@ private:
   void operator=(SharedArray<T>& a);
   SharedArray(const SharedArray<T>& a);
 
+  uint8_t *m_usraddr = nullptr;
 	uint32_t m_phyaddr = 0;
 	uint32_t m_size = 0;  // Number of contained elements (not memory size!)
 	BufferObject &m_heap;

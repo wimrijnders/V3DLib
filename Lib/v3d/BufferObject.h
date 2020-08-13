@@ -23,7 +23,7 @@ public:
   uint32_t getPhyAddr() const { return  (uint32_t) phyaddr; }
   uint32_t getHandle()  const { return  (uint32_t) handle; }
 
-	uint32_t alloc_array(uint32_t size_in_bytes);
+	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
 	uint32_t size_bytes() const { return m_mem_size; }
 	uint32_t size() const { return m_mem_size/sizeof(uint32_t); }  // Returns size in words
 
