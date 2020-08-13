@@ -1,7 +1,7 @@
 #include "BufferObject.h"
-//#include <sys/mman.h>
-//#include "../debug.h"
+#include "../debug.h"
 #include "v3d.h"
+#include "../Support/Platform.h"  // has_vc4() 
 
 namespace QPULib {
 namespace v3d {
@@ -132,11 +132,20 @@ namespace {
 
 const int HEAP_SIZE = 1024*1024;
 
-BufferObject mainHeap(HEAP_SIZE);
+BufferObject mainHeap;
 
 }
 
-BufferObject &getMainHeap() { return mainHeap; }
+BufferObject &getMainHeap() {
+	assert(!Platform::instance().has_vc4);  // Should only be called on correct platform
+
+	if (mainHeap.size_bytes() == 0) {
+		printf("Allocating main heap v3d\n");
+		mainHeap.alloc_mem(HEAP_SIZE);
+	}
+
+	return mainHeap;
+}
 
 }  // namespace v3d
 }  // namespace QPULib

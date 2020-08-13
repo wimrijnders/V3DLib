@@ -23,11 +23,12 @@ public:
   uint32_t getPhyAddr() const { return  (uint32_t) phyaddr; }
   uint32_t getHandle()  const { return  (uint32_t) handle; }
 
+  void alloc_mem(uint32_t size_in_bytes);
 	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
 	uint32_t size_bytes() const { return m_mem_size; }
 	uint32_t size() const { return m_mem_size/sizeof(uint32_t); }  // Returns size in words
 
-	// Debug metthods
+	// Debug methods
 	void fill(uint32_t value);
 	void find_value(uint32_t in_val);
 	void detect_used_blocks();
@@ -40,7 +41,6 @@ private:
   uint32_t handle  = 0;
 	uint32_t phyaddr = 0;
 
-  void alloc_mem(uint32_t size_in_bytes);
 	void dealloc_mem();
 
 
