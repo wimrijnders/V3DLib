@@ -154,6 +154,8 @@ int v3d_submit_csd(st_v3d_submit_csd &st) {
  * If you try, then you get the perror:
  *
  *    Inappropriate ioctl for device
+ *
+ * @return true if opening succeeded, false otherwise
  */
 bool v3d_open() {
 	if (fd != 0) {
@@ -187,16 +189,6 @@ void v3d_close() {
 		fd = 0;
 	}
 }
-
-
-int v3d_fd() {
-	if (!v3d_open()) {
-		assert(false);
-	}
-
-	return fd;
-}
-
 
 bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
 	assert(size > 0);

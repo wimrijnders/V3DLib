@@ -15,6 +15,10 @@ BufferObject::~BufferObject() {
  * @param n number of 4-byte elements to allocate (so NOT memory size!)
  */
 void BufferObject::alloc_mem(uint32_t n) {
+	if (!v3d_open()) {
+		assert(false);   // Open device if not already done so
+	}
+
 	assert(n > 0);
 	assert(handle == 0);
 
@@ -122,7 +126,9 @@ void BufferObject::detect_used_blocks() {
 
 namespace {
 
-BufferObject mainHeap;
+const int HEAP_SIZE = 1024*1024;
+
+BufferObject mainHeap(HEAP_SIZE);
 
 }
 

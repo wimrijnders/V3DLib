@@ -59,8 +59,6 @@ uint64_t do_nothing[] = {
 // Test support routines
 //////////////////////////////////
 
-
-
 void check_returned_registers(QPULib::v3d::SharedArray<uint32_t> &Y) {
 	uint32_t cur_QPU;
 
@@ -96,7 +94,7 @@ void dump_data(T const &arr, bool do_all = false) {
 	char const *format = "%8d: 0x%x - %d\n";
 
 	if (sizeof(arr[0]) == 8) {
-		format = "%8d: 0x%llx- %lld\n";
+		format = "%8d: 0x%llx - %lld\n";
 	}
 
 
@@ -217,19 +215,19 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 
 		// Code and data is combined in one buffer
 		BufferObject heap(code_area_size + data_area_size);
-		//printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), 4*heap.size());
+		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size());
 
 		heap.fill(0xdeadbeef);
 
 		SharedArray<uint64_t> code(code_area_size/8, heap);
 		code.copyFrom(data);
-		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
+		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), code.size());
 		dump_data(code); 
 
 		SharedArray<uint32_t> X(length, heap);
 		SharedArray<uint32_t> Y(16 * num_qpus, heap);
-		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
-		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
+		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), X.size());
+		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), Y.size());
 
 		auto sumY = [&Y] () -> uint64_t {
 			uint64_t ret = 0;
@@ -244,19 +242,19 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 		for (uint32_t offset = 0; offset < X.size(); ++offset) {
 			X[offset] = offset;
 		}
-		//dump_data(X); 
+		dump_data(X); 
 
 		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
 			Y[offset] = 0;
 		}
-		//dump_data(Y); 
+		dump_data(Y); 
 		REQUIRE(sumY() == 0);
 
 		SharedArray<uint32_t> unif(3, heap);
 		unif[0] = length;
 		unif[1] = X.getPhyAddr();
 		unif[2] = Y.getPhyAddr();
-		//printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
+		printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), unif.size());
 
 
 		printf("Executing on QPU...\n");
@@ -266,7 +264,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 		drv.add_bo(heap);
 		drv.execute(code, &unif, num_qpus);
 
-		//dump_data(Y, true);
+		dump_data(Y, true);
 		//check_returned_registers(Y);
 		heap.detect_used_blocks();
 
@@ -337,7 +335,9 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
 		assert(array_length == 8);
 
-		BufferObject heap(1024*1024);
+		BufferObject heap(1024);
+		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size());
+
 		SharedArray<uint64_t> codeMem(array_length, heap);
 		codeMem.copyFrom(do_nothing, array_length);
 
@@ -366,7 +366,6 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		for(int offset = 0; offset < SIZE; ++offset) {
 			REQUIRE(arr[offset] == 0);
 		}
-
 
 		for(int offset = 0; offset < SIZE; ++offset) {
 			arr[offset] = 127;

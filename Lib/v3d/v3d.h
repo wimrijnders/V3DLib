@@ -28,7 +28,6 @@ struct st_v3d_submit_csd {
 
 bool v3d_open();
 void v3d_close();
-int v3d_fd();
 bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr);
 bool v3d_unmap(uint32_t size, uint32_t handle, void *usraddr);
 int v3d_wait_bo(uint32_t handle, uint64_t timeout_ns);

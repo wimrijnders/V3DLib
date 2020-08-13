@@ -24,6 +24,7 @@ public:
   uint32_t getHandle()  const { return  (uint32_t) handle; }
 
 	uint32_t alloc_array(uint32_t size_in_bytes);
+	uint32_t size() const { return m_mem_size/sizeof(uint32_t); }  // Returns size in words
 
 	// Debug metthods
 	void fill(uint32_t value);
@@ -41,7 +42,6 @@ private:
   void alloc_mem(uint32_t n);
 	void dealloc_mem();
 
-	uint32_t size() const { return m_mem_size/sizeof(uint32_t); }
 
   // Subscript
   uint32_t & operator[] (int i) {
