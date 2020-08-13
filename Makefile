@@ -209,9 +209,9 @@ $(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPU_LIB)
 	@mkdir -p $(@D)
 	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
-make_test: $(OBJ_DIR)/bin/runTests $(OBJ_DIR)/bin/detectPlatform AutoTest
+make_test: $(OBJ_DIR)/bin/runTests
 
-test : | make_test AutoTest
+test : | make_test
 	@echo Running unit tests with '$(RUN_TESTS)'
 	@$(RUN_TESTS)
 

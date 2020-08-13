@@ -24,7 +24,11 @@ public:
   uint32_t getHandle()  const { return  (uint32_t) handle; }
 
 	uint32_t alloc_array(uint32_t size_in_bytes);
+
+	// Debug metthods
 	void fill(uint32_t value);
+	void find_value(uint32_t in_val);
+	void detect_used_blocks();
 
 private:
   uint8_t *usraddr    = nullptr;

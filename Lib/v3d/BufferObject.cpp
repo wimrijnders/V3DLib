@@ -79,6 +79,47 @@ void BufferObject::fill(uint32_t value) {
 	}
 }
 
+
+/**
+ * Scan heap for known value
+ *
+ * This is a debug method, for testing
+ */
+void BufferObject::find_value(uint32_t in_val) {
+	for (uint32_t offset = 0; offset < size(); ++offset) {
+		uint32_t val = (*this)[offset];
+
+		if (val == in_val) {
+			printf("Found %u at %u, value: %d - %x\n", in_val, offset, val, val);
+		}
+	}
+}
+
+
+/**
+ * Find assigned blocks within the heap
+ *
+ * This is a debug method, for testing
+ */
+void BufferObject::detect_used_blocks() {
+	bool have_block = false;
+	for (uint32_t offset = 0; offset < size(); ++offset) {
+		uint32_t val = (*this)[offset];
+
+		if (have_block) {
+			if (val == 0xdeadbeef) {
+				printf("block end at %u\n", 4*offset);
+				have_block = false;
+			}
+		} else {
+			if (val != 0xdeadbeef) {
+				printf("Block at %u, value: %d - %x\n", 4*offset, val, val);
+				have_block = true;
+			}
+		}
+	}
+}
+
 namespace {
 
 BufferObject mainHeap;

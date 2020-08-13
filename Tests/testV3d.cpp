@@ -59,35 +59,9 @@ uint64_t do_nothing[] = {
 // Test support routines
 //////////////////////////////////
 
-// scan heap for known value
-void find_value(BufferObject const &heap, uint32_t val) {
-		for (uint32_t offset = 0; offset < heap.size(); ++offset) {
-			if (heap[offset] == val) {
-				printf("Found %u at %u, value: %d - %x\n", val, offset, heap[offset], heap[offset]);
-			}
-		}
-}
 
 
-void detect_used_blocks(BufferObject &heap) {
-	bool have_block = false;
-	for (uint32_t offset = 0; offset < heap.size(); ++offset) {
-		if (have_block) {
-			if (heap[offset] == 0xdeadbeef) {
-				printf("block end at %u\n", 4*offset);
-				have_block = false;
-			}
-		} else {
-			if (heap[offset] != 0xdeadbeef) {
-				printf("Block at %u, value: %d - %x\n", 4*offset, heap[offset], heap[offset]);
-				have_block = true;
-			}
-		}
-	}
-}
-
-
-void check_returned_registers(QPULib::v3d::ArrayView<uint32_t> &Y) {
+void check_returned_registers(QPULib::v3d::SharedArray<uint32_t> &Y) {
 	uint32_t cur_QPU;
 
 	for (uint32_t offset = 0; offset < Y.size(); ++offset) {
@@ -294,7 +268,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 
 		//dump_data(Y, true);
 		//check_returned_registers(Y);
-		//detect_used_blocks(heap);
+		heap.detect_used_blocks();
 
 /*
 		// Check if code not overwritten
@@ -309,7 +283,7 @@ void run_summation_kernel(std::vector<uint64_t> &data, uint8_t num_qpus, int unr
 			REQUIRE(X[offset] == offset);
 		}
 
-		find_value(heap, 1736704u); // 4278190080u;
+		heap.find_value(1736704u); // 4278190080u;
 */
 	
 		// Check if values supplied
