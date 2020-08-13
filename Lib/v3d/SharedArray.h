@@ -46,7 +46,7 @@ public:
 
 	void copyFrom(T const *src, uint32_t size) {
 		assert(src != nullptr);
-		assert(size < m_size);
+		assert(size <= m_size);
 
 		// TODO: consider using memcpy() instead
 		for (uint32_t offset = 0; offset < size; ++offset) {
