@@ -44,12 +44,11 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0xadedcdf70839f990ull;  //, "faddnf.pushc  rf55, -16.l, r3.abs; fmul.ifb  rf55.l, rf38.l, r1.h" },
+	uint64_t op = 0x7dff89fa6a01f020ull; //, "fsub.nornc  rf58.h, 0x3b800000.l, r3.l; fmul.ifnb  rf39, r0.h, r0.h" },
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-	//	vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()
-		faddnf(rf(55), SmallImm(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb()
+		fsub(rf(58).h(), r0  /* 0x3b800000 .l()*/, r3.l()) /* .nornc() */ .fmul(rf(39), r0.h(), r0.h()).ifnb()
 	;
 	tmp_op.dump(true);
 
@@ -59,7 +58,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< vpmsetup(r5).ldunif()
 		<< nop().ldunifa()  // NB for version 33 this is `nop().ldvpm()`
 		<< bor(rf(0), r3, r3).mov(vpm, r3)
-
 
 		// ver 42, error in instr_unpack():
 		// { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
@@ -90,7 +88,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 	;
 
 #if 0
-        { 33, 0x7dff89fa6a01f020ull, "fsub.nornc  rf58.h, 0x3b800000.l, r3.l; fmul.ifnb  rf39, r0.h, r0.h" },
 
         /* branch conditions */
         { 33, 0x02000006002034c0ull, "b.anyap  rf19" },
