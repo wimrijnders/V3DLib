@@ -15,7 +15,7 @@ public:
 	virtual ~KernelDriver() {}
 
 	virtual void kernelFinish() {} 
-	virtual void encode(Seq<Instr> &targetCode) = 0;
+	virtual void encode(Seq<QPULib::Instr> &targetCode) = 0;
 	virtual void invoke(int numQPUs, Seq<int32_t>* params) = 0;
   virtual void pretty(FILE *f) { /* nothing to do yet */ }
 

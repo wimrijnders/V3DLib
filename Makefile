@@ -110,7 +110,7 @@ EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
 -include $(EXAMPLES_DEPS)
 
 
-QPU_LIB=$(OBJ_DIR)/libQPULib.a
+QPULIB=$(OBJ_DIR)/libQPULib.a
 
 
 # Top-level targets
@@ -142,7 +142,7 @@ help:
 	@echo '    DEBUG=1       - If specified, the source code and target code is shown on stdout when running a test'
 	@echo
 
-all: $(QPU_LIB) $(EXAMPLES)
+all: $(QPULIB) $(EXAMPLES)
 
 clean:
 	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug
@@ -152,7 +152,7 @@ clean:
 # Targets for static library
 #
 
-$(QPU_LIB): $(LIB)
+$(QPULIB): $(LIB)
 	@echo Creating $@
 	@ar rcs $@ $^
 
@@ -173,17 +173,17 @@ $(OBJ_DIR)/bin/Rot3DLib: $(OBJ_DIR)/Examples/Rot3DLib/Rot3DKernels.o
 
 
 # Leaving this out means Rot3DLib does not get compiled, and there's no warning
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPU_LIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPULIB)  # NOTE: QPULIB needs to be at the back, for correct linking order
 	@echo Linking $@...
-	@$(LINK) $^ -o $@
+	@$(LINK) $^ $(LIBS) -o $@
 
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(QPU_LIB) $(OBJ_DIR)/Examples/Support/Settings.o
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(OBJ_DIR)/Examples/Support/Settings.o $(QPULIB)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPU_LIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPULIB)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
@@ -204,7 +204,7 @@ ifeq ($(QPU), 1)
 endif
 
 
-$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPU_LIB)
+$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB)
 	@echo Linking unit tests
 	@mkdir -p $(@D)
 	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@

@@ -1,7 +1,7 @@
 #ifndef _QPULIB_TARGET_SYNTAX_H_
 #define _QPULIB_TARGET_SYNTAX_H_
-
 #include <stdint.h>
+#include "../debug.h"
 
 namespace QPULib {
 
@@ -234,13 +234,6 @@ enum ALUOp {
 
 };
 
-inline bool isMulOp(ALUOp op)
-{
-  return op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
-         op == M_V8MIN  || op == M_V8MAX || op == M_V8ADDS ||
-         op == M_V8SUBS || op == M_ROTATE;
-}
-
 // ============================================================================
 // Branch targets
 // ============================================================================
@@ -367,6 +360,32 @@ struct Instr {
     // Print float
     Reg PRF;
   };
+
+
+	/**
+	 * Determines if the mul-ALU needs to be used
+	 *
+	 * TODO: Examine if this is still true for v3d
+	 */
+	bool isMul() const {
+		auto op = ALU.op;
+
+	  bool ret =
+			op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
+	    op == M_V8MIN  || op == M_V8MAX || op == M_V8ADDS ||
+	    op == M_V8SUBS || op == M_ROTATE;
+
+		assert(!ret);  // Warn me if this happens
+		return ret;
+	}
+
+	bool hasImm() const {
+  	return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM;
+	}
+
+	bool isRot() const {
+		return ALU.op == M_ROTATE;
+	}
 };
 
 // Instruction id: also the index of an instruction
