@@ -1,6 +1,9 @@
 #include <QPULib.h>
+#include "Support/Settings.h"
 
 using namespace QPULib;
+
+QPULib::Settings settings;
 
 // Define function that runs on the GPU.
 
@@ -10,8 +13,11 @@ void hello(Ptr<Int> p)
   *p = me();
 }
 
-int main()
-{
+
+int main(int argc, const char *argv[]) {
+	auto ret = settings.init(argc, argv);
+	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
   // Construct kernel
   auto k = compile(hello);
 
@@ -20,9 +26,11 @@ int main()
   for (int i = 0; i < 192; i++)
     array[i] = 0;
 
-  // Invoke the kernel and display the result
+  // Invoke the kernel
   k.setNumQPUs(12);
-  k(&array);
+	settings.process(k, &array);
+
+	// Display the result
   for (int i = 0; i < 192; i++) {
     printf("%i: %i\n", i, array[i]);
   }

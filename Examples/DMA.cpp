@@ -1,6 +1,9 @@
 #include "QPULib.h"
+#include "Support/Settings.h"
 
 using namespace QPULib;
+
+QPULib::Settings settings;
 
 void dma(Ptr<Int> p)
 {
@@ -29,8 +32,10 @@ void dma(Ptr<Int> p)
   dmaWaitWrite();
 }
 
-int main()
-{
+int main(int argc, const char *argv[]) {
+	auto ret = settings.init(argc, argv);
+	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
   // Construct kernel
   auto k = compile(dma);
 
@@ -39,8 +44,10 @@ int main()
   for (int i = 0; i < 256; i++)
     array[i] = i;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  // Invoke the kernel
+	settings.process(k, &array);  
+
+	// Display the result
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < 16; j++)
       printf("%i ", array[16*i + j]);
