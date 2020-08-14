@@ -15,7 +15,7 @@ There is no way to use the QPU mode SharedArray without a serious rewrite.
 // SharedArray's for v3d have not been properly implemented yet
 // They are currently actually Buffer Objects (BO's), this needs to change
 //
-//#define USE_V3D_BUFFERS
+#define USE_V3D_BUFFERS
 
 #include "BufferType.h"
 
@@ -99,7 +99,7 @@ public:
 			break;
 #ifdef USE_V3D_BUFFERS
 		case V3dBuffer:
-			ret = m_v3d_array.getAddress();
+			ret = m_v3d_array.getPhyAddr();  // TODO Not sure if this is correct; use mem adress instead?
 			break;
 #endif
 		}

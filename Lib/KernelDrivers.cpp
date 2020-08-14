@@ -13,7 +13,7 @@ namespace QPULib {
 namespace vc4 {
 using namespace VideoCore;
 
-KernelDriver::KernelDriver() {
+KernelDriver::KernelDriver() : QPULib::KernelDriver(Vc4Buffer) {
 	enableQPUs();
 }
 
@@ -38,7 +38,7 @@ void KernelDriver::encode(Seq<Instr> &targetCode) {
     // Allocate memory for QPU code and parameters
     int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
 
-		qpuCodeMem = new SharedArray<uint32_t>;
+		qpuCodeMem = new VideoCore::SharedArray<uint32_t>;
     qpuCodeMem->alloc(numWords);
 
     // Copy kernel to code memory
@@ -117,6 +117,103 @@ uint64_t encodeInstr(Instr instr) {
     // ALU
     case ALU: {
 			assert(false);  // TODO examine
+
+/*
+	from gdb
+
+	instr = {
+		tag = QPULib::ALU,
+		{
+			LI = {
+				setFlags = false,
+				cond = {
+					tag = QPULib::ALWAYS, flag = QPULib::ZS
+				},
+				dest = {
+					tag = QPULib::REG_A, regId = 0
+				},
+				imm = {
+					tag = QPULib::IMM_INT32,
+					{
+						intVal = 3, floatVal = 4.20389539e-45}
+					}
+			},
+			ALU = {
+      	setFlags = false,
+				cond = {
+					tag = QPULib::ALWAYS,
+					flag = QPULib::ZS
+				},
+				dest = {
+					tag = QPULib::REG_A,
+					regId = 0
+				},
+				srcA = {
+					tag = QPULib::REG,
+					{
+						reg = {
+							tag = QPULib::SPECIAL,
+							regId = 0
+						},
+						smallImm = {
+            	tag = (QPULib::ROT_ACC | QPULib::ROT_IMM), val = 0
+						}
+					}
+				},
+				op = QPULib::A_BOR,
+				srcB = {
+					tag = QPULib::REG,
+					{
+						reg = {
+							tag = QPULib::SPECIAL,
+							regId = 0
+						},
+						smallImm = {
+							tag = (QPULib::ROT_ACC | QPULib::ROT_IMM), val = 0
+						}
+					}
+				}
+			},
+			BR = {
+      	cond = {
+					tag = QPULib::COND_ALL,
+					flag = QPULib::ZC
+				}, target = {
+					relative = false,
+					useRegOffset = false,
+					regOffset = 0,
+					immOffset = 0
+				}
+			},
+			BRL = {
+				cond = {
+					tag = QPULib::COND_ALL,
+					flag = QPULib::ZC
+				},
+				label = 0
+			},
+			label = 0,
+			semaId = 0, 
+    	RECV = {
+				dest = {
+					tag = QPULib::REG_A,
+					regId = 1
+				}
+			},
+			PRS = 0x0,
+			PRI = {
+				tag = QPULib::REG_A,
+				regId = 1
+			},
+			PRF = {
+				tag = QPULib::REG_A,
+				regId = 1
+			}
+		}
+	}
+*/
+
+
 /*
       RegTag file;
       bool isMul     = isMulOp(instr.ALU.op);
@@ -287,11 +384,12 @@ void _encode(Seq<Instr> &instrs, std::vector<uint64_t> &code) {
 }  // anon namespace
 
 
-KernelDriver::KernelDriver() {
+KernelDriver::KernelDriver() : QPULib::KernelDriver(V3dBuffer) {
 }
 
 KernelDriver::~KernelDriver() {
 	delete qpuCodeMem;
+	delete paramMem;
 }
 
 
@@ -301,14 +399,16 @@ void KernelDriver::encode(Seq<Instr> &targetCode) {
 	std::vector<uint64_t> code;
 	_encode(targetCode, code);
 
-	// Allocate memory for QPU code and parameters
-	int numBytes = 8*code.size() + 4*(12*MAX_KERNEL_PARAMS + 12*2);
 
-	assert(false);  // TODO
-	// qpuCodeMem = heap.alloc_view<uint64_t>(numBytes);
+	// Allocate memory for the QPU code
+	qpuCodeMem = new v3d::SharedArray<uint64_t>(code.size());
+	qpuCodeMem->copyFrom(code);  // Copy kernel to code memory
 
-	// Copy kernel to code memory
-	qpuCodeMem->copyFrom(code);
+
+	// Allocate memory for the parameters
+	int numWords = (12*MAX_KERNEL_PARAMS + 12*2);
+	paramMem = new v3d::SharedArray<uint32_t>;
+	paramMem->alloc(numWords);
 
 	qpuCodeMemOffset = 8*code.size();  // TODO check if correct
 }

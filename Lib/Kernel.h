@@ -283,7 +283,7 @@ public:
   template <typename... us> void qpu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args, BufferType::Vc4Buffer)...);
+    nothing(passParam<ts, us>(&uniforms, args, m_kernel_driver->buffer_type)...);
 
 		m_kernel_driver->encode(targetCode);
 
