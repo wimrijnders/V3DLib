@@ -215,11 +215,11 @@ Instr shl(uint8_t rf_addr1, uint8_t rf_addr2, int val);
 Instr band(uint8_t rf_address, Register const &reg, uint8_t val);
 Instr eidx(Register const &reg);
 
-Instr add(Register const &reg1, Register const &reg2, Register const &reg3);
+Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t ref_addr3);
 
-Instr fadd(Register const &reg1, Register const &reg2, Register const &reg3);
+Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
 
 Instr mov(uint8_t rf_addr, uint8_t val);
 Instr mov(Register const &reg, uint8_t rf_addr);

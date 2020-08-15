@@ -161,6 +161,9 @@ void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
 namespace v3d {
 using namespace QPULib::v3d::instr;
 
+using OpCode = QPULib::v3d::instr::Instr;
+using OpCodes = std::vector<OpCode>;
+
 uint8_t const REGB_OFFSET = 32;
 uint8_t const NOP_ADDR = 39;
 
@@ -282,19 +285,24 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 			}
 			break;
     case SPECIAL:
-			assert(false);
-/*
       switch (reg.regId) {
+/*
         case SPECIAL_RD_SETUP:    return 49;
         case SPECIAL_WR_SETUP:    return 49;
         case SPECIAL_DMA_LD_ADDR: return 50;
         case SPECIAL_DMA_ST_ADDR: return 50;
         case SPECIAL_VPM_WRITE:   return 48;
         case SPECIAL_HOST_INT:    return 38;
-        case SPECIAL_TMU0_S:      return 56;
-        default:                  break;
-      }
 */
+        case SPECIAL_TMU0_S:
+					ret.reset(new Register(tmua));
+					break;
+        default:
+					breakpoint
+					assert(false);  // Not expecting this
+					break;
+      }
+			break;
     case NONE:
 			is_none = true;
 			breakpoint
@@ -335,7 +343,6 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
   switch (reg.tag) {
     case REG_A:
     case REG_B:  // same as encodeDstReg()
-	breakpoint
       assert(reg.regId >= 0 && reg.regId < 32);
 			if (reg.regId != 0) {
 				breakpoint
@@ -358,10 +365,8 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
 
       switch (reg.regId) {
         case SPECIAL_UNIFORM:
-					assert(false);  // Really not expecting this
-					break;
         case SPECIAL_ELEM_NUM:
-					assert(false);  // Vector [0..15] - must be a call analogous to eidx()
+					assert(false);  // Really not expecting this any more
 					break;
 /*
         case SPECIAL_QPU_NUM:  return 38;
@@ -424,36 +429,59 @@ uint8_t encodeSrcReg_old(Reg reg) {
 }
 
 
-bool translateOpcode(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_instr) {
-	bool ret = true;
+bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
+	bool did_something = true;
+
+	auto reg_a = src_instr.ALU.srcA;
+	auto reg_b = src_instr.ALU.srcB;
+
+	auto dst_reg = encodeDestReg(src_instr);
+
+	std::unique_ptr<Location> src_a;
+
+	if (reg_a.reg.tag == SPECIAL && reg_a.reg.regId == SPECIAL_ELEM_NUM) {
+		assert(!(reg_b.reg.tag == ACC && reg_b.reg.regId == 0));
+		ret.push_back(eidx(r0));
+		src_a.reset(new Register(r0));
+	} else {
+	breakpoint
+		src_a = encodeSrcReg(reg_a.reg);
+	}
+	assert(!(reg_b.reg.tag == SPECIAL && reg_b.reg.regId == SPECIAL_ELEM_NUM));
+
+	auto src_b = encodeSrcReg(reg_b.reg);
 
 	switch (src_instr.ALU.op) {
 		case A_SHL: {
-			breakpoint
-
-      auto dst_reg = encodeDestReg(src_instr);
-			auto src_reg = encodeSrcReg(src_instr.ALU.srcA.reg);
-
 			assert(dst_reg.get() != nullptr);
-			assert(src_reg.get() != nullptr);
+			assert(src_a.get() != nullptr);
 
-			assert(src_instr.ALU.srcB.tag == IMM); 
-			SmallImm imm(src_instr.ALU.srcB.smallImm.val);
+			assert(reg_b.tag == IMM); 
+			SmallImm imm(reg_b.smallImm.val);
 
-			dst_instr = shl(*dst_reg, *src_reg, imm);
+			ret.push_back(shl(*dst_reg, *src_a, imm));
+		}
+		break;
+		case A_ADD: {
+			breakpoint
+			assert(dst_reg.get() != nullptr);
+			assert(src_a.get() != nullptr);
+			assert(src_b.get() != nullptr);
+			ret.push_back(add(*dst_reg, *src_a, *src_b));
 		}
 		break;
 		default:
-			ret = false;
+			breakpoint  // To catch inimplemented opcodes
+			did_something = false;
 			break;
 	}
 
-	return ret;
+	return did_something;
 }
 
 
-uint64_t encodeInstr(QPULib::Instr instr) {
-	uint64_t ret = 0;
+OpCodes encodeInstr(QPULib::Instr instr) {
+	OpCodes ret;
 
   // Convert intermediate instruction into core instruction
   switch (instr.tag) {
@@ -482,8 +510,8 @@ uint64_t encodeInstr(QPULib::Instr instr) {
       *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
       *low          = (uint32_t) instr.LI.imm.intVal;
 */
-      return ret;
     }
+		break;
 
     // Branch
     case BR: {
@@ -499,8 +527,8 @@ uint64_t encodeInstr(QPULib::Instr instr) {
       *high = 0xf0000000 | cond | rel | waddr_add | waddr_mul;
       *low  = (uint32_t) 8*instr.BR.target.immOffset;
 */
-      return ret;
     }
+		break;
 
     // ALU
     case ALU: {
@@ -516,9 +544,15 @@ uint64_t encodeInstr(QPULib::Instr instr) {
       uint32_t sf    = (instr.ALU.setFlags ? 1 : 0) << 13;
       *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
 */
-      if (translateOpcode(instr, ret_instr)) {
-				breakpoint
-				// All is well
+			if (instr.isUniformLoad()) {
+					Reg dst_reg = instr.ALU.dest;
+					uint8_t rf_addr = to_waddr(dst_reg);
+					if (rf_addr % REGB_OFFSET != 0) {
+						breakpoint  // warn me if this happens
+					}
+					ret_instr = ldunifrf(rf_addr);
+      } else if (translateOpcode(instr, ret)) {
+				break; // All is well
       } else if (instr.ALU.op == M_ROTATE) {
 				assert(false); // TODO
 /*
@@ -541,13 +575,6 @@ uint64_t encodeInstr(QPULib::Instr instr) {
         *low = mulOp | (raddrb << 12) | (raddra << 18);
         return;
 */
-			} else if (instr.isUniformLoad()) {
-					Reg dst_reg = instr.ALU.dest;
-					uint8_t rf_addr = to_waddr(dst_reg);
-					if (rf_addr % REGB_OFFSET != 0) {
-						breakpoint
-					}
-					ret_instr = ldunifrf(rf_addr);
       } else {
 				if (instr.isMul()) {
         	ret_instr.alu.mul.op = v3d::encodeMulOp(instr.ALU.op);
@@ -637,8 +664,9 @@ uint64_t encodeInstr(QPULib::Instr instr) {
       }
 
 			ret_instr.dump(true);
-			return ret_instr.code();  // NOTE: added by WR
+			ret.push_back(ret_instr.code());  // NOTE: added by WR
     }
+		break;
 
     // Halt
     case END:
@@ -653,8 +681,8 @@ uint64_t encodeInstr(QPULib::Instr instr) {
       *high  = sig | waddr_add | waddr_mul;
       *low   = raddra | raddrb;
 */
-      return ret;
     }
+		break;
 
     // Semaphore increment/decrement
     case SINC:
@@ -668,8 +696,8 @@ uint64_t encodeInstr(QPULib::Instr instr) {
       *high = sig | waddr_add | waddr_mul;
       *low = incOrDec | instr.semaId;
 */
-      return ret;
     }
+		break;
 
     // No-op & print instructions (ignored)
     case NO_OP:
@@ -683,21 +711,30 @@ uint64_t encodeInstr(QPULib::Instr instr) {
       *high  = 0xe0000000 | waddr_add | waddr_mul;
       *low   = 0;
 */
-      return ret;
+		break;
+		default:
+  		fprintf(stderr, "v3d: missing case in encodeInstr\n");
+		 	exit(EXIT_FAILURE);
   }
 
-  fprintf(stderr, "v3d: missing case in encodeInstr\n");
- 	exit(EXIT_FAILURE);
+	assert(!ret.empty());  // Something should really be returned back
 	return ret;
 }
 
 
 void _encode(Seq<QPULib::Instr> &instrs, std::vector<uint64_t> &code) {
+	OpCodes opcodes;
+
   for (int i = 0; i < instrs.numElems; i++) {
     QPULib::Instr instr = instrs.elems[i];
-    uint64_t opcode = v3d::encodeInstr(instr);
-		code.push_back(opcode);
+	
+		auto result = v3d::encodeInstr(instr);
+    opcodes.insert(opcodes.end(), result.begin(), result.end());
   }
+
+	for (auto const &opcode : opcodes) {
+		code.push_back(opcode.code());
+	}
 }
 
 

@@ -561,6 +561,10 @@ Instr band(uint8_t rf_address, Register const &reg, uint8_t val) {
 }
 
 
+/**
+ * Returns index of current vector itemi on a given QPU.
+ * This will be something in the range [0..15]
+ */
 Instr eidx(Register const &reg) {
 	Instr instr;
 
@@ -586,26 +590,20 @@ Instr tidx(Register const &reg) {
 }
 
 
-Instr add(Register const &reg1, Register const &reg2, Register const &reg3) {
+Instr add(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
+	instr.alu_add_set(loc1, loc2, loc3);
 
 	instr.alu.add.op    = V3D_QPU_A_ADD;
-	instr.alu.add.a     = reg2.to_mux();
-	instr.alu.add.b     = reg3.to_mux();
-	instr.alu.add.waddr = reg1.to_waddr();
-
 	return instr;
 }
 
 
-Instr fadd(Register const &reg1, Register const &reg2, Register const &reg3) {
+Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
+	instr.alu_add_set(loc1, loc2, loc3);
 
 	instr.alu.add.op    = V3D_QPU_A_FADD;
-	instr.alu.add.a     = reg2.to_mux();
-	instr.alu.add.b     = reg3.to_mux();
-	instr.alu.add.waddr = reg1.to_waddr();
-
 	return instr;
 }
 

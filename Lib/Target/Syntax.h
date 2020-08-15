@@ -403,7 +403,6 @@ struct Instr {
 			return true;
 		} else {
 			assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
-		breakpoint
 			return false;
 		}
 	}
