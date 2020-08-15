@@ -7,9 +7,10 @@
 #include "VideoCore/Mailbox.h"
 #include "VideoCore/VideoCore.h"
 
+#ifdef QPU_MODE
 
 namespace QPULib {
-namespace VideoCore {
+namespace vc4 {
 
 // ============================================================================
 // Not emulation mode
@@ -106,7 +107,9 @@ template <typename T> class SharedArray {
   }
 };
 
-}  // namespace VideoCore
+}  // namespace vc4
 }  // namespace QPULib
+
+#endif  // QPU_MODE
 
 #endif // _QPULIB_VIDEOCORE_SHAREDARRAY_H_

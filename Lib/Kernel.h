@@ -1,6 +1,5 @@
 #ifndef _QPULIB_KERNEL_H_
 #define _QPULIB_KERNEL_H_
-
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
 #include "Common/SharedArray.h"
@@ -9,8 +8,8 @@
 #include "Source/Pretty.h"
 #include "Target/Pretty.h"
 #include "Support/Platform.h"
-#include "KernelDrivers.h"
-
+#include  "VideoCore/KernelDriver.h"
+#include  "v3d/KernelDriver.h"
 
 namespace QPULib {
 
@@ -228,7 +227,9 @@ public:
     // Construct the AST
     f(mkArg<ts>()...);
 
+#ifdef QPU_MODE
 		m_kernel_driver->kernelFinish();
+#endif  // QPUr_+MODE
 
     // Obtain the AST
     Stmt* body = stmtStack.top();
@@ -326,8 +327,7 @@ public:
    *
    * @param filename  if specified, print the output to this file. Otherwise, print to stdout
    */
-  void pretty(const char *filename = nullptr)
-  {
+  void pretty(const char *filename = nullptr) {
     FILE *f = nullptr;
 
     if (filename == nullptr)
@@ -354,6 +354,7 @@ public:
     fprintf(f, "\n");
     fflush(f);
 
+#ifdef QPU_MODE
     // Emit target code
     fprintf(f, "Target code\n");
     fprintf(f, "===========\n\n");
@@ -372,6 +373,7 @@ public:
       assert(f != stdout);
       fclose(f);
     }
+#endif  // QPU_MODE
   }
 };
 

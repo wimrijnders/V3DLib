@@ -212,7 +212,7 @@ public:
 		return *ret;
 	}
 
-	operator VideoCore::SharedArray<T> &() {
+	operator vc4::SharedArray<T> &() {
 		setType(Vc4Buffer);	
 		return m_gpu_array;
 	}
@@ -244,7 +244,7 @@ private:
   uint32_t m_size = 0;
 
 	Target::SharedArray<T>    m_main_array;
-	VideoCore::SharedArray<T> m_gpu_array;
+	vc4::SharedArray<T> m_gpu_array;
 #ifdef USE_V3D_BUFFERS
 	v3d::SharedArray<T>       m_v3d_array;
 #endif

@@ -10,7 +10,7 @@ namespace QPULib {
 
 void invoke(
   int numQPUs,
-  VideoCore::SharedArray<uint32_t> &codeMem,
+  vc4::SharedArray<uint32_t> &codeMem,
   int qpuCodeMemOffset,
   Seq<int32_t>* params)
 {

@@ -1,164 +1,13 @@
-/**
-
-	Example input for iv3d::encodeInstr(), case ALU (very first instruction ever:
-	(from gdb)
-
-	instr = {
-		tag = QPULib::ALU,
-		{
-			LI = {
-				setFlags = false,
-				cond = {
-					tag = QPULib::ALWAYS, flag = QPULib::ZS
-				},
-				dest = {
-					tag = QPULib::REG_A, regId = 0
-				},
-				imm = {
-					tag = QPULib::IMM_INT32,
-					{
-						intVal = 3, floatVal = 4.20389539e-45}
-					}
-			},
-			ALU = {
-      	setFlags = false,
-				cond = {
-					tag = QPULib::ALWAYS,
-					flag = QPULib::ZS
-				},
-				dest = {
-					tag = QPULib::REG_A,
-					regId = 0
-				},
-				srcA = {
-					tag = QPULib::REG,
-					{
-						reg = {
-							tag = QPULib::SPECIAL,
-							regId = 0
-						},
-						smallImm = {
-            	tag = (QPULib::ROT_ACC | QPULib::ROT_IMM), val = 0
-						}
-					}
-				},
-				op = QPULib::A_BOR,
-				srcB = {
-					tag = QPULib::REG,
-					{
-						reg = {
-							tag = QPULib::SPECIAL,
-							regId = 0
-						},
-						smallImm = {
-							tag = (QPULib::ROT_ACC | QPULib::ROT_IMM), val = 0
-						}
-					}
-				}
-			},
-			BR = {
-      	cond = {
-					tag = QPULib::COND_ALL,
-					flag = QPULib::ZC
-				}, target = {
-					relative = false,
-					useRegOffset = false,
-					regOffset = 0,
-					immOffset = 0
-				}
-			},
-			BRL = {
-				cond = {
-					tag = QPULib::COND_ALL,
-					flag = QPULib::ZC
-				},
-				label = 0
-			},
-			label = 0,
-			semaId = 0, 
-    	RECV = {
-				dest = {
-					tag = QPULib::REG_A,
-					regId = 1
-				}
-			},
-			PRS = 0x0,
-			PRI = {
-				tag = QPULib::REG_A,
-				regId = 1
-			},
-			PRF = {
-				tag = QPULib::REG_A,
-				regId = 1
-			}
-		}
-	}
-
-
- */
-#include "KernelDrivers.h"
+#include "KernelDriver.h"
 #include <memory>
-#include <vector>
-#include "Target/Encode.h"
-#include "VideoCore/VideoCore.h"
-#include "VideoCore/Invoke.h"
-#include "Source/Stmt.h"
-#include "v3d/Invoke.h"
-#include "v3d/Instr.h"
-#include "debug.h"
+#include "Instr.h"
+#include "Invoke.h"
 
+#ifdef QPU_MODE
 
 namespace QPULib {
-
-namespace vc4 {
-using namespace VideoCore;
-
-KernelDriver::KernelDriver() : QPULib::KernelDriver(Vc4Buffer) {
-	enableQPUs();
-}
-
-
-KernelDriver::~KernelDriver() {
-	disableQPUs();
-	delete qpuCodeMem;
-}
-
-
-void KernelDriver::kernelFinish() {
-	// QPU code to cleanly exit
-	QPULib::kernelFinish();
-}
-
-
-void KernelDriver::encode(Seq<Instr> &targetCode) {
-    // Encode target instrs into array of 32-bit ints
-    Seq<uint32_t> code;
-    QPULib::encode(&targetCode, &code);
-
-    // Allocate memory for QPU code and parameters
-    int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
-
-		qpuCodeMem = new VideoCore::SharedArray<uint32_t>;
-    qpuCodeMem->alloc(numWords);
-
-    // Copy kernel to code memory
-    int offset = 0;
-    for (int i = 0; i < code.numElems; i++) {
-      (*qpuCodeMem)[offset++] = code.elems[i];
-    }
-    qpuCodeMemOffset = offset;
-}
-
-
-void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
-	assert(qpuCodeMem != nullptr);
-	QPULib::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, params);
-}
-
-}  // namespace vc4
-
-
 namespace v3d {
+
 using namespace QPULib::v3d::instr;
 
 using OpCode = QPULib::v3d::instr::Instr;
@@ -775,4 +624,4 @@ void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
 }  // namespace v3d
 }  // namespace QPULib
 
-
+#endif  // QPU_MODE
