@@ -244,6 +244,7 @@ Instr &Instr::pushc() { set_pf(V3D_QPU_PF_PUSHC); return *this; }
 Instr &Instr::pushn() { set_pf(V3D_QPU_PF_PUSHN); return *this; }
 Instr &Instr::pushz() { set_pf(V3D_QPU_PF_PUSHZ); return *this; }
 Instr &Instr::norc()  { set_uf(V3D_QPU_UF_NORC);  return *this; }
+Instr &Instr::nornc() { set_uf(V3D_QPU_UF_NORNC); return *this; }
 Instr &Instr::norz()  { set_uf(V3D_QPU_UF_NORZ);  return *this; }
 Instr &Instr::nornn() { set_uf(V3D_QPU_UF_NORNN); return *this; }
 Instr &Instr::andnc() { set_uf(V3D_QPU_UF_ANDNC); return *this; }
@@ -277,6 +278,13 @@ Instr &Instr::ldvary(bool val) {
 
 Instr &Instr::ldunif(bool val) {
 	sig.ldunif = val;
+	return *this;
+}
+
+
+Instr &Instr::anyap() {
+	assert(type == V3D_QPU_INSTR_TYPE_BRANCH);  // Branch instruction-specific
+	branch.cond = V3D_QPU_BRANCH_COND_ANYA;
 	return *this;
 }
 
@@ -702,7 +710,6 @@ Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
  */
 Instr branch(int target, int current) {
 	Instr instr;
-
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
 
 	instr.branch.msfign = V3D_QPU_MSFIGN_NONE;
@@ -714,6 +721,32 @@ Instr branch(int target, int current) {
 	// branch needs 4 delay slots before executing, hence the 4
 	// This means that 3 more instructions will execute after the loop before jumping
 	instr.branch.offset = (unsigned) 8*(target - (current + 4));
+
+	return instr;
+}
+
+
+/**
+ * Actually called just 'b' in the mnemonics
+ */
+Instr bb(Location const &loc1) {
+	Instr instr;
+	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
+
+  instr.sig.ldunif = true;
+  instr.sig.ldunifa = true;
+
+	// flags: {ac: <<UNKNOWN>>, mc: <<UNKNOWN>>, apf: <<UNKNOWN>>, mpf: PF_PUSHZ, auf: UF_NONE, muf: <<UNKNOWN>>},
+	instr.flags.mpf = V3D_QPU_PF_PUSHZ;
+	instr.flags.auf = V3D_QPU_UF_NONE;
+
+//	instr.branch.cond = V3D_QPU_BRANCH_COND_ANYA;
+	instr.branch.msfign =  V3D_QPU_MSFIGN_P;
+	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_REGFILE;
+	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
+	instr.branch.ub =  false;
+	instr.branch.raddr_a = loc1.to_waddr();
+	instr.branch.offset = 0;
 
 	return instr;
 }

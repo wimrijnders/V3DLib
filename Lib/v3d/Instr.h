@@ -151,6 +151,7 @@ public:
 	Instr &nornn();
 	Instr &ifnb();
 	Instr &norc();
+	Instr &nornc();
 	Instr &norz();
 	Instr &ifb();
 	Instr &ifna();
@@ -158,6 +159,9 @@ public:
 	Instr &andnc();
 	Instr &andnn();
 	Instr &cond_na0();
+
+	// For branch instructions
+	Instr &anyap();
 
 	// Calls to set the mul part of the instruction
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
@@ -228,6 +232,7 @@ Instr bor(Location const &rf_addr1, Location const &reg2, Location const &reg3);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);
+Instr bb(Location const &loc1);
 
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 
