@@ -213,38 +213,49 @@ bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 // Calls to set the mult part of the instruction
 //////////////////////////////////////////////////////
 
+void Instr::set_c(v3d_qpu_cond val) {
+	if (m_doing_add) {
+		flags.ac = val;
+	} else {
+		flags.mc = val;
+	}
+}
+
+
+void Instr::set_uf(v3d_qpu_uf val) {
+	if (m_doing_add) {
+		flags.auf = val;
+	} else {
+		flags.muf = val;
+	}
+}
+
+
+void Instr::set_pf(v3d_qpu_pf val) {
+	if (m_doing_add) {
+		flags.apf = val;
+	} else {
+		flags.mpf = val;
+	}
+}
+
+
+Instr &Instr::pushc() { set_pf(V3D_QPU_PF_PUSHC); return *this; }
+Instr &Instr::pushn() { set_pf(V3D_QPU_PF_PUSHN); return *this; }
+Instr &Instr::pushz() { set_pf(V3D_QPU_PF_PUSHZ); return *this; }
+Instr &Instr::norc()  { set_uf(V3D_QPU_UF_NORC);  return *this; }
+Instr &Instr::norz()  { set_uf(V3D_QPU_UF_NORZ);  return *this; }
+Instr &Instr::nornn() { set_uf(V3D_QPU_UF_NORNN); return *this; }
+Instr &Instr::andnc() { set_uf(V3D_QPU_UF_ANDNC); return *this; }
+Instr &Instr::andnn() { set_uf(V3D_QPU_UF_ANDNN); return *this; }
+Instr &Instr::ifnb()  { set_c(V3D_QPU_COND_IFNB); return *this; }
+Instr &Instr::ifb()   { set_c(V3D_QPU_COND_IFB);  return *this; }
+Instr &Instr::ifna()  { set_c(V3D_QPU_COND_IFNA); return *this; }
+Instr &Instr::ifa()   { set_c(V3D_QPU_COND_IFA);  return *this; }
+
+
 Instr &Instr::thrsw(bool val) {
 	sig.thrsw = val;
-	return *this;
-}
-
-
-Instr &Instr::pushz() {
-	if (m_doing_add) {
-		flags.apf = V3D_QPU_PF_PUSHZ;
-	} else {
-		flags.mpf = V3D_QPU_PF_PUSHZ;
-	}
-	return *this;
-}
-
-
-Instr &Instr::pushc() {
-	if (m_doing_add) {
-		flags.apf = V3D_QPU_PF_PUSHC;
-	} else {
-		flags.mpf = V3D_QPU_PF_PUSHC;
-	}
-	return *this;
-}
-
-
-Instr &Instr::pushn() {
-	if (m_doing_add) {
-		flags.apf = V3D_QPU_PF_PUSHN;
-	} else {
-		flags.mpf = V3D_QPU_PF_PUSHN;
-	}
 	return *this;
 }
 
@@ -278,93 +289,6 @@ Instr &Instr::ldunifa(bool val) {
 
 Instr &Instr::ldvpm(bool val) {
 	sig.ldvpm = val;
-	return *this;
-}
-
-
-Instr &Instr::nornn() {
-	if (m_doing_add) {
-		flags.auf = V3D_QPU_UF_NORNN;
-	} else {
-		flags.muf = V3D_QPU_UF_NORNN;
-	}
-
-	return *this;
-}
-
-
-Instr &Instr::ifnb() {
-	if (m_doing_add) {
-		flags.ac = V3D_QPU_COND_IFNB;
-	} else {
-		flags.mc = V3D_QPU_COND_IFNB;
-	}
-
-	return *this;
-}
-
-
-Instr &Instr::norc() {
-	if (m_doing_add) {
-		flags.auf = V3D_QPU_UF_NORC;
-	} else {
-		flags.muf = V3D_QPU_UF_NORC;
-	}
-
-	return *this;
-}
-
-
-Instr &Instr::norz() {
-	if (m_doing_add) {
-		flags.auf = V3D_QPU_UF_NORZ;
-	} else {
-		flags.muf = V3D_QPU_UF_NORZ;
-	}
-	return *this;
-}
-
-
-Instr &Instr::ifb() {
-	if (m_doing_add) {
-		flags.ac = V3D_QPU_COND_IFB;
-	} else {
-		flags.mc = V3D_QPU_COND_IFB;
-	}
-
-	return *this;
-}
-
-
-Instr &Instr::ifna() {
-	if (m_doing_add) {
-		flags.ac = V3D_QPU_COND_IFNA;
-	} else {
-		flags.mc = V3D_QPU_COND_IFNA;
-	}
-
-	return *this;
-}
-
-
-Instr &Instr::ifa() {
-	if (m_doing_add) {
-		flags.ac = V3D_QPU_COND_IFA;
-	} else {
-		flags.mc = V3D_QPU_COND_IFA;
-	}
-	return *this;
-}
-
-
-Instr &Instr::andnc() {
-	flags.auf = V3D_QPU_UF_ANDNC;
-	return *this;
-}
-
-
-Instr &Instr::andnn() {
-	flags.auf = V3D_QPU_UF_ANDNN;
 	return *this;
 }
 
@@ -543,19 +467,6 @@ Instr ldunifrf(uint8_t rf_address) {
 }
 
 
-Instr tidx(Register const &reg) {
-	Instr instr;
-
-	instr.sig_magic  = true; 
-	instr.alu.add.op = V3D_QPU_A_TIDX;
-	instr.alu.add.waddr = reg.to_waddr();
-	instr.alu.add.a  = V3D_QPU_MUX_R1;
-	instr.alu.add.b  = V3D_QPU_MUX_R0;
-
-	return instr;
-}
-
-
 Instr shr(Register const &reg1, Register const &reg2, uint8_t val) {
 	Instr instr;
 
@@ -657,6 +568,19 @@ Instr eidx(Register const &reg) {
 	instr.alu.add.waddr = reg.to_waddr();
 	instr.alu.add.a     = V3D_QPU_MUX_R2;
 	instr.alu.add.b     = V3D_QPU_MUX_R0;
+
+	return instr;
+}
+
+
+Instr tidx(Register const &reg) {
+	Instr instr;
+
+	instr.sig_magic  = true; 
+	instr.alu.add.op = V3D_QPU_A_TIDX;
+	instr.alu.add.waddr = reg.to_waddr();
+	instr.alu.add.a  = V3D_QPU_MUX_R1;
+	instr.alu.add.b  = V3D_QPU_MUX_R0;
 
 	return instr;
 }

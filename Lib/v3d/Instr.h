@@ -184,7 +184,9 @@ private:
 
 	void init_ver() const;
 	void init(uint64_t in_code);
-
+	void set_c(v3d_qpu_cond val);
+	void set_uf(v3d_qpu_uf val);
+	void set_pf(v3d_qpu_pf val);
 };
 
 
