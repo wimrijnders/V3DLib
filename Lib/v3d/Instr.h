@@ -203,10 +203,10 @@ Instr nop();
 Instr ldunifrf(uint8_t rf_address);
 Instr tidx(Register const &reg);
 
-Instr shr(Register const &reg1, Register const &reg2, uint8_t val);
+Instr shr(Register const &loc1, Register const &loc2, uint8_t val);
 Instr shr(uint8_t rf_addr1, uint8_t rf_addr2, int val);
 
-Instr shl(Register const &reg1, Register const & reg2, uint8_t val);
+Instr shl(Location const &reg1, Location const & reg2, SmallImm val);
 Instr shl(Register const &reg1, uint8_t rf_addr, uint8_t val);
 Instr shl(uint8_t rf_addr1, uint8_t rf_addr2, int val);
 

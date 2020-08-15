@@ -299,35 +299,6 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
 TEST_CASE("Check v3d code is working properly", "[v3d]") {
-/*
-	SECTION("Direct v3d calls should work properly") {
-		if (!v3d_init()) return;
-
-    uint32_t handle = 0;
-    uint32_t phyaddr = 0;
-		void *usraddr = nullptr;
-		REQUIRE(v3d_alloc(sizeof(do_nothing), handle, phyaddr, &usraddr));
-		REQUIRE(handle != 0);
-		REQUIRE(phyaddr != 0);
-		REQUIRE(usraddr != nullptr);
-
-		uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
-		assert(array_length == 8);
-
-    memcpy(usraddr, do_nothing, sizeof(do_nothing));
-
-		// See Note 1
-		double start = get_time();
-
-		REQUIRE(QPULib::v3d::v3d_submit_csd(phyaddr, handle));
-
-		double end = get_time();
-		printf("[submit done: %.6lf sec]\n", end - start);
-
-		REQUIRE(v3d_unmap(sizeof(do_nothing), handle, usraddr));
-	}
-*/
-
 	SECTION("Direct v3d calls should work with SharedArray") {
 		using namespace QPULib::v3d;
 
@@ -427,26 +398,8 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
   raddr_b: 0,\n\
   flags: {ac: COND_NONE, mc: COND_NONE, apf: PF_NONE, mpf: PF_NONE, auf: UF_NONE, muf: UF_NONE},\n\
   alu: {\n\
-    add: {\n\
-      op: A_NOP,\n\
-      a: MUX_R0,\n\
-      b: MUX_R0,\n\
-      waddr: 6,\n\
-      magic_write: true,\n\
-      output_pack: PACK_NONE,\n\
-      a_unpack: UNPACK_NONE, \n\
-      b_unpack: UNPACK_NONE\n\
-    },\n\
-    mul: {\n\
-      op: M_NOP,\n\
-      a: MUX_R0,\n\
-      b: MUX_R4,\n\
-      waddr: 6,\n\
-      magic_write: true,\n\
-      output_pack: PACK_NONE,\n\
-      a_unpack: UNPACK_NONE, \n\
-      b_unpack: UNPACK_NONE\n\
-    }\n\
+    add: NOP,\n\
+    mul: NOP\n\
   }\n\
 }\n";
 

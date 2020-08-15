@@ -379,12 +379,33 @@ struct Instr {
 		return ret;
 	}
 
+
 	bool hasImm() const {
   	return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM;
 	}
 
+
 	bool isRot() const {
 		return ALU.op == M_ROTATE;
+	}
+
+
+	bool isUniformLoad() const {
+		if (ALU.srcA.tag != REG || ALU.srcB.tag != REG) {  // Both operands must be regs
+			return false;
+		}
+
+		Reg aReg  = ALU.srcA.reg;
+		Reg bReg  = ALU.srcB.reg;
+
+		if (aReg.tag == SPECIAL && aReg.regId == SPECIAL_UNIFORM) {
+			assert(aReg == bReg);  // Apparently, this holds
+			return true;
+		} else {
+			assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
+		breakpoint
+			return false;
+		}
 	}
 };
 

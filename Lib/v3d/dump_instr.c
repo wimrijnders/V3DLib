@@ -3,6 +3,56 @@
 #include <string.h>
 #include "dump_instr.h"
 
+static const struct v3d_qpu_alu_instr ALU_NOP = {
+    add: {
+      op: V3D_QPU_A_NOP,
+      a: V3D_QPU_MUX_R0,
+      b: V3D_QPU_MUX_R0,
+      waddr: 6,
+      magic_write: true,
+      output_pack: V3D_QPU_PACK_NONE,
+      a_unpack: V3D_QPU_UNPACK_NONE, 
+      b_unpack: V3D_QPU_UNPACK_NONE
+    },
+    mul: {
+      op: V3D_QPU_M_NOP,
+      a: V3D_QPU_MUX_R0,
+      b: V3D_QPU_MUX_R4,
+      waddr: 6,
+      magic_write: true,
+      output_pack: V3D_QPU_PACK_NONE,
+      a_unpack: V3D_QPU_UNPACK_NONE, 
+      b_unpack: V3D_QPU_UNPACK_NONE
+    }
+};
+
+
+static bool isNopAdd( const struct v3d_qpu_alu_instr *src) {
+	return (
+      src->add.op == ALU_NOP.add.op &&
+      src->add.a == ALU_NOP.add.a &&
+      src->add.b == ALU_NOP.add.b &&
+      src->add.waddr == ALU_NOP.add.waddr &&
+      src->add.magic_write == ALU_NOP.add.magic_write &&
+      src->add.output_pack == ALU_NOP.add.output_pack &&
+      src->add.a_unpack == ALU_NOP.add.a_unpack &&
+      src->add.b_unpack == ALU_NOP.add.b_unpack
+	);
+}
+
+
+static bool isNopMul( const struct v3d_qpu_alu_instr *src) {
+	return (
+      src->mul.op == ALU_NOP.mul.op &&
+      src->mul.a == ALU_NOP.mul.a &&
+      src->mul.b == ALU_NOP.mul.b &&
+      src->mul.waddr == ALU_NOP.mul.waddr &&
+      src->mul.magic_write == ALU_NOP.mul.magic_write &&
+      src->mul.output_pack == ALU_NOP.mul.output_pack &&
+      src->mul.a_unpack == ALU_NOP.mul.a_unpack &&
+      src->mul.b_unpack == ALU_NOP.mul.b_unpack
+	);
+}
 
 #define CASE(l)	case V3D_QPU_##l: ret = #l; break;
 
@@ -306,52 +356,60 @@ void instr_dump(char *buffer, struct v3d_qpu_instr *instr) {
 	if (instr->sig.wrtmuc) strcat(buffer_sig, "wrtmuc ");
 
 	char buffer_union[1024] = "\0";
+	char buffer_alu_add[1024] = "\0";
+	char buffer_alu_mul[1024] = "\0";
 
 	if (show_alu) {
+		const char *format_alu_addmul = "\
+    {\n\
+      op: %s,\n\
+      a: %s,\n\
+      b: %s,\n\
+      waddr: %u,\n\
+      magic_write: %s,\n\
+      output_pack: %s,\n\
+      a_unpack: %s, \n\
+      b_unpack: %s\n\
+    }";
+
 		const char *format_alu = "\
   alu: {\n\
-    add: {\n\
-      op: %s,\n\
-      a: %s,\n\
-      b: %s,\n\
-      waddr: %u,\n\
-      magic_write: %s,\n\
-      output_pack: %s,\n\
-      a_unpack: %s, \n\
-      b_unpack: %s\n\
-    },\n\
-    mul: {\n\
-      op: %s,\n\
-      a: %s,\n\
-      b: %s,\n\
-      waddr: %u,\n\
-      magic_write: %s,\n\
-      output_pack: %s,\n\
-      a_unpack: %s, \n\
-      b_unpack: %s\n\
-    }\n\
+    add: %s,\n\
+    mul: %s\n\
   }\n\
 ";
 
-		sprintf(buffer_union, format_alu,
-			dump_add_op(instr->alu.add.op),
-			dump_mux(instr->alu.add.a),
-			dump_mux(instr->alu.add.b),
-			instr->alu.add.waddr,
-			TF(instr->alu.add.magic_write),
-			dump_output_pack(instr->alu.add.output_pack),
-			dump_input_unpack(instr->alu.add.a_unpack),
-			dump_input_unpack(instr->alu.add.b_unpack),
+		if (isNopAdd(&instr->alu)) {
+			sprintf(buffer_alu_add, "NOP");
+		} else {
+			sprintf(buffer_alu_add, format_alu_addmul,
+				dump_add_op(instr->alu.add.op),
+				dump_mux(instr->alu.add.a),
+				dump_mux(instr->alu.add.b),
+				instr->alu.add.waddr,
+				TF(instr->alu.add.magic_write),
+				dump_output_pack(instr->alu.add.output_pack),
+				dump_input_unpack(instr->alu.add.a_unpack),
+				dump_input_unpack(instr->alu.add.b_unpack)
+			);
+		}
 
-			dump_mul_op(instr->alu.mul.op),
-			dump_mux(instr->alu.mul.a),
-			dump_mux(instr->alu.mul.b),
-			instr->alu.mul.waddr,
-			TF(instr->alu.mul.magic_write),
-			dump_output_pack(instr->alu.mul.output_pack),
-			dump_input_unpack(instr->alu.mul.a_unpack),
-			dump_input_unpack(instr->alu.mul.b_unpack)
-		);
+		if (isNopMul(&instr->alu)) {
+			sprintf(buffer_alu_mul, "NOP");
+		} else {
+			sprintf(buffer_alu_mul, format_alu_addmul,
+				dump_mul_op(instr->alu.mul.op),
+				dump_mux(instr->alu.mul.a),
+				dump_mux(instr->alu.mul.b),
+				instr->alu.mul.waddr,
+				TF(instr->alu.mul.magic_write),
+				dump_output_pack(instr->alu.mul.output_pack),
+				dump_input_unpack(instr->alu.mul.a_unpack),
+				dump_input_unpack(instr->alu.mul.b_unpack)
+			);
+		}
+
+		sprintf(buffer_union, format_alu, buffer_alu_add, buffer_alu_mul);
 
 	} else {
 		const char *format_branch = "\

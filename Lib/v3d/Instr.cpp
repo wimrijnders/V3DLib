@@ -588,16 +588,16 @@ Instr shr(uint8_t rf_addr1, uint8_t rf_addr2, int val) {
 }
 
 
-Instr shl(Register const &reg1, Register const &reg2, uint8_t val) {
+Instr shl(Location const &loc1, Location const &loc2, SmallImm val) {
 	Instr instr;
 
 	instr.sig.small_imm = true; 
-	instr.raddr_a       = reg1.to_waddr(); 
-	instr.raddr_b       = val; 
+	instr.raddr_a       = loc1.to_waddr(); 
+	instr.raddr_b       = val.to_raddr(); 
 	instr.alu.add.op    = V3D_QPU_A_SHL;
-	instr.alu.add.a     = reg2.to_mux();
+	instr.alu.add.a     = loc2.to_mux();
 	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = reg1.to_waddr();
+	instr.alu.add.waddr = loc1.to_waddr();
 
 	return instr;
 }
