@@ -317,6 +317,13 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 			ret.push_back(add(*dst_reg, *src_a, *src_b));
 		}
 		break;
+		case A_BOR: {
+			assert(dst_reg.get() != nullptr);
+			assert(src_a.get() != nullptr);
+			assert(src_b.get() != nullptr);
+			ret.push_back(bor(*dst_reg, *src_a, *src_b));
+		}
+		break;
 		default:
 			breakpoint  // To catch inimplemented opcodes
 			did_something = false;
@@ -351,6 +358,9 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 			uint32_t rep_value;
 
 			switch (value) {
+				case 16:
+					rep_value = 0x41800000;
+					break;
 				case 64:
 					rep_value = 0x42800000;
 					break;
@@ -361,7 +371,6 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 			auto dst = encodeDestReg(instr);
 			SmallImm imm(rep_value);
 
-			breakpoint
 			ret.push_back(mov(*dst, imm));
 
 /*
@@ -415,7 +424,7 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 						breakpoint  // warn me if this happens
 					}
 					ret_instr = ldunifrf(rf_addr);
-					ret.push_back(ret_instr.code());
+					ret.push_back(ret_instr);
 					break;
       } else if (translateOpcode(instr, ret)) {
 				break; // All is well
@@ -530,14 +539,14 @@ OpCodes encodeInstr(QPULib::Instr instr) {
       }
 
 			ret_instr.dump(true);
-			ret.push_back(ret_instr.code());  // NOTE: added by WR
+			ret.push_back(ret_instr);  // NOTE: added by WR
     }
 		break;
 
     // Halt
     case END:
     case TMU0_TO_ACC4: {
-			assert(false);  // TODO examine
+			ret.push_back(nop().ldtmu(r4));  // NOTE: added by WR
 /*
       uint32_t waddr_add = 39 << 6;
       uint32_t waddr_mul = 39;
@@ -567,9 +576,13 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 
     // No-op & print instructions (ignored)
     case NO_OP:
+			ret.push_back(nop());
+			break;
+
     case PRI:
     case PRS:
     case PRF:
+			breakpoint
 			assert(false);  // TODO examine
 /*
       uint32_t waddr_add = 39 << 6;

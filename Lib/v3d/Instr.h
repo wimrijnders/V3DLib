@@ -218,7 +218,7 @@ Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr mov(Location const &loc1, SmallImm val);
 Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
 
-Instr bor(Location const &rf_addr1, Location const &reg2, Location const &reg3);
+Instr bor(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);
