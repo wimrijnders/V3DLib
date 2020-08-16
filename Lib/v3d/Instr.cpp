@@ -1,6 +1,8 @@
 #include "Instr.h"
 #include <cstdio>
 #include <cstdlib>  // abs()
+#include "../debug.h"
+#include "dump_instr.h"
 
 namespace {
 
@@ -16,11 +18,6 @@ const int SMALLIMM_SIZE = 32;
 int smallimm_values[SMALLIMM_SIZE] = {
 		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
 		-16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1};
-
-struct SmallImm {
-
-};
-
 }  // anon namespace
 
 
@@ -40,6 +37,7 @@ struct Exception : public std::exception {
 ///////////////////////////////////////////////////////////////////////////////
 
 uint8_t SmallImm::to_raddr() const {
+/*
 	assert(-16 <= m_val && m_val <= 15);
 
 	for (uint8_t index = 0; index < SMALLIMM_SIZE; ++index) {
@@ -47,9 +45,22 @@ uint8_t SmallImm::to_raddr() const {
 			return index;
 		}
 	}
+*/
 
-	assert(false);
-	return (uint8_t) 0;
+	assert(m_index != 0xff);
+	return m_index;
+}
+
+
+void SmallImm::pack() {
+	uint32_t packed_small_immediate;
+
+	if (small_imm_pack(m_val, &packed_small_immediate)) {
+		assert(packed_small_immediate <= 0xff);  // to be sure conversion is OK
+		m_index = (uint8_t) packed_small_immediate;
+	} else {
+		assert(false);
+	}
 }
 
 
@@ -95,6 +106,36 @@ Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
 
 
 ///////////////////////////////////////////////////////////////////////////////
+// Class RFAddress
+///////////////////////////////////////////////////////////////////////////////
+
+v3d_qpu_mux RFAddress::to_mux() const {
+	debug_break("Not expecting RFAddress::to_mux() to be called");
+	//assert(false);
+	return (v3d_qpu_mux) 0;
+}
+
+
+RFAddress RFAddress::l() const {
+	RFAddress ret(m_val);
+	ret.m_input_unpack = V3D_QPU_UNPACK_L;
+	ret.m_output_pack = V3D_QPU_PACK_L;
+	assert(ret.is_rf());
+
+	return ret;
+}
+
+
+RFAddress RFAddress::h() const {
+	RFAddress ret(m_val);
+	ret.m_input_unpack = V3D_QPU_UNPACK_H;
+	ret.m_output_pack = V3D_QPU_PACK_H;
+
+	return ret;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 // Class Instr
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -117,6 +158,12 @@ std::string Instr::dump(bool to_stdout) const {
 	}
 
 	return ret;
+}
+
+
+void Instr::dump_mnemonic() const {
+	instr_dump_mnemonic(this);
+	printf("\n");
 }
 
 
@@ -428,7 +475,14 @@ Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register con
 
 
 void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
-	alu.add.a     = loc2.to_mux();
+	if (loc2.is_rf()) {
+		raddr_a = loc2.to_waddr();
+		alu.add.a     = V3D_QPU_MUX_A;
+	} else {
+		alu.add.a     = loc2.to_mux();
+	}
+	//alu.add.a     = loc2.to_mux();
+
 	alu.add.b     = loc3.to_mux();
 	alu.add.waddr = loc1.to_waddr();
 	alu.add.output_pack = loc1.output_pack();
@@ -442,7 +496,6 @@ void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location con
 		raddr_a = loc2.to_waddr();
 		alu.mul.a     = V3D_QPU_MUX_A;
 	} else {
-		//raddr_a = 0; - NO! Stupid idea
 		alu.mul.a     = loc2.to_mux();
 	}
 
@@ -648,27 +701,47 @@ Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
 }
 
 
-Instr mov(uint8_t rf_addr, uint8_t val) {
+Instr mov(Location const &loc1, SmallImm val) {
 	Instr instr;
 
+	if (loc1.is_rf()) {
+		instr.alu.add.waddr = loc1.to_waddr();
+		instr.alu.add.b     = V3D_QPU_MUX_B;
+	} else {
+	breakpoint
+		instr.alu.add.b     = loc1.to_mux();
+	}
+	//instr.alu.add.waddr = loc1.to_waddr();
+	//instr.alu.add.b     = V3D_QPU_MUX_B;
+
 	instr.sig.small_imm = true; 
-	instr.raddr_b       = val; 
+	instr.raddr_b       = val.to_raddr(); 
 	instr.alu.add.op    = V3D_QPU_A_OR;
 	instr.alu.add.a     = V3D_QPU_MUX_B;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = rf_addr;
 	instr.alu.add.magic_write = false;
 
 	return instr;
 }
 
 
-Instr mov(Register const &reg, uint8_t rf_addr) {
+/**
+ * Location for loc2 hangs the GPU in unit tests.
+ * TODO: examine and fix
+ */
+Instr mov(Register const &reg, RFAddress /* Location */ const &loc2) {
+	breakpoint
 	Instr instr;
 
-	instr.raddr_a       = rf_addr; 
+	if (loc2.is_rf()) {
+		instr.raddr_a = loc2.to_waddr();
+		instr.alu.add.a     = V3D_QPU_MUX_A;
+	} else {
+		instr.alu.add.a     = loc2.to_mux();
+	}
+	//instr.raddr_a       = addr.to_waddr(); 
+	//instr.alu.add.a     = V3D_QPU_MUX_A;
+
 	instr.alu.add.op    = V3D_QPU_A_OR;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
 	instr.alu.add.b     = V3D_QPU_MUX_A;
 	instr.alu.add.waddr = reg.to_waddr();
 	instr.alu.add.magic_write = true;

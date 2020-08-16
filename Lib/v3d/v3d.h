@@ -30,7 +30,6 @@ bool v3d_open();
 void v3d_close();
 bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr);
 bool v3d_unmap(uint32_t size, uint32_t handle, void *usraddr);
-int v3d_wait_bo(uint32_t handle, uint64_t timeout_ns);
 bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns);
 int v3d_submit_csd(st_v3d_submit_csd &st);
 

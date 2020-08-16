@@ -111,15 +111,19 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 
 	bool is_none = false;
 	std::unique_ptr<Location> ret;
-	Reg reg = src_instr.ALU.dest;
+
+	Reg reg;
+  if (src_instr.tag == ALU) {
+		reg = src_instr.ALU.dest;
+	} else {
+  	assert(src_instr.tag == LI);
+		reg = src_instr.LI.dest;
+	}
 
   switch (reg.tag) {
     case REG_A:
     case REG_B:
       assert(reg.regId >= 0 && reg.regId < 32);
-			if (reg.regId != 0) {
-				breakpoint
-			}
 			ret.reset(new RFAddress(to_waddr(reg)));
 			break;
     case ACC:
@@ -193,13 +197,9 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
     case REG_A:
     case REG_B:  // same as encodeDstReg()
       assert(reg.regId >= 0 && reg.regId < 32);
-			if (reg.regId != 0) {
-				breakpoint
-			}
 			ret.reset(new RFAddress(to_waddr(reg)));
 			break;
     case ACC:
-	breakpoint
       assert(reg.regId >= 0 && reg.regId <= 4); // !!! Apparently, r5 not allowed here
 			switch(reg.regId) {
 				case 0: ret.reset(new Register(r0)); break;
@@ -293,7 +293,6 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 		ret.push_back(eidx(r0));
 		src_a.reset(new Register(r0));
 	} else {
-	breakpoint
 		src_a = encodeSrcReg(reg_a.reg);
 	}
 	assert(!(reg_b.reg.tag == SPECIAL && reg_b.reg.regId == SPECIAL_ELEM_NUM));
@@ -312,7 +311,6 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 		}
 		break;
 		case A_ADD: {
-			breakpoint
 			assert(dst_reg.get() != nullptr);
 			assert(src_a.get() != nullptr);
 			assert(src_b.get() != nullptr);
@@ -348,7 +346,24 @@ OpCodes encodeInstr(QPULib::Instr instr) {
   switch (instr.tag) {
     // Load immediate
     case LI: {
-			assert(false);  // TODO examine
+
+      uint32_t value = instr.LI.imm.intVal;
+			uint32_t rep_value;
+
+			switch (value) {
+				case 64:
+					rep_value = 0x42800000;
+					break;
+				default:
+					assert(false);
+			}
+
+			auto dst = encodeDestReg(instr);
+			SmallImm imm(rep_value);
+
+			breakpoint
+			ret.push_back(mov(*dst, imm));
+
 /*
       RegTag file;
       uint32_t cond = encodeAssignCond(instr.LI.cond) << 17;
@@ -400,6 +415,8 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 						breakpoint  // warn me if this happens
 					}
 					ret_instr = ldunifrf(rf_addr);
+					ret.push_back(ret_instr.code());
+					break;
       } else if (translateOpcode(instr, ret)) {
 				break; // All is well
       } else if (instr.ALU.op == M_ROTATE) {
@@ -565,6 +582,11 @@ OpCodes encodeInstr(QPULib::Instr instr) {
   		fprintf(stderr, "v3d: missing case in encodeInstr\n");
 		 	exit(EXIT_FAILURE);
   }
+
+
+	for (auto &instr : ret) {
+		instr.dump_mnemonic();
+	}
 
 	assert(!ret.empty());  // Something should really be returned back
 	return ret;

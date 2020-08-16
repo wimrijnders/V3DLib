@@ -150,6 +150,27 @@ int open_card(char const *card) {
 	return fd;
 }
 
+
+bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
+	assert(handle != 0);
+	assert(timeout_ns > 0);
+
+	st_v3d_wait_bo st = {
+		handle,
+		0,
+		timeout_ns,
+	};
+
+	int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
+	if (ret) {
+		printf("v3d_wait_bo() ioctl  error: ");
+		fflush(stdout);
+		perror(NULL);
+	}
+
+	return (ret == 0);
+}
+
 }  // anon namespace
 
 
@@ -238,28 +259,8 @@ bool v3d_unmap(uint32_t size, uint32_t handle,  void *usraddr) {
 }
 
 
-int v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
-	assert(handle != 0);
-	assert(timeout_ns > 0);
-
-	st_v3d_wait_bo st = {
-		handle,
-		0,
-		timeout_ns,
-	};
-
-	int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
-	if (ret) {
-		perror(NULL);
-		assert(false);
-	}
-
-	return ret;
-}
-
-
 /**
- * @return true if wait succeeded, false otherwise
+ * @return true if all waits succeeded, false otherwise
  */
 bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns) {
 	assert(bo_handles.size() > 0);
@@ -268,9 +269,7 @@ bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns) {
 	int ret = true;
 
 	for (auto handle : bo_handles) {
-		int result = v3d_wait_bo(handle, timeout_ns);
-		if (0 != result) {
-			printf("v3d_wait_bo() returned %d\n", ret);
+		if (!v3d_wait_bo(handle, timeout_ns)) { 
 			ret = false;
 		}
 	}

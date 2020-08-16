@@ -11,6 +11,8 @@ extern "C" {
 void instr_dump(char *buffer, struct v3d_qpu_instr *instr);
 bool instr_unpack(struct v3d_device_info const *devinfo, uint64_t packed_instr, struct v3d_qpu_instr *instr);
 uint64_t instr_pack(struct v3d_device_info const *devinfo, struct v3d_qpu_instr const *instr);
+void instr_dump_mnemonic(const struct v3d_qpu_instr *instr);
+bool small_imm_pack(uint32_t value, uint32_t *packed_small_immediate);
 
 #ifdef __cplusplus
 }

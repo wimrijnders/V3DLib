@@ -18,11 +18,18 @@ inline void debug(const char *str) {
 	printf("%s\n", str);
 }
 
+inline void debug_break(const char *str) {
+	printf("%s\n", str);
+	breakpoint
+}
+
 #else
 
 #define breakpoint
 
 inline void debug(const char *str) {}
+
+inline void debug_break(const char *str) {}
 
 #endif  // DEBUG
 

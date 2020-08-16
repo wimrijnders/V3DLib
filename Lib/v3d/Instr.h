@@ -27,7 +27,7 @@ protected:
 
 class SmallImm {
 public:
-	SmallImm(int val) : m_val(val) {}
+	SmallImm(int val) : m_val(val) { pack();}
 
 	uint8_t to_raddr() const;
 	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
@@ -40,7 +40,10 @@ public:
 
 private:
 	int m_val = 0;
+	uint8_t m_index = 0xff;  // init to illegal value
 	v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
+
+	void pack();
 };
 
 
@@ -103,24 +106,10 @@ public:
 	RFAddress(uint8_t val) : m_val(val) { m_is_rf = true; }
 
 	v3d_qpu_waddr to_waddr() const override { return (v3d_qpu_waddr) m_val; }
-	v3d_qpu_mux to_mux() const override { assert(false); return (v3d_qpu_mux) 0; } // Not expecting this to be called
+	v3d_qpu_mux to_mux() const override;
 
-	RFAddress l() const {
-		RFAddress ret(m_val);
-		ret.m_input_unpack = V3D_QPU_UNPACK_L;
-		ret.m_output_pack = V3D_QPU_PACK_L;
-		assert(ret.is_rf());
-
-		return ret;
-	}
-
-	RFAddress h() const {
-		RFAddress ret(m_val);
-		ret.m_input_unpack = V3D_QPU_UNPACK_H;
-		ret.m_output_pack = V3D_QPU_PACK_H;
-
-		return ret;
-	}
+	RFAddress l() const;
+	RFAddress h() const;
 
 private:
 	uint8_t m_val;
@@ -134,6 +123,7 @@ public:
 	Instr(uint64_t in_code = NOP);
 
 	std::string dump(bool to_stdout = false) const; 
+	void dump_mnemonic() const;
 	uint64_t code() const;
 	static void show(uint64_t in_code);
 
@@ -225,8 +215,8 @@ Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t ref_addr3);
 
 Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
 
-Instr mov(uint8_t rf_addr, uint8_t val);
-Instr mov(Register const &reg, uint8_t rf_addr);
+Instr mov(Location const &loc1, SmallImm val);
+Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
 
 Instr bor(Location const &rf_addr1, Location const &reg2, Location const &reg3);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);

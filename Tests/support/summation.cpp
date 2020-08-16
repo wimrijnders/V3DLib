@@ -748,7 +748,7 @@ ByteCode calc_stride(
 	if (num_qpus == 1) {
 		num_qpus_shift = 0;
 
-		ret << mov(reg_qpu_num, 0);
+		ret << mov(rf(reg_qpu_num), 0);
 	} else if (num_qpus == 8) {
 		num_qpus_shift = 3;
 
@@ -767,7 +767,7 @@ ByteCode calc_stride(
 	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0);
 
    // stride = 4 * 16 * num_qpus
-   ret << mov(reg_stride, 1)
+   ret << mov(rf(reg_stride), 1)
        << shl(reg_stride, reg_stride, 6 + num_qpus_shift);
 
 	// The QPU performs shifts and rotates modulo 32, so it actually supports
