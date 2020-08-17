@@ -1,6 +1,7 @@
 #ifndef _LIB_KERNELDRIVER_H
 #define _LIB_KERNELDRIVER_H
 #include <stdio.h>
+#include <string>
 #include "Target/CFG.h"
 #include "Common/SharedArray.h"
 
@@ -12,9 +13,11 @@ public:
 	virtual ~KernelDriver() {}
 
 	virtual void kernelFinish() {} 
-	virtual void encode(Seq<QPULib::Instr> &targetCode) = 0;
+	virtual void encode(int numQPUs, Seq<QPULib::Instr> &targetCode) = 0;
 	virtual void invoke(int numQPUs, Seq<int32_t>* params) = 0;
   virtual void pretty(FILE *f) { /* nothing to do yet */ }
+
+	bool handle_errors();
 
 	BufferType const buffer_type;
 
@@ -23,6 +26,7 @@ protected:
 	const int MAX_KERNEL_PARAMS = 128;
 
   int qpuCodeMemOffset = 0;
+	std::vector<std::string> errors;
 };
 
 }  // namespace QPULib

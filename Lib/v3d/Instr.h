@@ -243,25 +243,4 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 }  // v3d
 }  // QPULib
 
-
-//
-// Useful definitions for outputting opcodes
-// (pretty generic, though)
-// TODO: Find a better home for following
-//
-//using Vec = std::vector<uint64_t>;
-
-template<typename T>
-inline std::vector<T> &operator<<(std::vector<T> &a, T val) {
-	a.push_back(val);	
-	return a;
-}
-
-
-template<typename T>
-inline std::vector<T> &operator<<(std::vector<T> &a, std::vector<T> const &b) {
-	a.insert(a.end(), b.begin(), b.end());
-	return a;
-}
-
 #endif // _QPULIB_V3D_INSTR_H

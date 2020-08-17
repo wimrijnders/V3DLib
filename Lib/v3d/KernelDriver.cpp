@@ -1,20 +1,52 @@
 #include "KernelDriver.h"
 #include <memory>
+#include "../Support/basics.h"
 #include "Instr.h"
 #include "Invoke.h"
 
 #ifdef QPU_MODE
 
-namespace QPULib {
-namespace v3d {
-
 using namespace QPULib::v3d::instr;
 
-using OpCode = QPULib::v3d::instr::Instr;
+using OpCode  = QPULib::v3d::instr::Instr;
 using OpCodes = std::vector<OpCode>;
 
+namespace QPULib {
+namespace v3d {
+using namespace QPULib::v3d::instr;
+
+using OpCode  = QPULib::v3d::instr::Instr;
+using OpCodes = std::vector<OpCode>;
+
+static int local_numQPUs = 0;
+
+/**
+ * source:  https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L22
+ */
+static OpCodes get_num_qpus() {
+	assert(false);  // TODO
+	breakpoint
+	assert(local_numQPUs == 1 || local_numQPUs == 8);
+
+	OpCodes ret;
+
+/*
+	if (local_numQPUs == 1) {
+		ret << mov(r0, 0);
+	} else { //  num_qpus == 8
+		ret << tidx(r0)
+		    << shr(r0, r0, 2)
+		    << band(r0, r0, 0b1111);
+	}
+*/
+
+	return ret;
+}
+
+
+
 uint8_t const REGB_OFFSET = 32;
-uint8_t const NOP_ADDR = 39;
+uint8_t const NOP_ADDR    = 39;
 
 v3d_qpu_mul_op encodeMulOp(ALUOp in_op) {
 	v3d_qpu_mul_op op;
@@ -617,7 +649,12 @@ KernelDriver::~KernelDriver() {
 }
 
 
-void KernelDriver::encode(Seq<QPULib::Instr> &targetCode) {
+void KernelDriver::encode(int numQPUs, Seq<QPULib::Instr> &targetCode) {
+	if (numQPUs != 1 && numQPUs != 8) {
+		errors << "Num QPU's must be 1 or 8";
+		return;
+	}
+	local_numQPUs = numQPUs;
 
 	// Encode target instructions
 	std::vector<uint64_t> code;

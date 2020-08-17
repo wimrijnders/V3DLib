@@ -286,10 +286,11 @@ public:
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args, m_kernel_driver->buffer_type)...);
 
-		m_kernel_driver->encode(targetCode);
-
-    // Invoke kernel on QPUs
-		m_kernel_driver->invoke(numQPUs,  &uniforms);
+		m_kernel_driver->encode(numQPUs, targetCode);
+		if (!m_kernel_driver->handle_errors()) {
+    	// Invoke kernel on QPUs
+			m_kernel_driver->invoke(numQPUs,  &uniforms);
+		}
   }
 #endif  // QPU_MODE
  

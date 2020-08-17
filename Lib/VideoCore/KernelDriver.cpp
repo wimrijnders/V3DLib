@@ -22,7 +22,7 @@ void KernelDriver::kernelFinish() {
 }
 
 
-void KernelDriver::encode(Seq<Instr> &targetCode) {
+void KernelDriver::encode(int numQPUs, Seq<Instr> &targetCode) {
     // Encode target instrs into array of 32-bit ints
     Seq<uint32_t> code;
     QPULib::encode(&targetCode, &code);

@@ -17,10 +17,8 @@ public:
 	~KernelDriver() override;
 
 	void kernelFinish() override;
-	void encode(Seq<Instr> &targetCode) override;
+	void encode(int numQPUs, Seq<Instr> &targetCode) override;
 	void invoke(int numQPUs, Seq<int32_t>* params) override;
-
-	BufferType const buffer_type = BufferType::Vc4Buffer;
 
 private:
   // Memory region for QPU code and parameters
