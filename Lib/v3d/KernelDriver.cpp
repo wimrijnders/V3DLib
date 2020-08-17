@@ -290,7 +290,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 
 	if (reg_a.reg.tag == SPECIAL && reg_a.reg.regId == SPECIAL_ELEM_NUM) {
 		assert(!(reg_b.reg.tag == ACC && reg_b.reg.regId == 0));
-		ret.push_back(eidx(r0));
+		ret << eidx(r0);
 		src_a.reset(new Register(r0));
 	} else {
 		src_a = encodeSrcReg(reg_a.reg);
@@ -307,21 +307,21 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 			assert(reg_b.tag == IMM); 
 			SmallImm imm(reg_b.smallImm.val);
 
-			ret.push_back(shl(*dst_reg, *src_a, imm));
+			ret << shl(*dst_reg, *src_a, imm);
 		}
 		break;
 		case A_ADD: {
 			assert(dst_reg.get() != nullptr);
 			assert(src_a.get() != nullptr);
 			assert(src_b.get() != nullptr);
-			ret.push_back(add(*dst_reg, *src_a, *src_b));
+			ret << add(*dst_reg, *src_a, *src_b);
 		}
 		break;
 		case A_BOR: {
 			assert(dst_reg.get() != nullptr);
 			assert(src_a.get() != nullptr);
 			assert(src_b.get() != nullptr);
-			ret.push_back(bor(*dst_reg, *src_a, *src_b));
+			ret << bor(*dst_reg, *src_a, *src_b);
 		}
 		break;
 		default:
@@ -353,35 +353,21 @@ OpCodes encodeInstr(QPULib::Instr instr) {
   switch (instr.tag) {
     // Load immediate
     case LI: {
-
-      uint32_t value = instr.LI.imm.intVal;
-			uint32_t rep_value;
-
-			switch (value) {
-				case 16:
-					rep_value = 0x41800000;
-					break;
-				case 64:
-					rep_value = 0x42800000;
-					break;
-				default:
-					assert(false);
+			int rep_value;
+			if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
+				assert(false);
 			}
 
 			auto dst = encodeDestReg(instr);
 			SmallImm imm(rep_value);
 
-			ret.push_back(mov(*dst, imm));
+			ret << mov(*dst, imm);
 
 /*
       RegTag file;
       uint32_t cond = encodeAssignCond(instr.LI.cond) << 17;
-      uint32_t waddr_add = encodeDestReg(instr.LI.dest, &file) << 6;
-      uint32_t waddr_mul = 39;
-      uint32_t ws   = (file == REG_A ? 0 : 1) << 12;
       uint32_t sf   = (instr.LI.setFlags ? 1 : 0) << 13;
       *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
-      *low          = (uint32_t) instr.LI.imm.intVal;
 */
     }
 		break;
@@ -424,7 +410,7 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 						breakpoint  // warn me if this happens
 					}
 					ret_instr = ldunifrf(rf_addr);
-					ret.push_back(ret_instr);
+					ret << ret_instr;
 					break;
       } else if (translateOpcode(instr, ret)) {
 				break; // All is well
@@ -539,14 +525,14 @@ OpCodes encodeInstr(QPULib::Instr instr) {
       }
 
 			ret_instr.dump(true);
-			ret.push_back(ret_instr);  // NOTE: added by WR
+			ret << ret_instr;
     }
 		break;
 
     // Halt
     case END:
     case TMU0_TO_ACC4: {
-			ret.push_back(nop().ldtmu(r4));  // NOTE: added by WR
+			ret << nop().ldtmu(r4);  // NOTE: added by WR
 /*
       uint32_t waddr_add = 39 << 6;
       uint32_t waddr_mul = 39;
@@ -576,7 +562,7 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 
     // No-op & print instructions (ignored)
     case NO_OP:
-			ret.push_back(nop());
+			ret << nop();
 			break;
 
     case PRI:
@@ -617,7 +603,7 @@ void _encode(Seq<QPULib::Instr> &instrs, std::vector<uint64_t> &code) {
   }
 
 	for (auto const &opcode : opcodes) {
-		code.push_back(opcode.code());
+		code << opcode.code();
 	}
 }
 

@@ -27,16 +27,14 @@ protected:
 
 class SmallImm {
 public:
-	SmallImm(int val) : m_val(val) { pack();}
+	SmallImm(int val) : m_val(val) { pack(); }
 
 	uint8_t to_raddr() const;
 	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
 
-	SmallImm l() const {
-		SmallImm ret(*this);
-		ret.m_input_unpack = V3D_QPU_UNPACK_L;
-		return ret;
-	}
+	SmallImm l() const;
+
+	static bool to_opcode_value(float value, int &rep_value);
 
 private:
 	int m_val = 0;
@@ -246,17 +244,22 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 }  // QPULib
 
 
+//
 // Useful definitions for outputting opcodes
 // (pretty generic, though)
-using Vec = std::vector<uint64_t>;
+// TODO: Find a better home for following
+//
+//using Vec = std::vector<uint64_t>;
 
-inline Vec &operator<<(Vec &a, uint64_t val) {
+template<typename T>
+inline std::vector<T> &operator<<(std::vector<T> &a, T val) {
 	a.push_back(val);	
 	return a;
 }
 
 
-inline Vec &operator<<(Vec &a, Vec const &b) {
+template<typename T>
+inline std::vector<T> &operator<<(std::vector<T> &a, std::vector<T> const &b) {
 	a.insert(a.end(), b.begin(), b.end());
 	return a;
 }

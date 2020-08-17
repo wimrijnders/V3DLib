@@ -13,12 +13,7 @@ bool is_power_of_2(int x) {
     return x > 0 && !(x & (x - 1));
 }
 
-
-const int SMALLIMM_SIZE = 32;
-int smallimm_values[SMALLIMM_SIZE] = {
-		0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
-		-16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1};
-}  // anon namespace
+}
 
 
 namespace QPULib {
@@ -36,17 +31,37 @@ struct Exception : public std::exception {
 // Class SmallImm
 ///////////////////////////////////////////////////////////////////////////////
 
-uint8_t SmallImm::to_raddr() const {
-/*
-	assert(-16 <= m_val && m_val <= 15);
+bool SmallImm::to_opcode_value(float value, int &rep_value) {
+	bool converted  = true;
 
-	for (uint8_t index = 0; index < SMALLIMM_SIZE; ++index) {
-		if (smallimm_values[index] == m_val) {
-			return index;
-		}
+	// The first small values pass through as is
+	// Note that this negates usage of next 4 if-s.
+	if (-16 <= value && value <= 15) {
+		rep_value = (int) value;
 	}
-*/
+	else if (value ==   1) rep_value = 0x3f800000; /* 2.0^0 */
+	else if (value ==   2) rep_value = 0x40000000; /* 2.0^1 */
+	else if (value ==   4) rep_value = 0x40800000; /* 2.0^2 */
+	else if (value ==   8) rep_value = 0x41000000; /* 2.0^3 */
+	else if (value ==  16) rep_value = 0x41800000; /* 2.0^4 */
+	else if (value ==  32) rep_value = 0x42000000; /* 2.0^5 */
+	else if (value ==  64) rep_value = 0x42800000; /* 2.0^6 */
+	else if (value == 128) rep_value = 0x43000000; /* 2.0^7 */
+	else if (value == 2e-8f) rep_value = 0x3b800000; /* 2.0^-8 */
+	else if (value == 2e-7f) rep_value = 0x3c000000; /* 2.0^-7 */
+	else if (value == 2e-6f) rep_value = 0x3c800000; /* 2.0^-6 */
+	else if (value == 2e-5f) rep_value = 0x3d000000; /* 2.0^-5 */
+	else if (value == 2e-4f) rep_value = 0x3d800000; /* 2.0^-4 */
+	else if (value == 2e-3f) rep_value = 0x3e000000; /* 2.0^-3 */
+	else if (value == 2e-2f) rep_value = 0x3e800000; /* 2.0^-2 */
+	else if (value == 2e-1f) rep_value = 0x3f000000; /* 2.0^-1 */
+	else converted = false;
 
+	return converted;
+}
+
+
+uint8_t SmallImm::to_raddr() const {
 	assert(m_index != 0xff);
 	return m_index;
 }
@@ -61,6 +76,13 @@ void SmallImm::pack() {
 	} else {
 		assert(false);
 	}
+}
+
+
+SmallImm SmallImm::l() const {
+	SmallImm ret(*this);
+	ret.m_input_unpack = V3D_QPU_UNPACK_L;
+	return ret;
 }
 
 
@@ -485,11 +507,17 @@ void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location con
 		alu.add.a     = loc2.to_mux();
 	}
 
-	alu.add.b     = loc3.to_mux();
+	if (loc3.is_rf()) {
+		raddr_b          = loc3.to_waddr(); 
+		alu.add.b        = V3D_QPU_MUX_B;
+	} else {
+		alu.add.b        = loc3.to_mux();
+		alu.add.b_unpack = loc3.input_unpack();
+	}
+
 	alu.add.waddr = loc1.to_waddr();
 	alu.add.output_pack = loc1.output_pack();
 	alu.add.a_unpack = loc2.input_unpack();
-	alu.add.b_unpack = loc3.input_unpack();
 }
 
 
@@ -671,6 +699,9 @@ Instr add(Location const &loc1, Location const &loc2, Location const &loc3) {
 
 // TODO: consolidate with first implementation
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
+	// Following is the goal, does not work yet (hangs the QPU)
+	//return add(rf(rf_addr1), rf(rf_addr2), reg3);
+
 	Instr instr;
 
 	instr.raddr_a       = rf_addr1; 
