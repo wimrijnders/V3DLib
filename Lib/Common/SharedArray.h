@@ -202,7 +202,6 @@ public:
 			break;
 #ifdef USE_V3D_BUFFERS
 		case V3dBuffer:
-			breakpoint
 			ret = &m_v3d_array[i];
 			break;
 #endif

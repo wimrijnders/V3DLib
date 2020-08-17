@@ -48,7 +48,7 @@ private:
 class Register : public Location {
 public: 
 	Register(const char *name, v3d_qpu_waddr waddr_val);
-	Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val);
+	Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val, bool is_dest_acc = false);
 
 	v3d_qpu_waddr to_waddr() const override { return m_waddr_val; }
 	v3d_qpu_mux to_mux() const override;
@@ -91,11 +91,14 @@ public:
 		return ret;
 	}
 
+	bool is_dest_acc() const { return m_is_dest_acc; }
+
 private:
 	std::string   m_name;
 	v3d_qpu_waddr m_waddr_val;
 	v3d_qpu_mux   m_mux_val;
-	bool          m_mux_is_set = false;
+	bool          m_mux_is_set  = false;
+	bool          m_is_dest_acc = false;
 };
 
 
@@ -121,7 +124,7 @@ public:
 	Instr(uint64_t in_code = NOP);
 
 	std::string dump(bool to_stdout = false) const; 
-	void dump_mnemonic() const;
+	std::string mnemonic() const;
 	uint64_t code() const;
 	static void show(uint64_t in_code);
 
@@ -166,6 +169,7 @@ public:
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
+	void alu_add_set_dst(Location const &loc1); 
 	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_mul_set(Location const &loc11, Location const &loc2, Location const &loc3); 
 
@@ -204,7 +208,7 @@ Instr shl(Location const &reg1, Location const & reg2, SmallImm val);
 Instr shl(Register const &reg1, uint8_t rf_addr, uint8_t val);
 Instr shl(uint8_t rf_addr1, uint8_t rf_addr2, int val);
 
-Instr band(uint8_t rf_address, Register const &reg, uint8_t val);
+Instr band(Location const &loc1, Register const &reg, uint8_t val);
 Instr eidx(Register const &reg);
 
 Instr add(Location const &loc1, Location const &loc2, Location const &loc3);

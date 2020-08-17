@@ -19,10 +19,12 @@
 #ifdef QPU_MODE
 #include <sys/time.h>
 #include <cstring>
+#include <iostream>
 #include "v3d/SharedArray.h"
 #include "v3d/v3d.h"
 #include "v3d/Instr.h"
 #include "v3d/Driver.h"
+#include "../Lib/Support/basics.h"
 #include "debug.h"
 #include "Support/Platform.h"
 #include "support/summation.h"
@@ -385,6 +387,8 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
+	using namespace QPULib::v3d::instr;
+
 	SECTION("Correct output of dump program") {
 		struct v3d_device_info devinfo;  // NOTE: uninitialized struct! For test OK
 		devinfo.ver = 42;               //        <-- only this needs to be set
@@ -417,7 +421,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 	}
 
 
-	SECTION("Summation kernel generates correct assembled output") {
+	SECTION("Summation kernel generates correctly encoded output") {
 		std::vector<uint64_t> arr = summation_kernel(8, 5, 0);
 		REQUIRE(arr.size() > 0);
 
@@ -440,6 +444,28 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 	}
 
 
+	SECTION("Selected opcode should be encoded correctly") {
+		using std::cout;
+		using std::endl;
+		printf("Selected opcode should be encoded correctly\n");
+
+		std::vector<std::string> expected = {
+			"and  rf0, r0, 15     ; nop",
+			"and  r1, r0, 15      ; nop"
+		};
+
+		std::vector<Instr> instrs; 
+
+		instrs << band(rf(0), r0, 0b1111)
+		       << band(r1, r0, 0b1111);
+
+		for (int n = 0; n < instrs.size(); ++n) {
+			cout << instrs[n].mnemonic() << endl;
+			REQUIRE(instrs[n].mnemonic() == expected[n]);
+		}
+	}
+
+
 	SECTION("Opcode compare should work") {
 		using namespace QPULib::v3d::instr;
 
@@ -453,7 +479,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 	}
 
 
-	SECTION("qpu_disasm opcodes should be constructed correctly in kernel") {
+	SECTION("qpu_disasm kernel generates correctly encoded output") {
 		auto &bytecode      = qpu_disasm_bytecode();
 		auto  kernel_output = qpu_disasm_kernel();
 		REQUIRE(kernel_output.size() > 0);

@@ -1,5 +1,6 @@
 #include "KernelDriver.h"
 #include <memory>
+#include <iostream>
 #include "../Support/basics.h"
 #include "Instr.h"
 #include "Invoke.h"
@@ -7,7 +8,8 @@
 #ifdef QPU_MODE
 
 using namespace QPULib::v3d::instr;
-
+using std::cout;
+using std::endl;
 using OpCode  = QPULib::v3d::instr::Instr;
 using OpCodes = std::vector<OpCode>;
 
@@ -23,22 +25,20 @@ static int local_numQPUs = 0;
 /**
  * source:  https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L22
  */
-static OpCodes get_num_qpus() {
-	assert(false);  // TODO
+static OpCodes get_num_qpus(Register const &reg) {
 	breakpoint
 	assert(local_numQPUs == 1 || local_numQPUs == 8);
+	assert(reg.is_dest_acc());
 
 	OpCodes ret;
 
-/*
 	if (local_numQPUs == 1) {
-		ret << mov(r0, 0);
+		ret << mov(reg, 0);
 	} else { //  num_qpus == 8
-		ret << tidx(r0)
-		    << shr(r0, r0, 2)
-		    << band(r0, r0, 0b1111);
+		ret << tidx(reg)
+		    << shr(reg, reg, 2)
+		    << band(reg, reg, 0b1111);
 	}
-*/
 
 	return ret;
 }
@@ -319,6 +319,12 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 	auto dst_reg = encodeDestReg(src_instr);
 
 	std::unique_ptr<Location> src_a;
+
+	assert(false);  // TODO
+	// Add handling of SPECIAL_QPU_NUM here
+	// Use: get_num_qpus(r1)
+	// NOTE: Need a way to determine if passed register (which must be a destionation accumulator: r0-r4)
+	//       Is safe to use.
 
 	if (reg_a.reg.tag == SPECIAL && reg_a.reg.regId == SPECIAL_ELEM_NUM) {
 		assert(!(reg_b.reg.tag == ACC && reg_b.reg.regId == 0));
@@ -616,7 +622,7 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 
 
 	for (auto &instr : ret) {
-		instr.dump_mnemonic();
+		cout << instr.mnemonic() << endl;
 	}
 
 	assert(!ret.empty());  // Something should really be returned back

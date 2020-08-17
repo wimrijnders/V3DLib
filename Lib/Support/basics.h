@@ -1,7 +1,11 @@
 #ifndef _LIB_SUPPORT_BASICS_h
 #define _LIB_SUPPORT_BASICS_h
+#include <string>
+#include <vector>
 
+//
 // Convenience definitions
+//
 
 template<typename T>
 inline std::vector<T> &operator<<(std::vector<T> &a, T val) {

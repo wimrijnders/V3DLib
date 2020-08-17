@@ -3,6 +3,7 @@
 #include <string.h>
 #include "dump_instr.h"
 #include "broadcom/qpu/qpu_disasm.h"
+#include "util/ralloc.h"  // ralloc_free()
 
 static const struct v3d_qpu_alu_instr ALU_NOP = {
     add: {
@@ -488,10 +489,17 @@ uint64_t instr_pack(struct v3d_device_info const *devinfo, struct v3d_qpu_instr 
 }
 
 
-void instr_dump_mnemonic(const struct v3d_qpu_instr *instr) {
+const char *instr_mnemonic(const struct v3d_qpu_instr *instr) {
+	static char buffer[256];
+
 	struct v3d_device_info devinfo;
 	devinfo.ver = 42;
-	v3d_qpu_dump(&devinfo, instr);
+
+	const char *decoded = v3d_qpu_decode(&devinfo, instr);
+	snprintf(buffer, 256, decoded);
+	ralloc_free((char *)decoded);
+
+	return buffer;
 }
 
 bool small_imm_pack(uint32_t value, uint32_t *packed_small_immediate) {

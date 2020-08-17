@@ -1,5 +1,6 @@
 #include "v3d/Instr.h"
 #include <cstdio>
+#include "../../Lib/Support/basics.h"
 #include "summation.h"
 
 std::vector<uint64_t> summation = {
@@ -707,10 +708,11 @@ namespace {
 
 using namespace QPULib::v3d::instr;
 using ByteCode = std::vector<uint64_t>; 
+using Instructions = std::vector<Instr>; 
 
 
-ByteCode end_program() {
-	ByteCode ret;
+Instructions end_program() {
+	Instructions ret;
 
 	// Program tail
 	ret << nop().thrsw(true)
@@ -732,7 +734,7 @@ ByteCode end_program() {
  * Also sets the address offset for src and dsg registers
  * (Would prefer to have that outside of this routine)
  */
-ByteCode calc_stride(
+Instructions calc_stride(
 	uint8_t num_qpus,
 	int     unroll_shift,
 	uint8_t reg_qpu_num,
@@ -741,7 +743,7 @@ ByteCode calc_stride(
 	uint8_t reg_stride,
 	uint8_t reg_length
 ) {
-	ByteCode ret;
+	Instructions ret;
 
 	uint8_t num_qpus_shift = 0;
 
@@ -754,7 +756,7 @@ ByteCode calc_stride(
 
 		ret << tidx(r0)
 		    << shr(r0, r0, 2)
-		    << band(reg_qpu_num, r0, 0b1111);
+		    << band(rf(reg_qpu_num), r0, 0b1111);
 	} else {
 		assert(false);  // num_qpus must be 1 or 8
 	}
@@ -786,8 +788,8 @@ ByteCode calc_stride(
 /**
  * An instruction is passed in to make use of a waiting slot.
  */
-ByteCode enable_tmu_read(Instr const &last_slot) {
-	ByteCode ret;
+Instructions enable_tmu_read(Instr const &last_slot) {
+	Instructions ret;
 
 	// This single thread switch and two instructions just before the loop are
 	// really important for TMU read to achieve a better performance.
@@ -801,8 +803,8 @@ ByteCode enable_tmu_read(Instr const &last_slot) {
 }
 
 
-ByteCode sync_tmu() {
-	ByteCode ret;
+Instructions sync_tmu() {
+	Instructions ret;
 
 	// This synchronization is needed between the last TMU operation and the
 	// program end with the thread switch just before the loop above.
@@ -817,8 +819,8 @@ ByteCode sync_tmu() {
 /**
  * @param code_offset  absolute offset of current instruction in the BO
  */
-ByteCode align_code(int code_offset, int target_offset) {
-	ByteCode ret;
+Instructions align_code(int code_offset, int target_offset) {
+	Instructions ret;
 
 	// This was actually the default of a parameter in the python version
 	auto align_cond = [target_offset] (int pos) -> bool {
@@ -834,8 +836,8 @@ ByteCode align_code(int code_offset, int target_offset) {
 }
 
 
-ByteCode emit_unroll(int unroll, ByteCode block) {
-	ByteCode ret;
+Instructions emit_unroll(int unroll, Instructions block) {
+	Instructions ret;
 
 	for (int j = 0; j < unroll - 1; ++j) {
 		for (int i = 0; i < 8; ++i) {
@@ -854,10 +856,10 @@ ByteCode emit_unroll(int unroll, ByteCode block) {
  *
  * Source: https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L11
  */
-std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
+ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	using namespace QPULib::v3d::instr;
 
-	std::vector<uint64_t> ret;
+	Instructions ret;
 	int unroll = 1 << unroll_shift;
 
 	// adresses of uniforms in the register file
@@ -931,5 +933,10 @@ std::vector<uint64_t> summation_kernel(uint8_t num_qpus, int unroll_shift, int c
 	    << sync_tmu()
 	    << end_program();
 
-	return ret;
+	ByteCode bytecode;
+	for (auto const &instr : ret) {
+		bytecode << instr.code(); 
+	}
+
+	return bytecode;
 }

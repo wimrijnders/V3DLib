@@ -98,11 +98,12 @@ Register::Register(const char *name, v3d_qpu_waddr waddr_val) :
 {}
 
 
-Register::Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val) :
+Register::Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val, bool is_dest_acc) :
 	m_name(name),
 	m_waddr_val(waddr_val),
 	m_mux_val(mux_val),
-	m_mux_is_set(true)
+	m_mux_is_set(true),
+	m_is_dest_acc(is_dest_acc)
 {}
 
 
@@ -117,11 +118,11 @@ v3d_qpu_mux Register::to_mux() const {
 }
 
 
-Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0);
-Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1);
-Register const r2("r2", V3D_QPU_WADDR_R2, V3D_QPU_MUX_R2);
-Register const r3("r3", V3D_QPU_WADDR_R3, V3D_QPU_MUX_R3);
-Register const r4("r4", V3D_QPU_WADDR_R4, V3D_QPU_MUX_R4);
+Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0, true);
+Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1, true);
+Register const r2("r2", V3D_QPU_WADDR_R2, V3D_QPU_MUX_R2, true);
+Register const r3("r3", V3D_QPU_WADDR_R3, V3D_QPU_MUX_R3, true);
+Register const r4("r4", V3D_QPU_WADDR_R4, V3D_QPU_MUX_R4, true);
 Register const r5("r5", V3D_QPU_WADDR_R5, V3D_QPU_MUX_R5);
 Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
 Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
@@ -183,9 +184,9 @@ std::string Instr::dump(bool to_stdout) const {
 }
 
 
-void Instr::dump_mnemonic() const {
-	instr_dump_mnemonic(this);
-	printf("\n");
+std::string Instr::mnemonic() const {
+	std::string ret = instr_mnemonic(this);
+	return ret;
 }
 
 
@@ -493,12 +494,19 @@ Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register con
 }
 
 
-void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+void Instr::alu_add_set_dst(Location const &loc1) {
 	if (loc1.is_rf()) {
 		alu.add.magic_write = false;
 	} else {
 		alu.add.magic_write = true;
 	}
+
+	alu.add.waddr = loc1.to_waddr();
+	alu.add.output_pack = loc1.output_pack();
+}
+
+void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+	alu_add_set_dst(loc1);
 
 	if (loc2.is_rf()) {
 		raddr_a = loc2.to_waddr();
@@ -515,8 +523,6 @@ void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location con
 		alu.add.b_unpack = loc3.input_unpack();
 	}
 
-	alu.add.waddr = loc1.to_waddr();
-	alu.add.output_pack = loc1.output_pack();
 	alu.add.a_unpack = loc2.input_unpack();
 }
 
@@ -643,16 +649,15 @@ Instr shl(uint8_t rf_addr1, uint8_t rf_addr2, int  val) {
 }
 
 // 'and' is a keyword
-Instr band(uint8_t rf_address, Register const &reg, uint8_t val) {
+Instr band(Location const &loc1, Register const &reg, uint8_t val) {
 	Instr instr;
+	instr.alu_add_set_dst(loc1);
 
 	instr.sig.small_imm = true; 
 	instr.raddr_b       = val; 
 	instr.alu.add.op    = V3D_QPU_A_AND;
-	instr.alu.add.waddr = rf_address;
 	instr.alu.add.a     = reg.to_mux();
 	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.magic_write = false;
 
 	return instr;
 }

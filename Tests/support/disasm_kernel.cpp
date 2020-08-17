@@ -1,4 +1,5 @@
 #include "disasm_kernel.h"
+#include "../../Lib/Support/basics.h"
 #include "v3d/Instr.h"
 #include "qpu_disasm.h"
 
@@ -40,7 +41,7 @@ std::vector<uint64_t> &qpu_disasm_bytecode() {
 std::vector<uint64_t> qpu_disasm_kernel() {
 	using namespace QPULib::v3d::instr;
 
-	std::vector<uint64_t> ret;
+	std::vector<Instr> ret;
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
@@ -146,5 +147,10 @@ std::vector<uint64_t> qpu_disasm_kernel() {
         { 42, 0x3c203192bb814000ull, "barrierid  syncb     ; nop               ; thrsw" },
 #endif
 
-	return ret;
+	std::vector<uint64_t> bytecode;
+	for (auto const &instr : ret) {
+		bytecode << instr.code(); 
+	}
+
+	return bytecode;
 }
