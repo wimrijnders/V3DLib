@@ -1,7 +1,7 @@
 #ifdef QPU_MODE
 
-#ifndef _QPULIB_INVOKE_H_
-#define _QPULIB_INVOKE_H_
+#ifndef _QPULIB_VC4_INVOKE_H_
+#define _QPULIB_VC4_INVOKE_H_
 
 #include "Common/Seq.h"
 #include "SharedArray.h"
@@ -17,5 +17,5 @@ void invoke(
 
 }  // namespace QPULib
 
-#endif  // _QPULIB_INVOKE_H_
+#endif  // _QPULIB_VC4_INVOKE_H_
 #endif  // QPU_MODE

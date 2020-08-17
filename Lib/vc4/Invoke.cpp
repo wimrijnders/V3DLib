@@ -2,7 +2,7 @@
 
 #include "Invoke.h"
 #include "Mailbox.h"
-#include "VideoCore.h"
+#include "vc4.h"
 
 #define QPU_TIMEOUT 10000
 
@@ -14,7 +14,7 @@ void invoke(
   int qpuCodeMemOffset,
   Seq<int32_t>* params)
 {
-  // Open mailbox for talking to VideoCore
+  // Open mailbox for talking to vc4
   int mb = getMailbox();
 
   // Number of 32-bit words needed for kernel code & parameters

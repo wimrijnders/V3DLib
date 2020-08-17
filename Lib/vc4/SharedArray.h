@@ -4,8 +4,8 @@
 #include <cstdlib>  // exit(), EXIT_FAILURE
 #include <stdint.h>
 #include <stdio.h>
-#include "VideoCore/Mailbox.h"
-#include "VideoCore/VideoCore.h"
+#include "Mailbox.h"
+#include "vc4.h"
 
 #ifdef QPU_MODE
 
@@ -44,8 +44,7 @@ template <typename T> class SharedArray {
 			return;
 		}
 
-    // Mailbox, for talking to VideoCore
-    int mb = getMailbox();
+    int mb = getMailbox();  // Mailbox, for talking to vc4
 
     // Allocate memory
     handle = mem_alloc(mb, n*4, 4096, GPU_MEM_FLG);
@@ -77,8 +76,7 @@ template <typename T> class SharedArray {
 
   // Deallocation
   void dealloc() {
-    // Mailbox, for talking to VideoCore
-    int mb = getMailbox();
+    int mb = getMailbox();  // Mailbox, for talking to vc4
 
     // Free memory
     if (arm_base) unmapmem(arm_base, m_size);

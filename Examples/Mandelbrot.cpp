@@ -11,7 +11,7 @@
 #include <string>
 #include <QPULib.h>
 #include <CmdParameters.h>
-#include "VideoCore/RegisterMap.h"
+#include "vc4/RegisterMap.h"
 
 
 using namespace QPULib;

@@ -1,7 +1,7 @@
 #ifdef QPU_MODE
 
-#ifndef _QPULIB_REGISTERMAP_H
-#define _QPULIB_REGISTERMAP_H
+#ifndef _QPULIB_VC4_REGISTERMAP_H
+#define _QPULIB_VC4_REGISTERMAP_H
 #include <memory>
 #include <stdint.h>
 
@@ -32,7 +32,7 @@ struct SchedulerRegisterValues {
 
 
 /**
- * @brief interface for the VideoCore registers.
+ * @brief interface for the vc4 registers.
  *
  * This implementation is far from complete.
  * The reading of more registers can be added as needed.
@@ -147,6 +147,5 @@ private:
 
 }  // namespace QPULib
 
-#endif  // _QPULIB_REGISTERMAP_H
-
+#endif  // _QPULIB_VC4_REGISTERMAP_H
 #endif  // QPU_MODE

@@ -3,8 +3,8 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include "VideoCore/VideoCore.h"
-#include "VideoCore/Mailbox.h"
+#include "vc4.h"
+#include "Mailbox.h"
 
 namespace QPULib {
 

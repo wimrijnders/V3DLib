@@ -4,11 +4,11 @@
 #include "Target/Emulator.h"
 #include "Common/SharedArray.h"
 #include "v3d/Invoke.h"
-#include "VideoCore/VideoCore.h"
+#include "vc4/vc4.h"
 #include "Source/Pretty.h"
 #include "Target/Pretty.h"
 #include "Support/Platform.h"
-#include  "VideoCore/KernelDriver.h"
+#include  "vc4/KernelDriver.h"
 #include  "v3d/KernelDriver.h"
 
 namespace QPULib {
@@ -24,8 +24,8 @@ namespace QPULib {
 
 // IN EMULATION_MODE a memory pool is used for allocating data that
 // can be read by kernels.  Otherwise, a mailbox interface to the
-// VideoCore is used to allocate memory.  In both cases, see
-// 'VideoCore/SharedArray.h'.
+// vc4 is used to allocate memory.  In both cases, see
+// 'vc4/SharedArray.h'.
 
 // The 'Kernel' class provides various ways to invoke a kernel:
 //

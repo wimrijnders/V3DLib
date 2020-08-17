@@ -1,7 +1,7 @@
 #ifdef QPU_MODE
 
-#ifndef _QPULIB_PERFORMANCECOUNTERS_H
-#define _QPULIB_PERFORMANCECOUNTERS_H
+#ifndef _QPULIB_VC4_PERFORMANCECOUNTERS_H
+#define _QPULIB_VC4_PERFORMANCECOUNTERS_H
 #include <string.h>
 #include "RegisterMap.h"
 
@@ -80,6 +80,6 @@ class PerformanceCounters {
 
 }  // namespace QPULib
 
-#endif  // _QPULIB_PERFORMANCECOUNTERS_H
+#endif  // _QPULIB_VC4_PERFORMANCECOUNTERS_H
 
 #endif  // QPU_MODE

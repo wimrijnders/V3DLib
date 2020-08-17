@@ -6,7 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include "RegisterMapping.h"
-#include "../VideoCore/Mailbox.h"  // for mapmem()
+#include "../vc4/Mailbox.h"  // for mapmem()
 
 
 namespace {

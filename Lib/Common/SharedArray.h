@@ -7,8 +7,8 @@ This is not the case for QPU mode SharedArray's
 There is no way to use the QPU mode SharedArray without a serious rewrite.
 
 */
-#ifndef _QPULIB_SHAREDARRAY_H_
-#define _QPULIB_SHAREDARRAY_H_
+#ifndef _QPULIB_COMMON_SHAREDARRAY_H_
+#define _QPULIB_COMMON_SHAREDARRAY_H_
 #include <debug.h>
 
 //
@@ -40,7 +40,7 @@ using SharedArray=Target::SharedArray<T>;
 }  // QPULib
 
 #else  // QPU_MODE
-#include "../VideoCore/SharedArray.h"
+#include "../vc4/SharedArray.h"
 
 #ifdef USE_V3D_BUFFERS
 #include "../v3d/SharedArray.h"
@@ -274,5 +274,4 @@ private:
 }  // QPULib
 
 #endif  // QPU_MODE
-
-#endif  // _QPULIB_SHAREDARRAY_H_
+#endif  // _QPULIB_COMMON_SHAREDARRAY_H_

@@ -5,8 +5,8 @@
 #include <CmdParameters.h>
 #include "QPULib.h"
 #include "Support/Platform.h"
-#include "VideoCore/VideoCore.h"
-#include "VideoCore/RegisterMap.h"
+#include "vc4/vc4.h"
+#include "vc4/RegisterMap.h"
 #include "v3d/RegisterMapping.h"
 
 using namespace QPULib;

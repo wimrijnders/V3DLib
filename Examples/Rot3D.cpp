@@ -4,7 +4,7 @@
 #include <QPULib.h>
 #include <CmdParameters.h>
 #ifdef QPU_MODE
-#include "VideoCore/PerformanceCounters.h"
+#include "vc4/PerformanceCounters.h"
 #endif  // QPU_MODE
 
 using namespace QPULib;

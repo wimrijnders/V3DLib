@@ -15,7 +15,7 @@
 #include <cstdlib>
 #ifdef QPU_MODE
 #include "../Lib/Target/Emulator.h"  // MAX_QPUS
-#include "../Lib/VideoCore/RegisterMap.h"
+#include "../Lib/vc4/RegisterMap.h"
 #include "../Lib/v3d/RegisterMapping.h"
 #include "../Lib/Support/Platform.h"
 
