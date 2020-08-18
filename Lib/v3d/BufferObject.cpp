@@ -1,7 +1,7 @@
 #include "BufferObject.h"
-#include "../debug.h"
-#include "v3d.h"
+#include "../Support/debug.h"
 #include "../Support/Platform.h"  // has_vc4() 
+#include "v3d.h"
 
 namespace QPULib {
 namespace v3d {

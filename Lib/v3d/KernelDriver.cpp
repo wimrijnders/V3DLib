@@ -2,7 +2,7 @@
 #include <memory>
 #include <iostream>
 #include "../Support/basics.h"
-#include "Instr.h"
+#include "instr/Instr.h"
 #include "Invoke.h"
 
 #ifdef QPU_MODE

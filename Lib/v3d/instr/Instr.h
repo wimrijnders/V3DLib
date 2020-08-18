@@ -1,120 +1,15 @@
-#ifndef _QPULIB_V3D_INSTR_H
-#define _QPULIB_V3D_INSTR_H
+#ifndef _QPULIB_V3D_INSTR_INSTR_H
+#define _QPULIB_V3D_INSTR_INSTR_H
 #include <cstdint>
 #include <string>
 #include <vector>
-#include "dump_instr.h"
+#include "SmallImm.h"
+#include "Register.h"
+#include "RFAddress.h"
 
 namespace QPULib {
 namespace v3d {
 namespace instr {
-
-class Location {
-public:
-	virtual v3d_qpu_waddr to_waddr() const = 0;
-	virtual v3d_qpu_mux to_mux() const = 0;
-
-	v3d_qpu_output_pack output_pack() const { return m_output_pack; }
-	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
-	bool is_rf() const { return m_is_rf; }
-
-protected:
-	v3d_qpu_output_pack m_output_pack = V3D_QPU_PACK_NONE;
-	v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
-	bool m_is_rf = false;
-};
-
-
-class SmallImm {
-public:
-	SmallImm(int val) : m_val(val) { pack(); }
-
-	uint8_t to_raddr() const;
-	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
-
-	SmallImm l() const;
-
-	static bool to_opcode_value(float value, int &rep_value);
-
-private:
-	int m_val = 0;
-	uint8_t m_index = 0xff;  // init to illegal value
-	v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
-
-	void pack();
-};
-
-
-class Register : public Location {
-public: 
-	Register(const char *name, v3d_qpu_waddr waddr_val);
-	Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val, bool is_dest_acc = false);
-
-	v3d_qpu_waddr to_waddr() const override { return m_waddr_val; }
-	v3d_qpu_mux to_mux() const override;
-
-	Register l() const {
-		Register ret(*this);
-		ret.m_input_unpack = V3D_QPU_UNPACK_L;
-		ret.m_output_pack  = V3D_QPU_PACK_L;
-		return ret;
-	}
-
-	Register ll() const {
-		Register ret(*this);
-		ret.m_input_unpack = V3D_QPU_UNPACK_REPLICATE_L_16;
-		return ret;
-	}
-
-	Register hh() const {
-		Register ret(*this);
-		ret.m_input_unpack = V3D_QPU_UNPACK_REPLICATE_H_16;
-		return ret;
-	}
-
-	Register h() const {
-		Register ret(*this);
-		ret.m_input_unpack = V3D_QPU_UNPACK_H;
-		ret.m_output_pack  = V3D_QPU_PACK_H;
-		return ret;
-	}
-
-	Register abs() const {
-		Register ret(*this);
-		ret.m_input_unpack = V3D_QPU_UNPACK_ABS;
-		return ret;
-	}
-
-	Register swp() const {
-		Register ret(*this);
-		ret.m_input_unpack = V3D_QPU_UNPACK_SWAP_16;
-		return ret;
-	}
-
-	bool is_dest_acc() const { return m_is_dest_acc; }
-
-private:
-	std::string   m_name;
-	v3d_qpu_waddr m_waddr_val;
-	v3d_qpu_mux   m_mux_val;
-	bool          m_mux_is_set  = false;
-	bool          m_is_dest_acc = false;
-};
-
-
-class RFAddress : public Location {
-public:
-	RFAddress(uint8_t val) : m_val(val) { m_is_rf = true; }
-
-	v3d_qpu_waddr to_waddr() const override { return (v3d_qpu_waddr) m_val; }
-	v3d_qpu_mux to_mux() const override;
-
-	RFAddress l() const;
-	RFAddress h() const;
-
-private:
-	uint8_t m_val;
-};
 
 using rf = RFAddress;
 
@@ -186,14 +81,6 @@ private:
 };
 
 
-extern Register const r0;
-extern Register const r1;
-extern Register const r2;
-extern Register const r3;
-extern Register const r4;
-extern Register const r5;
-extern Register const tmua;
-extern Register const tmud;
 const uint8_t vpm = 14;
 const uint32_t ifb = 3145728000;  // Value according to dump; No idea what this value is supposed to be and what it does!
 
@@ -247,4 +134,4 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 }  // v3d
 }  // QPULib
 
-#endif // _QPULIB_V3D_INSTR_H
+#endif  // _QPULIB_V3D_INSTR_INSTR_H

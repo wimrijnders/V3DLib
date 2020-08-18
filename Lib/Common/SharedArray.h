@@ -9,7 +9,7 @@ There is no way to use the QPU mode SharedArray without a serious rewrite.
 */
 #ifndef _QPULIB_COMMON_SHAREDARRAY_H_
 #define _QPULIB_COMMON_SHAREDARRAY_H_
-#include <debug.h>
+#include "../Support/debug.h"
 
 //
 // SharedArray's for v3d have not been properly implemented yet

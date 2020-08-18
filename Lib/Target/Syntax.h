@@ -1,7 +1,7 @@
 #ifndef _QPULIB_TARGET_SYNTAX_H_
 #define _QPULIB_TARGET_SYNTAX_H_
 #include <stdint.h>
-#include "../debug.h"
+#include "../Support/debug.h"
 
 namespace QPULib {
 

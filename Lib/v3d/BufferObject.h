@@ -3,7 +3,7 @@
 #include <cassert>
 #include <vector>
 #include <stdint.h>
-#include "../debug.h"
+#include "../Support/debug.h"
 
 
 namespace QPULib {

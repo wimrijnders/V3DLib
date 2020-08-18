@@ -3,6 +3,19 @@
 #include <string>
 #include <vector>
 
+namespace QPULib {
+namespace v3d {
+
+struct Exception : public std::exception {
+   std::string s;
+   Exception(std::string ss) : s(ss) {}
+   ~Exception() throw () {} // Updated   const char* what() const throw() { return s.c_str(); }
+};
+
+}  // v3d
+}  // QPULib
+
+
 //
 // Convenience definitions
 //

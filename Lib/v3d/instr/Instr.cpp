@@ -1,13 +1,12 @@
 #include "Instr.h"
 #include <cstdio>
 #include <cstdlib>  // abs()
-#include "../debug.h"
+#include "../../Support/debug.h"
 #include "dump_instr.h"
 
 namespace {
 
 struct v3d_device_info devinfo;  // NOTE: uninitialized struct, field 'ver' must be set! For asm/disasm OK
-
 
 bool is_power_of_2(int x) {
     return x > 0 && !(x & (x - 1));
@@ -19,148 +18,6 @@ bool is_power_of_2(int x) {
 namespace QPULib {
 namespace v3d {
 namespace instr {
-
-struct Exception : public std::exception {
-   std::string s;
-   Exception(std::string ss) : s(ss) {}
-   ~Exception() throw () {} // Updated   const char* what() const throw() { return s.c_str(); }
-};
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Class SmallImm
-///////////////////////////////////////////////////////////////////////////////
-
-bool SmallImm::to_opcode_value(float value, int &rep_value) {
-	bool converted  = true;
-
-	// The first small values pass through as is
-	// Note that this negates usage of next 4 if-s.
-	if (-16 <= value && value <= 15) {
-		rep_value = (int) value;
-	}
-	else if (value ==   1) rep_value = 0x3f800000; /* 2.0^0 */
-	else if (value ==   2) rep_value = 0x40000000; /* 2.0^1 */
-	else if (value ==   4) rep_value = 0x40800000; /* 2.0^2 */
-	else if (value ==   8) rep_value = 0x41000000; /* 2.0^3 */
-	else if (value ==  16) rep_value = 0x41800000; /* 2.0^4 */
-	else if (value ==  32) rep_value = 0x42000000; /* 2.0^5 */
-	else if (value ==  64) rep_value = 0x42800000; /* 2.0^6 */
-	else if (value == 128) rep_value = 0x43000000; /* 2.0^7 */
-	else if (value == 2e-8f) rep_value = 0x3b800000; /* 2.0^-8 */
-	else if (value == 2e-7f) rep_value = 0x3c000000; /* 2.0^-7 */
-	else if (value == 2e-6f) rep_value = 0x3c800000; /* 2.0^-6 */
-	else if (value == 2e-5f) rep_value = 0x3d000000; /* 2.0^-5 */
-	else if (value == 2e-4f) rep_value = 0x3d800000; /* 2.0^-4 */
-	else if (value == 2e-3f) rep_value = 0x3e000000; /* 2.0^-3 */
-	else if (value == 2e-2f) rep_value = 0x3e800000; /* 2.0^-2 */
-	else if (value == 2e-1f) rep_value = 0x3f000000; /* 2.0^-1 */
-	else converted = false;
-
-	return converted;
-}
-
-
-uint8_t SmallImm::to_raddr() const {
-	assert(m_index != 0xff);
-	return m_index;
-}
-
-
-void SmallImm::pack() {
-	uint32_t packed_small_immediate;
-
-	if (small_imm_pack(m_val, &packed_small_immediate)) {
-		assert(packed_small_immediate <= 0xff);  // to be sure conversion is OK
-		m_index = (uint8_t) packed_small_immediate;
-	} else {
-		assert(false);
-	}
-}
-
-
-SmallImm SmallImm::l() const {
-	SmallImm ret(*this);
-	ret.m_input_unpack = V3D_QPU_UNPACK_L;
-	return ret;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Class Register
-///////////////////////////////////////////////////////////////////////////////
-
-Register::Register(const char *name, v3d_qpu_waddr waddr_val) :
-	m_name(name),
-	m_waddr_val(waddr_val),
-	m_mux_val(V3D_QPU_MUX_R0),  // Dummy value, set to first element in item
-	m_mux_is_set(false)
-{}
-
-
-Register::Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val, bool is_dest_acc) :
-	m_name(name),
-	m_waddr_val(waddr_val),
-	m_mux_val(mux_val),
-	m_mux_is_set(true),
-	m_is_dest_acc(is_dest_acc)
-{}
-
-
-v3d_qpu_mux Register::to_mux() const {
-	if (!m_mux_is_set) {
-		std::string buf;
-		buf += "Can't use mux value for register '" + m_name + "', it is not defined";
-		throw Exception(buf);
-	}
-
-	return m_mux_val;
-}
-
-
-Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0, true);
-Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1, true);
-Register const r2("r2", V3D_QPU_WADDR_R2, V3D_QPU_MUX_R2, true);
-Register const r3("r3", V3D_QPU_WADDR_R3, V3D_QPU_MUX_R3, true);
-Register const r4("r4", V3D_QPU_WADDR_R4, V3D_QPU_MUX_R4, true);
-Register const r5("r5", V3D_QPU_WADDR_R5, V3D_QPU_MUX_R5);
-Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
-Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Class RFAddress
-///////////////////////////////////////////////////////////////////////////////
-
-v3d_qpu_mux RFAddress::to_mux() const {
-	debug_break("Not expecting RFAddress::to_mux() to be called");
-	//assert(false);
-	return (v3d_qpu_mux) 0;
-}
-
-
-RFAddress RFAddress::l() const {
-	RFAddress ret(m_val);
-	ret.m_input_unpack = V3D_QPU_UNPACK_L;
-	ret.m_output_pack = V3D_QPU_PACK_L;
-	assert(ret.is_rf());
-
-	return ret;
-}
-
-
-RFAddress RFAddress::h() const {
-	RFAddress ret(m_val);
-	ret.m_input_unpack = V3D_QPU_UNPACK_H;
-	ret.m_output_pack = V3D_QPU_PACK_H;
-
-	return ret;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Class Instr
-///////////////////////////////////////////////////////////////////////////////
 
 uint64_t const Instr::NOP = 0x3c003186bb800000;  // This is actually 'nop nop'
 

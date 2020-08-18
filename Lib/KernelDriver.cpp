@@ -1,6 +1,6 @@
 #include "KernelDriver.h"
 #include <iostream>  // cout
-#include "debug.h"
+#include "Support/debug.h"
 
 namespace QPULib {
 

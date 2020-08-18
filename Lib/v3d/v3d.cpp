@@ -10,7 +10,7 @@
 #include <stdlib.h>   // exit()
 #include <stdio.h>
 #include <unistd.h>   // close()
-#include "../debug.h"
+#include "../Support/debug.h"
 
 namespace {
 
