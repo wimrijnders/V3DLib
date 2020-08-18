@@ -15,6 +15,10 @@ BufferObject::~BufferObject() {
  * @param n number of 4-byte elements to allocate (so NOT memory size!)
  */
 void BufferObject::alloc_mem(uint32_t size_in_bytes) {
+	if (Platform::instance().has_vc4) {
+		fatal("Trying to run v3d code on a vc4");
+	}
+
 	if (!v3d_open()) {
 		assert(false);   // Open device if not already done so
 	}
@@ -137,11 +141,11 @@ BufferObject mainHeap;
 }
 
 BufferObject &getMainHeap() {
-	assert(!Platform::instance().has_vc4);  // Should only be called on correct platform
-
-	if (mainHeap.size_bytes() == 0) {
-		printf("Allocating main heap v3d\n");
-		mainHeap.alloc_mem(HEAP_SIZE);
+	if (!Platform::instance().has_vc4) {
+		if (mainHeap.size_bytes() == 0) {
+			debug("Allocating main heap v3d\n");
+			mainHeap.alloc_mem(HEAP_SIZE);
+		}
 	}
 
 	return mainHeap;

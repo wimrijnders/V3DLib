@@ -1,12 +1,21 @@
 #ifndef _LIB_DEBUG_H
 #define _LIB_DEBUG_H
-#include <signal.h>  // raise(SIGTRAP);
+#include <signal.h>  // raise(SIGTRAP)
+#include <stdlib.h>  // abort, NULL
+#include <cstdio>
+
 
 #if defined __cplusplus
 #include <cassert>
 #else
 #include <assert.h>
 #endif
+
+
+inline void fatal(const char *str) {
+	printf("FATAL: %s\n", str);
+	abort();
+}
 
 
 #ifdef DEBUG
@@ -18,9 +27,11 @@ inline void debug(const char *str) {
 	printf("DEBUG: %s\n", str);
 }
 
+
 inline void warning(const char *str) {
 	printf("WARNING: %s\n", str);
 }
+
 
 inline void debug_break(const char *str) {
 	printf("DEBUG: %s\n", str);
@@ -33,7 +44,6 @@ inline void debug_break(const char *str) {
 
 inline void debug(const char *str) {}
 inline void warning(const char *str) {}
-
 inline void debug_break(const char *str) {}
 
 #endif  // DEBUG

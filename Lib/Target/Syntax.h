@@ -375,7 +375,6 @@ struct Instr {
 	    op == M_V8MIN  || op == M_V8MAX || op == M_V8ADDS ||
 	    op == M_V8SUBS || op == M_ROTATE;
 
-		assert(!ret);  // Warn me if this happens
 		return ret;
 	}
 

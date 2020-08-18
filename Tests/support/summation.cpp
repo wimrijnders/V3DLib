@@ -1,7 +1,7 @@
-#include "v3d/Instr.h"
 #include <cstdio>
-#include "../../Lib/Support/basics.h"
 #include "summation.h"
+#include "../../Lib/Support/basics.h"
+#include "v3d/instr/Instr.h"
 
 std::vector<uint64_t> summation = {
 	0x3d803186bb800000,  // nop                  ; nop               ; ldunifrf.rf0 

@@ -22,10 +22,10 @@
 #include <iostream>
 #include "v3d/SharedArray.h"
 #include "v3d/v3d.h"
-#include "v3d/Instr.h"
+#include "v3d/instr/Instr.h"
 #include "v3d/Driver.h"
 #include "../Lib/Support/basics.h"
-#include "debug.h"
+#include "Support/debug.h"
 #include "Support/Platform.h"
 #include "support/summation.h"
 #include "support/disasm_kernel.h"
