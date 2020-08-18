@@ -15,11 +15,15 @@
 #define breakpoint raise(SIGTRAP);
 
 inline void debug(const char *str) {
-	printf("%s\n", str);
+	printf("DEBUG: %s\n", str);
+}
+
+inline void warning(const char *str) {
+	printf("WARNING: %s\n", str);
 }
 
 inline void debug_break(const char *str) {
-	printf("%s\n", str);
+	printf("DEBUG: %s\n", str);
 	breakpoint
 }
 
@@ -28,6 +32,7 @@ inline void debug_break(const char *str) {
 #define breakpoint
 
 inline void debug(const char *str) {}
+inline void warning(const char *str) {}
 
 inline void debug_break(const char *str) {}
 

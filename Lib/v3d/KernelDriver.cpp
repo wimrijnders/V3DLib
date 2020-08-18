@@ -21,12 +21,12 @@ using OpCode  = QPULib::v3d::instr::Instr;
 using OpCodes = std::vector<OpCode>;
 
 static int local_numQPUs = 0;
+std::vector<std::string> local_errors;
 
 /**
  * source:  https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L22
  */
 static OpCodes get_num_qpus(Register const &reg) {
-	breakpoint
 	assert(local_numQPUs == 1 || local_numQPUs == 8);
 	assert(reg.is_dest_acc());
 
@@ -35,6 +35,7 @@ static OpCodes get_num_qpus(Register const &reg) {
 	if (local_numQPUs == 1) {
 		ret << mov(reg, 0);
 	} else { //  num_qpus == 8
+		breakpoint
 		ret << tidx(reg)
 		    << shr(reg, reg, 2)
 		    << band(reg, reg, 0b1111);
@@ -221,7 +222,12 @@ void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_i
 }
 
 
-std::unique_ptr<Location> encodeSrcReg(Reg reg) {
+/**
+ * @param ret  current list of output instruction, out-parameter.
+ *             Passed in because some extra instruction may be needed
+ *             for v3d.
+ */
+std::unique_ptr<Location> encodeSrcReg(Reg reg, OpCodes &opcodes) {
 	bool is_none = false;
 	std::unique_ptr<Location> ret;
 
@@ -242,23 +248,38 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
 			}
 			break;
     case SPECIAL:
-			breakpoint
 
       switch (reg.regId) {
         case SPECIAL_UNIFORM:
+					assert(false);  // Not expecting this, handled before this call
+				break;
         case SPECIAL_ELEM_NUM:
-					assert(false);  // Really not expecting this any more
-					break;
-/*
-        case SPECIAL_QPU_NUM:  return 38;
-        case SPECIAL_VPM_READ: return 48;
+					warning("SPECIAL_ELEM_NUM needs a way to select a register");
+					opcodes << eidx(r0);
+					ret.reset(new Register(r0));  // register should be selected on usage in code
+				break;
+        case SPECIAL_QPU_NUM: {
+					warning("SPECIAL_QPU_NUM needs a way to select a register");
+					Register tmp_reg = r1;  // register should be selected on usage in code
+					opcodes << get_num_qpus(tmp_reg);
+					ret.reset(new Register(tmp_reg));
+				}
+				break;
+
+				// Not handled (yet)
+        case SPECIAL_VPM_READ: // return 48;
+					breakpoint
+				break;
         case SPECIAL_DMA_LD_WAIT:
-          // in REG_A
-					return 50;
+					breakpoint
+          // // in REG_A
+					// return 50;
+				break;
         case SPECIAL_DMA_ST_WAIT:
-          // in REG_B;
-					return 50;
-*/
+					breakpoint
+          // // in REG_B;
+					// return 50;
+				break;
       }
 			break;
     case NONE:
@@ -318,24 +339,8 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 
 	auto dst_reg = encodeDestReg(src_instr);
 
-	std::unique_ptr<Location> src_a;
-
-	assert(false);  // TODO
-	// Add handling of SPECIAL_QPU_NUM here
-	// Use: get_num_qpus(r1)
-	// NOTE: Need a way to determine if passed register (which must be a destionation accumulator: r0-r4)
-	//       Is safe to use.
-
-	if (reg_a.reg.tag == SPECIAL && reg_a.reg.regId == SPECIAL_ELEM_NUM) {
-		assert(!(reg_b.reg.tag == ACC && reg_b.reg.regId == 0));
-		ret << eidx(r0);
-		src_a.reset(new Register(r0));
-	} else {
-		src_a = encodeSrcReg(reg_a.reg);
-	}
-	assert(!(reg_b.reg.tag == SPECIAL && reg_b.reg.regId == SPECIAL_ELEM_NUM));
-
-	auto src_b = encodeSrcReg(reg_b.reg);
+	auto src_a = encodeSrcReg(reg_a.reg, ret);
+	auto src_b = encodeSrcReg(reg_b.reg, ret);
 
 	switch (src_instr.ALU.op) {
 		case A_SHL: {
@@ -392,21 +397,32 @@ OpCodes encodeInstr(QPULib::Instr instr) {
     // Load immediate
     case LI: {
 			int rep_value;
-			if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
-				assert(false);
+
+			if (instr.LI.setFlags) {
+				breakpoint;  // to check what flags need to be set - case not handled yet
 			}
+			if (instr.LI.cond.tag != ALWAYS) {
+				breakpoint;  // check,  case not handled yet
+			}
+			if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
+				// TODO: figure out how to handle large immediates
+				std::string str = "Can't handle value '";
+				str += std::to_string(instr.LI.imm.intVal);
+				str += "'as small immediate";
+				local_errors << str;
+				ret << nop();
+			} else {
+				auto dst = encodeDestReg(instr);
+				SmallImm imm(rep_value);
 
-			auto dst = encodeDestReg(instr);
-			SmallImm imm(rep_value);
-
-			ret << mov(*dst, imm);
-
+				ret << mov(*dst, imm);
 /*
       RegTag file;
       uint32_t cond = encodeAssignCond(instr.LI.cond) << 17;
       uint32_t sf   = (instr.LI.setFlags ? 1 : 0) << 13;
       *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
 */
+			}
     }
 		break;
 
@@ -665,6 +681,8 @@ void KernelDriver::encode(int numQPUs, Seq<QPULib::Instr> &targetCode) {
 	// Encode target instructions
 	std::vector<uint64_t> code;
 	_encode(targetCode, code);
+	errors << local_errors;
+	local_errors.clear();
 
 
 	// Allocate memory for the QPU code
