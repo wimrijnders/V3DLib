@@ -60,6 +60,15 @@ TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline
 }
 
 
+TEST_CASE("ReqRecv generated code should remain constant", "[cmdline]") {
+	REQUIRE(!system("mkdir -p obj/test"));
+	const char *cmdline = "cd obj/test && ../../" BIN_PATH "/ReqRecv -c -f > /dev/null";
+	INFO("Cmdline: " << cmdline);
+	REQUIRE(!system(cmdline));
+	REQUIRE(!system("diff obj/test/ReqRecv_code.txt Tests/data/ReqRecv_expected.txt"));
+}
+
+
 #ifdef QPU_MODE
 
 TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
