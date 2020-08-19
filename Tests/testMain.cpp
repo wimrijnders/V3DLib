@@ -65,6 +65,9 @@ TEST_CASE("ReqRecv generated code should remain constant", "[cmdline]") {
 	const char *cmdline = "cd obj/test && ../../" BIN_PATH "/ReqRecv -c -f > /dev/null";
 	INFO("Cmdline: " << cmdline);
 	REQUIRE(!system(cmdline));
+
+	// TODO: `ReqRecv_expected.txt` does not contain a full representation.
+	//       It should be the code for vc4. FIX THIS.
 	REQUIRE(!system("diff obj/test/ReqRecv_code.txt Tests/data/ReqRecv_expected.txt"));
 }
 

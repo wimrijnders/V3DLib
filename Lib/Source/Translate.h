@@ -10,6 +10,8 @@ namespace QPULib {
 void insertEndCode(Seq<Instr>* seq);
 void translateStmt(Seq<Instr>* seq, Stmt* s);
 
+Reg srcReg(Var v);  // Exposed for Sourcetranslate()'s
+
 }  // namespace QPULib
 
 #endif  // _QPULIB_TRANSLATE_H_

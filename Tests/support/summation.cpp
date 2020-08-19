@@ -2,6 +2,8 @@
 #include "summation.h"
 #include "../../Lib/Support/basics.h"
 #include "v3d/instr/Instr.h"
+#include "v3d/instr/Snippets.h"
+
 
 std::vector<uint64_t> summation = {
 	0x3d803186bb800000,  // nop                  ; nop               ; ldunifrf.rf0 
@@ -708,24 +710,6 @@ namespace {
 
 using namespace QPULib::v3d::instr;
 using ByteCode = std::vector<uint64_t>; 
-using Instructions = std::vector<Instr>; 
-
-
-Instructions end_program() {
-	Instructions ret;
-
-	// Program tail
-	ret << nop().thrsw(true)
-	    << nop().thrsw(true)
-	    << nop()
-	    << nop()
-	    << nop().thrsw(true)
-	    << nop()
-	    << nop()
-	    << nop();
-
-	return ret;
-}
 
 
 /**
@@ -780,37 +764,6 @@ Instructions calc_stride(
 
 	// length /= 16 * 8 * num_qpus * unroll
 	ret << shr(reg_length, reg_length, num_shifts[7 + num_qpus_shift + unroll_shift]);
-
-	return ret;
-}
-
-
-/**
- * An instruction is passed in to make use of a waiting slot.
- */
-Instructions enable_tmu_read(Instr const &last_slot) {
-	Instructions ret;
-
-	// This single thread switch and two instructions just before the loop are
-	// really important for TMU read to achieve a better performance.
-	// This also enables TMU read requests without the thread switch signal, and
-	// the eight-depth TMU read request queue.
-	ret << nop().thrsw(true)
-	    << nop() 
-			<< last_slot;
-
-	return ret;
-}
-
-
-Instructions sync_tmu() {
-	Instructions ret;
-
-	// This synchronization is needed between the last TMU operation and the
-	// program end with the thread switch just before the loop above.
-	ret << barrierid(syncb).thrsw(true)
-	    << nop()
-	    << nop();
 
 	return ret;
 }
@@ -896,7 +849,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	    << calc_stride(num_qpus, unroll_shift, reg_qpu_num, reg_src, reg_dst, reg_stride, reg_length)
 
 	    << enable_tmu_read(
-	       	bxor(reg_sum, 1, 1).mov(r1, 1)                       // Fills last delay slot
+	       	&bxor(reg_sum, 1, 1).mov(r1, 1)                       // Fills last delay slot
 	       )
 
 	    << align_code(ret.size() + code_offset, 170);            // Why the magic number?

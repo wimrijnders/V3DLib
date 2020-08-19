@@ -13,6 +13,7 @@
 
 namespace QPULib {
 
+
 // ============================================================================
 // Modes of operation
 // ============================================================================
@@ -173,6 +174,9 @@ void compileKernel(Seq<Instr>* targetCode, Stmt* s);
 // types 'ts'.  It applies the function to constuct an AST.
 
 template <typename... ts> struct Kernel {
+
+using KernelFunction = void (*)(ts... params);
+
 #ifdef QPU_MODE
 private:
 	KernelDriver *m_kernel_driver = nullptr;
@@ -197,7 +201,7 @@ public:
   int numQPUs;
 
   // Construct kernel out of C++ function
-  Kernel(void (*f)(ts... params)) {
+  Kernel(KernelFunction f) {
 #ifdef QPU_MODE
 		if (Platform::instance().has_vc4) {
 			m_kernel_driver = new vc4::KernelDriver;
@@ -229,7 +233,7 @@ public:
 
 #ifdef QPU_MODE
 		m_kernel_driver->kernelFinish();
-#endif  // QPUr_+MODE
+#endif  // QPU_MODE
 
     // Obtain the AST
     Stmt* body = stmtStack.top();
@@ -252,6 +256,12 @@ public:
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);
 
+		// NOTE: The emulator is based on the vc4.
+		//       This implies that, even though we're running on the v3d, the
+		//       target code should be constructed for vc4.
+		//
+		// TODO: Fix this
+
     emulate
       ( numQPUs          // Number of QPUs active
       , &targetCode      // Instruction sequence
@@ -268,6 +278,14 @@ public:
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);
+
+		// NOTE: There are differences in source code generation for vc4 and v3d.
+		//       At time of writing (20200818), this is notably the end program
+		//       sequence (see `kernelFinish()`).
+		//       To be fully consistent with the original, the vc4 source code
+		//       should be constructed on the v3d as well. Chances are it will
+		//       work regardless.
+		// TODO: Investigate if the differences in source code are an issue
 
     interpreter
       ( numQPUs          // Number of QPUs active
@@ -287,6 +305,7 @@ public:
     nothing(passParam<ts, us>(&uniforms, args, m_kernel_driver->buffer_type)...);
 
 		m_kernel_driver->encode(numQPUs, targetCode);
+		breakpoint
 		if (!m_kernel_driver->handle_errors()) {
     	// Invoke kernel on QPUs
 			m_kernel_driver->invoke(numQPUs,  &uniforms);

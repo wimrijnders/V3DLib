@@ -145,7 +145,7 @@ help:
 all: $(QPULIB) $(EXAMPLES)
 
 clean:
-	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug
+	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug obj/test
 
 
 #

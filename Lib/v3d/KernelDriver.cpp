@@ -2,8 +2,9 @@
 #include <memory>
 #include <iostream>
 #include "../Support/basics.h"
-#include "instr/Instr.h"
 #include "Invoke.h"
+#include "instr/Instr.h"
+#include "instr/Snippets.h"
 
 #ifdef QPU_MODE
 
@@ -176,11 +177,15 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
         case SPECIAL_RD_SETUP:    return 49;
         case SPECIAL_WR_SETUP:    return 49;
         case SPECIAL_DMA_LD_ADDR: return 50;
-        case SPECIAL_DMA_ST_ADDR: return 50;
-        case SPECIAL_VPM_WRITE:   return 48;
         case SPECIAL_HOST_INT:    return 38;
 */
-        case SPECIAL_TMU0_S:
+        case SPECIAL_VPM_WRITE:           // Write TMY, to set data to write
+					ret.reset(new Register(tmud));
+					break;
+        case SPECIAL_DMA_ST_ADDR:         // Write TMU, to set memory address to write to
+					ret.reset(new Register(tmua));
+					break;
+        case SPECIAL_TMU0_S:              // Read TMU
 					ret.reset(new Register(tmua));
 					break;
         default:
@@ -409,6 +414,7 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 				std::string str = "Can't handle value '";
 				str += std::to_string(instr.LI.imm.intVal);
 				str += "'as small immediate";
+				breakpoint
 				local_errors << str;
 				ret << nop();
 			} else {
@@ -584,7 +590,11 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 		break;
 
     // Halt
-    case END:
+    case END: {
+			ret << sync_tmu()
+					<< end_program();
+		}
+		break;
     case TMU0_TO_ACC4: {
 			ret << nop().ldtmu(r4);  // NOTE: added by WR
 /*
@@ -681,6 +691,11 @@ void KernelDriver::encode(int numQPUs, Seq<QPULib::Instr> &targetCode) {
 	// Encode target instructions
 	std::vector<uint64_t> code;
 	_encode(targetCode, code);
+
+	if (!local_errors.empty()) {
+		breakpoint
+	}
+
 	errors << local_errors;
 	local_errors.clear();
 
