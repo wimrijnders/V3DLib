@@ -15,15 +15,14 @@ public:
 	virtual void kernelFinish() {} 
 	virtual void encode(int numQPUs, Seq<QPULib::Instr> &targetCode) = 0;
 	virtual void invoke(int numQPUs, Seq<int32_t>* params) = 0;
-  virtual void pretty(FILE *f) { /* nothing to do yet */ }
+  virtual void pretty(FILE *f) {}
 
 	bool handle_errors();
 
 	BufferType const buffer_type;
 
 protected:
-	// Maximum number of kernel parameters allowed
-	const int MAX_KERNEL_PARAMS = 128;
+	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
   int qpuCodeMemOffset = 0;
 	std::vector<std::string> errors;

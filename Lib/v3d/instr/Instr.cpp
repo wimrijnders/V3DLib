@@ -209,11 +209,24 @@ Instr &Instr::ldunif(bool val) {
 }
 
 
-Instr &Instr::anyap() {
+//
+// Conditions  branch instructions
+//
+Instr &Instr::set_branch_condition(v3d_qpu_branch_cond cond) {
 	assert(type == V3D_QPU_INSTR_TYPE_BRANCH);  // Branch instruction-specific
-	branch.cond = V3D_QPU_BRANCH_COND_ANYA;
+	branch.cond = cond;
 	return *this;
 }
+
+
+Instr &Instr::a0()    { return set_branch_condition(V3D_QPU_BRANCH_COND_A0); }
+Instr &Instr::na0()   { return set_branch_condition(V3D_QPU_BRANCH_COND_NA0); }
+Instr &Instr::alla()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
+Instr &Instr::anyna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYNA); }
+Instr &Instr::anyap() { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYA); }
+Instr &Instr::allna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
+
+// End Conditions  branch instructions
 
 
 Instr &Instr::ldunifa(bool val) {
@@ -224,12 +237,6 @@ Instr &Instr::ldunifa(bool val) {
 
 Instr &Instr::ldvpm(bool val) {
 	sig.ldvpm = val;
-	return *this;
-}
-
-
-Instr &Instr::cond_na0() {
-	branch.cond = V3D_QPU_BRANCH_COND_NA0;
 	return *this;
 }
 
@@ -553,7 +560,6 @@ Instr add(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, loc3);
 
-
 	instr.alu.add.op    = V3D_QPU_A_ADD;
 	return instr;
 }
@@ -592,6 +598,15 @@ Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
 	instr.alu.add.waddr = rf_addr2;
 	instr.alu.add.magic_write = false;
 
+	return instr;
+}
+
+
+Instr sub(Location const &loc1, Location const &loc2, Location const &loc3) {
+	Instr instr;
+	instr.alu_add_set(loc1, loc2, loc3);
+
+	instr.alu.add.op    = V3D_QPU_A_SUB;
 	return instr;
 }
 
@@ -680,6 +695,8 @@ Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
 
 
 /**
+ * Jump relative
+ *
  * NOTE: needs condition set to work!
  *       eg. `cond na0`
  */
@@ -687,15 +704,54 @@ Instr branch(int target, int current) {
 	Instr instr;
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
 
-	instr.branch.msfign = V3D_QPU_MSFIGN_NONE;
-	instr.branch.bdi = V3D_QPU_BRANCH_DEST_REL;  // branch dest
-	instr.branch.bdu = V3D_QPU_BRANCH_DEST_REL;  // not used when branch.ub == false, just set a value for now
+	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
 	instr.branch.ub = false;
+
+	instr.branch.bdi = V3D_QPU_BRANCH_DEST_REL;  // branch dest
+	instr.branch.bdu = V3D_QPU_BRANCH_DEST_REL;  // not used when branch.ub == false, just set a value
+
+	instr.branch.msfign = V3D_QPU_MSFIGN_NONE;
 	instr.branch.raddr_a = 0;
 
 	// branch needs 4 delay slots before executing, hence the 4
 	// This means that 3 more instructions will execute after the loop before jumping
 	instr.branch.offset = (unsigned) 8*(target - (current + 4));
+
+	return instr;
+}
+
+
+/**
+ * Jump absolute
+ *
+ * NOTE: needs condition set to work!
+ *       eg. `cond na0`
+ */
+Instr branch(int target, bool relative) {
+	breakpoint
+
+	Instr instr;
+	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
+
+	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+	instr.branch.ub = false;
+
+	if (relative) {
+		instr.branch.bdi = V3D_QPU_BRANCH_DEST_REL;
+		instr.branch.bdu = V3D_QPU_BRANCH_DEST_REL;  // not used when branch.ub == false, just set a value
+	} else {
+		instr.branch.bdi = V3D_QPU_BRANCH_DEST_ABS;
+		instr.branch.bdu = V3D_QPU_BRANCH_DEST_ABS;  // not used when branch.ub == false, just set a value
+	}
+
+	instr.branch.msfign = V3D_QPU_MSFIGN_NONE;
+	instr.branch.raddr_a = 0;
+
+	// branch needs 4 delay slots before executing
+	// This means that 3 more instructions will execute after the loop before jumping
+	//
+	// TODO: check if following is OK
+	instr.branch.offset = (unsigned) 8*(target - 4);
 
 	return instr;
 }
@@ -711,6 +767,9 @@ Instr bb(Location const &loc1) {
   instr.sig.ldunif = true;
   instr.sig.ldunifa = true;
 
+	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+	instr.branch.ub =  false;
+
 	// flags: {ac: <<UNKNOWN>>, mc: <<UNKNOWN>>, apf: <<UNKNOWN>>, mpf: PF_PUSHZ, auf: UF_NONE, muf: <<UNKNOWN>>},
 	instr.flags.mpf = V3D_QPU_PF_PUSHZ;
 	instr.flags.auf = V3D_QPU_UF_NONE;
@@ -719,7 +778,6 @@ Instr bb(Location const &loc1) {
 	instr.branch.msfign =  V3D_QPU_MSFIGN_P;
 	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_REGFILE;
 	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
-	instr.branch.ub =  false;
 	instr.branch.raddr_a = loc1.to_waddr();
 	instr.branch.offset = 0;
 

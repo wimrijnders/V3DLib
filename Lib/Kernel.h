@@ -387,13 +387,13 @@ public:
     fflush(f);
 
 		m_kernel_driver->pretty(f);
+#endif  // QPU_MODE
 
     if (filename != nullptr) {
       assert(f != nullptr);
       assert(f != stdout);
       fclose(f);
     }
-#endif  // QPU_MODE
   }
 };
 

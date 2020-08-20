@@ -44,10 +44,14 @@ public:
 	Instr &ifa();
 	Instr &andnc();
 	Instr &andnn();
-	Instr &cond_na0();
 
 	// For branch instructions
+	Instr &a0();
+	Instr &na0();
+	Instr &alla();
+	Instr &anyna();
 	Instr &anyap();
+	Instr &allna();
 
 	// Calls to set the mul part of the instruction
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
@@ -75,6 +79,7 @@ private:
 
 	void init_ver() const;
 	void init(uint64_t in_code);
+	Instr &set_branch_condition(v3d_qpu_branch_cond cond);
 	void set_c(v3d_qpu_cond val);
 	void set_uf(v3d_qpu_uf val);
 	void set_pf(v3d_qpu_pf val);
@@ -101,6 +106,7 @@ Instr eidx(Register const &reg);
 Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t ref_addr3);
+Instr sub(Location const &loc1, Location const &loc2, Location const &loc3);
 
 Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
 
@@ -111,6 +117,7 @@ Instr bor(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);
+Instr branch(int target, bool relative);
 Instr bb(Location const &loc1);
 
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;

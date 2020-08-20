@@ -875,7 +875,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 		ret << sum_and_load;
 	}
 
-	ret << branch(loop_start, ret.size()).cond_na0()  // Loop condition
+	ret << branch(loop_start, ret.size()).na0()       // Loop condition
 	    << sum_and_load                               // delay slot
 	    << sum_and_load                               // delay slot
 	    << add(reg_sum, reg_sum, r0)                  // delay slot, last sum without load

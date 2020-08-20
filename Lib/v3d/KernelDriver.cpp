@@ -365,6 +365,13 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 			ret << add(*dst_reg, *src_a, *src_b);
 		}
 		break;
+		case A_SUB: {
+			assert(dst_reg.get() != nullptr);
+			assert(src_a.get() != nullptr);
+			assert(src_b.get() != nullptr);
+			ret << sub(*dst_reg, *src_a, *src_b);
+		}
+		break;
 		case A_BOR: {
 			assert(dst_reg.get() != nullptr);
 			assert(src_a.get() != nullptr);
@@ -434,17 +441,18 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 
     // Branch
     case BR: {
-			assert(false);  // TODO examine
-/*
-      // Register offset not yet supported
-      assert(! instr.BR.target.useRegOffset);
+			breakpoint  // TODO examine
 
-      uint32_t waddr_add = 39 << 6;
-      uint32_t waddr_mul = 39;
+      assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
+
+			ret << branch(instr.BR.target.immOffset, instr.BR.target.relative);
+
+			// TODO: Figure out how to deal with branch conditions
+			//       The call below is vc4 only, the conditions don't exist on v3d
+			//
+			// See 'Condition Codes' in the vc4 ref guide
+/*
       uint32_t cond = encodeBranchCond(instr.BR.cond) << 20;
-      uint32_t rel  = (instr.BR.target.relative ? 1 : 0) << 19;
-      *high = 0xf0000000 | cond | rel | waddr_add | waddr_mul;
-      *low  = (uint32_t) 8*instr.BR.target.immOffset;
 */
     }
 		break;
@@ -466,9 +474,9 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 			if (instr.isUniformLoad()) {
 					Reg dst_reg = instr.ALU.dest;
 					uint8_t rf_addr = to_waddr(dst_reg);
-					if (rf_addr % REGB_OFFSET != 0) {
-						breakpoint  // warn me if this happens
-					}
+					//if (rf_addr % REGB_OFFSET != 0) {
+					//	breakpoint  // warn me if this happens
+					//}
 					ret_instr = ldunifrf(rf_addr);
 					ret << ret_instr;
 					break;
