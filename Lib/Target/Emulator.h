@@ -1,10 +1,10 @@
-#ifndef _QPULIB_EMULATOR_H_
-#define _QPULIB_EMULATOR_H_
-
+#ifndef _QPULIB_TARGET_EMULATOR_H_
+#define _QPULIB_TARGET_EMULATOR_H_
 #include <stdint.h>
 #include "Common/Seq.h"
 #include "Common/Queue.h"
 #include "Target/Syntax.h"
+#include "BufferObject.h"
 
 #define NUM_LANES 16
 #define MAX_QPUS 12
@@ -106,8 +106,7 @@ void emulate
   );
 
 // Heap used in emulation mode.
-extern uint32_t emuHeapEnd;
-extern int32_t* emuHeap;
+extern emu::BufferObject emuHeap;
 
 // Rotate a vector
 Vec rotate(Vec v, int n);
@@ -120,4 +119,4 @@ void printFloatVec(Seq<char>* out, Vec x);
 
 }  // namespace QPULib
 
-#endif  // _QPULIB_EMULATOR_H_
+#endif  // _QPULIB_TARGET_EMULATOR_H_

@@ -5,14 +5,7 @@
 #define _QPULIB_EMULATOR_SHAREDARRAY_H_
 #include <cassert>
 #include <stdio.h>
-#include <stdint.h>
-#include <stdlib.h>     /* abort, NULL */
-#include "Common/BufferType.h"
-
-
-extern uint32_t emuHeapEnd;
-extern int32_t* emuHeap;
-
+#include "BufferObject.h"
 
 namespace QPULib {
 namespace Target {
@@ -20,9 +13,6 @@ namespace Target {
 // ============================================================================
 // Emulation mode
 // ============================================================================
-
-// When in EMULATION_MODE allocate memory from a pre-allocated pool.
-#define EMULATOR_HEAP_SIZE 1024*65536
 
 
 // Implementation
@@ -47,19 +37,8 @@ template <typename T> class SharedArray {
 			return;
 		}
 
-    if (emuHeap == NULL) {
-      emuHeapEnd = 0;
-      emuHeap = new int32_t [EMULATOR_HEAP_SIZE];
-    }
-    if (emuHeapEnd+n >= EMULATOR_HEAP_SIZE) {
-      printf("QPULib: heap overflow (increase EMULATOR_HEAP_SIZE)\n");
-      abort();
-    }
-    else {
-      address = emuHeapEnd;
-      emuHeapEnd += n;
-      m_size = n;
-    }
+		address = emu::emuHeap.alloc(n);  // Will abort if no space for allocation
+		m_size = n;
   }
 
   SharedArray() {}
@@ -70,15 +49,18 @@ template <typename T> class SharedArray {
   }
 
 	void setType(BufferType buftype) {
-		assert(HeapBuffer == buftype);
+		assert(BufferType::HeapBuffer == emu::emuHeap.buftype);
 	}
 
+	/**
+	 * Return address in bytes
+	 */
   uint32_t getAddress() {
     return address*4;
   }
 
   T* getPointer() {
-    return (T*) &emuHeap[address];
+    return (T*) &emu::emuHeap[address];
   }
 
 
@@ -101,12 +83,7 @@ template <typename T> class SharedArray {
 		}
 		assert(i < m_size);
 
-    if (address+i >= EMULATOR_HEAP_SIZE) {
-      printf("QPULib: accessing off end of heap\n");
-      exit(EXIT_FAILURE);
-    }
-    else
-      return (T&) emuHeap[address+i];
+		return (T&) emu::emuHeap[address+i];
   }
 };
 

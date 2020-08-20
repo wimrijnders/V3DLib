@@ -11,12 +11,6 @@ There is no way to use the QPU mode SharedArray without a serious rewrite.
 #define _QPULIB_COMMON_SHAREDARRAY_H_
 #include "../Support/debug.h"
 
-//
-// SharedArray's for v3d have not been properly implemented yet
-// They are currently actually Buffer Objects (BO's), this needs to change
-//
-#define USE_V3D_BUFFERS
-
 #include "BufferType.h"
 
 #if !defined(QPU_MODE) && !defined(EMULATION_MODE)
