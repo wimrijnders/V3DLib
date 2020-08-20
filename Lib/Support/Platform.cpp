@@ -120,6 +120,10 @@ PlatformInfo::PlatformInfo() {
 	if (!platform_id.empty() && is_pi_platform) {
 		has_vc4 = (platform_id.npos == platform_id.find("Pi 4"));
 	}
+
+#ifndef QPU_MODE
+	emulator_only = true;
+#endif
 }
 
 

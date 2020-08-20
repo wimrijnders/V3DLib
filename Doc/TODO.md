@@ -14,7 +14,6 @@ Feel free to add points here.
 
 ## Documentation
 
-- [ ] Document openGL issue on RPi 3
 - [ ] Explanation code
   - [ ] 16-item vectors
   - [ ] Code generation, not direct execution
@@ -27,12 +26,23 @@ Feel free to add points here.
 
 ## Unit Tests
 
-- [ ] Add test on expected source and target output for pretty print in `compileKernel`. E.g. for `Rot3D`, `Tri` and `HeatMap`.
+- [x] Add test on expected source and target output for pretty print in `compileKernel`. Done for `ReqRecv`
 - [ ] Add tests to compare QPU and Emulation mode output (when build can be done with both)
 - [ ] Language
   - [ ] Test missing `End` on blocks
   - [ ] Test missing `Else` without `If`
+- [ ] Adjust emulator so it rounds downward like the hardware QPU's.
+  Due to kernel rounding downward for floating point operations, unit tests comparing outputs
+  in an emulator-only (QPU=0) build will fail. E.g.:
 
+    Tests/testRot3D.cpp:33: FAILED:
+      REQUIRE( y1[i] == y2[i] )
+    with expansion:
+      -19183.95117f == 19184.0f
+    with message:
+      Comparing Rot3D_2 for index 19184
+
+  This error happens twice, for `testRot3D`.
 
 ## Investigate
 
@@ -46,6 +56,10 @@ Feel free to add points here.
 
 ## Library Code
 
+- [ ] CMDLine
+  - [ ] Add param handling for `Rot3DLib`
+  - [ ] Allow for chained blocks of parameter definitions
+  - [ ] For display, sort the parameters (except for `--help`, which should be at top)
 - [ ] Add check in emulator for too many `gather()` calls
 - [x] Determine num QPUs from hardware
 - [x] Add method to determine RPi hardware revision number via mailbox
@@ -61,7 +75,7 @@ Feel free to add points here.
 - [x] `Rot3D` make various versions selectable on command line *(in progress)*
 - [ ] enable `-Wall` on compilation and deal with all the fallout
 - [ ] Scan current docs for typos, good language
-- [ ] enable build for QPU and Emulation mode together
+- [x] enable build for QPU and Emulation mode together
 - [x] `Rot3DLib` handler for command line parameters
 
 

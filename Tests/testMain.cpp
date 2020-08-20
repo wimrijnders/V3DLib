@@ -13,11 +13,11 @@
 #define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
 #include "catch.hpp"
 #include <cstdlib>
-#ifdef QPU_MODE
 #include "../Lib/Target/Emulator.h"  // MAX_QPUS
+#include "../Lib/Support/Platform.h"
+#ifdef QPU_MODE
 #include "../Lib/vc4/RegisterMap.h"
 #include "../Lib/v3d/RegisterMapping.h"
-#include "../Lib/Support/Platform.h"
 
 using RegMap = QPULib::RegisterMap;
 #endif  // QPU_MODE
@@ -62,13 +62,19 @@ TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline
 
 TEST_CASE("ReqRecv generated code should remain constant", "[cmdline]") {
 	REQUIRE(!system("mkdir -p obj/test"));
-	const char *cmdline = "cd obj/test && ../../" BIN_PATH "/ReqRecv -c -f > /dev/null";
+	const char *cmdline = "cd obj/test && sudo ../../" BIN_PATH "/ReqRecv -c -f > /dev/null";  // sudo needed for vc4
 	INFO("Cmdline: " << cmdline);
 	REQUIRE(!system(cmdline));
 
-	// TODO: `ReqRecv_expected.txt` does not contain a full representation.
-	//       It should be the code for vc4. FIX THIS.
-	REQUIRE(!system("diff obj/test/ReqRecv_code.txt Tests/data/ReqRecv_expected.txt"));
+	std::string expected_filename;
+	if (Platform::instance().emulator_only) {
+		expected_filename = "Tests/data/ReqRecv_expected_emu.txt";
+	} else {
+		expected_filename = "Tests/data/ReqRecv_expected_vc4.txt";
+	}
+
+	std::string diff_cmd = "diff obj/test/ReqRecv_code.txt " + expected_filename;
+	REQUIRE(!system(diff_cmd.c_str()));
 }
 
 

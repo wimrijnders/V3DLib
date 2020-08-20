@@ -53,7 +53,12 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 	 * Check that the Rot3D kernels return precisely what we expect.
 	 *
 	 * The scalar version of the algorithm may return slightly different
-	 * values than the actual QPU's, but they should be close
+	 * values than the actual QPU's, but they should be close. This is
+	 * because the hardware QPU's round downward in floating point
+	 * calculations
+	 *
+	 * If the code is compiled for emulator only (QPU_MODE=0), this
+	 * test will fail.
 	 */
 	SECTION("All kernel versions should return the same") {
 		//
