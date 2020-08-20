@@ -1,0 +1,12 @@
+Source code
+===========
+
+v0 = UNIFORM;
+v1 = UNIFORM;
+v2 = UNIFORM;
+TMU0_ADDR = (v2+(ELEM_NUM << 2));
+TMU0_ADDR = ((v2+64)+(ELEM_NUM << 2));
+receive(v3)
+receive(v4)
+*v2 = (v3+v4);
+

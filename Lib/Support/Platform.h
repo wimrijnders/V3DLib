@@ -7,6 +7,7 @@ struct PlatformInfo {
 	bool is_pi_platform;
 	std::string chip_version;
 	bool has_vc4 = false;
+	bool emulator_only = false;
 
 	PlatformInfo();
 	void output(); 

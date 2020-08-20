@@ -17,7 +17,6 @@ namespace QPULib {
 ISourceTranslate &getSourceTranslate() {
 	if (_source_translate.get() == nullptr) {
 		if (Platform::instance().has_vc4) {
-	breakpoint
 			_source_translate.reset(new vc4::SourceTranslate());
 		} else {
 			_source_translate.reset(new v3d::SourceTranslate());

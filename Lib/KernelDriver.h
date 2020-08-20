@@ -1,6 +1,7 @@
 #ifndef _LIB_KERNELDRIVER_H
 #define _LIB_KERNELDRIVER_H
 #include <stdio.h>
+#include <vector>
 #include <string>
 #include "Target/CFG.h"
 #include "Common/SharedArray.h"
