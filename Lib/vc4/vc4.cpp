@@ -23,8 +23,6 @@ int getMailbox()
 // Enable QPUs (if not already enabled)
 void enableQPUs()
 {
-breakpoint
-
   int mb = getMailbox();
   if (numQPUUsers == 0) {
     int qpu_enabled = !qpu_enable(mb, 1);

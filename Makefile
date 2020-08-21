@@ -175,6 +175,7 @@ $(OBJ_DIR)/bin/Rot3DLib: $(OBJ_DIR)/Examples/Rot3DLib/Rot3DKernels.o
 # Leaving this out means Rot3DLib does not get compiled, and there's no warning
 $(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPULIB)  # NOTE: QPULIB needs to be at the back, for correct linking order
 	@echo Linking $@...
+	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
 

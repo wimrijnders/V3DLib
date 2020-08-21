@@ -4,6 +4,8 @@
 #include <cstdlib>  // exit(), EXIT_FAILURE
 #include "Mailbox.h"
 #include "vc4.h"
+#include "../Support/Platform.h"  // has_vc4() 
+#include "../Support/debug.h"
 
 #define GPU_MEM_FLG 0xC // cached=0xC; direct=0x4
 #define GPU_MEM_MAP 0x0 // cached=0x0; direct=0x20000000
@@ -20,7 +22,7 @@ BufferObject heap;
 /**
  * Allocate GPU memory and map it into ARM address space
  */
-uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) {
+void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 	int mb = getMailbox();  // Mailbox, for talking to vc4
 
 	// Allocate memory
@@ -30,12 +32,13 @@ uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start
 		exit(EXIT_FAILURE);
 	}
 
-	uint32_t gpu_base = /* (void*) */ mem_lock(mb, handle);
-	arm_base =  (uint8_t *) mapmem(BUS_TO_PHYS(gpu_base + GPU_MEM_MAP), size_in_bytes*4);
+	phyaddr = /* (void*) */ mem_lock(mb, handle);
+	arm_base =  (uint8_t *) mapmem(BUS_TO_PHYS(phyaddr + GPU_MEM_MAP), size_in_bytes*4);
 
 	m_size = size_in_bytes * 4;
-	array_start_address = arm_base;
-	return gpu_base;
+
+	// NOTE: phyaddr in parent class not set!
+	// TODO: check consequences
 }
 
 
@@ -63,6 +66,13 @@ void BufferObject::dealloc() {
 
 
 BufferObject &getHeap() {
+	if (Platform::instance().has_vc4) {
+		if (heap.size() == 0) {
+			debug("Allocating main heap vc4\n");
+			heap.alloc_mem(BufferObject::DEFAULT_HEAP_SIZE);
+		}
+	}
+
 	return heap;
 }
 

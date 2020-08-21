@@ -176,7 +176,7 @@ bool v3d_init() {
 			printf("Skipping v3d tests with calls to driver\n");
 			did_first = true;
 		}
-		return false;;
+		return false;
 	}
 
 	REQUIRE(v3d_open());

@@ -39,8 +39,7 @@ public:
 
 		m_phyaddr = m_heap.alloc_array(sizeof(T)*n, m_usraddr);
 		assert(m_usraddr != nullptr);
-		assert(m_phyaddr > 0);
-		assert(m_phyaddr > 0);
+		//assert(m_phyaddr > 0);  // Can be 0 for vc4
 		m_size = n;
 	}
 
@@ -75,6 +74,9 @@ public:
   inline T& operator[] (int i) {
 		assert(i >= 0);
 		assert(m_size > 0);
+		if (i >= m_size) {
+			breakpoint
+		}
 		assert(i < m_size);
 		assert(m_usraddr != nullptr);
 

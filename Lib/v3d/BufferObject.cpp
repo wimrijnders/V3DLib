@@ -12,9 +12,10 @@ BufferObject::~BufferObject() {
 
 
 /**
- * @param n number of 4-byte elements to allocate (so NOT memory size!)
+ *
  */
 void BufferObject::alloc_mem(uint32_t size_in_bytes) {
+breakpoint
 	if (Platform::instance().has_vc4) {
 		fatal("Trying to run v3d code on a vc4");
 	}
@@ -68,21 +69,6 @@ void BufferObject::dealloc_mem() {
 } 
 
 
-/**
- * @return physical address for array  if allocated, 
- *         0 if could not allocate.
- */
-uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) {
-	assert(m_size > 0);
-	assert(m_offset + size_in_bytes <= m_size);
-	assert(size_in_bytes % 4 == 0);
-
-	uint32_t prev_offset = m_offset;
-
-	array_start_address = arm_base + m_offset;
-	m_offset += size_in_bytes;
-	return phyaddr + prev_offset;
-}
 
 
 void BufferObject::fill(uint32_t value) {
@@ -134,17 +120,16 @@ void BufferObject::detect_used_blocks() {
 
 namespace {
 
-const int HEAP_SIZE = 1024*1024;
-
 BufferObject mainHeap;
 
 }
+
 
 BufferObject &getMainHeap() {
 	if (!Platform::instance().has_vc4) {
 		if (mainHeap.size() == 0) {
 			//debug("Allocating main heap v3d\n");
-			mainHeap.alloc_mem(HEAP_SIZE);
+			mainHeap.alloc_mem(BufferObject::DEFAULT_HEAP_SIZE);
 		}
 	}
 

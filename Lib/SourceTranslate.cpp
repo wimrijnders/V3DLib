@@ -16,11 +16,11 @@ namespace QPULib {
 
 ISourceTranslate &getSourceTranslate() {
 	if (_source_translate.get() == nullptr) {
-		if (Platform::instance().has_vc4) {
+//		if (Platform::instance().has_vc4) {
 			_source_translate.reset(new vc4::SourceTranslate());
-		} else {
-			_source_translate.reset(new v3d::SourceTranslate());
-		}
+//		} else {
+//			_source_translate.reset(new v3d::SourceTranslate());
+//		}
 	}
 
 	return *_source_translate.get();

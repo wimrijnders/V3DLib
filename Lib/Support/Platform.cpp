@@ -1,6 +1,8 @@
-#include <fstream>
-#include <string.h>  // strstr()
 #include "Platform.h"
+#include <fstream>
+#include <memory>
+#include <string.h>  // strstr()
+#include "debug.h"
 
 namespace {
 
@@ -105,8 +107,9 @@ bool get_chip_version(std::string &output) {
 	return false;
 }
 
-
-PlatformInfo local_instance;
+// Defined like this to delay the creation of the instance after program init,
+// So that other globals get the chance to use it on program init.
+std::unique_ptr<PlatformInfo> local_instance;
 
 }  // anon namespace
 
@@ -150,5 +153,11 @@ void PlatformInfo::output() {
 }
 
 
-const PlatformInfo &Platform::instance() { return local_instance; }
+const PlatformInfo &Platform::instance() {
+	if (!local_instance) {
+		local_instance.reset(new PlatformInfo);
+	}
+
+	return *local_instance;
+}
 

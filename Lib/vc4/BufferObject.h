@@ -9,7 +9,7 @@ class BufferObject : public QPULib::BufferObject {
 public:
   ~BufferObject() { dealloc(); }
 
-	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) override;
+  void alloc_mem(uint32_t size_in_bytes);
 
 private:
   uint32_t handle = 0;

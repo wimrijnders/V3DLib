@@ -16,13 +16,14 @@
 
 
 namespace QPULib {
-#include <stdint.h>
 
 class BufferObject {
 public:
 	virtual ~BufferObject() {}
 
-	virtual uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) = 0;
+	virtual uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
+
+	static const int DEFAULT_HEAP_SIZE = 1024*1024;
 
 	uint32_t size();
 	uint8_t *usr_address() { return arm_base; }
@@ -30,6 +31,8 @@ public:
 protected:
   uint32_t m_size   = 0;  // Total allocated size of BufferObject
 	uint8_t *arm_base = nullptr;
+	uint32_t phyaddr = 0;
+	uint32_t m_offset   = 0;
 };
 
 BufferObject &getBufferObject();

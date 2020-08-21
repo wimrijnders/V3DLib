@@ -24,7 +24,6 @@ public:
   uint32_t getHandle()  const { return  (uint32_t) handle; }
 
   void alloc_mem(uint32_t size_in_bytes);
-	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) override;
 
 	// Debug methods
 	void fill(uint32_t value);
@@ -32,10 +31,7 @@ public:
 	void detect_used_blocks();
 
 private:
-	uint32_t m_offset   = 0;
-
   uint32_t handle  = 0;
-	uint32_t phyaddr = 0;
 
 	void dealloc_mem();
 	uint32_t &operator[] (int i);

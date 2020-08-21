@@ -13,6 +13,26 @@ uint32_t BufferObject::size() {
 }
 
 
+/**
+ * @return physical address for array if allocated, 
+ *         0 if could not allocate.
+ */
+uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) {
+	assert(m_size > 0);
+	assert(size_in_bytes % 4 == 0);
+
+	if (m_offset + size_in_bytes >= m_size) {
+		return 0;
+	}
+
+	uint32_t prev_offset = m_offset;
+
+	array_start_address = arm_base + m_offset;
+	m_offset += size_in_bytes;
+	return phyaddr + prev_offset;
+}
+
+
 BufferObject &getBufferObject() {
 	if (Platform::instance().emulator_only) {
 		return emu::getHeap();
