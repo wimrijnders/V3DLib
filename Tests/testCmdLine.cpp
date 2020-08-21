@@ -55,12 +55,12 @@ TEST_CASE("ReqRecv check output and generation", "[cmdline]") {
 		REQUIRE(!system(cmdline.c_str()));
 
 		std::string expected_filename;
-		if (Platform::instance().emulator_only) {
-			// TODO: This is wrong! There should be no difference in output between emu and vc4.
-			expected_filename = "Tests/data/ReqRecv_expected_emu.txt";
-		} else {
+//		if (Platform::instance().emulator_only) {
+//			// TODO: This is wrong! There should be no difference in output between emu and vc4.
+//			expected_filename = "Tests/data/ReqRecv_expected_emu.txt";
+//		} else {
 			expected_filename = "Tests/data/ReqRecv_expected_vc4.txt";
-		}
+//		}
 
 		std::string diff_cmd = "diff obj/test/ReqRecv_code.txt " + expected_filename;
 		REQUIRE(!system(diff_cmd.c_str()));

@@ -204,7 +204,7 @@ ifeq ($(QPU), 1)
 endif
 
 
-$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB) Rot3DLib
+$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB) Rot3DLib ReqRecv
 	@echo Linking unit tests
 	@mkdir -p $(@D)
 	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@

@@ -86,7 +86,7 @@ uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start
 
 
 void BufferObject::fill(uint32_t value) {
-	for (uint32_t offset = 0; offset < size(); ++offset) {
+	for (uint32_t offset = 0; offset < size_word(); ++offset) {
 		(*this)[offset] = value;
 	}
 }
@@ -98,7 +98,7 @@ void BufferObject::fill(uint32_t value) {
  * This is a debug method, for testing
  */
 void BufferObject::find_value(uint32_t in_val) {
-	for (uint32_t offset = 0; offset < size(); ++offset) {
+	for (uint32_t offset = 0; offset < size_word(); ++offset) {
 		uint32_t val = (*this)[offset];
 
 		if (val == in_val) {
@@ -115,7 +115,7 @@ void BufferObject::find_value(uint32_t in_val) {
  */
 void BufferObject::detect_used_blocks() {
 	bool have_block = false;
-	for (uint32_t offset = 0; offset < size(); ++offset) {
+	for (uint32_t offset = 0; offset < size_word(); ++offset) {
 		uint32_t val = (*this)[offset];
 
 		if (have_block) {
@@ -156,7 +156,10 @@ BufferObject &getMainHeap() {
 uint32_t &BufferObject::operator[] (int i) {
 	assert(i >= 0);
 	assert(m_size > 0);
-	assert(sizeof(uint32_t) * i < m_size);
+	//assert(sizeof(uint32_t) * i < m_size);
+	if (sizeof(uint32_t) * i >= m_size) {
+		breakpoint;
+	}
 
 	uint32_t *base = (uint32_t *) arm_base;
 	return (uint32_t&) base[i];

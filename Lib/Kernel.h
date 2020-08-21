@@ -209,8 +209,6 @@ public:
     // Construct the AST
     f(mkArg<ts>()...);
 
-breakpoint
-
 		m_vc4_driver.transfer_stack();
 
     // Compile

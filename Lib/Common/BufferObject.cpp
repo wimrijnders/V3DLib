@@ -9,7 +9,6 @@ namespace QPULib {
 
 
 uint32_t BufferObject::size() {
-	assert(m_size > 0);
 	return m_size;
 }
 

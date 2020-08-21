@@ -11,7 +11,7 @@ void KernelDriver::transfer_stack() {
 	kernelFinish();
 
    // Obtain the AST
-   Stmt* body = stmtStack.top();
+   body = stmtStack.top();
    stmtStack.pop();
 }
 

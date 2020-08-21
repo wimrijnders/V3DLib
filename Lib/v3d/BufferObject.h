@@ -25,7 +25,6 @@ public:
 
   void alloc_mem(uint32_t size_in_bytes);
 	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) override;
-//	uint32_t size() const { return m_mem_size/sizeof(uint32_t); }  // Returns size in words
 
 	// Debug methods
 	void fill(uint32_t value);
@@ -40,6 +39,7 @@ private:
 
 	void dealloc_mem();
 	uint32_t &operator[] (int i);
+	uint32_t size_word() const { return m_size/sizeof(uint32_t); }  // Returns size in words
 };
 
 

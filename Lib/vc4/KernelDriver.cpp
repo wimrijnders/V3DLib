@@ -6,12 +6,10 @@ namespace QPULib {
 namespace vc4 {
 
 KernelDriver::KernelDriver() : QPULib::KernelDriver(Vc4Buffer) {
-	enableQPUs();
 }
 
 
 KernelDriver::~KernelDriver() {
-	disableQPUs();
 	delete qpuCodeMem;
 }
 
@@ -44,7 +42,9 @@ void KernelDriver::encode(int numQPUs, Seq<Instr> &targetCode) {
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
 	assert(qpuCodeMem != nullptr);
+	enableQPUs();
 	QPULib::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, params);
+	disableQPUs();
 }
 
 }  // namespace vc4

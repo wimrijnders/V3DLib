@@ -13,14 +13,16 @@ template <typename T>
 class SharedArray {
 public:
 	SharedArray() : m_heap(getBufferObject()) {}
+  SharedArray(uint32_t n) : m_heap(getBufferObject()) { alloc(n); }
+
 	SharedArray(HeapView do_heap_view) : m_heap(getBufferObject()) {
-breakpoint
 		assert(do_heap_view == HeapView::use_as_heap_view);
 		m_is_heap_view = true;
 		m_size = m_heap.size();
+		assert(m_size > 0);
 		m_usraddr = m_heap.usr_address();
 	}
-  SharedArray(uint32_t n) : m_heap(getBufferObject()) { alloc(n); }
+
 
   uint32_t getAddress() { return m_phyaddr; }
 	uint32_t size() const { return m_size; }
