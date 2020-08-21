@@ -36,14 +36,13 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 	arm_base =  (uint8_t *) mapmem(BUS_TO_PHYS(phyaddr + GPU_MEM_MAP), size_in_bytes*4);
 
 	m_size = size_in_bytes * 4;
-
-	// NOTE: phyaddr in parent class not set!
-	// TODO: check consequences
 }
 
 
 // Deallocation
 void BufferObject::dealloc() {
+	debug("Deallocating memory vo vc4 bo");
+
 	if (arm_base == nullptr) {
 		assert(handle == 0);
 		assert(m_size == 0);
