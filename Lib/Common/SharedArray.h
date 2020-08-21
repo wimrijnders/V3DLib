@@ -1,27 +1,100 @@
-/**
-
-The emulator heap is tightly coupled to the emulator (and interpreter).
-Notably, the SharedArray's in the heap are assumed to be in the same contiguous address space.
-This is not the case for QPU mode SharedArray's
-
-There is no way to use the QPU mode SharedArray without a serious rewrite.
-
-*/
 #ifndef _QPULIB_COMMON_SHAREDARRAY_H_
 #define _QPULIB_COMMON_SHAREDARRAY_H_
+#include "BufferObject.h"
 #include "../Support/debug.h"
 
-#include "BufferType.h"
+namespace QPULib {
 
-#if !defined(QPU_MODE) && !defined(EMULATION_MODE)
-//
-// Detect mode, set default if none defined.
-// This is the best place to test it in the code, since it's
-// the first of the header files to be compiled.
-//
-#pragma message "WARNING: QPU_MODE and EMULATION_MODE not defined, defaulting to EMULATION_MODE"
-#define EMULATION_MODE
-#endif
+enum HeapView {
+	use_as_heap_view
+};
+
+template <typename T>
+class SharedArray {
+public:
+	SharedArray() : m_heap(getBufferObject()) {}
+	SharedArray(HeapView do_heap_view) : m_heap(getBufferObject()) {
+breakpoint
+		assert(do_heap_view == HeapView::use_as_heap_view);
+		m_is_heap_view = true;
+		m_size = m_heap.size();
+		m_usraddr = m_heap.usr_address();
+	}
+  SharedArray(uint32_t n) : m_heap(getBufferObject()) { alloc(n); }
+
+  uint32_t getAddress() { return m_phyaddr; }
+	uint32_t size() const { return m_size; }
+
+	/**
+	 * @param n number of 4-byte elements to allocate (so NOT memory size!)
+	 */
+	void alloc(uint32_t n) {
+		assert(n > 0);
+		assert(m_size == 0);
+		assert(m_usraddr == nullptr);
+		assert(m_phyaddr == 0);
+		assert(!m_is_heap_view);
+
+		m_phyaddr = m_heap.alloc_array(sizeof(T)*n, m_usraddr);
+		assert(m_usraddr != nullptr);
+		assert(m_phyaddr > 0);
+		assert(m_phyaddr > 0);
+		m_size = n;
+	}
+
+
+	/**
+	 * Just forget the allocation and size.
+	 *
+	 * Note that the array is NOT deallocated in the heap.
+	 */
+	void dealloc() {
+		if (m_size > 0) {
+			m_phyaddr = 0;
+			m_size = 0;
+			m_usraddr = nullptr;
+		}
+	}
+
+
+  // Subscript
+  inline const T operator[] (int i) const {
+		assert(i >= 0);
+		assert(m_size > 0);
+		assert(i < m_size);
+		assert(m_usraddr != nullptr);
+
+    T* base = (T *) m_usraddr;
+    return (T) base[i];
+  }
+
+
+  // Subscript
+  inline T& operator[] (int i) {
+		assert(i >= 0);
+		assert(m_size > 0);
+		assert(i < m_size);
+		assert(m_usraddr != nullptr);
+
+    T* base = (T *) m_usraddr;
+    return (T&) base[i];
+  }
+
+private:
+	BufferObject &m_heap;
+	uint8_t *m_usraddr = nullptr;  // Start of the heap in main memory, as seen by the CPU
+	uint32_t m_phyaddr = 0;        // Starting index of memory in GPU space
+	uint32_t m_size = 0;           // Number of contained elements (not memory size!)
+	bool     m_is_heap_view = false;
+};
+
+}  // namespace QPULib
+
+#ifdef PREVIOUS_VERSION
+
+#include "../Support/debug.h"
+
+
 
 #include "../Target/SharedArray.h"
 
@@ -266,6 +339,8 @@ private:
 
 
 }  // QPULib
+
+#endif  // PREVIOUS_VERSION
 
 #endif  // QPU_MODE
 #endif  // _QPULIB_COMMON_SHAREDARRAY_H_

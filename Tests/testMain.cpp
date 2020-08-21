@@ -23,73 +23,10 @@ using RegMap = QPULib::RegisterMap;
 #endif  // QPU_MODE
 
 
-//
-// get the base directory right for calling compiled apps.
-//
-#ifdef DEBUG
-	#define POSTFIX_DEBUG "-debug"
-#else
-	#define POSTFIX_DEBUG ""
-#endif
-
-#ifdef QPU_MODE
-//	#pragma message "QPU mode enabled"
-	#define POSTFIX_QPU "qpu"
-#else
-	#define POSTFIX_QPU "emu"
-#endif
-
-#define BIN_PATH "obj/" POSTFIX_QPU POSTFIX_DEBUG "/bin"
-
-
-//
-// This test is fairly useless; it just checks if both the shell script and the C++ program
-// fail or succeed at the same time.
-//
-// Better would be to check if the first line is the same
-//
-TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline]") {
-	int ret1 = system(BIN_PATH "/detectPlatform > /dev/null");
-	bool success1 = (ret1 == 0);
-
-	int ret2 = system("Tools/detectPlatform.sh > /dev/null");
-	bool success2 = (ret2 == 0);
-
-	INFO("C++ script returned " << ret1 << ", shell script returned " << ret2);
-	REQUIRE(success1 == success2);
-}
-
-
-TEST_CASE("ReqRecv generated code should remain constant", "[cmdline]") {
-	REQUIRE(!system("mkdir -p obj/test"));
-	const char *cmdline = "cd obj/test && sudo ../../" BIN_PATH "/ReqRecv -c -f > /dev/null";  // sudo needed for vc4
-	INFO("Cmdline: " << cmdline);
-	REQUIRE(!system(cmdline));
-
-	std::string expected_filename;
-	if (Platform::instance().emulator_only) {
-		expected_filename = "Tests/data/ReqRecv_expected_emu.txt";
-	} else {
-		expected_filename = "Tests/data/ReqRecv_expected_vc4.txt";
-	}
-
-	std::string diff_cmd = "diff obj/test/ReqRecv_code.txt " + expected_filename;
-	REQUIRE(!system(diff_cmd.c_str()));
-}
-
-
 #ifdef QPU_MODE
 
 TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
 
-	//
-	// The purpose of this test is two-fold:
-  //
-  // - Check that the register indeed returns the expected value.
-  // - Warn the value ever changes. The number of QPU's has been 12 from the beginning for Pi,
-  //   but should it ever change I want to know.
-	//
-	//
 	SECTION("Check num QPU's") {
 		if (Platform::instance().has_vc4) {
 			REQUIRE(MAX_QPUS == RegMap::numSlices()*RegMap::numQPUPerSlice());

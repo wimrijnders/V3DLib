@@ -96,9 +96,9 @@ int Settings::init(int argc, const char *argv[]) {
 	run_type     = params.parameters()[2]->get_int_value();
 //#endif
 
-#ifdef DEBUG
-	output();
-#endif
+//#ifdef DEBUG
+//	output();
+//#endif
 
 	return ret;
 }

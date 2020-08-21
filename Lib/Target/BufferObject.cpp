@@ -9,15 +9,23 @@
 namespace QPULib {
 namespace emu {
 
+namespace {
+
+BufferObject emuHeap;
+
+}
+
+
 /**
  * Allocate heap if not already done so
  */
 void BufferObject::alloc_heap() {
-	if (emuHeap  == nullptr) {
+	if (arm_base  == nullptr) {
 		emuHeapEnd = 0;
-		emuHeap = new uint32_t [EMULATOR_HEAP_SIZE];
+		arm_base = new uint8_t [EMULATOR_HEAP_SIZE];
 	}
 }
+
 
 
 void BufferObject::check_available(uint32_t n) {
@@ -30,30 +38,20 @@ void BufferObject::check_available(uint32_t n) {
 }
 
 
-uint32_t BufferObject::alloc(uint32_t n) {
-	check_available(n);
+uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) {
+	assert(arm_base != nullptr);
+	check_available(size_in_bytes);
 
 	uint32_t address = emuHeapEnd;
-	emuHeapEnd += n;
+	emuHeapEnd += size_in_bytes;
+	array_start_address = arm_base;
 	return address;
 }
 
 
-uint32_t &BufferObject::operator[] (int i) {
-	assert(i >= 0);
-	assert(emuHeap != nullptr);
-
-	if (i >= EMULATOR_HEAP_SIZE) {
-		printf("QPULib: accessing off end of heap\n");
-		exit(EXIT_FAILURE);
-	}
-
-   return emuHeap[i];
- }
-
-
-// Heap used in emulation mode.
-BufferObject emuHeap;
+BufferObject &getHeap() {
+	return emuHeap;
+}
 
 
 }  // namespace emu

@@ -218,7 +218,7 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
 	printf("data_area_size size: %u\n", data_area_size);
 
 	BufferObject heap(code_area_size + data_area_size);
-	printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size_bytes());
+	printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size());
 
 		heap.fill(0xdeadbeef);
 
@@ -310,7 +310,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		assert(array_length == 8);
 
 		BufferObject heap(1024);
-		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size_bytes());
+		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size());
 
 		SharedArray<uint64_t> codeMem(array_length, heap);
 		printf("codeMem phyaddr: %u, length: %u\n", codeMem.getPhyAddr(), codeMem.size());

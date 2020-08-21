@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include "vc4.h"
 #include "Mailbox.h"
+#include "../Support/debug.h"
 
 namespace QPULib {
 
@@ -22,11 +23,13 @@ int getMailbox()
 // Enable QPUs (if not already enabled)
 void enableQPUs()
 {
+breakpoint
+
   int mb = getMailbox();
   if (numQPUUsers == 0) {
     int qpu_enabled = !qpu_enable(mb, 1);
     if (!qpu_enabled) {
-      printf("Unable to enable QPUs. Check your firmware is latest.");
+      printf("Unable to enable QPUs. Check your firmware is latest.\n");
       exit(EXIT_FAILURE);
     }
   }

@@ -219,9 +219,9 @@ bool v3d_open() {
 		exit(-1);
 	}
 
-	if (fd > 0) {
-		printf("v3d_open() succeeded\n");
-	}
+	//if (fd > 0) {
+	//	printf("v3d_open() succeeded\n");
+	//}
 
 	return (fd > 0);
 }

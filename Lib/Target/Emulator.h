@@ -105,9 +105,6 @@ void emulate
                            // (if NULL, stdout is used)
   );
 
-// Heap used in emulation mode.
-extern emu::BufferObject emuHeap;
-
 // Rotate a vector
 Vec rotate(Vec v, int n);
 

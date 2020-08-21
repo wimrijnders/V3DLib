@@ -8,15 +8,26 @@
 
 namespace QPULib {
 
+class Stmt;
+
 class KernelDriver {
 public:
 	KernelDriver(BufferType in_buffer_type) : buffer_type(in_buffer_type) {}
-	virtual ~KernelDriver() {}
+	virtual ~KernelDriver() {
+		// TODO: shouldn't body be cleaned up?
+	}
 
 	virtual void kernelFinish() {} 
 	virtual void encode(int numQPUs, Seq<QPULib::Instr> &targetCode) = 0;
 	virtual void invoke(int numQPUs, Seq<int32_t>* params) = 0;
-  virtual void pretty(FILE *f) {}
+  virtual void pretty(FILE *f) { print_source_code(f); }
+
+	void transfer_stack();
+
+	/**
+	 * @return AST representing the source code
+	 */
+	Stmt *sourceCode() { return body; }
 
 	bool handle_errors();
 
@@ -25,8 +36,11 @@ public:
 protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
+  Stmt *body = nullptr;
   int qpuCodeMemOffset = 0;
 	std::vector<std::string> errors;
+
+	void print_source_code(FILE *f);
 };
 
 }  // namespace QPULib

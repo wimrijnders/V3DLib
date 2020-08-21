@@ -1,9 +1,7 @@
 #ifndef _QPULIB_BUFFERTYPE_H_
 #define _QPULIB_BUFFERTYPE_H_
-//
-// SharedArray's for v3d have not been properly implemented yet
-// They are currently actually Buffer Objects (BO's), this needs to change
-//
+
+// SharedArray's for v3d have not been fully tested yet
 #define USE_V3D_BUFFERS
 
 namespace QPULib {

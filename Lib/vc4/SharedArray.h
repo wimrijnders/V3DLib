@@ -1,5 +1,5 @@
-#ifndef _QPULIB_VIDEOCORE_SHAREDARRAY_H_
-#define _QPULIB_VIDEOCORE_SHAREDARRAY_H_
+#ifndef _QPULIB_VC4_SHAREDARRAY_H_
+#define _QPULIB_VC4_SHAREDARRAY_H_
 #include <cassert>
 #include <cstdlib>  // exit(), EXIT_FAILURE
 #include <stdint.h>
@@ -110,4 +110,4 @@ template <typename T> class SharedArray {
 
 #endif  // QPU_MODE
 
-#endif // _QPULIB_VIDEOCORE_SHAREDARRAY_H_
+#endif  // _QPULIB_VC4_SHAREDARRAY_H_

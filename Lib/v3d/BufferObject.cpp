@@ -31,36 +31,36 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 	if (!v3d_alloc(size_in_bytes, handle, phyaddr, &tmp_addr)) {
 		assert(false);
 	}
-	usraddr = (uint8_t *) tmp_addr;
+	arm_base = (uint8_t *) tmp_addr;
 
 	assert(handle != 0);
 	assert(phyaddr != 0);
-	assert(usraddr != nullptr);
+	assert(arm_base != nullptr);
 
-	m_mem_size = size_in_bytes;
+	m_size = size_in_bytes;
 }
 
 
 void BufferObject::dealloc_mem() {
-	if (usraddr != nullptr) {
-		assert(m_mem_size > 0);
+	if (arm_base != nullptr) {
+		assert(m_size > 0);
 		assert(handle > 0);
 
-		// Shouldn't allox be handled in reverse order here???
+		// Shouldn't allocs be handled in reverse order here???
 		// TODO: check
 
-		if (!v3d_unmap(m_mem_size, handle, usraddr)) {
+		if (!v3d_unmap(m_size, handle, arm_base)) {
 			assert(false);
 		}
 		//debug("v3d_unmap() called");
 
-		m_mem_size = 0;
+		m_size = 0;
 		handle = 0;
-		usraddr = nullptr;
+		arm_base = nullptr;
 		phyaddr = 0;
 		m_offset = 0;
 	} else {
-		assert(m_mem_size == 0);
+		assert(m_size == 0);
 		assert(handle == 0);
 		assert(phyaddr == 0);
 		assert(m_offset == 0);
@@ -73,13 +73,13 @@ void BufferObject::dealloc_mem() {
  *         0 if could not allocate.
  */
 uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) {
-	assert(m_mem_size > 0);
-	assert(m_offset + size_in_bytes <= m_mem_size);
+	assert(m_size > 0);
+	assert(m_offset + size_in_bytes <= m_size);
 	assert(size_in_bytes % 4 == 0);
 
 	uint32_t prev_offset = m_offset;
 
-	array_start_address = usraddr + m_offset;
+	array_start_address = arm_base + m_offset;
 	m_offset += size_in_bytes;
 	return phyaddr + prev_offset;
 }
@@ -142,13 +142,24 @@ BufferObject mainHeap;
 
 BufferObject &getMainHeap() {
 	if (!Platform::instance().has_vc4) {
-		if (mainHeap.size_bytes() == 0) {
-			debug("Allocating main heap v3d\n");
+		if (mainHeap.size() == 0) {
+			//debug("Allocating main heap v3d\n");
 			mainHeap.alloc_mem(HEAP_SIZE);
 		}
 	}
 
 	return mainHeap;
+}
+
+
+// Subscript
+uint32_t &BufferObject::operator[] (int i) {
+	assert(i >= 0);
+	assert(m_size > 0);
+	assert(sizeof(uint32_t) * i < m_size);
+
+	uint32_t *base = (uint32_t *) arm_base;
+	return (uint32_t&) base[i];
 }
 
 }  // namespace v3d
