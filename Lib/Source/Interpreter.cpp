@@ -157,7 +157,7 @@ Vec eval(CoreState* s, Expr* e)
       int hp = a.elems[0].intVal;
       Vec v;
       for (int i = 0; i < NUM_LANES; i++) {
-        v.elems[i].intVal = emuHeap[hp>>2];
+        v.elems[i].intVal = emuHeap.phy(hp>>2);
         hp += s->readStride;
       }
       return v;
@@ -303,7 +303,7 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
       Vec w;
       for (int i = 0; i < NUM_LANES; i++) {
         uint32_t addr = (uint32_t) x.elems[i].intVal;
-        w.elems[i].intVal = emuHeap[addr>>2];
+        w.elems[i].intVal = emuHeap.phy(addr>>2);
       }
       s->loadBuffer->append(w);
       return;
@@ -344,7 +344,7 @@ void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
       Vec index = eval(s, lhs->deref.ptr);
       int hp = index.elems[0].intVal;
       for (int i = 0; i < NUM_LANES; i++) {
-        emuHeap[hp>>2] = val.elems[i].intVal;
+        emuHeap.phy(hp>>2) = val.elems[i].intVal;
         hp += 4 + s->writeStride;
       }
       return;
@@ -486,7 +486,7 @@ void execStoreRequest(CoreState* s, Expr* data, Expr* addr) {
   Vec index = eval(s, addr);
   int hp = index.elems[0].intVal;
   for (int i = 0; i < NUM_LANES; i++) {
-    emuHeap[hp>>2] = val.elems[i].intVal;
+    emuHeap.phy(hp>>2) = val.elems[i].intVal;
     hp += 4 + s->writeStride;
   }
 }

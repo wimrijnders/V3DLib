@@ -243,7 +243,6 @@ public:
 //#ifdef EMULATION_MODE
   // Invoke the interpreter
   template <typename... us> void interpret(us... args) {
-breakpoint
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);

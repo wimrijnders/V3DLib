@@ -27,6 +27,7 @@ public:
 
 	uint32_t size();
 	uint8_t *usr_address() { return arm_base; }
+	uint32_t phy_address() { return phyaddr; }
 
 protected:
   uint32_t m_size   = 0;  // Total allocated size of BufferObject

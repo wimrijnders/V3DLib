@@ -5,10 +5,21 @@
 
 namespace QPULib {
 
+// Identifier for creating a SharedArray view for an entire buffer object
 enum HeapView {
 	use_as_heap_view
 };
 
+
+/**
+ * Reserve and access a memory range in the underlying buffer object.
+ *
+ * All SharedArray instances use the same global BufferObject (BO) instance.
+ * This is how the memory and v3d access already worked.
+ *
+ * For vc4, this is a change. Previously, each SharedArray instance had its
+ * own BO. Experience will tell if this new setup works
+ */
 template <typename T>
 class SharedArray {
 public:
@@ -21,6 +32,7 @@ public:
 		m_size = m_heap.size();
 		assert(m_size > 0);
 		m_usraddr = m_heap.usr_address();
+		m_phyaddr = m_heap.phy_address();
 	}
 
 
@@ -75,13 +87,26 @@ public:
 		assert(i >= 0);
 		assert(m_size > 0);
 		if (i >= m_size) {
-			breakpoint
+			breakpoint  // Check if this ever happens
 		}
 		assert(i < m_size);
 		assert(m_usraddr != nullptr);
 
     T* base = (T *) m_usraddr;
     return (T&) base[i];
+  }
+
+
+	/**
+	 * Subscript for access using physical address.
+	 *
+	 * Needed for interpreter and emulator.
+	 * Intended for use with T = uint32_t, but you never know.
+	 */
+  inline T& phy(int i) {
+//		breakpoint
+		assert(m_phyaddr % sizeof(T) == 0);
+		return (*this)[i - m_phyaddr/sizeof(T)];  // Adjust for physical address offset
   }
 
 private:
