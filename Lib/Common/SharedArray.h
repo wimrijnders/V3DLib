@@ -40,6 +40,21 @@ public:
   uint32_t getAddress() { return m_phyaddr; }
 	uint32_t size() const { return m_size; }
 
+
+	/**
+	 * Get starting address of the section in question
+	 *
+	 * Needed for vc4, and for v3d in emulator and interpreter mode.
+	 */
+	T *getPointer() {
+		if (Platform::instance().has_vc4) {
+  		return (T *) m_phyaddr;
+		} else {
+    	return (T *) m_usraddr;
+		}
+	}
+
+
 	/**
 	 * @param n number of 4-byte elements to allocate (so NOT memory size!)
 	 */
@@ -55,7 +70,7 @@ public:
 
 		m_phyaddr = m_heap.alloc_array(sizeof(T)*n, m_usraddr);
 		assert(m_usraddr != nullptr);
-		//assert(m_phyaddr > 0);  // Can be 0 for vc4
+		//assert(m_phyaddr > 0);  // Can be 0 for emu
 		m_size = n;
 	}
 

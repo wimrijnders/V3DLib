@@ -333,19 +333,7 @@ public:
     }
 
 		m_vc4_driver.pretty(f);  // TODO: Print for v3d as well
-
-#ifdef QPU_MODE
-    // Emit target code
-    fprintf(f, "Target code\n");
-    fprintf(f, "===========\n\n");
-    for (int i = 0; i < targetCode.numElems; i++)
-    {
-      fprintf(f, "%i: ", i);
-      QPULib::pretty(f, targetCode.elems[i]);
-    }
-    fprintf(f, "\n");
-    fflush(f);
-#endif  // QPU_MODE
+		emit_target_code(f);
 
     if (filename != nullptr) {
       assert(f != nullptr);
@@ -353,6 +341,7 @@ public:
       fclose(f);
     }
   }
+
 
 private:
 	vc4::KernelDriver m_vc4_driver;  // Always required for emulator
@@ -367,6 +356,19 @@ private:
     	// Invoke kernel on QPUs
 			kernel_driver.invoke(numQPUs, &uniforms);
 		}
+	}
+
+	void emit_target_code(FILE *f) {
+    // Emit target code
+    fprintf(f, "Target code\n");
+    fprintf(f, "===========\n\n");
+    for (int i = 0; i < targetCode.numElems; i++)
+    {
+      fprintf(f, "%i: ", i);
+      QPULib::pretty(f, targetCode.elems[i]);
+    }
+    fprintf(f, "\n");
+    fflush(f);
 	}
 };
 

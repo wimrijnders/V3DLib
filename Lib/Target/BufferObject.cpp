@@ -44,15 +44,15 @@ uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start
 	check_available(size_in_bytes);
 
 	uint32_t address = emuHeapEnd;
+	array_start_address = arm_base + emuHeapEnd;
 	emuHeapEnd += size_in_bytes;
-	array_start_address = arm_base;
 	return address;
 }
 
 
 BufferObject &getHeap() {
 	if (!emuHeap) {
-		debug("Allocating emu heap v3d\n");
+		//debug("Allocating emu heap v3d\n");
 		emuHeap.reset(new BufferObject(BufferObject::DEFAULT_HEAP_SIZE));
 	}
 

@@ -238,17 +238,13 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
     SharedArray<int> &result,
     int index,
     const std::vector<int> &expected) {
-    INFO("showResult index: " << index);
+    INFO("index: " << index);
 
-    if (result.size() != N*16) {
-      INFO("length result: " << result.size());
-      REQUIRE(result.size() == N*16);
-    }
+    INFO("length result: " << result.size());
+    REQUIRE(result.size() == N*16);
 
-    if (expected.size() != 16) {
-      INFO("length expected: " << expected.size());
-      REQUIRE(expected.size() == 16);
-    }
+    INFO("length expected: " << expected.size());
+    REQUIRE(expected.size() == 16);
 
     bool passed = true;
     for (int j = 0; j < 16; ++j) {
@@ -267,18 +263,17 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
   // Test all variations of If and When
   //
   SECTION("Conditionals work as expected") {
-
     // Construct kernel
     auto k = compile(kernelIfWhen);
 
-    // Allocate and array for result values
+    // Allocate an array for result values
     SharedArray<int> result(16*N);
     for (int i = 0; i < N; i++) {
       result[i] = -1;  // Initialize to unexpected value
     }
 
     // Run kernel
-    k(&result);
+   	k(&result);
 
     // any
     assertResult(result,  0, allZeroes);

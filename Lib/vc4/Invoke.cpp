@@ -22,8 +22,7 @@ void invoke(
   assert(numWords < codeMem.size());
 
   // Pointer to start of code
-  uint32_t* qpuCodePtr = (uint32_t *) codeMem.getAddress();  // NOTE: This will not work for v3d, where
-	                                                           //       phyaddr is an offset
+  uint32_t* qpuCodePtr = codeMem.getPointer();
 
   // Copy parameters to instruction memory
   int offset = qpuCodeMemOffset;
