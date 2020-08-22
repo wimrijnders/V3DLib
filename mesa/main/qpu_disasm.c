@@ -24,13 +24,11 @@
 /*
  * Adapted from: broadcom/qpu/tests/qpu_disasm.c
  */
-//#include <stdio.h>
-//#include <string.h>
+#include <stdio.h>
 #include "util/macros.h"
 #include "broadcom/common/v3d_device_info.h"
 #include "broadcom/qpu/qpu_disasm.h"
 #include "broadcom/qpu/qpu_instr.h"
-#include "../../Lib/debug.h" 
 
 
 // Source: https://github.com/Idein/py-videocore6/blob/master/examples/summation.py

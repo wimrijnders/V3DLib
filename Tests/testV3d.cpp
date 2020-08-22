@@ -20,10 +20,11 @@
 #include <sys/time.h>
 #include <cstring>
 #include <iostream>
-#include "v3d/SharedArray.h"
+#include "Common/SharedArray.h"
 #include "v3d/v3d.h"
 #include "v3d/instr/Instr.h"
 #include "v3d/Driver.h"
+#include "v3d/BufferObject.h"
 #include "../Lib/Support/basics.h"
 #include "Support/debug.h"
 #include "Support/Platform.h"
@@ -33,6 +34,9 @@
 #define ARRAY_LENGTH(arr, type) (sizeof(arr)/sizeof(type))
 
 using BufferObject = QPULib::v3d::BufferObject;
+
+template<typename T>
+using SharedArray = QPULib::SharedArray<T>;
 
 
 namespace {
@@ -58,7 +62,7 @@ uint64_t do_nothing[] = {
 // Test support routines
 //////////////////////////////////
 
-void check_returned_registers(QPULib::v3d::SharedArray<uint32_t> &Y) {
+void check_returned_registers(SharedArray<uint32_t> &Y) {
 	uint32_t cur_QPU;
 
 	for (uint32_t offset = 0; offset < Y.size(); ++offset) {
@@ -218,80 +222,79 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
 	printf("data_area_size size: %u\n", data_area_size);
 
 	BufferObject heap(code_area_size + data_area_size);
-	printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size());
+	printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
-		heap.fill(0xdeadbeef);
+	heap.fill(0xdeadbeef);
 
-		SharedArray<uint64_t> code(bytecode.size(), heap);
-		code.copyFrom(bytecode);
-		printf("code phyaddr: %u, size: %u\n", code.getPhyAddr(), 8*code.size());
-		dump_data(code); 
+	SharedArray<uint64_t> code(bytecode.size(), heap);
+	code.copyFrom(bytecode);
+	printf("code phyaddr: %u, size: %u\n", code.getAddress(), 8*code.size());
+	dump_data(code); 
 
-		SharedArray<uint32_t> X(length, heap);
-		SharedArray<uint32_t> Y(16 * num_qpus, heap);
-		printf("X phyaddr: %u, size: %u\n", X.getPhyAddr(), 4*X.size());
-		printf("Y phyaddr: %u, size: %u\n", Y.getPhyAddr(), 4*Y.size());
+	SharedArray<uint32_t> X(length, heap);
+	SharedArray<uint32_t> Y(16 * num_qpus, heap);
+	printf("X phyaddr: %u, size: %u\n", X.getAddress(), 4*X.size());
+	printf("Y phyaddr: %u, size: %u\n", Y.getAddress(), 4*Y.size());
 
-		auto sumY = [&Y] () -> uint64_t {
-			uint64_t ret = 0;
-
-			for (uint32_t offset = 0; offset < Y.size(); ++offset) {
-				ret += Y[offset];
-			}
-
-			return ret;
-		};
-
-		for (uint32_t offset = 0; offset < X.size(); ++offset) {
-			X[offset] = offset;
-		}
-		dump_data(X); 
+	auto sumY = [&Y] () -> uint64_t {
+		uint64_t ret = 0;
 
 		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
-			Y[offset] = 0;
+			ret += Y[offset];
 		}
-		dump_data(Y); 
-		REQUIRE(sumY() == 0);
 
-		SharedArray<uint32_t> unif(3, heap);
-		unif[0] = length;
-		unif[1] = X.getPhyAddr();
-		unif[2] = Y.getPhyAddr();
-		printf("unif phyaddr: %u, size: %u\n", unif.getPhyAddr(), 4*unif.size());
+		return ret;
+	};
 
+	for (uint32_t offset = 0; offset < X.size(); ++offset) {
+		X[offset] = offset;
+	}
+	dump_data(X); 
 
-		printf("Executing on QPU...\n");
-		double start = get_time();
+	for (uint32_t offset = 0; offset < Y.size(); ++offset) {
+		Y[offset] = 0;
+	}
+	dump_data(Y); 
+	REQUIRE(sumY() == 0);
 
-		QPULib::v3d::Driver drv;
-		drv.add_bo(heap);
-		drv.execute(code, &unif, num_qpus);
+	SharedArray<uint32_t> unif(3, heap);
+	unif[0] = length;
+	unif[1] = X.getAddress();
+	unif[2] = Y.getAddress();
+	printf("unif phyaddr: %u, size: %u\n", unif.getAddress(), 4*unif.size());
 
-		dump_data(Y, true);
-		check_returned_registers(Y);
-		heap.detect_used_blocks();
+	printf("Executing on QPU...\n");
+	double start = get_time();
+
+	QPULib::v3d::Driver drv;
+	drv.add_bo(heap);
+	drv.execute(code, &unif, num_qpus);
+
+	dump_data(Y, true);
+	check_returned_registers(Y);
+	heap.detect_used_blocks();
 
 /*
-		// Check if code not overwritten
-		for (uint32_t offset = 0; offset < summation.size(); ++offset) {
-			INFO("Code offset: " << offset);
-			REQUIRE(code[offset] == summation[offset]);
-		}
+	// Check if code not overwritten
+	for (uint32_t offset = 0; offset < summation.size(); ++offset) {
+		INFO("Code offset: " << offset);
+		REQUIRE(code[offset] == summation[offset]);
+	}
 
-		// Check if X not overwritten
-		for (uint32_t offset = 0; offset < X.size(); ++offset) {
-			INFO("X offset: " << offset);
-			REQUIRE(X[offset] == offset);
-		}
+	// Check if X not overwritten
+	for (uint32_t offset = 0; offset < X.size(); ++offset) {
+		INFO("X offset: " << offset);
+		REQUIRE(X[offset] == offset);
+	}
 
-		heap.find_value(1736704u); // 4278190080u;
+	heap.find_value(1736704u); // 4278190080u;
 */
 	
-		// Check if values supplied
-    REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
+	// Check if values supplied
+   REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
 		
-		double end = get_time();
-		printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
+	double end = get_time();
+	printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
 }
 
 }  // anon 
@@ -310,10 +313,10 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		assert(array_length == 8);
 
 		BufferObject heap(1024);
-		printf("heap phyaddr: %u, size: %u\n", heap.getPhyAddr(), heap.size());
+		printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
 		SharedArray<uint64_t> codeMem(array_length, heap);
-		printf("codeMem phyaddr: %u, length: %u\n", codeMem.getPhyAddr(), codeMem.size());
+		printf("codeMem phyaddr: %u, length: %u\n", codeMem.getAddress(), codeMem.size());
 		codeMem.copyFrom(do_nothing, array_length);
 		dump_data(codeMem);
 
@@ -332,7 +335,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
 		const int SIZE = 16;
 
-		QPULib::v3d::SharedArray<uint32_t> arr(SIZE);
+		SharedArray<uint32_t> arr(SIZE);
 		REQUIRE(arr.size() == SIZE);
 
 		for(int offset = 0; offset < SIZE; ++offset) {

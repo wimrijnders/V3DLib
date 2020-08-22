@@ -70,8 +70,6 @@ void BufferObject::dealloc_mem() {
 } 
 
 
-
-
 void BufferObject::fill(uint32_t value) {
 	for (uint32_t offset = 0; offset < size_word(); ++offset) {
 		(*this)[offset] = value;

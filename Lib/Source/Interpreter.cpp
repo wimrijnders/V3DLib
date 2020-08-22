@@ -354,7 +354,6 @@ void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
     // Dereferenced pointer
     case DEREF: {
       Vec index = eval(s, lhs->deref.ptr);
-      //int hp = index.elems[0].intVal;
       uint32_t hp = (uint32_t) index.elems[0].intVal;
       for (int i = 0; i < NUM_LANES; i++) {
         emuHeap.phy(hp>>2) = val.elems[i].intVal;
@@ -497,7 +496,6 @@ void execLoadReceive(CoreState* s, Expr* e)
 void execStoreRequest(CoreState* s, Expr* data, Expr* addr) {
   Vec val = eval(s, data);
   Vec index = eval(s, addr);
-  //int hp = index.elems[0].intVal;
   uint32_t hp = (uint32_t) index.elems[0].intVal;
   for (int i = 0; i < NUM_LANES; i++) {
     emuHeap.phy(hp>>2) = val.elems[i].intVal;

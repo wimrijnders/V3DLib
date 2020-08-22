@@ -93,7 +93,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t x = req->vpmAddr & 0xf;
             for (int i = 0; i < req->rowLen; i++) {
-              int addr = s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4;
+              uint32_t addr = (uint32_t) (s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4);
               g->vpm[y*16 + x].intVal = emuHeap.phy(addr >> 2);
               x = (x+1) % 16;
             }
@@ -106,7 +106,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t y = ((req->vpmAddr >> 4) + r*req->vpitch) & 0x3f;
             for (int i = 0; i < req->rowLen; i++) {
-              int addr = s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4;
+              uint32_t addr = (uint32_t) (s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4);
               g->vpm[y*16 + x].intVal = emuHeap.phy(addr >> 2);
               y = (y+1) % 64;
             }
@@ -121,6 +121,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
         if (s->dmaStore.active == false) return v;
         DMAStoreReq* req = &s->dmaStoreSetup;
         uint32_t memAddr = s->dmaStore.addr.intVal;
+
         if (req->hor) {
           // Horizontal access
           uint32_t y = (req->vpmAddr >> 4) & 0x3f;

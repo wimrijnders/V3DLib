@@ -1,7 +1,7 @@
 #ifndef _LIB_V3D_KERNELDRIVER_H
 #define _LIB_V3D_KERNELDRIVER_H
 #include "../KernelDriver.h"
-#include "SharedArray.h"
+#include "Common/SharedArray.h"
 
 #ifdef QPU_MODE
 

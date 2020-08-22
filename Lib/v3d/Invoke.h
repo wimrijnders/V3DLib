@@ -1,8 +1,7 @@
-#ifndef _VC6_INVOKE_H
-#define _VC6_INVOKE_H
-#include "SharedArray.h"
+#ifndef _QPULIB_V3D_INVOKE_H
+#define _QPULIB_V3D_INVOKE_H
+#include "Common/SharedArray.h"
 #include "Common/Seq.h"
-
 
 namespace QPULib {
 namespace v3d {
@@ -16,4 +15,4 @@ void invoke(
 }  // v3d
 }  // QPULib
 
-#endif // _VC6_INVOKE_H
+#endif  // _QPULIB_V3D_INVOKE_H

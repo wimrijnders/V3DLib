@@ -111,6 +111,7 @@ EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
 
 
 QPULIB=$(OBJ_DIR)/libQPULib.a
+MESA_LIB = obj/mesa/bin/libmesa.a
 
 
 # Top-level targets
@@ -152,9 +153,12 @@ clean:
 # Targets for static library
 #
 
-$(QPULIB): $(LIB)
+$(QPULIB): $(LIB) $(MESA_LIB)
 	@echo Creating $@
 	@ar rcs $@ $^
+
+$(MESA_LIB):
+	cd mesa && make compile
 
 
 # Rule for creating object files

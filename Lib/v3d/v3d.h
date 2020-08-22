@@ -1,7 +1,8 @@
 #ifndef _V3D_V3D_h
 #define _V3D_V3D_h
 #include <stdint.h>
-#include "SharedArray.h"
+#include <vector>
+//#include "Common/SharedArray.h"
 
 struct WorkGroup {
 	uint32_t wg_x = 0;

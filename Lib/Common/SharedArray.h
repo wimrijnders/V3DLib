@@ -1,5 +1,6 @@
 #ifndef _QPULIB_COMMON_SHAREDARRAY_H_
 #define _QPULIB_COMMON_SHAREDARRAY_H_
+#include <vector>
 #include "BufferObject.h"
 #include "../Support/debug.h"
 #include "../Support/Platform.h"  // has_vc4
@@ -25,7 +26,7 @@ template <typename T>
 class SharedArray {
 public:
 	SharedArray() : m_heap(getBufferObject()) {}
-  SharedArray(uint32_t n) : m_heap(getBufferObject()) { alloc(n); }
+  SharedArray(uint32_t n, BufferObject heap = getBufferObject()) : m_heap(heap) { alloc(n); }
 
 	SharedArray(HeapView do_heap_view) : m_heap(getBufferObject()) {
 		assert(do_heap_view == HeapView::use_as_heap_view);
@@ -132,6 +133,26 @@ public:
 
 		return (*this)[index];
   }
+
+
+	void copyFrom(T const *src, uint32_t size) {
+		assert(src != nullptr);
+		assert(size <= m_size);
+		// TODO: consider using memcpy() instead
+		for (uint32_t offset = 0; offset < size; ++offset) {
+			(*this)[offset] = src[offset];
+		}
+	}
+
+	void copyFrom(std::vector<T> const &src) {
+		assert(!src.empty());
+		assert(src.size() <= m_size);
+
+		// TODO: consider using memcpy() instead
+		for (uint32_t offset = 0; offset < src.size(); ++offset) {
+			(*this)[offset] = src[offset];
+		}
+	}
 
 private:
 	BufferObject &m_heap;

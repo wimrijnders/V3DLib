@@ -53,15 +53,11 @@ namespace v3d {
 */
 bool Driver::dispatch(
 	uint32_t code_phyaddr,
-//	uint32_t code_handle,  // Only passed in for check
 	uint32_t unif_phyaddr,
 	uint32_t thread
 ) {
 	assert(m_timeout_sec > 0);
 	assert(m_bo_handles.size() > 0);  // There should be at least one, for the code
-
-//	auto index = std::find(m_bo_handles.begin(), m_bo_handles.end(), code_handle);
-//	assert(index != m_bo_handles.end());  // Expecting handle of code to have been added beforehand
 
 	// See Note 1
 	WorkGroup workgroup = (1, 1, 0);  // Setting last val to 0 ensures all QPU's return all registers
@@ -78,7 +74,7 @@ bool Driver::dispatch(
 				workgroup.wg_size() & 0xff
 			),
 			thread - 1,           // Number of batches minus 1
-			code_phyaddr,    // Shader address, pnan, singleseg, threading
+			code_phyaddr,         // Shader address, pnan, singleseg, threading
 			unif_phyaddr
 		},
 		{0,0,0,0},
@@ -104,9 +100,8 @@ bool Driver::execute(
 	int thread) {
 
 	return dispatch(
-		code.getPhyAddr(),
-//		code.getHandle(),
-		((uniforms == nullptr)?0u:uniforms->getPhyAddr()),
+		code.getAddress(),
+		((uniforms == nullptr)?0u:uniforms->getAddress()),
 		thread);
 }
 

@@ -709,13 +709,13 @@ void KernelDriver::encode(int numQPUs, Seq<QPULib::Instr> &targetCode) {
 
 
 	// Allocate memory for the QPU code
-	qpuCodeMem = new v3d::SharedArray<uint64_t>(code.size());
+	qpuCodeMem = new SharedArray<uint64_t>(code.size());
 	qpuCodeMem->copyFrom(code);  // Copy kernel to code memory
 
 
 	// Allocate memory for the parameters
 	int numWords = (12*MAX_KERNEL_PARAMS + 12*2);
-	paramMem = new v3d::SharedArray<uint32_t>;
+	paramMem = new SharedArray<uint32_t>;
 	paramMem->alloc(numWords);
 
 	qpuCodeMemOffset = 8*code.size();  // TODO check if correct

@@ -1,6 +1,6 @@
 #ifndef _VC6_DRIVER_H_
 #define _VC6_DRIVER_H_
-#include "v3d/SharedArray.h"
+#include "Common/SharedArray.h"
 #include "v3d.h"
 
 
@@ -38,7 +38,6 @@ private:
 
 	bool dispatch(
 		uint32_t code_phyaddr,
-	//	uint32_t code_handle,  // Only passed in for check
 		uint32_t unif_phyaddr,
 		uint32_t thread = 1);
 

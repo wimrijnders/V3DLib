@@ -33,6 +33,12 @@ uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start
 }
 
 
+uint32_t BufferObject::getHandle() const {
+	assert(false);  // Only use for v3d
+	return 0;
+}
+
+
 BufferObject &getBufferObject() {
 	if (Platform::instance().emulator_only) {
 		return emu::getHeap();
