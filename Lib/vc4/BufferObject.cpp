@@ -41,13 +41,13 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 
 // Deallocation
 void BufferObject::dealloc() {
-	debug("Deallocating memory vo vc4 bo");
-
 	if (arm_base == nullptr) {
 		assert(handle == 0);
 		assert(m_size == 0);
 		return;
 	}
+
+	debug("Deallocating memory for vc4 bo");
 
 	int mb = getMailbox();  // Mailbox, for talking to vc4
 

@@ -220,7 +220,6 @@ public:
 
 //#ifdef EMULATION_MODE
   template <typename... us> void emu(us... args) {
-breakpoint
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);

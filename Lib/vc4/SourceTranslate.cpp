@@ -7,7 +7,6 @@ namespace QPULib {
 namespace vc4 {
 
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
-breakpoint
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
 

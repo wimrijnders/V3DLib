@@ -1,4 +1,5 @@
 #include "BufferObject.h"
+#include <memory>
 #include "../Support/debug.h"
 #include "../Support/Platform.h"  // has_vc4() 
 #include "v3d.h"
@@ -7,6 +8,7 @@ namespace QPULib {
 namespace v3d {
 
 BufferObject::~BufferObject() {
+	debug("Called dtor v3d BO");
 	dealloc_mem();
 }
 
@@ -15,7 +17,6 @@ BufferObject::~BufferObject() {
  *
  */
 void BufferObject::alloc_mem(uint32_t size_in_bytes) {
-breakpoint
 	if (Platform::instance().has_vc4) {
 		fatal("Trying to run v3d code on a vc4");
 	}
@@ -120,20 +121,21 @@ void BufferObject::detect_used_blocks() {
 
 namespace {
 
-BufferObject mainHeap;
+// Defined as a smart ptr to avoid issues on program init
+std::unique_ptr<BufferObject> mainHeap;
 
 }
 
 
 BufferObject &getMainHeap() {
 	if (!Platform::instance().has_vc4) {
-		if (mainHeap.size() == 0) {
-			//debug("Allocating main heap v3d\n");
-			mainHeap.alloc_mem(BufferObject::DEFAULT_HEAP_SIZE);
+		if (!mainHeap) {
+			debug("Allocating main heap v3d\n");
+			mainHeap.reset(new BufferObject(BufferObject::DEFAULT_HEAP_SIZE));
 		}
 	}
 
-	return mainHeap;
+	return *mainHeap;
 }
 
 

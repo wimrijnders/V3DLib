@@ -1,17 +1,17 @@
 #include "BufferObject.h"
 #include <cassert>
+#include <memory>
 #include <cstdio>
 #include <stdlib.h>  // abort()
-
-// When in EMULATION_MODE allocate memory from a pre-allocated pool.
-#define EMULATOR_HEAP_SIZE 1024*65536
+#include "../Support/debug.h"
 
 namespace QPULib {
 namespace emu {
 
 namespace {
 
-BufferObject emuHeap;
+// Defined as a smart ptr to avoid issues on program init
+std::unique_ptr<BufferObject> emuHeap;
 
 }
 
@@ -19,20 +19,21 @@ BufferObject emuHeap;
 /**
  * Allocate heap if not already done so
  */
-void BufferObject::alloc_heap() {
-	if (arm_base  == nullptr) {
-		emuHeapEnd = 0;
-		arm_base = new uint8_t [EMULATOR_HEAP_SIZE];
-	}
+void BufferObject::alloc_heap(uint32_t size) {
+	assert(arm_base  == nullptr);
+
+	emuHeapEnd = 0;
+	arm_base = new uint8_t [size];
+	m_size = size;
 }
 
 
 
 void BufferObject::check_available(uint32_t n) {
-	alloc_heap();
+	assert(arm_base != nullptr);
 
-	if (emuHeapEnd + n >= EMULATOR_HEAP_SIZE) {
-		printf("QPULib: heap overflow (increase EMULATOR_HEAP_SIZE)\n");
+	if (emuHeapEnd + n >= m_size) {
+		printf("QPULib: heap overflow (increase heap size)\n");
 		abort();
 	}
 }
@@ -50,7 +51,12 @@ uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start
 
 
 BufferObject &getHeap() {
-	return emuHeap;
+	if (!emuHeap) {
+		debug("Allocating emu heap v3d\n");
+		emuHeap.reset(new BufferObject(BufferObject::DEFAULT_HEAP_SIZE));
+	}
+
+	return *emuHeap;
 }
 
 
