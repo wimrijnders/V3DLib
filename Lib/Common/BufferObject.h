@@ -24,7 +24,7 @@ public:
 	virtual uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
   virtual uint32_t getHandle() const;
 
-	static const int DEFAULT_HEAP_SIZE = 1024*1024;
+	static const int DEFAULT_HEAP_SIZE = 5*1024*1024;
 
 	uint32_t size();
 	uint8_t *usr_address() { return arm_base; }
