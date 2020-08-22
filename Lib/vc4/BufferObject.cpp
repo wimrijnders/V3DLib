@@ -33,9 +33,9 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 	}
 
 	phyaddr = /* (void*) */ mem_lock(mb, handle);
-	arm_base =  (uint8_t *) mapmem(BUS_TO_PHYS(phyaddr + GPU_MEM_MAP), size_in_bytes*4);
+	arm_base =  (uint8_t *) mapmem(BUS_TO_PHYS(phyaddr + GPU_MEM_MAP), size_in_bytes);
 
-	m_size = size_in_bytes * 4;
+	m_size = size_in_bytes;
 }
 
 
@@ -47,7 +47,7 @@ void BufferObject::dealloc() {
 		return;
 	}
 
-	debug("Deallocating memory for vc4 bo");
+	//debug("Deallocating memory for vc4 bo");
 
 	int mb = getMailbox();  // Mailbox, for talking to vc4
 
@@ -67,7 +67,7 @@ void BufferObject::dealloc() {
 BufferObject &getHeap() {
 	if (Platform::instance().has_vc4) {
 		if (heap.size() == 0) {
-			debug("Allocating main heap vc4\n");
+			//debug("Allocating main heap vc4\n");
 			heap.alloc_mem(BufferObject::DEFAULT_HEAP_SIZE);
 		}
 	}

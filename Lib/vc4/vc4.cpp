@@ -1,5 +1,3 @@
-#ifdef QPU_MODE
-
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -46,5 +44,3 @@ void disableQPUs()
 }
 
 }  // namespace QPULib
-
-#endif  // QPU_MODE

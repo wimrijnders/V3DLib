@@ -167,12 +167,29 @@ void compileKernel(Seq<Instr>* targetCode, Stmt* s);
 // Kernels
 // ============================================================================
 
-// A kernel is parameterised by a list of QPU types 'ts' representing
-// the types of the parameters that the kernel takes.
-
-// The kernel constructor takes a function with parameters of QPU
-// types 'ts'.  It applies the function to constuct an AST.
-
+/**
+ *
+ * ----------------------------------------------------------------------------
+ * NOTES
+ * ====
+ *
+ * * A kernel is parameterised by a list of QPU types 'ts' representing
+ *   the types of the parameters that the kernel takes.
+ *
+ *   The kernel constructor takes a function with parameters of QPU
+ *   types 'ts'.  It applies the function to constuct an AST.
+ *
+ * * The code generation for v3d and vc4 is diverging, even at the level of
+ *   source code. To handle this, the code generation for both cases is 
+ *   isolated in 'kernel drivers'. This encapsulates the differences
+ *   for the kernel.
+ *
+ *   At time of writing (20200818), for the source code it is notably the end
+ *   program sequence (see `kernelFinish()`).
+ *
+ *   The interpreter and emulator, however, work with vc4 code. For this reason
+ *   it is necessary to have the vc4 kernel driver in use in all build cases.
+ */
 template <typename... ts> struct Kernel {
 	using KernelFunction = void (*)(ts... params);
 
@@ -246,14 +263,6 @@ public:
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);
-
-		// NOTE: There are differences in source code generation for vc4 and v3d.
-		//       At time of writing (20200818), this is notably the end program
-		//       sequence (see `kernelFinish()`).
-		//       To be fully consistent with the original, the vc4 source code
-		//       should be constructed on the v3d as well. Chances are it will
-		//       work regardless.
-		// TODO: Investigate if the differences in source code are an issue
 
     interpreter
       ( numQPUs          // Number of QPUs active

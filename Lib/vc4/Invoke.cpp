@@ -1,5 +1,3 @@
-#ifdef QPU_MODE
-
 #include "Invoke.h"
 #include "Mailbox.h"
 #include "vc4.h"
@@ -10,10 +8,9 @@ namespace QPULib {
 
 void invoke(
   int numQPUs,
-  vc4::SharedArray<uint32_t> &codeMem,
+  SharedArray<uint32_t> &codeMem,
   int qpuCodeMemOffset,
-  Seq<int32_t>* params)
-{
+  Seq<int32_t>* params) {
   // Open mailbox for talking to vc4
   int mb = getMailbox();
 
@@ -25,7 +22,8 @@ void invoke(
   assert(numWords < codeMem.size());
 
   // Pointer to start of code
-  uint32_t* qpuCodePtr = codeMem.getPointer();
+  uint32_t* qpuCodePtr = (uint32_t *) codeMem.getAddress();  // NOTE: This will not work for v3d, where
+	                                                           //       phyaddr is an offset
 
   // Copy parameters to instruction memory
   int offset = qpuCodeMemOffset;
@@ -55,5 +53,3 @@ void invoke(
 }
 
 }  // namespace QPULib
-
-#endif  // QPU_MODE

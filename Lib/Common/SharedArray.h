@@ -2,6 +2,7 @@
 #define _QPULIB_COMMON_SHAREDARRAY_H_
 #include "BufferObject.h"
 #include "../Support/debug.h"
+#include "../Support/Platform.h"  // has_vc4
 
 namespace QPULib {
 
@@ -44,6 +45,9 @@ public:
 	 */
 	void alloc(uint32_t n) {
 		assert(n > 0);
+		if (m_size != 0) {
+			breakpoint
+		}
 		assert(m_size == 0);
 		assert(m_usraddr == nullptr);
 		assert(m_phyaddr == 0);
@@ -84,6 +88,9 @@ public:
 
   // Subscript
   inline T& operator[] (int i) {
+		if (i < 0) {
+			breakpoint
+		}
 		assert(i >= 0);
 		assert(m_size > 0);
 		if (i >= m_size) {
@@ -103,10 +110,12 @@ public:
 	 * Needed for interpreter and emulator.
 	 * Intended for use with T = uint32_t, but you never know.
 	 */
-  inline T& phy(int i) {
-//		breakpoint
+  inline T& phy(uint32_t i) {
+		//breakpoint
 		assert(m_phyaddr % sizeof(T) == 0);
-		return (*this)[i - m_phyaddr/sizeof(T)];  // Adjust for physical address offset
+		int index = i - m_phyaddr/sizeof(T);
+
+		return (*this)[index];
   }
 
 private:

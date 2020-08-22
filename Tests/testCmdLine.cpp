@@ -13,13 +13,34 @@
 
 #ifdef QPU_MODE
 //	#pragma message "QPU mode enabled"
-	#define POSTFIX_QPU "qpu"
+#define POSTFIX_QPU "qpu"
+const char *SUDO = (Platform::instance().has_vc4)? "sudo " : "";  // sudo needed for vc4
+
 #else
-	#define POSTFIX_QPU "emu"
+#define POSTFIX_QPU "emu"
+const char *SUDO = "";
+
 #endif
 
 #define BIN_PATH "obj/" POSTFIX_QPU POSTFIX_DEBUG "/bin"
 
+namespace {
+
+void check_output_run_ReqRecv(
+	std::string const &params,
+	std::string const &output_filename,
+	std::string const &expected_filename) {
+	std::string cmdline = SUDO;
+	cmdline += BIN_PATH "/ReqRecv ";
+	cmdline += params + " > " + output_filename;
+	INFO("Cmdline: " << cmdline);
+	REQUIRE(!system(cmdline.c_str()));
+
+	std::string diff_cmd = "diff " + output_filename + " " + expected_filename;
+	REQUIRE(!system(diff_cmd.c_str()));
+}
+
+}  // anon namespace
 
 //
 // This test is fairly useless; it just checks if both the shell script and the C++ program
@@ -49,7 +70,7 @@ TEST_CASE("ReqRecv check output and generation", "[cmdline]") {
 		std::string output_filename   = "obj/test/ReqRecv_code.txt";
 		std::string expected_filename = "Tests/data/ReqRecv_expected_code.txt";
 
-		std::string cmdline = "cd obj/test && ../../" BIN_PATH "/ReqRecv ";  // NOTE: sudo needed for vc4
+		std::string cmdline = "cd obj/test && ../../" BIN_PATH "/ReqRecv ";
 		cmdline +=  "-c -f > /dev/null";
 		INFO("Cmdline: " << cmdline);
 		REQUIRE(!system(cmdline.c_str()));
@@ -59,31 +80,26 @@ TEST_CASE("ReqRecv check output and generation", "[cmdline]") {
 	}
 
 	SECTION("Interpreter should give correct output") {
-		std::string output_filename   = "ReqRecv_output_int.txt";
-		std::string expected_filename = "Tests/data/ReqRecv_expected_output.txt";
-
-		std::string cmdline = BIN_PATH "/ReqRecv ";
-		cmdline += "-r=interpreter > obj/test/" + output_filename;
-		//printf("%s\n", cmdline.c_str());
-		INFO("Cmdline: " << cmdline);
-		REQUIRE(!system(cmdline.c_str()));
-
-		std::string diff_cmd = "diff obj/test/" + output_filename + " " + expected_filename;
-		REQUIRE(!system(diff_cmd.c_str()));
+		check_output_run_ReqRecv(
+			"-r=interpreter",
+			"obj/test/ReqRecv_output_int.txt",
+			"Tests/data/ReqRecv_expected_output.txt");
 	}
 
-
 	SECTION("Emulator should give correct output") {
-		std::string output_filename   = "ReqRecv_output_emu.txt";
-		std::string expected_filename = "Tests/data/ReqRecv_expected_output.txt";
+		check_output_run_ReqRecv(
+			"-r=emulator",
+			"obj/test/ReqRecv_output_emu.txt",
+			"Tests/data/ReqRecv_expected_output.txt");
+	}
 
-		std::string cmdline = BIN_PATH "/ReqRecv ";
-		cmdline +=  "-r=emulator > " + output_filename;
-		INFO("Cmdline: " << cmdline);
-		REQUIRE(!system(cmdline.c_str()));
+	SECTION("QPU should give correct output") {
+		if (!Platform::instance().has_vc4) return;  // TODO: enable for v3d when assembly completed
 
-		std::string diff_cmd = "diff obj/test/" + output_filename + " " + expected_filename;
-		REQUIRE(!system(diff_cmd.c_str()));
+		check_output_run_ReqRecv(
+			"",
+			"obj/test/ReqRecv_output_qpu.txt",
+			"Tests/data/ReqRecv_expected_output.txt");
 	}
 }
 

@@ -6,6 +6,7 @@
 #include "QPULib.h"
 #include "Support/Platform.h"
 #include "vc4/vc4.h"
+#include "vc4/Mailbox.h"
 #include "vc4/RegisterMap.h"
 #include "v3d/RegisterMapping.h"
 
