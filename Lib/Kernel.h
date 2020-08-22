@@ -5,7 +5,6 @@
 #include "Common/SharedArray.h"
 #include "v3d/Invoke.h"
 #include "vc4/vc4.h"
-//#include "Source/Pretty.h"
 #include "Target/Pretty.h"
 #include "Support/Platform.h"
 #include  "vc4/KernelDriver.h"
@@ -99,12 +98,12 @@ template <typename... ts> inline void nothing(ts... args) {}
 
 // Pass argument of ARM type 'u' as parameter of QPU type 't'.
 
-template <typename t, typename u> inline bool
-  passParam(Seq<int32_t>* uniforms, u x, BufferType buftype);
+template <typename t, typename u>
+inline bool passParam(Seq<int32_t>* uniforms, u x);
 
 // Pass an int
 template <> inline bool passParam<Int, int>
-  (Seq<int32_t>* uniforms, int x, BufferType buftype)
+  (Seq<int32_t>* uniforms, int x)
 {
   uniforms->append((int32_t) x);
   return true;
@@ -112,7 +111,7 @@ template <> inline bool passParam<Int, int>
 
 // Pass a float
 template <> inline bool passParam<Float, float>
-  (Seq<int32_t>* uniforms, float x, BufferType buftype)
+	(Seq<int32_t>* uniforms, float x)
 {
   int32_t* bits = (int32_t*) &x;
   uniforms->append(*bits);
@@ -121,36 +120,32 @@ template <> inline bool passParam<Float, float>
 
 // Pass a SharedArray<int>*
 template <> inline bool passParam< Ptr<Int>, SharedArray<int>* >
-  (Seq<int32_t>* uniforms, SharedArray<int>* p, BufferType buftype)
+  (Seq<int32_t>* uniforms, SharedArray<int>* p)
 {
-	//p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
 
 // Pass a SharedArray<int*>*
 template <> inline bool passParam< Ptr<Ptr<Int>>, SharedArray<int*>* >
-  (Seq<int32_t>* uniforms, SharedArray<int*>* p, BufferType buftype)
+  (Seq<int32_t>* uniforms, SharedArray<int*>* p)
 {
-	//p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
 
 // Pass a SharedArray<float>*
 template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
-  (Seq<int32_t>* uniforms, SharedArray<float>* p, BufferType buftype)
+  (Seq<int32_t>* uniforms, SharedArray<float>* p)
 {
-	//p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
 
 // Pass a SharedArray<float*>*
 template <> inline bool passParam< Ptr<Ptr<Float>>, SharedArray<float*>* >
-  (Seq<int32_t>* uniforms, SharedArray<float*>* p, BufferType buftype)
+  (Seq<int32_t>* uniforms, SharedArray<float*>* p)
 {
-	//p->setType(buftype);
   uniforms->append(p->getAddress());
   return true;
 }
@@ -178,6 +173,7 @@ void compileKernel(Seq<Instr>* targetCode, Stmt* s);
  *
  *   The kernel constructor takes a function with parameters of QPU
  *   types 'ts'.  It applies the function to constuct an AST.
+ *
  *
  * * The code generation for v3d and vc4 is diverging, even at the level of
  *   source code. To handle this, the code generation for both cases is 
@@ -235,11 +231,10 @@ public:
     numVars = getFreshVarCount();
   }
 
-//#ifdef EMULATION_MODE
   template <typename... us> void emu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);
+    nothing(passParam<ts, us>(&uniforms, args)...);
 
 		// NOTE: The emulator is based on the vc4.
 		//       This implies that, even though we're running on the v3d, the
@@ -255,14 +250,12 @@ public:
       , NULL             // Use stdout
       );
   }
-//#endif
 
-//#ifdef EMULATION_MODE
   // Invoke the interpreter
   template <typename... us> void interpret(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args, BufferType::HeapBuffer)...);
+    nothing(passParam<ts, us>(&uniforms, args)...);
 
     interpreter
       ( numQPUs          // Number of QPUs active
@@ -272,19 +265,17 @@ public:
       , NULL             // Use stdout
       );
   }
-//#endif
 
 #ifdef QPU_MODE
   // Invoke kernel on physical QPU hardware
   template <typename... us> void qpu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
+    nothing(passParam<ts, us>(&uniforms, args)...);
 
 		if (Platform::instance().has_vc4) {
-	    nothing(passParam<ts, us>(&uniforms, args, m_vc4_driver.buffer_type)...);
 			invoke_qpu(m_vc4_driver);
 		} else {
-	    nothing(passParam<ts, us>(&uniforms, args, m_v3d_driver.buffer_type)...);
 			invoke_qpu(m_v3d_driver);
 		}
   }
