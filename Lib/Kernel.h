@@ -5,7 +5,6 @@
 #include "Common/SharedArray.h"
 #include "v3d/Invoke.h"
 #include "vc4/vc4.h"
-#include "Target/Pretty.h"
 #include "Support/Platform.h"
 #include  "vc4/KernelDriver.h"
 #include  "v3d/KernelDriver.h"
@@ -152,13 +151,6 @@ template <> inline bool passParam< Ptr<Ptr<Float>>, SharedArray<float*>* >
 
 
 // ============================================================================
-// Functions on kernels
-// ============================================================================
-
-// Compile a kernel
-void compileKernel(Seq<Instr>* targetCode, Stmt* s);
-
-// ============================================================================
 // Kernels
 // ============================================================================
 
@@ -192,25 +184,13 @@ template <typename... ts> struct Kernel {
 public:
   ~Kernel() {}
 
-  // AST representing the target code
-  Seq<Instr> targetCode;
-
-  // Parameters to be passed to kernel
-  Seq<int32_t> uniforms;
-
-  // The number of variables in the source code
-  int numVars;
-
-  // Number of QPUs to run on
-  int numQPUs;
-
   // Construct kernel out of C++ function
   Kernel(KernelFunction f) {
     numQPUs = 1;
 
     controlStack.clear();
-    stmtStack.clear();
-    stmtStack.push(mkSkip());
+   	stmtStack.clear();         // Needs to be run before getUniformInt() below
+    stmtStack.push(mkSkip());  // idem
     resetFreshVarGen();
     resetFreshLabelGen();
 
@@ -219,16 +199,26 @@ public:
     qpuId = getUniformInt();
     qpuCount = getUniformInt();
 
-    // Construct the AST
-    f(mkArg<ts>()...);
+		{
+	    // Construct the AST for vc4
+	    f(mkArg<ts>()...);
+			m_vc4_driver.compile();
 
-		m_vc4_driver.transfer_stack();
+    	// Remember the number of variables used - for emulator/interpreter
+	    numVars = getFreshVarCount();
+		}
 
-    // Compile
-    compileKernel(&targetCode, m_vc4_driver.sourceCode());
+#ifdef QPU_MODE
+		{
+    	stmtStack.clear();
+	    stmtStack.push(mkSkip());
 
-    // Remember the number of variables used
-    numVars = getFreshVarCount();
+	    // Construct the AST for v3d
+	    f(mkArg<ts>()...);
+			m_v3d_driver.compile();
+		}
+#endif  // QPU_MODE
+
   }
 
   template <typename... us> void emu(us... args) {
@@ -236,15 +226,10 @@ public:
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args)...);
 
-		// NOTE: The emulator is based on the vc4.
-		//       This implies that, even though we're running on the v3d, the
-		//       target code should be constructed for vc4.
-		//
-		// TODO: Fix this
-
+		// Emulator runs the vc4 code
     emulate
       ( numQPUs          // Number of QPUs active
-      , &targetCode      // Instruction sequence
+      , &m_vc4_driver.targetCode()      // Instruction sequence
       , numVars          // Number of vars in source
       , &uniforms        // Kernel parameters
       , NULL             // Use stdout
@@ -266,6 +251,7 @@ public:
       );
   }
 
+
 #ifdef QPU_MODE
   // Invoke kernel on physical QPU hardware
   template <typename... us> void qpu(us... args) {
@@ -280,6 +266,7 @@ public:
 		}
   }
 #endif  // QPU_MODE
+
  
   // Invoke the kernel
   template <typename... us> void call(us... args) {
@@ -303,38 +290,24 @@ public:
   }
 
 
-  /**
-   * @brief Output a human-readable representation of the source and target code.
-   *
-   * @param filename  if specified, print the output to this file. Otherwise, print to stdout
-   */
-  void pretty(const char *filename = nullptr) {
-    FILE *f = nullptr;
-
-    if (filename == nullptr)
-      f = stdout;
-    else
-    {
-      f = fopen(filename, "w");
-      if (f == nullptr)
-      {
-        fprintf(stderr, "ERROR: could not open file '%s' for pretty output\n", filename);
-        return;
-      }
-    }
-
-		m_vc4_driver.pretty(f);  // TODO: Print for v3d as well
-		emit_target_code(f);
-
-    if (filename != nullptr) {
-      assert(f != nullptr);
-      assert(f != stdout);
-      fclose(f);
-    }
-  }
+	void pretty(const char *filename = nullptr) {
+#ifdef QPU_MODE
+		if (Platform::instance().has_vc4) {
+			m_vc4_driver.pretty(filename);
+		} else {
+			m_v3d_driver.pretty(filename);
+		}
+#else
+		m_vc4_driver.pretty(filename);
+#endif
+	}
 
 
 private:
+	Seq<int32_t> uniforms;  // Parameters to be passed to kernel
+	int numVars;            // The number of variables in the source code
+	int numQPUs;            // Number of QPUs to run on
+
 	vc4::KernelDriver m_vc4_driver;  // Always required for emulator
 
 #ifdef QPU_MODE
@@ -342,24 +315,11 @@ private:
 #endif
 
 	void invoke_qpu(QPULib::KernelDriver &kernel_driver) {
-		kernel_driver.encode(numQPUs, targetCode);
+		kernel_driver.encode(numQPUs, kernel_driver.targetCode());
 		if (!kernel_driver.handle_errors()) {
     	// Invoke kernel on QPUs
 			kernel_driver.invoke(numQPUs, &uniforms);
 		}
-	}
-
-	void emit_target_code(FILE *f) {
-    // Emit target code
-    fprintf(f, "Target code\n");
-    fprintf(f, "===========\n\n");
-    for (int i = 0; i < targetCode.numElems; i++)
-    {
-      fprintf(f, "%i: ", i);
-      QPULib::pretty(f, targetCode.elems[i]);
-    }
-    fprintf(f, "\n");
-    fflush(f);
 	}
 };
 

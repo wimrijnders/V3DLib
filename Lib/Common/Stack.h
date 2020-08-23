@@ -1,6 +1,5 @@
 #ifndef _QPULIB_STACK_H_
 #define _QPULIB_STACK_H_
-
 #include <stdlib.h>
 #include <assert.h>
 
