@@ -16,12 +16,12 @@ public:
 	~KernelDriver() override;
 
 	void kernelFinish() override;
-	void encode(int numQPUs, Seq<Instr> &targetCode) override;
 	void invoke(int numQPUs, Seq<int32_t>* params) override;
+	void encode(int numQPUs) override;
 
 private:
-  // Memory region for QPU code and parameters
-  SharedArray<uint32_t> qpuCodeMem;
+  SharedArray<uint32_t> qpuCodeMem;   // Memory region for QPU code and parameters
+  Seq<uint32_t> code;                 // opcodes for vc4
 };
 
 }  // namespace vc4

@@ -26,7 +26,8 @@ template <typename T>
 class SharedArray {
 public:
 	SharedArray() : m_heap(getBufferObject()) {}
-  SharedArray(uint32_t n, BufferObject heap = getBufferObject()) : m_heap(heap) { alloc(n); }
+  SharedArray(uint32_t n) : m_heap(getBufferObject()) { alloc(n); }
+  SharedArray(uint32_t n, BufferObject &heap) : m_heap(heap) { alloc(n); }
 
 	SharedArray(HeapView do_heap_view) : m_heap(getBufferObject()) {
 		assert(do_heap_view == HeapView::use_as_heap_view);

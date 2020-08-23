@@ -19,6 +19,7 @@ public:
 };
 
 ISourceTranslate &getSourceTranslate();
+void set_compiling_for_vc4(bool val);
 
 }  // namespace QPULib
 

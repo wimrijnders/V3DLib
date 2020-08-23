@@ -22,6 +22,7 @@ public:
 	std::string mnemonic() const;
 	uint64_t code() const;
 	static void show(uint64_t in_code);
+	static std::string mnemonic(uint64_t in_code);
 
 	operator uint64_t() const { return code(); }
 

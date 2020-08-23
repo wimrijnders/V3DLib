@@ -13,27 +13,32 @@ void KernelDriver::kernelFinish() {
 }
 
 
-void KernelDriver::encode(int numQPUs, Seq<Instr> &targetCode) {
-    // Encode target instrs into array of 32-bit ints
-    Seq<uint32_t> code;
-    QPULib::encode(&targetCode, &code);
+/**
+ * Encode target instrs into array of 32-bit ints
+ */
+void KernelDriver::encode(int numQPUs) {
+	if (code.size() > 0) return;  // Don't bother if already encoded
 
-    // Allocate memory for QPU code and parameters
-    int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
-
-    qpuCodeMem.alloc(numWords);
-
-    // Copy kernel to code memory
-    int offset = 0;
-    for (int i = 0; i < code.numElems; i++) {
-      qpuCodeMem[offset++] = code.elems[i];
-    }
-    qpuCodeMemOffset = offset;
+	QPULib::encode(&m_targetCode, &code);
 }
 
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
 	assert(qpuCodeMem.size() > 0);
+	assert(code.size() > 0);
+
+	// Allocate memory for QPU code and parameters
+	int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
+
+	qpuCodeMem.alloc(numWords);
+
+	// Copy kernel to code memory
+	int offset = 0;
+	for (int i = 0; i < code.numElems; i++) {
+		qpuCodeMem[offset++] = code.elems[i];
+	}
+	qpuCodeMemOffset = offset;
+
 	enableQPUs();
 	QPULib::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
 	disableQPUs();

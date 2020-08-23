@@ -18,8 +18,8 @@ public:
 	}
 
 	virtual void kernelFinish() {} 
-	virtual void encode(int numQPUs, Seq<QPULib::Instr> &targetCode) = 0;
 	virtual void invoke(int numQPUs, Seq<int32_t>* params) = 0;
+	virtual void encode(int numQPUs) = 0;
 
 	void pretty(const char *filename = nullptr);
 	void compile();
@@ -39,14 +39,14 @@ public:
 protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
+  Seq<Instr> m_targetCode;  // AST representing the target code
+
   int qpuCodeMemOffset = 0;
 	std::vector<std::string> errors;
 
+	virtual void emit_opcodes(FILE *f) {} 
 
 private:
-  // AST representing the target code
-  Seq<Instr> m_targetCode;
-
   Stmt *body = nullptr;
 
 	void print_source_code(FILE *f);

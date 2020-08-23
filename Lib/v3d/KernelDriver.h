@@ -11,14 +11,16 @@ namespace v3d {
 class KernelDriver : public QPULib::KernelDriver {
 public:
 	KernelDriver();
-	~KernelDriver() override;
 
-	void encode(int numQPUs, Seq<Instr> &targetCode) override;
+	void encode(int numQPUs) override;
 	void invoke(int numQPUs, Seq<int32_t>* params) override;
 
 private:
-  SharedArray<uint64_t>* qpuCodeMem = nullptr;
-  SharedArray<uint32_t>* paramMem   = nullptr;
+  SharedArray<uint64_t> qpuCodeMem;
+  SharedArray<uint32_t> paramMem;
+	std::vector<uint64_t> code;                   // opcodes for v3d
+
+	void emit_opcodes(FILE *f) override;
 };
 
 }  // namespace v3d

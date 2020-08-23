@@ -654,10 +654,11 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 		 	exit(EXIT_FAILURE);
   }
 
-
+/*
 	for (auto &instr : ret) {
 		cout << instr.mnemonic() << endl;
 	}
+*/
 
 	assert(!ret.empty());  // Something should really be returned back
 	return ret;
@@ -680,16 +681,12 @@ void _encode(Seq<QPULib::Instr> &instrs, std::vector<uint64_t> &code) {
 }
 
 
-KernelDriver::KernelDriver() : QPULib::KernelDriver(V3dBuffer) {
-}
-
-KernelDriver::~KernelDriver() {
-	delete qpuCodeMem;
-	delete paramMem;
-}
+KernelDriver::KernelDriver() : QPULib::KernelDriver(V3dBuffer) {}
 
 
-void KernelDriver::encode(int numQPUs, Seq<QPULib::Instr> &targetCode) {
+void KernelDriver::encode(int numQPUs) {
+	if (code.size() > 0) return;  // Don't bother if already encoded
+
 	if (numQPUs != 1 && numQPUs != 8) {
 		errors << "Num QPU's must be 1 or 8";
 		return;
@@ -697,8 +694,7 @@ void KernelDriver::encode(int numQPUs, Seq<QPULib::Instr> &targetCode) {
 	local_numQPUs = numQPUs;
 
 	// Encode target instructions
-	std::vector<uint64_t> code;
-	_encode(targetCode, code);
+	_encode(m_targetCode, code);
 
 	if (!local_errors.empty()) {
 		breakpoint
@@ -706,24 +702,41 @@ void KernelDriver::encode(int numQPUs, Seq<QPULib::Instr> &targetCode) {
 
 	errors << local_errors;
 	local_errors.clear();
-
-
-	// Allocate memory for the QPU code
-	qpuCodeMem = new SharedArray<uint64_t>(code.size());
-	qpuCodeMem->copyFrom(code);  // Copy kernel to code memory
-
-
-	// Allocate memory for the parameters
-	int numWords = (12*MAX_KERNEL_PARAMS + 12*2);
-	paramMem = new SharedArray<uint32_t>;
-	paramMem->alloc(numWords);
-
-	qpuCodeMemOffset = 8*code.size();  // TODO check if correct
 }
 
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
-	v3d::invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, params);
+	assert(code.size() > 0);
+
+	// Allocate memory for the QPU code
+	qpuCodeMem.alloc(code.size());
+	qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
+
+	// Allocate memory for the parameters
+	// TODO Not used in v3d, do we need this?
+	int numWords = (12*MAX_KERNEL_PARAMS + 12*2);
+	paramMem.alloc(numWords);
+
+	qpuCodeMemOffset = 8*code.size();  // TODO check if correct
+
+	v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
+}
+
+
+void KernelDriver::emit_opcodes(FILE *f) {
+	fprintf(f, "Opcodes for v3d\n");
+	fprintf(f, "===============\n\n");
+
+	if (code.size() == 0) {
+		fprintf(stderr, "<No opcodes to print>");
+	} else {
+		for (auto const &opcode : code) {
+			fprintf(f, "%s\n", Instr::mnemonic(opcode).c_str());
+		}
+	}
+
+	fprintf(f, "\n");
+	fflush(f);
 }
 
 }  // namespace v3d

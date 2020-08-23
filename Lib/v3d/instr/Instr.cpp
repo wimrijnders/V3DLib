@@ -61,6 +61,12 @@ void Instr::show(uint64_t in_code) {
 }
 
 
+std::string Instr::mnemonic(uint64_t in_code) {
+	Instr instr(in_code);
+	return instr.mnemonic();
+}
+
+
 void Instr::init_ver() const {
 	if (devinfo.ver != 42) {               //        <-- only this needs to be set
 		devinfo.ver = 42;

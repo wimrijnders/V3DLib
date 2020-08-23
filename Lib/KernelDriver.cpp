@@ -63,6 +63,7 @@ void KernelDriver::pretty(const char *filename) {
 
 	print_source_code(f);
 	emit_target_code(f);
+	emit_opcodes(f);
 
 	if (filename != nullptr) {
 		assert(f != nullptr);

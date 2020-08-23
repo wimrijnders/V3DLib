@@ -8,6 +8,7 @@
 #include "Support/Platform.h"
 #include  "vc4/KernelDriver.h"
 #include  "v3d/KernelDriver.h"
+#include  "SourceTranslate.h"  // set_compiling_for_vc4()
 
 namespace QPULib {
 
@@ -200,6 +201,8 @@ public:
     qpuCount = getUniformInt();
 
 		{
+			set_compiling_for_vc4(true);
+
 	    // Construct the AST for vc4
 	    f(mkArg<ts>()...);
 			m_vc4_driver.compile();
@@ -210,6 +213,8 @@ public:
 
 #ifdef QPU_MODE
 		{
+			set_compiling_for_vc4(false);
+
     	stmtStack.clear();
 	    stmtStack.push(mkSkip());
 
@@ -293,11 +298,14 @@ public:
 	void pretty(const char *filename = nullptr) {
 #ifdef QPU_MODE
 		if (Platform::instance().has_vc4) {
+			m_vc4_driver.encode(numQPUs);
 			m_vc4_driver.pretty(filename);
 		} else {
+			m_v3d_driver.encode(numQPUs);
 			m_v3d_driver.pretty(filename);
 		}
 #else
+		m_vc4_driver.encode(numQPUs);
 		m_vc4_driver.pretty(filename);
 #endif
 	}
@@ -315,7 +323,7 @@ private:
 #endif
 
 	void invoke_qpu(QPULib::KernelDriver &kernel_driver) {
-		kernel_driver.encode(numQPUs, kernel_driver.targetCode());
+		kernel_driver.encode(numQPUs);
 		if (!kernel_driver.handle_errors()) {
     	// Invoke kernel on QPUs
 			kernel_driver.invoke(numQPUs, &uniforms);

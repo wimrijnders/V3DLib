@@ -7,23 +7,32 @@
 
 namespace {
 
-	std::unique_ptr<QPULib::ISourceTranslate> _source_translate;
+	bool _compiling_for_vc4 = true;
+	std::unique_ptr<QPULib::ISourceTranslate> _vc4_source_translate;
+	std::unique_ptr<QPULib::ISourceTranslate> _v3d_source_translate;
 
 }  // anon namespace
 
 
 namespace QPULib {
 
-ISourceTranslate &getSourceTranslate() {
-	if (_source_translate.get() == nullptr) {
-//		if (Platform::instance().has_vc4) {
-			_source_translate.reset(new vc4::SourceTranslate());
-//		} else {
-//			_source_translate.reset(new v3d::SourceTranslate());
-//		}
-	}
+void set_compiling_for_vc4(bool val) {
+	_compiling_for_vc4 = val;
+}
 
-	return *_source_translate.get();
+
+ISourceTranslate &getSourceTranslate() {
+	if (_compiling_for_vc4) {
+		if (_vc4_source_translate.get() == nullptr) {
+			_vc4_source_translate.reset(new vc4::SourceTranslate());
+		}
+		return *_vc4_source_translate.get();
+	} else {
+		if (_v3d_source_translate.get() == nullptr) {
+			_v3d_source_translate.reset(new v3d::SourceTranslate());
+		}
+		return *_v3d_source_translate.get();
+	}
 }
 
 }  // namespace QPULib
