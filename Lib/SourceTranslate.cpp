@@ -21,6 +21,11 @@ void set_compiling_for_vc4(bool val) {
 }
 
 
+bool compiling_for_vc4() {
+	return _compiling_for_vc4;
+}
+
+
 ISourceTranslate &getSourceTranslate() {
 	if (_compiling_for_vc4) {
 		if (_vc4_source_translate.get() == nullptr) {

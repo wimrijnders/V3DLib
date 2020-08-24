@@ -592,12 +592,10 @@ Instructions encodeInstr(QPULib::Instr instr) {
     }
 		break;
 
-    // Halt
-    case END: {
-			ret << sync_tmu()
-					<< end_program();
-		}
+    case END:
+			assert(false);  // vc4 end program marker, should not receive this
 		break;
+
     case TMU0_TO_ACC4: {
 			ret << nop().ldtmu(r4);  // NOTE: added by WR
 /*
@@ -670,6 +668,9 @@ void _encode(Seq<QPULib::Instr> &instrs, Instructions &instructions) {
 		auto result = v3d::encodeInstr(instr);
     instructions.insert(instructions.end(), result.begin(), result.end());
   }
+
+	instructions << sync_tmu()
+			         << end_program();
 }
 
 

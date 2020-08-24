@@ -1389,7 +1389,9 @@ void insertEndCode(Seq<Instr>* seq)
 void translateStmt(Seq<Instr>* seq, Stmt* s)
 {
   stmt(seq, s);
-  insertEndCode(seq);
+	if (compiling_for_vc4()) {
+	  insertEndCode(seq);
+	};
 }
 
 }  // namespace QPULib
