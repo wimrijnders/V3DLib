@@ -268,7 +268,7 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
 
 	QPULib::v3d::Driver drv;
 	drv.add_bo(heap);
-	drv.execute(code, &unif, num_qpus);
+	REQUIRE(drv.execute(code, &unif, num_qpus));
 
 	dump_data(Y, true);
 	check_returned_registers(Y);

@@ -7,9 +7,42 @@ namespace QPULib {
 
 namespace {
 
-SharedArray<uint32_t> emuHeap(HeapView::use_as_heap_view);
 
-}
+// State of a single core.
+struct CoreState {
+  int id;                              // Core id
+  int numCores;                        // Core count
+  Seq<int32_t>* uniforms = nullptr;    // Arguments to kernel
+  int nextUniform = -2;                // Pointer to next uniform to read
+  int readStride = 0;                  // Read stride
+  int writeStride = 0;                 // Write stride
+  Vec* env = nullptr;                  // Environment mapping vars to values
+  int sizeEnv;                         // Size of the environment
+  Seq<char>* output = nullptr;         // Output from print statements
+  Seq<Stmt*> stack;                    // Control stack
+  Seq<Vec> loadBuffer;                 // Load buffer
+	SharedArray<uint32_t> emuHeap;
+
+
+	~CoreState() {
+		// Don't delete uniform and output here, these are used as references
+    delete [] env;
+	}
+};
+
+// State of the Interpreter.
+struct InterpreterState {
+  CoreState core[MAX_QPUS];  // State of each core
+  Word vpm[VPM_SIZE];        // Shared VPM memory
+  int sema[16];              // Semaphores
+
+	InterpreterState() {
+  	// Initialise semaphores
+	  for (int i = 0; i < 16; i++) sema[i] = 0;
+	}
+};
+
+}  // anon namespace
 
 // ============================================================================
 // Evaluate a variable
@@ -169,7 +202,7 @@ Vec eval(CoreState* s, Expr* e)
 
       Vec v;
       for (int i = 0; i < NUM_LANES; i++) {
-        v.elems[i].intVal = emuHeap.phy(hp>>2);
+        v.elems[i].intVal = s->emuHeap.phy(hp>>2);
         hp += s->readStride;
       }
       return v;
@@ -311,13 +344,13 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
 
     // Load via TMU
     case TMU0_ADDR: {
-      assert(s->loadBuffer->numElems < 8);
+      assert(s->loadBuffer.numElems < 8);
       Vec w;
       for (int i = 0; i < NUM_LANES; i++) {
         uint32_t addr = (uint32_t) x.elems[i].intVal;
-        w.elems[i].intVal = emuHeap.phy(addr>>2);
+        w.elems[i].intVal = s->emuHeap.phy(addr>>2);
       }
-      s->loadBuffer->append(w);
+      s->loadBuffer.append(w);
       return;
     }
 
@@ -357,7 +390,7 @@ void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
       Vec index = eval(s, lhs->deref.ptr);
       uint32_t hp = (uint32_t) index.elems[0].intVal;
       for (int i = 0; i < NUM_LANES; i++) {
-        emuHeap.phy(hp>>2) = val.elems[i].intVal;
+        s->emuHeap.phy(hp>>2) = val.elems[i].intVal;
         hp += 4 + s->writeStride;
       }
       return;
@@ -488,9 +521,9 @@ void execSetStride(CoreState* s, StmtTag tag, Expr* e)
 
 void execLoadReceive(CoreState* s, Expr* e)
 {
-  assert(s->loadBuffer->numElems > 0);
+  assert(s->loadBuffer.numElems > 0);
   assert(e->tag == VAR);
-  Vec val = s->loadBuffer->remove(0);
+  Vec val = s->loadBuffer.remove(0);
   assignToVar(s, vecAlways(), e->var, val);
 }
 
@@ -499,7 +532,7 @@ void execStoreRequest(CoreState* s, Expr* data, Expr* addr) {
   Vec index = eval(s, addr);
   uint32_t hp = (uint32_t) index.elems[0].intVal;
   for (int i = 0; i < NUM_LANES; i++) {
-    emuHeap.phy(hp>>2) = val.elems[i].intVal;
+    s->emuHeap.phy(hp>>2) = val.elems[i].intVal;
     hp += 4 + s->writeStride;
   }
 }
@@ -511,10 +544,10 @@ void execStoreRequest(CoreState* s, Expr* data, Expr* addr) {
 void exec(InterpreterState* state, CoreState* s)
 {
   // Control stack must be non-empty
-  assert(s->stack->numElems > 0);
+  assert(s->stack.numElems > 0);
 
   // Pop the statement at the top of the stack
-  Stmt* stmt = s->stack->pop();
+  Stmt* stmt = s->stack.pop();
 
   if (stmt == NULL) return;
 
@@ -530,8 +563,8 @@ void exec(InterpreterState* state, CoreState* s)
 
     // Sequential composition
     case SEQ:
-      s->stack->push(stmt->seq.s1);
-      s->stack->push(stmt->seq.s0);
+      s->stack.push(stmt->seq.s1);
+      s->stack.push(stmt->seq.s0);
       return;
 
     // Conditional assignment
@@ -545,16 +578,16 @@ void exec(InterpreterState* state, CoreState* s)
     // If statement
     case IF:
       if (evalCond(s, stmt->ifElse.cond))
-        s->stack->push(stmt->ifElse.thenStmt);
+        s->stack.push(stmt->ifElse.thenStmt);
       else
-        s->stack->push(stmt->ifElse.elseStmt);
+        s->stack.push(stmt->ifElse.elseStmt);
       return;
 
     // While statement
     case WHILE:
       if (evalCond(s, stmt->loop.cond)) {
-        s->stack->push(stmt);
-        s->stack->push(stmt->loop.body);
+        s->stack.push(stmt);
+        s->stack.push(stmt->loop.body);
       }
       return;
 
@@ -590,14 +623,14 @@ void exec(InterpreterState* state, CoreState* s)
     // Increment semaphore
     case SEMA_INC:
       assert(stmt->semaId >= 0 && stmt->semaId < 16);
-      if (state->sema[stmt->semaId] == 15) s->stack->push(stmt);
+      if (state->sema[stmt->semaId] == 15) s->stack.push(stmt);
       else state->sema[stmt->semaId]++;
       return;
  
     // Decrement semaphore
     case SEMA_DEC:
       assert(stmt->semaId >= 0 && stmt->semaId < 16);
-      if (state->sema[stmt->semaId] == 0) s->stack->push(stmt);
+      if (state->sema[stmt->semaId] == 0) s->stack.push(stmt);
       else state->sema[stmt->semaId]--;
       return;
 
@@ -624,57 +657,43 @@ void exec(InterpreterState* state, CoreState* s)
 // Interpreter
 // ============================================================================
 
-void interpreter
-  ( int numCores           // Number of cores active
-  , Stmt* stmt             // Source code
-  , int maxVar             // Max var id used in source
-  , Seq<int32_t>* uniforms // Kernel parameters
-  , Seq<char>* output      // Output from print statements
-                           // (if NULL, stdout is used)
-  )
-{
+void interpreter(
+	int numCores,           // Number of cores active
+	Stmt* stmt,             // Source code
+	int numVars,            // Max var id used in source
+	Seq<int32_t>* uniforms, // Kernel parameters
+	BufferObject &heap,
+	Seq<char>* output       // Output from print statements (if NULL, stdout is used)
+) {
   InterpreterState state;
 
   // Initialise state
   for (int i = 0; i < numCores; i++) {
-    CoreState s;
+    CoreState &s = state.core[i];
+
     s.id          = i;
     s.numCores    = numCores;
-    s.nextUniform = -2;
     s.uniforms    = uniforms;
-    s.readStride  = 0;
-    s.writeStride = 0;
-    s.env         = new Vec [maxVar+1];
-    s.sizeEnv     = maxVar+1;
-    s.stack       = new Seq<Stmt*>;
+    s.env         = new Vec [numVars + 1];
+    s.sizeEnv     = numVars + 1;
     s.output      = output;
-    s.loadBuffer  = new SmallSeq<Vec>;
-    state.core[i] = s;
+		s.emuHeap.heap_view(heap);
   }
-
-  // Initialise semaphores
-  for (int i = 0; i < 16; i++) state.sema[i] = 0;
 
   // Put statement on each core's control stack
   for (int i = 0; i < numCores; i++)
-   state.core[i].stack->push(stmt);
+   state.core[i].stack.push(stmt);
 
   // Run code
   bool running = true;
   while (running) {
     running = false;
     for (int i = 0; i < numCores; i++) {
-      if (state.core[i].stack->numElems > 0) {
+      if (state.core[i].stack.numElems > 0) {
         running = true;
         exec(&state, &state.core[i]);
       }
     }
-  }
-
-  // Deallocate state
-  for (int i = 0; i < numCores; i++) {
-    delete state.core[i].stack;
-    delete [] state.core[i].env;
   }
 }
 

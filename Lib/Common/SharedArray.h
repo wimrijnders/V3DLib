@@ -7,12 +7,6 @@
 
 namespace QPULib {
 
-// Identifier for creating a SharedArray view for an entire buffer object
-enum HeapView {
-	use_as_heap_view
-};
-
-
 /**
  * Reserve and access a memory range in the underlying buffer object.
  *
@@ -25,17 +19,20 @@ enum HeapView {
 template <typename T>
 class SharedArray {
 public:
-	SharedArray() : m_heap(getBufferObject()) {}
-  SharedArray(uint32_t n) : m_heap(getBufferObject()) { alloc(n); }
-  SharedArray(uint32_t n, BufferObject &heap) : m_heap(heap) { alloc(n); }
+	SharedArray() : m_heap(&getBufferObject()) {}
+  SharedArray(uint32_t n) : m_heap(&getBufferObject()) { alloc(n); }
+  SharedArray(uint32_t n, BufferObject &heap) : m_heap(&heap) { alloc(n); }
 
-	SharedArray(HeapView do_heap_view) : m_heap(getBufferObject()) {
-		assert(do_heap_view == HeapView::use_as_heap_view);
+	void heap_view(BufferObject &heap) {
+		assert(!allocated());
+		assert(m_heap != nullptr);
+
+		m_heap = &heap;
 		m_is_heap_view = true;
-		m_size = m_heap.size();
+		m_size = m_heap->size();
 		assert(m_size > 0);
-		m_usraddr = m_heap.usr_address();
-		m_phyaddr = m_heap.phy_address();
+		m_usraddr = m_heap->usr_address();
+		m_phyaddr = m_heap->phy_address();
 	}
 
 
@@ -61,19 +58,27 @@ public:
 	 * @param n number of 4-byte elements to allocate (so NOT memory size!)
 	 */
 	void alloc(uint32_t n) {
+		assert(m_heap != nullptr);
+		assert(!allocated());
 		assert(n > 0);
-		if (m_size != 0) {
-			breakpoint
-		}
-		assert(m_size == 0);
-		assert(m_usraddr == nullptr);
-		assert(m_phyaddr == 0);
-		assert(!m_is_heap_view);
 
-		m_phyaddr = m_heap.alloc_array(sizeof(T)*n, m_usraddr);
-		assert(m_usraddr != nullptr);
-		//assert(m_phyaddr > 0);  // Can be 0 for emu
+		m_phyaddr = m_heap->alloc_array(sizeof(T)*n, m_usraddr);
 		m_size = n;
+		assert(allocated());
+	}
+
+
+	bool allocated() const {
+		if (m_size > 0) {
+			// assert(m_phyaddr > 0);  // Can be 0 for emu
+			assert(m_usraddr != nullptr);
+			return true;
+		} else {
+			assert(m_phyaddr == 0);
+			assert(m_usraddr == nullptr);
+			assert(!m_is_heap_view);
+			return false;
+		}
 	}
 
 
@@ -84,19 +89,22 @@ public:
 	 */
 	void dealloc() {
 		if (m_size > 0) {
+			assert(allocated());
 			m_phyaddr = 0;
 			m_size = 0;
 			m_usraddr = nullptr;
+			m_is_heap_view = false;
+		} else {
+			assert(!allocated());
 		}
 	}
 
 
   // Subscript
   inline const T operator[] (int i) const {
+		assert(allocated());
 		assert(i >= 0);
-		assert(m_size > 0);
 		assert(i < m_size);
-		assert(m_usraddr != nullptr);
 
     T* base = (T *) m_usraddr;
     return (T) base[i];
@@ -105,16 +113,15 @@ public:
 
   // Subscript
   inline T& operator[] (int i) {
+		assert(allocated());
 		if (i < 0) {
 			breakpoint
 		}
 		assert(i >= 0);
-		assert(m_size > 0);
 		if (i >= m_size) {
 			breakpoint  // Check if this ever happens
 		}
 		assert(i < m_size);
-		assert(m_usraddr != nullptr);
 
     T* base = (T *) m_usraddr;
     return (T&) base[i];
@@ -156,10 +163,10 @@ public:
 	}
 
 private:
-	BufferObject &m_heap;
-	uint8_t *m_usraddr = nullptr;  // Start of the heap in main memory, as seen by the CPU
-	uint32_t m_phyaddr = 0;        // Starting index of memory in GPU space
-	uint32_t m_size = 0;           // Number of contained elements (not memory size!)
+	BufferObject *m_heap = nullptr;  // Reference to used heap
+	uint8_t *m_usraddr   = nullptr;  // Start of the heap in main memory, as seen by the CPU
+	uint32_t m_phyaddr   = 0;        // Starting index of memory in GPU space
+	uint32_t m_size      = 0;        // Number of contained elements (not memory size!)
 	bool     m_is_heap_view = false;
 };
 

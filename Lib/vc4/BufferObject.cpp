@@ -29,7 +29,7 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 	handle = mem_alloc(mb, size_in_bytes*4, 4096, GPU_MEM_FLG);
 	if (!handle) {
 		fprintf(stderr, "Failed to allocate GPU memory.");
-		exit(EXIT_FAILURE);
+		exit(EXIT_FAILURE);  // TODO throw instead, with the hope of cleaning up allocated mem after us
 	}
 
 	phyaddr = /* (void*) */ mem_lock(mb, handle);

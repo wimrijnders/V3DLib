@@ -83,8 +83,8 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	    }
 
 	    Seq<char> interpOut, emuOut;
-	    interpreter(1, s, numVars, &params, &interpOut);
-	    emulate(1, &targetCode, numEmuVars, &params, &emuOut);
+	    interpreter(1, s, numVars, &params, getBufferObject(), &interpOut);
+	    emulate(1, &targetCode, numEmuVars, &params, getBufferObject(), &emuOut);
 
 	    bool differs = false;
 	    if (interpOut.numElems != emuOut.numElems)
