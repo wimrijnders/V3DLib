@@ -3,23 +3,18 @@
 #include <iostream>
 #include "../Support/basics.h"
 #include "Invoke.h"
-#include "instr/Instr.h"
 #include "instr/Snippets.h"
 
 #ifdef QPU_MODE
 
-using namespace QPULib::v3d::instr;
 using std::cout;
 using std::endl;
-using OpCode  = QPULib::v3d::instr::Instr;
-using OpCodes = std::vector<OpCode>;
 
 namespace QPULib {
 namespace v3d {
 using namespace QPULib::v3d::instr;
 
-using OpCode  = QPULib::v3d::instr::Instr;
-using OpCodes = std::vector<OpCode>;
+using Instructions = std::vector<instr::Instr>;
 
 static int local_numQPUs = 0;
 std::vector<std::string> local_errors;
@@ -27,11 +22,11 @@ std::vector<std::string> local_errors;
 /**
  * source:  https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L22
  */
-static OpCodes get_num_qpus(Register const &reg) {
+static Instructions get_num_qpus(Register const &reg) {
 	assert(local_numQPUs == 1 || local_numQPUs == 8);
 	assert(reg.is_dest_acc());
 
-	OpCodes ret;
+	Instructions ret;
 
 	if (local_numQPUs == 1) {
 		ret << mov(reg, 0);
@@ -232,7 +227,7 @@ void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_i
  *             Passed in because some extra instruction may be needed
  *             for v3d.
  */
-std::unique_ptr<Location> encodeSrcReg(Reg reg, OpCodes &opcodes) {
+std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 	bool is_none = false;
 	std::unique_ptr<Location> ret;
 
@@ -336,7 +331,7 @@ uint8_t encodeSrcReg_old(Reg reg) {
 }
 
 
-bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
+bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	bool did_something = true;
 
 	auto reg_a = src_instr.ALU.srcA;
@@ -389,8 +384,8 @@ bool translateOpcode(QPULib::Instr const &src_instr, OpCodes &ret) {
 }
 
 
-OpCodes encodeInstr(QPULib::Instr instr) {
-	OpCodes ret;
+Instructions encodeInstr(QPULib::Instr instr) {
+	Instructions ret;
 
   // Convert intermediate instruction into core instruction
   switch (instr.tag) {
@@ -665,19 +660,16 @@ OpCodes encodeInstr(QPULib::Instr instr) {
 }
 
 
-void _encode(Seq<QPULib::Instr> &instrs, std::vector<uint64_t> &code) {
-	OpCodes opcodes;
-
+/**
+ * Translate instructions from target to v3d
+ */
+void _encode(Seq<QPULib::Instr> &instrs, Instructions &instructions) {
   for (int i = 0; i < instrs.numElems; i++) {
     QPULib::Instr instr = instrs.elems[i];
 	
 		auto result = v3d::encodeInstr(instr);
-    opcodes.insert(opcodes.end(), result.begin(), result.end());
+    instructions.insert(instructions.end(), result.begin(), result.end());
   }
-
-	for (auto const &opcode : opcodes) {
-		code << opcode.code();
-	}
 }
 
 
@@ -685,7 +677,7 @@ KernelDriver::KernelDriver() : QPULib::KernelDriver(V3dBuffer) {}
 
 
 void KernelDriver::encode(int numQPUs) {
-	if (code.size() > 0) return;  // Don't bother if already encoded
+	if (instructions.size() > 0) return;  // Don't bother if already encoded
 
 	if (numQPUs != 1 && numQPUs != 8) {
 		errors << "Num QPU's must be 1 or 8";
@@ -694,7 +686,7 @@ void KernelDriver::encode(int numQPUs) {
 	local_numQPUs = numQPUs;
 
 	// Encode target instructions
-	_encode(m_targetCode, code);
+	_encode(m_targetCode, instructions);
 
 	if (!local_errors.empty()) {
 		breakpoint
@@ -706,7 +698,12 @@ void KernelDriver::encode(int numQPUs) {
 
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
-	assert(code.size() > 0);
+	assert(instructions.size() > 0);
+
+	std::vector<uint64_t> code;  // opcodes for v3d
+	for (auto const &inst : instructions) {
+		code << inst.code();
+	}
 
 	// Allocate memory for the QPU code
 	qpuCodeMem.alloc(code.size());
@@ -727,11 +724,15 @@ void KernelDriver::emit_opcodes(FILE *f) {
 	fprintf(f, "Opcodes for v3d\n");
 	fprintf(f, "===============\n\n");
 
-	if (code.size() == 0) {
-		fprintf(stderr, "<No opcodes to print>");
+	if (instructions.empty()) {
+		fprintf(f, "<No opcodes to print>\n");
 	} else {
-		for (auto const &opcode : code) {
-			fprintf(f, "%s\n", Instr::mnemonic(opcode).c_str());
+		for (auto const &instr : instructions) {
+			if (!instr.comment().empty()) {
+				fprintf(f, "\n%s\n", instr.comment().c_str());
+			}
+
+			fprintf(f, "%s\n", instr.mnemonic().c_str());
 		}
 	}
 

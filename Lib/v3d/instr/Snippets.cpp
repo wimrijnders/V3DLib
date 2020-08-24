@@ -12,11 +12,13 @@ namespace instr {
 Instructions enable_tmu_read(Instr const *last_slot) {
 	Instructions ret;
 
-	// This single thread switch and two instructions just before the loop are
-	// really important for TMU read to achieve a better performance.
-	// This also enables TMU read requests without the thread switch signal, and
-	// the eight-depth TMU read request queue.
-	ret << nop().thrsw(true)
+	const char *text = 
+		"# This single thread switch and two instructions just before the loop are\n"
+		"# really important for TMU read to achieve a better performance.\n"
+		"# This also enables TMU read requests without the thread switch signal, and\n"
+		"# the eight-depth TMU read request queue.";
+
+	ret << nop().thrsw(true).comment(text)
 	    << nop();
 
 	if (last_slot != nullptr) {
@@ -32,9 +34,11 @@ Instructions enable_tmu_read(Instr const *last_slot) {
 Instructions sync_tmu() {
 	Instructions ret;
 
-	// This synchronization is needed between the last TMU operation and the
-	// program end with the thread switch just before the loop above.
-	ret << barrierid(syncb).thrsw(true)
+	const char *text = 
+		"# This synchronization is needed between the last TMU operation and the\n"
+		"# program end with the thread switch just before the main body above.";
+
+	ret << barrierid(syncb).thrsw(true).comment(text)
 	    << nop()
 	    << nop();
 
@@ -45,8 +49,7 @@ Instructions sync_tmu() {
 Instructions end_program() {
 	Instructions ret;
 
-	// Program tail
-	ret << nop().thrsw(true)
+	ret << nop().thrsw(true).comment("# Program tail")
 	    << nop().thrsw(true)
 	    << nop()
 	    << nop()

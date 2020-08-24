@@ -2,6 +2,7 @@
 #define _LIB_V3D_KERNELDRIVER_H
 #include "../KernelDriver.h"
 #include "Common/SharedArray.h"
+#include "instr/Instr.h"
 
 #ifdef QPU_MODE
 
@@ -9,6 +10,9 @@ namespace QPULib {
 namespace v3d {
 
 class KernelDriver : public QPULib::KernelDriver {
+	using Instruction  = QPULib::v3d::instr::Instr;
+	using Instructions = std::vector<Instruction>;
+
 public:
 	KernelDriver();
 
@@ -18,7 +22,7 @@ public:
 private:
   SharedArray<uint64_t> qpuCodeMem;
   SharedArray<uint32_t> paramMem;
-	std::vector<uint64_t> code;                   // opcodes for v3d
+	Instructions          instructions;
 
 	void emit_opcodes(FILE *f) override;
 };
