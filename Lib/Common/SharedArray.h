@@ -70,9 +70,8 @@ public:
 
 	bool allocated() const {
 		if (m_size > 0) {
-			assert(m_phyaddr != 0);
-			assert(m_usraddr != nullptr);
 			// assert(m_phyaddr > 0);  // Can be 0 for emu
+			assert(m_usraddr != nullptr);
 			return true;
 		} else {
 			assert(m_phyaddr == 0);
