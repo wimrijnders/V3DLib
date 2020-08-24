@@ -7,12 +7,6 @@
 
 namespace QPULib {
 
-// Identifier for creating a SharedArray view for an entire buffer object
-enum HeapView {
-	use_as_heap_view
-};
-
-
 /**
  * Reserve and access a memory range in the underlying buffer object.
  *
@@ -29,12 +23,10 @@ public:
   SharedArray(uint32_t n) : m_heap(&getBufferObject()) { alloc(n); }
   SharedArray(uint32_t n, BufferObject &heap) : m_heap(&heap) { alloc(n); }
 
-	SharedArray(HeapView do_heap_view, BufferObject &heap) {
-		assert(do_heap_view == HeapView::use_as_heap_view);
-		heap_view(heap);
-	}
-
 	void heap_view(BufferObject &heap) {
+		assert(!allocated());
+		assert(m_heap != nullptr);
+
 		m_heap = &heap;
 		m_is_heap_view = true;
 		m_size = m_heap->size();
@@ -66,22 +58,13 @@ public:
 	 * @param n number of 4-byte elements to allocate (so NOT memory size!)
 	 */
 	void alloc(uint32_t n) {
-		if (n == 0) {
-			breakpoint
-		}
+		assert(m_heap != nullptr);
+		assert(!allocated());
 		assert(n > 0);
-		if (m_size != 0) {
-			breakpoint
-		}
-		assert(m_size == 0);
-		assert(m_usraddr == nullptr);
-		assert(m_phyaddr == 0);
-		assert(!m_is_heap_view);
 
 		m_phyaddr = m_heap->alloc_array(sizeof(T)*n, m_usraddr);
-		assert(m_usraddr != nullptr);
-		//assert(m_phyaddr > 0);  // Can be 0 for emu
 		m_size = n;
+		assert(allocated());
 	}
 
 
@@ -89,6 +72,7 @@ public:
 		if (m_size > 0) {
 			assert(m_phyaddr != 0);
 			assert(m_usraddr != nullptr);
+			// assert(m_phyaddr > 0);  // Can be 0 for emu
 			return true;
 		} else {
 			assert(m_phyaddr == 0);

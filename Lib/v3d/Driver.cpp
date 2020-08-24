@@ -47,10 +47,17 @@ namespace v3d {
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
-* TODO: use following for next step:
-*
-* https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
-*/
+ * @return true if execution went well and no timeout,
+ *         false otherwise
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * TODO use following for next step:
+ *
+ * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
+ */
 bool Driver::dispatch(
 	uint32_t code_phyaddr,
 	uint32_t unif_phyaddr,
@@ -86,11 +93,12 @@ bool Driver::dispatch(
 
 	uint64_t  timeout_ns = 1000000000llu * m_timeout_sec;
 
-	int ret = v3d_submit_csd(st);
-	assert(ret == 0);
-	v3d_wait_bo(m_bo_handles, timeout_ns);
-
-	return ret == 0;
+	bool ret = 0 == v3d_submit_csd(st);
+	assert(ret);
+	if (ret) {
+		ret = v3d_wait_bo(m_bo_handles, timeout_ns);
+	}
+	return ret;
 }
 
 
