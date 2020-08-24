@@ -10,7 +10,67 @@ namespace QPULib {
 
 namespace {
 
-SharedArray<uint32_t> emuHeap(HeapView::use_as_heap_view);
+// State of a single QPU.
+struct QPUState {
+  int id = 0;                          // QPU id
+  int numQPUs = 0;                     // QPU count
+	bool running = false;                // Is QPU active, or has it halted?
+  int pc = 0;                          // Program counter
+  Vec* regFileA = nullptr;             // Register file A
+  int sizeRegFileA = 0;                // (and size)
+  Vec* regFileB = nullptr;             // Register file B
+  int sizeRegFileB = 0;                // (and size)
+  Vec accum[6];                        // Accumulator registers
+  bool negFlags[NUM_LANES];            // Negative flags
+  bool zeroFlags[NUM_LANES];           // Zero flags
+  int nextUniform = -2;                // Pointer to next uniform to read
+  DMAAddr dmaLoad;                     // DMA load address
+  DMAAddr dmaStore;                    // DMA store address
+  DMALoadReq dmaLoadSetup;             // DMA load setup register
+  DMAStoreReq dmaStoreSetup;           // DMA store setup register
+  Queue<2, VPMLoadReq> vpmLoadQueue;   // VPM load queue
+  VPMStoreReq vpmStoreSetup;           // VPM store setup
+  int readPitch = 0;                   // Read pitch
+  int writeStride = 0;                 // Write stride
+  SmallSeq<Vec> loadBuffer;            // Load buffer for loads via TMU
+
+
+	QPUState() {
+    dmaLoad.active     = false;
+    dmaStore.active    = false;
+  	for (int i = 0; i < NUM_LANES; i++) negFlags[i] = false;
+  	for (int i = 0; i < NUM_LANES; i++) zeroFlags[i] = false;
+	}
+
+
+	~QPUState() {
+    delete [] regFileA;
+    delete [] regFileB;
+	}
+
+	void init(int maxReg) {
+    running            = true;
+    regFileA           = new Vec [maxReg+1];
+    sizeRegFileA       = maxReg+1;
+    regFileB           = new Vec [maxReg+1];
+    sizeRegFileB       = maxReg+1;
+	}
+};
+
+// State of the VideoCore.
+struct State {
+  QPUState qpu[MAX_QPUS];  // State of each QPU
+  Seq<int32_t>* uniforms;  // Kernel parameters
+  Word vpm[VPM_SIZE];      // Shared VPM memory
+  Seq<char>* output;       // Output for print statements
+  int sema[16];            // Semaphores
+	SharedArray<uint32_t> emuHeap;
+
+	State() {
+  	// Initialise semaphores
+	  for (int i = 0; i < 16; i++) sema[i] = 0;
+	}
+};
 
 }
 
@@ -94,7 +154,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
             uint32_t x = req->vpmAddr & 0xf;
             for (int i = 0; i < req->rowLen; i++) {
               uint32_t addr = (uint32_t) (s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4);
-              g->vpm[y*16 + x].intVal = emuHeap.phy(addr >> 2);
+              g->vpm[y*16 + x].intVal = g->emuHeap.phy(addr >> 2);
               x = (x+1) % 16;
             }
             y = (y+1) % 64;
@@ -107,7 +167,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
             uint32_t y = ((req->vpmAddr >> 4) + r*req->vpitch) & 0x3f;
             for (int i = 0; i < req->rowLen; i++) {
               uint32_t addr = (uint32_t) (s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4);
-              g->vpm[y*16 + x].intVal = emuHeap.phy(addr >> 2);
+              g->vpm[y*16 + x].intVal = g->emuHeap.phy(addr >> 2);
               y = (y+1) % 64;
             }
             x = (x+1) % 16;
@@ -128,7 +188,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t x = req->vpmAddr & 0xf;
             for (int i = 0; i < req->rowLen; i++) {
-              emuHeap.phy(memAddr >> 2) = g->vpm[y*16 + x].intVal;
+              g->emuHeap.phy(memAddr >> 2) = g->vpm[y*16 + x].intVal;
               x = (x+1) % 16;
               memAddr = memAddr + 4;
             }
@@ -142,7 +202,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t y = (req->vpmAddr >> 4) & 0x3f;
             for (int i = 0; i < req->rowLen; i++) {
-              emuHeap.phy(memAddr >> 2) = g->vpm[y*16 + x].intVal;
+              g->emuHeap.phy(memAddr >> 2) = g->vpm[y*16 + x].intVal;
               y = (y+1) % 64;
               memAddr = memAddr + 4;
             }
@@ -375,13 +435,13 @@ void writeReg(QPUState* s, State* g, bool setFlags,
           return;
         }
         case SPECIAL_TMU0_S: {
-          assert(s->loadBuffer->numElems < 4);
+          assert(s->loadBuffer.numElems < 4);
           Vec val;
           for (int i = 0; i < NUM_LANES; i++) {
             uint32_t a = (uint32_t) v.elems[i].intVal;
-            val.elems[i].intVal = emuHeap.phy(a>>2);
+            val.elems[i].intVal = g->emuHeap.phy(a>>2);
           }
-          s->loadBuffer->append(val);
+          s->loadBuffer.append(val);
           return;
         }
         default:
@@ -707,41 +767,28 @@ void printFloatVec(Seq<char>* out, Vec x)
 // Emulator
 // ============================================================================
 
-void emulate
-  ( int numQPUs            // Number of QPUs active
-  , Seq<Instr>* instrs     // Instruction sequence
-  , int maxReg             // Max reg id used
-  , Seq<int32_t>* uniforms // Kernel parameters
-  , Seq<char>* output      // Output from print statements
-                           // (if NULL, stdout is used)
-  )
-{
+void emulate(
+	int numQPUs,
+	Seq<Instr>* instrs,
+	int maxReg,
+	Seq<int32_t>* uniforms,
+	BufferObject &heap,
+	Seq<char>* output
+) {
+
   State state;
   state.output = output;
   state.uniforms = uniforms;
+	state.emuHeap.heap_view(heap);
 
   // Initialise state
   for (int i = 0; i < numQPUs; i++) {
-    QPUState q;
-    memset(&q, 0, sizeof(QPUState));
+    QPUState &q = state.qpu[i];
+
     q.id                 = i;
     q.numQPUs            = numQPUs;
-    q.pc                 = 0;
-    q.running            = true;
-    q.regFileA           = new Vec [maxReg+1];
-    q.sizeRegFileA       = maxReg+1;
-    q.regFileB           = new Vec [maxReg+1];
-    q.sizeRegFileB       = maxReg+1;
-    q.nextUniform        = -2;
-    q.dmaLoad.active     = false;
-    q.dmaStore.active    = false;
-    q.readPitch          = 0;
-    q.writeStride        = 0;
-    q.loadBuffer         = new SmallSeq<Vec>;
-    state.qpu[i]         = q;
+		q.init(maxReg);
   }
-  // Initialise semaphores
-  for (int i = 0; i < 16; i++) state.sema[i] = 0;
 
   bool anyRunning = true;
   while (anyRunning) {
@@ -818,8 +865,8 @@ void emulate
           }
           // RECV: receive load-via-TMU response
           case RECV: {
-            assert(s->loadBuffer->numElems > 0);
-            Vec val = s->loadBuffer->remove(0);
+            assert(s->loadBuffer.numElems > 0);
+            Vec val = s->loadBuffer.remove(0);
             AssignCond always;
             always.tag = ALWAYS;
             writeReg(s, &state, false, always, instr.RECV.dest, val);
@@ -827,8 +874,8 @@ void emulate
           }
           // Read from TMU0 into accumulator 4
           case TMU0_TO_ACC4: {
-            assert(s->loadBuffer->numElems > 0);
-            Vec val = s->loadBuffer->remove(0);
+            assert(s->loadBuffer.numElems > 0);
+            Vec val = s->loadBuffer.remove(0);
             AssignCond always;
             always.tag = ALWAYS;
             Reg dest;
@@ -859,12 +906,6 @@ void emulate
         }
       }
     }
-  }
-
-  // Deallocate state
-  for (int i = 0; i < numQPUs; i++) {
-    delete [] state.qpu[i].regFileA;
-    delete [] state.qpu[i].regFileB;
   }
 }
 
