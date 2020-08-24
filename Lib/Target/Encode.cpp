@@ -245,14 +245,11 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
     // ALU
     case ALU: {
       RegTag file;
-      bool isMul     = isMulOp(instr.ALU.op);
-      bool hasImm    = instr.ALU.srcA.tag == IMM || instr.ALU.srcB.tag == IMM;
-      bool isRot     = instr.ALU.op == M_ROTATE;
-      uint32_t sig   = ((hasImm || isRot) ? 13 : 1) << 28;
-      uint32_t cond  = encodeAssignCond(instr.ALU.cond) << (isMul ? 14 : 17);
+      uint32_t sig   = ((instr.hasImm() || instr.isRot()) ? 13 : 1) << 28;
+      uint32_t cond  = encodeAssignCond(instr.ALU.cond) << (instr.isMul() ? 14 : 17);
       uint32_t dest  = encodeDestReg(instr.ALU.dest, &file);
       uint32_t waddr_add, waddr_mul, ws;
-      if (isMul) {
+      if (instr.isMul()) {
         waddr_add = 39 << 6;
         waddr_mul = dest;
         ws        = (file == REG_B ? 0 : 1) << 12;
@@ -286,8 +283,8 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
         return;
       }
       else {
-        uint32_t mulOp = (isMul ? encodeMulOp(instr.ALU.op) : 0) << 29;
-        uint32_t addOp = (isMul ? 0 : encodeAddOp(instr.ALU.op)) << 24;
+        uint32_t mulOp = (instr.isMul() ? encodeMulOp(instr.ALU.op) : 0) << 29;
+        uint32_t addOp = (instr.isMul() ? 0 : encodeAddOp(instr.ALU.op)) << 24;
 
         uint32_t muxa, muxb;
         uint32_t raddra, raddrb;

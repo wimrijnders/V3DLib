@@ -1,37 +1,64 @@
 #
+# Before using make, you need to create the file dependencies:
+#
+# > script/gen.sh
+#
 # There are four builds possible, with output directories:
 #
-#   obj              - using emulator
-#   obj-debug        - output debug info, using emulator
-#   obj-qpu          - using hardware
-#   obj-debug-qpu    - output debug info, using hardware
+#   obj/emu          - using emulator
+#   obj/emu-debug    - output debug info, using emulator
+#   obj/qpu          - using hardware
+#   objiqpu-debug    - output debug info, using hardware
 #
-# To compile for debugging, add flag '-g' to CXX_FLAGS.
 #
-###########################################################
+###############################################################################
+
+#
+# Stuff for external libraries
+#
+INCLUDE_EXTERN= \
+ -I ../CmdParameter/Lib \
+ -I mesa/include \
+ -I mesa/src
+
+LIB_EXTERN= \
+ -L ../CmdParameter/obj -lCmdParameter \
+ -Lobj/mesa/bin -lmesa
+
 
 # Root directory of QPULib repository
-ROOT = Lib
+ROOT= Lib
 
 # Compiler and default flags
-CXX = g++
+CXX= g++
+LINK= $(CXX) $(CXX_FLAGS)
 
+LIBS := $(LIB_EXTERN)
+
+#
 # -I is for access to bcm functionality
-CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) -MMD -MP -MF"$(@:%.o=%.d)" -g  # Add debug info: -g
+#
+# -Wno-psabi avoids following note (happens in unit tests):
+#
+#    note: parameter passing for argument of type ‘std::move_iterator<Catch::SectionEndInfo*>’ changed in GCC 7.1
+#
+#    It is benign: https://stackoverflow.com/a/48149400 
+#
+CXX_FLAGS = \
+ -Wconversion \
+ -Wno-psabi \
+ -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
 
 # Object directory
-OBJ_DIR = obj
+OBJ_DIR := obj
 
-# Debug mode
-ifeq ($(DEBUG), 1)
-  CXX_FLAGS += -DDEBUG
-  OBJ_DIR := $(OBJ_DIR)-debug
-endif
 
 # QPU or emulation mode
 ifeq ($(QPU), 1)
+$(info Building for QPU)
 
-# Check platform before building. Can't be indented, otherwise make complains.
+# Check platform before building.
+# Can't be indented, otherwise make complains.
 RET := $(shell Tools/detectPlatform.sh 1>/dev/null && echo "yes" || echo "no")
 #$(info  info: '$(RET)')
 ifneq ($(RET), yes)
@@ -41,84 +68,50 @@ $(info Building on a Pi platform)
 endif
 
   CXX_FLAGS += -DQPU_MODE -I /opt/vc/include
-  OBJ_DIR := $(OBJ_DIR)-qpu
-	LIBS := -L /opt/vc/lib -l bcm_host
+  OBJ_DIR := $(OBJ_DIR)/qpu
+	LIBS += -L /opt/vc/lib -l bcm_host
 else
+  OBJ_DIR := $(OBJ_DIR)/emu
   CXX_FLAGS += -DEMULATION_MODE
 endif
 
-# Library Object files
-OBJ =                         \
-  Kernel.o                    \
-  Source/Syntax.o             \
-  Source/Int.o                \
-  Source/Float.o              \
-  Source/Stmt.o               \
-  Source/Pretty.o             \
-  Source/Translate.o          \
-  Source/Interpreter.o        \
-  Source/Gen.o                \
-  Target/Syntax.o             \
-  Target/SmallLiteral.o       \
-  Target/Pretty.o             \
-  Target/RemoveLabels.o       \
-  Target/CFG.o                \
-  Target/Liveness.o           \
-  Target/RegAlloc.o           \
-  Target/ReachingDefs.o       \
-  Target/Subst.o              \
-  Target/LiveRangeSplit.o     \
-  Target/Satisfy.o            \
-  Target/LoadStore.o          \
-  Target/Emulator.o           \
-  Target/Encode.o             \
-  VideoCore/Mailbox.o         \
-  VideoCore/RegisterMap.o     \
-  VideoCore/Invoke.o          \
-  VideoCore/VideoCore.o
+# Debug mode
+ifeq ($(DEBUG), 1)
+  CXX_FLAGS += -DDEBUG    # -Wall
+  OBJ_DIR := $(OBJ_DIR)-debug
+else
+  CXX_FLAGS += -DNDEBUG		# Disable assertions
+endif
 
-LIB = $(patsubst %,$(OBJ_DIR)/%,$(OBJ))
+-include obj/sources.mk
 
-
-# All programs in the Examples directory
-# NOTE: detectPlatform is in the 'Tools' directory, not in 'Examples'
-EXAMPLES =  \
-	Mandelbrot \
-	detectPlatform \
-	Tri       \
-	GCD       \
-	Print     \
-	MultiTri  \
-	AutoTest  \
-	OET       \
-	Hello     \
-	ReqRecv   \
-	Rot3D     \
-	Rot3DLib  \
-	ID        \
-	HeatMap   \
-	DMA
+LIB = $(patsubst %,$(OBJ_DIR)/Lib/%,$(OBJ))
 
 EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
+TESTS_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(TESTS_FILES))
+$(info $(TESTS_OBJ))
 
 
 # Example object files
 EXAMPLES_EXTRA = \
-	Rot3DLib/Rot3DKernels.o
+	Rot3DLib/Rot3DKernels.o \
+	Support/Settings.o
 
 EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
 #$(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files
 DEPS := $(LIB:.o=.d)
-#$(info $(DEPS))
 -include $(DEPS)
 
 # Dependencies for the include files in the Examples directory.
 # Basically, every .h file under examples has a .d in the build directory
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
-#$(info $(EXAMPLES_DEPS))
 -include $(EXAMPLES_DEPS)
+
+
+QPULIB=$(OBJ_DIR)/libQPULib.a
+MESA_LIB = obj/mesa/bin/libmesa.a
 
 
 # Top-level targets
@@ -127,11 +120,7 @@ EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
 
 # Following prevents deletion of object files after linking
 # Otherwise, deletion happens for targets of the form '%.o'
-.PRECIOUS: $(OBJ_DIR)/%.o  \
-	$(OBJ_DIR)/Source/%.o    \
-	$(OBJ_DIR)/Target/%.o    \
-	$(OBJ_DIR)/VideoCore/%.o \
-	$(OBJ_DIR)/Examples/%.o
+.PRECIOUS: $(OBJ_DIR)/%.o
 
 
 help:
@@ -154,54 +143,58 @@ help:
 	@echo '    DEBUG=1       - If specified, the source code and target code is shown on stdout when running a test'
 	@echo
 
-all: $(EXAMPLE_TARGETS) $(OBJ_DIR)
+all: $(QPULIB) $(EXAMPLES)
 
 clean:
-	rm -rf obj obj-debug obj-qpu obj-debug-qpu
+	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug obj/test
 
 
 #
 # Targets for static library
 #
 
-QPU_LIB=$(OBJ_DIR)/libQPULib.a
-#$(info LIB: $(LIB))
-
-$(QPU_LIB): $(LIB)
+$(QPULIB): $(LIB) $(MESA_LIB)
 	@echo Creating $@
 	@ar rcs $@ $^
 
-$(OBJ_DIR)/%.o: $(ROOT)/%.cpp | $(OBJ_DIR)
+$(MESA_LIB):
+	cd mesa && make compile
+
+
+# Rule for creating object files
+$(OBJ_DIR)/%.o: %.cpp
 	@echo Compiling $<
-	@$(CXX) -c -o $@ $< $(CXX_FLAGS)
+	@mkdir -p $(@D)
+	@$(CXX) -std=c++11 -c -o $@ $< $(CXX_FLAGS)
 
-
-#
-# Targets for Examples and Tools
-#
+# Same thing for C-files
+$(OBJ_DIR)/%.o: %.c
+	@echo Compiling $<
+	@mkdir -p $(@D)
+	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
 $(OBJ_DIR)/bin/Rot3DLib: $(OBJ_DIR)/Examples/Rot3DLib/Rot3DKernels.o
 
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPU_LIB)
+# Leaving this out means Rot3DLib does not get compiled, and there's no warning
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPULIB)  # NOTE: QPULIB needs to be at the back, for correct linking order
 	@echo Linking $@...
-	@$(CXX) $(CXX_FLAGS) $^ -o $@
+	@mkdir -p $(@D)
+	@$(LINK) $^ $(LIBS) -o $@
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(QPU_LIB)
+
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(OBJ_DIR)/Examples/Support/Settings.o $(QPULIB)
 	@echo Linking $@...
-	@$(CXX) $(CXX_FLAGS) $^ $(LIBS) -o $@
+	@mkdir -p $(@D)
+	@$(LINK) $^ $(LIBS) -o $@
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPU_LIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPULIB)
 	@echo Linking $@...
-	@$(CXX) $(CXX_FLAGS) $^ $(LIBS) -o $@
+	@mkdir -p $(@D)
+	@$(LINK) $^ $(LIBS) -o $@
 
-# General compilation of cpp files
-# Keep in mind that the % will take into account subdirectories under OBJ_DIR.
-$(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR)
-	@echo Compiling $<
-	@$(CXX) -c $(CXX_FLAGS) -o $@ $<
 
-$(EXAMPLES) :% :$(OBJ_DIR)/bin/%
+$(EXAMPLES) :% : $(OBJ_DIR)/bin/%
 
 
 #
@@ -210,42 +203,30 @@ $(EXAMPLES) :% :$(OBJ_DIR)/bin/%
 
 RUN_TESTS := $(OBJ_DIR)/bin/runTests
 
-# sudo required for QPU-mode on Pi
+## sudo required for QPU-mode on Pi
 ifeq ($(QPU), 1)
 	RUN_TESTS := sudo $(RUN_TESTS)
 endif
 
 
-# Source files with unit tests to include in compilation
-UNIT_TESTS =          \
-	Tests/testMain.cpp  \
-	Tests/testRot3D.cpp \
-	Tests/testDSL.cpp
-
-# For some reason, doing an interim step to .o results in linkage errors (undefined references).
-# So this target compiles the source files directly to the executable.
-#
-# Flag `-Wno-psabi` is to surpress a superfluous warning when compiling with GCC 6.3.0
-#
-$(OBJ_DIR)/bin/runTests: $(UNIT_TESTS) $(EXAMPLES_OBJ) | $(QPU_LIB)
-	@echo Compiling unit tests
-	@$(CXX) $(CXX_FLAGS) -Wno-psabi $^ -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
+$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB) Rot3DLib ReqRecv detectPlatform
+	@echo Linking unit tests
+	@mkdir -p $(@D)
+	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
 make_test: $(OBJ_DIR)/bin/runTests
 
-test : | make_test AutoTest
+test : | make_test
 	@echo Running unit tests with '$(RUN_TESTS)'
 	@$(RUN_TESTS)
 
-#
-# Other targets
-#
 
-$(OBJ_DIR):
-	@mkdir -p $(OBJ_DIR)/Source
-	@mkdir -p $(OBJ_DIR)/Target
-	@mkdir -p $(OBJ_DIR)/VideoCore
-	@mkdir -p $(OBJ_DIR)/Examples/Rot3DLib   # Creates Examples as well
-	@mkdir -p $(OBJ_DIR)/Examples
-	@mkdir -p $(OBJ_DIR)/Tools
-	@mkdir -p $(OBJ_DIR)/bin
+###############################
+# Gen stuff
+################################
+
+gen : $(OBJ_DIR)/sources.mk
+
+$(OBJ_DIR)/sources.mk :
+	@mkdir -p $(@D)
+	@script/gen.sh

@@ -2,6 +2,8 @@
 #include <math.h>
 #include "Rot3DKernels.h"
 
+// TODO: Add Cmdline param handling, for selecting kernels
+
 using namespace Rot3DLib;
 
 

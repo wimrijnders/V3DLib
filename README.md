@@ -22,6 +22,23 @@ It will **NOT** work on Pi 4, due to changes in the GPU (but I'm working hard to
 
 ## Getting Started
 
+`QPULib` requires an external library to compile.
+Run the following to pull it in:
+
+```
+script/install.sh
+```
+
+In addition, the file depencies must be generated:
+
+```
+script/gen.sh
+```
+As long as the files don't change, you need to run this script only once.
+
+
+Then:
+
 ```
 sudo apt-get install git
 git clone https://github.com/mn416/QPULib

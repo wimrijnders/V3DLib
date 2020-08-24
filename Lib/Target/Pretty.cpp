@@ -37,6 +37,7 @@ const char* specialStr(RegId rid)
 
   // Unreachable
   assert(false);
+	return nullptr;
 }
 
 void pretty(FILE *f, Reg r)

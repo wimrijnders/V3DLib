@@ -32,6 +32,7 @@ const char* opToString(Op op)
 
   // Not reachable
   assert(false);
+	return nullptr;
 }
 
 const char* cmpOpToString(CmpOp op)
@@ -47,6 +48,7 @@ const char* cmpOpToString(CmpOp op)
 
   // Not reachable
   assert(false);
+	return nullptr;
 }
 
 // ============================================================================

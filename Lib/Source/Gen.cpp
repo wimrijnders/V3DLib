@@ -117,6 +117,7 @@ Op genOp(GenOptions* opts, Type t)
 
   // Unreachable
   assert(false);
+	return op;
 }
 
 // ============================================================================
@@ -198,6 +199,7 @@ Expr* genExpr(GenOptions* opts, Type t, int depth)
 
   // Unreachable
   assert(false);
+	return nullptr;
 }
 
 // ============================================================================
@@ -245,7 +247,9 @@ BExpr* genBExpr(GenOptions* opts, int depth)
 
   // Unreachable
   assert(false);
+	return nullptr;
 }
+
 
 // ============================================================================
 // Random conditional expressions
@@ -260,6 +264,7 @@ CExpr* genCExpr(GenOptions* opts, int depth)
 
   // Unreachable
   assert(false);
+	return nullptr;
 }
 
 // ============================================================================
@@ -359,6 +364,7 @@ Stmt* genWhere(GenOptions* opts, int depth, int length)
 
   // Unreachable
   assert(false);
+	return nullptr;
 }
 
 // ============================================================================
@@ -459,6 +465,7 @@ Stmt* genStmt(GenOptions* opts, int depth, int length)
 
   // Not reachable
   assert(false);
+	return nullptr;
 }
 
 // ============================================================================

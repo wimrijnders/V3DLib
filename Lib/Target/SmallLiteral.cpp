@@ -83,6 +83,7 @@ Word decodeSmallLit(int x)
 
   // Unreachable
   assert(false);
+	return w;
 }
 
 // Display a small literal.

@@ -21,13 +21,6 @@ reported, although there may be valid explanations for such
 differences.
 
 
-##### AutoTest: specification-based testing of the compiler
-
-Another program in the `Examples` directory worth mentioning is
-`AutoTest`: it generates random QPULib programs, runs them on the both
-source language interpreter and the target language emulator, and
-checks for equivalance.  Currently, it only works in emulation mode.
-
 ##### CPU/GPU memory split
 
 Depending on your plans, it may be useful to ensure that plenty of

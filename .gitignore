@@ -6,3 +6,4 @@ obj*
 *.pgm
 *.swp
 extern
+*_code.txt

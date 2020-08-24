@@ -2,11 +2,119 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/time.h>
+#include <CmdParameters.h>
 
 using namespace QPULib;
+using std::string;
 
 // Heat dissapation constant
 #define K 0.25
+
+
+std::vector<const char *> const kernels = { "vector", "scalar" };  // Order important! First is default
+
+CmdParameters params = {
+  "Heatmap\n",
+  {{
+    "Kernel",
+    "-k=",
+		kernels,
+    "Select the kernel to use"
+  }}
+};
+
+
+struct Settings {
+	const int ALL = 3;
+
+	int    kernel;
+	string kernel_name;
+
+  // Initialize constants for the kernels
+  const int NQPUS  = 1;
+
+
+
+	int init(int argc, const char *argv[]) {
+		auto ret = params.handle_commandline(argc, argv, false);
+		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+		kernel      = params.parameters()[0]->get_int_value();
+		kernel_name = params.parameters()[0]->get_string_value();
+
+		return ret;
+	}
+} settings;
+
+
+// ============================================================================
+// Scalar version
+// ============================================================================
+
+// One time step
+void scalar_step(float** map, float** mapOut, int width, int height)
+{
+  for (int y = 1; y < height-1; y++) {
+    for (int x = 1; x < width-1; x++) {
+      float surroundings =
+        map[y-1][x-1] + map[y-1][x]   + map[y-1][x+1] +
+        map[y][x-1]   +                 map[y][x+1]   +
+        map[y+1][x-1] + map[y+1][x]   + map[y+1][x+1];
+      surroundings *= 0.125f;
+      mapOut[y][x] = (float) (map[y][x] - (K * (map[y][x] - surroundings)));
+    }
+  }
+}
+
+
+void run_scalar() {
+  // Parameters
+  const int WIDTH  = 512;
+  const int HEIGHT = 506;
+  const int NSPOTS = 10;
+  const int NSTEPS = 1500;
+
+  // Allocate
+  float* map       = new float [WIDTH*HEIGHT];
+  float* mapOut    = new float [WIDTH*HEIGHT];
+  float** map2D    = new float* [HEIGHT];
+  float** mapOut2D = new float* [HEIGHT];
+
+  // Initialise
+  for (int i = 0; i < WIDTH*HEIGHT; i++) map[i] = mapOut[i] = 0.0;
+  for (int i = 0; i < HEIGHT; i++) {
+    map2D[i]    = &map[i*WIDTH];
+    mapOut2D[i] = &mapOut[i*WIDTH];
+  }
+
+  // Inject hot spots
+  srand(0);
+  for (int i = 0; i < NSPOTS; i++) {
+    int t = rand() % 256;
+    int x = 1 + rand() % (WIDTH-2);
+    int y = 1 + rand() % (HEIGHT-2);
+    map2D[y][x] = 1000.0f*((float) t);
+  }
+
+  // Simulate
+  for (int i = 0; i < NSTEPS; i++) {
+    scalar_step(map2D, mapOut2D, WIDTH, HEIGHT);
+    float** tmp = map2D; map2D = mapOut2D; mapOut2D = tmp;
+  }
+
+  // Display results
+  printf("P2\n%i %i\n255\n", WIDTH, HEIGHT);
+  for (int y = 0; y < HEIGHT; y++) {
+    for (int x = 0; x < WIDTH; x++) {
+      int t = (int) map2D[y][x];
+      t = t < 0   ? 0 : t;
+      t = t > 255 ? 255 : t;
+      printf("%d ", t);
+    }
+    printf("\n");
+	}
+}
+
 
 // ============================================================================
 // Vector version
@@ -102,18 +210,12 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int pitch, Int width, Int height)
   End
 }
 
-// ============================================================================
-// Main
-// ============================================================================
-
-int main()
-{
+void run_kernel() {
   // Size of 2D heat map is WIDTH*HEIGHT:
   //   * with zero padding, it is NROWS*NCOLS
   //   * i.e. there is constant cold at the edges
   //   * NCOLs should be a multiple of 16
   //   * HEIGHT should be a multiple of NQPUS
-  const int NQPUS  = 1;
   const int WIDTH  = 512-16;
   const int NCOLS  = WIDTH+16;
   const int HEIGHT = 504;
@@ -121,10 +223,8 @@ int main()
   const int NSPOTS = 10;
   const int NSTEPS = 1500;
 
-  // Timestamps
-  timeval tvStart, tvEnd, tvDiff;
-
   // Allocate and initialise input and output maps
+
   SharedArray<float> mapA(NROWS*NCOLS), mapB(NROWS*NCOLS);
   for (int y = 0; y < NROWS; y++)
     for (int x = 0; x < NCOLS; x++) {
@@ -145,29 +245,60 @@ int main()
   auto k = compile(step);
 
   // Invoke kernel
-  k.setNumQPUs(NQPUS);
-  gettimeofday(&tvStart, NULL);
+  k.setNumQPUs(settings.NQPUS);
   for (int i = 0; i < NSTEPS; i++) {
     if (i & 1)
       k(&mapB, &mapA, NCOLS, WIDTH, HEIGHT);
     else
       k(&mapA, &mapB, NCOLS, WIDTH, HEIGHT);
   }
-  gettimeofday(&tvEnd, NULL);
-  timersub(&tvEnd, &tvStart, &tvDiff);
 
   // Display results
   printf("P2\n%i %i\n255\n", WIDTH, HEIGHT);
-  for (int y = 0; y < HEIGHT; y++)
+  for (int y = 0; y < HEIGHT; y++) {
     for (int x = 0; x < WIDTH; x++) {
       int t = (int) mapB[(y+1)*NCOLS+x];
       t = t < 0   ? 0 : t;
       t = t > 255 ? 255 : t;
-      printf("%d\n", t);
+      printf("%d ", t);
     }
+    printf("\n");
+	}
+}
 
-  // Run-time of simulation
-  printf("# %ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
+
+// ============================================================================
+// Local functions
+// ============================================================================
+
+void end_timer(timeval tvStart) {
+  timeval tvEnd, tvDiff;
+  gettimeofday(&tvEnd, NULL);
+  timersub(&tvEnd, &tvStart, &tvDiff);
+
+  printf("%ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
+}
+
+
+// ============================================================================
+// Main
+// ============================================================================
+
+int main(int argc, const char *argv[]) {
+	auto ret = settings.init(argc, argv);
+	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+  timeval tvStart;
+  gettimeofday(&tvStart, NULL);
+
+	switch (settings.kernel) {
+		case 0: run_kernel();  break;	
+		case 1: run_scalar(); break;
+	}
+
+	auto name = kernels[settings.kernel];
+	printf("Ran kernel '%s' with %d QPU's in ", name, settings.NQPUS);
+	end_timer(tvStart);
 
   return 0;
 }

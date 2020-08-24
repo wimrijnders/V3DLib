@@ -1,8 +1,11 @@
+#include <cassert>
+#include "../SourceTranslate.h"
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
 #include "Target/LoadStore.h"
 #include "Common/Seq.h"
+
 
 namespace QPULib {
 
@@ -45,6 +48,10 @@ ALUOp opcode(Op op)
       default:     assert(false);
     }
   }
+
+  // Not reachable
+  assert(false);
+	return NOP;
 }
 
 // Translate variable to source register.
@@ -80,6 +87,7 @@ Reg srcReg(Var v)
 
   // Not reachable
   assert(false);
+	return r;
 }
 
 // Translate variable to target register.
@@ -109,6 +117,7 @@ Reg dstReg(Var v)
 
   // Not reachable
   assert(false);
+	return r;
 }
 
 // Translate the argument of an operator (either a variable or a small
@@ -369,34 +378,14 @@ void assign( Seq<Instr>* seq   // Target instruction sequence to extend
   // -------------------------------------------------
   // Case: *v := rhs where v is a var and rhs is a var
   // -------------------------------------------------
-  if (lhs.tag == DEREF) {
-    // QPU id
-    Reg qpuId;
-    qpuId.tag = SPECIAL;
-    qpuId.regId = SPECIAL_QPU_NUM;
-    // Setup VPM
-    Reg addr = freshReg();
-    seq->append(genLI(addr, 16));
-    seq->append(genADD(addr, addr, qpuId));
-    genSetupVPMStore(seq, addr, 0, 1);
-    // Store address
-    Reg storeAddr = freshReg();
-    seq->append(genLI(storeAddr, 256));
-    seq->append(genADD(storeAddr, storeAddr, qpuId));
-    // Setup DMA
-    genSetWriteStride(seq, 0);
-    genSetupDMAStore(seq, 16, 1, 1, storeAddr);
-    // Put to VPM
-    Reg data;
-    data.tag = SPECIAL;
-    data.regId = SPECIAL_VPM_WRITE;
-    seq->append(genLShift(data, srcReg(rhs->var), 0));
-    // Start DMA
-    genStartDMAStore(seq, srcReg(lhs.deref.ptr->var));
-    // Wait for store to complete
-    genWaitDMAStore(seq);
-    return;
-  }
+
+	// Strictly speaking, the two VAR tests are not necessary; it is the only possible case
+	// (According to previous code, that is)
+  bool handle_case = (lhs.tag == DEREF && (lhs.deref.ptr->tag == VAR || rhs->tag == VAR));
+	if (handle_case) {
+		getSourceTranslate().deref_var_var(seq, lhs, rhs);
+		return;
+	}
 
   // This case should not be reachable
   assert(false);
@@ -431,6 +420,7 @@ Flag negFlag(Flag flag)
 
   // Not reachable
   assert(false);
+	return ZS;
 }
 
 // Function to negate an assignment condition.
@@ -445,6 +435,7 @@ AssignCond negAssignCond(AssignCond cond)
 
   // Not reachable
   assert(false);
+	return cond;
 }
 
 // Function to negate a branch condition.
@@ -464,6 +455,7 @@ BranchCond negBranchCond(BranchCond cond)
 
   // Not reachable
   assert(false);
+	return cond;
 }
 
 
@@ -482,6 +474,7 @@ int setFlag(Flag f)
 
   // Not reachable
   assert(false);
+	return -1;
 }
 
 // Set the condition vector using given variable.
@@ -743,6 +736,7 @@ AssignCond boolExp( Seq<Instr>* seq
 
   // Not reachable
   assert(false);
+	return always;
 }
 
 
@@ -773,6 +767,7 @@ BranchCond condExp(Seq<Instr>* seq, CExpr* c)
 
   // Not reachable
   assert(false);
+	return bcond;
 }
 
 // ============================================================================
@@ -1394,7 +1389,9 @@ void insertEndCode(Seq<Instr>* seq)
 void translateStmt(Seq<Instr>* seq, Stmt* s)
 {
   stmt(seq, s);
-  insertEndCode(seq);
+	if (compiling_for_vc4()) {
+	  insertEndCode(seq);
+	};
 }
 
 }  // namespace QPULib
