@@ -24,13 +24,14 @@ void KernelDriver::encode(int numQPUs) {
 
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
-	assert(qpuCodeMem.size() > 0);
+	assert(qpuCodeMem.size() == 0);
 	assert(code.size() > 0);
 
 	// Allocate memory for QPU code and parameters
 	int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
 
 	qpuCodeMem.alloc(numWords);
+	assert(qpuCodeMem.size() > 0);
 
 	// Copy kernel to code memory
 	int offset = 0;

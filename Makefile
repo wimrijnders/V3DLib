@@ -205,9 +205,9 @@ UNIT_TESTS := $(OBJ_DIR)/bin/runTests
 
 ## sudo required for QPU-mode on Pi
 ifeq ($(QPU), 1)
-	RUN_TESTS := sudo $(RUN_TESTS)
+	SUDO := sudo
 else
-	RUN_TESTS := $(RUN_TESTS)
+	SUDO :=
 endif
 
 
@@ -219,8 +219,8 @@ $(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB)
 make_test: $(UNIT_TESTS) Rot3DLib ReqRecv detectPlatform
 
 test : make_test
-	@echo Running unit tests with '$(RUN_TESTS)'
-	@$(RUN_TESTS)
+	@echo Running unit tests with \'$(SUDO) $(UNIT_TESTS)\'
+	@$(SUDO) $(UNIT_TESTS)
 
 
 ###############################
