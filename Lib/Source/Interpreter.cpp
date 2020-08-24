@@ -352,6 +352,7 @@ void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
       return;
 
     // Dereferenced pointer
+		// Comparable to execStoreRequest()
     case DEREF: {
       Vec index = eval(s, lhs->deref.ptr);
       uint32_t hp = (uint32_t) index.elems[0].intVal;
