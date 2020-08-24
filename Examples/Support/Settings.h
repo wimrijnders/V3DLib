@@ -1,16 +1,18 @@
 #ifndef _EXAMPLE_SUPPORT_SETINGS_H
 #define _EXAMPLE_SUPPORT_SETINGS_H
 #include <CmdParameters.h>
+#include <string>
 
 namespace QPULib {
 
 struct Settings {
-	bool output_code;
-#ifdef EMULATION_MODE
-	int run_type;
-#endif
+	std::string name;
 
-	const char *code_filename = "target_code.txt";
+	bool output_code;
+	bool compile_only;
+//#ifdef EMULATION_MODE
+	int run_type;
+//#endif
 
 	int init(int argc, const char *argv[]);
 	void output();
@@ -18,19 +20,22 @@ struct Settings {
 	template<typename Kernel, typename... us>
 	void process(Kernel &k, us... args) {
 
-#ifdef EMULATION_MODE
-		switch (run_type) {
-			case 0: k(args...); break;
-			case 1: k.emu(args...); break;
-			case 2: k.interpret(args...); break;
+		if (!compile_only) {
+//#ifdef EMULATION_MODE
+			switch (run_type) {
+				case 0: k(args...); break;
+				case 1: k.emu(args...); break;
+				case 2: k.interpret(args...); break;
+			}
+//#endif
+//#ifdef QPU_MODE
+//		k(args...);
+//#endif
 		}
-#endif
-#ifdef QPU_MODE
-		k(args...);
-#endif
 
 		if (output_code) {
-			k.pretty(code_filename);
+			std::string code_filename = name + "_code.txt";
+			k.pretty(code_filename.c_str());
 		}
 	}
 };

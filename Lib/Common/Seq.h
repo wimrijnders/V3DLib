@@ -38,6 +38,8 @@ template <class T> class Seq
         elems[i] = seq.elems[i];
     }
 
+		bool size() const { return numElems; }
+
     // Set capacity of sequence
     void setCapacity(int n) {
       maxElems = n;

@@ -1,13 +1,14 @@
 #include <unistd.h>  // geteuid()
-#include <string.h>  // strstr()
 #include <string>
 #include <fstream>
 #include <streambuf>
 #include <CmdParameters.h>
 #include "QPULib.h"
-#include "VideoCore/VideoCore.h"
-#include "VideoCore/RegisterMap.h"
-#include "VideoCore/vc6/RegisterMapping.h"
+#include "Support/Platform.h"
+#include "vc4/vc4.h"
+#include "vc4/Mailbox.h"
+#include "vc4/RegisterMap.h"
+#include "v3d/RegisterMapping.h"
 
 using namespace QPULib;
 
@@ -26,118 +27,11 @@ CmdParameters params = {
 
 
 /**
- * @brief read the entire contents of a file into a string
- *
- * @param filename name of file to read
- * @param out_str  output parameter; place to store the file contents
- *
- * @return true if all went well, false if file could not be read.
- */
-bool loadFileInString(const char *filename, std::string & out_str) {
-	std::ifstream t(filename);
-	if (!t.is_open()) {
-		return false;
-	}
-
-	std::string str((std::istreambuf_iterator<char>(t)),
-  	               std::istreambuf_iterator<char>());
-
-	if (str.empty()) {
-		return false;
-	}
-
-	out_str = str;
-	return true;
-}
-
-
-/**
- * @brief Detect Pi platform for newer Pi versions.
- *
- * @param content - output; store platform string here if found
- *
- * @return true if string describing platform found,
- *         false otherwise.
- */
-bool get_platform_string(std::string &content) {
-	const char *filename = "/sys/firmware/devicetree/base/model";
-
-	bool success = loadFileInString(filename, content);
-	if (!success) {
-		content == "";
-	}
-
-	return success;
-}
-
-
-/**
- * @brief Retrieve the VideoCore chip number.
- *
- * This is the way to detect the Pi platform for older Pi versions/distributions.
- *
- * Detects if this is a VideoCore. This should be sufficient for detecting Pi,
- * since it's the only thing to date(!) using this particular chip version.
- *
- * @return true if Pi detected, false otherwise
- *
- * --------------------------------------------------------------------------
- * ## NOTES
- *
- * * The following are valid model numbers:
- *
- *  - BCM2708
- *  - BCM2835    - This appears to be returned for all higher BCM versions
- *
- * * The following are also valid, but appear to be represented by 'BCM2835'
- *   in `/proc/cpuinfo`:
- *
- *  - BCM2836   // If that's not the case, enable these as well
- *  - BCM2837
- *  - BCM2837B0
- */
-
-bool get_chip_version(std::string &output) {
-	const char *BCM_VERSION_PREFIX = "BCM2";
-	const char *filename = "/proc/cpuinfo";
-
-	output.clear();
-
-	std::ifstream t(filename);
-	if (!t.is_open()) return false;
-
-	std::string line;
-	while (getline(t, line)) {
-	  if (!strstr(line.c_str(), "Hardware")) continue;
-
-		if (strstr(line.c_str(), BCM_VERSION_PREFIX)) {
-	  	// For now, don't try to exactly specify the model.
-			// This could be done with field "Revision' in current input.
-
-			size_t pos = line.find(BCM_VERSION_PREFIX);
-			if (pos != line.npos) {
-				output = line.substr(pos);
-			}
-
-			return true;
-		}
-  }
-
-	return false;
-}
-
-
-/**
  * @brief Collect and make general information available on the current platform
  *
  * In time, this struct will be made generic for all QPULib programs
  */
 struct Settings {
-	std::string platform_id; 
-	std::string chip_version;
-	bool is_pi_platform;
-	bool has_vc4 = false;
-
 
 	// cmdline param's
 	bool reset_scheduler;
@@ -150,17 +44,12 @@ struct Settings {
 	 *         any other value if program should abort
    */
 	int init(int argc, const char *argv[]) {
-		is_pi_platform = get_platform_string(platform_id);
-		if (get_chip_version(chip_version)) {
-			is_pi_platform = true;
-		}
+		auto platform = Platform::instance();
 
-		if (!platform_id.empty() && is_pi_platform) {
-			has_vc4 = (platform_id.npos == platform_id.find("Pi 4"));
-		}
+		platform.output();
 		output();
 
-		if (!is_pi_platform) {
+		if (!platform.is_pi_platform) {
 			return CmdParameters::EXIT_ERROR;
 		}
 
@@ -184,25 +73,6 @@ struct Settings {
 
 
 	void output() {
-		if (!platform_id.empty()) {
-			printf("Platform: %s\n", platform_id.c_str());
-		} else {
-			printf("Platform: %s\n", "Unknown");
-		}
-
-		printf("Chip version: %s\n", chip_version.c_str());
-
-		if (!is_pi_platform) {
-			printf("This is NOT a pi platform!\n");
-		} else {
-			printf("This is a pi platform.\n");
-
-			if (has_vc4) {
-				printf("GPU: vc4\n");
-			} else {
-				printf("GPU: vc6\n");
-			}
-		}
 
 		printf("\nCmdline param's:\n");
 		printf("  Reset Scheduler  : %s\n", reset_scheduler?"true":"false");
@@ -276,21 +146,31 @@ void showSchedulerRegisters() {
  *     kernel:[69733.669496] Code: e5933000 e593300c e5933018 e5933014 (e5933008) 
  *    Segmentation fault
  */
-void detect_vc6() {
-	vc6::RegisterMapping map_vc6;
-	map_vc6.init();
+void detect_v3d() {
+	v3d::RegisterMapping map_v3d;
+	map_v3d.init();
 	
-	unsigned ncores = map_vc6.num_cores();
-	printf("Number of cores    : %d\n",   ncores);
+	auto info = map_v3d.info();
+	printf("Revision        : %d.%d.%d.%d\n", info.tver, info.rev, info.iprev, info.ipidx);
+	printf("Number of cores : %d\n",   info.num_cores);
+	printf("MMU             : %s\n", (info.mmu)?"yes":"no");
+	printf("TFU             : %s\n", (info.tfu)?"yes":"no");
+	printf("TSY             : %s\n", (info.tsy)?"yes":"no");
+	printf("MSO             : %s\n", (info.mso)?"yes":"no");
+	printf("L3C             : %s (%dkb)\n\n", (info.l3c)?"yes":"no", info.l3c_nkb);
 
-	for (unsigned core = 0; core < ncores; ++core) {
-		auto info = map_vc6.core_info(core);
+	for (unsigned core = 0; core < info.num_cores; ++core) {
+		auto info = map_v3d.info_per_core(core);
 
-		printf("Core index      : %d\n",   info.index);
-		printf("VPM size        : %d\n",   info.vpm_size);
-		printf("Num slices      : %d\n",   info.num_slice);
-		printf("Num TMU's       : %d\n",   info.num_tmu);
-		printf("Num QPU's       : %d\n",   info.num_qpu);
+		printf("Core index %d:\n", info.index);
+		printf("  Revision      : %d.%d\n", info.ver, info.rev);
+		printf("  VPM size      : %d\n", info.vpm_size);
+		printf("  Num slices    : %d\n", info.num_slice);
+		printf("  Num TMU's     : %d (all slices)\n", info.num_tmu);
+		printf("  Num QPU's     : %d (all slices)\n", info.num_qpu);
+		printf("  Num semaphores: %d\n", info.num_semaphore);
+		printf("  BCG int       : %s\n", (info.bcg_int)?"yes":"no");
+		printf("  Override TMU  : %s\n", (info.override_tmu)?"yes":"no");
 	}
 }
 
@@ -340,10 +220,10 @@ int main(int argc, char const *argv[]) {
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 #ifdef  QPU_MODE
-	if (settings.has_vc4) {
+	if (Platform::instance().has_vc4) {
 		detect_vc4();
 	} else {
-		detect_vc6();
+		detect_v3d();
 	}
 #endif  // QPU_MODE
 

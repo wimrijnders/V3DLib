@@ -44,6 +44,7 @@ Instr genLI(Reg dst, int i)
 }
 
 // Generate move instruction.
+// TODO: Identical to genOR()
 
 Instr genMove(Reg dst, Reg src)
 {

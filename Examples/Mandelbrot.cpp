@@ -11,7 +11,7 @@
 #include <string>
 #include <QPULib.h>
 #include <CmdParameters.h>
-#include "VideoCore/RegisterMap.h"
+#include "vc4/RegisterMap.h"
 
 
 using namespace QPULib;
@@ -76,7 +76,7 @@ struct MandSettings {
 		kernel_name = params.parameters()[0]->get_string_value();
 		num_qpus    = params.parameters()[1]->get_int_value();
 		output_pgm  = params.parameters()[2]->get_bool_value();
-		output();
+		//output();
 
 		return ret;
 	}

@@ -30,7 +30,24 @@ The strategy appears to be to investigate the available open source drivers.
 
 
 ## What is different
-- Clock speed up to 500MHz from 400MHz
+
+Here is an overview for the easily comparable stuff:
+
+| Item                | vc4          | v3d | Comment |
+|---------------------|--------------|-----|-|
+| **Clock speed :**   | 400MHz (Pi3+)  | 500MHz | |
+| **Num QPU's:**      | 12  | 8 | |
+| **Threads per QPU** | | | *Shows  num registers from register file per thread* |
+| 1 thread | 64 registers |  *not supported* | 
+| 2 threads     | 32 registers | 64 registers | |
+| 4 threads | *not supported* | 32 registers | |
+
+- vc5 added a four thread per QPU mode, with 16 registers per thread. vc5 was skipped in the Pi's.
+- v3d doubled the size of the register file (A and B combined, see note below).
+
+
+Further:
+
 - vc6 is clearly derived from vc4, but it is significantly different. vc6 is only a slight extension over vc5
 - The instruction encoding for the QPUs is different, but the core instructions are the same.
 - Instructions for packed 8 bit int math has been dropped, along with most of the pack modes.
@@ -47,33 +64,33 @@ The strategy appears to be to investigate the available open source drivers.
 - A MMU, allowing a much simpler/faster kernel driver.
 - Many more texture formats, framebuffer formats.
 - All the features needed for opengl es 3.2 and vulkan 1.1
-
-## Threads and Registers
-- vc4: one or two threads per QPU.
-  * one-thread mode: 64 registers in regsiter file
-  * two-thread mode: 32 registers
-- vc5: added a four thread per QPU mode, with 16 registers per thread.
-- vc6:  doubled the size of the register file.
-  * You can now use all 64 threads in two-thread mode and 32 registers in for thread mode.
-  * Single thread mode removed, you always have at least two threads.
-
-With the threading improvements, the QPUs should spent much less time idle waiting for memory requests.
-
-## Number of QPU's
-Indication that the number of QPU's has dropped to 8 (from 12).
+- With the threading improvements, the QPUs should spent much less time idle waiting for memory requests.
 
 ### Calculated theoretical max FLOPs per QPU
-Assuming theoretical max FLOPs per QPU per cycle is the same:
 
-  - Pi3+ 12x2x400mhz = 9.6 GFLOPs
-  - Pi4:  8x2x500mhz = 8.0 GFLOPs (less!)
+From the [VideoCore® IV 3D Architecture Reference Guide](https://docs.broadcom.com/doc/12358545):
 
-Perhaps the driver is not reporting the correct number of QPUs.
-But the improved hardware may compensate for this.
+- The QPU is a 16-way SIMD processor.
+- Each processor has two vector floating-point ALUs which carry out multiply and non-multiply operations in parallel with single instruction cycle latency.
+- Internally the QPU is a 4-way SIMD processor multiplexed 4× (over PPU's) over four cycles, making it particularly suited to processing streams of quads of pixels.
 
-> vc6 does add multi-gpu-core support, each with their own set of QPUs, but the driver only appears to be reporting one core with 8 QPUs). My pi4 hasn't arrived yet so I haven't tested myself.
-> However, I wouldn't be too surprised if the supporting hardware has been improved enough to extract more of the theoretical QPU performance into actual realised performance, allowing rendering performance improvements with less QPUs.
+So:
 
+- 4 operations per clock cycle, when properly pipelined
+- 2 ALU's per operation, when instructions uses both
+
+So, calculation:
+
+    op/clock per QPU = 4 [PPU's] x 2 [ALU's] = 8
+    GFLOPs           = [Clock Speed (MHz)]x[num slices]x[qpu/slice]x[op/clock]
+
+- Pi2  : 250x3x4x8 = 24.0 GFLOPs
+- Pi3  : 300x3x4x8 = 28.8 GFLOPs
+- Pi3+ : 400x3x4x8 = 38.4 GFLOPs
+- Pi4  : 500x2x4x8 = 32.0 GFLOPs (less!)
+
+- The improved hardware in `v3d` may compensate for performance.
+- v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
 
 -----
 # Function `compile()` is not Thread-Safe

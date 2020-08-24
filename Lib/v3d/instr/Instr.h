@@ -1,0 +1,151 @@
+#ifndef _QPULIB_V3D_INSTR_INSTR_H
+#define _QPULIB_V3D_INSTR_INSTR_H
+#include <cstdint>
+#include <string>
+#include <vector>
+#include "SmallImm.h"
+#include "Register.h"
+#include "RFAddress.h"
+
+namespace QPULib {
+namespace v3d {
+namespace instr {
+
+using rf = RFAddress;
+
+
+class Instr : public v3d_qpu_instr {
+public:
+	Instr(uint64_t in_code = NOP);
+
+	std::string dump(bool to_stdout = false) const; 
+	std::string mnemonic() const;
+	uint64_t code() const;
+	static void show(uint64_t in_code);
+	static std::string mnemonic(uint64_t in_code);
+
+	// Assign comment to current instance
+	// For display purposes only, when generating a dump of the opcodes
+	Instr &comment(std::string const &comment) { m_comment = comment; return *this; } 
+	std::string const &comment() const { return m_comment; }
+
+	operator uint64_t() const { return code(); }
+
+	Instr &thrsw(bool val = true);
+	Instr &pushz();
+	Instr &pushc();
+	Instr &pushn();
+	Instr &ldtmu(Register const &reg);
+	Instr &ldvary(bool val = true);
+	Instr &ldunif(bool val = true);
+	Instr &ldunifa(bool val = true);
+	Instr &ldvpm(bool val = true);
+	Instr &nornn();
+	Instr &ifnb();
+	Instr &norc();
+	Instr &nornc();
+	Instr &norz();
+	Instr &ifb();
+	Instr &ifna();
+	Instr &ifa();
+	Instr &andnc();
+	Instr &andnn();
+
+	// For branch instructions
+	Instr &a0();
+	Instr &na0();
+	Instr &alla();
+	Instr &anyna();
+	Instr &anyap();
+	Instr &allna();
+
+	// Calls to set the mul part of the instruction
+	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
+	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3);
+	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
+
+	Instr &mov(Register const &reg, uint8_t val);
+	Instr &mov(uint8_t rf_addr, Register const &reg);
+
+	Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
+	Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
+	Instr &smul24(Location const &loc1, Location const &loc2, Location const &loc3); 
+	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
+
+	static bool compare_codes(uint64_t code1, uint64_t code2);
+
+	void alu_add_set_dst(Location const &loc1); 
+	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
+	void alu_mul_set(Location const &loc11, Location const &loc2, Location const &loc3); 
+
+private:
+	static uint64_t const NOP;
+
+	bool m_doing_add = true;
+	std::string m_comment;
+
+	void init_ver() const;
+	void init(uint64_t in_code);
+	Instr &set_branch_condition(v3d_qpu_branch_cond cond);
+	void set_c(v3d_qpu_cond val);
+	void set_uf(v3d_qpu_uf val);
+	void set_pf(v3d_qpu_pf val);
+};
+
+
+const uint8_t vpm = 14;
+const uint32_t ifb = 3145728000;  // Value according to dump; No idea what this value is supposed to be and what it does!
+
+Instr nop();
+Instr ldunifrf(uint8_t rf_address);
+Instr tidx(Register const &reg);
+
+Instr shr(Register const &loc1, Register const &loc2, uint8_t val);
+Instr shr(uint8_t rf_addr1, uint8_t rf_addr2, int val);
+
+Instr shl(Location const &reg1, Location const & reg2, SmallImm val);
+Instr shl(Register const &reg1, uint8_t rf_addr, uint8_t val);
+Instr shl(uint8_t rf_addr1, uint8_t rf_addr2, int val);
+
+Instr band(Location const &loc1, Register const &reg, uint8_t val);
+Instr eidx(Register const &reg);
+
+Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
+Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
+Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t ref_addr3);
+Instr sub(Location const &loc1, Location const &loc2, Location const &loc3);
+
+Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
+
+Instr mov(Location const &loc1, SmallImm val);
+Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
+
+Instr bor(Location const &loc1, Location const &loc2, Location const &loc3);
+Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
+
+Instr branch(int target, int current);
+Instr branch(int target, bool relative);
+Instr bb(Location const &loc1);
+
+v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
+
+Instr barrierid(v3d_qpu_waddr waddr);
+Instr vpmsetup(Register const &reg2);
+
+Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3);
+Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2);
+Instr fmax(Location const &rf_addr1, Location const &reg2, Location const &reg3);
+Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
+Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3);
+Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
+Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
+Instr fdx(Location const &loc1, Location const &loc2);
+Instr vflb(Location const &loc1);
+Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3);
+Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
+
+}  // instr
+}  // v3d
+}  // QPULib
+
+#endif  // _QPULIB_V3D_INSTR_INSTR_H

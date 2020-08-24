@@ -1,17 +1,17 @@
 #ifndef _QPULIB_KERNEL_H_
 #define _QPULIB_KERNEL_H_
-
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
-#include "Target/Encode.h"
 #include "Common/SharedArray.h"
-#include "VideoCore/Invoke.h"
-#include "VideoCore/VideoCore.h"
-#include "Source/Pretty.h"
-#include "Target/Pretty.h"
-
+#include "v3d/Invoke.h"
+#include "vc4/vc4.h"
+#include "Support/Platform.h"
+#include  "vc4/KernelDriver.h"
+#include  "v3d/KernelDriver.h"
+#include  "SourceTranslate.h"  // set_compiling_for_vc4()
 
 namespace QPULib {
+
 
 // ============================================================================
 // Modes of operation
@@ -24,8 +24,8 @@ namespace QPULib {
 
 // IN EMULATION_MODE a memory pool is used for allocating data that
 // can be read by kernels.  Otherwise, a mailbox interface to the
-// VideoCore is used to allocate memory.  In both cases, see
-// 'VideoCore/SharedArray.h'.
+// vc4 is used to allocate memory.  In both cases, see
+// 'vc4/SharedArray.h'.
 
 // The 'Kernel' class provides various ways to invoke a kernel:
 //
@@ -57,8 +57,6 @@ namespace QPULib {
 // EMULATION_MODE introduces a performance penalty and should be used
 // only for testing and debugging purposes.
 
-// Maximum number of kernel parameters allowed
-#define MAX_KERNEL_PARAMS 128
 
 // ============================================================================
 // Kernel arguments
@@ -100,8 +98,8 @@ template <typename... ts> inline void nothing(ts... args) {}
 
 // Pass argument of ARM type 'u' as parameter of QPU type 't'.
 
-template <typename t, typename u> inline bool
-  passParam(Seq<int32_t>* uniforms, u x);
+template <typename t, typename u>
+inline bool passParam(Seq<int32_t>* uniforms, u x);
 
 // Pass an int
 template <> inline bool passParam<Int, int>
@@ -113,7 +111,7 @@ template <> inline bool passParam<Int, int>
 
 // Pass a float
 template <> inline bool passParam<Float, float>
-  (Seq<int32_t>* uniforms, float x)
+	(Seq<int32_t>* uniforms, float x)
 {
   int32_t* bits = (int32_t*) &x;
   uniforms->append(*bits);
@@ -154,56 +152,46 @@ template <> inline bool passParam< Ptr<Ptr<Float>>, SharedArray<float*>* >
 
 
 // ============================================================================
-// Functions on kernels
-// ============================================================================
-
-// Compile a kernel
-void compileKernel(Seq<Instr>* targetCode, Stmt* s);
-
-// ============================================================================
 // Kernels
 // ============================================================================
 
-// A kernel is parameterised by a list of QPU types 'ts' representing
-// the types of the parameters that the kernel takes.
-
-// The kernel constructor takes a function with parameters of QPU
-// types 'ts'.  It applies the function to constuct an AST.
-
+/**
+ *
+ * ----------------------------------------------------------------------------
+ * NOTES
+ * ====
+ *
+ * * A kernel is parameterised by a list of QPU types 'ts' representing
+ *   the types of the parameters that the kernel takes.
+ *
+ *   The kernel constructor takes a function with parameters of QPU
+ *   types 'ts'.  It applies the function to constuct an AST.
+ *
+ *
+ * * The code generation for v3d and vc4 is diverging, even at the level of
+ *   source code. To handle this, the code generation for both cases is 
+ *   isolated in 'kernel drivers'. This encapsulates the differences
+ *   for the kernel.
+ *
+ *   At time of writing (20200818), for the source code it is notably the end
+ *   program sequence (see `kernelFinish()`).
+ *
+ *   The interpreter and emulator, however, work with vc4 code. For this reason
+ *   it is necessary to have the vc4 kernel driver in use in all build cases.
+ */
 template <typename... ts> struct Kernel {
-  // AST representing the source code
-  Stmt* sourceCode;
+	using KernelFunction = void (*)(ts... params);
 
-  // AST representing the target code
-  Seq<Instr> targetCode;
-
-  // Parameters to be passed to kernel
-  Seq<int32_t> uniforms;
-
-  // The number of variables in the source code
-  int numVars;
-
-  // Number of QPUs to run on
-  int numQPUs;
-
-#ifdef QPU_MODE
-  // Memory region for QPU code and parameters
-  SharedArray<uint32_t>* qpuCodeMem;
-  int qpuCodeMemOffset;
-#endif
+public:
+  ~Kernel() {}
 
   // Construct kernel out of C++ function
-  Kernel(void (*f)(ts... params)) {
+  Kernel(KernelFunction f) {
     numQPUs = 1;
 
-    // We can clear the AST heap if we're sure the source program is not being
-    // used any more. However, to implement Kernel::pretty(), we keep the
-    // source program so we better not clear the heap.
-    // astHeap.clear();
-
     controlStack.clear();
-    stmtStack.clear();
-    stmtStack.push(mkSkip());
+   	stmtStack.clear();         // Needs to be run before getUniformInt() below
+    stmtStack.push(mkSkip());  // idem
     resetFreshVarGen();
     resetFreshLabelGen();
 
@@ -212,66 +200,47 @@ template <typename... ts> struct Kernel {
     qpuId = getUniformInt();
     qpuCount = getUniformInt();
 
-    // Construct the AST
-    f(mkArg<ts>()...);
+		{
+			set_compiling_for_vc4(true);
 
-    // QPU code to cleanly exit
-    kernelFinish();
+	    // Construct the AST for vc4
+	    f(mkArg<ts>()...);
+			m_vc4_driver.compile();
 
-    // Obtain the AST
-    Stmt* body = stmtStack.top();
-    stmtStack.pop();
-
-    // For EMULATION_MODE, the following is needed in the interpreter
-    // For QPU_MODE, it is here in case a pretty-print is requested
-    sourceCode = body;
-
-    // Compile
-    compileKernel(&targetCode, body);
-
-    // Remember the number of variables used
-    numVars = getFreshVarCount();
+    	// Remember the number of variables used - for emulator/interpreter
+	    numVars = getFreshVarCount();
+		}
 
 #ifdef QPU_MODE
-    enableQPUs();
+		{
+			set_compiling_for_vc4(false);
 
-    // Allocate code mem
-    qpuCodeMem = new SharedArray<uint32_t>;
+    	stmtStack.clear();
+	    stmtStack.push(mkSkip());
 
-    // Encode target instrs into array of 32-bit ints
-    Seq<uint32_t> code;
-    encode(&targetCode, &code);
+	    // Construct the AST for v3d
+	    f(mkArg<ts>()...);
+			m_v3d_driver.compile();
+		}
+#endif  // QPU_MODE
 
-    // Allocate memory for QPU code and parameters
-    int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
-    qpuCodeMem->alloc(numWords);
-
-    // Copy kernel to code memory
-    int offset = 0;
-    for (int i = 0; i < code.numElems; i++) {
-      (*qpuCodeMem)[offset++] = code.elems[i];
-    }
-    qpuCodeMemOffset = offset;
-#endif
   }
 
-#ifdef EMULATION_MODE
   template <typename... us> void emu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args)...);
 
+		// Emulator runs the vc4 code
     emulate
       ( numQPUs          // Number of QPUs active
-      , &targetCode      // Instruction sequence
+      , &m_vc4_driver.targetCode()      // Instruction sequence
       , numVars          // Number of vars in source
       , &uniforms        // Kernel parameters
       , NULL             // Use stdout
       );
   }
-#endif
 
-#ifdef EMULATION_MODE
   // Invoke the interpreter
   template <typename... us> void interpret(us... args) {
     // Pass params, checking arguments types us against parameter types ts
@@ -280,13 +249,13 @@ template <typename... ts> struct Kernel {
 
     interpreter
       ( numQPUs          // Number of QPUs active
-      , sourceCode       // Source program
+      , m_vc4_driver.sourceCode()       // Source program
       , numVars          // Number of vars in source
       , &uniforms        // Kernel parameters
       , NULL             // Use stdout
       );
   }
-#endif
+
 
 #ifdef QPU_MODE
   // Invoke kernel on physical QPU hardware
@@ -295,19 +264,23 @@ template <typename... ts> struct Kernel {
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args)...);
 
-    // Invoke kernel on QPUs
-    invoke(numQPUs, *qpuCodeMem, qpuCodeMemOffset, &uniforms);
+		if (Platform::instance().has_vc4) {
+			invoke_qpu(m_vc4_driver);
+		} else {
+			invoke_qpu(m_v3d_driver);
+		}
   }
-#endif
+#endif  // QPU_MODE
+
  
   // Invoke the kernel
   template <typename... us> void call(us... args) {
 #ifdef EMULATION_MODE
-      emu(args...);
+		emu(args...);
 #else
-	#ifdef QPU_MODE
-        qpu(args...);
-	#endif
+#ifdef QPU_MODE
+    qpu(args...);
+#endif
 #endif
   };
 
@@ -321,65 +294,41 @@ template <typename... ts> struct Kernel {
     numQPUs = n;
   }
 
-  // Deconstructor
-  ~Kernel() {
-    #ifdef QPU_MODE
-      delete qpuCodeMem;
-      disableQPUs();
-    #endif
-  }
+
+	void pretty(const char *filename = nullptr) {
+#ifdef QPU_MODE
+		if (Platform::instance().has_vc4) {
+			m_vc4_driver.encode(numQPUs);
+			m_vc4_driver.pretty(filename);
+		} else {
+			m_v3d_driver.encode(numQPUs);
+			m_v3d_driver.pretty(filename);
+		}
+#else
+		m_vc4_driver.encode(numQPUs);
+		m_vc4_driver.pretty(filename);
+#endif
+	}
 
 
-  /**
-   * @brief Output a human-readable representation of the source and target code.
-   *
-   * @param filename  if specified, print the output to this file. Otherwise, print to stdout
-   */
-  void pretty(const char *filename = nullptr)
-  {
-    FILE *f = nullptr;
+private:
+	Seq<int32_t> uniforms;  // Parameters to be passed to kernel
+	int numVars;            // The number of variables in the source code
+	int numQPUs;            // Number of QPUs to run on
 
-    if (filename == nullptr)
-      f = stdout;
-    else
-    {
-      f = fopen(filename, "w");
-      if (f == nullptr)
-      {
-        fprintf(stderr, "ERROR: could not open file '%s' for pretty output\n", filename);
-        return;
-      }
-    }
+	vc4::KernelDriver m_vc4_driver;  // Always required for emulator
 
+#ifdef QPU_MODE
+	v3d::KernelDriver m_v3d_driver;
+#endif
 
-    // Emit source code
-    fprintf(f, "Source code\n");
-    fprintf(f, "===========\n\n");
-    if (sourceCode == nullptr)
-      fprintf(stderr, "<No source code to print>");
-    else
-      QPULib::pretty(f, sourceCode);
-
-    fprintf(f, "\n");
-    fflush(f);
-
-    // Emit target code
-    fprintf(f, "Target code\n");
-    fprintf(f, "===========\n\n");
-    for (int i = 0; i < targetCode.numElems; i++)
-    {
-      fprintf(f, "%i: ", i);
-      QPULib::pretty(f, targetCode.elems[i]);
-    }
-    fprintf(f, "\n");
-    fflush(f);
-
-    if (filename != nullptr) {
-      assert(f != nullptr);
-      assert(f != stdout);
-      fclose(f);
-    }
-  }
+	void invoke_qpu(QPULib::KernelDriver &kernel_driver) {
+		kernel_driver.encode(numQPUs);
+		if (!kernel_driver.handle_errors()) {
+    	// Invoke kernel on QPUs
+			kernel_driver.invoke(numQPUs, &uniforms);
+		}
+	}
 };
 
 // Initialiser

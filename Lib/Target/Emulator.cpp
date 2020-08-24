@@ -1,21 +1,18 @@
 #include "Target/Emulator.h"
+#include <math.h>
+#include <string.h>
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
 #include "Common/SharedArray.h"
 
-#include <math.h>
-#include <string.h>
 
 namespace QPULib {
 
-// ============================================================================
-// Globals
-// ============================================================================
+namespace {
 
-// Heap used in emulation mode.  See 'Pointer.h' for more details.
+SharedArray<uint32_t> emuHeap(HeapView::use_as_heap_view);
 
-uint32_t emuHeapEnd = 0;
-int32_t* emuHeap    = NULL;
+}
 
 // ============================================================================
 // Read a vector register
@@ -96,8 +93,8 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t x = req->vpmAddr & 0xf;
             for (int i = 0; i < req->rowLen; i++) {
-              int addr = s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4;
-              g->vpm[y*16 + x].intVal = emuHeap[addr >> 2];
+              uint32_t addr = (uint32_t) (s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4);
+              g->vpm[y*16 + x].intVal = emuHeap.phy(addr >> 2);
               x = (x+1) % 16;
             }
             y = (y+1) % 64;
@@ -109,8 +106,8 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t y = ((req->vpmAddr >> 4) + r*req->vpitch) & 0x3f;
             for (int i = 0; i < req->rowLen; i++) {
-              int addr = s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4;
-              g->vpm[y*16 + x].intVal = emuHeap[addr >> 2];
+              uint32_t addr = (uint32_t) (s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4);
+              g->vpm[y*16 + x].intVal = emuHeap.phy(addr >> 2);
               y = (y+1) % 64;
             }
             x = (x+1) % 16;
@@ -124,13 +121,14 @@ Vec readReg(QPUState* s, State* g, Reg reg)
         if (s->dmaStore.active == false) return v;
         DMAStoreReq* req = &s->dmaStoreSetup;
         uint32_t memAddr = s->dmaStore.addr.intVal;
+
         if (req->hor) {
           // Horizontal access
           uint32_t y = (req->vpmAddr >> 4) & 0x3f;
           for (int r = 0; r < req->numRows; r++) {
             uint32_t x = req->vpmAddr & 0xf;
             for (int i = 0; i < req->rowLen; i++) {
-              emuHeap[memAddr >> 2] = g->vpm[y*16 + x].intVal;
+              emuHeap.phy(memAddr >> 2) = g->vpm[y*16 + x].intVal;
               x = (x+1) % 16;
               memAddr = memAddr + 4;
             }
@@ -144,7 +142,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t y = (req->vpmAddr >> 4) & 0x3f;
             for (int i = 0; i < req->rowLen; i++) {
-              emuHeap[memAddr >> 2] = g->vpm[y*16 + x].intVal;
+              emuHeap.phy(memAddr >> 2) = g->vpm[y*16 + x].intVal;
               y = (y+1) % 64;
               memAddr = memAddr + 4;
             }
@@ -381,7 +379,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
           Vec val;
           for (int i = 0; i < NUM_LANES; i++) {
             uint32_t a = (uint32_t) v.elems[i].intVal;
-            val.elems[i].intVal = emuHeap[a>>2];
+            val.elems[i].intVal = emuHeap.phy(a>>2);
           }
           s->loadBuffer->append(val);
           return;

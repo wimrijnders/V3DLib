@@ -1,7 +1,15 @@
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
+#include "Common/SharedArray.h"
+#include "Support/debug.h"
 
 namespace QPULib {
+
+namespace {
+
+SharedArray<uint32_t> emuHeap(HeapView::use_as_heap_view);
+
+}
 
 // ============================================================================
 // Evaluate a variable
@@ -147,10 +155,21 @@ Vec eval(CoreState* s, Expr* e)
     // Dereference pointer
     case DEREF:
       Vec a = eval(s, e->deref.ptr);
-      int hp = a.elems[0].intVal;
+      uint32_t hp = (uint32_t) a.elems[0].intVal;
+
+#ifdef DEBUG
+			breakpoint  // TODO test and verify following
+			            // If working, we can consolidate heap access
+
+      for (int i = 0; i < NUM_LANES; i++) {
+        uint32_t addr = (uint32_t) a.elems[i].intVal;
+				assert(hp == addr);
+      }
+#endif
+
       Vec v;
       for (int i = 0; i < NUM_LANES; i++) {
-        v.elems[i].intVal = emuHeap[hp>>2];
+        v.elems[i].intVal = emuHeap.phy(hp>>2);
         hp += s->readStride;
       }
       return v;
@@ -296,7 +315,7 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
       Vec w;
       for (int i = 0; i < NUM_LANES; i++) {
         uint32_t addr = (uint32_t) x.elems[i].intVal;
-        w.elems[i].intVal = emuHeap[addr>>2];
+        w.elems[i].intVal = emuHeap.phy(addr>>2);
       }
       s->loadBuffer->append(w);
       return;
@@ -333,11 +352,12 @@ void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
       return;
 
     // Dereferenced pointer
+		// Comparable to execStoreRequest()
     case DEREF: {
       Vec index = eval(s, lhs->deref.ptr);
-      int hp = index.elems[0].intVal;
+      uint32_t hp = (uint32_t) index.elems[0].intVal;
       for (int i = 0; i < NUM_LANES; i++) {
-        emuHeap[hp>>2] = val.elems[i].intVal;
+        emuHeap.phy(hp>>2) = val.elems[i].intVal;
         hp += 4 + s->writeStride;
       }
       return;
@@ -477,9 +497,9 @@ void execLoadReceive(CoreState* s, Expr* e)
 void execStoreRequest(CoreState* s, Expr* data, Expr* addr) {
   Vec val = eval(s, data);
   Vec index = eval(s, addr);
-  int hp = index.elems[0].intVal;
+  uint32_t hp = (uint32_t) index.elems[0].intVal;
   for (int i = 0; i < NUM_LANES; i++) {
-    emuHeap[hp>>2] = val.elems[i].intVal;
+    emuHeap.phy(hp>>2) = val.elems[i].intVal;
     hp += 4 + s->writeStride;
   }
 }

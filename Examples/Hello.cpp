@@ -26,11 +26,10 @@ int main(int argc, const char *argv[]) {
   for (int i = 0; i < 16; i++)
     array[i] = 100;
 
-  //// Invoke the kernel and display the result
-//  k(&array);
-
+  // Invoke the kernel
 	settings.process(k, &array);  
 
+	// Display the result
   for (int i = 0; i < 16; i++) {
     printf("%i: %i\n", i, array[i]);
   }

@@ -13,30 +13,44 @@
 #
 ###############################################################################
 
-#QPU := 1
-
 #
 # Stuff for external libraries
 #
-INCLUDE_EXTERN=-I ../CmdParameter/Lib
-LINK_DIR_EXTERN=-L ../CmdParameter/obj
-LIB_EXTERN = -l ../CmdParameter/obj/libCmdParameter.a
+INCLUDE_EXTERN= \
+ -I ../CmdParameter/Lib \
+ -I mesa/include \
+ -I mesa/src
+
+LIB_EXTERN= \
+ -L ../CmdParameter/obj -lCmdParameter \
+ -Lobj/mesa/bin -lmesa
 
 
 # Root directory of QPULib repository
-ROOT = Lib
+ROOT= Lib
 
 # Compiler and default flags
-CXX = g++
+CXX= g++
 LINK= $(CXX) $(CXX_FLAGS)
 
-LIBS := $(LINK_DIR_EXTERN)$(LIB_EXTERN)
+LIBS := $(LIB_EXTERN)
 
+#
 # -I is for access to bcm functionality
-CXX_FLAGS = -Wconversion -std=c++0x -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
+#
+# -Wno-psabi avoids following note (happens in unit tests):
+#
+#    note: parameter passing for argument of type ‘std::move_iterator<Catch::SectionEndInfo*>’ changed in GCC 7.1
+#
+#    It is benign: https://stackoverflow.com/a/48149400 
+#
+CXX_FLAGS = \
+ -Wconversion \
+ -Wno-psabi \
+ -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
 
 # Object directory
-OBJ_DIR = obj
+OBJ_DIR := obj
 
 
 # QPU or emulation mode
@@ -71,9 +85,11 @@ endif
 
 -include obj/sources.mk
 
-LIB = $(patsubst %,$(OBJ_DIR)/%,$(OBJ))
+LIB = $(patsubst %,$(OBJ_DIR)/Lib/%,$(OBJ))
 
 EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
+TESTS_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(TESTS_FILES))
+$(info $(TESTS_OBJ))
 
 
 # Example object files
@@ -82,18 +98,20 @@ EXAMPLES_EXTRA = \
 	Support/Settings.o
 
 EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
-$(info $(EXAMPLES_OBJ))
+#$(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files
 DEPS := $(LIB:.o=.d)
-#$(info $(DEPS))
 -include $(DEPS)
 
 # Dependencies for the include files in the Examples directory.
 # Basically, every .h file under examples has a .d in the build directory
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
-$(info $(EXAMPLES_DEPS))
 -include $(EXAMPLES_DEPS)
+
+
+QPULIB=$(OBJ_DIR)/libQPULib.a
+MESA_LIB = obj/mesa/bin/libmesa.a
 
 
 # Top-level targets
@@ -102,12 +120,7 @@ $(info $(EXAMPLES_DEPS))
 
 # Following prevents deletion of object files after linking
 # Otherwise, deletion happens for targets of the form '%.o'
-.PRECIOUS: $(OBJ_DIR)/%.o  \
-	$(OBJ_DIR)/Source/%.o    \
-	$(OBJ_DIR)/Target/%.o    \
-	$(OBJ_DIR)/VideoCore/%.o \
-	$(OBJ_DIR)/VideoCore/vc6/%.o \
-	$(OBJ_DIR)/Examples/%.o
+.PRECIOUS: $(OBJ_DIR)/%.o
 
 
 help:
@@ -130,59 +143,58 @@ help:
 	@echo '    DEBUG=1       - If specified, the source code and target code is shown on stdout when running a test'
 	@echo
 
-all: $(OBJ_DIR) $(EXAMPLE_TARGETS)
+all: $(QPULIB) $(EXAMPLES)
 
 clean:
-	rm -rf obj/emu obj/emu-debug obj/qpu obji/qpu-debug
+	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug obj/test
 
 
 #
 # Targets for static library
 #
 
-QPU_LIB=$(OBJ_DIR)/libQPULib.a
-#$(info LIB: $(LIB))
-
-$(QPU_LIB): $(LIB)
+$(QPULIB): $(LIB) $(MESA_LIB)
 	@echo Creating $@
 	@ar rcs $@ $^
 
-$(OBJ_DIR)/%.o: $(ROOT)/%.cpp | $(OBJ_DIR)
-	@echo Compiling $<
-	@$(CXX) -c -o $@ $< $(CXX_FLAGS)
+$(MESA_LIB):
+	cd mesa && make compile
 
+
+# Rule for creating object files
+$(OBJ_DIR)/%.o: %.cpp
+	@echo Compiling $<
+	@mkdir -p $(@D)
+	@$(CXX) -std=c++11 -c -o $@ $< $(CXX_FLAGS)
 
 # Same thing for C-files
-$(OBJ_DIR)/%.o: $(ROOT)/%.c | $(OBJ_DIR)
+$(OBJ_DIR)/%.o: %.c
 	@echo Compiling $<
-	@$(CXX) -c -o $@ $< $(CXX_FLAGS)
-
-#
-# Targets for Examples and Tools
-#
+	@mkdir -p $(@D)
+	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
 $(OBJ_DIR)/bin/Rot3DLib: $(OBJ_DIR)/Examples/Rot3DLib/Rot3DKernels.o
 
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPU_LIB)
+# Leaving this out means Rot3DLib does not get compiled, and there's no warning
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(QPULIB)  # NOTE: QPULIB needs to be at the back, for correct linking order
 	@echo Linking $@...
-	@$(LINK) $^ -o $@
-
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(QPU_LIB) $(OBJ_DIR)/Examples/Support/Settings.o
-	@echo Linking $@...
+	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPU_LIB)
+
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(OBJ_DIR)/Examples/Support/Settings.o $(QPULIB)
 	@echo Linking $@...
+	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
-# General compilation of cpp files
-# Keep in mind that the % will take into account subdirectories under OBJ_DIR.
-$(OBJ_DIR)/%.o: %.cpp | $(OBJ_DIR)
-	@echo Compiling $<
-	@$(CXX) -c $(CXX_FLAGS) -o $@ $<
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPULIB)
+	@echo Linking $@...
+	@mkdir -p $(@D)
+	@$(LINK) $^ $(LIBS) -o $@
 
-$(EXAMPLES) :% :$(OBJ_DIR)/bin/%
+
+$(EXAMPLES) :% : $(OBJ_DIR)/bin/%
 
 
 #
@@ -191,52 +203,30 @@ $(EXAMPLES) :% :$(OBJ_DIR)/bin/%
 
 RUN_TESTS := $(OBJ_DIR)/bin/runTests
 
-# sudo required for QPU-mode on Pi
+## sudo required for QPU-mode on Pi
 ifeq ($(QPU), 1)
 	RUN_TESTS := sudo $(RUN_TESTS)
 endif
 
 
-# Source files with unit tests to include in compilation
-UNIT_TESTS =          \
-	Tests/testMain.cpp  \
-	Tests/testRot3D.cpp \
-	Tests/testDSL.cpp
-
-# For some reason, doing an interim step to .o results in linkage errors (undefined references).
-# So this target compiles the source files directly to the executable.
-#
-# Flag `-Wno-psabi` is to surpress a superfluous warning when compiling with GCC 6.3.0
-#
-$(OBJ_DIR)/bin/runTests: $(UNIT_TESTS) $(EXAMPLES_OBJ) | $(QPU_LIB)
-	@echo Compiling unit tests
-	@$(CXX) $(CXX_FLAGS) -Wno-psabi $^ -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
+$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB) Rot3DLib ReqRecv detectPlatform
+	@echo Linking unit tests
+	@mkdir -p $(@D)
+	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
 make_test: $(OBJ_DIR)/bin/runTests
 
-test : | make_test AutoTest
+test : | make_test
 	@echo Running unit tests with '$(RUN_TESTS)'
 	@$(RUN_TESTS)
-
-#
-# Other targets
-#
-
-$(OBJ_DIR):
-	@mkdir -p $(OBJ_DIR)/Source
-	@mkdir -p $(OBJ_DIR)/Target
-	@mkdir -p $(OBJ_DIR)/VideoCore/vc6
-	@mkdir -p $(OBJ_DIR)/Examples/Rot3DLib   # Creates Examples as well
-	@mkdir -p $(OBJ_DIR)/Examples/Support
-	@mkdir -p $(OBJ_DIR)/Tools
-	@mkdir -p $(OBJ_DIR)/bin
 
 
 ###############################
 # Gen stuff
-###############################
+################################
 
 gen : $(OBJ_DIR)/sources.mk
 
-$(OBJ_DIR)/sources.mk : $(OBJ_DIR)
-	script/gen.sh
+$(OBJ_DIR)/sources.mk :
+	@mkdir -p $(@D)
+	@script/gen.sh
