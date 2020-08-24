@@ -61,49 +61,15 @@ struct DMAStoreReq {
   int vpmAddr;  // VPM address to load from
 };
 
-// State of a single QPU.
-struct QPUState {
-  int id;                              // QPU id
-  int numQPUs;                         // QPU count
-  bool running;                        // Is QPU active, or has it halted?
-  int pc;                              // Program counter
-  Vec* regFileA;                       // Register file A
-  int sizeRegFileA;                    // (and size)
-  Vec* regFileB;                       // Register file B
-  int sizeRegFileB;                    // (and size)
-  Vec accum[6];                        // Accumulator registers
-  bool negFlags[NUM_LANES];            // Negative flags
-  bool zeroFlags[NUM_LANES];           // Zero flags
-  int nextUniform;                     // Pointer to next uniform to read
-  DMAAddr dmaLoad;                     // DMA load address
-  DMAAddr dmaStore;                    // DMA store address
-  DMALoadReq dmaLoadSetup;             // DMA load setup register
-  DMAStoreReq dmaStoreSetup;           // DMA store setup register
-  Queue<2, VPMLoadReq> vpmLoadQueue;   // VPM load queue
-  VPMStoreReq vpmStoreSetup;           // VPM store setup
-  int readPitch;                       // Read pitch
-  int writeStride;                     // Write stride
-  SmallSeq<Vec>* loadBuffer;           // Load buffer for loads via TMU
-};
-
-// State of the VideoCore.
-struct State {
-  QPUState qpu[MAX_QPUS];  // State of each QPU
-  Seq<int32_t>* uniforms;  // Kernel parameters
-  Word vpm[VPM_SIZE];      // Shared VPM memory
-  Seq<char>* output;       // Output for print statements
-  int sema[16];            // Semaphores
-};
-
 // Emulator
-void emulate
-  ( int numQPUs            // Number of QPUs active
-  , Seq<Instr>* instrs     // Instruction sequence
-  , int maxReg             // Max reg id used
-  , Seq<int32_t>* uniforms // Kernel parameters
-  , Seq<char>* output      // Output from print statements
-                           // (if NULL, stdout is used)
-  );
+void emulate(
+	int numQPUs,              // Number of QPUs active
+	Seq<Instr>* instrs,       // Instruction sequence
+	int maxReg,               // Max reg id used
+	Seq<int32_t>* uniforms,   // Kernel parameters
+	BufferObject &heap,
+	Seq<char>* output = NULL  // Output from print statements (if NULL, stdout is used)
+);
 
 // Rotate a vector
 Vec rotate(Vec v, int n);

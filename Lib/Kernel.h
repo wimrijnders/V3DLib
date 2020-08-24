@@ -232,13 +232,7 @@ public:
     nothing(passParam<ts, us>(&uniforms, args)...);
 
 		// Emulator runs the vc4 code
-    emulate
-      ( numQPUs          // Number of QPUs active
-      , &m_vc4_driver.targetCode()      // Instruction sequence
-      , numVars          // Number of vars in source
-      , &uniforms        // Kernel parameters
-      , NULL             // Use stdout
-      );
+    emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, &uniforms, getBufferObject());
   }
 
   // Invoke the interpreter
@@ -247,13 +241,8 @@ public:
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args)...);
 
-    interpreter
-      ( numQPUs          // Number of QPUs active
-      , m_vc4_driver.sourceCode()       // Source program
-      , numVars          // Number of vars in source
-      , &uniforms        // Kernel parameters
-      , NULL             // Use stdout
-      );
+		// Interpreter runs the vc4 code
+    interpreter(numQPUs, m_vc4_driver.sourceCode(), numVars, &uniforms, getBufferObject());
   }
 
 

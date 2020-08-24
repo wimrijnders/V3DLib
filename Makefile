@@ -89,7 +89,7 @@ LIB = $(patsubst %,$(OBJ_DIR)/Lib/%,$(OBJ))
 
 EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
 TESTS_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(TESTS_FILES))
-$(info $(TESTS_OBJ))
+#$(info $(TESTS_OBJ))
 
 
 # Example object files
@@ -201,24 +201,26 @@ $(EXAMPLES) :% : $(OBJ_DIR)/bin/%
 # Targets for Unit Tests
 #
 
-RUN_TESTS := $(OBJ_DIR)/bin/runTests
+UNIT_TESTS := $(OBJ_DIR)/bin/runTests
 
 ## sudo required for QPU-mode on Pi
 ifeq ($(QPU), 1)
-	RUN_TESTS := sudo $(RUN_TESTS)
+	SUDO := sudo
+else
+	SUDO :=
 endif
 
 
-$(OBJ_DIR)/bin/runTests: $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB) Rot3DLib ReqRecv detectPlatform
+$(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB)
 	@echo Linking unit tests
 	@mkdir -p $(@D)
 	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
-make_test: $(OBJ_DIR)/bin/runTests
+make_test: $(UNIT_TESTS) Rot3DLib ReqRecv detectPlatform
 
-test : | make_test
-	@echo Running unit tests with '$(RUN_TESTS)'
-	@$(RUN_TESTS)
+test : make_test
+	@echo Running unit tests with \'$(SUDO) $(UNIT_TESTS)\'
+	@$(SUDO) $(UNIT_TESTS)
 
 
 ###############################
