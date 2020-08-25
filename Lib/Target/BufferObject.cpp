@@ -22,7 +22,6 @@ std::unique_ptr<BufferObject> emuHeap;
 void BufferObject::alloc_heap(uint32_t size) {
 	assert(arm_base  == nullptr);
 
-	emuHeapEnd = 0;
 	arm_base = new uint8_t [size];
 	m_size = size;
 }
@@ -32,7 +31,7 @@ void BufferObject::alloc_heap(uint32_t size) {
 void BufferObject::check_available(uint32_t n) {
 	assert(arm_base != nullptr);
 
-	if (emuHeapEnd + n >= m_size) {
+	if (m_offset + n >= m_size) {
 		printf("QPULib: heap overflow (increase heap size)\n");
 		abort();
 	}
@@ -43,9 +42,9 @@ uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start
 	assert(arm_base != nullptr);
 	check_available(size_in_bytes);
 
-	uint32_t address = emuHeapEnd;
-	array_start_address = arm_base + emuHeapEnd;
-	emuHeapEnd += size_in_bytes;
+	uint32_t address = m_offset;
+	array_start_address = arm_base + m_offset;
+	m_offset += size_in_bytes;
 	return address;
 }
 

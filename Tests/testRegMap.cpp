@@ -11,10 +11,10 @@
 TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
 
 	SECTION("Check num QPU's vc4") {
+		if (!Platform::instance().has_vc4) return;
+
 		using RegMap = QPULib::RegisterMap;
 		QPULib::enableQPUs();  // Required for accessing the registers
-
-		if (!Platform::instance().has_vc4) return;
  
 		REQUIRE(4 == RegMap::numQPUPerSlice());
 		REQUIRE(3 == RegMap::numSlices());

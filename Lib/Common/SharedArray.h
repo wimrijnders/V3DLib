@@ -19,13 +19,14 @@ namespace QPULib {
 template <typename T>
 class SharedArray {
 public:
-	SharedArray() : m_heap(&getBufferObject()) {}
-  SharedArray(uint32_t n) : m_heap(&getBufferObject()) { alloc(n); }
+	SharedArray() {}
+  SharedArray(uint32_t n) { alloc(n); }
   SharedArray(uint32_t n, BufferObject &heap) : m_heap(&heap) { alloc(n); }
+	~SharedArray() { dealloc(); }
 
 	void heap_view(BufferObject &heap) {
 		assert(!allocated());
-		assert(m_heap != nullptr);
+		assert(m_heap == nullptr);
 
 		m_heap = &heap;
 		m_is_heap_view = true;
@@ -58,9 +59,12 @@ public:
 	 * @param n number of 4-byte elements to allocate (so NOT memory size!)
 	 */
 	void alloc(uint32_t n) {
-		assert(m_heap != nullptr);
 		assert(!allocated());
 		assert(n > 0);
+
+		if (m_heap == nullptr) {
+			m_heap = &getBufferObject();
+		}
 
 		m_phyaddr = m_heap->alloc_array(sizeof(T)*n, m_usraddr);
 		m_size = n;
@@ -70,6 +74,7 @@ public:
 
 	bool allocated() const {
 		if (m_size > 0) {
+			assert(m_heap != nullptr);
 			// assert(m_phyaddr > 0);  // Can be 0 for emu
 			assert(m_usraddr != nullptr);
 			return true;
@@ -83,13 +88,16 @@ public:
 
 
 	/**
-	 * Just forget the allocation and size.
+	 * Forget the allocation and size and notify the underlying heap.
 	 *
-	 * Note that the array is NOT deallocated in the heap.
 	 */
 	void dealloc() {
 		if (m_size > 0) {
 			assert(allocated());
+			assert(m_heap != nullptr);
+			if (!m_is_heap_view) { 
+				m_heap->dealloc_array(m_phyaddr, sizeof(T)*m_size);
+			}
 			m_phyaddr = 0;
 			m_size = 0;
 			m_usraddr = nullptr;
@@ -146,6 +154,7 @@ public:
 	void copyFrom(T const *src, uint32_t size) {
 		assert(src != nullptr);
 		assert(size <= m_size);
+
 		// TODO: consider using memcpy() instead
 		for (uint32_t offset = 0; offset < size; ++offset) {
 			(*this)[offset] = src[offset];
