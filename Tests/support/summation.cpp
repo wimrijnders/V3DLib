@@ -711,50 +711,45 @@ namespace {
 using namespace QPULib::v3d::instr;
 using ByteCode = std::vector<uint64_t>; 
 
-
-/**
- * Calculates stride and also start address per QPU
- *
- * Also sets the address offset for src and dsg registers
- * (Would prefer to have that outside of this routine)
- */
-Instructions calc_stride(
-	uint8_t num_qpus,
-	int     unroll_shift,
-	uint8_t reg_qpu_num,
-	uint8_t reg_src,
-	uint8_t reg_dst,
-	uint8_t reg_stride,
-	uint8_t reg_length
-) {
-	Instructions ret;
-
-	uint8_t num_qpus_shift = 0;
+uint8_t get_shift(uint64_t num_qpus) {
+	uint8_t ret = 0;
 
 	if (num_qpus == 1) {
-		num_qpus_shift = 0;
-
-		ret << mov(rf(reg_qpu_num), 0);
+		ret = 0;
 	} else if (num_qpus == 8) {
-		num_qpus_shift = 3;
-
-		ret << tidx(r0)
-		    << shr(r0, r0, 2)
-		    << band(rf(reg_qpu_num), r0, 0b1111);
+		ret = 3;
 	} else {
 		assert(false);  // num_qpus must be 1 or 8
 	}
 
-	// addr += 4 * (thread_num + 16 * qpu_num)
-	ret << shl(r0, reg_qpu_num, 4)
-	    << eidx(r1)
-	    << add(r0, r0, r1)
-	    << shl(r0, r0, 2)
-	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0);
+	return ret;
+}
 
-   // stride = 4 * 16 * num_qpus
-   ret << mov(rf(reg_stride), 1)
-       << shl(reg_stride, reg_stride, 6 + num_qpus_shift);
+
+/**
+ * Calculates stride and start address per QPU
+ */
+Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
+	Instructions ret;
+
+	uint8_t num_qpus_shift = get_shift(num_qpus);
+
+	// stride = 4 * 16 * num_qpus
+	ret << mov(rf(reg_stride), 1)
+	    << shl(reg_stride, reg_stride, 6 + num_qpus_shift);
+
+	return ret;
+}
+
+
+Instructions adjust_length_for_unroll(
+	uint8_t num_qpus,
+	int     unroll_shift,
+	uint8_t reg_length
+) {
+	Instructions ret;
+
+	uint8_t num_qpus_shift = get_shift(num_qpus);
 
 	// The QPU performs shifts and rotates modulo 32, so it actually supports
 	// shift amounts [0, 31] only with small immediates.
@@ -846,10 +841,13 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	ret << ldunifrf(reg_length)
 	    << ldunifrf(reg_src)
 	    << ldunifrf(reg_dst)
-	    << calc_stride(num_qpus, unroll_shift, reg_qpu_num, reg_src, reg_dst, reg_stride, reg_length)
+	    << calc_offset(num_qpus, reg_qpu_num)                     // Puts offset in r0
+	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0)
+	    << calc_stride(num_qpus, reg_stride)
+			<< adjust_length_for_unroll(num_qpus, unroll_shift, reg_length)
 
 	    << enable_tmu_read(
-	       	&bxor(reg_sum, 1, 1).mov(r1, 1)                       // Fills last delay slot
+	       	&bxor(reg_sum, 1, 1).mov(r1, 1)                       // Passed opcode fills last delay slot
 	       )
 
 	    << align_code(ret.size() + code_offset, 170);            // Why the magic number?

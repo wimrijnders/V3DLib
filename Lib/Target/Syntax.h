@@ -171,6 +171,10 @@ struct SmallImm {
   
   // Immediate value
   int val;
+
+	bool operator==(SmallImm const &rhs) const {
+		return tag == rhs.tag && val == rhs.val;
+	}
 };
 
 // A register or a small immediate operand?
@@ -187,6 +191,16 @@ struct RegOrImm {
     // A small immediate
     SmallImm smallImm;
   };
+
+	bool operator==(RegOrImm /* const */ &rhs) /* const */ {
+		if (tag != rhs.tag) return false;
+
+		if (tag == REG) {
+			return reg == rhs.reg;
+		} else {
+			return smallImm == rhs.smallImm;
+		}
+	}
 };
 
 // ============================================================================
@@ -404,6 +418,31 @@ struct Instr {
 			assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
 			return false;
 		}
+	}
+
+
+	bool isTMUAWrite() const {
+  	if (tag != InstrTag::ALU) {
+			return false;
+		}
+		Reg reg = ALU.dest;
+
+		bool ret = (reg.regId == SPECIAL_DMA_ST_ADDR)
+		        || (reg.regId == SPECIAL_TMU0_S);
+
+		if (ret) {
+			// It's a simple move (BOR) instruction, src registers should be the same
+			auto reg_a = ALU.srcA;
+			auto reg_b = ALU.srcB;
+			assert(reg_a == reg_b);
+
+			// In current logic, src should always be read from register file;
+			// enforce this.
+			assert(reg_a.tag == REG
+			    && (reg_a.reg.tag == REG_A || reg_a.reg.tag == REG_B));
+		}
+
+		return ret;
 	}
 };
 
