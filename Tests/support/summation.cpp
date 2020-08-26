@@ -711,36 +711,6 @@ namespace {
 using namespace QPULib::v3d::instr;
 using ByteCode = std::vector<uint64_t>; 
 
-uint8_t get_shift(uint64_t num_qpus) {
-	uint8_t ret = 0;
-
-	if (num_qpus == 1) {
-		ret = 0;
-	} else if (num_qpus == 8) {
-		ret = 3;
-	} else {
-		assert(false);  // num_qpus must be 1 or 8
-	}
-
-	return ret;
-}
-
-
-/**
- * Calculates stride and start address per QPU
- */
-Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
-	Instructions ret;
-
-	uint8_t num_qpus_shift = get_shift(num_qpus);
-
-	// stride = 4 * 16 * num_qpus
-	ret << mov(rf(reg_stride), 1)
-	    << shl(reg_stride, reg_stride, 6 + num_qpus_shift);
-
-	return ret;
-}
-
 
 Instructions adjust_length_for_unroll(
 	uint8_t num_qpus,

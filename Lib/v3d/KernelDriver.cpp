@@ -819,7 +819,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 
 				bool is_first = true;
 				for (auto n : tmu_regs) {
-					auto instr = add(rf(n), rf(0), r0);
+					auto instr = add(rf(n), rf(n), r0);
 
 					if (is_first) {
 						instr.comment(text);
@@ -830,8 +830,9 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 				}
 			}
 
-			instructions << calc_stride(numQPUs, slots.get_slot());
-			instructions << instr::enable_tmu_read();
+			instructions << calc_stride(numQPUs, slots.get_slot())
+			             << instr::enable_tmu_read();
+
 			did_init = true;
 		}
 	
