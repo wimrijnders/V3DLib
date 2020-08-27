@@ -1,12 +1,13 @@
 #include "Source/Interpreter.h"
-#include "Target/Emulator.h"
 #include "Common/SharedArray.h"
+#include "Source/Syntax.h"
+#include "Common/BufferObject.h"
+#include "Target/EmuSupport.h"
 #include "Support/debug.h"
 
 namespace QPULib {
 
 namespace {
-
 
 // State of a single core.
 struct CoreState {
