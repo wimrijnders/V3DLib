@@ -1,6 +1,7 @@
 #include "Target/Emulator.h"
 #include <math.h>
 #include <string.h>
+#include "Support/basics.h"  // fatal()
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
 #include "Common/SharedArray.h"
@@ -213,8 +214,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
         s->dmaStore.active = false;
         return v; // Return value unspecified
       }
-      printf("QPULib: can't read special register\n");
-      abort();
+      fatal("QPULib: can't read special register");
     case NONE:
       for (int i = 0; i < NUM_LANES; i++)
         v.elems[i].intVal = 0;
@@ -448,8 +448,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
           break;
       }
 
-      printf("QPULib: can't write to special register\n");
-      abort();
+      fatal("QPULib: can't write to special register");
       return;
   }
 
@@ -713,9 +712,11 @@ Vec alu(QPUState* s, State* g,
     case M_V8MAX:
     case M_V8ADDS:
     case M_V8SUBS:
-    default:
-      printf("QPULib: unsupported operator %i\n", op);
-      abort();
+    default: {
+			char buf[64];
+      sprintf(buf, "QPULib: unsupported operator %i", op);
+      fatal(buf);
+		}
   }
   return z;
 }
@@ -831,8 +832,7 @@ void emulate(
                 s->pc += 3+t.immOffset;
               }
               else {
-                printf("QPULib: found unsupported form of branch target\n");
-                abort();
+                fatal("QPULib: found unsupported form of branch target");
               }
             }
             break;
@@ -841,8 +841,7 @@ void emulate(
           case BRL:
           // Label
           case LAB:
-            printf("QPULib: emulator does not support labels\n");
-            abort();
+            fatal("QPULib: emulator does not support labels");
           // No-op
           case NO_OP:
             break;

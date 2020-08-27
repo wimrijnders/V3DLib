@@ -2,7 +2,7 @@
 #include <cassert>
 #include <memory>
 #include <cstdio>
-#include <stdlib.h>  // abort()
+#include "../Support/basics.h"
 #include "../Support/debug.h"
 
 namespace QPULib {
@@ -32,8 +32,7 @@ void BufferObject::check_available(uint32_t n) {
 	assert(arm_base != nullptr);
 
 	if (m_offset + n >= m_size) {
-		printf("QPULib: heap overflow (increase heap size)\n");
-		abort();
+		fatal("QPULib: heap overflow (increase heap size)\n");
 	}
 }
 

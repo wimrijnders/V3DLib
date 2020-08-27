@@ -7,9 +7,9 @@
 #include <cstddef>    // NULL
 #include <fcntl.h>
 #include <sys/mman.h>
-#include <stdlib.h>   // exit()
 #include <stdio.h>
 #include <unistd.h>   // close()
+#include "../Support/basics.h"
 #include "../Support/debug.h"
 
 namespace {
@@ -119,8 +119,7 @@ int open_card(char const *card) {
 	int fd = open(card , O_RDWR);
 
 	if (fd == 0) {
-		printf("FATAL: Can't open card device (sudo?)\n");
-		exit(-1);
+		QPULib::fatal("FATAL: Can't open card device (sudo?)");
 	}
 
 	//
@@ -215,8 +214,7 @@ bool v3d_open() {
 		assert(fd0 != 0);
 		fd = fd0;
 	} else {
-		printf("FATAL: could not open card device\n");
-		exit(-1);
+		QPULib::fatal("FATAL: could not open card device");
 	}
 
 	//if (fd > 0) {

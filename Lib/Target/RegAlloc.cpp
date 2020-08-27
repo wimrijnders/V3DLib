@@ -1,7 +1,8 @@
+#include "Target/RegAlloc.h"
 #include <stdio.h>
+#include "Support/basics.h"  // fatal()
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
-#include "Target/RegAlloc.h"
 #include "Target/Subst.h"
 #include "Target/Liveness.h"
 
@@ -166,8 +167,7 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs)
     // Choose a register file
     RegTag chosenRegFile;
     if (chosenA < 0 && chosenB < 0) {
-      printf("QPULib: register allocation failed, insufficient capacity\n");
-      exit(EXIT_FAILURE);
+      fatal("QPULib: register allocation failed, insufficient capacity");
     }
     else if (chosenA < 0) chosenRegFile = REG_B;
     else if (chosenB < 0) chosenRegFile = REG_A;

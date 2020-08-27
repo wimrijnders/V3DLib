@@ -6,6 +6,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <bcm_host.h>
+#include "Support/basics.h"  // fatal()
 #include "Mailbox.h"  // for mapmem()
 
 
@@ -281,13 +282,13 @@ void RegisterMap::check_page_align(unsigned addr) {
 	long pagesize = sysconf(_SC_PAGESIZE);
 
 	if (pagesize <= 0) {
-		fprintf(stderr, "error: sysconf: %s\n", strerror(errno));
-		exit(-1);
+		char buf[64];
+		sprintf(buf, "error: sysconf: %s", strerror(errno));
+		fatal(buf);
 	}
 
 	if (addr & (((unsigned) pagesize) - 1)) {
-		fprintf(stderr, "error: peripheral address is not aligned to page size\n");
-		exit(-1);
+		fatal("error: peripheral address is not aligned to page size");
 	}
 }
 

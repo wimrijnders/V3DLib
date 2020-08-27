@@ -1,6 +1,7 @@
-#include <stdio.h>
-#include "Common/Stack.h"
 #include "Source/Stmt.h"
+#include <stdio.h>
+#include "Support/basics.h"  // fatal()
+#include "Common/Stack.h"
 #include "Source/Int.h"
 
 
@@ -55,8 +56,7 @@ void Else_()
   }
 
   if (!ok) {
-    printf("Syntax error: 'Else' without preceeding 'If' or 'Where'\n");
-    exit(-1);
+    fatal("Syntax error: 'Else' without preceeding 'If' or 'Where'");
   }
 }
 
@@ -107,8 +107,7 @@ void End_()
   }
 
   if (!ok) {
-    printf("Syntax error: unexpected 'End'\n");
-    exit(-1);
+    fatal("Syntax error: unexpected 'End'");
   }
 }
 

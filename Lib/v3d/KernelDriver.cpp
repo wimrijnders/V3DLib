@@ -447,8 +447,9 @@ uint8_t encodeSrcReg_old(Reg reg) {
 					return 50;
       }
   }
-  fprintf(stderr, "QPULib: missing case in encodeSrcReg_old\n");
-  exit(EXIT_FAILURE);
+
+  fatal("QPULib: missing case in encodeSrcReg_old");
+	return 0;
 }
 
 
@@ -761,8 +762,7 @@ Instructions encodeInstr(QPULib::Instr instr) {
 */
 		break;
 		default:
-  		fprintf(stderr, "v3d: missing case in encodeInstr\n");
-		 	exit(EXIT_FAILURE);
+  		fatal("v3d: missing case in encodeInstr");
   }
 
 /*

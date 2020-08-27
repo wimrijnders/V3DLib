@@ -1,9 +1,8 @@
 #ifndef _QPULIB_HEAP_H_
 #define _QPULIB_HEAP_H_
-
 #include <stdio.h>
-#include <stdlib.h>
 #include <stdint.h>
+#include "Support/basics.h"  // fatal()
 
 namespace QPULib {
 
@@ -49,11 +48,11 @@ class Heap
     {
       unsigned long nbytes = sizeof(T) * n;
       if (size + nbytes >= capacity) {
-        printf("QPULib error: heap '%s' is full.\n", heapName);
-        exit(-1);
+				char buf[64];
+        sprintf(buf, "QPULib error: heap '%s' is full.\n", heapName);
+        fatal(buf);
         return (T*) NULL;
-      }
-      else {
+      } else {
         uint8_t* p = base + size;
         size += nbytes;
         return (T*) p;
