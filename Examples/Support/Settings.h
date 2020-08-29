@@ -1,5 +1,6 @@
 #ifndef _EXAMPLE_SUPPORT_SETINGS_H
 #define _EXAMPLE_SUPPORT_SETINGS_H
+#include <cassert>
 #include <string>
 
 class CmdParameters;
@@ -19,7 +20,6 @@ struct Settings {
 
 	template<typename Kernel, typename... us>
 	void process(Kernel &k, us... args) {
-
 		if (!compile_only) {
 			switch (run_type) {
 				case 0: k(args...); break;
@@ -29,10 +29,14 @@ struct Settings {
 		}
 
 		if (output_code) {
+			assert(!name.empty());
 			std::string code_filename = name + "_code.txt";
 			k.pretty(code_filename.c_str());
 		}
 	}
+
+protected:
+	void set_name(const char *in_name);
 };
 
 

@@ -66,6 +66,8 @@ struct Rot3DSettings : public Settings {
 #endif  // QPU_MODE
 
 	int init(int argc, const char *argv[]) {
+		set_name(argv[0]);
+
 		CmdParameters &params = ::params;
 
 		auto ret = params.handle_commandline(argc, argv, false);
@@ -231,7 +233,7 @@ void run_qpu_kernel(KernelType &kernel) {
     y[i] = (float) i;
   }
 
-  k(N, cosf(THETA), sinf(THETA), &x, &y);
+  settings.process(k, N, cosf(THETA), sinf(THETA), &x, &y);
 
 	end_timer(tvStart);
 
@@ -254,7 +256,9 @@ void run_scalar_kernel() {
     y[i] = (float) i;
   }
 
-  rot3D(N, cosf(THETA), sinf(THETA), x, y);
+	if (settings.compile_only) {
+	  rot3D(N, cosf(THETA), sinf(THETA), x, y);
+	}
 
 	end_timer(tvStart);
 

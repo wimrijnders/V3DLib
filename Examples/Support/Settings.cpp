@@ -89,7 +89,7 @@ namespace QPULib {
 
 
 int Settings::init(int argc, const char *argv[]) {
-	name = stem(argv[0]);
+	set_name(argv[0]);
 
 	auto ret = instance().handle_commandline(argc, argv, false);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
@@ -97,6 +97,12 @@ int Settings::init(int argc, const char *argv[]) {
 	process();
 
 	return ret;
+}
+
+
+void Settings::set_name(const char *in_name) {
+	assert(in_name != nullptr);
+	name = stem(in_name);
 }
 
 
