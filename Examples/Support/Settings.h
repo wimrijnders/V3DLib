@@ -2,8 +2,7 @@
 #define _EXAMPLE_SUPPORT_SETINGS_H
 #include <cassert>
 #include <string>
-
-class CmdParameters;
+#include <CmdParameters.h>
 
 namespace QPULib {
 

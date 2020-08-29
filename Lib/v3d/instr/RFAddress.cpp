@@ -7,7 +7,7 @@ namespace instr {
 
 
 v3d_qpu_mux RFAddress::to_mux() const {
-	debug_break("Not expecting RFAddress::to_mux() to be called");
+	debug /* _break */ ("Not expecting RFAddress::to_mux() to be called");
 	//assert(false);
 	return (v3d_qpu_mux) 0;
 }

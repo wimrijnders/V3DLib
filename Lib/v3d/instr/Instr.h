@@ -75,6 +75,7 @@ public:
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
 	void alu_add_set_dst(Location const &loc1); 
+	void alu_add_set_reg_a(Location const &loc2);
 	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_mul_set(Location const &loc11, Location const &loc2, Location const &loc3); 
 
