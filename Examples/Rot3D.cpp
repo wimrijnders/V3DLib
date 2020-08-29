@@ -35,7 +35,7 @@ CmdParameters params = {
 	}, {
     "Num QPU's",
     "-n=",
-		INTEGER,
+		POSITIVE_INTEGER,
     "Number of QPU's to use. Must be a value between 1 an 12 inclusive (TODO: not enforced yet)",
 		12
 	}, {
@@ -48,7 +48,7 @@ CmdParameters params = {
     "Performance Counters",
     "-c",
 		ParamType::NONE,   // Prefix needed to disambiguate
-    "Show the values of the performance counters"
+    "Show the values of the performance counters (vc4 only)"
 #endif  // QPU_MODE
   }}
 };
@@ -74,6 +74,7 @@ struct Settings {
 		show_perf_counters  = params.parameters()[3]->get_bool_value();
 #endif  // QPU_MODE
 
+		printf("Num QPU's in settings: %d\n", num_qpus);
 		return ret;
 	}
 } settings;
@@ -282,16 +283,24 @@ int main(int argc, const char *argv[]) {
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 #ifdef QPU_MODE
-	initPerfCounters();
+	if (settings.show_perf_counters) {
+		if (Platform::instance().has_vc4) {  // vc4 only
+			initPerfCounters();
+		} else {
+			printf("WARNING: Performance counters enabled for VC4 only.\n");
+		}
+	}
 #endif
 
 	run_kernel(settings.kernel);
 
 #ifdef QPU_MODE
 	if (settings.show_perf_counters) {
-		// Show values current counters
-		std::string output = PC::showEnabled();
-		printf("%s\n", output.c_str());
+		if (Platform::instance().has_vc4) {  // vc4 only
+			// Show values current counters
+			std::string output = PC::showEnabled();
+			printf("%s\n", output.c_str());
+		}
 	}
 #endif
 

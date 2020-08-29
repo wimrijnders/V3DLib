@@ -126,6 +126,7 @@ PlatformInfo::PlatformInfo() {
 
 #ifndef QPU_MODE
 	emulator_only = true;
+	has_vc4 = true;       // Emulator and interpreter run vc4 only
 #endif
 }
 

@@ -3,14 +3,15 @@
 #include <stdint.h>
 #include "Common/Seq.h"
 
-#define NUM_LANES 16
-#define MAX_QPUS 12
-#define VPM_SIZE 1024
 
 /**
- * Definitions which are used in both the emulator and the interpreter/
+ * Definitions which are used in both the emulator and the interpreter.
  */
 namespace QPULib {
+
+const int NUM_LANES =   16;
+const int MAX_QPUS  =   12;
+const int VPM_SIZE  = 1024;
 
 // This is a type for representing the values in a vector
 union Word {

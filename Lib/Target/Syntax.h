@@ -89,9 +89,13 @@ struct Reg {
   // Register identifier
   RegId regId;
 
-  bool operator==(const Reg &r) {
-    return tag == r.tag && regId == r.regId;
+  bool operator==(Reg const &rhs) const {
+    return tag == rhs.tag && regId == rhs.regId;
   }
+
+  bool operator!=(Reg const &rhs) const {
+  	return !(*this == rhs);
+	}
 };
 
 // ============================================================================
@@ -175,6 +179,10 @@ struct SmallImm {
 	bool operator==(SmallImm const &rhs) const {
 		return tag == rhs.tag && val == rhs.val;
 	}
+
+  bool operator!=(SmallImm const &rhs) const {
+  	return !(*this == rhs);
+	}
 };
 
 // A register or a small immediate operand?
@@ -192,7 +200,7 @@ struct RegOrImm {
     SmallImm smallImm;
   };
 
-	bool operator==(RegOrImm /* const */ &rhs) /* const */ {
+	bool operator==(RegOrImm const &rhs) const {
 		if (tag != rhs.tag) return false;
 
 		if (tag == REG) {
@@ -200,6 +208,10 @@ struct RegOrImm {
 		} else {
 			return smallImm == rhs.smallImm;
 		}
+	}
+
+  bool operator!=(RegOrImm const &rhs) const {
+  	return !(*this == rhs);
 	}
 };
 
@@ -376,23 +388,6 @@ struct Instr {
   };
 
 
-	/**
-	 * Determines if the mul-ALU needs to be used
-	 *
-	 * TODO: Examine if this is still true for v3d
-	 */
-	bool isMul() const {
-		auto op = ALU.op;
-
-	  bool ret =
-			op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
-	    op == M_V8MIN  || op == M_V8MAX || op == M_V8ADDS ||
-	    op == M_V8SUBS || op == M_ROTATE;
-
-		return ret;
-	}
-
-
 	bool hasImm() const {
   	return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM;
 	}
@@ -402,48 +397,9 @@ struct Instr {
 		return ALU.op == M_ROTATE;
 	}
 
-
-	bool isUniformLoad() const {
-		if (ALU.srcA.tag != REG || ALU.srcB.tag != REG) {  // Both operands must be regs
-			return false;
-		}
-
-		Reg aReg  = ALU.srcA.reg;
-		Reg bReg  = ALU.srcB.reg;
-
-		if (aReg.tag == SPECIAL && aReg.regId == SPECIAL_UNIFORM) {
-			assert(aReg == bReg);  // Apparently, this holds
-			return true;
-		} else {
-			assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
-			return false;
-		}
-	}
-
-
-	bool isTMUAWrite() const {
-  	if (tag != InstrTag::ALU) {
-			return false;
-		}
-		Reg reg = ALU.dest;
-
-		bool ret = (reg.regId == SPECIAL_DMA_ST_ADDR)
-		        || (reg.regId == SPECIAL_TMU0_S);
-
-		if (ret) {
-			// It's a simple move (BOR) instruction, src registers should be the same
-			auto reg_a = ALU.srcA;
-			auto reg_b = ALU.srcB;
-			assert(reg_a == reg_b);
-
-			// In current logic, src should always be read from register file;
-			// enforce this.
-			assert(reg_a.tag == REG
-			    && (reg_a.reg.tag == REG_A || reg_a.reg.tag == REG_B));
-		}
-
-		return ret;
-	}
+	bool isMul() const;
+	bool isUniformLoad() const;
+	bool isTMUAWrite() const;
 };
 
 // Instruction id: also the index of an instruction

@@ -2,6 +2,7 @@
 #define _LIB_SUPPORT_BASICS_h
 #include <string>
 #include <vector>
+#include "debug.h"
 
 namespace QPULib {
 

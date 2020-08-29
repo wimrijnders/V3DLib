@@ -54,17 +54,19 @@ timeval runKernel(int index) {
 	  case 1: kGenerator = rot3D_1; break;
 	  case 2: kGenerator = rot3D_2; break;
 	  case 3: kGenerator = rot3D_3; break;
-		default:
-			printf("ERROR: No kernel with index %d\n", index);
-			exit(-1);
+		default: {
+			char buf[64];
+			sprintf(buf, "ERROR: No kernel with index %d", index);
+			fatal(buf);
+		}
   };
 	
 
   // Construct kernel
   auto k = compile(kGenerator);
 
-  // Use 12 QPUs
-  k.setNumQPUs(12);
+  // Use all available QPUs
+  k.setNumQPUs(k.maxQPUs());
 
   // Allocate and initialise arrays shared between ARM and GPU
   SharedArray<float> x(N), y(N);

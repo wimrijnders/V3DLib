@@ -283,6 +283,14 @@ public:
     numQPUs = n;
   }
 
+	int maxQPUs() {
+		if (Platform::instance().has_vc4) {
+			return 12;
+		} else {
+			return 8;
+		}
+	}
+
 
 	void pretty(const char *filename = nullptr) {
 #ifdef QPU_MODE

@@ -127,7 +127,7 @@ void BufferObject::dealloc_array(uint32_t in_phyaddr, uint32_t size) {
 		assert(m_offset > 0);  // paranoia
 		m_offset = 0;          // yes, it's that simple
 		m_free_ranges.clear();
-		debug("BufferObject empty again!");
+		//debug("BufferObject empty again!");
 	}
 }
 
