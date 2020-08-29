@@ -5,6 +5,8 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 #include "Settings.h"
+#include <memory>
+#include <CmdParameters.h>
 
 
 namespace {
@@ -22,29 +24,34 @@ const char *blurb =
 #endif
 ;
 
-CmdParameters params = {
-	blurb,
-	{{
-		"Output Generated Code",
-		"-f",
-		ParamType::NONE,     // Prefix needed to dsambiguate
-		"Write representations of the generated code to file"
-	}, { 
-		"Compile Only",
-		"-c",
-		ParamType::NONE,     // Prefix needed to dsambiguate
-		"Compile the kernel but do not run it"
+
+std::unique_ptr<CmdParameters> params;
+
+CmdParameters &instance() {
+	if (!params) {
+		params.reset( new CmdParameters{
+			blurb,
+			{{
+				"Output Generated Code",
+				"-f",
+				ParamType::NONE,     // Prefix needed to dsambiguate
+				"Write representations of the generated code to file"
+			}, { 
+				"Compile Only",
+				"-c",
+				ParamType::NONE,     // Prefix needed to dsambiguate
+				"Compile the kernel but do not run it"
+			}, {
+				"Select run type",
+				"-r=",
+				{"default", "emulator", "interpreter"},
+				"Run on the QPU emulator or run on the interpreter"
+			}}
+		});
 	}
-//#ifdef EMULATION_MODE
-	, {
-		"Select run type",
-		"-r=",
-		{"default", "emulator", "interpreter"},
-		"Run on the QPU emulator or run on the interpreter"
-	}
-//#endif
-	}
-};
+
+	return *params;
+}
 
 
 /**
@@ -84,30 +91,26 @@ namespace QPULib {
 int Settings::init(int argc, const char *argv[]) {
 	name = stem(argv[0]);
 
-	auto ret = params.handle_commandline(argc, argv, false);
+	auto ret = instance().handle_commandline(argc, argv, false);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-/*
-	kernel_name = params.parameters()[0]->get_string_value();
-*/
-	output_code  = params.parameters()[0]->get_bool_value();
-	compile_only = params.parameters()[1]->get_bool_value();
-//#ifdef EMULATION_MODE
-	run_type     = params.parameters()[2]->get_int_value();
-//#endif
-
-//#ifdef DEBUG
-//	output();
-//#endif
+	process();
 
 	return ret;
 }
 
 
-void Settings::output() {
-	printf("Settings:\n");
-	printf("  Output Code : %s\n", output_code?"true":"false");
-	printf("\n");
+void Settings::process(CmdParameters *in_params) {
+	CmdParameters &params = (in_params != nullptr)?*in_params:instance();
+
+	output_code  = params.parameters()["Output Generated Code"]->get_bool_value();
+	compile_only = params.parameters()["Compile Only"]->get_bool_value();
+	run_type     = params.parameters()["Select run type"]->get_int_value();
+}
+
+
+CmdParameters &Settings::params() {
+	return instance();
 }
 
 }  // namespace QPULib;

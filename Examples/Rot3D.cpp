@@ -2,6 +2,8 @@
 #include <unistd.h>  // sleep()
 #include <math.h>
 #include <QPULib.h>
+#include "Support/Settings.h"
+#include "Support/debug.h"
 #include <CmdParameters.h>
 #ifdef QPU_MODE
 #include "vc4/PerformanceCounters.h"
@@ -22,7 +24,7 @@ const float THETA = (float) 3.14159;
 // Command line handling
 // ============================================================================
 
-std::vector<const char *> const kernels = { "3", "2", "1", "cpu" };  // Order important! First is default
+std::vector<const char *> const kernels = { "3", "2", "1", "cpu" };  // First is default
 
 
 CmdParameters params = {
@@ -41,20 +43,21 @@ CmdParameters params = {
 	}, {
     "Display Results",
     "-d",
-		ParamType::NONE,   // Prefix needed to disambiguate
+		ParamType::NONE,
     "Show the results of the calculations"
 #ifdef QPU_MODE
 	}, {
     "Performance Counters",
-    "-c",
-		ParamType::NONE,   // Prefix needed to disambiguate
+    "-pc",
+		ParamType::NONE,
     "Show the values of the performance counters (vc4 only)"
 #endif  // QPU_MODE
-  }}
+  }},
+	&Settings::params()
 };
 
 
-struct Settings {
+struct Rot3DSettings : public Settings {
 	int    kernel;
 	int    num_qpus;
 	bool   show_results;
@@ -63,15 +66,20 @@ struct Settings {
 #endif  // QPU_MODE
 
 	int init(int argc, const char *argv[]) {
+		CmdParameters &params = ::params;
+
 		auto ret = params.handle_commandline(argc, argv, false);
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-		kernel              = params.parameters()[0]->get_int_value();
-		//kernel_name       = params.parameters()[0]->get_string_value();
-		num_qpus            = params.parameters()[1]->get_int_value();
-		show_results        = params.parameters()[2]->get_bool_value();
+		// Init the parameters in the parent
+		Settings::process(&params);
+
+		kernel              = params.parameters()["Kernel"]->get_int_value();
+		//kernel_name       = params.parameters()["Kernel"]->get_string_value();
+		num_qpus            = params.parameters()["Num QPU's"]->get_int_value();
+		show_results        = params.parameters()["Display Results"]->get_bool_value();
 #ifdef QPU_MODE
-		show_perf_counters  = params.parameters()[3]->get_bool_value();
+		show_perf_counters  = params.parameters()["Performance Counters"]->get_bool_value();
 #endif  // QPU_MODE
 
 		printf("Num QPU's in settings: %d\n", num_qpus);

@@ -16,4 +16,5 @@ cd ../CmdParameter
 git checkout master
 git pull origin master
 make clean
+make DEBUG=1 all
 make all

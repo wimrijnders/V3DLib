@@ -22,8 +22,13 @@ INCLUDE_EXTERN= \
  -I mesa/src
 
 LIB_EXTERN= \
- -L ../CmdParameter/obj -lCmdParameter \
  -Lobj/mesa/bin -lmesa
+
+ifeq ($(DEBUG), 1)
+	LIB_EXTERN += -L ../CmdParameter/obj-debug -lCmdParameter
+else
+	LIB_EXTERN += -L ../CmdParameter/obj -lCmdParameter
+endif
 
 
 # Root directory of QPULib repository
@@ -108,7 +113,6 @@ DEPS := $(LIB:.o=.d)
 # Basically, every .h file under examples has a .d in the build directory
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
 -include $(EXAMPLES_DEPS)
-
 
 QPULIB=$(OBJ_DIR)/libQPULib.a
 MESA_LIB = obj/mesa/bin/libmesa.a
