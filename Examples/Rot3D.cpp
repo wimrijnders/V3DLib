@@ -70,7 +70,6 @@ struct Rot3DSettings : public Settings {
 
 	int init(int argc, const char *argv[]) {
 		set_name(argv[0]);
-
 		CmdParameters &params = ::params;
 
 		auto ret = params.handle_commandline(argc, argv, false);

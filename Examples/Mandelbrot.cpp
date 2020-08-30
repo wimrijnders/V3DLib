@@ -12,6 +12,7 @@
 #include <QPULib.h>
 #include <CmdParameters.h>
 #include "vc4/RegisterMap.h"
+#include "Support/Settings.h"
 
 
 using namespace QPULib;
@@ -43,11 +44,12 @@ CmdParameters params = {
     "Output a PGM bitmap of the calculation results.\n"
     "If enabled, a PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
     "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled\n",
-  }}
+  }},
+	&Settings::params()
 };
 
 
-struct MandSettings {
+struct MandSettings : public Settings {
 	const int ALL = 3;
 
 	int    kernel;
@@ -69,8 +71,14 @@ struct MandSettings {
 
 
 	int init(int argc, const char *argv[]) {
+		set_name(argv[0]);
+		CmdParameters &params = ::params;
+
 		auto ret = params.handle_commandline(argc, argv, false);
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+		// Init the parameters in the parent
+		Settings::process(&params);
 
 		kernel      = params.parameters()[0]->get_int_value();
 		kernel_name = params.parameters()[0]->get_string_value();
@@ -304,7 +312,8 @@ void run_qpu_kernel( decltype(mandelbrot_single) &kernel) {
 
   k.setNumQPUs(settings.num_qpus);
 
-	k(
+  settings.process(
+		k,
 		settings.topLeftReal, settings.topLeftIm,
 		offsetX, offsetY,
 		settings.numStepsWidth, settings.numStepsHeight,
@@ -337,7 +346,6 @@ void run_kernel(int kernel_index) {
 	}
 
 	auto name = kernels[kernel_index];
-
 	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
 	end_timer(tvStart);
 }
