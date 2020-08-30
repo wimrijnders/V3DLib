@@ -21,7 +21,7 @@ RegisterMap::RegisterMap() {
 
 	bcm_host_init();
 	unsigned addr = bcm_host_get_peripheral_address();
-	printf("Peripheral base: %08X\n", addr);
+	//printf("Peripheral base: %08X\n", addr);
 
 	m_size = bcm_host_get_peripheral_size();
 
@@ -30,7 +30,7 @@ RegisterMap::RegisterMap() {
 	// Following succeeds if it returns.
 	m_addr = (uint32_t *) mapmem(addr, m_size);
 	assert(m_addr != nullptr);
-	printf("init address: %08X, size: %u\n", m_addr, m_size);
+	//printf("init address: %08X, size: %u\n", m_addr, m_size);
 
 	bcm_host_deinit();
 }

@@ -1,5 +1,6 @@
 #include "QPULib.h"
 #include <CmdParameters.h>
+#include "Support/Settings.h"
 
 using namespace QPULib;
 
@@ -12,16 +13,23 @@ CmdParameters params = {
     "-k=",
 		kernels,
     "Select the kernel to use"
-	}}
+	}},
+	&Settings::params()
 };
 
 
-struct Settings {
+struct TriSettings : public Settings {
 	int    kernel;
 
 	int init(int argc, const char *argv[]) {
+		set_name(argv[0]);
+		CmdParameters &params = ::params;
+
 		auto ret = params.handle_commandline(argc, argv, false);
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+		// Init the parameters in the parent
+		Settings::process(&params);
 
 		kernel      = params.parameters()[0]->get_int_value();
 		return ret;
@@ -102,8 +110,10 @@ void run_single() {
   for (int i = 0; i < 16; i++)
     array[i] = i;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  // Invoke the kernel
+  settings.process(k, &array);
+
+  // Display the result
   for (int i = 0; i < 16; i++)
     printf("%i: %i\n", i, array[i]);
 }
@@ -123,8 +133,10 @@ void run_multi() {
   for (int i = 0; i < 64; i++)
     array[i] = i;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  // Invoke the kernel
+  settings.process(k, &array);
+
+  // Display the result
   for (int i = 0; i < 64; i++)
     printf("%i: %i\n", i, array[i]);
 }
@@ -141,8 +153,10 @@ void run_float() {
   for (int i = 0; i < 16; i++)
     array[i] = (float) i;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  // Invoke the kernel
+  settings.process(k, &array);
+
+  // Display the result
   for (int i = 0; i < 16; i++)
     printf("%i: %f\n", i, array[i]);
 }

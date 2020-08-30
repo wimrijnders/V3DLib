@@ -1,10 +1,12 @@
 #include <stdlib.h>
 #include "QPULib.h"
+#include "Support/Settings.h"
 
 using namespace QPULib;
 
-void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r)
-{
+QPULib::Settings settings;
+
+void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
   Int a = *p;
   Int b = *q;
   While (any(a != b))
@@ -18,8 +20,11 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r)
   *r = a;
 }
 
-int main()
-{
+
+int main(int argc, const char *argv[]) {
+	auto ret = settings.init(argc, argv);
+	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
   // Construct kernel
   auto k = compile(gcd);
 
@@ -31,8 +36,10 @@ int main()
     b[i] = 100 + (rand() % 100);
   }
 
-  // Invoke the kernel and display the result
-  k(&a, &b, &r);
+  // Invoke the kernel
+	settings.process(k, &a, &b, &r);
+
+	// Display the result
   for (int i = 0; i < 16; i++)
     printf("gcd(%i, %i) = %i\n", a[i], b[i], r[i]);
   
