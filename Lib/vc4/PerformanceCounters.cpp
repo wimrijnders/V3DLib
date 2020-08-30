@@ -1,6 +1,7 @@
 #ifdef QPU_MODE
 #include "PerformanceCounters.h"
 #include <sstream>
+#include "Support/debug.h"
 
 
 namespace QPULib {
@@ -173,7 +174,14 @@ std::string PerformanceCounters::showEnabled() {
 		//printf("counterIndex: %d\n", counterIndex);
 		//fflush(stdout);
 
-		os << "  " <<  Description[counterIndex] << ": " << RM::readRegister(sourceIndex) << "\n";
+		breakpoint
+
+		if (counterIndex < 0 || counterIndex >= NUM_PERF_COUNTERS) {
+			os << "WARNING: Performance counter index " << counterIndex << " out of bounds for slot index " << i << "\n";
+		} else {
+			os << "  " <<  Description[counterIndex] << ": " << RM::readRegister(sourceIndex) << "\n";
+		}
+
 	}
 
 	return os.str();
