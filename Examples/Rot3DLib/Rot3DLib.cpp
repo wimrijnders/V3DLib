@@ -87,27 +87,21 @@ timeval runScalar() {
 
 
 timeval run_qpu_kernel(int index) {
-	printf("Running kernel %d\n", index);
-
 	Generator *kGenerator = nullptr;
 
 	switch (index) {
-	  case 1: kGenerator = rot3D_1; break;
-	  case 2: kGenerator = rot3D_2; break;
-	  case 3: kGenerator = rot3D_3; break;
+	  case 0: kGenerator = rot3D_3; break;
+	  case 1: kGenerator = rot3D_2; break;
+	  case 2: kGenerator = rot3D_1; break;
 		default: {
 			char buf[64];
 			sprintf(buf, "ERROR: No kernel with index %d", index);
 			fatal(buf);
 		}
   };
-	
 
-  // Construct kernel
-  auto k = compile(kGenerator);
-
-  // Use all available QPUs
-  k.setNumQPUs(k.maxQPUs());
+  auto k = compile(kGenerator);  // Construct kernel
+  k.setNumQPUs(k.maxQPUs());     // Use all available QPUs
 
   // Allocate and initialise arrays shared between ARM and GPU
   SharedArray<float> x(N), y(N);
@@ -119,7 +113,7 @@ timeval run_qpu_kernel(int index) {
   timeval tvStart, tvEnd, tvDiff;
   gettimeofday(&tvStart, NULL);
 
-  k(N, cosf(THETA), sinf(THETA), &x, &y);
+	settings.process(k, N, cosf(THETA), sinf(THETA), &x, &y);
 
   gettimeofday(&tvEnd, NULL);
   timersub(&tvEnd, &tvStart, &tvDiff);
