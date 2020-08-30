@@ -5,18 +5,10 @@
 #include "Support/Settings.h"
 #include "Support/debug.h"
 #include "Rot3DLib/Rot3DKernels.h"
-#ifdef QPU_MODE
-#include "vc4/PerformanceCounters.h"
-#endif  // QPU_MODE
 
 using namespace QPULib;
 using namespace Rot3DLib;
 using KernelType = decltype(rot3D_1);  // All kernel functions except scalar have same prototype
-
-#ifdef QPU_MODE
-using PC = PerformanceCounters;
-#endif  // QPU_MODE
-
 
 // Number of vertices and angle of rotation
 const int N = 192000; // 192000
@@ -48,13 +40,6 @@ CmdParameters params = {
     "-d",
 		ParamType::NONE,
     "Show the results of the calculations"
-#ifdef QPU_MODE
-	}, {
-    "Performance Counters",
-    "-pc",
-		ParamType::NONE,
-    "Show the values of the performance counters (vc4 only)"
-#endif  // QPU_MODE
   }},
 	&Settings::params()
 };
@@ -64,9 +49,6 @@ struct Rot3DSettings : public Settings {
 	int    kernel;
 	int    num_qpus;
 	bool   show_results;
-#ifdef QPU_MODE
-	bool   show_perf_counters;
-#endif  // QPU_MODE
 
 	int init(int argc, const char *argv[]) {
 		set_name(argv[0]);
@@ -82,9 +64,6 @@ struct Rot3DSettings : public Settings {
 		//kernel_name       = params.parameters()["Kernel"]->get_string_value();
 		num_qpus            = params.parameters()["Num QPU's"]->get_int_value();
 		show_results        = params.parameters()["Display Results"]->get_bool_value();
-#ifdef QPU_MODE
-		show_perf_counters  = params.parameters()["Performance Counters"]->get_bool_value();
-#endif  // QPU_MODE
 
 		printf("Num QPU's in settings: %d\n", num_qpus);
 		return ret;
@@ -97,36 +76,6 @@ struct Rot3DSettings : public Settings {
 // Local functions
 // ============================================================================
 
-#ifdef QPU_MODE
-/**
- * @brief Enable the counters we are interested in
- */
-void initPerfCounters() {
-	PC::Init list[] = {
-		{ 0, PC::QPU_INSTRUCTIONS },
-		{ 1, PC::QPU_STALLED_TMU },
-		{ 2, PC::L2C_CACHE_HITS },
-		{ 3, PC::L2C_CACHE_MISSES },
-		{ 4, PC::QPU_INSTRUCTION_CACHE_HITS },
-		{ 5, PC::QPU_INSTRUCTION_CACHE_MISSES },
-		{ 6, PC::QPU_CACHE_HITS },
-		{ 7, PC::QPU_CACHE_MISSES },
-		{ 8, PC::QPU_IDLE },
-		{ PC::END_MARKER, PC::END_MARKER }
-	};
-
-	PC::enable(list);
-	PC::clear(PC::enabled());
-
-	//printf("Perf Count mask: %0X\n", PC::enabled());
-
-	// The following will show zeroes for all counters, *except*
-	// for QPU_IDLE, because this was running from the clear statement.
-	// Perhaps there are more counters like that.
-	//std::string output = PC::showEnabled();
-	//printf("%s\n", output.c_str());
-}
-#endif  // QPU_MODE
 
 
 /**
@@ -217,27 +166,7 @@ int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-#ifdef QPU_MODE
-	if (settings.show_perf_counters) {
-		if (Platform::instance().has_vc4) {  // vc4 only
-			initPerfCounters();
-		} else {
-			printf("WARNING: Performance counters enabled for VC4 only.\n");
-		}
-	}
-#endif
-
 	run_kernel(settings.kernel);
-
-#ifdef QPU_MODE
-	if (settings.show_perf_counters) {
-		if (Platform::instance().has_vc4) {  // vc4 only
-			// Show values current counters
-			std::string output = PC::showEnabled();
-			printf("%s\n", output.c_str());
-		}
-	}
-#endif
 
   return 0;
 }

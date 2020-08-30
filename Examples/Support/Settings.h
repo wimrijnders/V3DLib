@@ -12,6 +12,9 @@ struct Settings {
 	bool output_code;
 	bool compile_only;
 	int run_type;
+#ifdef QPU_MODE
+	bool   show_perf_counters;
+#endif  // QPU_MODE
 
 	int init(int argc, const char *argv[]);
 	void process(CmdParameters *in_params = nullptr);
@@ -19,6 +22,8 @@ struct Settings {
 
 	template<typename Kernel, typename... us>
 	void process(Kernel &k, us... args) {
+		startPerfCounters();
+
 		if (!compile_only) {
 			switch (run_type) {
 				case 0: k(args...); break;
@@ -26,6 +31,8 @@ struct Settings {
 				case 2: k.interpret(args...); break;
 			}
 		}
+
+		stopPerfCounters();
 
 		if (output_code) {
 			assert(!name.empty());
@@ -36,6 +43,10 @@ struct Settings {
 
 protected:
 	void set_name(const char *in_name);
+
+private:
+	void startPerfCounters();
+	void stopPerfCounters();
 };
 
 
