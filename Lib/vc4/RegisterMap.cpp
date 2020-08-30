@@ -8,6 +8,7 @@
 #include <bcm_host.h>
 #include "Support/basics.h"  // fatal()
 #include "Mailbox.h"         // for mapmem()
+#include "vc4.h"
 
 
 namespace QPULib {
@@ -16,6 +17,8 @@ std::unique_ptr<RegisterMap> RegisterMap::m_instance;
 
 
 RegisterMap::RegisterMap() {
+	enableQPUs();
+
 	bcm_host_init();
 	unsigned addr = bcm_host_get_peripheral_address();
 	printf("Peripheral base: %08X\n", addr);
@@ -37,6 +40,7 @@ RegisterMap::~RegisterMap() {
 	// printf("Closing down register map\n");
 	unmapmem((void *) m_addr, m_size);
 //	bcm_host_deinit();
+	disableQPUs();
 }
 
 
