@@ -3,7 +3,7 @@
 #include "Source/Syntax.h"
 #include "Common/BufferObject.h"
 #include "Target/EmuSupport.h"
-#include "Support/debug.h"
+#include "Support/basics.h"
 
 namespace QPULib {
 
@@ -646,7 +646,7 @@ void exec(InterpreterState* state, CoreState* s)
 
     case DMA_START_READ:
     case DMA_START_WRITE:
-      printf("QPULib: DMA access not supported by interpreter\n");
+      fatal("QPULib: DMA access not supported by interpreter\n");
       break;
   }
 
