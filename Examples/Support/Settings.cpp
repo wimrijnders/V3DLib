@@ -172,7 +172,7 @@ void Settings::process(CmdParameters *in_params) {
 
 
 void Settings::startPerfCounters() {
-	printf("Entered Settings::startPerfCounters()\n");
+	//printf("Entered Settings::startPerfCounters()\n");
 
 #ifdef QPU_MODE
 	if (show_perf_counters) {
