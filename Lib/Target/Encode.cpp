@@ -397,7 +397,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
 void encode(Seq<Instr>* instrs, Seq<uint32_t>* code)
 {
   uint32_t high, low;
-  for (int i = 0; i < instrs->numElems; i++) {
+  for (int i = 0; i < instrs->size(); i++) {
     Instr instr = instrs->elems[i];
     encodeInstr(instr, &high, &low);
     code->append(low);

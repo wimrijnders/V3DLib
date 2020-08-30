@@ -39,6 +39,7 @@ template <class T> class Seq
     }
 
 		bool size() const { return numElems; }
+		bool empty() const { return numElems == 0; }
 
     // Set capacity of sequence
     void setCapacity(int n) {

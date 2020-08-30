@@ -230,6 +230,19 @@ public:
 #endif  // QPU_MODE
   }
 
+
+	/**
+	 * Load uniform values.
+	 *
+	 * Pass params, checking arguments types us against parameter types ts.
+	 */
+  template <typename... us>
+	void load(us... args) {
+    uniforms.clear();
+    nothing(passParam<ts, us>(&uniforms, args)...);
+	}
+
+
   template <typename... us> void emu(us... args) {
     // Pass params, checking arguments types us against parameter types ts
     uniforms.clear();

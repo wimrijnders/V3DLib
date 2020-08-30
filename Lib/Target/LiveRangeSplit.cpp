@@ -31,19 +31,19 @@ void renameDef(Seq<Instr>* instrs,
   Instr* instr = &instrs->elems[i];
   renameDest(instr, REG_A, v, REG_B, w);
 
-  ReachSet* reached = &reachedBy->elems[i];
+  ReachSet &reached = reachedBy->elems[i];
   // For each instruction reached by i
-  for (int j = 0; j < reached->numElems; j++) {
-    InstrId rid = reached->elems[j];
+  for (int j = 0; j < reached.size(); j++) {
+    InstrId rid = reached.elems[j];
     Instr* r = &instrs->elems[rid];
 
     // Rename uses of v to w
     renameUses(r, REG_A, v, REG_B, w);
 
     // For each instruction d defining v
-    SmallSeq<InstrId>* ds = &defsOf->elems[v];
-    for (int k = 0; k < ds->numElems; k++) {
-      InstrId d = ds->elems[k];
+    SmallSeq<InstrId> &ds = defsOf->elems[v];
+    for (int k = 0; k < ds.size(); k++) {
+      InstrId d = ds.elems[k];
       // If r is reached-by d
       if (reachedBy->elems[d].member(rid)
             || (d == rid && isCondAssign(r)))
@@ -53,10 +53,11 @@ void renameDef(Seq<Instr>* instrs,
   }
 }
 
-// Now for the top-level routine.
 
-void liveRangeSplit(Seq<Instr>* instrs, CFG* cfg)
-{
+/**
+ * The top-level routine.
+ */
+void liveRangeSplit(Seq<Instr>* instrs, CFG* cfg) {
   // Determine for each variable, the instructions that assign to it
   DefsOf defsOf;
   computeDefsOf(instrs, &defsOf);
@@ -66,30 +67,30 @@ void liveRangeSplit(Seq<Instr>* instrs, CFG* cfg)
   computeReachedBy(instrs, cfg, &reachedBy);
 
   // Keep track of which instructions we've visisted
-  bool* visited = new bool [instrs->numElems];
+  bool* visited = new bool [instrs->size()];
 
   // Initialise visited array
-  for (int i = 0; i < instrs->numElems; i++)
+  for (int i = 0; i < instrs->size(); i++)
     visited[i] = false;
 
   // Unique register id
   RegId next = 0;
 
-  for (int i = 0; i < instrs->numElems; i++)
+  for (int i = 0; i < instrs->size(); i++)
     if (!visited[i]) {
       // Compute vars defined by instruction
       UseDef set;
       useDef(instrs->elems[i], &set);
 
       // For each var defined by instruction
-      for (int j = 0; j < set.def.numElems; j++)
+      for (int j = 0; j < set.def.size(); j++)
         renameDef(instrs, i, set.def.elems[j], next++,
                   visited, &reachedBy, &defsOf);
     }
 
   // Every instruction should now soley use register file B.
   // Go through and make them use register file A instead.
-  for (int i = 0; i < instrs->numElems; i++)
+  for (int i = 0; i < instrs->size(); i++)
     substRegTag(&instrs->elems[i], REG_B, REG_A);
 
   // Update fresh var counter
