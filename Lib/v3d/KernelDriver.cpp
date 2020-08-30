@@ -328,12 +328,11 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_instr) {
 	std::unique_ptr<Location> ret = encodeDestReg(src_instr);
 	if (ret.get() == nullptr) {
+		breakpoint
 		return;
 	}
 
 	if (src_instr.isMul()) {
-		breakpoint
-
 		dst_instr.alu.mul.waddr = ret->to_waddr();
 		dst_instr.alu.mul.output_pack = ret->output_pack();
 	} else {
@@ -496,6 +495,19 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 			ret << bor(*dst_reg, *src_a, *src_b);
 		}
 		break;
+		case M_FMUL: {
+			assert(dst_reg);
+			assert(src_a);
+			assert(src_b);
+			ret << nop().fmul(*dst_reg, *src_a, *src_b);
+		}
+		case A_FSUB: {
+			assert(dst_reg);
+			assert(src_a);
+			assert(src_b);
+			ret << fsub(*dst_reg, *src_a, *src_b);
+		}
+		break;
 		default:
 			breakpoint  // To catch inimplemented opcodes
 			did_something = false;
@@ -558,9 +570,8 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
     // Branch
     case BR: {
-			breakpoint  // TODO examine
-
-      assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
+			//breakpoint  // TODO examine
+      //assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
 
 			ret << branch(instr.BR.target.immOffset, instr.BR.target.relative);
 
@@ -784,6 +795,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 
 	UsedSlots slots(instrs);
 
+/*
 	// Collect all rf registers used with TMU
 	std::vector<uint8_t> tmu_regs;               // Stores rf indexes
   for (int i = 0; i < instrs.numElems; i++) {
@@ -798,6 +810,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 	for (auto n : tmu_regs) {
 		assert(slots.in_use(n));
 	}
+*/
 
 	// Main loop
   for (int i = 0; i < instrs.numElems; i++) {
@@ -806,6 +819,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 		// Assumption: uniform loads are always at the top of the instruction list
 		bool doing_init = !did_init && !instr.isUniformLoad();
 		if (doing_init) {
+/*
 	    instructions << calc_offset(numQPUs, slots.get_temp_slot());  // offset in r0
 
 			// Add offset to uniforms that are addresses
@@ -830,8 +844,11 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 				}
 			}
 
-			instructions << calc_stride(numQPUs, slots.get_slot())
-			             << instr::enable_tmu_read();
+			instructions << calc_stride(numQPUs, slots.get_slot());
+*/
+			instructions << set_qpu_id(0);
+			instructions << set_qpu_num(numQPUs, 1);
+			instructions << instr::enable_tmu_read();
 
 			did_init = true;
 		}

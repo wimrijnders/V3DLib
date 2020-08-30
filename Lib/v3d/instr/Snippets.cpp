@@ -5,15 +5,16 @@ namespace QPULib {
 namespace v3d {
 namespace instr {
 
-/**
- * Determine address offset for address registers.
- *
- * The offset is put in r0.
- * A register file location is also used as a temp storage location.
- *
- * @param reg_qpu_num index in the register file for location to put the qpu num in
- */
-Instructions calc_offset( uint8_t num_qpus, uint8_t reg_qpu_num) {
+Instructions set_qpu_id(uint8_t reg_qpu_id) {
+	Instructions ret;
+
+	ret << tidx(r0).comment("Set QPU id")
+			<< bor(rf(reg_qpu_id), r0, r0);  // Actually mov
+
+	return ret;
+}
+
+Instructions set_qpu_num(uint8_t num_qpus, uint8_t reg_qpu_num) {
 	Instructions ret;
 
 	if (num_qpus == 1) {
@@ -25,6 +26,25 @@ Instructions calc_offset( uint8_t num_qpus, uint8_t reg_qpu_num) {
 	} else {
 		assert(false);  // num_qpus must be 1 or 8
 	}
+
+	ret.front().comment("Set number of QPU's");
+
+	return ret;
+}
+
+
+/**
+ * Determine address offset for address registers.
+ *
+ * The offset is put in r0.
+ * A register file location is also used as a temp storage location.
+ *
+ * @param reg_qpu_num index in the register file for location to put the qpu num in
+ */
+Instructions calc_offset(uint8_t num_qpus, uint8_t reg_qpu_num) {
+	Instructions ret;
+
+	ret << set_qpu_num(num_qpus, reg_qpu_num);
 
 	ret << shl(r0, reg_qpu_num, 4)
 	    << eidx(r1)

@@ -10,6 +10,8 @@ namespace instr {
 using Instructions = std::vector<Instr>; 
 
 uint8_t get_shift(uint64_t num_qpus);
+Instructions set_qpu_id(uint8_t reg_qpu_id);
+Instructions set_qpu_num(uint8_t num_qpus, uint8_t reg_qpu_num);
 Instructions calc_offset( uint8_t num_qpus, uint8_t reg_qpu_num);
 Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride);
 Instructions enable_tmu_read(Instr const *last_slot = nullptr);

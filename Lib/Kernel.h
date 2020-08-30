@@ -126,25 +126,10 @@ template <> inline bool passParam< Ptr<Int>, SharedArray<int>* >
   return true;
 }
 
-// Pass a SharedArray<int*>*
-template <> inline bool passParam< Ptr<Ptr<Int>>, SharedArray<int*>* >
-  (Seq<int32_t>* uniforms, SharedArray<int*>* p)
-{
-  uniforms->append(p->getAddress());
-  return true;
-}
 
 // Pass a SharedArray<float>*
 template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
   (Seq<int32_t>* uniforms, SharedArray<float>* p)
-{
-  uniforms->append(p->getAddress());
-  return true;
-}
-
-// Pass a SharedArray<float*>*
-template <> inline bool passParam< Ptr<Ptr<Float>>, SharedArray<float*>* >
-  (Seq<int32_t>* uniforms, SharedArray<float*>* p)
 {
   uniforms->append(p->getAddress());
   return true;
