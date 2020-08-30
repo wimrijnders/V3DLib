@@ -17,44 +17,46 @@ namespace QPULib {
 // Modes of operation
 // ============================================================================
 
-// Two important compile-time macros are EMULATION_MODE and QPU_MODE.
-// With -D EMULATION_MODE, QPULib can be compiled for any architecture.
-// With -D QPU_MODE, QPULib can be compiled only for the Raspberry Pi.
-// At least one of these macros must be defined.
-
-// IN EMULATION_MODE a memory pool is used for allocating data that
-// can be read by kernels.  Otherwise, a mailbox interface to the
-// vc4 is used to allocate memory.  In both cases, see
-// 'vc4/SharedArray.h'.
+/**
+ * The interpreter and emulator are always available. However, these run only
+ * vc4 code. These will run on any architecture.
+ *
+ * The compile-time option `-D QPU_MODE` enables the execution of code on
+ * the VideoCore. This will work only on the Rasberry Pi.
+ * This macro is optional.
+ *
+ * We will define 'emulation mode' as a build without QPU_MODE defined.
+ *
+ * The memory pool management depend on this macro and on which 
+ * Pi platform is run:
+ *
+ * 1. Pure emulation mode (QPU_MODE not defined): 
+ *    Main memory is used.
+ * 2. QPU-mode on Pi4 (and lateri, v3d):
+ *    Uses the `v3d` memory allocation scheme, also for
+ *    emulation mode. This addresses the gpu-device for
+ *    allocating.
+ * 3. QPU-mode before Pi4 (vc4):
+ *    Uses the `v3d` memory allocation scheme, also for
+ *    emulation mode. A ox interface to the
+ *    vc4 is used to allocate memory.
+ *
+ * The memory pool implementations are in source files
+ * called `BufferObject.cpp` (Under `Target`, `v3d` and `vc4`).
+ */
 
 // The 'Kernel' class provides various ways to invoke a kernel:
 //
 //   * qpu(...)        invoke kernel on physical QPUs
 //                     (only available in QPU_MODE)
 //   * emulate(...)    invoke kernel using target code emulator
-//                     (only available in EMULATION_MODE)
 //   * interpret(...)  invoke kernel using source code interpreter
-//                     (only available in EMULATION_MODE)
-//   * call(...)       in EMULATION_MODE, same as emulate(...)
-//                     in QPU_MODE, same as qpu(...)
-//                     in EMULATION_MODE *and* QPU_MODE, same as emulate(...)
-
-// Notice it is OK to compile with both -D EMULATION_MODE *and*
-// -D QPU_MODE.
+//   * call(...)       in emulation mode, same as emulate(...)
+//                     with QPU_MODE, same as qpu(...)
 //
-// --------------------------------------------------------------------
-// **UPDATE 20200616**: Using both flags will compile, but
-//                      leads to segmentation Faults.
-//
-// A possible reason for this is that emulation and QPU require
-// differing implementations of `SharedArray<>`, which can not be used
-// both at the same time. Hence, the QPU implementation was used, which
-// might (far-fetched) have something to do with the segmentation faults.
-// --------------------------------------------------------------------
-//
-// This feature is provided for doing equivalance
+// Emulation mode calls are provided for doing equivalence
 // testing between the physical QPU and the QPU emulator.  However,
-// EMULATION_MODE introduces a performance penalty and should be used
+// emulation mode introduces a performance penalty and should be used
 // only for testing and debugging purposes.
 
 
@@ -140,6 +142,37 @@ template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
 // Kernels
 // ============================================================================
 
+class KernelBase {
+public:
+	void pretty(const char *filename = nullptr);
+
+  // Set number of QPUs to use
+  void setNumQPUs(int n) {
+    numQPUs = n;
+  }
+
+	int maxQPUs() {
+		if (Platform::instance().has_vc4) {
+			return 12;
+		} else {
+			return 8;
+		}
+	}
+
+protected:
+	int numQPUs = 1;                 // Number of QPUs to run on
+	Seq<int32_t> uniforms;           // Parameters to be passed to kernel
+	vc4::KernelDriver m_vc4_driver;  // Always required for emulator
+
+#ifdef QPU_MODE
+	v3d::KernelDriver m_v3d_driver;
+#endif
+
+	void init_compile();
+	void invoke_qpu(QPULib::KernelDriver &kernel_driver);
+};
+
+
 /**
  *
  * ----------------------------------------------------------------------------
@@ -164,28 +197,17 @@ template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
  *   The interpreter and emulator, however, work with vc4 code. For this reason
  *   it is necessary to have the vc4 kernel driver in use in all build cases.
  */
-template <typename... ts> struct Kernel {
+template <typename... ts> struct Kernel : public KernelBase {
 	using KernelFunction = void (*)(ts... params);
 
 public:
-  ~Kernel() {}
 
-  // Construct kernel out of C++ function
+	/**
+   * Construct kernel out of C++ function
+	 */
   Kernel(KernelFunction f) {
-    numQPUs = 1;
-
-    controlStack.clear();
-   	stmtStack.clear();         // Needs to be run before getUniformInt() below
-    stmtStack.push(mkSkip());  // idem
-    resetFreshVarGen();
-    resetFreshLabelGen();
-
-    // Reserved general-purpose variables
-    Int qpuId, qpuCount;
-    qpuId = getUniformInt();
-    qpuCount = getUniformInt();
-
 		{
+			init_compile();
 			set_compiling_for_vc4(true);
 
 	    // Construct the AST for vc4
@@ -198,17 +220,14 @@ public:
 
 #ifdef QPU_MODE
 		{
+			init_compile();
 			set_compiling_for_vc4(false);
-
-    	stmtStack.clear();
-	    stmtStack.push(mkSkip());
 
 	    // Construct the AST for v3d
 	    f(mkArg<ts>()...);
 			m_v3d_driver.compile();
 		}
 #endif  // QPU_MODE
-
   }
 
   template <typename... us> void emu(us... args) {
@@ -263,54 +282,9 @@ public:
     call(args...);
   }
 
-  // Set number of QPUs to use
-  void setNumQPUs(int n) {
-    numQPUs = n;
-  }
-
-	int maxQPUs() {
-		if (Platform::instance().has_vc4) {
-			return 12;
-		} else {
-			return 8;
-		}
-	}
-
-
-	void pretty(const char *filename = nullptr) {
-#ifdef QPU_MODE
-		if (Platform::instance().has_vc4) {
-			m_vc4_driver.encode(numQPUs);
-			m_vc4_driver.pretty(filename);
-		} else {
-			m_v3d_driver.encode(numQPUs);
-			m_v3d_driver.pretty(filename);
-		}
-#else
-		m_vc4_driver.encode(numQPUs);
-		m_vc4_driver.pretty(filename);
-#endif
-	}
-
 
 private:
-	Seq<int32_t> uniforms;  // Parameters to be passed to kernel
 	int numVars;            // The number of variables in the source code
-	int numQPUs;            // Number of QPUs to run on
-
-	vc4::KernelDriver m_vc4_driver;  // Always required for emulator
-
-#ifdef QPU_MODE
-	v3d::KernelDriver m_v3d_driver;
-#endif
-
-	void invoke_qpu(QPULib::KernelDriver &kernel_driver) {
-		kernel_driver.encode(numQPUs);
-		if (!kernel_driver.handle_errors()) {
-    	// Invoke kernel on QPUs
-			kernel_driver.invoke(numQPUs, &uniforms);
-		}
-	}
 };
 
 // Initialiser
