@@ -177,18 +177,8 @@ $(OBJ_DIR)/%.o: %.c
 	@mkdir -p $(@D)
 	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
-$(OBJ_DIR)/bin/Rot3DLib: $(OBJ_DIR)/Examples/Rot3DLib/Rot3DKernels.o
 
-
-# Leaving this out means Rot3DLib does not get compiled, and there's no warning
-# QPULIB needs to be at the back, for correct linking order
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/Rot3DLib/%.o $(OBJ_DIR)/Examples/Support/Settings.o $(QPULIB)
-	@echo Linking $@...
-	@mkdir -p $(@D)
-	@$(LINK) $^ $(LIBS) -o $@
-
-
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(OBJ_DIR)/Examples/Support/Settings.o $(QPULIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(EXAMPLES_OBJ) $(QPULIB)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
@@ -221,7 +211,7 @@ $(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB)
 	@mkdir -p $(@D)
 	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
-make_test: $(UNIT_TESTS) Rot3DLib ReqRecv detectPlatform
+make_test: $(UNIT_TESTS) Rot3D ReqRecv detectPlatform
 
 test : make_test
 	@echo Running unit tests with \'$(SUDO) $(UNIT_TESTS)\'

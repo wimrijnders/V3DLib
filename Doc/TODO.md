@@ -68,8 +68,7 @@ Feel free to add points here.
 ## Library Code
 
 - [ ] CMDLine
-  - [ ] Add param handling for `Rot3DLib`
-  - [ ] Allow for chained blocks of parameter definitions
+  - [x] Allow for chained blocks of parameter definitions
   - [ ] For display, sort the parameters (except for `--help`, which should be at top)
 - [ ] Add check in emulator for too many `gather()` calls
 - [x] Determine num QPUs from hardware
@@ -87,7 +86,6 @@ Feel free to add points here.
 - [ ] enable `-Wall` on compilation and deal with all the fallout
 - [ ] Scan current docs for typos, good language
 - [x] enable build for QPU and Emulation mode together
-- [ ] `Rot3DLib` handler for command line using `CmdParameter`
 
 
 ## Long Term
