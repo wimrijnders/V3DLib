@@ -4,7 +4,6 @@
 #include <QPULib.h>
 #include "Support/Settings.h"
 #include "Support/debug.h"
-#include <CmdParameters.h>
 #ifdef QPU_MODE
 #include "vc4/PerformanceCounters.h"
 #endif  // QPU_MODE

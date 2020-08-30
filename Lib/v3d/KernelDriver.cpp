@@ -463,65 +463,43 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	auto src_a = encodeSrcReg(reg_a.reg, ret);
 	auto src_b = encodeSrcReg(reg_b.reg, ret);
 
-	switch (src_instr.ALU.op) {
-		case A_SHL: {
-			assert(dst_reg.get() != nullptr);
-			assert(src_a.get() != nullptr);
-
-			assert(reg_b.tag == IMM); 
-			SmallImm imm(reg_b.smallImm.val);
-
-			ret << shl(*dst_reg, *src_a, imm);
-		}
-		break;
-		case A_ADD: {
-			assert(dst_reg.get() != nullptr);
-			assert(src_a.get() != nullptr);
-			assert(src_b.get() != nullptr);
-			ret << add(*dst_reg, *src_a, *src_b);
-		}
-		break;
-		case A_SUB: {
-			assert(dst_reg.get() != nullptr);
-			assert(src_a.get() != nullptr);
-			assert(src_b.get() != nullptr);
-			ret << sub(*dst_reg, *src_a, *src_b);
-		}
-		break;
-		case A_BOR: {
-			assert(dst_reg.get() != nullptr);
-			assert(src_a.get() != nullptr);
-			assert(src_b.get() != nullptr);
-			ret << bor(*dst_reg, *src_a, *src_b);
-		}
-		break;
-		case M_FMUL: {
-			assert(dst_reg);
-			assert(src_a);
-			assert(src_b);
-			ret << nop().fmul(*dst_reg, *src_a, *src_b);
-		}
-		case A_FSUB: {
-			assert(dst_reg);
-			assert(src_a);
-			assert(src_b);
-			ret << fsub(*dst_reg, *src_a, *src_b);
-		}
-		break;
-		default:
-			breakpoint  // To catch inimplemented opcodes
-			did_something = false;
+	if (dst_reg && src_a && src_b) {
+		switch (src_instr.ALU.op) {
+			case A_ADD:  ret << add(*dst_reg, *src_a, *src_b);        break;
+			case A_SUB:  ret << sub(*dst_reg, *src_a, *src_b);        break;
+			case A_BOR:  ret << bor(*dst_reg, *src_a, *src_b);        break;
+			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, *src_b); break;
+			case A_FSUB: ret << fsub(*dst_reg, *src_a, *src_b);       break;
+			default:
+				breakpoint  // unimplemented op
+				did_something = false;
 			break;
+		}
+	} else if (dst_reg && src_a && reg_b.tag == IMM) {
+		SmallImm imm(reg_b.smallImm.val);
+
+		switch (src_instr.ALU.op) {
+			case A_SHL: ret << shl(*dst_reg, *src_a, imm); break;
+			default:
+				breakpoint  // unimplemented op
+				did_something = false;
+			break;
+		}
+	} else {
+		breakpoint  // Unhandled combination of inputs/output
+		did_something = false;
 	}
 
 	return did_something;
 }
 
 
+/**
+ * Convert intermediate instruction into core instruction
+ */
 Instructions encodeInstr(QPULib::Instr instr) {
 	Instructions ret;
 
-  // Convert intermediate instruction into core instruction
   switch (instr.tag) {
     case IRQ:
 			assert(false);  // Not wanting this
@@ -571,7 +549,7 @@ Instructions encodeInstr(QPULib::Instr instr) {
     // Branch
     case BR: {
 			//breakpoint  // TODO examine
-      //assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
+      assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
 
 			ret << branch(instr.BR.target.immOffset, instr.BR.target.relative);
 
