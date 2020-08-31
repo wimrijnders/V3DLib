@@ -102,7 +102,8 @@ void run_qpu_kernel(KernelType &kernel) {
     y[i] = (float) i;
   }
 
-  settings.process(k, N, cosf(THETA), sinf(THETA), &x, &y);
+  k.load(N, cosf(THETA), sinf(THETA), &x, &y);
+  settings.process(k);
 
 	end_timer(tvStart);
 

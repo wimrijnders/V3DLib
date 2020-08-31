@@ -37,7 +37,8 @@ int main(int argc, const char *argv[]) {
   }
 
   // Invoke the kernel
-	settings.process(k, &a, &b, &r);
+	k.load(&a, &b, &r);
+	settings.process(k);
 
 	// Display the result
   for (int i = 0; i < 16; i++)

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <CmdParameters.h>
+#include "Support/Settings.h"
 
 using namespace QPULib;
 using std::string;
@@ -24,20 +25,26 @@ CmdParameters params = {
 };
 
 
-struct Settings {
+struct HeatMapSettings : public Settings {
 	const int ALL = 3;
 
 	int    kernel;
 	string kernel_name;
 
-  // Initialize constants for the kernels
-  const int NQPUS  = 1;
-
-
-
 	int init(int argc, const char *argv[]) {
+		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
+		auto const FAIL    = CmdParameters::EXIT_ERROR;
+
+		set_name(argv[0]);
+		params.add(base_params());
+
 		auto ret = params.handle_commandline(argc, argv, false);
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+		// Init the parameters in the parent
+		if (!process(&params, true)) {
+			ret = FAIL;
+		}
 
 		kernel      = params.parameters()[0]->get_int_value();
 		kernel_name = params.parameters()[0]->get_string_value();
@@ -215,7 +222,7 @@ void run_kernel() {
   //   * with zero padding, it is NROWS*NCOLS
   //   * i.e. there is constant cold at the edges
   //   * NCOLs should be a multiple of 16
-  //   * HEIGHT should be a multiple of NQPUS
+  //   * HEIGHT should be a multiple of num_qpus
   const int WIDTH  = 512-16;
   const int NCOLS  = WIDTH+16;
   const int HEIGHT = 504;
@@ -243,14 +250,15 @@ void run_kernel() {
 
   // Compile kernel
   auto k = compile(step);
+  //k.setNumQPUs(settings.num_qpus);  // default is 1
 
-  // Invoke kernel
-  k.setNumQPUs(settings.NQPUS);
   for (int i = 0; i < NSTEPS; i++) {
     if (i & 1)
-      k(&mapB, &mapA, NCOLS, WIDTH, HEIGHT);
+      k.load(&mapB, &mapA, NCOLS, WIDTH, HEIGHT);  // Load the uniforms
     else
-      k(&mapA, &mapB, NCOLS, WIDTH, HEIGHT);
+      k.load(&mapA, &mapB, NCOLS, WIDTH, HEIGHT);  // Load the uniforms
+
+		settings.process(k);  // Invoke the kernel
   }
 
   // Display results
@@ -297,7 +305,7 @@ int main(int argc, const char *argv[]) {
 	}
 
 	auto name = kernels[settings.kernel];
-	printf("Ran kernel '%s' with %d QPU's in ", name, settings.NQPUS);
+	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
 	end_timer(tvStart);
 
   return 0;

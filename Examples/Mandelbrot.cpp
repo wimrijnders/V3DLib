@@ -307,13 +307,13 @@ void run_qpu_kernel( decltype(mandelbrot_single) &kernel) {
 
   k.setNumQPUs(settings.num_qpus);
 
-  settings.process(
-		k,
+  k.load(
 		settings.topLeftReal, settings.topLeftIm,
 		offsetX, offsetY,
 		settings.numStepsWidth, settings.numStepsHeight,
 		settings.numIterations,
 		&result);
+  settings.process(k);
 
 	output_pgm(result);
 }

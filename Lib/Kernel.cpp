@@ -68,6 +68,55 @@ void KernelBase::invoke_qpu(QPULib::KernelDriver &kernel_driver) {
 }
 
 
+void KernelBase::emu() {
+	assert(uniforms.size() != 0);
+
+	// Emulator runs the vc4 code
+	emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, &uniforms, getBufferObject());
+}
+
+
+/**
+ * Invoke the interpreter
+ */
+void KernelBase::interpret() {
+	assert(uniforms.size() != 0);
+
+	// Interpreter runs the vc4 code
+	interpreter(numQPUs, m_vc4_driver.sourceCode(), numVars, &uniforms, getBufferObject());
+}
+
+
+#ifdef QPU_MODE
+/**
+ * Invoke kernel on physical QPU hardware
+ */
+void KernelBase::qpu() {
+	assert(uniforms.size() != 0);
+
+	if (Platform::instance().has_vc4) {
+		invoke_qpu(m_vc4_driver);
+	} else {
+		invoke_qpu(m_v3d_driver);
+	}
+}
+#endif  // QPU_MODE
+
+
+/**
+ * Invoke the kernel
+ */
+void KernelBase::call() {
+#ifdef EMULATION_MODE
+	emu();
+#else
+#ifdef QPU_MODE
+	qpu();
+#endif
+#endif
+};
+
+
 // ============================================================================
 // Compile kernel
 // ============================================================================

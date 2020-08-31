@@ -2,7 +2,6 @@
 #include <math.h>
 #include "../Examples/Rot3DLib/Rot3DKernels.h"
 
-//using namespace QPULib;
 using namespace Rot3DLib;
 
 // ============================================================================
@@ -84,7 +83,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 		{
 	  	auto k = compile(rot3D_1);
 			initSharedArrays(x_1, y_1, N);
-  		k(N, cosf(THETA), sinf(THETA), &x_1, &y_1);
+  		k.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
 			compareResults(x_scalar, y_scalar, x_1, y_1, N, "Rot3D_1 with Scalar", false);
 		}
 
@@ -93,14 +92,14 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 		{
 	  	auto k = compile(rot3D_2);
 			initSharedArrays(x, y, N);
-  		k(N, cosf(THETA), sinf(THETA), &x, &y);
+  		k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
 			compareResults(x_1, y_1, x, y, N, "Rot3D_2");
 		}
 
 		{
 	  	auto k = compile(rot3D_3);
 			initSharedArrays(x, y, N);
-  		k(N, cosf(THETA), sinf(THETA), &x, &y);
+  		k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
 			compareResults(x_1, y_1, x, y, N, "Rot3D_3");
 		}
 
@@ -110,8 +109,8 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 			INFO("Running with 8 kernels");
   		k.setNumQPUs(8);
 			initSharedArrays(x, y, N);
-  		k(N, cosf(THETA), sinf(THETA), &x, &y);
-			compareResults(x_1, y_1, x, y, N, "Rot3D_3 4 QPU's");
+  		k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+			compareResults(x_1, y_1, x, y, N, "Rot3D_3 8 QPU's");
 		}
 	}
 
@@ -120,13 +119,13 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 	  	auto k_1 = compile(rot3D_1);
 	  	SharedArray<float> x_1(N), y_1(N);
 			initSharedArrays(x_1, y_1, N);
-  		k_1(N, cosf(THETA), sinf(THETA), &x_1, &y_1);
+  		k_1.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
 
 	  	auto k_2 = compile(rot3D_2);
 	  	SharedArray<float> x_2(N), y_2(N);
 			initSharedArrays(x_2, y_2, N);
-  		k_2(N, cosf(THETA), sinf(THETA), &x_2, &y_2);
+  		k_2.load(N, cosf(THETA), sinf(THETA), &x_2, &y_2).call();
 
-			compareResults(x_1, y_1, x_2, y_2, N, "Rot3D_3 4 QPU's");
+			compareResults(x_1, y_1, x_2, y_2, N, "Rot3D_1 and Rot3D_2 1 QPU");
 	}
 }

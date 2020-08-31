@@ -30,7 +30,8 @@ int main(int argc, const char *argv[]) {
     array[i] = i;
 
   // Invoke the kernel
-	settings.process(k, &array);  
+  k.load(&array);
+  settings.process(k);
 
 	// Display the result
   for (int i = 0; i < 16; i++)

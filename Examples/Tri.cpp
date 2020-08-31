@@ -116,7 +116,8 @@ void run_single() {
     array[i] = i;
 
   // Invoke the kernel
-  settings.process(k, &array);
+  k.load(&array);
+  settings.process(k);
 
   // Display the result
   for (int i = 0; i < 16; i++)
@@ -137,7 +138,8 @@ void run_multi() {
     array[i] = i;
 
   // Invoke the kernel
-  settings.process(k, &array);
+  k.load(&array);
+  settings.process(k);
 
   // Display the result
   for (int i = 0; i < 64; i++)
@@ -157,7 +159,8 @@ void run_float() {
     array[i] = (float) i;
 
   // Invoke the kernel
-  settings.process(k, &array);
+  k.load(&array);
+  settings.process(k);
 
   // Display the result
   for (int i = 0; i < 16; i++)

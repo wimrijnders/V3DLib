@@ -48,8 +48,8 @@ int main(int argc, const char *argv[]) {
   for (int i = 0; i < 32; i++)
     a[i] = 100-i;
 
-  // Invoke the kernel
-	settings.process(k, &a);
+	k.load(&a);           // Load the uniforms
+	settings.process(k);  // Invoke the kernel
 
 	// Display the result
   for (int i = 0; i < 32; i++)
