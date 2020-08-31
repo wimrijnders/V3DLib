@@ -19,6 +19,16 @@ namespace QPULib {
 // Class KernelBase
 // ============================================================================
 
+int KernelBase::maxQPUs() {
+	// TODO: better would be to take the values from Platform
+	if (Platform::instance().has_vc4) {
+		return 12;
+	} else {
+		return 8;
+	}
+}
+
+
 void KernelBase::pretty(const char *filename) {
 #ifdef QPU_MODE
 	if (Platform::instance().has_vc4) {

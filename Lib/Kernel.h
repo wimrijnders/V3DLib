@@ -146,18 +146,9 @@ class KernelBase {
 public:
 	void pretty(const char *filename = nullptr);
 
-  // Set number of QPUs to use
-  void setNumQPUs(int n) {
-    numQPUs = n;
-  }
+  void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
 
-	int maxQPUs() {
-		if (Platform::instance().has_vc4) {
-			return 12;
-		} else {
-			return 8;
-		}
-	}
+	static int maxQPUs();
 
 protected:
 	int numQPUs = 1;                 // Number of QPUs to run on
