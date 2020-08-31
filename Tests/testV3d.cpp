@@ -45,7 +45,7 @@ const uint32_t DEFAULT_CODE_AREA_SIZE = 1024 * 1024;
 const uint32_t DEFAULT_DATA_AREA_SIZE = 32 * 1024 * 1024;
 
 
-// Note that do_nothing is an array of 64-bit values!
+// do_nothing is just the end-program sequence
 uint64_t do_nothing[] = {
 	0x3c203186bb800000, // nop; thrsw
 	0x3c203186bb800000, // nop; thrsw
@@ -135,7 +135,7 @@ void dump_data(T const &arr, bool do_all = false) {
 
 /**
  * @param skip_nops  If true, don't compare nops in received output.
- *                   This indicates instructions which can't be generated to bytecode
+ *                   This indicates instructions which can't be generated to bytecode (yet)
  */
 void match_kernel_outputs(
 	std::vector<uint64_t> const &expected,
@@ -202,7 +202,7 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
 
 	REQUIRE((num_qpus == 1 || num_qpus == 8));
 
-	uint32_t length = 32 * 1024 * 16;  // Highest number without overflows in 8  QPU's and CPU
+	uint32_t length = 32 * 1024 * 16;  // Highest number without overflows on 8 QPU's and CPU
 	                                   // The python version went to 32*1024*1024 and did some modulo magic.
 
 	if (num_qpus == 1) {
@@ -364,7 +364,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	SECTION("Summation example should work from bytecode") {
 		if (!v3d_init()) return;
 
-		uint8_t num_qpus = 8;  // Don't change these value! That's how the summation kernel bytecode
+		uint8_t num_qpus = 8;  // Don't change these values! That's how the summation kernel bytecode
 		int unroll_shift = 5;  // was compiled.
 
 		run_summation_kernel(summation, num_qpus, unroll_shift);

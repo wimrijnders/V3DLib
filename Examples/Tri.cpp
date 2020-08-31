@@ -1,5 +1,6 @@
 #include "QPULib.h"
 #include <CmdParameters.h>
+#include "Support/Settings.h"
 
 using namespace QPULib;
 
@@ -16,12 +17,24 @@ CmdParameters params = {
 };
 
 
-struct Settings {
-	int    kernel;
+struct TriSettings : public Settings {
+	int kernel;
 
 	int init(int argc, const char *argv[]) {
+		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
+		auto const FAIL    = CmdParameters::EXIT_ERROR;
+
+		set_name(argv[0]);
+		CmdParameters &params = ::params;
+		params.add(base_params(true));
+
 		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+		if (ret != SUCCESS) return ret;
+
+		// Init the parameters in the parent
+		if (!process(&params, true)) {
+			ret = FAIL;
+		}
 
 		kernel      = params.parameters()[0]->get_int_value();
 		return ret;
@@ -102,8 +115,10 @@ void run_single() {
   for (int i = 0; i < 16; i++)
     array[i] = i;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  // Invoke the kernel
+  settings.process(k, &array);
+
+  // Display the result
   for (int i = 0; i < 16; i++)
     printf("%i: %i\n", i, array[i]);
 }
@@ -114,17 +129,17 @@ void run_multi() {
 
   // Construct kernel
   auto k = compile(tri_multi);
-
-  // Use 4 QPUs
-  k.setNumQPUs(4);
+  k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(64);
   for (int i = 0; i < 64; i++)
     array[i] = i;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  // Invoke the kernel
+  settings.process(k, &array);
+
+  // Display the result
   for (int i = 0; i < 64; i++)
     printf("%i: %i\n", i, array[i]);
 }
@@ -141,8 +156,10 @@ void run_float() {
   for (int i = 0; i < 16; i++)
     array[i] = (float) i;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  // Invoke the kernel
+  settings.process(k, &array);
+
+  // Display the result
   for (int i = 0; i < 16; i++)
     printf("%i: %f\n", i, array[i]);
 }

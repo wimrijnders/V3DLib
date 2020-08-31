@@ -1,10 +1,13 @@
 #include "Target/Emulator.h"
 #include <math.h>
-#include <string.h>
+#include "Support/basics.h"  // fatal()
+#include "EmuSupport.h"
+#include "Common/Seq.h"
+#include "Common/Queue.h"
+#include "Common/SharedArray.h"
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
-#include "Common/SharedArray.h"
-
+#include "BufferObject.h"
 
 namespace QPULib {
 
@@ -213,8 +216,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
         s->dmaStore.active = false;
         return v; // Return value unspecified
       }
-      printf("QPULib: can't read special register\n");
-      abort();
+      fatal("QPULib: can't read special register");
     case NONE:
       for (int i = 0; i < NUM_LANES; i++)
         v.elems[i].intVal = 0;
@@ -448,8 +450,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
           break;
       }
 
-      printf("QPULib: can't write to special register\n");
-      abort();
+      fatal("QPULib: can't write to special register");
       return;
   }
 
@@ -482,18 +483,6 @@ Vec evalImm(Imm imm)
   // Unreachable
   assert(false);
 	return v;
-}
-
-// ============================================================================
-// Rotate a vector
-// ============================================================================
-
-Vec rotate(Vec v, int n)
-{
-  Vec w;
-  for (int i = 0; i < NUM_LANES; i++)
-    w.elems[(i+n) % NUM_LANES] = v.elems[i];
-  return w;
 }
 
 // ============================================================================
@@ -713,54 +702,13 @@ Vec alu(QPUState* s, State* g,
     case M_V8MAX:
     case M_V8ADDS:
     case M_V8SUBS:
-    default:
-      printf("QPULib: unsupported operator %i\n", op);
-      abort();
+    default: {
+			char buf[64];
+      sprintf(buf, "QPULib: unsupported operator %i", op);
+      fatal(buf);
+		}
   }
   return z;
-}
-
-// ============================================================================
-// Printing routines
-// ============================================================================
-
-void emitChar(Seq<char>* out, char c)
-{
-  if (out == NULL) printf("%c", c);
-  else out->append(c);
-}
-
-void emitStr(Seq<char>* out, const char* s)
-{
-  if (out == NULL)
-    printf("%s", s);
-  else
-    for (int i = 0; i < strlen(s); i++)
-      out->append(s[i]);
-}
-
-void printIntVec(Seq<char>* out, Vec x)
-{
-  char buffer[1024];
-  emitChar(out, '<');
-  for (int i = 0; i < NUM_LANES; i++) {
-    snprintf(buffer, sizeof(buffer), "%i", x.elems[i].intVal);
-    for (int j = 0; j < strlen(buffer); j++) emitChar(out, buffer[j]);
-    if (i != NUM_LANES-1) emitChar(out, ',');
-  }
-  emitChar(out, '>');
-}
-
-void printFloatVec(Seq<char>* out, Vec x)
-{
-  char buffer[1024];
-  emitChar(out, '<');
-  for (int i = 0; i < NUM_LANES; i++) {
-    snprintf(buffer, sizeof(buffer), "%f", x.elems[i].floatVal);
-    for (int j = 0; j < strlen(buffer); j++) emitChar(out, buffer[j]);
-    if (i != NUM_LANES-1) emitChar(out, ',');
-  }
-  emitChar(out, '>');
 }
 
 // ============================================================================
@@ -831,8 +779,7 @@ void emulate(
                 s->pc += 3+t.immOffset;
               }
               else {
-                printf("QPULib: found unsupported form of branch target\n");
-                abort();
+                fatal("QPULib: found unsupported form of branch target");
               }
             }
             break;
@@ -841,8 +788,7 @@ void emulate(
           case BRL:
           // Label
           case LAB:
-            printf("QPULib: emulator does not support labels\n");
-            abort();
+            fatal("QPULib: emulator does not support labels");
           // No-op
           case NO_OP:
             break;

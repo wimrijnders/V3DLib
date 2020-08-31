@@ -1,3 +1,4 @@
+#include "Kernel.h"
 #include "Source/Translate.h"
 #include "Target/Emulator.h"
 #include "Target/RemoveLabels.h"
@@ -12,6 +13,60 @@
 #include "Target/Pretty.h"
 
 namespace QPULib {
+
+
+// ============================================================================
+// Class KernelBase
+// ============================================================================
+
+int KernelBase::maxQPUs() {
+	// TODO: better would be to take the values from Platform
+	if (Platform::instance().has_vc4) {
+		return 12;
+	} else {
+		return 8;
+	}
+}
+
+
+void KernelBase::pretty(const char *filename) {
+#ifdef QPU_MODE
+	if (Platform::instance().has_vc4) {
+		m_vc4_driver.encode(numQPUs);
+		m_vc4_driver.pretty(filename);
+	} else {
+		m_v3d_driver.encode(numQPUs);
+		m_v3d_driver.pretty(filename);
+	}
+#else
+	m_vc4_driver.encode(numQPUs);
+	m_vc4_driver.pretty(filename);
+#endif
+}
+
+
+void KernelBase::init_compile() {
+	controlStack.clear();
+	stmtStack.clear();         // Needs to be run before getUniformInt() below
+	stmtStack.push(mkSkip());  // idem
+	resetFreshVarGen();
+	resetFreshLabelGen();
+
+	// Reserved general-purpose variables
+	Int qpuId, qpuCount;
+	qpuId = getUniformInt();
+	qpuCount = getUniformInt();
+}
+
+
+void KernelBase::invoke_qpu(QPULib::KernelDriver &kernel_driver) {
+	kernel_driver.encode(numQPUs);
+	if (!kernel_driver.handle_errors()) {
+   	// Invoke kernel on QPUs
+		kernel_driver.invoke(numQPUs, &uniforms);
+	}
+}
+
 
 // ============================================================================
 // Compile kernel

@@ -1,7 +1,7 @@
 #ifndef _LIB_DEBUG_H
 #define _LIB_DEBUG_H
 #include <signal.h>  // raise(SIGTRAP)
-#include <stdlib.h>  // abort, NULL
+//#include <stdlib.h>  // abort, NULL
 #include <cstdio>
 
 
@@ -10,12 +10,6 @@
 #else
 #include <assert.h>
 #endif
-
-
-inline void fatal(const char *str) {
-	printf("FATAL: %s\n", str);
-	abort();
-}
 
 
 #ifdef DEBUG

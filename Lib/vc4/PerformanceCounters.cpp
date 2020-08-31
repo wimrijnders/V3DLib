@@ -1,6 +1,7 @@
 #ifdef QPU_MODE
 #include "PerformanceCounters.h"
 #include <sstream>
+#include "Support/debug.h"
 
 
 namespace QPULib {
@@ -71,6 +72,7 @@ const char *PerformanceCounters::Description[PerformanceCounters::NUM_PERF_COUNT
  *                 that index. Default: clear all counter registers.
  */
 void PerformanceCounters::clear(uint32_t bitMask) {
+	//printf("Called PerformanceCounters::clear() with mask %x\n", bitMask);
   bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
 	RM::writeRegister(RM::V3D_PCTRC, bitMask);
 }
@@ -109,16 +111,10 @@ uint32_t PerformanceCounters::enabled() {
  * - There is no problem with designating the same counter index multiple times.
  */
 void PerformanceCounters::enable(Init list[]) {
-	// Set the passed registers
-	for (int i = 0; !list[i].isEnd(); ++i) {
-		RM::Index targetIndex = (RM::Index) (RM::V3D_PCTRS0 + 2*list[i].slotIndex);
-		//printf("targetIndex: %d\n", targetIndex);
-		//printf("counterIndex: %d\n", list[i].counterIndex);
-		RM::writeRegister(targetIndex, list[i].counterIndex);
-	}
+	//printf("Called PerformanceCounters::enable()\n");
 
 	// Set enabling bitmask 
-	uint32_t bitMask = enabled();
+	uint32_t bitMask = 0;
 
 	for (int i = 0; !list[i].isEnd(); ++i) {
 		//printf("enable handling counter %d\n", list[i].counterIndex);
@@ -131,6 +127,14 @@ void PerformanceCounters::enable(Init list[]) {
 	bitMask = bitMask | (1 << 31);
 
 	RM::writeRegister(RM::V3D_PCTRE, bitMask);
+
+	// Set the passed registers
+	for (int i = 0; !list[i].isEnd(); ++i) {
+		RM::Index targetIndex = (RM::Index) (RM::V3D_PCTRS0 + 2*list[i].slotIndex);
+		RM::writeRegister(targetIndex, list[i].counterIndex);
+	}
+
+	//printf("enable() post:\n%s", showEnabled().c_str());
 }
 
 
@@ -142,6 +146,8 @@ void PerformanceCounters::enable(Init list[]) {
  *                 that index. Default: disable all counter registers.
  */
 void PerformanceCounters::disable(uint32_t bitMask) {
+	//printf("Called PerformanceCounters::disable() with mask %x\n", bitMask);
+
 	bitMask = enabled() & ~bitMask;
 	bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
 
@@ -166,14 +172,22 @@ std::string PerformanceCounters::showEnabled() {
 
 	for (int i = 0; i < SLOT_COUNT; ++i) {
 		bool enabled = (0 != (bitMask & (1 << i)));
-		if (!enabled) continue;
+		if (!enabled) {
+			//os << "   Performance counter slot " << i << " not enabled\n";
+			continue;
+		}
 
 		RM::Index sourceIndex = (RM::Index) (RM::V3D_PCTR0 + 2*i);
 		Index counterIndex = (Index) RM::readRegister(sourceIndex + 1);
 		//printf("counterIndex: %d\n", counterIndex);
 		//fflush(stdout);
 
-		os << "  " <<  Description[counterIndex] << ": " << RM::readRegister(sourceIndex) << "\n";
+		if (counterIndex < 0 || counterIndex >= NUM_PERF_COUNTERS) {
+			os << "   WARNING: Performance counter index 0x" << std::hex << counterIndex << std::dec
+			   << " out of bounds for slot index " << i << "\n";
+		} else {
+			os << "  " <<  Description[counterIndex] << ": " << RM::readRegister(sourceIndex) << "\n";
+		}
 	}
 
 	return os.str();

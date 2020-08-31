@@ -2,7 +2,7 @@
 #define _QPULIB_SMALL_LITERAL_H_
 
 #include "Source/Syntax.h"
-#include "Target/Emulator.h"
+#include "EmuSupport.h"  // Word
 
 namespace QPULib {
 

@@ -107,7 +107,8 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 		// Do rot3D_3 with multiple QPU's
 		{
 	  	auto k = compile(rot3D_3);
-  		k.setNumQPUs(4);
+			INFO("Running with 8 kernels");
+  		k.setNumQPUs(8);
 			initSharedArrays(x, y, N);
   		k(N, cosf(THETA), sinf(THETA), &x, &y);
 			compareResults(x_1, y_1, x, y, N, "Rot3D_3 4 QPU's");

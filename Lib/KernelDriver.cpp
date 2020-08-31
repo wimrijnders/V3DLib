@@ -30,7 +30,6 @@ bool KernelDriver::handle_errors() {
 	if (errors.empty()) {
 		return false;
 	}
-	breakpoint;
 
 	cout << "Errors encountered during encoding:\n";
 

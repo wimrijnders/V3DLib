@@ -11,10 +11,11 @@
 TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
 
 	SECTION("Check num QPU's vc4") {
+		if (!Platform::instance().has_vc4) return;
+		const int MAX_QPUS = 12;
+
 		using RegMap = QPULib::RegisterMap;
 		QPULib::enableQPUs();  // Required for accessing the registers
-
-		if (!Platform::instance().has_vc4) return;
  
 		REQUIRE(4 == RegMap::numQPUPerSlice());
 		REQUIRE(3 == RegMap::numSlices());
@@ -25,8 +26,6 @@ TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
 
 	SECTION("Check num QPU's v3d") {
 		if (Platform::instance().has_vc4) return; 
-
-		printf("Checking num QPU's v3d\n");
 		const int MAX_QPUS_V3D = 8;
 
 		QPULib::v3d::RegisterMapping map_v3d;

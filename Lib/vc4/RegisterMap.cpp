@@ -6,7 +6,9 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <bcm_host.h>
-#include "Mailbox.h"  // for mapmem()
+#include "Support/basics.h"  // fatal()
+#include "Mailbox.h"         // for mapmem()
+#include "vc4.h"
 
 
 namespace QPULib {
@@ -15,9 +17,11 @@ std::unique_ptr<RegisterMap> RegisterMap::m_instance;
 
 
 RegisterMap::RegisterMap() {
+	enableQPUs();
+
 	bcm_host_init();
 	unsigned addr = bcm_host_get_peripheral_address();
-	printf("Peripheral base: %08X\n", addr);
+	//printf("Peripheral base: %08X\n", addr);
 
 	m_size = bcm_host_get_peripheral_size();
 
@@ -26,7 +30,7 @@ RegisterMap::RegisterMap() {
 	// Following succeeds if it returns.
 	m_addr = (uint32_t *) mapmem(addr, m_size);
 	assert(m_addr != nullptr);
-	printf("init address: %08X, size: %u\n", m_addr, m_size);
+	//printf("init address: %08X, size: %u\n", m_addr, m_size);
 
 	bcm_host_deinit();
 }
@@ -36,6 +40,7 @@ RegisterMap::~RegisterMap() {
 	// printf("Closing down register map\n");
 	unmapmem((void *) m_addr, m_size);
 //	bcm_host_deinit();
+	disableQPUs();
 }
 
 
@@ -281,13 +286,13 @@ void RegisterMap::check_page_align(unsigned addr) {
 	long pagesize = sysconf(_SC_PAGESIZE);
 
 	if (pagesize <= 0) {
-		fprintf(stderr, "error: sysconf: %s\n", strerror(errno));
-		exit(-1);
+		char buf[64];
+		sprintf(buf, "error: sysconf: %s", strerror(errno));
+		fatal(buf);
 	}
 
 	if (addr & (((unsigned) pagesize) - 1)) {
-		fprintf(stderr, "error: peripheral address is not aligned to page size\n");
-		exit(-1);
+		fatal("error: peripheral address is not aligned to page size");
 	}
 }
 

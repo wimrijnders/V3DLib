@@ -16,13 +16,17 @@ using namespace QPULib::v3d::instr;
 
 using Instructions = std::vector<instr::Instr>;
 
-static int local_numQPUs = 0;
+namespace {
+
+int local_numQPUs = 0;
 std::vector<std::string> local_errors;
 
 /**
+ * TODO move this to snippets and consolidate with calc_offset()
+ *
  * source:  https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L22
  */
-static Instructions get_num_qpus(Register const &reg) {
+Instructions get_num_qpus(Register const &reg) {
 	assert(local_numQPUs == 1 || local_numQPUs == 8);
 	assert(reg.is_dest_acc());
 
@@ -41,8 +45,142 @@ static Instructions get_num_qpus(Register const &reg) {
 }
 
 
-
 uint8_t const REGB_OFFSET = 32;
+
+uint8_t to_waddr(Reg const &reg) {
+	assert(reg.tag == REG_A || reg.tag == REG_B);
+
+	// There is no reg A and B in v3d
+	// To distinguish between the register allocations,
+	// an offset for B is used for now
+	// TODO: clean this up
+	uint8_t reg_offset = 0;
+
+	if (reg.tag == REG_B) {
+		reg_offset = REGB_OFFSET;
+	}
+
+	return (uint8_t) (reg_offset + reg.regId);
+}
+
+
+class UsedSlots {
+public:
+	UsedSlots();
+	UsedSlots(Seq<QPULib::Instr> &instrs);
+
+	bool in_use(uint8_t n) const { return m_used[n]; }
+	uint8_t get_slot();
+	uint8_t get_temp_slot();
+	void dump();
+
+private:
+	const int NUM_SLOTS = 64;
+
+	std::vector<bool> m_used;
+
+	bool checkUniformAtTop(Seq<QPULib::Instr> &instrs);
+};
+
+
+UsedSlots::UsedSlots() {
+	m_used.reserve(NUM_SLOTS);
+
+	for (int n = 0; n < NUM_SLOTS; ++n) {
+		m_used << false;
+	}
+}
+
+
+/**
+ * Check assumption: uniform loads are always at the top of the instruction list.
+ */
+bool UsedSlots::checkUniformAtTop(Seq<QPULib::Instr> &instrs) {
+	bool doing_top = true;
+
+  for (int i = 0; i < instrs.numElems; i++) {
+    QPULib::Instr instr = instrs.elems[i];
+		if (doing_top) {
+			if (instr.isUniformLoad()) {
+				continue;  // as expected
+			}
+
+			doing_top = false;
+		} else {
+			if (!instr.isUniformLoad()) {
+				continue;  // as expected
+			}
+
+			return false;  // Encountered uniform NOT at the top of the instruction list
+		}
+	}
+
+	return true;
+}
+
+
+/**
+ * Initialize with the known uniform slots
+ */
+UsedSlots::UsedSlots(Seq<QPULib::Instr> &instrs) : UsedSlots() {
+	assert(checkUniformAtTop(instrs));
+
+  for (int i = 0; i < instrs.numElems; i++) {
+    QPULib::Instr instr = instrs.elems[i];
+
+		if (instr.isUniformLoad()) {
+			Reg dst_reg = instr.ALU.dest;
+
+			uint8_t addr = to_waddr(dst_reg);
+			assert(0 <= addr && addr < NUM_SLOTS);
+			m_used[(int) addr] = true;
+		}
+	}
+
+	dump();
+}
+
+
+uint8_t UsedSlots::get_slot() {
+	for (int n = 0; n < NUM_SLOTS; ++n) {
+		if (!m_used[n]) {
+			m_used[n] = true;
+			return (uint8_t) n;
+		}
+	}
+
+	assert(false);  // All slots in use! Will prob never happen...?
+	return 0;
+}
+
+
+uint8_t UsedSlots::get_temp_slot() {
+	for (int n = 0; n < NUM_SLOTS; ++n) {
+		if (!m_used[n]) {
+			return (uint8_t) n;
+		}
+	}
+
+	assert(false);  // All slots in use! Will prob never happen...?
+	return 0;
+}
+
+
+void UsedSlots::dump() {
+	printf("UsedSlots used: ");
+
+	for (int n = 0; n < NUM_SLOTS; ++n) {
+		if (m_used[n]) {
+			printf("%u, ", n);
+		}
+	}
+
+	printf("\n");
+}
+
+}  // anon namespace
+
+
 uint8_t const NOP_ADDR    = 39;
 
 v3d_qpu_mul_op encodeMulOp(ALUOp in_op) {
@@ -118,23 +256,6 @@ v3d_qpu_add_op encodeAddOp(ALUOp in_op) {
 }
 
 
-uint8_t to_waddr(Reg const &reg) {
-	assert(reg.tag == REG_A || reg.tag == REG_B);
-
-	// There is no reg A and B in v3d
-	// To distinguish between the register allocations,
-	// an offset for B is used for now
-	// TODO: clean this up
-	uint8_t reg_offset = 0;
-
-	if (reg.tag == REG_B) {
-		reg_offset = REGB_OFFSET;
-	}
-
-	return (uint8_t) (reg_offset + reg.regId);
-}
-
-
 std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 	assert(!src_instr.isUniformLoad());
 
@@ -207,12 +328,11 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_instr) {
 	std::unique_ptr<Location> ret = encodeDestReg(src_instr);
 	if (ret.get() == nullptr) {
+		breakpoint
 		return;
 	}
 
 	if (src_instr.isMul()) {
-		breakpoint
-
 		dst_instr.alu.mul.waddr = ret->to_waddr();
 		dst_instr.alu.mul.output_pack = ret->output_pack();
 	} else {
@@ -326,8 +446,9 @@ uint8_t encodeSrcReg_old(Reg reg) {
 					return 50;
       }
   }
-  fprintf(stderr, "QPULib: missing case in encodeSrcReg_old\n");
-  exit(EXIT_FAILURE);
+
+  fatal("QPULib: missing case in encodeSrcReg_old");
+	return 0;
 }
 
 
@@ -342,52 +463,43 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	auto src_a = encodeSrcReg(reg_a.reg, ret);
 	auto src_b = encodeSrcReg(reg_b.reg, ret);
 
-	switch (src_instr.ALU.op) {
-		case A_SHL: {
-			assert(dst_reg.get() != nullptr);
-			assert(src_a.get() != nullptr);
-
-			assert(reg_b.tag == IMM); 
-			SmallImm imm(reg_b.smallImm.val);
-
-			ret << shl(*dst_reg, *src_a, imm);
-		}
-		break;
-		case A_ADD: {
-			assert(dst_reg.get() != nullptr);
-			assert(src_a.get() != nullptr);
-			assert(src_b.get() != nullptr);
-			ret << add(*dst_reg, *src_a, *src_b);
-		}
-		break;
-		case A_SUB: {
-			assert(dst_reg.get() != nullptr);
-			assert(src_a.get() != nullptr);
-			assert(src_b.get() != nullptr);
-			ret << sub(*dst_reg, *src_a, *src_b);
-		}
-		break;
-		case A_BOR: {
-			assert(dst_reg.get() != nullptr);
-			assert(src_a.get() != nullptr);
-			assert(src_b.get() != nullptr);
-			ret << bor(*dst_reg, *src_a, *src_b);
-		}
-		break;
-		default:
-			breakpoint  // To catch inimplemented opcodes
-			did_something = false;
+	if (dst_reg && src_a && src_b) {
+		switch (src_instr.ALU.op) {
+			case A_ADD:  ret << add(*dst_reg, *src_a, *src_b);        break;
+			case A_SUB:  ret << sub(*dst_reg, *src_a, *src_b);        break;
+			case A_BOR:  ret << bor(*dst_reg, *src_a, *src_b);        break;
+			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, *src_b); break;
+			case A_FSUB: ret << fsub(*dst_reg, *src_a, *src_b);       break;
+			default:
+				breakpoint  // unimplemented op
+				did_something = false;
 			break;
+		}
+	} else if (dst_reg && src_a && reg_b.tag == IMM) {
+		SmallImm imm(reg_b.smallImm.val);
+
+		switch (src_instr.ALU.op) {
+			case A_SHL: ret << shl(*dst_reg, *src_a, imm); break;
+			default:
+				breakpoint  // unimplemented op
+				did_something = false;
+			break;
+		}
+	} else {
+		breakpoint  // Unhandled combination of inputs/output
+		did_something = false;
 	}
 
 	return did_something;
 }
 
 
+/**
+ * Convert intermediate instruction into core instruction
+ */
 Instructions encodeInstr(QPULib::Instr instr) {
 	Instructions ret;
 
-  // Convert intermediate instruction into core instruction
   switch (instr.tag) {
     case IRQ:
 			assert(false);  // Not wanting this
@@ -436,8 +548,7 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
     // Branch
     case BR: {
-			breakpoint  // TODO examine
-
+			//breakpoint  // TODO examine
       assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
 
 			ret << branch(instr.BR.target.immOffset, instr.BR.target.relative);
@@ -469,9 +580,6 @@ Instructions encodeInstr(QPULib::Instr instr) {
 			if (instr.isUniformLoad()) {
 					Reg dst_reg = instr.ALU.dest;
 					uint8_t rf_addr = to_waddr(dst_reg);
-					//if (rf_addr % REGB_OFFSET != 0) {
-					//	breakpoint  // warn me if this happens
-					//}
 					ret_instr = ldunifrf(rf_addr);
 					ret << ret_instr;
 					break;
@@ -643,8 +751,7 @@ Instructions encodeInstr(QPULib::Instr instr) {
 */
 		break;
 		default:
-  		fprintf(stderr, "v3d: missing case in encodeInstr\n");
-		 	exit(EXIT_FAILURE);
+  		fatal("v3d: missing case in encodeInstr");
   }
 
 /*
@@ -661,18 +768,86 @@ Instructions encodeInstr(QPULib::Instr instr) {
 /**
  * Translate instructions from target to v3d
  */
-void _encode(Seq<QPULib::Instr> &instrs, Instructions &instructions) {
+void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instructions) {
+	bool did_init = false;
+
+	UsedSlots slots(instrs);
+
+/*
+	// Collect all rf registers used with TMU
+	std::vector<uint8_t> tmu_regs;               // Stores rf indexes
   for (int i = 0; i < instrs.numElems; i++) {
     QPULib::Instr instr = instrs.elems[i];
+
+		if (instr.isTMUAWrite()) {
+			tmu_regs << to_waddr(instr.ALU.srcA.reg);
+		}
+	}
+
+	// Check that these are in fact slots with uniform values
+	for (auto n : tmu_regs) {
+		assert(slots.in_use(n));
+	}
+*/
+
+	// Main loop
+  for (int i = 0; i < instrs.numElems; i++) {
+    QPULib::Instr instr = instrs.elems[i];
+
+		// Assumption: uniform loads are always at the top of the instruction list
+		bool doing_init = !did_init && !instr.isUniformLoad();
+		if (doing_init) {
+/*
+	    instructions << calc_offset(numQPUs, slots.get_temp_slot());  // offset in r0
+
+			// Add offset to uniforms that are addresses
+			if (!tmu_regs.empty()) {  // Theoretically possible, not gonna happen IRL
+			                          // If there would be no addresses, we also wouln't need to calc offset and stride
+
+				const char *text = "# Set offsets for uniform addresses";
+
+				// For multiple adds here, it would be possible to use alu and mul in parallel,
+				// as happens in the summation kernel.
+
+				bool is_first = true;
+				for (auto n : tmu_regs) {
+					auto instr = add(rf(n), rf(n), r0);
+
+					if (is_first) {
+						instr.comment(text);
+						is_first = false;
+					}
+
+					instructions << instr;
+				}
+			}
+
+			instructions << calc_stride(numQPUs, slots.get_slot());
+*/
+			instructions << set_qpu_id(0);
+			instructions << set_qpu_num(numQPUs, 1);
+			instructions << instr::enable_tmu_read();
+
+			did_init = true;
+		}
 	
-		auto result = v3d::encodeInstr(instr);
-    instructions.insert(instructions.end(), result.begin(), result.end());
+		auto ret = v3d::encodeInstr(instr);
+
+		if (doing_init) {
+			ret.front().comment("# Main program");
+		}
+
+		instructions << ret;
   }
 
 	instructions << sync_tmu()
 			         << end_program();
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Class KernelDriver
+///////////////////////////////////////////////////////////////////////////////
 
 KernelDriver::KernelDriver() : QPULib::KernelDriver(V3dBuffer) {}
 
@@ -687,7 +862,7 @@ void KernelDriver::encode(int numQPUs) {
 	local_numQPUs = numQPUs;
 
 	// Encode target instructions
-	_encode(m_targetCode, instructions);
+	_encode((uint8_t) numQPUs, m_targetCode, instructions);
 
 	if (!local_errors.empty()) {
 		breakpoint

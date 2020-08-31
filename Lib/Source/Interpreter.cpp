@@ -1,12 +1,13 @@
 #include "Source/Interpreter.h"
-#include "Target/Emulator.h"
 #include "Common/SharedArray.h"
-#include "Support/debug.h"
+#include "Source/Syntax.h"
+#include "Common/BufferObject.h"
+#include "Target/EmuSupport.h"
+#include "Support/basics.h"
 
 namespace QPULib {
 
 namespace {
-
 
 // State of a single core.
 struct CoreState {
@@ -645,7 +646,7 @@ void exec(InterpreterState* state, CoreState* s)
 
     case DMA_START_READ:
     case DMA_START_WRITE:
-      printf("QPULib: DMA access not supported by interpreter\n");
+      fatal("QPULib: DMA access not supported by interpreter\n");
       break;
   }
 

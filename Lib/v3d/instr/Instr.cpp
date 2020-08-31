@@ -375,15 +375,22 @@ void Instr::alu_add_set_dst(Location const &loc1) {
 	alu.add.output_pack = loc1.output_pack();
 }
 
-void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
-	alu_add_set_dst(loc1);
 
+void Instr::alu_add_set_reg_a(Location const &loc2) {
 	if (loc2.is_rf()) {
 		raddr_a = loc2.to_waddr();
 		alu.add.a     = V3D_QPU_MUX_A;
 	} else {
 		alu.add.a     = loc2.to_mux();
 	}
+
+	alu.add.a_unpack = loc2.input_unpack();
+}
+
+
+void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+	alu_add_set_dst(loc1);
+	alu_add_set_reg_a(loc2);
 
 	if (loc3.is_rf()) {
 		raddr_b          = loc3.to_waddr(); 
@@ -392,8 +399,6 @@ void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location con
 		alu.add.b        = loc3.to_mux();
 		alu.add.b_unpack = loc3.input_unpack();
 	}
-
-	alu.add.a_unpack = loc2.input_unpack();
 }
 
 
@@ -474,12 +479,12 @@ Instr shr(uint8_t rf_addr1, uint8_t rf_addr2, int val) {
 
 Instr shl(Location const &loc1, Location const &loc2, SmallImm val) {
 	Instr instr;
+	instr.alu_add_set_reg_a(loc2);
 
 	instr.sig.small_imm = true; 
 	instr.raddr_a       = loc1.to_waddr(); 
 	instr.raddr_b       = val.to_raddr(); 
 	instr.alu.add.op    = V3D_QPU_A_SHL;
-	instr.alu.add.a     = loc2.to_mux();
 	instr.alu.add.b     = V3D_QPU_MUX_B;
 	instr.alu.add.waddr = loc1.to_waddr();
 
@@ -734,8 +739,6 @@ Instr branch(int target, int current) {
  *       eg. `cond na0`
  */
 Instr branch(int target, bool relative) {
-	breakpoint
-
 	Instr instr;
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
 
@@ -746,6 +749,7 @@ Instr branch(int target, bool relative) {
 		instr.branch.bdi = V3D_QPU_BRANCH_DEST_REL;
 		instr.branch.bdu = V3D_QPU_BRANCH_DEST_REL;  // not used when branch.ub == false, just set a value
 	} else {
+		breakpoint
 		instr.branch.bdi = V3D_QPU_BRANCH_DEST_ABS;
 		instr.branch.bdu = V3D_QPU_BRANCH_DEST_ABS;  // not used when branch.ub == false, just set a value
 	}

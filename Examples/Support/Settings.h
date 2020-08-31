@@ -1,7 +1,8 @@
 #ifndef _EXAMPLE_SUPPORT_SETINGS_H
 #define _EXAMPLE_SUPPORT_SETINGS_H
-#include <CmdParameters.h>
+#include <cassert>
 #include <string>
+#include <CmdParameters.h>
 
 namespace QPULib {
 
@@ -10,34 +11,43 @@ struct Settings {
 
 	bool output_code;
 	bool compile_only;
-//#ifdef EMULATION_MODE
-	int run_type;
-//#endif
+	int  run_type;
+	int  num_qpus = 1;
+#ifdef QPU_MODE
+	bool   show_perf_counters;
+#endif  // QPU_MODE
 
+	CmdParameters const &base_params(bool use_numqpus = false);
 	int init(int argc, const char *argv[]);
-	void output();
+	bool process(CmdParameters *in_params = nullptr, bool use_numqpus = false);
 
 	template<typename Kernel, typename... us>
 	void process(Kernel &k, us... args) {
+		startPerfCounters();
 
 		if (!compile_only) {
-//#ifdef EMULATION_MODE
 			switch (run_type) {
 				case 0: k(args...); break;
 				case 1: k.emu(args...); break;
 				case 2: k.interpret(args...); break;
 			}
-//#endif
-//#ifdef QPU_MODE
-//		k(args...);
-//#endif
 		}
 
+		stopPerfCounters();
+
 		if (output_code) {
+			assert(!name.empty());
 			std::string code_filename = name + "_code.txt";
 			k.pretty(code_filename.c_str());
 		}
 	}
+
+protected:
+	void set_name(const char *in_name);
+
+private:
+	void startPerfCounters();
+	void stopPerfCounters();
 };
 
 

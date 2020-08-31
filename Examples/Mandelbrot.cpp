@@ -12,6 +12,7 @@
 #include <QPULib.h>
 #include <CmdParameters.h>
 #include "vc4/RegisterMap.h"
+#include "Support/Settings.h"
 
 
 using namespace QPULib;
@@ -31,12 +32,6 @@ CmdParameters params = {
 		kernels,
     "Select the kernel to use"
 	}, {
-    "Num QPU's",
-    "-n=",
-		INTEGER,
-    "Number of QPU's to use. Must be a value between 1 an 12 inclusive (TODO: not enforced yet)",
-		12
-	}, {
     "Output PGM file",
 		"-pgm",
 		ParamType::NONE,   // Prefix needed to disambiguate
@@ -47,11 +42,10 @@ CmdParameters params = {
 };
 
 
-struct MandSettings {
+struct MandSettings : public Settings {
 	const int ALL = 3;
 
 	int    kernel;
-	int    num_qpus;
 	string kernel_name;
 	bool   output_pgm;
 
@@ -64,18 +58,27 @@ struct MandSettings {
   const float bottomRightReal = 1.5f;
   const float bottomRightIm   = -2.0f;
 
-
   int num_items() { return numStepsWidth*numStepsHeight; }
 
-
 	int init(int argc, const char *argv[]) {
-		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
+		auto const FAIL    = CmdParameters::EXIT_ERROR;
 
-		kernel      = params.parameters()[0]->get_int_value();
-		kernel_name = params.parameters()[0]->get_string_value();
-		num_qpus    = params.parameters()[1]->get_int_value();
-		output_pgm  = params.parameters()[2]->get_bool_value();
+		set_name(argv[0]);
+		CmdParameters &params = ::params;
+		params.add(base_params(true));
+
+		auto ret = params.handle_commandline(argc, argv, false);
+		if (ret != SUCCESS) return ret;
+
+		// Init the parameters in the parent
+		if (!process(&params, true)) {
+			ret = FAIL;
+		}
+
+		kernel      = params.parameters()["Kernel"]->get_int_value();
+		kernel_name = params.parameters()["Kernel"]->get_string_value();
+		output_pgm  = params.parameters()["Output PGM file"]->get_bool_value();
 		//output();
 
 		return ret;
@@ -304,7 +307,8 @@ void run_qpu_kernel( decltype(mandelbrot_single) &kernel) {
 
   k.setNumQPUs(settings.num_qpus);
 
-	k(
+  settings.process(
+		k,
 		settings.topLeftReal, settings.topLeftIm,
 		offsetX, offsetY,
 		settings.numStepsWidth, settings.numStepsHeight,
@@ -337,7 +341,6 @@ void run_kernel(int kernel_index) {
 	}
 
 	auto name = kernels[kernel_index];
-
 	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
 	end_timer(tvStart);
 }

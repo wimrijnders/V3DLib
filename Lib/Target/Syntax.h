@@ -93,9 +93,13 @@ struct Reg {
   // Register identifier
   RegId regId;
 
-  bool operator==(const Reg &r) {
-    return tag == r.tag && regId == r.regId;
+  bool operator==(Reg const &rhs) const {
+    return tag == rhs.tag && regId == rhs.regId;
   }
+
+  bool operator!=(Reg const &rhs) const {
+  	return !(*this == rhs);
+	}
 };
 
 // ============================================================================
@@ -175,6 +179,14 @@ struct SmallImm {
   
   // Immediate value
   int val;
+
+	bool operator==(SmallImm const &rhs) const {
+		return tag == rhs.tag && val == rhs.val;
+	}
+
+  bool operator!=(SmallImm const &rhs) const {
+  	return !(*this == rhs);
+	}
 };
 
 // A register or a small immediate operand?
@@ -191,6 +203,20 @@ struct RegOrImm {
     // A small immediate
     SmallImm smallImm;
   };
+
+	bool operator==(RegOrImm const &rhs) const {
+		if (tag != rhs.tag) return false;
+
+		if (tag == REG) {
+			return reg == rhs.reg;
+		} else {
+			return smallImm == rhs.smallImm;
+		}
+	}
+
+  bool operator!=(RegOrImm const &rhs) const {
+  	return !(*this == rhs);
+	}
 };
 
 // ============================================================================
@@ -366,23 +392,6 @@ struct Instr {
   };
 
 
-	/**
-	 * Determines if the mul-ALU needs to be used
-	 *
-	 * TODO: Examine if this is still true for v3d
-	 */
-	bool isMul() const {
-		auto op = ALU.op;
-
-	  bool ret =
-			op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
-	    op == M_V8MIN  || op == M_V8MAX || op == M_V8ADDS ||
-	    op == M_V8SUBS || op == M_ROTATE;
-
-		return ret;
-	}
-
-
 	bool hasImm() const {
   	return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM;
 	}
@@ -392,23 +401,9 @@ struct Instr {
 		return ALU.op == M_ROTATE;
 	}
 
-
-	bool isUniformLoad() const {
-		if (ALU.srcA.tag != REG || ALU.srcB.tag != REG) {  // Both operands must be regs
-			return false;
-		}
-
-		Reg aReg  = ALU.srcA.reg;
-		Reg bReg  = ALU.srcB.reg;
-
-		if (aReg.tag == SPECIAL && aReg.regId == SPECIAL_UNIFORM) {
-			assert(aReg == bReg);  // Apparently, this holds
-			return true;
-		} else {
-			assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
-			return false;
-		}
-	}
+	bool isMul() const;
+	bool isUniformLoad() const;
+	bool isTMUAWrite() const;
 };
 
 // Instruction id: also the index of an instruction

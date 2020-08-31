@@ -1,4 +1,5 @@
 #include "Target/Encode.h"
+#include "Support/basics.h"  // fatal()
 #include "Target/Satisfy.h"
 #include "Target/Pretty.h"
 
@@ -40,8 +41,9 @@ uint32_t encodeAddOp(ALUOp op)
     case A_V8ADDS:  return 30;
     case A_V8SUBS:  return 31;
   }
-  fprintf(stderr, "QPULib: unknown add op\n");
-  exit(EXIT_FAILURE);
+
+  fatal("QPULib: unknown add op");
+	return 0;
 }
 
 uint32_t encodeMulOp(ALUOp op)
@@ -56,8 +58,9 @@ uint32_t encodeMulOp(ALUOp op)
     case M_V8ADDS: return 6;
     case M_V8SUBS: return 7;
   }
-  fprintf(stderr, "QPULib: unknown mul op\n");
-  exit(EXIT_FAILURE);
+
+  fatal("QPULib: unknown mul op");
+	return 0;
 }
 
 // ===============
@@ -77,8 +80,9 @@ uint32_t encodeAssignCond(AssignCond cond)
         case NC: return 5;
      }
   }
-  fprintf(stderr, "QPULib: missing case in encodeAssignCond\n");
-  exit(EXIT_FAILURE);
+
+  fatal("QPULib: missing case in encodeAssignCond");
+	return 0;
 }
 
 // =================
@@ -89,8 +93,7 @@ uint32_t encodeBranchCond(BranchCond cond)
 {
   switch (cond.tag) {
     case COND_NEVER:
-      fprintf(stderr, "QPULib: 'never' condition not supported\n");
-      exit(EXIT_FAILURE);
+      fatal("QPULib: 'never' condition not supported");
     case COND_ALWAYS: return 15;
     case COND_ALL:
       switch (cond.flag) {
@@ -109,8 +112,9 @@ uint32_t encodeBranchCond(BranchCond cond)
         default: break;
       }
   }
-  fprintf(stderr, "QPULib: missing case in encodeBranchCond\n");
-  exit(EXIT_FAILURE);
+
+  fatal("QPULib: missing case in encodeBranchCond");
+	return 0;
 }
 
 // ================
@@ -181,8 +185,9 @@ uint32_t encodeDestReg(Reg reg, RegTag* file)
       // NONE maps to 'NOP' in regfile.
       *file = AorB; return 39;
   }
-  fprintf(stderr, "QPULib: missing case in encodeDestReg\n");
-  exit(EXIT_FAILURE);
+
+  fatal("QPULib: missing case in encodeDestReg");
+	return 0;
 }
 
 
@@ -261,8 +266,9 @@ uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux)
         case SPECIAL_DMA_ST_WAIT: assert(file == REG_B); *mux = 7; return 50;
       }
   }
-  fprintf(stderr, "QPULib: missing case in encodeSrcReg\n");
-  exit(EXIT_FAILURE);
+
+  fatal("QPULib: missing case in encodeSrcReg");
+	return 0;
 }
 
 // ===================
@@ -468,8 +474,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
       return;
   }
 
-  fprintf(stderr, "QPULib: missing case in encodeInstr\n");
-  exit(EXIT_FAILURE);
+  fatal("QPULib: missing case in encodeInstr");
 }
 
 // =================

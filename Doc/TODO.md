@@ -7,6 +7,11 @@ Feel free to add points here.
 - An item that is completed and merged to `development` is removed from the list.
 
 
+## v3d
+
+- [ ] Add performance counters (see `Rot3D` for usage under `vc4`
+
+
 ## Makefile
 
 - [X] Enable debug-build, for debugging. Currently, an indication is given in the Makefile how to do this.
@@ -44,6 +49,12 @@ Feel free to add points here.
 
   This error happens twice, for `testRot3D`.
 
+
+## Unit Tests
+
+- [ ] Make display of Performance Counters a cmdline option for examples (see `Rot3D`)
+
+
 ## Investigate
 
 - [ ] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
@@ -57,8 +68,7 @@ Feel free to add points here.
 ## Library Code
 
 - [ ] CMDLine
-  - [ ] Add param handling for `Rot3DLib`
-  - [ ] Allow for chained blocks of parameter definitions
+  - [x] Allow for chained blocks of parameter definitions
   - [ ] For display, sort the parameters (except for `--help`, which should be at top)
 - [ ] Add check in emulator for too many `gather()` calls
 - [x] Determine num QPUs from hardware
@@ -72,11 +82,10 @@ Feel free to add points here.
 
 ## Other
 
-- [x] `Rot3D` make various versions selectable on command line *(in progress)*
+- [x] `Rot3D` make various versions selectable on command line
 - [ ] enable `-Wall` on compilation and deal with all the fallout
 - [ ] Scan current docs for typos, good language
 - [x] enable build for QPU and Emulation mode together
-- [x] `Rot3DLib` handler for command line parameters
 
 
 ## Long Term
@@ -93,7 +102,7 @@ Feel free to add points here.
 
 ## Principles
 
-- QPU-mode should not compile on non-RPi platforms
+- QPU-mode should not compile on non-RPi platforms, default to emulator instead
 
 
 ## Stuff to Consider

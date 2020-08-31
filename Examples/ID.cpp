@@ -21,17 +21,19 @@ int main(int argc, const char *argv[]) {
   // Construct kernel
   auto k = compile(hello);
 
+	int array_size = 16*k.maxQPUs();
+
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(192);
-  for (int i = 0; i < 192; i++)
+  SharedArray<int> array(array_size);
+  for (int i = 0; i < array_size; i++)
     array[i] = 0;
 
   // Invoke the kernel
-  k.setNumQPUs(12);
+  k.setNumQPUs(k.maxQPUs());
 	settings.process(k, &array);
 
 	// Display the result
-  for (int i = 0; i < 192; i++) {
+  for (int i = 0; i < array_size; i++) {
     printf("%i: %i\n", i, array[i]);
   }
   

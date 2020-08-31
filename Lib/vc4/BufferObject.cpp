@@ -1,10 +1,10 @@
 #include "BufferObject.h"
 #include <cassert>
 #include <stdio.h>
-#include <cstdlib>  // exit(), EXIT_FAILURE
 #include "Mailbox.h"
 #include "vc4.h"
 #include "../Support/Platform.h"  // has_vc4() 
+#include "../Support/basics.h"
 #include "../Support/debug.h"
 
 #define GPU_MEM_FLG 0xC // cached=0xC; direct=0x4
@@ -28,8 +28,7 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 	// Allocate memory
 	handle = mem_alloc(mb, size_in_bytes*4, 4096, GPU_MEM_FLG);
 	if (!handle) {
-		fprintf(stderr, "Failed to allocate GPU memory.");
-		exit(EXIT_FAILURE);  // TODO throw instead, with the hope of cleaning up allocated mem after us
+		fatal("Failed to allocate GPU memory.");
 	}
 
 	phyaddr = /* (void*) */ mem_lock(mb, handle);

@@ -15,8 +15,6 @@ public:
 	const BufferType buftype = HeapBuffer;
 
 private:
-	uint32_t emuHeapEnd = 0;
-
 	void alloc_heap(uint32_t size);
 	void dealloc() { delete [] arm_base; arm_base = nullptr; }
 	void check_available(uint32_t n);
