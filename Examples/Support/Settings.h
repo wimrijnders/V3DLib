@@ -11,14 +11,15 @@ struct Settings {
 
 	bool output_code;
 	bool compile_only;
-	int run_type;
+	int  run_type;
+	int  num_qpus = 1;
 #ifdef QPU_MODE
 	bool   show_perf_counters;
 #endif  // QPU_MODE
 
+	CmdParameters const &base_params(bool use_numqpus = false);
 	int init(int argc, const char *argv[]);
-	void process(CmdParameters *in_params = nullptr);
-	static CmdParameters &params();
+	bool process(CmdParameters *in_params = nullptr, bool use_numqpus = false);
 
 	template<typename Kernel, typename... us>
 	void process(Kernel &k, us... args) {

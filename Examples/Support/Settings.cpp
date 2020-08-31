@@ -6,12 +6,12 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include "Settings.h"
 #include <memory>
+#include "Kernel.h"  // maxQPUs()
+
 #ifdef QPU_MODE
 #include "Support/Platform.h"
 #include "vc4/PerformanceCounters.h"
-#endif  // QPU_MODE
 
-#ifdef QPU_MODE
 using PC = QPULib::PerformanceCounters;
 #endif  // QPU_MODE
 
@@ -100,36 +100,59 @@ const char *blurb =
 ;
 
 
+CmdParameters base_params = {
+	blurb,
+	{{
+		"Output Generated Code",
+		"-f",
+		ParamType::NONE,     // Prefix needed to dsambiguate
+		"Write representations of the generated code to file"
+	}, { 
+		"Compile Only",
+		"-c",
+		ParamType::NONE,     // Prefix needed to dsambiguate
+		"Compile the kernel but do not run it"
+	}, {
+		"Select run type",
+		"-r=",
+		{"default", "emulator", "interpreter"},
+		"Run on the QPU emulator or run on the interpreter"
+#ifdef QPU_MODE
+		}, {
+    "Performance Counters",
+    "-pc",
+		ParamType::NONE,
+    "Show the values of the performance counters (vc4 only)"
+#endif  // QPU_MODE
+	}}
+};
+
+
+CmdParameters numqpu_params = {
+	"",
+	{{
+    "Num QPU's",
+    "-n=",
+		INTEGER,
+    "Number of QPU's to use. The values depends on the platform being run on:\n"
+		"  - vc4 (Pi3+ and earlier), emulator: an integer value from 1 to 12 (inclusive)\n"
+		"  - v3d (Pi4)                       : 1 or 8\n",
+		1
+	}}
+};
+
+
 std::unique_ptr<CmdParameters> params;
 
-CmdParameters &instance() {
+CmdParameters &instance(bool use_numqpus = false) {
 	if (!params) {
-		params.reset( new CmdParameters{
-			blurb,
-			{{
-				"Output Generated Code",
-				"-f",
-				ParamType::NONE,     // Prefix needed to dsambiguate
-				"Write representations of the generated code to file"
-			}, { 
-				"Compile Only",
-				"-c",
-				ParamType::NONE,     // Prefix needed to dsambiguate
-				"Compile the kernel but do not run it"
-			}, {
-				"Select run type",
-				"-r=",
-				{"default", "emulator", "interpreter"},
-				"Run on the QPU emulator or run on the interpreter"
-#ifdef QPU_MODE
-			}, {
-		    "Performance Counters",
-		    "-pc",
-				ParamType::NONE,
-		    "Show the values of the performance counters (vc4 only)"
-#endif  // QPU_MODE
-			}}
-		});
+		CmdParameters *p = new CmdParameters(base_params);
+
+		if (use_numqpus) {
+			p->add(numqpu_params);
+		}
+
+		params.reset(p);
 	}
 
 	return *params;
@@ -139,6 +162,11 @@ CmdParameters &instance() {
 
 
 namespace QPULib {
+
+
+CmdParameters const &Settings::base_params(bool use_numqpus) {
+	return instance(use_numqpus);
+}
 
 
 int Settings::init(int argc, const char *argv[]) {
@@ -159,7 +187,7 @@ void Settings::set_name(const char *in_name) {
 }
 
 
-void Settings::process(CmdParameters *in_params) {
+bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 	CmdParameters &params = (in_params != nullptr)?*in_params:instance();
 
 	output_code  = params.parameters()["Output Generated Code"]->get_bool_value();
@@ -168,6 +196,24 @@ void Settings::process(CmdParameters *in_params) {
 #ifdef QPU_MODE
 	show_perf_counters  = params.parameters()["Performance Counters"]->get_bool_value();
 #endif  // QPU_MODE
+
+	if (use_numqpus) {
+		num_qpus    = params.parameters()["Num QPU's"]->get_int_value();
+
+		if (run_type != 0 || Platform::instance().has_vc4) {  // vc4 only
+			if (num_qpus < 0 || num_qpus > 12) {
+				printf("ERROR: For vc4 and emulator, the number of QPU's selected must be between 1 and 12 inclusive.\n");
+				return false;
+			}
+		} else {
+			if (num_qpus != 1 && num_qpus != 8) {
+				printf("ERROR: For v3d, the number of QPU's selected must be 1 or 8.\n");
+				return false;
+			}
+		}
+	}
+
+	return true;
 }
 
 
@@ -179,7 +225,7 @@ void Settings::startPerfCounters() {
 		if (Platform::instance().has_vc4) {  // vc4 only
 			initPerfCounters();
 		} else {
-			printf("WARNING: Performance counters enabled for VC4 only.\n");
+			printf("NOTE: Performance counters enabled for VC4 only.\n");
 		}
 	}
 #endif
@@ -196,11 +242,6 @@ void Settings::stopPerfCounters() {
 		}
 	}
 #endif
-}
-
-
-CmdParameters &Settings::params() {
-	return instance();
 }
 
 }  // namespace QPULib;

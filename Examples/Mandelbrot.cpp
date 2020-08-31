@@ -32,20 +32,13 @@ CmdParameters params = {
 		kernels,
     "Select the kernel to use"
 	}, {
-    "Num QPU's",
-    "-n=",
-		INTEGER,
-    "Number of QPU's to use. Must be a value between 1 an 12 inclusive (TODO: not enforced yet)",
-		12
-	}, {
     "Output PGM file",
 		"-pgm",
 		ParamType::NONE,   // Prefix needed to disambiguate
     "Output a PGM bitmap of the calculation results.\n"
     "If enabled, a PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
     "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled\n",
-  }},
-	&Settings::params()
+  }}
 };
 
 
@@ -53,7 +46,6 @@ struct MandSettings : public Settings {
 	const int ALL = 3;
 
 	int    kernel;
-	int    num_qpus;
 	string kernel_name;
 	bool   output_pgm;
 
@@ -66,24 +58,27 @@ struct MandSettings : public Settings {
   const float bottomRightReal = 1.5f;
   const float bottomRightIm   = -2.0f;
 
-
   int num_items() { return numStepsWidth*numStepsHeight; }
 
-
 	int init(int argc, const char *argv[]) {
+		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
+		auto const FAIL    = CmdParameters::EXIT_ERROR;
+
 		set_name(argv[0]);
 		CmdParameters &params = ::params;
+		params.add(base_params(true));
 
 		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+		if (ret != SUCCESS) return ret;
 
 		// Init the parameters in the parent
-		Settings::process(&params);
+		if (!process(&params, true)) {
+			ret = FAIL;
+		}
 
-		kernel      = params.parameters()[0]->get_int_value();
-		kernel_name = params.parameters()[0]->get_string_value();
-		num_qpus    = params.parameters()[1]->get_int_value();
-		output_pgm  = params.parameters()[2]->get_bool_value();
+		kernel      = params.parameters()["Kernel"]->get_int_value();
+		kernel_name = params.parameters()["Kernel"]->get_string_value();
+		output_pgm  = params.parameters()["Output PGM file"]->get_bool_value();
 		//output();
 
 		return ret;
