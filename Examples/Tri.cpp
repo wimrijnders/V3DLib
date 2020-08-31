@@ -13,23 +13,28 @@ CmdParameters params = {
     "-k=",
 		kernels,
     "Select the kernel to use"
-	}},
-	&Settings::params()
+	}}
 };
 
 
 struct TriSettings : public Settings {
-	int    kernel;
+	int kernel;
 
 	int init(int argc, const char *argv[]) {
+		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
+		auto const FAIL    = CmdParameters::EXIT_ERROR;
+
 		set_name(argv[0]);
 		CmdParameters &params = ::params;
+		params.add(base_params(true));
 
 		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+		if (ret != SUCCESS) return ret;
 
 		// Init the parameters in the parent
-		Settings::process(&params);
+		if (!process(&params, true)) {
+			ret = FAIL;
+		}
 
 		kernel      = params.parameters()[0]->get_int_value();
 		return ret;
@@ -124,9 +129,7 @@ void run_multi() {
 
   // Construct kernel
   auto k = compile(tri_multi);
-
-  // Use 4 QPUs
-  k.setNumQPUs(4);
+  k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(64);

@@ -30,42 +30,39 @@ CmdParameters params = {
 		kernels,
     "Select the kernel to use"
 	}, {
-    "Num QPU's",
-    "-n=",
-		POSITIVE_INTEGER,
-    "Number of QPU's to use. Must be a value between 1 an 12 inclusive (TODO: not enforced yet)",
-		12
-	}, {
     "Display Results",
     "-d",
 		ParamType::NONE,
     "Show the results of the calculations"
-  }},
-	&Settings::params()
+  }}
 };
 
 
 struct Rot3DSettings : public Settings {
 	int    kernel;
-	int    num_qpus;
 	bool   show_results;
 
 	int init(int argc, const char *argv[]) {
+		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
+		auto const FAIL    = CmdParameters::EXIT_ERROR;
+
 		set_name(argv[0]);
 		CmdParameters &params = ::params;
+		params.add(base_params(true));
 
 		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+		if (ret != SUCCESS) return ret;
 
 		// Init the parameters in the parent
-		Settings::process(&params);
+		if (!process(&params, true)) {
+			ret = FAIL;
+		}
 
 		kernel              = params.parameters()["Kernel"]->get_int_value();
 		//kernel_name       = params.parameters()["Kernel"]->get_string_value();
-		num_qpus            = params.parameters()["Num QPU's"]->get_int_value();
 		show_results        = params.parameters()["Display Results"]->get_bool_value();
 
-		printf("Num QPU's in settings: %d\n", num_qpus);
+		//printf("Num QPU's in settings: %d\n", num_qpus);
 		return ret;
 	}
 } settings;
