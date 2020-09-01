@@ -43,15 +43,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	std::vector<Instr> ret;
 
-	// Useful little code snippet for debugging
-	nop().dump(true);
-	uint64_t op = 0x02679356b4201000ull; //, "b.anyap  -1268280496" },
-	test_unpack_pack(op);
-	Instr::show(op);
-	auto tmp_op =
-		bb(rf(19)).anyap()
-	;
-	tmp_op.dump(true);
 
 	ret
 		<< nop().ldvary()
@@ -70,7 +61,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		/* vfmul input packing */
 		<< fmax(rf(46), r4.l(), r2.l()).nornn().vfmul(rf(45), r3, r5).ifnb()
 
-//; printf("here\n"); ret
 		<< faddnf(r2.l(), r5.l(), r4).norc().vfmul(rf(15), r0.ll(), r4).ldunif().ifb()
 		<< fcmp(rf(61).h(), r4.abs(), r2.l()).ifna().vfmul(rf(55), r2.hh(), r1)
 
@@ -85,7 +75,19 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		/* small immediates */
 		<< vflb(rf(24)).andnn().fmul(rf(14), -8, rf(8).h())  // small imm, how used?? Not internally
 		<< vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()  // idem
-		<< faddnf(rf(55), SmallImm(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb()
+		<< faddnf(rf(55), SmallImm(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb();
+
+
+	// Useful little code snippet for debugging
+	nop().dump(true);
+	uint64_t op = 0x7dff89fa6a01f020ull; //, "fsub.nornc  rf58.h, 0x3b800000.l, r3.l; fmul.ifnb  rf39, r0.h, r0.h" },
+	test_unpack_pack(op);
+	Instr::show(op);
+	auto tmp_op =
+		//bb(rf(19)).anyap()
+		fsub(rf(58).h(), SmallImm(0x3b800000).l(), r3.l()).nornc().fmul(rf(39), r0.h(), r0.h()).ifnb()
+	;
+	tmp_op.dump(true);
 
 		// No clue how to deal with the big number
 		// 0x7dff89fa6a01f020ull, "fsub.nornc  rf58.h, 0x3b800000.l, r3.l; fmul.ifnb  rf39, r0.h, r0.h" },
@@ -101,6 +103,7 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		//      a_unpack: UNPACK_L, 
 		//    },
 		//	...
+	ret
 		<< nop()
 
     /* branch conditions */

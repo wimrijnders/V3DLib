@@ -728,7 +728,7 @@ Instructions adjust_length_for_unroll(
 		-16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1};
 
 	// length /= 16 * 8 * num_qpus * unroll
-	ret << shr(reg_length, reg_length, num_shifts[7 + num_qpus_shift + unroll_shift]);
+	ret << shr(rf(reg_length), rf(reg_length), num_shifts[7 + num_qpus_shift + unroll_shift]);
 
 	return ret;
 }

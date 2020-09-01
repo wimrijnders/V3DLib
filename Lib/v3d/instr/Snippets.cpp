@@ -46,7 +46,7 @@ Instructions calc_offset(uint8_t num_qpus, uint8_t reg_qpu_num) {
 
 	ret << set_qpu_num(num_qpus, reg_qpu_num);
 
-	ret << shl(r0, reg_qpu_num, 4)
+	ret << shl(r0, rf(reg_qpu_num), 4)
 	    << eidx(r1)
 	    << add(r0, r0, r1)
 	    << shl(r0, r0, 2);
@@ -90,7 +90,7 @@ Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
 	const char *text = "# stride = 4 * 16 * num_qpus";
 
 	ret << mov(rf(reg_stride), 1).comment(text)
-	    << shl(reg_stride, reg_stride, 6 + num_qpus_shift);
+	    << shl(rf(reg_stride), rf(reg_stride), 6 + num_qpus_shift);
 
 	return ret;
 }

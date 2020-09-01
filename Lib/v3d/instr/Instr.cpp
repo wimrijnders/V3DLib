@@ -388,17 +388,31 @@ void Instr::alu_add_set_reg_a(Location const &loc2) {
 }
 
 
-void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
-	alu_add_set_dst(loc1);
-	alu_add_set_reg_a(loc2);
-
+void Instr::alu_add_set_reg_b(Location const &loc3) {
 	if (loc3.is_rf()) {
 		raddr_b          = loc3.to_waddr(); 
 		alu.add.b        = V3D_QPU_MUX_B;
 	} else {
 		alu.add.b        = loc3.to_mux();
-		alu.add.b_unpack = loc3.input_unpack();
 	}
+
+	alu.add.b_unpack = loc3.input_unpack();
+}
+
+
+void Instr::alu_add_set_imm(SmallImm const &imm3) {
+	// Apparently, imm is always set in b, even
+	// if it's the second param in the instruction
+	sig.small_imm = true; 
+	raddr_b       = imm3.to_raddr(); 
+	alu.add.b     = V3D_QPU_MUX_B;
+}
+
+
+void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+	alu_add_set_dst(loc1);
+	alu_add_set_reg_a(loc2);
+	alu_add_set_reg_b(loc3);
 }
 
 
@@ -445,33 +459,15 @@ Instr ldunifrf(uint8_t rf_address) {
 }
 
 
-Instr shr(Register const &reg1, Register const &reg2, uint8_t val) {
+Instr shr(Location const &loc1, Location const &loc2, SmallImm val) {
 	Instr instr;
+	instr.alu_add_set_dst(loc1);
+	instr.alu_add_set_reg_a(loc2);
+	instr.alu_add_set_imm(val);
 
-	instr.sig.small_imm = true; 
-	instr.sig_magic     = true; 
-	instr.raddr_a       = reg2.to_waddr(); 
-	instr.raddr_b       = val; 
 	instr.alu.add.op    = V3D_QPU_A_SHR;
-	instr.alu.add.waddr = reg1.to_waddr();
-	instr.alu.add.b     = V3D_QPU_MUX_B;
 
-	return instr;
-}
-
-
-Instr shr(uint8_t rf_addr1, uint8_t rf_addr2, int val) {
-	Instr instr;
-
-	instr.sig.small_imm = true; 
-	instr.sig_magic     = true; 
-	instr.raddr_a       = rf_addr1; 
-	instr.raddr_b       = (uint8_t) val; 
-	instr.alu.add.op    = V3D_QPU_A_SHR;
-	instr.alu.add.waddr = rf_addr2;
-	instr.alu.add.magic_write = false;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
+	instr.sig_magic     = true;    // TODO: need this? Also for shl?
 
 	return instr;
 }
@@ -479,51 +475,21 @@ Instr shr(uint8_t rf_addr1, uint8_t rf_addr2, int val) {
 
 Instr shl(Location const &loc1, Location const &loc2, SmallImm val) {
 	Instr instr;
+	instr.alu_add_set_dst(loc1);
 	instr.alu_add_set_reg_a(loc2);
+	instr.alu_add_set_imm(val);
 
-	instr.sig.small_imm = true; 
-	instr.raddr_a       = loc1.to_waddr(); 
-	instr.raddr_b       = val.to_raddr(); 
 	instr.alu.add.op    = V3D_QPU_A_SHL;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = loc1.to_waddr();
+
+	//?? instr.sig_magic     = true;  // Set in shr, need it here?
 
 	return instr;
 }
 
 
-Instr shl(Register const &reg1, uint8_t rf_addr, uint8_t val) {
-	Instr instr;
-
-	instr.sig.small_imm = true; 
-	instr.raddr_a       = rf_addr; 
-	instr.raddr_b       = val; 
-	instr.alu.add.op    = V3D_QPU_A_SHL;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = reg1.to_waddr();
-
-	return instr;
-}
-
-
-Instr shl(uint8_t rf_addr1, uint8_t rf_addr2, int  val) {
-	Instr instr;
-
-	instr.sig.small_imm = true; 
-	instr.raddr_a       = rf_addr1; 
-	instr.raddr_b       = (uint8_t) val; 
-	instr.sig_magic     = true; 
-	instr.alu.add.op    = V3D_QPU_A_SHL;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = rf_addr2;
-	instr.alu.add.magic_write = false;
-
-	return instr;
-}
-
-// 'and' is a keyword
+/**
+ * 'and' is a keyword, hence prefix 'b'
+ */
 Instr band(Location const &loc1, Register const &reg, uint8_t val) {
 	Instr instr;
 	instr.alu_add_set_dst(loc1);
@@ -883,11 +849,25 @@ Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3) {
 }
 
 
-Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3) {
+Instr fsub(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
-	instr.alu_add_set(loc1, reg2, reg3);
+	instr.alu_add_set(loc1, loc2, loc3);
 
 	instr.alu.add.op    = V3D_QPU_A_FSUB;
+
+	return instr;
+}
+
+
+Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
+	Instr instr;
+	instr.alu_add_set_dst(loc1); 
+	instr.alu_add_set_reg_a(loc3);  // ! param 3 goes to a!
+	instr.alu_add_set_imm(imm2);
+
+	instr.alu.add.op    = V3D_QPU_A_FSUB;
+
+	//breakpoint  // TODO
 
 	return instr;
 }

@@ -76,6 +76,8 @@ public:
 
 	void alu_add_set_dst(Location const &loc1); 
 	void alu_add_set_reg_a(Location const &loc2);
+	void alu_add_set_reg_b(Location const &loc3);
+	void alu_add_set_imm(SmallImm const &imm3);
 	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_mul_set(Location const &loc11, Location const &loc2, Location const &loc3); 
 
@@ -101,12 +103,8 @@ Instr nop();
 Instr ldunifrf(uint8_t rf_address);
 Instr tidx(Register const &reg);
 
-Instr shr(Register const &loc1, Register const &loc2, uint8_t val);
-Instr shr(uint8_t rf_addr1, uint8_t rf_addr2, int val);
-
+Instr shr(Location const &reg1, Location const & reg2, SmallImm val);
 Instr shl(Location const &reg1, Location const & reg2, SmallImm val);
-Instr shl(Register const &reg1, uint8_t rf_addr, uint8_t val);
-Instr shl(uint8_t rf_addr1, uint8_t rf_addr2, int val);
 
 Instr band(Location const &loc1, Register const &reg, uint8_t val);
 Instr eidx(Register const &reg);
@@ -139,6 +137,7 @@ Instr fmax(Location const &rf_addr1, Location const &reg2, Location const &reg3)
 Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
+Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &reg3);
 Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr fdx(Location const &loc1, Location const &loc2);
 Instr vflb(Location const &loc1);

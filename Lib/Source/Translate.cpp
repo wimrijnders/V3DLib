@@ -952,21 +952,6 @@ void setupVPMReadStmt(Seq<Instr>* seq, int n, Expr* e, int hor, int stride)
   }
 }
 
-void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride)
-{
-  if (e->tag == INT_LIT)
-    genSetupVPMStore(seq, e->intLit, hor, stride);
-  else if (e->tag == VAR)
-    genSetupVPMStore(seq, srcReg(e->var), hor, stride);
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    genSetupVPMStore(seq, srcReg(v), hor, stride);
-  }
-}
-
 // ============================================================================
 // DMA statements
 // ============================================================================
@@ -1299,10 +1284,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
   // Case: vpmSetupWrite(dir, addr, stride)
   // --------------------------------------
   if (s->tag == SETUP_VPM_WRITE) {
-    setupVPMWriteStmt(seq,
-      s->setupVPMWrite.addr,
-      s->setupVPMWrite.hor,
-      s->setupVPMWrite.stride);
+		getSourceTranslate().setupVPMWriteStmt(seq, s);	
     return;
   }
 

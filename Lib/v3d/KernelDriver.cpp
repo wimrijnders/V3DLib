@@ -295,7 +295,7 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
         case SPECIAL_DMA_LD_ADDR: return 50;
         case SPECIAL_HOST_INT:    return 38;
 */
-        case SPECIAL_VPM_WRITE:           // Write TMY, to set data to write
+        case SPECIAL_VPM_WRITE:           // Write TMU, to set data to write
 					ret.reset(new Register(tmud));
 					break;
         case SPECIAL_DMA_ST_ADDR:         // Write TMU, to set memory address to write to
@@ -343,9 +343,9 @@ void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_i
 
 
 /**
- * @param ret  current list of output instruction, out-parameter.
- *             Passed in because some extra instruction may be needed
- *             for v3d.
+ * @param opcodes  current list of output instruction, out-parameter.
+ *                 Passed in because some extra instruction may be needed
+ *                 for v3d.
  */
 std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 	bool is_none = false;
@@ -368,7 +368,6 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 			}
 			break;
     case SPECIAL:
-
       switch (reg.regId) {
         case SPECIAL_UNIFORM:
 					assert(false);  // Not expecting this, handled before this call
@@ -460,10 +459,11 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 
 	auto dst_reg = encodeDestReg(src_instr);
 
-	auto src_a = encodeSrcReg(reg_a.reg, ret);
-	auto src_b = encodeSrcReg(reg_b.reg, ret);
+	if (dst_reg && reg_a.tag == REG && reg_b.tag == REG) {
+		auto src_a = encodeSrcReg(reg_a.reg, ret);
+		auto src_b = encodeSrcReg(reg_b.reg, ret);
+		assert(src_a && src_b);
 
-	if (dst_reg && src_a && src_b) {
 		switch (src_instr.ALU.op) {
 			case A_ADD:  ret << add(*dst_reg, *src_a, *src_b);        break;
 			case A_SUB:  ret << sub(*dst_reg, *src_a, *src_b);        break;
@@ -475,7 +475,9 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 				did_something = false;
 			break;
 		}
-	} else if (dst_reg && src_a && reg_b.tag == IMM) {
+	} else if (dst_reg && reg_a.tag == REG && reg_b.tag == IMM) {
+		auto src_a = encodeSrcReg(reg_a.reg, ret);
+		assert(src_a);
 		SmallImm imm(reg_b.smallImm.val);
 
 		switch (src_instr.ALU.op) {
@@ -524,13 +526,13 @@ Instructions encodeInstr(QPULib::Instr instr) {
 				breakpoint;  // check,  case not handled yet
 			}
 			if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
-				// TODO: figure out how to handle large immediates
-				std::string str = "Can't handle value '";
+				// TODO: figure out how to handle large immediates, if necessary at all
+				std::string str = "LI: Can't handle value '";
 				str += std::to_string(instr.LI.imm.intVal);
 				str += "'as small immediate";
-				breakpoint
+
 				local_errors << str;
-				ret << nop();
+				ret << nop().comment(str);
 			} else {
 				auto dst = encodeDestReg(instr);
 				SmallImm imm(rep_value);

@@ -8,6 +8,7 @@ namespace v3d {
 class SourceTranslate : public ISourceTranslate {
 public:
 	bool deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) override;
+	void  setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) override;
 };
 
 

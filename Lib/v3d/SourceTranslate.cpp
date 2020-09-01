@@ -22,5 +22,10 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	return true;
 }
 
+
+void SourceTranslate::setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) {
+	// ignore
+}
+
 }  // namespace v3d
 }  // namespace QPULib

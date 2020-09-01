@@ -3,7 +3,29 @@
 #include "../Target/LoadStore.h"
 #include "../Source/Translate.h"  // srcReg()
 
+
 namespace QPULib {
+
+namespace {
+
+void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride)
+{
+  if (e->tag == INT_LIT)
+    genSetupVPMStore(seq, e->intLit, hor, stride);
+  else if (e->tag == VAR)
+    genSetupVPMStore(seq, srcReg(e->var), hor, stride);
+  else {
+    AssignCond always;
+    always.tag = ALWAYS;
+    Var v = freshVar();
+    varAssign(seq, always, v, e);
+    genSetupVPMStore(seq, srcReg(v), hor, stride);
+  }
+}
+
+}  // anon namespace
+
+
 namespace vc4 {
 
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
@@ -37,6 +59,14 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	genWaitDMAStore(seq);
 
 	return true;
+}
+
+
+void SourceTranslate::setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) {
+    QPULib::setupVPMWriteStmt(seq,
+      s->setupVPMWrite.addr,
+      s->setupVPMWrite.hor,
+      s->setupVPMWrite.stride);
 }
 
 }  // namespace vc4
