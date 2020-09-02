@@ -55,8 +55,11 @@ public:
 	Instr &a0();
 	Instr &na0();
 	Instr &alla();
-	Instr &anyna();
+	Instr &anya();
 	Instr &anyap();
+	Instr &anyna();
+	Instr &anynaq();
+	Instr &anynap();
 	Instr &allna();
 
 	// Calls to set the mul part of the instruction
@@ -77,8 +80,12 @@ public:
 	void alu_add_set_dst(Location const &loc1); 
 	void alu_add_set_reg_a(Location const &loc2);
 	void alu_add_set_reg_b(Location const &loc3);
-	void alu_add_set_imm(SmallImm const &imm3);
+	void alu_add_set_imm_a(SmallImm const &imm3);
+	void alu_add_set_imm_b(SmallImm const &imm3);
+
 	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
+	void alu_add_set(Location const &loc1, SmallImm const &imm2, Location const &loc3);
+	void alu_add_set(Location const &loc1, Location const &loc2,  SmallImm const &imm3);
 	void alu_mul_set(Location const &loc11, Location const &loc2, Location const &loc3); 
 
 private:
@@ -98,13 +105,14 @@ private:
 
 const uint8_t vpm = 14;
 const uint32_t ifb = 3145728000;  // Value according to dump; No idea what this value is supposed to be and what it does!
+const uint32_t zero_addr = 0;
 
 Instr nop();
 Instr ldunifrf(uint8_t rf_address);
 Instr tidx(Register const &reg);
 
-Instr shr(Location const &reg1, Location const & reg2, SmallImm val);
-Instr shl(Location const &reg1, Location const & reg2, SmallImm val);
+Instr shr(Location const &reg1, Location const & reg2, SmallImm const &imm3);
+Instr shl(Location const &reg1, Location const & reg2, SmallImm const &imm3);
 
 Instr band(Location const &loc1, Register const &reg, uint8_t val);
 Instr eidx(Register const &reg);
@@ -125,6 +133,9 @@ Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 Instr branch(int target, int current);
 Instr branch(int target, bool relative);
 Instr bb(Location const &loc1);
+Instr bb(BranchDest const &loc1);
+Instr bb(uint32_t addr);
+Instr bu(uint32_t addr, Location const &loc2);
 
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 

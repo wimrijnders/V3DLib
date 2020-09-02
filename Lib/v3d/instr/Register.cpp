@@ -78,6 +78,15 @@ Register Register::swp() const {
 }
 
 
+v3d_qpu_mux BranchDest::to_mux() const {
+	std::string buf;
+	buf += "Can't use mux value for Branch dest '" + m_name + "', it is not defined";
+	throw Exception(buf);
+
+	return (v3d_qpu_mux) 0;
+}
+
+
 Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0, true);
 Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1, true);
 Register const r2("r2", V3D_QPU_WADDR_R2, V3D_QPU_MUX_R2, true);
@@ -86,6 +95,9 @@ Register const r4("r4", V3D_QPU_WADDR_R4, V3D_QPU_MUX_R4, true);
 Register const r5("r5", V3D_QPU_WADDR_R5, V3D_QPU_MUX_R5);
 Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
 Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
+
+// For branch
+BranchDest const lri("lri", V3D_QPU_WADDR_R0);
 
 }  // instr
 }  // v3d

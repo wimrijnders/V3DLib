@@ -33,6 +33,19 @@ private:
 };
 
 
+class BranchDest : public Location {
+public: 
+	BranchDest(const char *name, v3d_qpu_waddr dest) : m_name(name), m_dest(dest) {}
+
+	v3d_qpu_waddr to_waddr() const override { return m_dest; }
+	v3d_qpu_mux to_mux() const override;
+
+private:
+	std::string   m_name;
+	v3d_qpu_waddr m_dest;
+};
+
+
 extern Register const r0;
 extern Register const r1;
 extern Register const r2;
@@ -41,6 +54,9 @@ extern Register const r4;
 extern Register const r5;
 extern Register const tmua;
 extern Register const tmud;
+
+// For branch
+extern BranchDest const lri;
 
 }  // instr
 }  // v3d

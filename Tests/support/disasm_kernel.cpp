@@ -75,45 +75,34 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		/* small immediates */
 		<< vflb(rf(24)).andnn().fmul(rf(14), -8, rf(8).h())  // small imm, how used?? Not internally
 		<< vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()  // idem
-		<< faddnf(rf(55), SmallImm(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb();
+		<< faddnf(rf(55), SmallImm(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb()
+		<< fsub(rf(58).h(), SmallImm(0x3b800000).l(), r3.l()).nornc().fmul(rf(39), r0.h(), r0.h()).ifnb()
+
+    /* branch conditions */
+		<< bb(rf(19)).anyap()
+		<< bb(zero_addr+0xd0b76a28).anynaq()
+		<< bb(lri).anynaq()
+		<< bu(zero_addr+0x7316fe10, rf(35)).anya()
+	;
+
 
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x7dff89fa6a01f020ull; //, "fsub.nornc  rf58.h, 0x3b800000.l, r3.l; fmul.ifnb  rf39, r0.h, r0.h" },
+	uint64_t op = 0x020000050040e000ull;  //, "bu.anynaq  lri, r:unif" },
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-		//bb(rf(19)).anyap()
-		fsub(rf(58).h(), SmallImm(0x3b800000).l(), r3.l()).nornc().fmul(rf(39), r0.h(), r0.h()).ifnb()
+		//bu(lri, r.unif()).anynaq()
+		bu(zero_addr+0x7316fe10, rf(35)).anya()
 	;
 	tmp_op.dump(true);
 
-		// No clue how to deal with the big number
-		// 0x7dff89fa6a01f020ull, "fsub.nornc  rf58.h, 0x3b800000.l, r3.l; fmul.ifnb  rf39, r0.h, r0.h" },
-		// My take so far:
-		// fsub(rf(58).h(), r0  /* 0x3b800000 .l()*/, r3.l()).nornc().fmul(rf(39), r0.h(), r0.h()).ifnb()
-		// In addition, the following are set:
-		//
-		//  sig: {small_imm },
-		//  raddr_b: 32,
-		//  alu: {
-		//    add:     {
-		//      a: MUX_B,
-		//      a_unpack: UNPACK_L, 
-		//    },
-		//	...
-	ret
-		<< nop()
-
-    /* branch conditions */
-		<< bb(rf(19)).anyap()
+	ret <<
+		nop()
 	;
 
 #if 0
-        { 33, 0x02b76a2dd0400000ull, "b.anynaq  zero_addr+0xd0b76a28" },
-        { 33, 0x0200000500402000ull, "b.anynaq  lri" },
-        { 33, 0x0216fe167301c8c0ull, "bu.anya  zero_addr+0x7316fe10, rf35" },
         { 33, 0x020000050040e000ull, "bu.anynaq  lri, r:unif" },
         { 33, 0x0200000300006000ull, "bu.na0  lri, a:unif" },
 

@@ -228,9 +228,13 @@ Instr &Instr::set_branch_condition(v3d_qpu_branch_cond cond) {
 Instr &Instr::a0()    { return set_branch_condition(V3D_QPU_BRANCH_COND_A0); }
 Instr &Instr::na0()   { return set_branch_condition(V3D_QPU_BRANCH_COND_NA0); }
 Instr &Instr::alla()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
-Instr &Instr::anyna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYNA); }
-Instr &Instr::anyap() { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYA); }
 Instr &Instr::allna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
+Instr &Instr::anya()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYA); }
+Instr &Instr::anyna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYNA); }
+
+Instr &Instr::anyap()  { branch.msfign =  V3D_QPU_MSFIGN_P; return anya(); }
+Instr &Instr::anynaq() { branch.msfign =  V3D_QPU_MSFIGN_Q; return anyna(); }
+Instr &Instr::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna(); }
 
 // End Conditions  branch instructions
 
@@ -400,12 +404,23 @@ void Instr::alu_add_set_reg_b(Location const &loc3) {
 }
 
 
-void Instr::alu_add_set_imm(SmallImm const &imm3) {
-	// Apparently, imm is always set in b, even
+void Instr::alu_add_set_imm_a(SmallImm const &imm3) {
+	// Apparently, imm is always set in raddr_b, even
 	// if it's the second param in the instruction
 	sig.small_imm = true; 
 	raddr_b       = imm3.to_raddr(); 
+
+	alu.add.a     = V3D_QPU_MUX_B;
+	alu.add.a_unpack = imm3.input_unpack();
+}
+
+
+void Instr::alu_add_set_imm_b(SmallImm const &imm3) {
+	sig.small_imm = true; 
+	raddr_b       = imm3.to_raddr(); 
+
 	alu.add.b     = V3D_QPU_MUX_B;
+	alu.add.b_unpack = imm3.input_unpack();
 }
 
 
@@ -413,6 +428,20 @@ void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location con
 	alu_add_set_dst(loc1);
 	alu_add_set_reg_a(loc2);
 	alu_add_set_reg_b(loc3);
+}
+
+
+void Instr::alu_add_set(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
+	alu_add_set_dst(loc1);
+	alu_add_set_imm_a(imm2);
+	alu_add_set_reg_b(loc3);
+}
+
+
+void Instr::alu_add_set(Location const &loc1, Location const &loc2,  SmallImm const &imm3) {
+	alu_add_set_dst(loc1);
+	alu_add_set_reg_a(loc2);
+	alu_add_set_imm_b(imm3);
 }
 
 
@@ -459,28 +488,22 @@ Instr ldunifrf(uint8_t rf_address) {
 }
 
 
-Instr shr(Location const &loc1, Location const &loc2, SmallImm val) {
+Instr shr(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	Instr instr;
-	instr.alu_add_set_dst(loc1);
-	instr.alu_add_set_reg_a(loc2);
-	instr.alu_add_set_imm(val);
+	instr.alu_add_set(loc1, loc2,  imm3);
 
 	instr.alu.add.op    = V3D_QPU_A_SHR;
-
 	instr.sig_magic     = true;    // TODO: need this? Also for shl?
 
 	return instr;
 }
 
 
-Instr shl(Location const &loc1, Location const &loc2, SmallImm val) {
+Instr shl(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	Instr instr;
-	instr.alu_add_set_dst(loc1);
-	instr.alu_add_set_reg_a(loc2);
-	instr.alu_add_set_imm(val);
+	instr.alu_add_set(loc1, loc2,  imm3);
 
 	instr.alu.add.op    = V3D_QPU_A_SHL;
-
 	//?? instr.sig_magic     = true;  // Set in shr, need it here?
 
 	return instr;
@@ -740,22 +763,75 @@ Instr bb(Location const &loc1) {
 	Instr instr;
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
 
-  instr.sig.ldunif = true;
-  instr.sig.ldunifa = true;
+	// Values instr.sig   not important
+	// Values instr.flags not important
 
 	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
 	instr.branch.ub =  false;
 
-	// flags: {ac: <<UNKNOWN>>, mc: <<UNKNOWN>>, apf: <<UNKNOWN>>, mpf: PF_PUSHZ, auf: UF_NONE, muf: <<UNKNOWN>>},
-	instr.flags.mpf = V3D_QPU_PF_PUSHZ;
-	instr.flags.auf = V3D_QPU_UF_NONE;
-
-//	instr.branch.cond = V3D_QPU_BRANCH_COND_ANYA;
-	instr.branch.msfign =  V3D_QPU_MSFIGN_P;
 	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_REGFILE;
 	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
 	instr.branch.raddr_a = loc1.to_waddr();
 	instr.branch.offset = 0;
+
+	return instr;
+}
+
+
+Instr bb(BranchDest const &loc1) {
+	Instr instr;
+	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
+
+	// Values instr.sig   not important
+	// Values instr.flags not important
+
+	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+	instr.branch.ub =  false;
+
+	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_LINK_REG;
+	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
+	instr.branch.raddr_a = loc1.to_waddr();
+	instr.branch.offset = 0;
+
+	return instr;
+}
+
+
+Instr bb(uint32_t addr) {
+	Instr instr;
+	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
+
+	// Values instr.sig   not important
+	// Values instr.flags not important
+
+	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+	instr.branch.ub =  false;
+
+	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_ABS;
+	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
+
+	//instr.branch.raddr_a = loc1.to_waddr();
+	instr.branch.offset = addr;
+
+	return instr;
+}
+
+
+Instr bu(uint32_t addr, Location const &loc2) {
+	Instr instr;
+	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
+
+	// Values instr.sig   not important
+	// Values instr.flags not important
+
+	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+	instr.branch.ub =  false;
+
+	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_ABS;
+	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REGFILE;
+
+	instr.branch.raddr_a = loc2.to_waddr();
+	instr.branch.offset = addr;
 
 	return instr;
 }
@@ -861,14 +937,9 @@ Instr fsub(Location const &loc1, Location const &loc2, Location const &loc3) {
 
 Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 	Instr instr;
-	instr.alu_add_set_dst(loc1); 
-	instr.alu_add_set_reg_a(loc3);  // ! param 3 goes to a!
-	instr.alu_add_set_imm(imm2);
+	instr.alu_add_set(loc1, imm2, loc3);
 
 	instr.alu.add.op    = V3D_QPU_A_FSUB;
-
-	//breakpoint  // TODO
-
 	return instr;
 }
 
