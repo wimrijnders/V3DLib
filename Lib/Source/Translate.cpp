@@ -157,9 +157,6 @@ bool isSimple(Expr* e)
 
 Expr* simplify(Seq<Instr>* seq, Expr* e);
 
-// Similar to 'simplify' but ensure that the result is a variable.
-
-Expr* putInVar(Seq<Instr>* seq, Expr* e);
 
 // ============================================================================
 // Variable assignments
@@ -1028,50 +1025,6 @@ void loadReceive(Seq<Instr>* seq, Expr* dest)
 }
 
 // ============================================================================
-// Store request
-// ============================================================================
-
-// A 'store' operation of data to addr is almost the same as
-// *addr = data.  The difference is that a 'store' waits until
-// outstanding DMAs have completed before performing a write rather
-// than after a write.  This enables other operations to happen in
-// parallel with the write.
-
-void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr)
-{
-  if (data->tag != VAR || addr->tag != VAR) {
-    data = putInVar(seq, data);
-    addr = putInVar(seq, addr);
-  }
-
-  // QPU id
-  Reg qpuId;
-  qpuId.tag = SPECIAL;
-  qpuId.regId = SPECIAL_QPU_NUM;
-  // Setup VPM
-  Reg addrReg = freshReg();
-  seq->append(genLI(addrReg, 16));
-  seq->append(genADD(addrReg, addrReg, qpuId));
-  genSetupVPMStore(seq, addrReg, 0, 1);
-  // Store address
-  Reg storeAddr = freshReg();
-  seq->append(genLI(storeAddr, 256));
-  seq->append(genADD(storeAddr, storeAddr, qpuId));
-  // Wait for any outstanding store to complete
-  genWaitDMAStore(seq);
-  // Setup DMA
-  genSetWriteStride(seq, 0);
-  genSetupDMAStore(seq, 16, 1, 1, storeAddr);
-  // Put to VPM
-  Reg dataReg;
-  dataReg.tag = SPECIAL;
-  dataReg.regId = SPECIAL_VPM_WRITE;
-  seq->append(genLShift(dataReg, srcReg(data->var), 0));
-  // Start DMA
-  genStartDMAStore(seq, srcReg(addr->var));
-}
-
-// ============================================================================
 // Semaphores
 // ============================================================================
 
@@ -1248,7 +1201,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
   // Case: store(e0, e1) where e1 and e2 are exprs
   // ---------------------------------------------
   if (s->tag == STORE_REQUEST) {
-    storeRequest(seq, s->storeReq.data, s->storeReq.addr);
+		getSourceTranslate().storeRequest(seq, s->storeReq.data, s->storeReq.addr);
     return;
   }
 

@@ -91,8 +91,7 @@ void run_qpu_kernel(KernelType &kernel) {
   timeval tvStart;
   gettimeofday(&tvStart, NULL);
 
-  auto k = compile(rot3D_3);  // Construct kernel
-
+  auto k = compile(kernel);  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise arrays shared between ARM and GPU
