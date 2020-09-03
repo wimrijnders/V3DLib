@@ -23,6 +23,15 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 }
 
 
+/**
+ * See comment and preamble code in caller: Target/Translate.cpp, line 52
+ */
+void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
+	breakpoint  // TODO
+	assert(false);
+}
+
+
 void SourceTranslate::setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) {
 	// ignore
 }
@@ -39,10 +48,10 @@ void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
     addr = putInVar(seq, addr);
   }
 
-	// Output should be something like:
+	// Output should be:
 	//
-	// mov(tmud, reg_sum)
-  // mov(tmua, reg_dst)
+	// mov(tmud, data)
+  // mov(tmua, addr)
 
 	Reg srcAddr = srcReg(addr->var);
   Reg tmud;

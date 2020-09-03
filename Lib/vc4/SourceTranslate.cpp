@@ -62,6 +62,34 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 }
 
 
+/**
+ * See comment and preamble code in caller: Target/Translate.cpp, line 52
+ */
+void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
+    // Load address
+    Reg loadAddr;
+    loadAddr.tag = SPECIAL;
+    loadAddr.regId = SPECIAL_QPU_NUM;
+    // Setup DMA
+    genSetReadPitch(seq, 4);
+    genSetupDMALoad(seq, 16, 1, 1, 1, loadAddr);
+    // Start DMA load
+    genStartDMALoad(seq, srcReg(e.deref.ptr->var));
+    // Wait for DMA
+    genWaitDMALoad(seq);
+    // Setup VPM
+    Reg addr;
+    addr.tag = SPECIAL;
+    addr.regId = SPECIAL_QPU_NUM;
+    genSetupVPMLoad(seq, 1, addr, 0, 1);
+    // Get from VPM
+    Reg data;
+    data.tag = SPECIAL;
+    data.regId = SPECIAL_VPM_READ;
+    seq->append(genLShift(dstReg(v), data, 0));
+}
+
+
 void SourceTranslate::setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) {
     QPULib::setupVPMWriteStmt(seq,
       s->setupVPMWrite.addr,

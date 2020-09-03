@@ -289,12 +289,17 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 			break;
     case SPECIAL:
       switch (reg.regId) {
-/*
-        case SPECIAL_RD_SETUP:    return 49;
-        case SPECIAL_WR_SETUP:    return 49;
-        case SPECIAL_DMA_LD_ADDR: return 50;
-        case SPECIAL_HOST_INT:    return 38;
-*/
+				// These values should never be generated for v3d
+        case SPECIAL_RD_SETUP:            // value 6
+        case SPECIAL_WR_SETUP:            // value 7
+        case SPECIAL_DMA_LD_ADDR:         // value 9
+        case SPECIAL_HOST_INT:            // value 11
+					breakpoint
+					assert(false);                  // Do not want this
+					break;
+
+				// These values *are* generated and handled
+				// Note that they get translated to the v3d registers, though
         case SPECIAL_VPM_WRITE:           // Write TMU, to set data to write
 					ret.reset(new Register(tmud));
 					break;
@@ -304,6 +309,7 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
         case SPECIAL_TMU0_S:              // Read TMU
 					ret.reset(new Register(tmua));
 					break;
+
         default:
 					breakpoint
 					assert(false);  // Not expecting this

@@ -19,6 +19,7 @@ public:
 
 	virtual void setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) = 0;
 	virtual void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) = 0;
+	virtual void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) = 0;
 };
 
 ISourceTranslate &getSourceTranslate();
