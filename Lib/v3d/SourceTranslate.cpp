@@ -1,6 +1,7 @@
 #include "SourceTranslate.h"
 #include "../Support/debug.h"
 #include "../Source/Translate.h"  // srcReg()
+#include "../Target/LoadStore.h"  // move_from_r4()
 
 namespace QPULib {
 namespace v3d {
@@ -9,7 +10,7 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
 
-	// TODO: offset by index
+	// TODO: Check if offset by index needed
 
 	Reg dst;
 	dst.tag = SPECIAL;
@@ -25,10 +26,29 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 
 /**
  * See comment and preamble code in caller: Target/Translate.cpp, line 52
+ *
+ * Basically the same as `deref_var_var()` above.
  */
 void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
-	breakpoint  // TODO
-	assert(false);
+	// TODO: Check if offset by index needed
+
+	Reg src = srcReg(e.deref.ptr->var);
+
+	Reg dst;
+	dst.tag = SPECIAL;
+	dst.regId = SPECIAL_TMU0_S;
+	seq->append(genMove(dst, src));
+
+	// TODO: Do we need NOP's here?
+
+	// TODO: Check if more fields need to be set
+	// TODO is r4 safe? Do we need to select an accumulator in some way?
+  Instr instr;
+	instr.tag = TMU0_TO_ACC4;
+	seq->append(instr);
+
+	dst = srcReg(v);
+	seq->append(move_from_r4(dst));
 }
 
 
