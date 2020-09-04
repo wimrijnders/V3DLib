@@ -43,7 +43,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	std::vector<Instr> ret;
 
-
 	ret
 		<< nop().ldvary()
 		<< fadd(r1, r1, r5).thrsw()

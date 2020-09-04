@@ -36,7 +36,7 @@ struct HeatMapSettings : public Settings {
 		auto const FAIL    = CmdParameters::EXIT_ERROR;
 
 		set_name(argv[0]);
-		params.add(base_params());
+		params.add(base_params(true));
 
 		auto ret = params.handle_commandline(argc, argv, false);
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
@@ -46,8 +46,8 @@ struct HeatMapSettings : public Settings {
 			ret = FAIL;
 		}
 
-		kernel      = params.parameters()[0]->get_int_value();
-		kernel_name = params.parameters()[0]->get_string_value();
+		kernel      = params.parameters()["Kernel"]->get_int_value();
+		kernel_name = params.parameters()["Kernel"]->get_string_value();
 
 		return ret;
 	}

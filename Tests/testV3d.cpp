@@ -490,6 +490,21 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		match_kernel_outputs(bytecode, kernel_output, true);  // true: skip `nop` in kernel_output, can't generate
 		//REQUIRE(summation.size() == arr.size());
 	}
+
+
+	SECTION("Opcodes not in qpu_disasm kernel assembled correctly") {
+		std::vector<Instr> ret;
+
+		ret
+			<< nop().smul24(r1, SmallImm(2), rf(0));
+
+		// Just eyeball them for now
+		printf("Eyeballing opcodes:\n");
+		for (auto &op : ret) {
+			std::cout << op.mnemonic() << std::endl;
+			op.dump(true);
+		}
+	}
 }
 
 #undef ARRAY_LENGTH

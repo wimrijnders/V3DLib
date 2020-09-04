@@ -471,12 +471,13 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		assert(src_a && src_b);
 
 		switch (src_instr.ALU.op) {
-			case A_ADD:  ret << add(*dst_reg, *src_a, *src_b);        break;
-			case A_SUB:  ret << sub(*dst_reg, *src_a, *src_b);        break;
-			case A_BOR:  ret << bor(*dst_reg, *src_a, *src_b);        break;
-			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, *src_b); break;
-			case A_FSUB: ret << fsub(*dst_reg, *src_a, *src_b);       break;
-			case A_FADD: ret << fadd(*dst_reg, *src_a, *src_b);       break;
+			case A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
+			case A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
+			case A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
+			case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
+			case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
+			case A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
+			case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -489,6 +490,18 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 
 		switch (src_instr.ALU.op) {
 			case A_SHL: ret << shl(*dst_reg, *src_a, imm); break;
+			default:
+				breakpoint  // unimplemented op
+				did_something = false;
+			break;
+		}
+	} else if (dst_reg && reg_a.tag == IMM && reg_b.tag == REG) {
+		SmallImm imm(reg_a.smallImm.val);
+		auto src_b = encodeSrcReg(reg_b.reg, ret);
+		assert(src_b);
+
+		switch (src_instr.ALU.op) {
+			case M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;

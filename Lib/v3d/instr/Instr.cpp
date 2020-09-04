@@ -357,6 +357,32 @@ Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const 
 }
 
 
+/**
+ * NOTE: Added this one myself, not sure if correct
+ * TODO verify correctness
+ */
+Instr &Instr::smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
+	m_doing_add = false;
+
+	//breakpoint
+	alu_mul_set_dst(loc1);
+	alu_mul_set_imm_a(imm2);
+	alu_mul_set_reg_a(loc3);  // ??? Perhaps param 2 and 3 get switched around? 
+	                          // TODO check, also compare with fmul
+
+	alu.mul.op    = V3D_QPU_M_SMUL24;
+
+	// Apparently, MUX A and B are switched around when 2nd param is SmallImm
+	// TODO: verify
+
+	alu.mul.a     = V3D_QPU_MUX_B;
+	alu.mul.b     = V3D_QPU_MUX_A;
+	alu.mul.b_unpack = loc3.input_unpack();
+
+	return *this;
+}
+
+
 Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3) {
 	m_doing_add = false;
 
@@ -416,11 +442,35 @@ void Instr::alu_add_set_imm_a(SmallImm const &imm3) {
 
 
 void Instr::alu_add_set_imm_b(SmallImm const &imm3) {
+	// Apparently, imm is always set in raddr_b, even
+	// if it's the second param in the instruction
 	sig.small_imm = true; 
 	raddr_b       = imm3.to_raddr(); 
 
 	alu.add.b     = V3D_QPU_MUX_B;
 	alu.add.b_unpack = imm3.input_unpack();
+}
+
+
+/**
+ * Copied from alu_add_set_imm_a(), not sure about this
+ * TODO verify in some way
+ */
+void Instr::alu_mul_set_imm_a(SmallImm const &imm) {
+	sig.small_imm = true; 
+	raddr_b       = imm.to_raddr(); 
+
+	alu.mul.a     = V3D_QPU_MUX_B;
+	alu.mul.a_unpack = imm.input_unpack();
+}
+
+
+void Instr::alu_mul_set_imm_b(SmallImm const &imm) {
+	sig.small_imm = true; 
+	raddr_b       = imm.to_raddr(); 
+
+	alu.mul.b     = V3D_QPU_MUX_B;
+	alu.mul.b_unpack = imm.input_unpack();
 }
 
 
@@ -445,13 +495,19 @@ void Instr::alu_add_set(Location const &loc1, Location const &loc2,  SmallImm co
 }
 
 
-void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+void Instr::alu_mul_set_dst(Location const &loc1) {
 	if (loc1.is_rf()) {
 		alu.mul.magic_write = false;
 	} else {
 		alu.mul.magic_write = true;
 	}
 
+	alu.mul.waddr = loc1.to_waddr();
+	alu.mul.output_pack = loc1.output_pack();
+}
+
+
+void Instr::alu_mul_set_reg_a(Location const &loc2) {
 	if (loc2.is_rf()) {
 		raddr_a = loc2.to_waddr();
 		alu.mul.a     = V3D_QPU_MUX_A;
@@ -459,11 +515,26 @@ void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location con
 		alu.mul.a     = loc2.to_mux();
 	}
 
-	alu.mul.b     = loc3.to_mux();
-	alu.mul.waddr = loc1.to_waddr();
-	alu.mul.output_pack = loc1.output_pack();
 	alu.mul.a_unpack = loc2.input_unpack();
+}
+
+
+void Instr::alu_mul_set_reg_b(Location const &loc3) {
+	if (loc3.is_rf()) {
+		raddr_b          = loc3.to_waddr(); 
+		alu.mul.b        = V3D_QPU_MUX_B;
+	} else {
+		alu.mul.b        = loc3.to_mux();
+	}
+
 	alu.mul.b_unpack = loc3.input_unpack();
+}
+
+
+void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+	alu_mul_set_dst(loc1);
+	alu_mul_set_reg_a(loc2);
+	alu_mul_set_reg_b(loc3);
 }
 
 

@@ -73,6 +73,7 @@ public:
 	Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
 	Instr &smul24(Location const &loc1, Location const &loc2, Location const &loc3); 
+	Instr &smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3); 
 	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
@@ -82,6 +83,11 @@ public:
 	void alu_add_set_reg_b(Location const &loc3);
 	void alu_add_set_imm_a(SmallImm const &imm3);
 	void alu_add_set_imm_b(SmallImm const &imm3);
+	void alu_mul_set_dst(Location const &loc1); 
+	void alu_mul_set_reg_a(Location const &loc2);
+	void alu_mul_set_reg_b(Location const &loc3);
+	void alu_mul_set_imm_a(SmallImm const &imm);
+	void alu_mul_set_imm_b(SmallImm const &imm);
 
 	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_add_set(Location const &loc1, SmallImm const &imm2, Location const &loc3);
