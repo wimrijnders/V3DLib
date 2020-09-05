@@ -73,18 +73,17 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 		/* small immediates */
 		<< vflb(rf(24)).andnn().fmul(rf(14), -8, rf(8).h())  // small imm, how used?? Not internally
-		<< vfmin(rf(24), 15 /*.ff */, r5).pushn().smul24(rf(15), r1, r3).ifnb()  // idem
+		<< vfmin(rf(24), SmallImm(15).ff(), r5).pushn().smul24(rf(15), r1, r3).ifnb()
 		<< faddnf(rf(55), SmallImm(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb()
 		<< fsub(rf(58).h(), SmallImm(0x3b800000).l(), r3.l()).nornc().fmul(rf(39), r0.h(), r0.h()).ifnb()
 
     /* branch conditions */
 		<< bb(rf(19)).anyap()
+		<< nop()
 		<< bb(zero_addr+0xd0b76a28).anynaq()
 		<< bb(lri).anynaq()
-		<< bu(zero_addr+0x7316fe10, rf(35)).anya()
+//		<< bu(zero_addr+0x7316fe10, rf(35)).anya()
 	;
-
-
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
@@ -92,17 +91,16 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-		//bu(lri, r.unif()).anynaq()
-		bu(zero_addr+0x7316fe10, rf(35)).anya()
+		bu(lri, r_unif).anynaq()
 	;
 	tmp_op.dump(true);
 
 	ret <<
 		nop()
+		//bu(lri, r_unif).anynaq()
 	;
 
 #if 0
-        { 33, 0x020000050040e000ull, "bu.anynaq  lri, r:unif" },
         { 33, 0x0200000300006000ull, "bu.na0  lri, a:unif" },
 
         /* Special waddr names */

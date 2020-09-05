@@ -98,6 +98,8 @@ Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
 
 // For branch
 BranchDest const lri("lri", V3D_QPU_WADDR_R0);
+Register const r_unif("r_unif", V3D_QPU_WADDR_R0);  // Currently a dummy reg whose value is not used,
+                                                    // 2nd param irrelevant
 
 }  // instr
 }  // v3d

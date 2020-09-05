@@ -57,6 +57,7 @@ extern Register const tmud;
 
 // For branch
 extern BranchDest const lri;
+extern Register const r_unif;
 
 }  // instr
 }  // v3d

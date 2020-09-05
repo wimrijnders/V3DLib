@@ -154,6 +154,7 @@ void match_kernel_outputs(
 		// Outputs should match exactly
 		for (uint32_t n = 0; n < len; ++n) {
 			if (skip_nops && (_nop == received[n])) {
+				//printf("nop at index %d\n", n);
 				continue;
 			}
 

@@ -56,6 +56,7 @@ public:
 	Instr &na0();
 	Instr &alla();
 	Instr &anya();
+	Instr &anyaq();
 	Instr &anyap();
 	Instr &anyna();
 	Instr &anynaq();
@@ -142,6 +143,7 @@ Instr bb(Location const &loc1);
 Instr bb(BranchDest const &loc1);
 Instr bb(uint32_t addr);
 Instr bu(uint32_t addr, Location const &loc2);
+Instr bu(BranchDest const &loc1, Location const &loc2);
 
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 

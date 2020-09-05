@@ -225,14 +225,14 @@ Instr &Instr::set_branch_condition(v3d_qpu_branch_cond cond) {
 }
 
 
-Instr &Instr::a0()    { return set_branch_condition(V3D_QPU_BRANCH_COND_A0); }
-Instr &Instr::na0()   { return set_branch_condition(V3D_QPU_BRANCH_COND_NA0); }
-Instr &Instr::alla()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
-Instr &Instr::allna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
-Instr &Instr::anya()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYA); }
-Instr &Instr::anyna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYNA); }
-
+Instr &Instr::a0()     { return set_branch_condition(V3D_QPU_BRANCH_COND_A0); }
+Instr &Instr::na0()    { return set_branch_condition(V3D_QPU_BRANCH_COND_NA0); }
+Instr &Instr::alla()   { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
+Instr &Instr::allna()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
+Instr &Instr::anya()   { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYA); }
+Instr &Instr::anyaq()  { branch.msfign =  V3D_QPU_MSFIGN_Q; return anya(); }
 Instr &Instr::anyap()  { branch.msfign =  V3D_QPU_MSFIGN_P; return anya(); }
+Instr &Instr::anyna()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYNA); }
 Instr &Instr::anynaq() { branch.msfign =  V3D_QPU_MSFIGN_Q; return anyna(); }
 Instr &Instr::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna(); }
 
@@ -331,16 +331,15 @@ Instr &Instr::fmul(Location const &loc1, Location const &loc2, Location const &l
 // TODO: how does small imm value get used?
 Instr &Instr::fmul(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	m_doing_add = false;
+	alu_mul_set_dst(loc1);
+	alu_mul_set_imm_a(imm2);
 
-	sig.small_imm = true;
-	raddr_a = loc3.to_waddr();  // Or this:  abs(imm2);  // TODO: so how can you use a negative value?
-	alu.mul.op    = V3D_QPU_M_FMUL;
-	alu.mul.a     = V3D_QPU_MUX_B;
+	// NOTE: raddr_a set for loc3 and b-fields used in mul
+	raddr_a = loc3.to_waddr();
 	alu.mul.b     = V3D_QPU_MUX_A;
-	alu.mul.waddr = loc1.to_waddr();
-	alu.mul.magic_write = false;
 	alu.mul.b_unpack = loc3.input_unpack();
 
+	alu.mul.op    = V3D_QPU_M_FMUL;
 	return *this;
 }
 
@@ -889,6 +888,8 @@ Instr bb(uint32_t addr) {
 
 
 Instr bu(uint32_t addr, Location const &loc2) {
+	printf("called bu(uint32_t addr, Location const &loc2)\n");
+
 	Instr instr;
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
 
@@ -903,6 +904,31 @@ Instr bu(uint32_t addr, Location const &loc2) {
 
 	instr.branch.raddr_a = loc2.to_waddr();
 	instr.branch.offset = addr;
+
+	return instr;
+}
+
+
+/**
+ * NOTE: loc2 not used?
+ */
+Instr bu(BranchDest const &loc1, Location const &loc2) {
+	printf("called Instr bu(BranchDest const &loc1, Location const &loc2)\n");
+
+	Instr instr;
+	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
+
+	// Values instr.sig   not important
+	// Values instr.flags not important
+
+	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+	instr.branch.ub =  true;
+
+	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_LINK_REG;
+	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REL;
+
+	instr.branch.raddr_a = loc1.to_waddr();
+	instr.branch.offset = 0;
 
 	return instr;
 }
@@ -1050,12 +1076,15 @@ Instr fdx(Location const &loc1, Location const &loc2) {
 Instr vflb(Location const &loc1) {
 	Instr instr;
 
-	instr.raddr_b       = loc1.to_waddr();
-	instr.alu.add.op    = V3D_QPU_A_VFLB;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
-	instr.alu.add.b     = V3D_QPU_MUX_R0;
 	instr.alu.add.waddr = loc1.to_waddr();
 	instr.alu.add.magic_write = false;
+
+	instr.alu.add.a     = V3D_QPU_MUX_A;
+
+	instr.raddr_b       = loc1.to_waddr();
+	instr.alu.add.b     = V3D_QPU_MUX_R0;
+
+	instr.alu.add.op    = V3D_QPU_A_VFLB;
 
 	return instr;
 }
@@ -1063,16 +1092,11 @@ Instr vflb(Location const &loc1) {
 
 Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	Instr instr;
+	instr.alu_add_set_dst(loc1);
+	instr.alu_add_set_imm_a(imm2);
+	instr.alu_add_set_reg_b(loc3);
 
-	instr.sig.small_imm = true;
-	instr.raddr_b = imm2.to_raddr();
 	instr.alu.add.op    = V3D_QPU_A_VFMIN;
-	instr.alu.add.a     = V3D_QPU_MUX_B;
-	instr.alu.add.b     = loc3.to_mux();
-	instr.alu.add.magic_write = false;
-	instr.alu.add.waddr = loc1.to_waddr();
-	instr.alu.add.a_unpack = imm2.input_unpack();
-	instr.alu.add.a_unpack = V3D_QPU_UNPACK_REPLICATE_32F_16;
 
 	return instr;
 }
