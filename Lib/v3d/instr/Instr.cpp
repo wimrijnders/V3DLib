@@ -1,6 +1,7 @@
 #include "Instr.h"
 #include <cstdio>
-#include <cstdlib>  // abs()
+#include <cstdlib>        // abs()
+#include <bits/stdc++.h>  // swap()
 #include "../../Support/debug.h"
 #include "dump_instr.h"
 
@@ -97,6 +98,47 @@ void Instr::init(uint64_t in_code) {
 
 }
 
+namespace {
+
+std::string binaryValue(uint64_t num) {
+	const int size = sizeof(num)*8;
+  std::string result; 
+
+	for (int i = size -1; i >=0; i--) {
+		bool val = ((num >> i) & 1) == 1;
+
+		if (val) {
+			result += '1';
+		} else {
+			result += '0';
+		}
+
+		if (i % 10 == 0) {
+			result += '.';
+		}
+	}
+
+	return result;
+}
+
+}  // anon namespace
+
+
+//#include "broadcom/qpu/qpu_instr.h"  // V2D_QPU_BRANCH_COND_ALWAYS
+
+// from mesa/src/broadcom/qpu/qpu_pack.c
+#define QPU_MASK(high, low) ((((uint64_t)1<<((high)-(low)+1))-1)<<(low))
+#define QPU_GET_FIELD(word, field) ((uint32_t)(((word)  & field ## _MASK) >> field ## _SHIFT))
+
+#define VC5_QPU_BRANCH_MSFIGN_SHIFT         21
+#define VC5_QPU_BRANCH_MSFIGN_MASK          QPU_MASK(22, 21)
+
+#define VC5_QPU_BRANCH_COND_SHIFT           32
+#define VC5_QPU_BRANCH_COND_MASK            QPU_MASK(34, 32)
+
+// End from mesa/src/broadcom/qpu/qpu_pack.c
+
+
 
 bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 	if (code1 == code2) {
@@ -129,16 +171,44 @@ bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 		return 0 != (code & bu_mask);
 	};
 
-	if (is_bu_set(code1) || is_bu_set(code2)) {
-		return false;  // bdu may be used
+
+	// Hypothesis: non-usage of bdu depends on these two fields
+
+	uint32_t cond   = QPU_GET_FIELD(code1, VC5_QPU_BRANCH_COND);
+	uint32_t msfign = QPU_GET_FIELD(code1, VC5_QPU_BRANCH_MSFIGN);
+
+        if (cond == 0) {
+                //instr->branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+        } else if (V3D_QPU_BRANCH_COND_A0 + (cond - 2) <= V3D_QPU_BRANCH_COND_ALLNA)
+                cond = V3D_QPU_BRANCH_COND_A0 + (cond - 2);
+
+	printf("cond: %u, msfign: %u\n", cond, msfign);
+
+	if (cond == 2 && msfign == V3D_QPU_MSFIGN_NONE) {
+		// Zap out the bdu field and compare again
+		uint64_t bdu_mask = ((uint64_t) 0b111) << 15;
+		code1 = code1 & ~bdu_mask;
+		code2 = code1 & ~bdu_mask;
+
+		return code1 == code2;
 	}
 
-	// Zap out the bdu field and compare again
-	uint64_t bdu_mask = ((uint64_t) 0b111) << 15;
-	code1 = code1 & ~bdu_mask;
-	code2 = code1 & ~bdu_mask;
+#ifdef DEBUG
+	printf("compare_codes diff: %s\n", binaryValue(code1 ^ code2).c_str());
+	printf("code1: %s\n", mnemonic(code1).c_str());
+	show(code1);
+	printf("code2: %s\n", mnemonic(code2).c_str());
+	show(code2);
+	
 
-	return code1 == code2;
+	breakpoint
+#endif  // DEBUG
+
+	//if (is_bu_set(code1) || is_bu_set(code2)) {
+	//	return false;  // bdu may be used
+	//}
+
+	return false;
 }
 
 
@@ -897,9 +967,10 @@ Instr bu(uint32_t addr, Location const &loc2) {
 	// Values instr.flags not important
 
 	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
-	instr.branch.ub =  false;
+	instr.branch.ub =  true;
 
 	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_ABS;
+	//instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
 	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REGFILE;
 
 	instr.branch.raddr_a = loc2.to_waddr();

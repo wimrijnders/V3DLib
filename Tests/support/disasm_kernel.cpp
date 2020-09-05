@@ -82,12 +82,13 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< nop()
 		<< bb(zero_addr+0xd0b76a28).anynaq()
 		<< bb(lri).anynaq()
-//		<< bu(zero_addr+0x7316fe10, rf(35)).anya()
+		<< bu(zero_addr+0x7316fe10, rf(35)).anya()
+		<< bu(lri, r_unif).anynaq()
 	;
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x020000050040e000ull;  //, "bu.anynaq  lri, r:unif" },
+	uint64_t op = 0x0200000300006000ull; // "bu.na0  lri, a:unif" },
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
@@ -97,7 +98,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 	ret <<
 		nop()
-		//bu(lri, r_unif).anynaq()
 	;
 
 #if 0
