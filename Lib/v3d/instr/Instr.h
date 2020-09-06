@@ -40,6 +40,7 @@ public:
 	Instr &ldunif(bool val = true);
 	Instr &ldunifa(bool val = true);
 	Instr &ldvpm(bool val = true);
+	Instr &norn();
 	Instr &nornn();
 	Instr &ifnb();
 	Instr &norc();
@@ -48,6 +49,7 @@ public:
 	Instr &ifb();
 	Instr &ifna();
 	Instr &ifa();
+	Instr &andc();
 	Instr &andnc();
 	Instr &andnn();
 
@@ -64,6 +66,7 @@ public:
 	Instr &allna();
 
 	// Calls to set the mul part of the instruction
+	Instr &nop() { return *this; }  // With normal usage, the mul-part is already nop
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3);
 	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
@@ -161,6 +164,7 @@ Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr fdx(Location const &loc1, Location const &loc2);
 Instr vflb(Location const &loc1);
 Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3);
+Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 
 }  // instr

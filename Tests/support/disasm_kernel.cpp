@@ -84,15 +84,22 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< bb(lri).anynaq()
 		<< bu(zero_addr+0x7316fe10, rf(35)).anya()
 		<< bu(lri, r_unif).anynaq()
+		<< bu(lri, a_unif).na0()
+
+		/* Special waddr names */
+		<< vfpack(tlb, r0, r1).nop()
+		<< fmax(recip, r5.h(), r2.l()).andc().fmul(rf(50).h(), r3.l(), r4.abs()).ifb().ldunif()
+		<< add(rsqrt, r1, r1).pushn().fmul(rf(35).h(), r3.abs(), r1.abs()).ldunif()
+		<< vfmin(log, r4.hh(), r0).norn().fmul(rf(51), rf(20).abs(), r0.l()).ifnb()
 	;
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x0200000300006000ull; // "bu.na0  lri, a:unif" },
+	uint64_t op = 0x041618d57c453000ull; // "shl.andn  exp, r3, r2; add.ifb  rf35, r1, r2" },
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-		bu(lri, r_unif).anynaq()
+		vfmin(log, r4.hh(), r0).norn().fmul(rf(51), rf(20).abs(), r0.l()).ifnb()
 	;
 	tmp_op.dump(true);
 
@@ -101,14 +108,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 	;
 
 #if 0
-        { 33, 0x0200000300006000ull, "bu.na0  lri, a:unif" },
-
-        /* Special waddr names */
-        { 33, 0x3c00318735808000ull, "vfpack  tlb, r0, r1  ; nop" },
-        { 33, 0xe0571c938e8d5000ull, "fmax.andc  recip, r5.h, r2.l; fmul.ifb  rf50.h, r3.l, r4.abs; ldunif" },
-        { 33, 0xc04098d4382c9000ull, "add.pushn  rsqrt, r1, r1; fmul  rf35.h, r3.abs, r1.abs; ldunif" },
-        { 33, 0x481edcd6b3184500ull, "vfmin.norn  log, r4.hh, r0; fmul.ifnb  rf51, rf20.abs, r0.l" },
-        { 33, 0x041618d57c453000ull, "shl.andn  exp, r3, r2; add.ifb  rf35, r1, r2" },
         { 33, 0x7048e5da49272800ull, "fsub.ifa  rf26, r2.l, rf32; fmul.pushc  sin, r1.h, r1.abs; ldunif" },
 
         /* v4.1 signals */

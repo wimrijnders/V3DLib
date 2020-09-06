@@ -7,9 +7,7 @@ namespace instr {
 
 
 v3d_qpu_mux RFAddress::to_mux() const {
-	debug /* _break */ ("Not expecting RFAddress::to_mux() to be called");
-	//assert(false);
-	return (v3d_qpu_mux) 0;
+	return V3D_QPU_MUX_A;
 }
 
 
@@ -31,6 +29,14 @@ RFAddress RFAddress::h() const {
 	return ret;
 }
 
+
+RFAddress RFAddress::abs() const {
+	RFAddress ret(m_val);
+	ret.m_input_unpack = V3D_QPU_UNPACK_ABS;
+	ret.m_output_pack = V3D_QPU_PACK_NONE;  // PACK_ABS does not exist (logical)
+
+	return ret;
+}
 
 }  // instr
 }  // v3d

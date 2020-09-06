@@ -249,7 +249,9 @@ Instr &Instr::pushz() { set_pf(V3D_QPU_PF_PUSHZ); return *this; }
 Instr &Instr::norc()  { set_uf(V3D_QPU_UF_NORC);  return *this; }
 Instr &Instr::nornc() { set_uf(V3D_QPU_UF_NORNC); return *this; }
 Instr &Instr::norz()  { set_uf(V3D_QPU_UF_NORZ);  return *this; }
+Instr &Instr::norn()  { set_uf(V3D_QPU_UF_NORN);  return *this; }
 Instr &Instr::nornn() { set_uf(V3D_QPU_UF_NORNN); return *this; }
+Instr &Instr::andc()  { set_uf(V3D_QPU_UF_ANDC);  return *this; }
 Instr &Instr::andnc() { set_uf(V3D_QPU_UF_ANDNC); return *this; }
 Instr &Instr::andnn() { set_uf(V3D_QPU_UF_ANDNN); return *this; }
 Instr &Instr::ifnb()  { set_c(V3D_QPU_COND_IFNB); return *this; }
@@ -996,7 +998,23 @@ Instr bu(BranchDest const &loc1, Location const &loc2) {
 	instr.branch.ub =  true;
 
 	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_LINK_REG;
-	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REL;
+
+	// Hackish!
+	auto bd_p = dynamic_cast<Register const *> (&loc2);
+	if (bd_p == nullptr) {
+		// The regular path
+		instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REL;
+	} else {
+		if (bd_p->name() == "r_unif") {
+			instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REL;
+		} else  if (bd_p->name() == "a_unif") {
+				instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
+		} else {
+			assert(false);  // Not expecting anything else
+		}
+	}
+	
+
 
 	instr.branch.raddr_a = loc1.to_waddr();
 	instr.branch.offset = 0;
@@ -1114,14 +1132,12 @@ Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 
 Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
-	//Can't use here: instr.alu_add_set(loc1, loc2, loc3);
+	instr.alu_add_set_dst(loc1);
 
 	instr.raddr_a       = loc2.to_waddr();
 	instr.alu.add.op    = V3D_QPU_A_VFPACK;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
+	instr.alu.add.a     = loc2.to_mux();
 	instr.alu.add.b     = loc3.to_mux();
-	instr.alu.add.waddr = loc1.to_waddr();
-	instr.alu.add.magic_write = false;
 	instr.alu.add.a_unpack = loc2.input_unpack();
 	instr.alu.add.b_unpack = loc3.input_unpack();
 
@@ -1165,6 +1181,18 @@ Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	Instr instr;
 	instr.alu_add_set_dst(loc1);
 	instr.alu_add_set_imm_a(imm2);
+	instr.alu_add_set_reg_b(loc3);
+
+	instr.alu.add.op    = V3D_QPU_A_VFMIN;
+
+	return instr;
+}
+
+
+Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3) {
+	Instr instr;
+	instr.alu_add_set_dst(loc1);
+	instr.alu_add_set_reg_a(loc2);
 	instr.alu_add_set_reg_b(loc3);
 
 	instr.alu.add.op    = V3D_QPU_A_VFMIN;
