@@ -166,6 +166,8 @@ Instr vflb(Location const &loc1);
 Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3);
 Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
+Instr rotate(Location const &loc3);
+Instr rotate(SmallImm const &imm3);
 
 }  // instr
 }  // v3d

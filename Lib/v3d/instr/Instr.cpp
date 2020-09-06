@@ -1214,10 +1214,66 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	instr.alu.add.a_unpack = imm2.input_unpack();
 	instr.alu.add.b_unpack = loc3.input_unpack();
 
-/*
-	instr.alu.add.a_unpack = V3D_QPU_UNPACK_REPLICATE_32F_16;
-*/
+	return instr;
+}
 
+
+/**
+ * Not at all sure about this one, it does not feature in the MESA Broadcom code,
+ * except for the rotate sig flag.
+ *
+ * Constructed from the logic vc4 rotate.
+ *   - no dest location
+ *   - reg a must be r0
+ *   - reg b if used is r5, otherwise smallimm passed
+ */
+Instr rotate(Location const &loc3) {
+	printf("WARNING: rotate called, really not sure if correct.\n");
+	Instr instr;
+
+	instr.sig.rotate = true;
+	// alu add is nop
+
+	// reg b must be r5
+	// BUT: loc3 value not used
+	assert(loc3.to_mux() == V3D_QPU_MUX_R5);
+
+	// vcd uses M_V8MIN, which doesn't exist on v3d
+	// Following is hopefully OK
+	instr.alu.mul.op    = V3D_QPU_M_FMUL;
+	instr.alu.mul.a     = V3D_QPU_MUX_R0;
+
+	// vcd uses VPM_READ (reg 48), which doesn't exist on v3d, value is a desperate attempt at compilation
+	uint8_t const VPM_READ = 48;  // This is a vc4 value!
+	instr.raddr_b = rf(VPM_READ).to_waddr();
+
+	//breakpoint
+	return instr;
+}
+
+
+/**
+ * See other rotate
+ */
+Instr rotate(SmallImm const &imm3) {
+	printf("WARNING: rotate called, really not sure if correct.\n");
+	Instr instr;
+
+	instr.sig.rotate = true;
+
+	// See also comments other rotate
+	instr.alu.mul.op    = V3D_QPU_M_FMUL;
+	instr.alu.mul.a     = V3D_QPU_MUX_R0;
+
+	// vcd: uint32_t n = (uint32_t) instr.ALU.srcB.smallImm.val;
+  // Possibly (likely!) val wrong
+	uint8_t const VPM_READ = 48;  // This is a vc4 value!
+	uint8_t n = imm3.to_raddr();
+	assert(n >= 1 || n <= 15);
+
+	instr.raddr_b = (uint8_t) (VPM_READ + n);  // Addition: this is what vcd does
+
+	//breakpoint
 	return instr;
 }
 
