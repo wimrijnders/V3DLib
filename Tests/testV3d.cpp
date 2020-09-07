@@ -311,7 +311,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		if (!v3d_init()) return;
 
 		uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
-		assert(array_length == 8);
+		REQUIRE(array_length == 8);
 
 		BufferObject heap(1024);
 		printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());

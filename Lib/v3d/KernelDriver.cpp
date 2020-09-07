@@ -691,7 +691,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 		auto ret = v3d::encodeInstr(instr);
 
 		if (doing_init) {
-			ret.front().comment("# Main program");
+			ret.front().comment("Main program");
 		}
 
 		instructions << ret;

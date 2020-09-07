@@ -258,6 +258,8 @@ void Settings::process(KernelBase &k) {
 
 	stopPerfCounters();
 
+	// NOTE: For multiple calls here (entirely possible, HeatMap does this),
+  //       this will dump the v3d code (mnemonics, actually) on every call.
 	if (output_code) {
 		assert(!name.empty());
 		std::string code_filename = name + "_code.txt";
