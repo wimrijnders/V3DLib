@@ -24,6 +24,7 @@ void KernelDriver::encode(int numQPUs) {
 
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
+	debug("Called vc4 KernelDriver::invoke()");	
 	assert(qpuCodeMem.size() == 0);
 	assert(code.size() > 0);
 

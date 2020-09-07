@@ -42,12 +42,12 @@ struct HeatMapSettings : public Settings {
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 		// Init the parameters in the parent
-		if (!process(&params, true)) {
+		if (!process(&params)) {
 			ret = FAIL;
 		}
 
-		kernel      = params.parameters()[0]->get_int_value();
-		kernel_name = params.parameters()[0]->get_string_value();
+		kernel      = params.parameters()["Kernel"]->get_int_value();
+		kernel_name = params.parameters()["Kernel"]->get_string_value();
 
 		return ret;
 	}
