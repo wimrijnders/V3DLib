@@ -23,6 +23,7 @@
 #include <memory>
 #include <iostream>
 #include "../Support/basics.h"
+#include "Target/SmallLiteral.h"  // decodeSmallLit()
 #include "Invoke.h"
 #include "instr/Snippets.h"
 
@@ -201,6 +202,18 @@ void UsedSlots::dump() {
 	printf("\n");
 }
 
+
+/**
+ * Translate imm index value from vc4 to v3d
+ */
+SmallImm encodeSmallImm(RegOrImm const &src_reg) {
+	assert(src_reg.tag == IMM);
+
+	Word w = decodeSmallLit(src_reg.smallImm.val);
+	SmallImm ret(w.intVal);
+
+	return ret;
+}
 
 std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 	assert(!src_instr.isUniformLoad());
@@ -400,23 +413,27 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	} else if (dst_reg && reg_a.tag == REG && reg_b.tag == IMM) {
 		auto src_a = encodeSrcReg(reg_a.reg, ret);
 		assert(src_a);
-		SmallImm imm(reg_b.smallImm.val);
+		SmallImm imm = encodeSmallImm(reg_b);
+		//SmallImm imm(reg_b.smallImm.val);
 
 		switch (src_instr.ALU.op) {
-			case A_SHL: ret << shl(*dst_reg, *src_a, imm); break;
-			case A_SUB: ret << sub(*dst_reg, *src_a, imm); break;
+			case A_SHL:  ret << shl(*dst_reg, *src_a, imm);        break;
+			case A_SUB:  ret << sub(*dst_reg, *src_a, imm);        break;
+			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, imm); break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
 			break;
 		}
 	} else if (dst_reg && reg_a.tag == IMM && reg_b.tag == REG) {
-		SmallImm imm(reg_a.smallImm.val);
+		SmallImm imm = encodeSmallImm(reg_a);
+		//SmallImm imm(reg_a.smallImm.val);
 		auto src_b = encodeSrcReg(reg_b.reg, ret);
 		assert(src_b);
 
 		switch (src_instr.ALU.op) {
 			case M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
+			case M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -466,7 +483,8 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 	} else if (reg_b.tag == IMM) {
 		assert(-15 <= reg_b.smallImm.val && reg_b.smallImm.val <= 16); // smallimm must be in proper range
 		                                                               // Also tested in rotate()
-		SmallImm imm(reg_b.smallImm.val);
+		SmallImm imm = encodeSmallImm(reg_b);
+		//SmallImm imm(reg_b.smallImm.val);
 
 		ret << nop()                  // required for rotate
 		    << rotate(imm)
@@ -715,6 +733,8 @@ void KernelDriver::encode(int numQPUs) {
 
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
+	debug("Called v3d KernelDriver::invoke()");
+	breakpoint
 	assert(instructions.size() > 0);
 
 	std::vector<uint64_t> code;  // opcodes for v3d

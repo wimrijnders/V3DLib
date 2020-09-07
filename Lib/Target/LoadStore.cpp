@@ -302,20 +302,20 @@ void genSetWriteStride(Seq<Instr>* instrs, Reg stride)
 // ============================================================================
 
 Instr move_from_r4(Reg &dst) {
-				printf("Called mov_from_r4()\n");
+	//printf("Called mov_from_r4()\n");
 
-        Instr move;
-        move.tag                = ALU;
-        move.ALU.setFlags       = false;
-        move.ALU.cond.tag       = ALWAYS;
-        move.ALU.dest           = dst;
-        move.ALU.srcA.tag       = REG;
-        move.ALU.srcA.reg.tag   = ACC;
-        move.ALU.srcA.reg.regId = 4;
-        move.ALU.op             = A_BOR;
-        move.ALU.srcB.tag       = REG;
-        move.ALU.srcB.reg.tag   = ACC;
-        move.ALU.srcB.reg.regId = 4;
+	Instr move;
+	move.tag                = ALU;
+	move.ALU.setFlags       = false;
+	move.ALU.cond.tag       = ALWAYS;
+	move.ALU.dest           = dst;
+	move.ALU.srcA.tag       = REG;
+	move.ALU.srcA.reg.tag   = ACC;
+	move.ALU.srcA.reg.regId = 4;
+	move.ALU.op             = A_BOR;
+	move.ALU.srcB.tag       = REG;
+	move.ALU.srcB.reg.tag   = ACC;
+	move.ALU.srcB.reg.regId = 4;
 
 	return move;
 }

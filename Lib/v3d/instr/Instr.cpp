@@ -416,6 +416,14 @@ Instr &Instr::fmul(Location const &loc1, SmallImm imm2, Location const &loc3) {
 }
 
 
+Instr &Instr::fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+	alu_mul_set(loc1, loc2,  imm3);
+	alu.mul.op    = V3D_QPU_M_FMUL;
+
+	return *this;
+}
+
+
 Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const &loc3) {
 	m_doing_add = false;
 	alu_mul_set(loc1, loc2, loc3);
@@ -458,8 +466,7 @@ Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register con
 	m_doing_add = false;
 
 	alu_mul_set(rf_addr1, reg2, reg3);
-
-	alu.mul.op    = V3D_QPU_M_VFMUL;
+	alu.mul.op = V3D_QPU_M_VFMUL;
 
 	return *this;
 }
@@ -510,7 +517,6 @@ void Instr::alu_add_set_imm_a(SmallImm const &imm3) {
 	alu.add.a     = V3D_QPU_MUX_B;
 	alu.add.a_unpack = imm3.input_unpack();
 }
-
 
 void Instr::alu_add_set_imm_b(SmallImm const &imm3) {
 	// Apparently, imm is always set in raddr_b, even
@@ -606,6 +612,13 @@ void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location con
 	alu_mul_set_dst(loc1);
 	alu_mul_set_reg_a(loc2);
 	alu_mul_set_reg_b(loc3);
+}
+
+
+void Instr::alu_mul_set(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+	alu_mul_set_dst(loc1);
+	alu_mul_set_reg_a(loc2);
+	alu_mul_set_imm_b(imm3);
 }
 
 
@@ -1288,10 +1301,8 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  *
  */
 Instr rotate(Location const &loc3) {
-	debug("WARNING: rotate called, really not sure if correct.");
+	warning("rotate called, really not sure if correct.");
 	Instr instr;
-
-	breakpoint
 
 	// reg b must be r5 (note that value not used directly below)
 	assert(loc3.to_mux() == V3D_QPU_MUX_R5);
@@ -1311,7 +1322,7 @@ Instr rotate(Location const &loc3) {
  * See header comment other rotate
  */
 Instr rotate(SmallImm const &imm3) {
-	debug("WARNING: rotate called, really not sure if correct.");
+	warning("rotate called, really not sure if correct.");
 	assert(-15 <= imm3.val() && imm3.val() <= 16);           // smallimm must be in proper range
 
 	Instr instr;

@@ -76,6 +76,7 @@ public:
 
 	Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
+	Instr &fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 	Instr &smul24(Location const &loc1, Location const &loc2, Location const &loc3); 
 	Instr &smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3); 
 	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
@@ -97,6 +98,7 @@ public:
 	void alu_add_set(Location const &loc1, SmallImm const &imm2, Location const &loc3);
 	void alu_add_set(Location const &loc1, Location const &loc2,  SmallImm const &imm3);
 	void alu_mul_set(Location const &loc11, Location const &loc2, Location const &loc3); 
+	void alu_mul_set(Location const &loc11, Location const &loc2, SmallImm const &imm3); 
 
 private:
 	static uint64_t const NOP;
