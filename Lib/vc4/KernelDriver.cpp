@@ -24,15 +24,14 @@ void KernelDriver::encode(int numQPUs) {
 
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
-	debug("Called vc4 KernelDriver::invoke()");	
-	assert(qpuCodeMem.size() == 0);
+	//debug("Called vc4 KernelDriver::invoke()");	
 	assert(code.size() > 0);
 
 	int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
 
 	// Assumption: code in a kernel, once allocated, doesnt' change
 	if (qpuCodeMem.allocated()) {
-		debug("vc4 KernelDriver::invoke() code and parameters memory already allocated");
+		//debug("vc4 KernelDriver::invoke() code and parameters memory already allocated");
 		assert(qpuCodeMem.size() == numWords);
 	} else {
 		// Allocate memory for QPU code and parameters
