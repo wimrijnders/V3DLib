@@ -734,24 +734,32 @@ void KernelDriver::encode(int numQPUs) {
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
 	debug("Called v3d KernelDriver::invoke()");
-	breakpoint
 	assert(instructions.size() > 0);
 
-	std::vector<uint64_t> code;  // opcodes for v3d
-	for (auto const &inst : instructions) {
-		code << inst.code();
+	// Assumption: code in a kernel, once allocated, doesnt' change
+	if (qpuCodeMem.allocated()) {
+		assert(instructions.size() == qpuCodeMem.size());  // Tentative check, not perfect
+	} else {
+		std::vector<uint64_t> code;  // opcodes for v3d
+		for (auto const &inst : instructions) {
+			code << inst.code();
+		}
+
+		// Allocate memory for the QPU code
+		qpuCodeMem.alloc(code.size());
+		qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
+
+		qpuCodeMemOffset = 8*code.size();  // TODO check if correct
 	}
 
-	// Allocate memory for the QPU code
-	qpuCodeMem.alloc(code.size());
-	qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
-
-	// Allocate memory for the parameters
+	// Allocate memory for the parameters if not done already
 	// TODO Not used in v3d, do we need this?
 	int numWords = (12*MAX_KERNEL_PARAMS + 12*2);
-	paramMem.alloc(numWords);
-
-	qpuCodeMemOffset = 8*code.size();  // TODO check if correct
+	if (paramMem.allocated()) {
+		assert(paramMem.size() == numWords);
+	} else {
+		paramMem.alloc(numWords);
+	}
 
 	v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
 }
