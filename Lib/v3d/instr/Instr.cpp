@@ -1286,39 +1286,6 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  *   - Smallimm offset in range -15,16 inclusive
  *   - TODO: try to understand the newfangled quad rotate shit.
  *
- *
- * * From VC4 Ref Guide:
- *
- *  - p18:
- *     "Finally, the low 4 bits of SIMD element 0 (quad 0, element 0) in r5
- *     can be used to specify one of the possible 16 rotations when performing a 
- *     horizontal vector rotate of the mul ALU output."
- *
- *  - p20:
- *   The 16-way vector output by the mul ALU may be rotated by any of the 16 possible horizontal rotations. This
- *   provides the QPUs with most of the image processing flexibility of the VideoCore VPUs, and differentiates the
- *   QPU from a conventional ‘silo’ SIMD processor. The full horizontal vector rotate is only available when both of
- *   the mul ALU input arguments are taken from accumulators r0-r3.
- *
- *   Horizontal rotations are specified as part of the instruction word using certain values of the special ‘small
- *   immediate’ encoding (see “Small Immediates” on page 19). The rotation can either be specified directly from
- *   the immediate data or taken from accumulator r5, element 0, bits [3:0].
- *
- *  - p29:
- *   Table ALU signaling bits
- *   13 -  ALU instruction with raddr_b specifying small immediate or vector rotate
- *
- *  - p30:
- *  Table Small Immediate Encoding
- *  48 - Mul output vector rotated by 1 upwards (so element 0 moves to element 1)
- *  ...
- *  63 - Mul output vector rotated by 15 upwards (so element 0 moves to element 15)
- *
- *  - p37
- *  Instruction Restrictions
- *   * An instruction that does a vector rotate by r5 must not immediately follow an instruction that writes to r5.
- *   * An instruction that does a vector rotate must not immediately follow an instruction that writes to the
- *     accumulator that is being rotated.
  */
 Instr rotate(Location const &loc3) {
 	debug("WARNING: rotate called, really not sure if correct.");
