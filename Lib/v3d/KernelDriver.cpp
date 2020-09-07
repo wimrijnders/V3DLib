@@ -493,6 +493,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 
 		switch (src_instr.ALU.op) {
 			case A_SHL: ret << shl(*dst_reg, *src_a, imm); break;
+			case A_SUB: ret << sub(*dst_reg, *src_a, imm); break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -516,6 +517,55 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	}
 
 	return did_something;
+}
+
+
+/**
+ * @return true if rotate handled, false otherwise
+ */
+bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
+	if (instr.ALU.op != M_ROTATE) {
+		return false;
+	}
+
+	// dest is location where r1 (result of rotate) must be stored 
+	auto dst_reg = encodeDestReg(instr);
+	assert(dst_reg);
+	assert(dst_reg->to_mux() != V3D_QPU_MUX_R1);  // anything except dest of rotate
+
+	// TODO see if following assertions can be moved to rotate assembly method
+
+	// reg a is  r0 only
+	assert(instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.tag == ACC && instr.ALU.srcA.reg.regId == 0);
+
+	// reg b is either r5 or small imm
+	auto reg_b = instr.ALU.srcB;
+
+	if (reg_b.tag == REG) {
+		breakpoint
+
+		assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
+		auto src_b = encodeSrcReg(reg_b.reg, ret);
+
+		ret << nop()                  // required for rotate
+		    << rotate(*src_b)
+		    << bor(*dst_reg, r1, r1)
+		;
+
+	} else if (reg_b.tag == IMM) {
+		assert(-15 <= reg_b.smallImm.val && reg_b.smallImm.val <= 16); // smallimm must be in proper range
+		                                                               // Also tested in rotate()
+		SmallImm imm(reg_b.smallImm.val);
+
+		ret << nop()                  // required for rotate
+		    << rotate(imm)
+		    << bor(*dst_reg, r1, r1)
+		;
+	} else {
+		breakpoint  // Unhandled combination of inputs/output
+	}
+
+	return true;
 }
 
 
@@ -608,29 +658,8 @@ Instructions encodeInstr(QPULib::Instr instr) {
 					ret_instr = ldunifrf(rf_addr);
 					ret << ret_instr;
 					break;
-      } else if (instr.ALU.op == M_ROTATE) {
-				breakpoint
-
-				// reg a is  r0 only
-        assert(instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.tag == ACC &&
-               instr.ALU.srcA.reg.regId == 0);
-
-				// reg b is either r5 or small imm
-				auto reg_b = instr.ALU.srcB;
-
-				if (reg_b.tag == REG) {
-        	assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
-
-					auto src_b = encodeSrcReg(reg_b.reg, ret);
-					ret << rotate(*src_b);
-
-				} else if (reg_b.tag == IMM) {
-					SmallImm imm(reg_b.smallImm.val);
-					ret << rotate(imm);
-				} else {
-					breakpoint  // Unhandled combination of inputs/output
-				}
-				break;
+      } else if (translateRotate(instr, ret)) {
+				break;  // all is well
       } else if (translateOpcode(instr, ret)) {
 				break; // All is well
       } else {

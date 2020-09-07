@@ -131,6 +131,7 @@ Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t ref_addr3);
 Instr sub(Location const &loc1, Location const &loc2, Location const &loc3);
+Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 
 Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
 

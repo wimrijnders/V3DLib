@@ -753,6 +753,15 @@ Instr sub(Location const &loc1, Location const &loc2, Location const &loc3) {
 }
 
 
+Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+	Instr instr;
+	instr.alu_add_set(loc1, loc2, imm3);
+
+	instr.alu.add.op    = V3D_QPU_A_SUB;
+	return instr;
+}
+
+
 Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, loc3);
@@ -798,8 +807,6 @@ Instr mov(Register const &reg, RFAddress /* Location */ const &loc2) {
 	} else {
 		instr.alu.add.a     = loc2.to_mux();
 	}
-	//instr.raddr_a       = addr.to_waddr(); 
-	//instr.alu.add.a     = V3D_QPU_MUX_A;
 
 	instr.alu.add.op    = V3D_QPU_A_OR;
 	instr.alu.add.b     = V3D_QPU_MUX_A;
@@ -1219,61 +1226,133 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
 
 
 /**
- * Not at all sure about this one, it does not feature in the MESA Broadcom code,
- * except for the rotate sig flag.
+ * Perform full rotate with offset in r5 using add ALU.
  *
- * Constructed from the logic vc4 rotate.
- *   - no dest location
- *   - reg a must be r0
- *   - reg b if used is r5, otherwise smallimm passed
+ * - dest is r1
+ * - reg a is r0
+ * - reg b if used is r5, otherwise smallimm with specific range passed (see override below)
+ * - uses mov as opcode
+ *
+ * Since dest, src are fixed, these are not passed in.
+ * If this conflicts with syntax of any other assemblers, change this
+ * (it already conflicts with python6 assembler).
+ *
+ * TODO: both add and mul can do rotate in v3d, fix.
+ *
+ * ============================================================================
+ * NOTES
+ * -----
+ *
+ * * Rotate signal not outputted in broadcom menmonic dump!
+ *   Hoping this is not an error....
+ *
+ * * From python6 project(test_signals.py):
+ *
+ *   - nop required before rotate (but lines 82, 147 only done once before loop)
+ *   - Smallimm offset in range -15,16 inclusive; 'i == offset' in points below
+ *
+ *   1. rot signal with rN source performs as a full rotate
+ *     - nop().add(r1, r0, r0, sig = rot(i))  # Also with r5=offset, rot signal still used!
+ *   2. rotate alias
+ *     - rotate(r1, r0, i)       # add alias, 'i % 1 == 0' ??? Always true
+ *     - nop().rotate(r1, r0, i) # mul alias
+ *     - rotate(r1, r0, r5)       # add alias
+ *     - nop().rotate(r1, r0, r5) # mul alias
+ *   3. rot signal with rfN source performs as a quad rotate
+ *     - nop().add(r1, rf32, rf32, sig = rot(i))
+ *     - nop().add(r1, rf32, rf32, sig = rot(r5))
+ *   4. quad_rotate alias
+ *     - quad_rotate(r1, rf32, i)       # add alias
+ *     - nop().quad_rotate(r1, rf32, i) # mul alias
+ *     - quad_rotate(r1, rf32, r5)       # add alias
+ *     - nop().quad_rotate(r1, rf32, r5) # mul alias
+ *   5. instruction with r5rep dst performs as a full broadcast
+ *     - Uses rot signal with special condition
+ *     -  Skip for now
+ *   6. broadcast alias
+ *     - idem 5, skip for now
+ *   7. instruction with r5 dst performs as a quad broadcast
+ *     - idem 5, skip for now
+ *
+ * * Conclusions previous point:
+ *
+ *   Only 2. relevant for QPULib code, skip rest for now
+ *
+ *   - nop required before rotate (but lines 82, 147 only done once before loop)
+ *   - Both add and mul can do rotate in v3d
+ *   - dst apparently always r1
+ *   - src apparently always r0 for 'full rotate'; TODO likely not true, check
+ *   - offset is either a SmallImm or in r5
+ *   - Smallimm offset in range -15,16 inclusive
+ *   - TODO: try to understand the newfangled quad rotate shit.
+ *
+ *
+ * * From VC4 Ref Guide:
+ *
+ *  - p18:
+ *     "Finally, the low 4 bits of SIMD element 0 (quad 0, element 0) in r5
+ *     can be used to specify one of the possible 16 rotations when performing a 
+ *     horizontal vector rotate of the mul ALU output."
+ *
+ *  - p20:
+ *   The 16-way vector output by the mul ALU may be rotated by any of the 16 possible horizontal rotations. This
+ *   provides the QPUs with most of the image processing flexibility of the VideoCore VPUs, and differentiates the
+ *   QPU from a conventional ‘silo’ SIMD processor. The full horizontal vector rotate is only available when both of
+ *   the mul ALU input arguments are taken from accumulators r0-r3.
+ *
+ *   Horizontal rotations are specified as part of the instruction word using certain values of the special ‘small
+ *   immediate’ encoding (see “Small Immediates” on page 19). The rotation can either be specified directly from
+ *   the immediate data or taken from accumulator r5, element 0, bits [3:0].
+ *
+ *  - p29:
+ *   Table ALU signaling bits
+ *   13 -  ALU instruction with raddr_b specifying small immediate or vector rotate
+ *
+ *  - p30:
+ *  Table Small Immediate Encoding
+ *  48 - Mul output vector rotated by 1 upwards (so element 0 moves to element 1)
+ *  ...
+ *  63 - Mul output vector rotated by 15 upwards (so element 0 moves to element 15)
+ *
+ *  - p37
+ *  Instruction Restrictions
+ *   * An instruction that does a vector rotate by r5 must not immediately follow an instruction that writes to r5.
+ *   * An instruction that does a vector rotate must not immediately follow an instruction that writes to the
+ *     accumulator that is being rotated.
  */
 Instr rotate(Location const &loc3) {
-	printf("WARNING: rotate called, really not sure if correct.\n");
+	debug("WARNING: rotate called, really not sure if correct.");
 	Instr instr;
 
-	instr.sig.rotate = true;
-	// alu add is nop
+	breakpoint
 
-	// reg b must be r5
-	// BUT: loc3 value not used
+	// reg b must be r5 (note that value not used directly below)
 	assert(loc3.to_mux() == V3D_QPU_MUX_R5);
 
-	// vcd uses M_V8MIN, which doesn't exist on v3d
-	// Following is hopefully OK
-	instr.alu.mul.op    = V3D_QPU_M_FMUL;
-	instr.alu.mul.a     = V3D_QPU_MUX_R0;
+	// TODO: check value r5 within range -15,16 inclusive
 
-	// vcd uses VPM_READ (reg 48), which doesn't exist on v3d, value is a desperate attempt at compilation
-	uint8_t const VPM_READ = 48;  // This is a vc4 value!
-	instr.raddr_b = rf(VPM_READ).to_waddr();
+	instr.alu_add_set(r1, r0, r5);
 
-	//breakpoint
+	instr.sig.rotate = true;
+	instr.alu.add.op = V3D_QPU_A_OR;  // actually mov
+
 	return instr;
 }
 
 
 /**
- * See other rotate
+ * See header comment other rotate
  */
 Instr rotate(SmallImm const &imm3) {
-	printf("WARNING: rotate called, really not sure if correct.\n");
+	debug("WARNING: rotate called, really not sure if correct.");
+	assert(-15 <= imm3.val() && imm3.val() <= 16);           // smallimm must be in proper range
+
 	Instr instr;
+	instr.alu_add_set(r1, r0, imm3);
 
 	instr.sig.rotate = true;
+	instr.alu.add.op = V3D_QPU_A_OR;  // actually mov
 
-	// See also comments other rotate
-	instr.alu.mul.op    = V3D_QPU_M_FMUL;
-	instr.alu.mul.a     = V3D_QPU_MUX_R0;
-
-	// vcd: uint32_t n = (uint32_t) instr.ALU.srcB.smallImm.val;
-  // Possibly (likely!) val wrong
-	uint8_t const VPM_READ = 48;  // This is a vc4 value!
-	uint8_t n = imm3.to_raddr();
-	assert(n >= 1 || n <= 15);
-
-	instr.raddr_b = (uint8_t) (VPM_READ + n);  // Addition: this is what vcd does
-
-	//breakpoint
 	return instr;
 }
 

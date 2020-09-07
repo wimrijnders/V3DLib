@@ -504,18 +504,18 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 		// Just eyeball them for now
 		printf("Eyeballing opcodes:\n");
-/*
 		for (auto &op : ret) {
 			std::cout << op.mnemonic() << std::endl;
-			op.dump(true);
+			//op.dump(true);
 		}
-*/
+/*
 		{
 			auto &op = ret.back();
 
 			std::cout << op.mnemonic() << std::endl;
 			op.dump(true);
 		}
+*/
 	}
 }
 

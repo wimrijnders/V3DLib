@@ -15,6 +15,7 @@ public:
 
 	uint8_t to_raddr() const;
 	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
+	int val() const { return m_val; }  // for assertions
 
 	SmallImm l() const;
 	SmallImm ff() const;
