@@ -475,7 +475,7 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
 		auto src_b = encodeSrcReg(reg_b.reg, ret);
 
-		ret << nop()                  // required for rotate
+		ret << nop().comment("required for rotate", true)
 		    << rotate(*src_b)
 		    << bor(*dst_reg, r1, r1)
 		;
@@ -486,7 +486,7 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		SmallImm imm = encodeSmallImm(reg_b);
 		//SmallImm imm(reg_b.smallImm.val);
 
-		ret << nop()                  // required for rotate
+		ret << nop().comment("required for rotate", true)
 		    << rotate(imm)
 		    << bor(*dst_reg, r1, r1)
 		;
@@ -774,10 +774,15 @@ void KernelDriver::emit_opcodes(FILE *f) {
 	} else {
 		for (auto const &instr : instructions) {
 			if (!instr.comment().empty()) {
-				fprintf(f, "\n%s\n", instr.comment().c_str());
+				if (instr.is_side_comment()) {
+					fprintf(f, "%s  # %s\n", instr.mnemonic().c_str(), instr.comment().c_str());
+				} else {
+					fprintf(f, "\n# %s\n", instr.comment().c_str());
+					fprintf(f, "%s\n", instr.mnemonic().c_str());
+				}
+			} else {
+				fprintf(f, "%s\n", instr.mnemonic().c_str());
 			}
-
-			fprintf(f, "%s\n", instr.mnemonic().c_str());
 		}
 	}
 

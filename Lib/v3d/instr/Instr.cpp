@@ -13,6 +13,24 @@ bool is_power_of_2(int x) {
     return x > 0 && !(x & (x - 1));
 }
 
+
+/**
+ * Source: https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c/
+ */
+void findAndReplaceAll(std::string & data, std::string toSearch, std::string replaceStr) {
+    // Get the first occurrence
+    size_t pos = data.find(toSearch);
+    // Repeat till end is reached
+    while( pos != std::string::npos)
+    {
+        // Replace this occurrence of Sub String
+        data.replace(pos, toSearch.size(), replaceStr);
+        // Get the next occurrence from the current position
+        pos =data.find(toSearch, pos + replaceStr.size());
+    }
+}
+
+
 }
 
 
@@ -45,6 +63,20 @@ std::string Instr::dump(bool to_stdout) const {
 std::string Instr::mnemonic() const {
 	std::string ret = instr_mnemonic(this);
 	return ret;
+}
+
+
+/**
+ * Assign comment to current instance
+ *
+ * For display purposes only, when generating a dump of the opcodes.
+ */
+Instr &Instr::comment(std::string const &comment, bool is_side_comment) {
+	m_comment = comment;
+	findAndReplaceAll(m_comment, "\n", "\n# ");
+
+	m_is_side_comment = is_side_comment;
+	return *this;
 }
 
 

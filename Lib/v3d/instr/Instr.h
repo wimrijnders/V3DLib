@@ -24,10 +24,9 @@ public:
 	static void show(uint64_t in_code);
 	static std::string mnemonic(uint64_t in_code);
 
-	// Assign comment to current instance
-	// For display purposes only, when generating a dump of the opcodes
-	Instr &comment(std::string const &comment) { m_comment = comment; return *this; } 
+	Instr &comment(std::string const &comment, bool is_side_comment = false);
 	std::string const &comment() const { return m_comment; }
+	bool is_side_comment() const { return m_is_side_comment; }
 
 	operator uint64_t() const { return code(); }
 
@@ -105,6 +104,7 @@ private:
 
 	bool m_doing_add = true;
 	std::string m_comment;
+	bool m_is_side_comment = false;
 
 	void init_ver() const;
 	void init(uint64_t in_code);
