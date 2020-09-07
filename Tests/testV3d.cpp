@@ -154,6 +154,7 @@ void match_kernel_outputs(
 		// Outputs should match exactly
 		for (uint32_t n = 0; n < len; ++n) {
 			if (skip_nops && (_nop == received[n])) {
+				//printf("nop at index %d\n", n);
 				continue;
 			}
 
@@ -489,6 +490,32 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 		match_kernel_outputs(bytecode, kernel_output, true);  // true: skip `nop` in kernel_output, can't generate
 		//REQUIRE(summation.size() == arr.size());
+	}
+
+
+	SECTION("Opcodes not in qpu_disasm kernel assembled correctly") {
+		std::vector<Instr> ret;
+
+		ret
+			<< nop().smul24(r1, SmallImm(2), rf(0))
+			<< rotate(r5)
+			<< rotate(3)
+		;
+
+		// Just eyeball them for now
+		printf("Eyeballing opcodes:\n");
+/*
+		for (auto &op : ret) {
+			std::cout << op.mnemonic() << std::endl;
+			op.dump(true);
+		}
+*/
+		{
+			auto &op = ret.back();
+
+			std::cout << op.mnemonic() << std::endl;
+			op.dump(true);
+		}
 	}
 }
 

@@ -15,6 +15,7 @@ public:
 
 	RFAddress l() const;
 	RFAddress h() const;
+	RFAddress abs() const;
 
 private:
 	uint8_t m_val;

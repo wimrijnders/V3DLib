@@ -40,6 +40,7 @@ public:
 	Instr &ldunif(bool val = true);
 	Instr &ldunifa(bool val = true);
 	Instr &ldvpm(bool val = true);
+	Instr &norn();
 	Instr &nornn();
 	Instr &ifnb();
 	Instr &norc();
@@ -48,6 +49,7 @@ public:
 	Instr &ifb();
 	Instr &ifna();
 	Instr &ifa();
+	Instr &andc();
 	Instr &andnc();
 	Instr &andnn();
 
@@ -56,6 +58,7 @@ public:
 	Instr &na0();
 	Instr &alla();
 	Instr &anya();
+	Instr &anyaq();
 	Instr &anyap();
 	Instr &anyna();
 	Instr &anynaq();
@@ -63,6 +66,7 @@ public:
 	Instr &allna();
 
 	// Calls to set the mul part of the instruction
+	Instr &nop() { return *this; }  // With normal usage, the mul-part is already nop
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3);
 	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
@@ -73,6 +77,7 @@ public:
 	Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
 	Instr &smul24(Location const &loc1, Location const &loc2, Location const &loc3); 
+	Instr &smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3); 
 	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
@@ -82,6 +87,11 @@ public:
 	void alu_add_set_reg_b(Location const &loc3);
 	void alu_add_set_imm_a(SmallImm const &imm3);
 	void alu_add_set_imm_b(SmallImm const &imm3);
+	void alu_mul_set_dst(Location const &loc1); 
+	void alu_mul_set_reg_a(Location const &loc2);
+	void alu_mul_set_reg_b(Location const &loc3);
+	void alu_mul_set_imm_a(SmallImm const &imm);
+	void alu_mul_set_imm_b(SmallImm const &imm);
 
 	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_add_set(Location const &loc1, SmallImm const &imm2, Location const &loc3);
@@ -136,6 +146,7 @@ Instr bb(Location const &loc1);
 Instr bb(BranchDest const &loc1);
 Instr bb(uint32_t addr);
 Instr bu(uint32_t addr, Location const &loc2);
+Instr bu(BranchDest const &loc1, Location const &loc2);
 
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 
@@ -153,7 +164,10 @@ Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr fdx(Location const &loc1, Location const &loc2);
 Instr vflb(Location const &loc1);
 Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3);
+Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
+Instr rotate(Location const &loc3);
+Instr rotate(SmallImm const &imm3);
 
 }  // instr
 }  // v3d

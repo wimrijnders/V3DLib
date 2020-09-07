@@ -17,6 +17,7 @@ public:
 	v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
 
 	SmallImm l() const;
+	SmallImm ff() const;
 
 	static bool to_opcode_value(float value, int &rep_value);
 

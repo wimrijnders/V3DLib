@@ -59,6 +59,13 @@ SmallImm SmallImm::l() const {
 }
 
 
+SmallImm SmallImm::ff() const {
+	SmallImm ret(*this);
+	ret.m_input_unpack = V3D_QPU_UNPACK_REPLICATE_32F_16;
+	return ret;
+}
+
+
 }  // instr
 }  // v3d
 }  // QPULib

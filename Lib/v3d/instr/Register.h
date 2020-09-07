@@ -23,6 +23,7 @@ public:
 	Register swp() const;
 
 	bool is_dest_acc() const { return m_is_dest_acc; }
+	std::string const &name() const { return m_name; }
 
 private:
 	std::string   m_name;
@@ -54,9 +55,15 @@ extern Register const r4;
 extern Register const r5;
 extern Register const tmua;
 extern Register const tmud;
+extern Register const tlb;
+extern Register const recip;
+extern Register const rsqrt;
+extern Register const log;
 
 // For branch
 extern BranchDest const lri;
+extern Register const r_unif;
+extern Register const a_unif;
 
 }  // instr
 }  // v3d

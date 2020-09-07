@@ -1,6 +1,7 @@
 #include "Instr.h"
 #include <cstdio>
-#include <cstdlib>  // abs()
+#include <cstdlib>        // abs()
+#include <bits/stdc++.h>  // swap()
 #include "../../Support/debug.h"
 #include "dump_instr.h"
 
@@ -97,6 +98,47 @@ void Instr::init(uint64_t in_code) {
 
 }
 
+namespace {
+
+std::string binaryValue(uint64_t num) {
+	const int size = sizeof(num)*8;
+  std::string result; 
+
+	for (int i = size -1; i >=0; i--) {
+		bool val = ((num >> i) & 1) == 1;
+
+		if (val) {
+			result += '1';
+		} else {
+			result += '0';
+		}
+
+		if (i % 10 == 0) {
+			result += '.';
+		}
+	}
+
+	return result;
+}
+
+}  // anon namespace
+
+
+//#include "broadcom/qpu/qpu_instr.h"  // V2D_QPU_BRANCH_COND_ALWAYS
+
+// from mesa/src/broadcom/qpu/qpu_pack.c
+#define QPU_MASK(high, low) ((((uint64_t)1<<((high)-(low)+1))-1)<<(low))
+#define QPU_GET_FIELD(word, field) ((uint32_t)(((word)  & field ## _MASK) >> field ## _SHIFT))
+
+#define VC5_QPU_BRANCH_MSFIGN_SHIFT         21
+#define VC5_QPU_BRANCH_MSFIGN_MASK          QPU_MASK(22, 21)
+
+#define VC5_QPU_BRANCH_COND_SHIFT           32
+#define VC5_QPU_BRANCH_COND_MASK            QPU_MASK(34, 32)
+
+// End from mesa/src/broadcom/qpu/qpu_pack.c
+
+
 
 bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 	if (code1 == code2) {
@@ -129,16 +171,44 @@ bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 		return 0 != (code & bu_mask);
 	};
 
-	if (is_bu_set(code1) || is_bu_set(code2)) {
-		return false;  // bdu may be used
+
+	// Hypothesis: non-usage of bdu depends on these two fields
+
+	uint32_t cond   = QPU_GET_FIELD(code1, VC5_QPU_BRANCH_COND);
+	uint32_t msfign = QPU_GET_FIELD(code1, VC5_QPU_BRANCH_MSFIGN);
+
+        if (cond == 0) {
+                //instr->branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+        } else if (V3D_QPU_BRANCH_COND_A0 + (cond - 2) <= V3D_QPU_BRANCH_COND_ALLNA)
+                cond = V3D_QPU_BRANCH_COND_A0 + (cond - 2);
+
+	printf("cond: %u, msfign: %u\n", cond, msfign);
+
+	if (cond == 2 && msfign == V3D_QPU_MSFIGN_NONE) {
+		// Zap out the bdu field and compare again
+		uint64_t bdu_mask = ((uint64_t) 0b111) << 15;
+		code1 = code1 & ~bdu_mask;
+		code2 = code1 & ~bdu_mask;
+
+		return code1 == code2;
 	}
 
-	// Zap out the bdu field and compare again
-	uint64_t bdu_mask = ((uint64_t) 0b111) << 15;
-	code1 = code1 & ~bdu_mask;
-	code2 = code1 & ~bdu_mask;
+#ifdef DEBUG
+	printf("compare_codes diff: %s\n", binaryValue(code1 ^ code2).c_str());
+	printf("code1: %s\n", mnemonic(code1).c_str());
+	show(code1);
+	printf("code2: %s\n", mnemonic(code2).c_str());
+	show(code2);
+	
 
-	return code1 == code2;
+	breakpoint
+#endif  // DEBUG
+
+	//if (is_bu_set(code1) || is_bu_set(code2)) {
+	//	return false;  // bdu may be used
+	//}
+
+	return false;
 }
 
 
@@ -179,7 +249,9 @@ Instr &Instr::pushz() { set_pf(V3D_QPU_PF_PUSHZ); return *this; }
 Instr &Instr::norc()  { set_uf(V3D_QPU_UF_NORC);  return *this; }
 Instr &Instr::nornc() { set_uf(V3D_QPU_UF_NORNC); return *this; }
 Instr &Instr::norz()  { set_uf(V3D_QPU_UF_NORZ);  return *this; }
+Instr &Instr::norn()  { set_uf(V3D_QPU_UF_NORN);  return *this; }
 Instr &Instr::nornn() { set_uf(V3D_QPU_UF_NORNN); return *this; }
+Instr &Instr::andc()  { set_uf(V3D_QPU_UF_ANDC);  return *this; }
 Instr &Instr::andnc() { set_uf(V3D_QPU_UF_ANDNC); return *this; }
 Instr &Instr::andnn() { set_uf(V3D_QPU_UF_ANDNN); return *this; }
 Instr &Instr::ifnb()  { set_c(V3D_QPU_COND_IFNB); return *this; }
@@ -225,14 +297,14 @@ Instr &Instr::set_branch_condition(v3d_qpu_branch_cond cond) {
 }
 
 
-Instr &Instr::a0()    { return set_branch_condition(V3D_QPU_BRANCH_COND_A0); }
-Instr &Instr::na0()   { return set_branch_condition(V3D_QPU_BRANCH_COND_NA0); }
-Instr &Instr::alla()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
-Instr &Instr::allna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
-Instr &Instr::anya()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYA); }
-Instr &Instr::anyna() { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYNA); }
-
+Instr &Instr::a0()     { return set_branch_condition(V3D_QPU_BRANCH_COND_A0); }
+Instr &Instr::na0()    { return set_branch_condition(V3D_QPU_BRANCH_COND_NA0); }
+Instr &Instr::alla()   { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
+Instr &Instr::allna()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
+Instr &Instr::anya()   { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYA); }
+Instr &Instr::anyaq()  { branch.msfign =  V3D_QPU_MSFIGN_Q; return anya(); }
 Instr &Instr::anyap()  { branch.msfign =  V3D_QPU_MSFIGN_P; return anya(); }
+Instr &Instr::anyna()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYNA); }
 Instr &Instr::anynaq() { branch.msfign =  V3D_QPU_MSFIGN_Q; return anyna(); }
 Instr &Instr::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna(); }
 
@@ -331,16 +403,15 @@ Instr &Instr::fmul(Location const &loc1, Location const &loc2, Location const &l
 // TODO: how does small imm value get used?
 Instr &Instr::fmul(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	m_doing_add = false;
+	alu_mul_set_dst(loc1);
+	alu_mul_set_imm_a(imm2);
 
-	sig.small_imm = true;
-	raddr_a = loc3.to_waddr();  // Or this:  abs(imm2);  // TODO: so how can you use a negative value?
-	alu.mul.op    = V3D_QPU_M_FMUL;
-	alu.mul.a     = V3D_QPU_MUX_B;
+	// NOTE: raddr_a set for loc3 and b-fields used in mul
+	raddr_a = loc3.to_waddr();
 	alu.mul.b     = V3D_QPU_MUX_A;
-	alu.mul.waddr = loc1.to_waddr();
-	alu.mul.magic_write = false;
 	alu.mul.b_unpack = loc3.input_unpack();
 
+	alu.mul.op    = V3D_QPU_M_FMUL;
 	return *this;
 }
 
@@ -352,6 +423,32 @@ Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const 
 	sig.small_imm = true;
 	raddr_b = loc1.to_waddr();
 	alu.mul.op    = V3D_QPU_M_SMUL24;
+
+	return *this;
+}
+
+
+/**
+ * NOTE: Added this one myself, not sure if correct
+ * TODO verify correctness
+ */
+Instr &Instr::smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
+	m_doing_add = false;
+
+	//breakpoint
+	alu_mul_set_dst(loc1);
+	alu_mul_set_imm_a(imm2);
+	alu_mul_set_reg_a(loc3);  // ??? Perhaps param 2 and 3 get switched around? 
+	                          // TODO check, also compare with fmul
+
+	alu.mul.op    = V3D_QPU_M_SMUL24;
+
+	// Apparently, MUX A and B are switched around when 2nd param is SmallImm
+	// TODO: verify
+
+	alu.mul.a     = V3D_QPU_MUX_B;
+	alu.mul.b     = V3D_QPU_MUX_A;
+	alu.mul.b_unpack = loc3.input_unpack();
 
 	return *this;
 }
@@ -416,11 +513,35 @@ void Instr::alu_add_set_imm_a(SmallImm const &imm3) {
 
 
 void Instr::alu_add_set_imm_b(SmallImm const &imm3) {
+	// Apparently, imm is always set in raddr_b, even
+	// if it's the second param in the instruction
 	sig.small_imm = true; 
 	raddr_b       = imm3.to_raddr(); 
 
 	alu.add.b     = V3D_QPU_MUX_B;
 	alu.add.b_unpack = imm3.input_unpack();
+}
+
+
+/**
+ * Copied from alu_add_set_imm_a(), not sure about this
+ * TODO verify in some way
+ */
+void Instr::alu_mul_set_imm_a(SmallImm const &imm) {
+	sig.small_imm = true; 
+	raddr_b       = imm.to_raddr(); 
+
+	alu.mul.a     = V3D_QPU_MUX_B;
+	alu.mul.a_unpack = imm.input_unpack();
+}
+
+
+void Instr::alu_mul_set_imm_b(SmallImm const &imm) {
+	sig.small_imm = true; 
+	raddr_b       = imm.to_raddr(); 
+
+	alu.mul.b     = V3D_QPU_MUX_B;
+	alu.mul.b_unpack = imm.input_unpack();
 }
 
 
@@ -445,13 +566,19 @@ void Instr::alu_add_set(Location const &loc1, Location const &loc2,  SmallImm co
 }
 
 
-void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+void Instr::alu_mul_set_dst(Location const &loc1) {
 	if (loc1.is_rf()) {
 		alu.mul.magic_write = false;
 	} else {
 		alu.mul.magic_write = true;
 	}
 
+	alu.mul.waddr = loc1.to_waddr();
+	alu.mul.output_pack = loc1.output_pack();
+}
+
+
+void Instr::alu_mul_set_reg_a(Location const &loc2) {
 	if (loc2.is_rf()) {
 		raddr_a = loc2.to_waddr();
 		alu.mul.a     = V3D_QPU_MUX_A;
@@ -459,11 +586,26 @@ void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location con
 		alu.mul.a     = loc2.to_mux();
 	}
 
-	alu.mul.b     = loc3.to_mux();
-	alu.mul.waddr = loc1.to_waddr();
-	alu.mul.output_pack = loc1.output_pack();
 	alu.mul.a_unpack = loc2.input_unpack();
+}
+
+
+void Instr::alu_mul_set_reg_b(Location const &loc3) {
+	if (loc3.is_rf()) {
+		raddr_b          = loc3.to_waddr(); 
+		alu.mul.b        = V3D_QPU_MUX_B;
+	} else {
+		alu.mul.b        = loc3.to_mux();
+	}
+
 	alu.mul.b_unpack = loc3.input_unpack();
+}
+
+
+void Instr::alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3) {
+	alu_mul_set_dst(loc1);
+	alu_mul_set_reg_a(loc2);
+	alu_mul_set_reg_b(loc3);
 }
 
 
@@ -818,6 +960,8 @@ Instr bb(uint32_t addr) {
 
 
 Instr bu(uint32_t addr, Location const &loc2) {
+	printf("called bu(uint32_t addr, Location const &loc2)\n");
+
 	Instr instr;
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
 
@@ -825,13 +969,55 @@ Instr bu(uint32_t addr, Location const &loc2) {
 	// Values instr.flags not important
 
 	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
-	instr.branch.ub =  false;
+	instr.branch.ub =  true;
 
 	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_ABS;
+	//instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
 	instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REGFILE;
 
 	instr.branch.raddr_a = loc2.to_waddr();
 	instr.branch.offset = addr;
+
+	return instr;
+}
+
+
+/**
+ * NOTE: loc2 not used?
+ */
+Instr bu(BranchDest const &loc1, Location const &loc2) {
+	printf("called Instr bu(BranchDest const &loc1, Location const &loc2)\n");
+
+	Instr instr;
+	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
+
+	// Values instr.sig   not important
+	// Values instr.flags not important
+
+	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
+	instr.branch.ub =  true;
+
+	instr.branch.bdi =  V3D_QPU_BRANCH_DEST_LINK_REG;
+
+	// Hackish!
+	auto bd_p = dynamic_cast<Register const *> (&loc2);
+	if (bd_p == nullptr) {
+		// The regular path
+		instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REL;
+	} else {
+		if (bd_p->name() == "r_unif") {
+			instr.branch.bdu =  V3D_QPU_BRANCH_DEST_REL;
+		} else  if (bd_p->name() == "a_unif") {
+				instr.branch.bdu =  V3D_QPU_BRANCH_DEST_ABS;
+		} else {
+			assert(false);  // Not expecting anything else
+		}
+	}
+	
+
+
+	instr.branch.raddr_a = loc1.to_waddr();
+	instr.branch.offset = 0;
 
 	return instr;
 }
@@ -946,14 +1132,12 @@ Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 
 Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
-	//Can't use here: instr.alu_add_set(loc1, loc2, loc3);
+	instr.alu_add_set_dst(loc1);
 
 	instr.raddr_a       = loc2.to_waddr();
 	instr.alu.add.op    = V3D_QPU_A_VFPACK;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
+	instr.alu.add.a     = loc2.to_mux();
 	instr.alu.add.b     = loc3.to_mux();
-	instr.alu.add.waddr = loc1.to_waddr();
-	instr.alu.add.magic_write = false;
 	instr.alu.add.a_unpack = loc2.input_unpack();
 	instr.alu.add.b_unpack = loc3.input_unpack();
 
@@ -979,12 +1163,15 @@ Instr fdx(Location const &loc1, Location const &loc2) {
 Instr vflb(Location const &loc1) {
 	Instr instr;
 
-	instr.raddr_b       = loc1.to_waddr();
-	instr.alu.add.op    = V3D_QPU_A_VFLB;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
-	instr.alu.add.b     = V3D_QPU_MUX_R0;
 	instr.alu.add.waddr = loc1.to_waddr();
 	instr.alu.add.magic_write = false;
+
+	instr.alu.add.a     = V3D_QPU_MUX_A;
+
+	instr.raddr_b       = loc1.to_waddr();
+	instr.alu.add.b     = V3D_QPU_MUX_R0;
+
+	instr.alu.add.op    = V3D_QPU_A_VFLB;
 
 	return instr;
 }
@@ -992,16 +1179,23 @@ Instr vflb(Location const &loc1) {
 
 Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	Instr instr;
+	instr.alu_add_set_dst(loc1);
+	instr.alu_add_set_imm_a(imm2);
+	instr.alu_add_set_reg_b(loc3);
 
-	instr.sig.small_imm = true;
-	instr.raddr_b = imm2.to_raddr();
 	instr.alu.add.op    = V3D_QPU_A_VFMIN;
-	instr.alu.add.a     = V3D_QPU_MUX_B;
-	instr.alu.add.b     = loc3.to_mux();
-	instr.alu.add.magic_write = false;
-	instr.alu.add.waddr = loc1.to_waddr();
-	instr.alu.add.a_unpack = imm2.input_unpack();
-	instr.alu.add.a_unpack = V3D_QPU_UNPACK_REPLICATE_32F_16;
+
+	return instr;
+}
+
+
+Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3) {
+	Instr instr;
+	instr.alu_add_set_dst(loc1);
+	instr.alu_add_set_reg_a(loc2);
+	instr.alu_add_set_reg_b(loc3);
+
+	instr.alu.add.op    = V3D_QPU_A_VFMIN;
 
 	return instr;
 }
@@ -1020,10 +1214,66 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	instr.alu.add.a_unpack = imm2.input_unpack();
 	instr.alu.add.b_unpack = loc3.input_unpack();
 
-/*
-	instr.alu.add.a_unpack = V3D_QPU_UNPACK_REPLICATE_32F_16;
-*/
+	return instr;
+}
 
+
+/**
+ * Not at all sure about this one, it does not feature in the MESA Broadcom code,
+ * except for the rotate sig flag.
+ *
+ * Constructed from the logic vc4 rotate.
+ *   - no dest location
+ *   - reg a must be r0
+ *   - reg b if used is r5, otherwise smallimm passed
+ */
+Instr rotate(Location const &loc3) {
+	printf("WARNING: rotate called, really not sure if correct.\n");
+	Instr instr;
+
+	instr.sig.rotate = true;
+	// alu add is nop
+
+	// reg b must be r5
+	// BUT: loc3 value not used
+	assert(loc3.to_mux() == V3D_QPU_MUX_R5);
+
+	// vcd uses M_V8MIN, which doesn't exist on v3d
+	// Following is hopefully OK
+	instr.alu.mul.op    = V3D_QPU_M_FMUL;
+	instr.alu.mul.a     = V3D_QPU_MUX_R0;
+
+	// vcd uses VPM_READ (reg 48), which doesn't exist on v3d, value is a desperate attempt at compilation
+	uint8_t const VPM_READ = 48;  // This is a vc4 value!
+	instr.raddr_b = rf(VPM_READ).to_waddr();
+
+	//breakpoint
+	return instr;
+}
+
+
+/**
+ * See other rotate
+ */
+Instr rotate(SmallImm const &imm3) {
+	printf("WARNING: rotate called, really not sure if correct.\n");
+	Instr instr;
+
+	instr.sig.rotate = true;
+
+	// See also comments other rotate
+	instr.alu.mul.op    = V3D_QPU_M_FMUL;
+	instr.alu.mul.a     = V3D_QPU_MUX_R0;
+
+	// vcd: uint32_t n = (uint32_t) instr.ALU.srcB.smallImm.val;
+  // Possibly (likely!) val wrong
+	uint8_t const VPM_READ = 48;  // This is a vc4 value!
+	uint8_t n = imm3.to_raddr();
+	assert(n >= 1 || n <= 15);
+
+	instr.raddr_b = (uint8_t) (VPM_READ + n);  // Addition: this is what vcd does
+
+	//breakpoint
 	return instr;
 }
 

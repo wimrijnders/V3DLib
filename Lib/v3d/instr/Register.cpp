@@ -95,9 +95,20 @@ Register const r4("r4", V3D_QPU_WADDR_R4, V3D_QPU_MUX_R4, true);
 Register const r5("r5", V3D_QPU_WADDR_R5, V3D_QPU_MUX_R5);
 Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
 Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
+Register const tlb("tlb", V3D_QPU_WADDR_TLB);
+Register const recip("recip", V3D_QPU_WADDR_RECIP);
+Register const rsqrt("rsqrt", V3D_QPU_WADDR_RSQRT);
+Register const log("log", V3D_QPU_WADDR_LOG);
+
 
 // For branch
 BranchDest const lri("lri", V3D_QPU_WADDR_R0);
+
+// Some obscure 'registers' in the broadcom tests
+// Prefix a/r appears to indicate absolute/relative for the bdu field,
+// 2nd parameter irrelevant
+Register const r_unif("r_unif", V3D_QPU_WADDR_R0);
+Register const a_unif("a_unif", V3D_QPU_WADDR_R0);
 
 }  // instr
 }  // v3d

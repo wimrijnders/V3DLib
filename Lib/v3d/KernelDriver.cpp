@@ -292,10 +292,13 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 				// These values should never be generated for v3d
         case SPECIAL_RD_SETUP:            // value 6
         case SPECIAL_WR_SETUP:            // value 7
-        case SPECIAL_DMA_LD_ADDR:         // value 9
         case SPECIAL_HOST_INT:            // value 11
 					breakpoint
 					assert(false);                  // Do not want this
+					break;
+
+        case SPECIAL_DMA_LD_ADDR:         // value 9
+					throw Exception("The source code uses DMA instructions. These are not supported for v3d.");
 					break;
 
 				// These values *are* generated and handled
@@ -471,12 +474,13 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		assert(src_a && src_b);
 
 		switch (src_instr.ALU.op) {
-			case A_ADD:  ret << add(*dst_reg, *src_a, *src_b);        break;
-			case A_SUB:  ret << sub(*dst_reg, *src_a, *src_b);        break;
-			case A_BOR:  ret << bor(*dst_reg, *src_a, *src_b);        break;
-			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, *src_b); break;
-			case A_FSUB: ret << fsub(*dst_reg, *src_a, *src_b);       break;
-			case A_FADD: ret << fadd(*dst_reg, *src_a, *src_b);       break;
+			case A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
+			case A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
+			case A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
+			case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
+			case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
+			case A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
+			case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -489,6 +493,18 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 
 		switch (src_instr.ALU.op) {
 			case A_SHL: ret << shl(*dst_reg, *src_a, imm); break;
+			default:
+				breakpoint  // unimplemented op
+				did_something = false;
+			break;
+		}
+	} else if (dst_reg && reg_a.tag == IMM && reg_b.tag == REG) {
+		SmallImm imm(reg_a.smallImm.val);
+		auto src_b = encodeSrcReg(reg_b.reg, ret);
+		assert(src_b);
+
+		switch (src_instr.ALU.op) {
+			case M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -592,30 +608,31 @@ Instructions encodeInstr(QPULib::Instr instr) {
 					ret_instr = ldunifrf(rf_addr);
 					ret << ret_instr;
 					break;
-      } else if (translateOpcode(instr, ret)) {
-				break; // All is well
       } else if (instr.ALU.op == M_ROTATE) {
-				assert(false); // TODO
-/*
+				breakpoint
+
+				// reg a is  r0 only
         assert(instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.tag == ACC &&
                instr.ALU.srcA.reg.regId == 0);
-        assert(instr.ALU.srcB.tag == REG ?
-               instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5
-               : true);
-        uint32_t mulOp = encodeMulOp(M_V8MIN) << 29;
-        uint32_t raddrb;
-        if (instr.ALU.srcB.tag == REG) {
-          raddrb = 48;
-        }
-        else {
-          uint32_t n = (uint32_t) instr.ALU.srcB.smallImm.val;
-          assert(n >= 1 || n <= 15);
-          raddrb = 48 + n;
-        }
-        uint32_t raddra = 39;
-        *low = mulOp | (raddrb << 12) | (raddra << 18);
-        return;
-*/
+
+				// reg b is either r5 or small imm
+				auto reg_b = instr.ALU.srcB;
+
+				if (reg_b.tag == REG) {
+        	assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
+
+					auto src_b = encodeSrcReg(reg_b.reg, ret);
+					ret << rotate(*src_b);
+
+				} else if (reg_b.tag == IMM) {
+					SmallImm imm(reg_b.smallImm.val);
+					ret << rotate(imm);
+				} else {
+					breakpoint  // Unhandled combination of inputs/output
+				}
+				break;
+      } else if (translateOpcode(instr, ret)) {
+				break; // All is well
       } else {
 				if (instr.isMul()) {
         	ret_instr.alu.mul.op = v3d::encodeMulOp(instr.ALU.op);
