@@ -151,6 +151,8 @@ Instr bb(uint32_t addr);
 Instr bu(uint32_t addr, Location const &loc2);
 Instr bu(BranchDest const &loc1, Location const &loc2);
 
+Instr itof(Location const &reg1, Location const & reg2, SmallImm const &imm3);
+
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 
 Instr barrierid(v3d_qpu_waddr waddr);

@@ -215,100 +215,6 @@ SmallImm encodeSmallImm(RegOrImm const &src_reg) {
 	return ret;
 }
 
-std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
-	assert(!src_instr.isUniformLoad());
-
-	bool is_none = false;
-	std::unique_ptr<Location> ret;
-
-	Reg reg;
-  if (src_instr.tag == ALU) {
-		reg = src_instr.ALU.dest;
-	} else {
-  	assert(src_instr.tag == LI);
-		reg = src_instr.LI.dest;
-	}
-
-  switch (reg.tag) {
-    case REG_A:
-    case REG_B:
-      assert(reg.regId >= 0 && reg.regId < 32);
-			ret.reset(new RFAddress(to_waddr(reg)));
-			break;
-    case ACC:
-      assert(reg.regId >= 0 && reg.regId <= 5);
-			switch(reg.regId) {
-				case 0: ret.reset(new Register(r0)); break;
-				case 1: ret.reset(new Register(r1)); break;
-				case 2: ret.reset(new Register(r2)); break;
-				case 3: ret.reset(new Register(r3)); break;
-				case 4: ret.reset(new Register(r4)); break;
-				case 5: ret.reset(new Register(r5)); break;
-			}
-			break;
-    case SPECIAL:
-      switch (reg.regId) {
-				// These values should never be generated for v3d
-        case SPECIAL_RD_SETUP:            // value 6
-        case SPECIAL_WR_SETUP:            // value 7
-        case SPECIAL_HOST_INT:            // value 11
-					breakpoint
-					assert(false);                  // Do not want this
-					break;
-
-        case SPECIAL_DMA_LD_ADDR:         // value 9
-					throw Exception("The source code uses DMA instructions. These are not supported for v3d.");
-					break;
-
-				// These values *are* generated and handled
-				// Note that they get translated to the v3d registers, though
-        case SPECIAL_VPM_WRITE:           // Write TMU, to set data to write
-					ret.reset(new Register(tmud));
-					break;
-        case SPECIAL_DMA_ST_ADDR:         // Write TMU, to set memory address to write to
-					ret.reset(new Register(tmua));
-					break;
-        case SPECIAL_TMU0_S:              // Read TMU
-					ret.reset(new Register(tmua));
-					break;
-
-        default:
-					breakpoint
-					assert(false);  // Not expecting this
-					break;
-      }
-			break;
-    case NONE:
-			is_none = true;
-			breakpoint
-			break;
-  }
-
-	if (ret.get() == nullptr && !is_none) {
-	  fprintf(stderr, "QPULib: missing case in encodeDestReg\n");
-		assert(false);
-	}
-
-	return ret;
-}
-
-
-void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_instr) {
-	std::unique_ptr<Location> ret = encodeDestReg(src_instr);
-	if (ret.get() == nullptr) {
-		breakpoint
-		return;
-	}
-
-	if (src_instr.isMul()) {
-		dst_instr.alu.mul.waddr = ret->to_waddr();
-		dst_instr.alu.mul.output_pack = ret->output_pack();
-	} else {
-		dst_instr.alu.add.waddr = ret->to_waddr();
-		dst_instr.alu.add.output_pack = ret->output_pack();
-	}
-}
-
 
 /**
  * @param opcodes  current list of output instruction, out-parameter.
@@ -383,6 +289,123 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 	return ret;
 }
 
+std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
+	assert(!src_instr.isUniformLoad());
+
+	bool is_none = false;
+	std::unique_ptr<Location> ret;
+
+	Reg reg;
+  if (src_instr.tag == ALU) {
+		reg = src_instr.ALU.dest;
+	} else {
+  	assert(src_instr.tag == LI);
+		reg = src_instr.LI.dest;
+	}
+
+  switch (reg.tag) {
+    case REG_A:
+    case REG_B:
+      assert(reg.regId >= 0 && reg.regId < 32);
+			ret.reset(new RFAddress(to_waddr(reg)));
+			break;
+    case ACC:
+      assert(reg.regId >= 0 && reg.regId <= 5);
+			switch(reg.regId) {
+				case 0: ret.reset(new Register(r0)); break;
+				case 1: ret.reset(new Register(r1)); break;
+				case 2: ret.reset(new Register(r2)); break;
+				case 3: ret.reset(new Register(r3)); break;
+				case 4: ret.reset(new Register(r4)); break;
+				case 5: ret.reset(new Register(r5)); break;
+			}
+			break;
+    case SPECIAL:
+      switch (reg.regId) {
+				// These values should never be generated for v3d
+        case SPECIAL_RD_SETUP:            // value 6
+        case SPECIAL_WR_SETUP:            // value 7
+        case SPECIAL_HOST_INT:            // value 11
+					breakpoint
+					assert(false);                  // Do not want this
+					break;
+
+        case SPECIAL_DMA_LD_ADDR:         // value 9
+					throw Exception("The source code uses DMA instructions. These are not supported for v3d.");
+					break;
+
+				// These values *are* generated and handled
+				// Note that they get translated to the v3d registers, though
+        case SPECIAL_VPM_WRITE:           // Write TMU, to set data to write
+					ret.reset(new Register(tmud));
+					break;
+        case SPECIAL_DMA_ST_ADDR:         // Write TMU, to set memory address to write to
+					ret.reset(new Register(tmua));
+					break;
+        case SPECIAL_TMU0_S:              // Read TMU
+					ret.reset(new Register(tmua));
+					break;
+
+        default:
+					breakpoint
+					assert(false);  // Not expecting this
+					break;
+      }
+			break;
+    case NONE:
+			// As far as I can tell, there is no such thing as a NONE register on v3d;
+			// it may be one of the bits in `struct v3d_qpu_sig`.
+			//
+			// The first time I encountered this was in (QPULib target code):
+			//       _ <-{sf} or(B6, B6)
+			//
+			// The idea seems to be to set the CNZ flags depending on the value of a given rf-register.
+			// So, for the time being, we will set a condition (how? Don't know for sure yet) if
+			// srcA and srcB are the same in this respect, and set target same as both src's.
+			is_none = true;
+			assert(src_instr.ALU.setFlags);
+  		assert(src_instr.tag == ALU);
+
+			// srcA and srcB are the same rf-register
+			if ((src_instr.ALU.srcA.tag == REG && src_instr.ALU.srcB.tag == REG)
+			&& ((src_instr.ALU.srcA.reg.tag == REG_A && src_instr.ALU.srcA.reg.tag == src_instr.ALU.srcB.reg.tag)
+			|| (src_instr.ALU.srcA.reg.tag == REG_B && src_instr.ALU.srcA.reg.tag == src_instr.ALU.srcB.reg.tag))
+			&& (src_instr.ALU.srcA.reg.regId == src_instr.ALU.srcB.reg.regId)) {
+				Instructions dummy;
+				ret = encodeSrcReg(src_instr.ALU.srcA.reg, dummy);
+				assert(dummy.empty());
+			} else {
+				breakpoint  // case not handled yet
+			}
+
+			break;
+  }
+
+	if (ret.get() == nullptr && !is_none) {
+	  fprintf(stderr, "QPULib: missing case in encodeDestReg\n");
+		assert(false);
+	}
+
+	return ret;
+}
+
+
+void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_instr) {
+	std::unique_ptr<Location> ret = encodeDestReg(src_instr);
+	if (ret.get() == nullptr) {
+		breakpoint
+		return;
+	}
+
+	if (src_instr.isMul()) {
+		dst_instr.alu.mul.waddr = ret->to_waddr();
+		dst_instr.alu.mul.output_pack = ret->output_pack();
+	} else {
+		dst_instr.alu.add.waddr = ret->to_waddr();
+		dst_instr.alu.add.output_pack = ret->output_pack();
+	}
+}
+
 
 bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	bool did_something = true;
@@ -414,12 +437,12 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		auto src_a = encodeSrcReg(reg_a.reg, ret);
 		assert(src_a);
 		SmallImm imm = encodeSmallImm(reg_b);
-		//SmallImm imm(reg_b.smallImm.val);
 
 		switch (src_instr.ALU.op) {
 			case A_SHL:  ret << shl(*dst_reg, *src_a, imm);        break;
 			case A_SUB:  ret << sub(*dst_reg, *src_a, imm);        break;
 			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, imm); break;
+			case A_ItoF: ret << itof(*dst_reg, *src_a, imm);       break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -427,13 +450,13 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		}
 	} else if (dst_reg && reg_a.tag == IMM && reg_b.tag == REG) {
 		SmallImm imm = encodeSmallImm(reg_a);
-		//SmallImm imm(reg_a.smallImm.val);
 		auto src_b = encodeSrcReg(reg_b.reg, ret);
 		assert(src_b);
 
 		switch (src_instr.ALU.op) {
 			case M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
 			case M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
+			case A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -498,6 +521,71 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 }
 
 
+Instructions encodeLoadImmediate(QPULib::Instr instr) {
+	assert(instr.tag == LI);
+
+	Instructions ret;
+	int rep_value;
+
+	if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
+		// TODO: figure out how to handle large immediates, if necessary at all
+		std::string str = "LI: Can't handle value '";
+		str += std::to_string(instr.LI.imm.intVal);
+		str += "'as small immediate";
+
+		local_errors << str;
+		ret << nop().comment(str, true);
+		return ret;
+	}
+
+	if (instr.LI.setFlags) {
+		breakpoint;  // to check what flags need to be set - case not handled yet
+	}
+
+	auto dst = encodeDestReg(instr);
+	SmallImm imm(rep_value);
+	auto out_instr = mov(*dst, imm);
+
+	if (instr.LI.cond.tag == ALWAYS) {
+		// Not a problem
+	} else if (instr.LI.cond.tag == ALWAYS) {
+		breakpoint  // TODO not handled yet; how to deal with this?
+	} else {  // FLAG
+		//
+		// qpu_instr.h, line 74, enum v3d_qpu_uf:
+		//
+		// How I interpret this:
+		//  - AND: if all bits set
+		//  - NOR: if no bits set
+		//  - N  : field not set
+		//  - Z  : Field zero
+		//  - N  : field negative set
+		//  - C  : Field negative cleared
+		//
+		// What the bits are is not clear at this point.
+		// These assumptions are probably wrong, but I need a starting point.
+		// TODO: make tests to verify these assumptions (how? No clue right now)
+		// ------------------------------------------------------------------------
+		// So:
+		// - vc4 `if all(nc)...` -> ANDC
+		//
+		// vc4 `nc` - negative clear, ie. >= 0
+		//
+		switch (instr.LI.cond.flag) {
+			case NC:             // Negative clear
+				out_instr.andc();  // Hoping this is correct....
+													 // TODO how to distinguish here between add and mul ALU?
+				break;
+			default:
+				breakpoint;        // check,  case not handled yet
+		}
+	}
+
+	ret << out_instr;
+	return ret;
+}
+
+
 /**
  * Convert intermediate instruction into core instruction
  */
@@ -517,35 +605,11 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
   // Encode core instruction
   switch (instr.tag) {
-    // Load immediate
-    case LI: {
-			int rep_value;
-
-			if (instr.LI.setFlags) {
-				breakpoint;  // to check what flags need to be set - case not handled yet
-			}
-			if (instr.LI.cond.tag != ALWAYS) {
-				breakpoint;  // check,  case not handled yet
-			}
-			if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
-				// TODO: figure out how to handle large immediates, if necessary at all
-				std::string str = "LI: Can't handle value '";
-				str += std::to_string(instr.LI.imm.intVal);
-				str += "'as small immediate";
-
-				local_errors << str;
-				ret << nop().comment(str);
-			} else {
-				auto dst = encodeDestReg(instr);
-				SmallImm imm(rep_value);
-
-				ret << mov(*dst, imm);
-			}
-    }
+    case LI:  // Load immediate
+			ret << encodeLoadImmediate(instr); 
 		break;
 
-    // Branch
-    case BR: {
+    case BR: { // Branch
 			//breakpoint  // TODO examine
       assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
 

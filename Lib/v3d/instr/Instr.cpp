@@ -667,7 +667,6 @@ Instr nop() {
 Instr ldunifrf(uint8_t rf_address) {
 	Instr instr;
 
-	//instr.sig_magic    = false; 
 	instr.sig.ldunifrf = true; 
 	instr.sig_addr = rf_address; 
 
@@ -693,6 +692,15 @@ Instr shl(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	instr.alu.add.op    = V3D_QPU_A_SHL;
 	//?? instr.sig_magic     = true;  // Set in shr, need it here?
 
+	return instr;
+}
+
+
+Instr itof(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+	Instr instr;
+	instr.alu_add_set(loc1, loc2,  imm3);
+
+	instr.alu.add.op    = V3D_QPU_A_ITOF;
 	return instr;
 }
 
@@ -754,6 +762,7 @@ Instr add(Location const &loc1, Location const &loc2, Location const &loc3) {
 
 // TODO: consolidate with first implementation
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
+	breakpoint
 	// Following is the goal, does not work yet (hangs the QPU)
 	//return add(rf(rf_addr1), rf(rf_addr2), reg3);
 
@@ -773,6 +782,7 @@ Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 
 // TODO: consolidate with first implementation
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
+	breakpoint
 	//printf("add() called addr1: %x,  addr3: %x\n", rf_addr1, rf_addr3);
 	Instr instr;
 

@@ -8,7 +8,7 @@ namespace QPULib {
 
 struct Exception : public std::exception {
 	Exception(std::string ss) : s(ss) {}
-	~Exception() throw () { breakpoint }
+	~Exception() throw () {}
 
 	const char *what() const throw() { return s.c_str(); }
 

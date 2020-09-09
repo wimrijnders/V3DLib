@@ -1,14 +1,14 @@
 
 # TODO
 
-Feel free to add points here.
-
 - Checked items are implemented but not merged yet. the PR-s are pending.
 - An item that is completed and merged to `development` is removed from the list.
 
 
 ## v3d
 
+- [ ] Figure out when and how `sig_magic` and `sig_addr` are used.
+      Clues: `mesa/src/compiler/vir_to_qpu.c`, `mesa/src/broadcom/qpu/qpu_disasm.c`
 - [ ] Add performance counters (see `Rot3D` for usage under `vc4`
 
 
@@ -52,16 +52,15 @@ Feel free to add points here.
 
 ## Unit Tests
 
-- [ ] Make display of Performance Counters a cmdline option for examples (see `Rot3D`)
+- [x] Make display of Performance Counters a cmdline option for examples (see `Rot3D`)
 
 
 ## Investigate
 
 - [ ] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
 - [ ] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
-  - Allocate `astHeap` for each kernel. Perhaps also do this for other heaps
-  - Increase heap size dynamically when needed
-  - Use `new/delete` instead. This would defeat the purpose of the heaps, which is to contain memory usage
+  - Allocate `astHeap` for each kernel *- Nope, global heap required for language*
+  - Increase heap size dynamically when needed *- Can only be done, by creating a new heap and transferring data*
   - Add freeing of memory to heap definitions. This will increase the complexity of the heap code hugely
 
 
