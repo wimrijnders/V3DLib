@@ -762,7 +762,8 @@ Instr add(Location const &loc1, Location const &loc2, Location const &loc3) {
 
 // TODO: consolidate with first implementation
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
-	breakpoint
+	//breakpoint  // figure out sig_magic
+
 	// Following is the goal, does not work yet (hangs the QPU)
 	//return add(rf(rf_addr1), rf(rf_addr2), reg3);
 
@@ -782,7 +783,8 @@ Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 
 // TODO: consolidate with first implementation
 Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
-	breakpoint
+	//breakpoint  // figure out sig_magic
+
 	//printf("add() called addr1: %x,  addr3: %x\n", rf_addr1, rf_addr3);
 	Instr instr;
 
