@@ -422,6 +422,16 @@ Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
 }
 
 
+Instr &Instr::mov(Location const &loc1, Location const &loc2) {
+	m_doing_add = false;
+
+	alu_mul_set(loc1, loc2, loc2); 
+	alu.mul.op    = V3D_QPU_M_MOV;
+
+	return *this;
+}
+
+
 Instr &Instr::fmul(Location const &loc1, Location const &loc2, Location const &loc3) {
 	m_doing_add = false;
 	alu_mul_set(loc1, loc2, loc3);
@@ -696,6 +706,21 @@ Instr shl(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 }
 
 
+Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3) {
+	assertq(imm2 == imm3, "Operands a and b can only be both immediates if they are the exact same value");
+
+	Instr instr;
+	instr.alu_add_set_dst(loc1);
+	instr.alu_add_set_imm_a(imm2);
+	instr.alu_add_set_imm_b(imm3);
+
+	instr.alu.add.op    = V3D_QPU_A_SHL;
+	//?? instr.sig_magic     = true;  // Set in shr, need it here?
+
+	return instr;
+}
+
+
 Instr itof(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2,  imm3);
@@ -869,6 +894,16 @@ Instr mov(Register const &reg, RFAddress /* Location */ const &loc2) {
 	instr.alu.add.b     = V3D_QPU_MUX_A;
 	instr.alu.add.waddr = reg.to_waddr();
 	instr.alu.add.magic_write = true;
+
+	return instr;
+}
+
+
+Instr mov(Location const &loc1, Location const &loc2) {
+	Instr instr;
+	instr.alu_add_set(loc1, loc2, loc2);
+
+	instr.alu.add.op    = V3D_QPU_A_OR;
 
 	return instr;
 }

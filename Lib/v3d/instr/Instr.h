@@ -72,6 +72,7 @@ public:
 
 	Instr &mov(Register const &reg, uint8_t val);
 	Instr &mov(uint8_t rf_addr, Register const &reg);
+	Instr &mov(Location const &loc1, Location const &loc2);
 
 	Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
@@ -96,8 +97,8 @@ public:
 	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_add_set(Location const &loc1, SmallImm const &imm2, Location const &loc3);
 	void alu_add_set(Location const &loc1, Location const &loc2,  SmallImm const &imm3);
-	void alu_mul_set(Location const &loc11, Location const &loc2, Location const &loc3); 
-	void alu_mul_set(Location const &loc11, Location const &loc2, SmallImm const &imm3); 
+	void alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3); 
+	void alu_mul_set(Location const &loc1, Location const &loc2, SmallImm const &imm3); 
 
 private:
 	static uint64_t const NOP;
@@ -125,6 +126,7 @@ Instr tidx(Register const &reg);
 
 Instr shr(Location const &reg1, Location const & reg2, SmallImm const &imm3);
 Instr shl(Location const &reg1, Location const & reg2, SmallImm const &imm3);
+Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3);
 
 Instr band(Location const &loc1, Register const &reg, uint8_t val);
 Instr eidx(Register const &reg);
@@ -139,6 +141,7 @@ Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
 
 Instr mov(Location const &loc1, SmallImm val);
 Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
+Instr mov(Location const &loc1, Location const &loc2);
 
 Instr bor(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);

@@ -1,21 +1,11 @@
-#ifndef _LIB_SUPPORT_BASICS_h
-#define _LIB_SUPPORT_BASICS_h
+#ifndef _LIB_SUPPORT_BASICS_H
+#define _LIB_SUPPORT_BASICS_H
 #include <string>
 #include <vector>
+#include "Exception.h"
 #include "debug.h"
 
 namespace QPULib {
-
-struct Exception : public std::exception {
-	Exception(std::string ss) : s(ss) {}
-	~Exception() throw () {}
-
-	const char *what() const throw() { return s.c_str(); }
-
-private:
-	std::string s;
-};
-
 
 /**
  * Terminate the application ASAP
@@ -60,4 +50,4 @@ inline std::vector<std::string> &operator<<(std::vector<std::string> &a, char co
 	return a;
 }
 
-#endif  // _LIB_SUPPORT_BASICS_h
+#endif  // _LIB_SUPPORT_BASICS_H

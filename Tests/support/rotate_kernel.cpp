@@ -3,11 +3,11 @@
 // lines 131-199.
 //
 ///////////////////////////////////////////////////////////////////////////////
-#include "support.h"
+#include "rotate_kernel.h"
 #include "v3d/instr/Snippets.h"
 
-
-static const std::vector<uint64_t> qpu_rotate_alias_code = {
+const std::vector<uint64_t> qpu_rotate_alias_code = {
+	0x3c403180bb802000,  // eidx  r0             ; nop               ; ldunif       
 	0x3c402180b682d000,  // or  rf0, r5, r5      ; nop               ; ldunif       
 	0x3de010437cf7f004,  // shl  r3, 4, 4        ; mov  rf1, r5                     
 	0x3de031807c838002,  // shl  r0, r0, 2       ; nop                              
@@ -338,7 +338,7 @@ static const std::vector<uint64_t> qpu_rotate_alias_code = {
 /**
  * Derived from `def qpu_rotate_alias(asm)` in `py-videocore6/blob/master/tests/test_signals.py`
  */
-ByteCode rotate_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
+ByteCode rotate_kernel() {
 	using namespace QPULib::v3d::instr;
 
 	Instructions ret;
@@ -346,7 +346,9 @@ ByteCode rotate_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	ret
 		<< eidx(r0).ldunif()
 		<< mov(rf(0), r5).ldunif()
-		<< shl(r3, 4, 4).mov(rf1, r5)
+		<< shl(r3, 4, 4).mov(rf(1), r5)
+	;
+/*
 
 		<< shl(r0, r0, 2)
 		<< add(rf(0), rf(0), r0)
@@ -398,8 +400,14 @@ ByteCode rotate_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 		  << nop()
 		  << nop()
 		  << nop();
+*/
 
-	return ret;
+	ByteCode bytecode;
+	for (auto const &instr : ret) {
+		bytecode << instr.code(); 
+	}
+
+	return bytecode;
 }
 
 

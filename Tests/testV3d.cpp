@@ -215,6 +215,15 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 	}
 
 
+	SECTION("rotate kernel generates correctly encoded output") {
+		std::vector<uint64_t> arr = rotate_kernel();
+		REQUIRE(arr.size() > 0);
+
+		match_kernel_outputs(qpu_rotate_alias_code, arr, true);
+		// REQUIRE(qpu_rotate_alias_code.size() == arr.size());  // TODO enable when complete
+	}
+
+
 	SECTION("Register without mux definition should throw on usage") {
 		using namespace QPULib::v3d::instr;
 
@@ -226,6 +235,12 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		// tmua has no mux usage
 		REQUIRE_NOTHROW(tmua.to_waddr());
 		REQUIRE_THROWS(tmua.to_mux());
+	}
+
+
+	SECTION("For opcode with two small immediates values, value should be the same") {
+		REQUIRE_THROWS(shl(r0, 1, 5));
+		REQUIRE_NOTHROW(shl(r3, 4, 4));
 	}
 
 
@@ -281,6 +296,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 			<< nop().smul24(r1, SmallImm(2), rf(0))
 			<< rotate(r5)
 			<< rotate(3)
+			<< shl(r3, 4, 4).mov(rf(1), r5)
 		;
 
 		// Just eyeball them for now
@@ -289,14 +305,14 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 			std::cout << op.mnemonic() << std::endl;
 			//op.dump(true);
 		}
-/*
+
+		// Show last in full
 		{
 			auto &op = ret.back();
 
 			std::cout << op.mnemonic() << std::endl;
 			op.dump(true);
 		}
-*/
 	}
 }
 
