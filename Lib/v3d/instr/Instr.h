@@ -12,6 +12,7 @@ namespace v3d {
 namespace instr {
 
 using rf = RFAddress;
+using si = SmallImm;
 
 
 class Instr : public v3d_qpu_instr {
@@ -66,8 +67,8 @@ public:
 
 	// Calls to set the mul part of the instruction
 	Instr &nop() { return *this; }  // With normal usage, the mul-part is already nop
-	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
-	Instr &add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3);
+
+	Instr &add(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 
 	Instr &mov(Register const &reg, uint8_t val);
@@ -132,8 +133,7 @@ Instr band(Location const &loc1, Register const &reg, uint8_t val);
 Instr eidx(Register const &reg);
 
 Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
-Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
-Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t ref_addr3);
+Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 Instr sub(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 

@@ -347,18 +347,19 @@ ByteCode rotate_kernel() {
 		<< eidx(r0).ldunif()
 		<< mov(rf(0), r5).ldunif()
 		<< shl(r3, 4, 4).mov(rf(1), r5)
-	;
-/*
 
 		<< shl(r0, r0, 2)
 		<< add(rf(0), rf(0), r0)
 		<< add(rf(1), rf(1), r0)
 
-		<< mov(tmua, rf(0)).thrswi().add(rf(0), rf(0), r3)
+		<< mov(tmua, rf(0)).add(rf(0), rf(0), r3).thrsw()
 		<< nop()
 		<< nop()
-		<< nop().ldtmu(r0))
+		<< nop().ldtmu(r0)
 		<< nop().comment("required before rotate", true);
+	;
+/*
+
 
 
 		for (int i = -15; i <= 16; ++i) {

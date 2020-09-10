@@ -1,7 +1,7 @@
 #ifndef _TEST_SUPPORT_SUMMATION_KERNEL_H
 #define _TEST_SUPPORT_SUMMATION_KERNEL_H
 #include <vector>
-#include <stdint.h>
+#include "support.h"
 
 extern std::vector<uint64_t> summation; 
 

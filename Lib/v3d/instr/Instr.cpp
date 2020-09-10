@@ -298,10 +298,10 @@ Instr &Instr::thrsw(bool val) {
 }
 
 
-// TODO: Where does reg go??
 Instr &Instr::ldtmu(Register const &reg) {
 	sig.ldtmu = true;
 	sig_addr  = reg.to_waddr(); 
+	sig_magic = true;
 
 	return *this;
 }
@@ -355,31 +355,10 @@ Instr &Instr::ldvpm(bool val) {
 }
 
 
-Instr &Instr::add(uint8_t  rf_addr1, uint8_t rf_addr2, Register const &reg3) {
+Instr &Instr::add(Location const &loc1, Location const &loc2, Location const &loc3) {
 	m_doing_add = false;
-
-	raddr_b       = rf_addr1; 
+	alu_mul_set(loc1, loc2, loc3); 
 	alu.mul.op    = V3D_QPU_M_ADD;
-	alu.mul.a     = V3D_QPU_MUX_B;
-	alu.mul.b     = reg3.to_mux();
-	alu.mul.waddr = rf_addr2;
-	alu.mul.magic_write = false;
-
-	return *this;
-}
-
-
-// TODO: where does 1 go??
-Instr &Instr::add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
-	m_doing_add = false;
-
-	raddr_b       = rf_addr3; 
-	alu.mul.op    = V3D_QPU_M_ADD;
-	alu.mul.a     = V3D_QPU_MUX_A;
-	alu.mul.b     = V3D_QPU_MUX_B;
-	alu.mul.waddr = rf_addr2;
-	alu.mul.magic_write = false;
-
 	return *this;
 }
 
@@ -627,11 +606,32 @@ void Instr::alu_mul_set_dst(Location const &loc1) {
 
 
 void Instr::alu_mul_set_reg_a(Location const &loc2) {
-	if (loc2.is_rf()) {
-		raddr_a = loc2.to_waddr();
-		alu.mul.a     = V3D_QPU_MUX_A;
-	} else {
+
+	if (!loc2.is_rf()) {
+		// src is a register
 		alu.mul.a     = loc2.to_mux();
+	} else {
+		// src is a register file index
+
+		// Is raddr_a in use by add alu?
+		bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_A) || (alu.add.b == V3D_QPU_MUX_A);
+
+		// Is it by chance the same value?
+		bool raddr_a_same = (raddr_a == loc2.to_waddr());
+
+		if (raddr_a_in_use && !raddr_a_same) {
+			// Use raddr_b instead
+			assertq(!(alu.add.a == V3D_QPU_MUX_B) || (alu.add.b == V3D_QPU_MUX_B),
+			  "alu_mul_set_reg_a: both raddr a and b in use by add alu");
+
+			raddr_b = loc2.to_waddr();
+			alu.mul.a     = V3D_QPU_MUX_B;
+
+		} else {
+			// raddr_a is safe
+			raddr_a = loc2.to_waddr();
+			alu.mul.a     = V3D_QPU_MUX_A;
+		}
 	}
 
 	alu.mul.a_unpack = loc2.input_unpack();
@@ -639,11 +639,16 @@ void Instr::alu_mul_set_reg_a(Location const &loc2) {
 
 
 void Instr::alu_mul_set_reg_b(Location const &loc3) {
-	if (loc3.is_rf()) {
+	if (!loc3.is_rf()) {
+		alu.mul.b        = loc3.to_mux();
+	} else {
+		if (alu.mul.a == V3D_QPU_MUX_B) {
+			assertq((raddr_b == loc3.to_waddr()), "alu_mul_set_reg_b: raddr b in use by mul alu a with different value");
+			// TODO if fires, handle this case
+		}
+
 		raddr_b          = loc3.to_waddr(); 
 		alu.mul.b        = V3D_QPU_MUX_B;
-	} else {
-		alu.mul.b        = loc3.to_mux();
 	}
 
 	alu.mul.b_unpack = loc3.input_unpack();
@@ -785,43 +790,11 @@ Instr add(Location const &loc1, Location const &loc2, Location const &loc3) {
 }
 
 
-// TODO: consolidate with first implementation
-Instr add(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
-	//breakpoint  // figure out sig_magic
-
-	// Following is the goal, does not work yet (hangs the QPU)
-	//return add(rf(rf_addr1), rf(rf_addr2), reg3);
-
+Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	Instr instr;
+	instr.alu_add_set(loc1, loc2, imm3);
 
-	instr.raddr_a       = rf_addr1; 
-	instr.sig_magic     = true;
 	instr.alu.add.op    = V3D_QPU_A_ADD;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
-	instr.alu.add.b     = reg3.to_mux();
-	instr.alu.add.waddr = rf_addr2;
-	instr.alu.add.magic_write = false;
-
-	return instr;
-}
-
-
-// TODO: consolidate with first implementation
-Instr add(uint8_t rf_addr1, uint8_t rf_addr2, uint8_t rf_addr3) {
-	//breakpoint  // figure out sig_magic
-
-	//printf("add() called addr1: %x,  addr3: %x\n", rf_addr1, rf_addr3);
-	Instr instr;
-
-	instr.raddr_a       = rf_addr1; 
-	instr.raddr_b       = rf_addr3; 
-	instr.sig_magic     = true;
-	instr.alu.add.op    = V3D_QPU_A_ADD;
-	instr.alu.add.a     = V3D_QPU_MUX_A;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = rf_addr2;
-	instr.alu.add.magic_write = false;
-
 	return instr;
 }
 

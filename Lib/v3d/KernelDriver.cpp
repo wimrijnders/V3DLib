@@ -441,6 +441,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		switch (src_instr.ALU.op) {
 			case A_SHL:  ret << shl(*dst_reg, *src_a, imm);        break;
 			case A_SUB:  ret << sub(*dst_reg, *src_a, imm);        break;
+			case A_ADD:  ret << add(*dst_reg, *src_a, imm);        break;
 			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, imm); break;
 			case A_ItoF: ret << itof(*dst_reg, *src_a, imm);       break;
 			default:

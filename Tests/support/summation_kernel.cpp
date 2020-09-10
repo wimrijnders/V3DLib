@@ -1,6 +1,5 @@
 #include <cstdio>
 #include "summation_kernel.h"
-#include "support.h"
 #include "v3d/instr/Snippets.h"
 
 namespace {
@@ -820,12 +819,12 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	// alu's are working in parallel
 	//   add: load TMU slot with address in reg_src
 	//   mul: reg_src += reg_stride
-	auto prefetch = mov(tmua, reg_src).add(reg_src, reg_src, reg_stride);
+	auto prefetch = mov(tmua, reg_src).add(rf(reg_src), rf(reg_src), rf(reg_stride));
 
 	// alu's are working in parallel
 	//   add: reg_sum += r0
 	//   mul: load next slice in r0
-	auto sum_and_load =	add(reg_sum, reg_sum, r0).ldtmu(r0);
+	auto sum_and_load =	add(rf(reg_sum), rf(reg_sum), r0).ldtmu(r0);
 
 
 	//
@@ -835,7 +834,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	    << ldunifrf(reg_src)
 	    << ldunifrf(reg_dst)
 	    << calc_offset(num_qpus, reg_qpu_num)                     // Puts offset in r0
-	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0)
+	    << add(rf(reg_src), rf(reg_src), r0).add(rf(reg_dst), rf(reg_dst), r0)
 	    << calc_stride(num_qpus, reg_stride)
 			<< adjust_length_for_unroll(num_qpus, unroll_shift, reg_length)
 
@@ -855,7 +854,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	}
 
 	ret << mov(tmua, reg_src).sub(reg_length, reg_length, r1).pushz()  // Apparently pushz sets flag for cond na0
-			<< add(reg_src, reg_src, reg_stride).ldtmu(r0);
+			<< add(rf(reg_src), rf(reg_src), rf(reg_stride)).ldtmu(r0);
 
 	ret << emit_unroll(unroll, {
 			prefetch,
@@ -869,7 +868,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	ret << branch(loop_start, (int) ret.size()).na0() // Loop condition
 	    << sum_and_load                               // delay slot
 	    << sum_and_load                               // delay slot
-	    << add(reg_sum, reg_sum, r0)                  // delay slot, last sum without load
+	    << add(rf(reg_sum), rf(reg_sum), r0)          // delay slot, last sum without load
 
 	    << mov(tmud, reg_sum)                         // Write final result back to main mem
       << mov(tmua, reg_dst)
