@@ -358,14 +358,14 @@ ByteCode rotate_kernel() {
 		<< nop().ldtmu(r0)
 		<< nop().comment("required before rotate", true);
 	;
-/*
 
 
-
-		for (int i = -15; i <= 16; ++i) {
-			if (i % 1 == 0) {  // ???
+		for (int i = -15; i < 16; ++i) {
+			//if (i % 1 == 0) {  // ??? This might be to distinguish float input from int input (silly here)
+			if (false) {
 				ret << rotate(r1, r0, i);       // add alias
 			} else {
+				//breakpoint
 				ret << nop().rotate(r1, r0, i); // mul alias
 			}
 
@@ -375,7 +375,8 @@ ByteCode rotate_kernel() {
 			  << tmuwt().add(rf(1), rf(1), r3);
 		}
 
-		for (int i = -15; i <= 16; ++i) {
+/*
+		for (int i = -15; i < 16; ++i) {
 			ret
 			  << mov(r5, i)
 			  << nop().comment("required before rotate", true);
@@ -430,8 +431,7 @@ void run_rotate_alias_kernel() {
 		X[offset] = offset;
 	}
 
-	// Y = drv.alloc((2, len(range(-15, 16)), 16), dtype = 'int32')
-	int y_length = 2*(16 - -15 + 1) *16;
+	int y_length = 2*(16 - -15) *16;  // NB python range(-15, 16) does not include 2nd value; 'up to'
 	SharedArray<uint32_t> Y(y_length, heap);
 
 

@@ -82,6 +82,8 @@ public:
 	Instr &smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3); 
 	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
 
+	Instr &rotate(Location const &dst, Location const &loca, SmallImm const &immb);
+
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
 	void alu_add_set_dst(Location const &loc1); 
@@ -174,8 +176,9 @@ Instr vflb(Location const &loc1);
 Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3);
 Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
-Instr rotate(Location const &loc3);
-Instr rotate(SmallImm const &imm3);
+Instr rotate(Location const &dst, Location const &loca, Location const &locb);
+Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb);
+Instr tmuwt();
 
 }  // instr
 }  // v3d

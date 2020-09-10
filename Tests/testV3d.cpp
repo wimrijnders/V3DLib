@@ -294,8 +294,8 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 		ret
 			<< nop().smul24(r1, SmallImm(2), rf(0))
-			<< rotate(r5)
-			<< rotate(3)
+			<< rotate(r1, r0, r5)
+			<< rotate(r1, r0, 3)
 			<< shl(r3, 4, 4).mov(rf(1), r5)
 		;
 

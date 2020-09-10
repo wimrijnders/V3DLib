@@ -118,7 +118,8 @@ void Instr::init(uint64_t in_code) {
 	raddr_b = 0; // Not set for branch
 
 	if (!instr_unpack(&devinfo, in_code, this)) {
-		assert(false);
+		warning("Instr:init: call to instr_unpack failed.");
+		return;
 	}
 
 	if (type == V3D_QPU_INSTR_TYPE_BRANCH) {
@@ -1352,17 +1353,15 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  *   - TODO: try to understand the newfangled quad rotate shit.
  *
  */
-Instr rotate(Location const &loc3) {
-	warning("rotate called, really not sure if correct.");
+Instr rotate(Location const &dst, Location const &loca, Location const &locb) {
+	//warning("rotate called, really not sure if correct.");
+	assertq(dst.to_mux()  == V3D_QPU_MUX_R1, "rotate dest can only be r1");
+	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0");
+	assertq(locb.to_mux() == V3D_QPU_MUX_R5, "rotate src b can only be r5");
+	// TODO: check value r5 within range -15,15 inclusive, possible?
+
 	Instr instr;
-
-	// reg b must be r5 (note that value not used directly below)
-	assert(loc3.to_mux() == V3D_QPU_MUX_R5);
-
-	// TODO: check value r5 within range -15,16 inclusive
-
 	instr.alu_add_set(r1, r0, r5);
-
 	instr.sig.rotate = true;
 	instr.alu.add.op = V3D_QPU_A_OR;  // actually mov
 
@@ -1371,17 +1370,52 @@ Instr rotate(Location const &loc3) {
 
 
 /**
- * See header comment other rotate
+ * Rotate for add alu.
+ *
+ * See notes in header comment of rotate overload above.
  */
-Instr rotate(SmallImm const &imm3) {
-	warning("rotate called, really not sure if correct.");
-	assert(-15 <= imm3.val() && imm3.val() <= 16);           // smallimm must be in proper range
+Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb) {
+	//warning("rotate called, really not sure if correct.");
+	assertq(dst.to_mux()  == V3D_QPU_MUX_R1, "rotate dest can only be r1");
+	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0");
+	assertq(-15 <= immb.val() && immb.val() < 16, "rotate: smallimm must be in proper range");
 
 	Instr instr;
-	instr.alu_add_set(r1, r0, imm3);
-
+	instr.alu_add_set(r1, r0, immb);
 	instr.sig.rotate = true;
 	instr.alu.add.op = V3D_QPU_A_OR;  // actually mov
+
+	return instr;
+}
+
+
+/**
+ * Rotate for mul alu.
+ *
+ * See notes in header comment of rotate overload for add alu above.
+ */
+Instr &Instr::rotate(Location const &dst, Location const &loca, SmallImm const &immb) {
+	//warning("rotate called, really not sure if correct.");
+	assertq(dst.to_mux()  == V3D_QPU_MUX_R1, "rotate dest can only be r1");
+	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0");
+	assertq(-15 <= immb.val() && immb.val() < 16, "rotate: smallimm must be in proper range");
+
+	m_doing_add = false;
+
+	alu_mul_set(r1, r0, immb);
+	sig.rotate = true;
+	alu.mul.op = V3D_QPU_M_MOV;
+
+	return *this;
+}
+
+
+Instr tmuwt() {
+	// TODO: research what this is for (tmu write?), no clue right now
+
+	Instr instr;
+
+	instr.alu.add.op = V3D_QPU_A_TMUWT;
 
 	return instr;
 }

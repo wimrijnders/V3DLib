@@ -485,13 +485,9 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 	assert(dst_reg);
 	assert(dst_reg->to_mux() != V3D_QPU_MUX_R1);  // anything except dest of rotate
 
-	// TODO see if following assertions can be moved to rotate assembly method
-
-	// reg a is  r0 only
-	assert(instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.tag == ACC && instr.ALU.srcA.reg.regId == 0);
-
-	// reg b is either r5 or small imm
-	auto reg_b = instr.ALU.srcB;
+	auto reg_a = instr.ALU.srcA;
+	auto src_a = encodeSrcReg(reg_a.reg, ret);    // Must be r0, checked in rotate()
+	auto reg_b = instr.ALU.srcB;                  // reg b is either r5 or small imm
 
 	if (reg_b.tag == REG) {
 		breakpoint
@@ -500,7 +496,7 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		auto src_b = encodeSrcReg(reg_b.reg, ret);
 
 		ret << nop().comment("required for rotate", true)
-		    << rotate(*src_b)
+		    << rotate(*dst_reg, *src_a, *src_b)
 		    << bor(*dst_reg, r1, r1)
 		;
 
@@ -508,10 +504,9 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		assert(-15 <= reg_b.smallImm.val && reg_b.smallImm.val <= 16); // smallimm must be in proper range
 		                                                               // Also tested in rotate()
 		SmallImm imm = encodeSmallImm(reg_b);
-		//SmallImm imm(reg_b.smallImm.val);
 
 		ret << nop().comment("required for rotate", true)
-		    << rotate(imm)
+		    << rotate(*dst_reg, *src_a, imm)
 		    << bor(*dst_reg, r1, r1)
 		;
 	} else {

@@ -34,8 +34,10 @@ void match_kernel_outputs(
 			}
 
 			INFO("Comparing assembly index: " << n << ", code length: " << received.size() <<
-				"\nExpected: " << Instr(expected[n]).dump() <<
-				"Received: " << Instr(received[n]).dump()
+				"\nExpected: 0x" << std::hex << expected[n] << std::dec 
+                         << Instr(expected[n]).dump() <<
+				"Received: 0x"   << std::hex << received[n] << std::dec
+                         << Instr(received[n]).dump()
 			);
 
 			REQUIRE(Instr::compare_codes(expected[n], received[n]));
