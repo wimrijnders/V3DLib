@@ -147,13 +147,20 @@ public:
 	void pretty(const char *filename = nullptr);
 
   void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
-
 	static int maxQPUs();
+
+	void emu();
+	void interpret();
+  void call();
+#ifdef QPU_MODE
+  void qpu();
+#endif  // QPU_MODE
 
 protected:
 	int numQPUs = 1;                 // Number of QPUs to run on
 	Seq<int32_t> uniforms;           // Parameters to be passed to kernel
 	vc4::KernelDriver m_vc4_driver;  // Always required for emulator
+	int numVars;                     // The number of variables in the source code
 
 #ifdef QPU_MODE
 	v3d::KernelDriver m_v3d_driver;
@@ -228,67 +235,12 @@ public:
 	 * Pass params, checking arguments types us against parameter types ts.
 	 */
   template <typename... us>
-	void load(us... args) {
+	Kernel &load(us... args) {
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args)...);
+
+		return *this;
 	}
-
-
-  template <typename... us> void emu(us... args) {
-    // Pass params, checking arguments types us against parameter types ts
-    uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args)...);
-
-		// Emulator runs the vc4 code
-    emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, &uniforms, getBufferObject());
-  }
-
-  // Invoke the interpreter
-  template <typename... us> void interpret(us... args) {
-    // Pass params, checking arguments types us against parameter types ts
-    uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args)...);
-
-		// Interpreter runs the vc4 code
-    interpreter(numQPUs, m_vc4_driver.sourceCode(), numVars, &uniforms, getBufferObject());
-  }
-
-
-#ifdef QPU_MODE
-  // Invoke kernel on physical QPU hardware
-  template <typename... us> void qpu(us... args) {
-    // Pass params, checking arguments types us against parameter types ts
-    uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args)...);
-
-		if (Platform::instance().has_vc4) {
-			invoke_qpu(m_vc4_driver);
-		} else {
-			invoke_qpu(m_v3d_driver);
-		}
-  }
-#endif  // QPU_MODE
-
- 
-  // Invoke the kernel
-  template <typename... us> void call(us... args) {
-#ifdef EMULATION_MODE
-		emu(args...);
-#else
-#ifdef QPU_MODE
-    qpu(args...);
-#endif
-#endif
-  };
-
-  // Overload function application operator
-  template <typename... us> void operator()(us... args) {
-    call(args...);
-  }
-
-
-private:
-	int numVars;            // The number of variables in the source code
 };
 
 // Initialiser

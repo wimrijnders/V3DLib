@@ -6,7 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include "Settings.h"
 #include <memory>
-#include "Kernel.h"  // maxQPUs()
+#include "Kernel.h"
 
 #ifdef QPU_MODE
 #include "Support/Platform.h"
@@ -242,6 +242,29 @@ void Settings::stopPerfCounters() {
 		}
 	}
 #endif
+}
+
+
+void Settings::process(KernelBase &k) {
+	startPerfCounters();
+
+	if (!compile_only) {
+		switch (run_type) {
+			case 0: k.call(); break;
+			case 1: k.emu(); break;
+			case 2: k.interpret(); break;
+		}
+	}
+
+	stopPerfCounters();
+
+	// NOTE: For multiple calls here (entirely possible, HeatMap does this),
+  //       this will dump the v3d code (mnemonics, actually) on every call.
+	if (output_code) {
+		assert(!name.empty());
+		std::string code_filename = name + "_code.txt";
+		k.pretty(code_filename.c_str());
+	}
 }
 
 }  // namespace QPULib;

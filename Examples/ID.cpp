@@ -28,9 +28,9 @@ int main(int argc, const char *argv[]) {
   for (int i = 0; i < array_size; i++)
     array[i] = 0;
 
-  // Invoke the kernel
-  k.setNumQPUs(k.maxQPUs());
-	settings.process(k, &array);
+  k.setNumQPUs(k.maxQPUs());  // Invoke the kernel
+	k.load(&array);             // Load the uniforms
+	settings.process(k);
 
 	// Display the result
   for (int i = 0; i < array_size; i++) {

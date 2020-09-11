@@ -485,6 +485,7 @@ bool instr_unpack(struct v3d_device_info const *devinfo, uint64_t packed_instr, 
 uint64_t instr_pack(struct v3d_device_info const *devinfo, struct v3d_qpu_instr const *instr) {
 	uint64_t packed_instr;
 	v3d_qpu_instr_pack(devinfo, instr, &packed_instr);
+	//assert(packed_instr != 0);
 	return packed_instr;
 }
 

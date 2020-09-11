@@ -20,7 +20,8 @@ int main(int argc, const char *argv[]) {
   auto k = compile(loop);
 
   // Invoke kernel with argument 20
-	settings.process(k, 20);
+	k.load(20);
+	settings.process(k);
   
   return 0;
 }

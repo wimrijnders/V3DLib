@@ -6,6 +6,8 @@
 
 namespace QPULib {
 
+class KernelBase;
+
 struct Settings {
 	std::string name;
 
@@ -21,26 +23,7 @@ struct Settings {
 	int init(int argc, const char *argv[]);
 	bool process(CmdParameters *in_params = nullptr, bool use_numqpus = false);
 
-	template<typename Kernel, typename... us>
-	void process(Kernel &k, us... args) {
-		startPerfCounters();
-
-		if (!compile_only) {
-			switch (run_type) {
-				case 0: k(args...); break;
-				case 1: k.emu(args...); break;
-				case 2: k.interpret(args...); break;
-			}
-		}
-
-		stopPerfCounters();
-
-		if (output_code) {
-			assert(!name.empty());
-			std::string code_filename = name + "_code.txt";
-			k.pretty(code_filename.c_str());
-		}
-	}
+	void process(KernelBase &k);
 
 protected:
 	void set_name(const char *in_name);

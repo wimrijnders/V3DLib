@@ -1,8 +1,31 @@
+#include "summation_kernel.h"
 #include <cstdio>
-#include "summation.h"
-#include "../../Lib/Support/basics.h"
-#include "v3d/instr/Instr.h"
 #include "v3d/instr/Snippets.h"
+
+namespace {
+
+void check_returned_registers(SharedArray<uint32_t> &Y) {
+	uint32_t cur_QPU;
+
+	for (uint32_t offset = 0; offset < Y.size(); ++offset) {
+		uint32_t this_QPU = offset / 16;
+
+		if (this_QPU != cur_QPU) {
+			printf("\n");
+			cur_QPU = this_QPU;
+			printf("%u: ", cur_QPU);	
+		} 
+
+		bool used = Y[offset] != 0;
+		if (used) {
+			printf("%u, ", offset % 16);	
+		}
+	}
+
+	printf("\n");
+}
+
+}  // anon namespace
 
 
 std::vector<uint64_t> summation = {
@@ -709,7 +732,6 @@ std::vector<uint64_t> summation = {
 namespace {
 
 using namespace QPULib::v3d::instr;
-using ByteCode = std::vector<uint64_t>; 
 
 
 Instructions adjust_length_for_unroll(
@@ -728,7 +750,7 @@ Instructions adjust_length_for_unroll(
 		-16, -15, -14, -13, -12, -11, -10, -9, -8, -7, -6, -5, -4, -3, -2, -1};
 
 	// length /= 16 * 8 * num_qpus * unroll
-	ret << shr(reg_length, reg_length, num_shifts[7 + num_qpus_shift + unroll_shift]);
+	ret << shr(rf(reg_length), rf(reg_length), num_shifts[7 + num_qpus_shift + unroll_shift]);
 
 	return ret;
 }
@@ -797,12 +819,12 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	// alu's are working in parallel
 	//   add: load TMU slot with address in reg_src
 	//   mul: reg_src += reg_stride
-	auto prefetch = mov(tmua, reg_src).add(reg_src, reg_src, reg_stride);
+	auto prefetch = mov(tmua, reg_src).add(rf(reg_src), rf(reg_src), rf(reg_stride));
 
 	// alu's are working in parallel
 	//   add: reg_sum += r0
 	//   mul: load next slice in r0
-	auto sum_and_load =	add(reg_sum, reg_sum, r0).ldtmu(r0);
+	auto sum_and_load =	add(rf(reg_sum), rf(reg_sum), r0).ldtmu(r0);
 
 
 	//
@@ -812,7 +834,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	    << ldunifrf(reg_src)
 	    << ldunifrf(reg_dst)
 	    << calc_offset(num_qpus, reg_qpu_num)                     // Puts offset in r0
-	    << add(reg_src, reg_src, r0).add(reg_dst, reg_dst, r0)
+	    << add(rf(reg_src), rf(reg_src), r0).add(rf(reg_dst), rf(reg_dst), r0)
 	    << calc_stride(num_qpus, reg_stride)
 			<< adjust_length_for_unroll(num_qpus, unroll_shift, reg_length)
 
@@ -832,7 +854,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	}
 
 	ret << mov(tmua, reg_src).sub(reg_length, reg_length, r1).pushz()  // Apparently pushz sets flag for cond na0
-			<< add(reg_src, reg_src, reg_stride).ldtmu(r0);
+			<< add(rf(reg_src), rf(reg_src), rf(reg_stride)).ldtmu(r0);
 
 	ret << emit_unroll(unroll, {
 			prefetch,
@@ -846,7 +868,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	ret << branch(loop_start, (int) ret.size()).na0() // Loop condition
 	    << sum_and_load                               // delay slot
 	    << sum_and_load                               // delay slot
-	    << add(reg_sum, reg_sum, r0)                  // delay slot, last sum without load
+	    << add(rf(reg_sum), rf(reg_sum), r0)          // delay slot, last sum without load
 
 	    << mov(tmud, reg_sum)                         // Write final result back to main mem
       << mov(tmua, reg_dst)
@@ -861,3 +883,112 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 
 	return bytecode;
 }
+
+//
+// Adapted from: https://github.com/Idein/py-videocore6/blob/master/examples/summation.py
+//
+// This uses a single shared array for code and data.
+// It might be possible to use muliple arrays, but we're sticking to the original
+// example here.
+//
+void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int unroll_shift) {
+	using namespace QPULib::v3d;
+
+	//printf("bytecode size: %u\n", bytecode.size());
+
+	REQUIRE((num_qpus == 1 || num_qpus == 8));
+
+	uint32_t length = 32 * 1024 * 16;  // Highest number without overflows on 8 QPU's and CPU
+	                                   // The python version went to 32*1024*1024 and did some modulo magic.
+
+	if (num_qpus == 1) {
+		length = 32 * 1024 * 8;  // Highest number without overflows for 1 QPU
+	}
+
+	REQUIRE(length > 0);
+	REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
+
+	//printf("==== summation example (%dK elements) ====\n", (length / 1024));
+
+	// Code and data is combined in one buffer
+	uint32_t code_area_size = 8*bytecode.size();  // size in bytes
+	//printf("code_area_size size: %u\n", code_area_size);
+	uint32_t data_area_size = (length + 1024) * 4;
+	//printf("data_area_size size: %u\n", data_area_size);
+
+	BufferObject heap(code_area_size + data_area_size);
+	//printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
+
+	heap.fill(0xdeadbeef);
+
+	SharedArray<uint64_t> code(bytecode.size(), heap);
+	code.copyFrom(bytecode);
+	//printf("code phyaddr: %u, size: %u\n", code.getAddress(), 8*code.size());
+	//dump_data(code); 
+
+	SharedArray<uint32_t> X(length, heap);
+	SharedArray<uint32_t> Y(16 * num_qpus, heap);
+	//printf("X phyaddr: %u, size: %u\n", X.getAddress(), 4*X.size());
+	//printf("Y phyaddr: %u, size: %u\n", Y.getAddress(), 4*Y.size());
+
+	auto sumY = [&Y] () -> uint64_t {
+		uint64_t ret = 0;
+
+		for (uint32_t offset = 0; offset < Y.size(); ++offset) {
+			ret += Y[offset];
+		}
+
+		return ret;
+	};
+
+	for (uint32_t offset = 0; offset < X.size(); ++offset) {
+		X[offset] = offset;
+	}
+	//dump_data(X); 
+
+	for (uint32_t offset = 0; offset < Y.size(); ++offset) {
+		Y[offset] = 0;
+	}
+	//dump_data(Y); 
+	REQUIRE(sumY() == 0);
+
+	SharedArray<uint32_t> unif(3, heap);
+	unif[0] = length;
+	unif[1] = X.getAddress();
+	unif[2] = Y.getAddress();
+	//printf("unif phyaddr: %u, size: %u\n", unif.getAddress(), 4*unif.size());
+
+	//printf("Executing on QPU...\n");
+	double start = get_time();
+
+	QPULib::v3d::Driver drv;
+	drv.add_bo(heap);
+	REQUIRE(drv.execute(code, &unif, num_qpus));
+
+	//dump_data(Y, true);
+	//check_returned_registers(Y);
+	//heap.detect_used_blocks();
+
+/*
+	// Check if code not overwritten
+	for (uint32_t offset = 0; offset < summation.size(); ++offset) {
+		INFO("Code offset: " << offset);
+		REQUIRE(code[offset] == summation[offset]);
+	}
+
+	// Check if X not overwritten
+	for (uint32_t offset = 0; offset < X.size(); ++offset) {
+		INFO("X offset: " << offset);
+		REQUIRE(X[offset] == offset);
+	}
+
+	heap.find_value(1736704u); // 4278190080u;
+*/
+	
+	// Check if values supplied
+	REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
+		
+	double end = get_time();
+	//printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
+}
+

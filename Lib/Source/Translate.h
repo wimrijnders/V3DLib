@@ -10,7 +10,15 @@ namespace QPULib {
 void insertEndCode(Seq<Instr>* seq);
 void translateStmt(Seq<Instr>* seq, Stmt* s);
 
-Reg srcReg(Var v);  // Exposed for Sourcetranslate()'s
+//
+// Following Exposed for Sourcetranslate()'s
+//
+Reg srcReg(Var v);
+Reg dstReg(Var v);
+void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr);
+
+// Similar to 'simplify' but ensure that the result is a variable.
+Expr* putInVar(Seq<Instr>* seq, Expr* e);
 
 }  // namespace QPULib
 

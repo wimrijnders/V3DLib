@@ -1,8 +1,8 @@
 #ifndef _LIB_DEBUG_H
 #define _LIB_DEBUG_H
 #include <signal.h>  // raise(SIGTRAP)
-//#include <stdlib.h>  // abort, NULL
 #include <cstdio>
+#include "Exception.h"
 
 
 #if defined __cplusplus
@@ -10,6 +10,22 @@
 #else
 #include <assert.h>
 #endif
+
+
+
+/**
+ * Alternative for `assert` that throws passed string.
+ *
+ * Note that this is always enabled, ie. also when not building for DEBUG.
+ * See header comment of `fatal()` in `basics.h`
+ */
+inline void assertq(bool cond, const char *msg) {
+	if (!cond) {
+		std::string str = "Assertion failed: ";
+		str += msg;
+		throw QPULib::Exception(str);
+	}
+}
 
 
 #ifdef DEBUG

@@ -157,9 +157,6 @@ bool isSimple(Expr* e)
 
 Expr* simplify(Seq<Instr>* seq, Expr* e);
 
-// Similar to 'simplify' but ensure that the result is a variable.
-
-Expr* putInVar(Seq<Instr>* seq, Expr* e);
 
 // ============================================================================
 // Variable assignments
@@ -283,27 +280,7 @@ void varAssign( Seq<Instr>* seq   // Target instruction sequence to extend
       printf("QPULib: dereferencing not yet supported inside 'where'\n");
       assert(false);
     }
-    // Load address
-    Reg loadAddr;
-    loadAddr.tag = SPECIAL;
-    loadAddr.regId = SPECIAL_QPU_NUM;
-    // Setup DMA
-    genSetReadPitch(seq, 4);
-    genSetupDMALoad(seq, 16, 1, 1, 1, loadAddr);
-    // Start DMA load
-    genStartDMALoad(seq, srcReg(e.deref.ptr->var));
-    // Wait for DMA
-    genWaitDMALoad(seq);
-    // Setup VPM
-    Reg addr;
-    addr.tag = SPECIAL;
-    addr.regId = SPECIAL_QPU_NUM;
-    genSetupVPMLoad(seq, 1, addr, 0, 1);
-    // Get from VPM
-    Reg data;
-    data.tag = SPECIAL;
-    data.regId = SPECIAL_VPM_READ;
-    seq->append(genLShift(dstReg(v), data, 0));
+		getSourceTranslate().varassign_deref_var(seq, v, e);
     return;
   }
 
@@ -952,21 +929,6 @@ void setupVPMReadStmt(Seq<Instr>* seq, int n, Expr* e, int hor, int stride)
   }
 }
 
-void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride)
-{
-  if (e->tag == INT_LIT)
-    genSetupVPMStore(seq, e->intLit, hor, stride);
-  else if (e->tag == VAR)
-    genSetupVPMStore(seq, srcReg(e->var), hor, stride);
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    genSetupVPMStore(seq, srcReg(v), hor, stride);
-  }
-}
-
 // ============================================================================
 // DMA statements
 // ============================================================================
@@ -1040,50 +1002,6 @@ void loadReceive(Seq<Instr>* seq, Expr* dest)
   instr.tag = RECV;
   instr.RECV.dest = dstReg(dest->var);
   seq->append(instr);
-}
-
-// ============================================================================
-// Store request
-// ============================================================================
-
-// A 'store' operation of data to addr is almost the same as
-// *addr = data.  The difference is that a 'store' waits until
-// outstanding DMAs have completed before performing a write rather
-// than after a write.  This enables other operations to happen in
-// parallel with the write.
-
-void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr)
-{
-  if (data->tag != VAR || addr->tag != VAR) {
-    data = putInVar(seq, data);
-    addr = putInVar(seq, addr);
-  }
-
-  // QPU id
-  Reg qpuId;
-  qpuId.tag = SPECIAL;
-  qpuId.regId = SPECIAL_QPU_NUM;
-  // Setup VPM
-  Reg addrReg = freshReg();
-  seq->append(genLI(addrReg, 16));
-  seq->append(genADD(addrReg, addrReg, qpuId));
-  genSetupVPMStore(seq, addrReg, 0, 1);
-  // Store address
-  Reg storeAddr = freshReg();
-  seq->append(genLI(storeAddr, 256));
-  seq->append(genADD(storeAddr, storeAddr, qpuId));
-  // Wait for any outstanding store to complete
-  genWaitDMAStore(seq);
-  // Setup DMA
-  genSetWriteStride(seq, 0);
-  genSetupDMAStore(seq, 16, 1, 1, storeAddr);
-  // Put to VPM
-  Reg dataReg;
-  dataReg.tag = SPECIAL;
-  dataReg.regId = SPECIAL_VPM_WRITE;
-  seq->append(genLShift(dataReg, srcReg(data->var), 0));
-  // Start DMA
-  genStartDMAStore(seq, srcReg(addr->var));
 }
 
 // ============================================================================
@@ -1263,7 +1181,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
   // Case: store(e0, e1) where e1 and e2 are exprs
   // ---------------------------------------------
   if (s->tag == STORE_REQUEST) {
-    storeRequest(seq, s->storeReq.data, s->storeReq.addr);
+		getSourceTranslate().storeRequest(seq, s->storeReq.data, s->storeReq.addr);
     return;
   }
 
@@ -1299,10 +1217,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
   // Case: vpmSetupWrite(dir, addr, stride)
   // --------------------------------------
   if (s->tag == SETUP_VPM_WRITE) {
-    setupVPMWriteStmt(seq,
-      s->setupVPMWrite.addr,
-      s->setupVPMWrite.hor,
-      s->setupVPMWrite.stride);
+		getSourceTranslate().setupVPMWriteStmt(seq, s);	
     return;
   }
 

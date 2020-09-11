@@ -272,7 +272,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
     }
 
     // Run kernel
-   	k(&result);
+   	k.load(&result).call();
 
     // any
     assertResult(result,  0, allZeroes);
@@ -325,7 +325,7 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
     SharedArray<float> result(2*16*N);
 
     // Run kernel
-    k(&input, &result);
+    k.load(&input, &result).call();
 
     cout << showResult(result, 0) << endl;
   }

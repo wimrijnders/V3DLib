@@ -16,6 +16,10 @@ public:
 	 * @return true if handled, false otherwise
 	 */
 	virtual bool deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) = 0;
+
+	virtual void setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) = 0;
+	virtual void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) = 0;
+	virtual void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) = 0;
 };
 
 ISourceTranslate &getSourceTranslate();

@@ -1,7 +1,29 @@
+/**
+ * Collected comments for creating opcodes
+ *
+ *     uint32_t cond = encodeAssignCond(instr.LI.cond) << 17;
+ *
+ * LI:
+ *     uint32_t sig   = ((instr.hasImm() || instr.isRot) ? 13 : 1) << 28;
+ *     uint32_t cond  = encodeAssignCond(instr.ALU.cond) << (instr.isMul() ? 14 : 17);
+ *     uint32_t ws;  // bitfield that selects between regfile A and B
+ *			              // There is no such distinction on v3d, there is one regfile
+ *     uint32_t sf    = (instr.ALU.setFlags ? 1 : 0) << 13;
+ *     *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
+ *
+ * ALU:
+ *     uint32_t waddr_add = 39 << 6;
+ *     uint32_t waddr_mul = 39;
+ *     uint32_t sig = 0xe8000000;
+ *     uint32_t incOrDec = (instr.tag == SINC ? 0 : 1) << 4;
+ *     *high = sig | waddr_add | waddr_mul;
+ *     *low = incOrDec | instr.semaId;
+ */
 #include "KernelDriver.h"
 #include <memory>
 #include <iostream>
 #include "../Support/basics.h"
+#include "Target/SmallLiteral.h"  // decodeSmallLit()
 #include "Invoke.h"
 #include "instr/Snippets.h"
 
@@ -17,6 +39,8 @@ using namespace QPULib::v3d::instr;
 using Instructions = std::vector<instr::Instr>;
 
 namespace {
+
+uint8_t const NOP_ADDR    = 39;
 
 int local_numQPUs = 0;
 std::vector<std::string> local_errors;
@@ -178,174 +202,24 @@ void UsedSlots::dump() {
 	printf("\n");
 }
 
-}  // anon namespace
 
+/**
+ * Translate imm index value from vc4 to v3d
+ */
+SmallImm encodeSmallImm(RegOrImm const &src_reg) {
+	assert(src_reg.tag == IMM);
 
-uint8_t const NOP_ADDR    = 39;
-
-v3d_qpu_mul_op encodeMulOp(ALUOp in_op) {
-	v3d_qpu_mul_op op;
-
-  switch (in_op) {
-    case NOP:    op = V3D_QPU_M_NOP;  break;
-    case M_FMUL: op = V3D_QPU_M_FMUL; break;
-    case M_MUL24: // No clue
-    case M_V8MUL:
-    case M_V8MIN:
-    case M_V8MAX:
-    case M_V8ADDS:
-    case M_V8SUBS:
-		default:
-  		fprintf(stderr, "QPULib: unknown mul op\n");
-			assert(false);
-  }
-
-/*
- Other possible values:
-
-        V3D_QPU_M_ADD,
-        V3D_QPU_M_SUB,
-        V3D_QPU_M_UMUL24,
-        V3D_QPU_M_VFMUL,
-        V3D_QPU_M_SMUL24,
-        V3D_QPU_M_MULTOP,
-        V3D_QPU_M_FMOV,
-        V3D_QPU_M_MOV,
-*/
-
-	return op;
-}
-
-
-v3d_qpu_add_op encodeAddOp(ALUOp in_op) {
-	v3d_qpu_add_op op;
-
-	// Other possible values: See `enum v3d_qpu_add_op` in `mesa/src/broadcom/qpu/qpu_instr.h`
-  switch (in_op) {
-    case NOP   : op = V3D_QPU_A_NOP;   break;
-    case A_FADD: op = V3D_QPU_A_FADD;  break;
-    case A_FSUB: op = V3D_QPU_A_FSUB;  break;
-    case A_FMIN: op = V3D_QPU_A_FMIN;  break;
-    case A_FMAX: op = V3D_QPU_A_FMAX;  break;
-    case A_FtoI: op = V3D_QPU_A_FTOIN; break;  // Not 100% sure
-    case A_ItoF: op = V3D_QPU_A_ITOF;  break;
-    case A_ADD : op = V3D_QPU_A_ADD;   break;
-    case A_SUB : op = V3D_QPU_A_SUB;   break;
-    case A_SHR : op = V3D_QPU_A_SHR;   break;
-    case A_ASR : op = V3D_QPU_A_ASR;   break;
-    case A_ROR : op = V3D_QPU_A_ROR;   break;
-    case A_SHL : op = V3D_QPU_A_SHL;   break;
-    case A_MIN : op = V3D_QPU_A_MIN;   break;
-    case A_MAX : op = V3D_QPU_A_MAX;   break;
-    case A_BAND: op = V3D_QPU_A_AND;   break;  // Not 100% sure
-    case A_BOR : op = V3D_QPU_A_OR;    break;  // Not 100% sure
-    case A_BXOR: op = V3D_QPU_A_XOR;   break;  // Not 100% sure
-    case A_BNOT: op = V3D_QPU_A_NOT;   break;  // Not 100% sure
-    case A_CLZ : op = V3D_QPU_A_CLZ;   break;
-
-    case A_FMINABS:  // No clue
-    case A_FMAXABS:
-    case A_V8ADDS:
-    case A_V8SUBS:
-		default:
-  		fprintf(stderr, "QPULib: unknown mul op\n");
-			assert(false);
-  }
-
-	return op;
-}
-
-
-std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
-	assert(!src_instr.isUniformLoad());
-
-	bool is_none = false;
-	std::unique_ptr<Location> ret;
-
-	Reg reg;
-  if (src_instr.tag == ALU) {
-		reg = src_instr.ALU.dest;
-	} else {
-  	assert(src_instr.tag == LI);
-		reg = src_instr.LI.dest;
-	}
-
-  switch (reg.tag) {
-    case REG_A:
-    case REG_B:
-      assert(reg.regId >= 0 && reg.regId < 32);
-			ret.reset(new RFAddress(to_waddr(reg)));
-			break;
-    case ACC:
-      assert(reg.regId >= 0 && reg.regId <= 5);
-			switch(reg.regId) {
-				case 0: ret.reset(new Register(r0)); break;
-				case 1: ret.reset(new Register(r1)); break;
-				case 2: ret.reset(new Register(r2)); break;
-				case 3: ret.reset(new Register(r3)); break;
-				case 4: ret.reset(new Register(r4)); break;
-				case 5: ret.reset(new Register(r5)); break;
-			}
-			break;
-    case SPECIAL:
-      switch (reg.regId) {
-/*
-        case SPECIAL_RD_SETUP:    return 49;
-        case SPECIAL_WR_SETUP:    return 49;
-        case SPECIAL_DMA_LD_ADDR: return 50;
-        case SPECIAL_HOST_INT:    return 38;
-*/
-        case SPECIAL_VPM_WRITE:           // Write TMY, to set data to write
-					ret.reset(new Register(tmud));
-					break;
-        case SPECIAL_DMA_ST_ADDR:         // Write TMU, to set memory address to write to
-					ret.reset(new Register(tmua));
-					break;
-        case SPECIAL_TMU0_S:              // Read TMU
-					ret.reset(new Register(tmua));
-					break;
-        default:
-					breakpoint
-					assert(false);  // Not expecting this
-					break;
-      }
-			break;
-    case NONE:
-			is_none = true;
-			breakpoint
-			break;
-  }
-
-	if (ret.get() == nullptr && !is_none) {
-	  fprintf(stderr, "QPULib: missing case in encodeDestReg\n");
-		assert(false);
-	}
+	Word w = decodeSmallLit(src_reg.smallImm.val);
+	SmallImm ret(w.intVal);
 
 	return ret;
 }
 
 
-void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_instr) {
-	std::unique_ptr<Location> ret = encodeDestReg(src_instr);
-	if (ret.get() == nullptr) {
-		breakpoint
-		return;
-	}
-
-	if (src_instr.isMul()) {
-		dst_instr.alu.mul.waddr = ret->to_waddr();
-		dst_instr.alu.mul.output_pack = ret->output_pack();
-	} else {
-		dst_instr.alu.add.waddr = ret->to_waddr();
-		dst_instr.alu.add.output_pack = ret->output_pack();
-	}
-}
-
-
 /**
- * @param ret  current list of output instruction, out-parameter.
- *             Passed in because some extra instruction may be needed
- *             for v3d.
+ * @param opcodes  current list of output instruction, out-parameter.
+ *                 Passed in because some extra instruction may be needed
+ *                 for v3d.
  */
 std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 	bool is_none = false;
@@ -368,7 +242,6 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 			}
 			break;
     case SPECIAL:
-
       switch (reg.regId) {
         case SPECIAL_UNIFORM:
 					assert(false);  // Not expecting this, handled before this call
@@ -416,39 +289,121 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 	return ret;
 }
 
+std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
+	assert(!src_instr.isUniformLoad());
 
-uint8_t encodeSrcReg_old(Reg reg) {
+	bool is_none = false;
+	std::unique_ptr<Location> ret;
+
+	Reg reg;
+  if (src_instr.tag == ALU) {
+		reg = src_instr.ALU.dest;
+	} else {
+  	assert(src_instr.tag == LI);
+		reg = src_instr.LI.dest;
+	}
+
   switch (reg.tag) {
     case REG_A:
-      assert(reg.regId >= 0 && reg.regId < 32);
-      return (uint8_t) reg.regId;
     case REG_B:
       assert(reg.regId >= 0 && reg.regId < 32);
-      return (uint8_t) (REGB_OFFSET + reg.regId);
+			ret.reset(new RFAddress(to_waddr(reg)));
+			break;
     case ACC:
-      assert(reg.regId >= 0 && reg.regId <= 4);
-			assert(false); // TODO: set reg.regId
-      //*mux = reg.regId;
-			return 0;
-    case NONE:
-      return NOP_ADDR;
+      assert(reg.regId >= 0 && reg.regId <= 5);
+			switch(reg.regId) {
+				case 0: ret.reset(new Register(r0)); break;
+				case 1: ret.reset(new Register(r1)); break;
+				case 2: ret.reset(new Register(r2)); break;
+				case 3: ret.reset(new Register(r3)); break;
+				case 4: ret.reset(new Register(r4)); break;
+				case 5: ret.reset(new Register(r5)); break;
+			}
+			break;
     case SPECIAL:
       switch (reg.regId) {
-        case SPECIAL_UNIFORM:  return 32;
-        case SPECIAL_ELEM_NUM: return 38;
-        case SPECIAL_QPU_NUM:  return 38;
-        case SPECIAL_VPM_READ: return 48;
-        case SPECIAL_DMA_LD_WAIT:
-          // in REG_A
-					return 50;
-        case SPECIAL_DMA_ST_WAIT:
-          // in REG_B;
-					return 50;
+				// These values should never be generated for v3d
+        case SPECIAL_RD_SETUP:            // value 6
+        case SPECIAL_WR_SETUP:            // value 7
+        case SPECIAL_HOST_INT:            // value 11
+					breakpoint
+					assert(false);                  // Do not want this
+					break;
+
+        case SPECIAL_DMA_LD_ADDR:         // value 9
+					throw Exception("The source code uses DMA instructions. These are not supported for v3d.");
+					break;
+
+				// These values *are* generated and handled
+				// Note that they get translated to the v3d registers, though
+        case SPECIAL_VPM_WRITE:           // Write TMU, to set data to write
+					ret.reset(new Register(tmud));
+					break;
+        case SPECIAL_DMA_ST_ADDR:         // Write TMU, to set memory address to write to
+					ret.reset(new Register(tmua));
+					break;
+        case SPECIAL_TMU0_S:              // Read TMU
+					ret.reset(new Register(tmua));
+					break;
+
+        default:
+					breakpoint
+					assert(false);  // Not expecting this
+					break;
       }
+			break;
+    case NONE:
+			// As far as I can tell, there is no such thing as a NONE register on v3d;
+			// it may be one of the bits in `struct v3d_qpu_sig`.
+			//
+			// The first time I encountered this was in (QPULib target code):
+			//       _ <-{sf} or(B6, B6)
+			//
+			// The idea seems to be to set the CNZ flags depending on the value of a given rf-register.
+			// So, for the time being, we will set a condition (how? Don't know for sure yet) if
+			// srcA and srcB are the same in this respect, and set target same as both src's.
+			is_none = true;
+			assert(src_instr.ALU.setFlags);
+  		assert(src_instr.tag == ALU);
+
+			// srcA and srcB are the same rf-register
+			if ((src_instr.ALU.srcA.tag == REG && src_instr.ALU.srcB.tag == REG)
+			&& ((src_instr.ALU.srcA.reg.tag == REG_A && src_instr.ALU.srcA.reg.tag == src_instr.ALU.srcB.reg.tag)
+			|| (src_instr.ALU.srcA.reg.tag == REG_B && src_instr.ALU.srcA.reg.tag == src_instr.ALU.srcB.reg.tag))
+			&& (src_instr.ALU.srcA.reg.regId == src_instr.ALU.srcB.reg.regId)) {
+				Instructions dummy;
+				ret = encodeSrcReg(src_instr.ALU.srcA.reg, dummy);
+				assert(dummy.empty());
+			} else {
+				breakpoint  // case not handled yet
+			}
+
+			break;
   }
 
-  fatal("QPULib: missing case in encodeSrcReg_old");
-	return 0;
+	if (ret.get() == nullptr && !is_none) {
+	  fprintf(stderr, "QPULib: missing case in encodeDestReg\n");
+		assert(false);
+	}
+
+	return ret;
+}
+
+
+void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_instr) {
+	std::unique_ptr<Location> ret = encodeDestReg(src_instr);
+	if (ret.get() == nullptr) {
+		breakpoint
+		return;
+	}
+
+	if (src_instr.isMul()) {
+		dst_instr.alu.mul.waddr = ret->to_waddr();
+		dst_instr.alu.mul.output_pack = ret->output_pack();
+	} else {
+		dst_instr.alu.add.waddr = ret->to_waddr();
+		dst_instr.alu.add.output_pack = ret->output_pack();
+	}
 }
 
 
@@ -460,26 +415,49 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 
 	auto dst_reg = encodeDestReg(src_instr);
 
-	auto src_a = encodeSrcReg(reg_a.reg, ret);
-	auto src_b = encodeSrcReg(reg_b.reg, ret);
+	if (dst_reg && reg_a.tag == REG && reg_b.tag == REG) {
+		auto src_a = encodeSrcReg(reg_a.reg, ret);
+		auto src_b = encodeSrcReg(reg_b.reg, ret);
+		assert(src_a && src_b);
 
-	if (dst_reg && src_a && src_b) {
 		switch (src_instr.ALU.op) {
-			case A_ADD:  ret << add(*dst_reg, *src_a, *src_b);        break;
-			case A_SUB:  ret << sub(*dst_reg, *src_a, *src_b);        break;
-			case A_BOR:  ret << bor(*dst_reg, *src_a, *src_b);        break;
-			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, *src_b); break;
-			case A_FSUB: ret << fsub(*dst_reg, *src_a, *src_b);       break;
+			case A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
+			case A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
+			case A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
+			case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
+			case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
+			case A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
+			case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
 			break;
 		}
-	} else if (dst_reg && src_a && reg_b.tag == IMM) {
-		SmallImm imm(reg_b.smallImm.val);
+	} else if (dst_reg && reg_a.tag == REG && reg_b.tag == IMM) {
+		auto src_a = encodeSrcReg(reg_a.reg, ret);
+		assert(src_a);
+		SmallImm imm = encodeSmallImm(reg_b);
 
 		switch (src_instr.ALU.op) {
-			case A_SHL: ret << shl(*dst_reg, *src_a, imm); break;
+			case A_SHL:  ret << shl(*dst_reg, *src_a, imm);        break;
+			case A_SUB:  ret << sub(*dst_reg, *src_a, imm);        break;
+			case A_ADD:  ret << add(*dst_reg, *src_a, imm);        break;
+			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, imm); break;
+			case A_ItoF: ret << itof(*dst_reg, *src_a, imm);       break;
+			default:
+				breakpoint  // unimplemented op
+				did_something = false;
+			break;
+		}
+	} else if (dst_reg && reg_a.tag == IMM && reg_b.tag == REG) {
+		SmallImm imm = encodeSmallImm(reg_a);
+		auto src_b = encodeSrcReg(reg_b.reg, ret);
+		assert(src_b);
+
+		switch (src_instr.ALU.op) {
+			case M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
+			case M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
+			case A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -491,6 +469,116 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	}
 
 	return did_something;
+}
+
+
+/**
+ * @return true if rotate handled, false otherwise
+ */
+bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
+	if (instr.ALU.op != M_ROTATE) {
+		return false;
+	}
+
+	// dest is location where r1 (result of rotate) must be stored 
+	auto dst_reg = encodeDestReg(instr);
+	assert(dst_reg);
+	assert(dst_reg->to_mux() != V3D_QPU_MUX_R1);  // anything except dest of rotate
+
+	auto reg_a = instr.ALU.srcA;
+	auto src_a = encodeSrcReg(reg_a.reg, ret);    // Must be r0, checked in rotate()
+	auto reg_b = instr.ALU.srcB;                  // reg b is either r5 or small imm
+
+	if (reg_b.tag == REG) {
+		breakpoint
+
+		assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
+		auto src_b = encodeSrcReg(reg_b.reg, ret);
+
+		ret << nop().comment("required for rotate", true)
+		    << rotate(*dst_reg, *src_a, *src_b)
+		    << bor(*dst_reg, r1, r1)
+		;
+
+	} else if (reg_b.tag == IMM) {
+		assert(-15 <= reg_b.smallImm.val && reg_b.smallImm.val <= 16); // smallimm must be in proper range
+		                                                               // Also tested in rotate()
+		SmallImm imm = encodeSmallImm(reg_b);
+
+		ret << nop().comment("required for rotate", true)
+		    << rotate(*dst_reg, *src_a, imm)
+		    << bor(*dst_reg, r1, r1)
+		;
+	} else {
+		breakpoint  // Unhandled combination of inputs/output
+	}
+
+	return true;
+}
+
+
+Instructions encodeLoadImmediate(QPULib::Instr instr) {
+	assert(instr.tag == LI);
+
+	Instructions ret;
+	int rep_value;
+
+	if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
+		// TODO: figure out how to handle large immediates, if necessary at all
+		std::string str = "LI: Can't handle value '";
+		str += std::to_string(instr.LI.imm.intVal);
+		str += "'as small immediate";
+
+		local_errors << str;
+		ret << nop().comment(str, true);
+		return ret;
+	}
+
+	if (instr.LI.setFlags) {
+		breakpoint;  // to check what flags need to be set - case not handled yet
+	}
+
+	auto dst = encodeDestReg(instr);
+	SmallImm imm(rep_value);
+	auto out_instr = mov(*dst, imm);
+
+	if (instr.LI.cond.tag == ALWAYS) {
+		// Not a problem
+	} else if (instr.LI.cond.tag == ALWAYS) {
+		breakpoint  // TODO not handled yet; how to deal with this?
+	} else {  // FLAG
+		//
+		// qpu_instr.h, line 74, enum v3d_qpu_uf:
+		//
+		// How I interpret this:
+		//  - AND: if all bits set
+		//  - NOR: if no bits set
+		//  - N  : field not set
+		//  - Z  : Field zero
+		//  - N  : field negative set
+		//  - C  : Field negative cleared
+		//
+		// What the bits are is not clear at this point.
+		// These assumptions are probably wrong, but I need a starting point.
+		// TODO: make tests to verify these assumptions (how? No clue right now)
+		// ------------------------------------------------------------------------
+		// So:
+		// - vc4 `if all(nc)...` -> ANDC
+		//
+		// vc4 `nc` - negative clear, ie. >= 0
+		//
+		switch (instr.LI.cond.flag) {
+			case NC:             // Negative clear
+				out_instr.andc();  // Hoping this is correct....
+													 // TODO how to distinguish here between add and mul ALU?
+				break;
+			default:
+				breakpoint;        // check,  case not handled yet
+		}
+	}
+
+	ret << out_instr;
+	return ret;
 }
 
 
@@ -513,41 +601,11 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
   // Encode core instruction
   switch (instr.tag) {
-    // Load immediate
-    case LI: {
-			int rep_value;
-
-			if (instr.LI.setFlags) {
-				breakpoint;  // to check what flags need to be set - case not handled yet
-			}
-			if (instr.LI.cond.tag != ALWAYS) {
-				breakpoint;  // check,  case not handled yet
-			}
-			if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
-				// TODO: figure out how to handle large immediates
-				std::string str = "Can't handle value '";
-				str += std::to_string(instr.LI.imm.intVal);
-				str += "'as small immediate";
-				breakpoint
-				local_errors << str;
-				ret << nop();
-			} else {
-				auto dst = encodeDestReg(instr);
-				SmallImm imm(rep_value);
-
-				ret << mov(*dst, imm);
-/*
-      RegTag file;
-      uint32_t cond = encodeAssignCond(instr.LI.cond) << 17;
-      uint32_t sf   = (instr.LI.setFlags ? 1 : 0) << 13;
-      *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
-*/
-			}
-    }
+    case LI:  // Load immediate
+			ret << encodeLoadImmediate(instr); 
 		break;
 
-    // Branch
-    case BR: {
+    case BR: { // Branch
 			//breakpoint  // TODO examine
       assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
 
@@ -565,138 +623,20 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
     // ALU
     case ALU: {
-			QPULib::v3d::instr::Instr ret_instr;  // Note inits to nop-nop
-			if (!instr.isUniformLoad()) {
-	      v3d::setDestReg(instr, ret_instr);
-			}
-/*
-      uint32_t sig   = ((instr.hasImm() || instr.isRot) ? 13 : 1) << 28;
-      uint32_t cond  = encodeAssignCond(instr.ALU.cond) << (instr.isMul() ? 14 : 17);
-      uint32_t ws;  // bitfield that selects between regfile A and B
-			              // There is no such distinction on v3d, there is one regfile
-      uint32_t sf    = (instr.ALU.setFlags ? 1 : 0) << 13;
-      *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
-*/
 			if (instr.isUniformLoad()) {
 					Reg dst_reg = instr.ALU.dest;
 					uint8_t rf_addr = to_waddr(dst_reg);
-					ret_instr = ldunifrf(rf_addr);
-					ret << ret_instr;
+					QPULib::v3d::instr::Instr instr = ldunifrf(rf_addr);
+					ret << instr;
 					break;
+      } else if (translateRotate(instr, ret)) {
+				break;  // all is well
       } else if (translateOpcode(instr, ret)) {
 				break; // All is well
-      } else if (instr.ALU.op == M_ROTATE) {
-				assert(false); // TODO
-/*
-        assert(instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.tag == ACC &&
-               instr.ALU.srcA.reg.regId == 0);
-        assert(instr.ALU.srcB.tag == REG ?
-               instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5
-               : true);
-        uint32_t mulOp = encodeMulOp(M_V8MIN) << 29;
-        uint32_t raddrb;
-        if (instr.ALU.srcB.tag == REG) {
-          raddrb = 48;
-        }
-        else {
-          uint32_t n = (uint32_t) instr.ALU.srcB.smallImm.val;
-          assert(n >= 1 || n <= 15);
-          raddrb = 48 + n;
-        }
-        uint32_t raddra = 39;
-        *low = mulOp | (raddrb << 12) | (raddra << 18);
-        return;
-*/
       } else {
-				if (instr.isMul()) {
-        	ret_instr.alu.mul.op = v3d::encodeMulOp(instr.ALU.op);
-				} else {
-        	ret_instr.alu.add.op = v3d::encodeAddOp(instr.ALU.op);
-				}
-
-				v3d_qpu_mux muxa, muxb;
-        uint8_t raddra, raddrb; // in vc4, these are the read addresses for regfile A or B
-				                        // The meaning is different for v3d
-
-				Reg aReg  = instr.ALU.srcA.reg;
-				Reg bReg  = instr.ALU.srcB.reg;
-
-        if (instr.ALU.srcA.tag == REG && instr.ALU.srcB.tag == REG) {
-        	// Both operands are registers
-          RegTag aTag  = aReg.tag;
-          RegTag bTag  = bReg.tag;
-
-					breakpoint
-/*
-          // If operands are the same register
-          if (aTag != NONE && aTag == bTag &&
-                instr.ALU.srcA.reg.regId == instr.ALU.srcB.reg.regId) {
-            if (aFile == REG_A) {
-              raddra = encodeSrcReg(instr.ALU.srcA.reg, REG_A, &muxa);
-              muxb = muxa; raddrb = 39;
-            }
-            else {
-              raddrb = encodeSrcReg(instr.ALU.srcA.reg, REG_B, &muxa);
-              muxb = muxa; raddra = 39;
-            }
-          }
-          else {
-            // Operands are different registers
-            assert(aFile == NONE || bFile == NONE || aFile != bFile);
-            if (aFile == REG_A || bFile == REG_B) {
-              raddra = encodeSrcReg(instr.ALU.srcA.reg, REG_A, &muxa);
-              raddrb = encodeSrcReg(instr.ALU.srcB.reg, REG_B, &muxb);
-            }
-            else {
-              raddrb = encodeSrcReg(instr.ALU.srcA.reg, REG_B, &muxa);
-              raddra = encodeSrcReg(instr.ALU.srcB.reg, REG_A, &muxb);
-            }
-          }
-*/
-        }
-        else if (instr.ALU.srcB.tag == IMM) {
-          // Second operand is a small immediate
-					assert(instr.ALU.srcA.tag == REG);
-
-					breakpoint
-					SmallImm imm(instr.ALU.srcB.smallImm.val);
-					ret_instr.sig.small_imm = true;
-					ret_instr.raddr_b = imm.to_raddr();
-
-					// The muxa/b fields select between regfiles A and B for the src registers
-					// So, irrelevant for v3d
-          raddra = v3d::encodeSrcReg_old(instr.ALU.srcA.reg); // TODO fix for v3d
-        }
-        else if (instr.ALU.srcA.tag == IMM) {
-          // First operand is a small immediate
-					assert(instr.ALU.srcB.tag == REG);
-					assert(false);
-/*
-          raddra = encodeSrcReg(instr.ALU.srcB.reg, REG_A, &muxb);
-          raddrb = (uint32_t) instr.ALU.srcA.smallImm.val;
-          muxa   = 7;
-*/
-        }
-        else {
-          assert(false);  // Both operands are small immediates; never expecting this
-        }
-
-/*
-        *low = mulOp | addOp | (raddra << 18) | (raddrb << 12)
-                     | (muxa << 9) | (muxb << 6)
-                     | (muxa << 3) | muxb;
-*/
-
-				ret_instr.raddr_a = raddra;
-				ret_instr.raddr_b = raddrb;
-
-				// TODO: prob needs to be set for mul in some way
-				ret_instr.alu.add.a = muxa;
-				ret_instr.alu.add.b = muxb;
-      }
-
-			ret_instr.dump(true);
-			ret << ret_instr;
+				breakpoint  // Something missing, check
+				assert(false);
+			}
     }
 		break;
 
@@ -706,15 +646,6 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
     case TMU0_TO_ACC4: {
 			ret << nop().ldtmu(r4);  // NOTE: added by WR
-/*
-      uint32_t waddr_add = 39 << 6;
-      uint32_t waddr_mul = 39;
-      uint32_t raddra = 39 << 18;
-      uint32_t raddrb = 39 << 12;
-      uint32_t sig = instr.tag == END ? 0x30000000 : 0xa0000000;
-      *high  = sig | waddr_add | waddr_mul;
-      *low   = raddra | raddrb;
-*/
     }
 		break;
 
@@ -722,14 +653,6 @@ Instructions encodeInstr(QPULib::Instr instr) {
     case SINC:
     case SDEC: {
 			assert(false);  // TODO examine
-/*
-      uint32_t waddr_add = 39 << 6;
-      uint32_t waddr_mul = 39;
-      uint32_t sig = 0xe8000000;
-      uint32_t incOrDec = (instr.tag == SINC ? 0 : 1) << 4;
-      *high = sig | waddr_add | waddr_mul;
-      *low = incOrDec | instr.semaId;
-*/
     }
 		break;
 
@@ -743,12 +666,6 @@ Instructions encodeInstr(QPULib::Instr instr) {
     case PRF:
 			breakpoint
 			assert(false);  // TODO examine
-/*
-      uint32_t waddr_add = 39 << 6;
-      uint32_t waddr_mul = 39;
-      *high  = 0xe0000000 | waddr_add | waddr_mul;
-      *low   = 0;
-*/
 		break;
 		default:
   		fatal("v3d: missing case in encodeInstr");
@@ -834,7 +751,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 		auto ret = v3d::encodeInstr(instr);
 
 		if (doing_init) {
-			ret.front().comment("# Main program");
+			ret.front().comment("Main program");
 		}
 
 		instructions << ret;
@@ -843,6 +760,8 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 	instructions << sync_tmu()
 			         << end_program();
 }
+
+}  // anon namespace
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -874,23 +793,33 @@ void KernelDriver::encode(int numQPUs) {
 
 
 void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
+	debug("Called v3d KernelDriver::invoke()");
 	assert(instructions.size() > 0);
 
-	std::vector<uint64_t> code;  // opcodes for v3d
-	for (auto const &inst : instructions) {
-		code << inst.code();
+	// Assumption: code in a kernel, once allocated, doesnt' change
+	if (qpuCodeMem.allocated()) {
+		assert(instructions.size() == qpuCodeMem.size());  // Tentative check, not perfect
+	} else {
+		std::vector<uint64_t> code;  // opcodes for v3d
+		for (auto const &inst : instructions) {
+			code << inst.code();
+		}
+
+		// Allocate memory for the QPU code
+		qpuCodeMem.alloc(code.size());
+		qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
+
+		qpuCodeMemOffset = 8*code.size();  // TODO check if correct
 	}
 
-	// Allocate memory for the QPU code
-	qpuCodeMem.alloc(code.size());
-	qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
-
-	// Allocate memory for the parameters
+	// Allocate memory for the parameters if not done already
 	// TODO Not used in v3d, do we need this?
 	int numWords = (12*MAX_KERNEL_PARAMS + 12*2);
-	paramMem.alloc(numWords);
-
-	qpuCodeMemOffset = 8*code.size();  // TODO check if correct
+	if (paramMem.allocated()) {
+		assert(paramMem.size() == numWords);
+	} else {
+		paramMem.alloc(numWords);
+	}
 
 	v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
 }
@@ -905,10 +834,15 @@ void KernelDriver::emit_opcodes(FILE *f) {
 	} else {
 		for (auto const &instr : instructions) {
 			if (!instr.comment().empty()) {
-				fprintf(f, "\n%s\n", instr.comment().c_str());
+				if (instr.is_side_comment()) {
+					fprintf(f, "%s  # %s\n", instr.mnemonic().c_str(), instr.comment().c_str());
+				} else {
+					fprintf(f, "\n# %s\n", instr.comment().c_str());
+					fprintf(f, "%s\n", instr.mnemonic().c_str());
+				}
+			} else {
+				fprintf(f, "%s\n", instr.mnemonic().c_str());
 			}
-
-			fprintf(f, "%s\n", instr.mnemonic().c_str());
 		}
 	}
 

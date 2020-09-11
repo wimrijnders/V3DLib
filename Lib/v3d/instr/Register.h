@@ -23,6 +23,7 @@ public:
 	Register swp() const;
 
 	bool is_dest_acc() const { return m_is_dest_acc; }
+	std::string const &name() const { return m_name; }
 
 private:
 	std::string   m_name;
@@ -30,6 +31,19 @@ private:
 	v3d_qpu_mux   m_mux_val;
 	bool          m_mux_is_set  = false;
 	bool          m_is_dest_acc = false;
+};
+
+
+class BranchDest : public Location {
+public: 
+	BranchDest(const char *name, v3d_qpu_waddr dest) : m_name(name), m_dest(dest) {}
+
+	v3d_qpu_waddr to_waddr() const override { return m_dest; }
+	v3d_qpu_mux to_mux() const override;
+
+private:
+	std::string   m_name;
+	v3d_qpu_waddr m_dest;
 };
 
 
@@ -41,6 +55,15 @@ extern Register const r4;
 extern Register const r5;
 extern Register const tmua;
 extern Register const tmud;
+extern Register const tlb;
+extern Register const recip;
+extern Register const rsqrt;
+extern Register const log;
+
+// For branch
+extern BranchDest const lri;
+extern Register const r_unif;
+extern Register const a_unif;
 
 }  // instr
 }  // v3d

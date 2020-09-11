@@ -20,17 +20,24 @@ bool Instr::isMul() const {
 
 
 bool Instr::isUniformLoad() const {
-	if (ALU.srcA.tag != REG || ALU.srcB.tag != REG) {  // Both operands must be regs
+	if (tag == TMU0_TO_ACC4 || tag == InstrTag::LI) {
 		return false;
+	}
+
+	if (ALU.srcA.tag != REG || ALU.srcB.tag != REG) {
+		return false;  // Both operands must be regs
 	}
 
 	Reg aReg  = ALU.srcA.reg;
 	Reg bReg  = ALU.srcB.reg;
 
 	if (aReg.tag == SPECIAL && aReg.regId == SPECIAL_UNIFORM) {
-		assert(aReg == bReg);  // Apparently, this holds
+		assert(aReg == bReg);  // Apparently, this holds (NOT TRUE)
 		return true;
 	} else {
+		//if (bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM) {
+		//	breakpoint
+		//}
 		assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
 		return false;
 	}
