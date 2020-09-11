@@ -83,6 +83,10 @@ Instr &Instr::comment(std::string const &comment, bool is_side_comment) {
 uint64_t Instr::code() const {
 	init_ver();
 
+	//if (sig.rotate) {
+	//	breakpoint
+	//}
+
   uint64_t repack = instr_pack(&devinfo, const_cast<Instr *>(this));
 	return repack;
 }
@@ -1382,7 +1386,10 @@ Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb) {
 
 	Instr instr;
 	instr.alu_add_set(r1, r0, immb);
-	instr.sig.rotate = true;
+	if (immb.val() != 0) {  // Don't bother rotating if there is no rotate
+		instr.sig.rotate = true;
+	}
+	instr.sig.small_imm = false;      // Should *not* be set for rotate
 	instr.alu.add.op = V3D_QPU_A_OR;  // actually mov
 
 	return instr;
@@ -1403,6 +1410,32 @@ Instr &Instr::rotate(Location const &dst, Location const &loca, SmallImm const &
 	m_doing_add = false;
 
 	alu_mul_set(r1, r0, immb);
+
+	if (immb.val() != 0) {  // Don't bother rotating if there is no rotate
+		sig.rotate = true;
+	}
+	sig.small_imm = false;      // Should *not* be set for rotate
+	alu.mul.op = V3D_QPU_M_MOV;
+
+	return *this;
+}
+
+
+/**
+ * Rotate for mul alu.
+ *
+ * See notes in header comment of rotate overload for add alu above.
+ */
+Instr &Instr::rotate(Location const &dst, Location const &loca, Location const &locb) {
+	//warning("rotate called, really not sure if correct.");
+	assertq(dst.to_mux()  == V3D_QPU_MUX_R1, "rotate dest can only be r1");
+	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0");
+	assertq(locb.to_mux() == V3D_QPU_MUX_R5, "rotate src b can only be r5");
+	// TODO: check value r5 within range -15,15 inclusive, possible?
+
+	m_doing_add = false;
+
+	alu_mul_set(r1, r0, r5);
 	sig.rotate = true;
 	alu.mul.op = V3D_QPU_M_MOV;
 

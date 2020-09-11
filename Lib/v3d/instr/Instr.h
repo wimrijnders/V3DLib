@@ -83,6 +83,7 @@ public:
 	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
 
 	Instr &rotate(Location const &dst, Location const &loca, SmallImm const &immb);
+	Instr &rotate(Location const &dst, Location const &loca, Location const &locb);
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 

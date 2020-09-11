@@ -1,5 +1,5 @@
-#include <cstdio>
 #include "summation_kernel.h"
+#include <cstdio>
 #include "v3d/instr/Snippets.h"
 
 namespace {

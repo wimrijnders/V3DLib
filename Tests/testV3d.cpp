@@ -216,7 +216,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("rotate kernel generates correctly encoded output") {
-		std::vector<uint64_t> arr = rotate_kernel();
+		std::vector<uint64_t> arr = rotate_kernel(false);
 		REQUIRE(arr.size() > 0);
 
 		match_kernel_outputs(qpu_rotate_alias_code, arr, true);
