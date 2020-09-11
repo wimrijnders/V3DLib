@@ -428,6 +428,8 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 			case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
 			case A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
 			case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
+			case A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
+			case A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -444,6 +446,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 			case A_ADD:  ret << add(*dst_reg, *src_a, imm);        break;
 			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, imm); break;
 			case A_ItoF: ret << itof(*dst_reg, *src_a, imm);       break;
+			case A_FtoI: ret << ftoi(*dst_reg, *src_a, imm);       break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -458,6 +461,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 			case M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
 			case M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
 			case A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
+			case A_SUB:   ret << sub(*dst_reg, imm, *src_b);          break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -496,7 +500,7 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		auto src_b = encodeSrcReg(reg_b.reg, ret);
 
 		ret << nop().comment("required for rotate", true)
-		    << rotate(*dst_reg, *src_a, *src_b)
+		    << rotate(r1, *src_a, *src_b)
 		    << bor(*dst_reg, r1, r1)
 		;
 
@@ -506,7 +510,7 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		SmallImm imm = encodeSmallImm(reg_b);
 
 		ret << nop().comment("required for rotate", true)
-		    << rotate(*dst_reg, *src_a, imm)
+		    << rotate(r1, *src_a, imm)
 		    << bor(*dst_reg, r1, r1)
 		;
 	} else {
@@ -587,6 +591,7 @@ Instructions encodeLoadImmediate(QPULib::Instr instr) {
  */
 Instructions encodeInstr(QPULib::Instr instr) {
 	Instructions ret;
+	bool no_output = false;
 
   switch (instr.tag) {
     case IRQ:
@@ -656,28 +661,23 @@ Instructions encodeInstr(QPULib::Instr instr) {
     }
 		break;
 
-    // No-op & print instructions (ignored)
+    // No-op instruction
     case NO_OP:
 			ret << nop();
 			break;
 
+    // Print instructions - ignored
     case PRI:
     case PRS:
     case PRF:
-			breakpoint
-			assert(false);  // TODO examine
+			no_output = true;
 		break;
+
 		default:
   		fatal("v3d: missing case in encodeInstr");
   }
 
-/*
-	for (auto &instr : ret) {
-		cout << instr.mnemonic() << endl;
-	}
-*/
-
-	assert(!ret.empty());  // Something should really be returned back
+	assert(no_output || !ret.empty());
 	return ret;
 }
 

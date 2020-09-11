@@ -731,11 +731,19 @@ Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3) {
 }
 
 
-Instr itof(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+Instr itof(Location const &dst, Location const &srca, SmallImm const &immb) {
 	Instr instr;
-	instr.alu_add_set(loc1, loc2,  imm3);
+	instr.alu_add_set(dst, srca,  immb);  // TODO: why would a small imm be required here??
+	instr.alu.add.op = V3D_QPU_A_ITOF;
+	return instr;
+}
 
-	instr.alu.add.op    = V3D_QPU_A_ITOF;
+
+Instr ftoi(Location const &dst, Location const &srca, SmallImm const &immb) {
+	Instr instr;
+	instr.alu_add_set(dst, srca,  immb);  // TODO: why would a small imm be required here??
+	instr.alu.add.op = V3D_QPU_A_FTOIN;   // Also possible here: V3D_QPU_A_FTOIZ
+	                                      // TODO: Examine how to handle this, which is best
 	return instr;
 }
 
@@ -807,8 +815,7 @@ Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 Instr sub(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, loc3);
-
-	instr.alu.add.op    = V3D_QPU_A_SUB;
+	instr.alu.add.op = V3D_QPU_A_SUB;
 	return instr;
 }
 
@@ -816,8 +823,15 @@ Instr sub(Location const &loc1, Location const &loc2, Location const &loc3) {
 Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, imm3);
+	instr.alu.add.op = V3D_QPU_A_SUB;
+	return instr;
+}
 
-	instr.alu.add.op    = V3D_QPU_A_SUB;
+
+Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb) {
+	Instr instr;
+	instr.alu_add_set(dst, imma, srcb);
+	instr.alu.add.op = V3D_QPU_A_SUB;
 	return instr;
 }
 
@@ -1268,10 +1282,7 @@ Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3) {
 
 Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
-	instr.alu_add_set_dst(loc1);
-	instr.alu_add_set_reg_a(loc2);
-	instr.alu_add_set_reg_b(loc3);
-
+	instr.alu_add_set(loc1, loc2, loc3);
 	instr.alu.add.op    = V3D_QPU_A_VFMIN;
 
 	return instr;
@@ -1449,6 +1460,24 @@ Instr tmuwt() {
 	Instr instr;
 
 	instr.alu.add.op = V3D_QPU_A_TMUWT;
+
+	return instr;
+}
+
+
+Instr min(Location const &dst, Location const &srca, Location const &srcb) {
+	Instr instr;
+	instr.alu_add_set(dst, srca, srcb);
+	instr.alu.add.op = V3D_QPU_A_MIN;
+
+	return instr;
+}
+
+
+Instr max(Location const &dst, Location const &srca, Location const &srcb) {
+	Instr instr;
+	instr.alu_add_set(dst, srca, srcb);
+	instr.alu.add.op = V3D_QPU_A_MAX;
 
 	return instr;
 }

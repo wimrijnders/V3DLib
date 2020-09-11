@@ -12,22 +12,6 @@
 #endif
 
 
-
-/**
- * Alternative for `assert` that throws passed string.
- *
- * Note that this is always enabled, ie. also when not building for DEBUG.
- * See header comment of `fatal()` in `basics.h`
- */
-inline void assertq(bool cond, const char *msg) {
-	if (!cond) {
-		std::string str = "Assertion failed: ";
-		str += msg;
-		throw QPULib::Exception(str);
-	}
-}
-
-
 #ifdef DEBUG
 #include <stdio.h>
 
@@ -57,5 +41,21 @@ inline void warning(const char *str) {}
 inline void debug_break(const char *str) {}
 
 #endif  // DEBUG
+
+
+/**
+ * Alternative for `assert` that throws passed string.
+ *
+ * Note that this is always enabled, ie. also when not building for DEBUG.
+ * See header comment of `fatal()` in `basics.h`
+ */
+inline void assertq(bool cond, const char *msg) {
+	if (!cond) {
+		std::string str = "Assertion failed: ";
+		str += msg;
+		breakpoint
+		throw QPULib::Exception(str);
+	}
+}
 
 #endif  // _LIB_DEBUG_H

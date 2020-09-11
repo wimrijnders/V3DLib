@@ -139,6 +139,7 @@ Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 Instr sub(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3);
+Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb);
 
 Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
 
@@ -157,7 +158,8 @@ Instr bb(uint32_t addr);
 Instr bu(uint32_t addr, Location const &loc2);
 Instr bu(BranchDest const &loc1, Location const &loc2);
 
-Instr itof(Location const &reg1, Location const & reg2, SmallImm const &imm3);
+Instr itof(Location const &dst, Location const &srca, SmallImm const &immb);
+Instr ftoi(Location const &dst, Location const &srca, SmallImm const &immb);
 
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 
@@ -180,6 +182,8 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 Instr rotate(Location const &dst, Location const &loca, Location const &locb);
 Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb);
 Instr tmuwt();
+Instr min(Location const &dst, Location const &srca, Location const &srcb);
+Instr max(Location const &dst, Location const &srca, Location const &srcb);
 
 }  // instr
 }  // v3d
