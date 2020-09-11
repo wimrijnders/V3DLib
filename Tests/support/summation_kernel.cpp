@@ -894,7 +894,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int unroll_shift) {
 	using namespace QPULib::v3d;
 
-	printf("bytecode size: %u\n", bytecode.size());
+	//printf("bytecode size: %u\n", bytecode.size());
 
 	REQUIRE((num_qpus == 1 || num_qpus == 8));
 
@@ -908,29 +908,28 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
 	REQUIRE(length > 0);
 	REQUIRE(length % (16 * 8 * num_qpus * (1 << unroll_shift)) == 0);
 
-
-	printf("==== summation example (%dK elements) ====\n", (length / 1024));
+	//printf("==== summation example (%dK elements) ====\n", (length / 1024));
 
 	// Code and data is combined in one buffer
 	uint32_t code_area_size = 8*bytecode.size();  // size in bytes
-	printf("code_area_size size: %u\n", code_area_size);
+	//printf("code_area_size size: %u\n", code_area_size);
 	uint32_t data_area_size = (length + 1024) * 4;
-	printf("data_area_size size: %u\n", data_area_size);
+	//printf("data_area_size size: %u\n", data_area_size);
 
 	BufferObject heap(code_area_size + data_area_size);
-	printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
+	//printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
 	heap.fill(0xdeadbeef);
 
 	SharedArray<uint64_t> code(bytecode.size(), heap);
 	code.copyFrom(bytecode);
-	printf("code phyaddr: %u, size: %u\n", code.getAddress(), 8*code.size());
-	dump_data(code); 
+	//printf("code phyaddr: %u, size: %u\n", code.getAddress(), 8*code.size());
+	//dump_data(code); 
 
 	SharedArray<uint32_t> X(length, heap);
 	SharedArray<uint32_t> Y(16 * num_qpus, heap);
-	printf("X phyaddr: %u, size: %u\n", X.getAddress(), 4*X.size());
-	printf("Y phyaddr: %u, size: %u\n", Y.getAddress(), 4*Y.size());
+	//printf("X phyaddr: %u, size: %u\n", X.getAddress(), 4*X.size());
+	//printf("Y phyaddr: %u, size: %u\n", Y.getAddress(), 4*Y.size());
 
 	auto sumY = [&Y] () -> uint64_t {
 		uint64_t ret = 0;
@@ -945,30 +944,30 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
 	for (uint32_t offset = 0; offset < X.size(); ++offset) {
 		X[offset] = offset;
 	}
-	dump_data(X); 
+	//dump_data(X); 
 
 	for (uint32_t offset = 0; offset < Y.size(); ++offset) {
 		Y[offset] = 0;
 	}
-	dump_data(Y); 
+	//dump_data(Y); 
 	REQUIRE(sumY() == 0);
 
 	SharedArray<uint32_t> unif(3, heap);
 	unif[0] = length;
 	unif[1] = X.getAddress();
 	unif[2] = Y.getAddress();
-	printf("unif phyaddr: %u, size: %u\n", unif.getAddress(), 4*unif.size());
+	//printf("unif phyaddr: %u, size: %u\n", unif.getAddress(), 4*unif.size());
 
-	printf("Executing on QPU...\n");
+	//printf("Executing on QPU...\n");
 	double start = get_time();
 
 	QPULib::v3d::Driver drv;
 	drv.add_bo(heap);
 	REQUIRE(drv.execute(code, &unif, num_qpus));
 
-	dump_data(Y, true);
-	check_returned_registers(Y);
-	heap.detect_used_blocks();
+	//dump_data(Y, true);
+	//check_returned_registers(Y);
+	//heap.detect_used_blocks();
 
 /*
 	// Check if code not overwritten
@@ -987,9 +986,9 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
 */
 	
 	// Check if values supplied
-   REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
+	REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
 		
 	double end = get_time();
-	printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
+	//printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
 }
 

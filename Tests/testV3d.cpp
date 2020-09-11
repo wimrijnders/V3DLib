@@ -172,7 +172,28 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 	SECTION("Rotate example should work from bytecode") {
 		if (!v3d_init()) return;
-		run_rotate_alias_kernel();
+		run_rotate_alias_kernel(qpu_rotate_alias_code);
+	}
+
+
+	SECTION("Rotate example should work from kernel output") {
+		if (!v3d_init()) return;
+
+		run_rotate_alias_kernel(rotate_kernel(false));  // test using mul alu rotate
+		//run_rotate_alias_kernel(rotate_kernel(true));  // NOT WORKING; test using add alu rotate
+	}
+}
+
+
+TEST_CASE("Check v3d rotate assembly/disassembly", "[v3d][asm]") {
+	using namespace QPULib::v3d::instr;
+
+	SECTION("rotate kernel generates correctly encoded output") {
+		std::vector<uint64_t> arr = rotate_kernel(false);
+		REQUIRE(arr.size() > 0);
+
+		match_kernel_outputs(qpu_rotate_alias_code, arr, true);
+		REQUIRE(qpu_rotate_alias_code.size() == arr.size());  // TODO enable when complete
 	}
 }
 
@@ -218,15 +239,6 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 		match_kernel_outputs(summation, arr);
 		REQUIRE(summation.size() == arr.size());
-	}
-
-
-	SECTION("rotate kernel generates correctly encoded output") {
-		std::vector<uint64_t> arr = rotate_kernel(false);
-		REQUIRE(arr.size() > 0);
-
-		match_kernel_outputs(qpu_rotate_alias_code, arr, true);
-		// REQUIRE(qpu_rotate_alias_code.size() == arr.size());  // TODO enable when complete
 	}
 
 
