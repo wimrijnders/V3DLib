@@ -168,6 +168,12 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		data = summation_kernel(num_qpus, unroll_shift);
 		run_summation_kernel(data, num_qpus, unroll_shift);
 	}
+
+
+	SECTION("Rotate example should work from bytecode") {
+		if (!v3d_init()) return;
+		run_rotate_alias_kernel();
+	}
 }
 
 
