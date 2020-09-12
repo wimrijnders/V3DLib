@@ -546,11 +546,7 @@ Instructions encodeLoadImmediate(QPULib::Instr instr) {
 	SmallImm imm(rep_value);
 	auto out_instr = mov(*dst, imm);
 
-	if (instr.LI.cond.tag == ALWAYS) {
-		// Not a problem
-	} else if (instr.LI.cond.tag == ALWAYS) {
-		breakpoint  // TODO not handled yet; how to deal with this?
-	} else {  // FLAG
+	if (instr.LI.cond.tag != ALWAYS) {  // ALWAYS executes always (duh)
 		//
 		// qpu_instr.h, line 74, enum v3d_qpu_uf:
 		//
@@ -570,12 +566,14 @@ Instructions encodeLoadImmediate(QPULib::Instr instr) {
 		// - vc4 `if all(nc)...` -> ANDC
 		//
 		// vc4 `nc` - negative clear, ie. >= 0
+		// vc4 `ns` - negative set,   ie.  < 0
 		//
 		switch (instr.LI.cond.flag) {
-			case NC:             // Negative clear
-				out_instr.andc();  // Hoping this is correct....
-													 // TODO how to distinguish here between add and mul ALU?
-				break;
+			// TODO test what happens here, for vc4 as well as v3d
+			//      v3d flags used are prob wrong!
+			// TODO how to distinguish here between add and mul ALU?
+			case NC: out_instr.andc();  break;
+			case NS: out_instr.andnc(); break;
 			default:
 				breakpoint;        // check,  case not handled yet
 		}

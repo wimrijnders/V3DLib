@@ -56,6 +56,8 @@ void printCharSeq(Seq<char>* s)
 
 TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	SECTION("Should generate the same output") {
+		set_compiling_for_vc4(true);  // emulator is vc4 only
+
 	  // Seed random generator
 	  srand(0);
 

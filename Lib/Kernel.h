@@ -144,7 +144,7 @@ template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
 
 class KernelBase {
 public:
-	void pretty(const char *filename = nullptr);
+	void pretty(bool output_for_vc4, const char *filename = nullptr);
 
   void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
 	static int maxQPUs();

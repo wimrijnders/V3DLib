@@ -29,19 +29,18 @@ int KernelBase::maxQPUs() {
 }
 
 
-void KernelBase::pretty(const char *filename) {
-#ifdef QPU_MODE
-	if (Platform::instance().has_vc4) {
+void KernelBase::pretty(bool output_for_vc4, const char *filename) {
+	if (output_for_vc4) {
 		m_vc4_driver.encode(numQPUs);
 		m_vc4_driver.pretty(filename);
 	} else {
+#ifdef QPU_MODE
 		m_v3d_driver.encode(numQPUs);
 		m_v3d_driver.pretty(filename);
-	}
 #else
-	m_vc4_driver.encode(numQPUs);
-	m_vc4_driver.pretty(filename);
+		fatal("KernelBase::pretty(): v3d code not generated for this platform.");
 #endif
+	}
 }
 
 

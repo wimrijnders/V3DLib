@@ -71,11 +71,12 @@ TEST_CASE("ReqRecv check output and generation", "[cmdline]") {
 		std::string expected_filename = "Tests/data/ReqRecv_expected_code.txt";
 
 		std::string cmdline = "cd obj/test && ../../" BIN_PATH "/ReqRecv ";
-		cmdline +=  "-c -f > /dev/null";
+		cmdline +=  "-r=emulator -c -f > /dev/null";
 		INFO("Cmdline: " << cmdline);
 		REQUIRE(!system(cmdline.c_str()));
 
 		std::string diff_cmd = "diff " + output_filename + " " + expected_filename;
+		INFO(diff_cmd);
 		REQUIRE(!system(diff_cmd.c_str()));
 	}
 

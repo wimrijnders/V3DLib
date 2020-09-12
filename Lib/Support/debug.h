@@ -53,7 +53,7 @@ inline void assertq(bool cond, const char *msg) {
 	if (!cond) {
 		std::string str = "Assertion failed: ";
 		str += msg;
-		breakpoint
+		//breakpoint
 		throw QPULib::Exception(str);
 	}
 }
