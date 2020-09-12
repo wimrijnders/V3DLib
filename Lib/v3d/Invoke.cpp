@@ -51,16 +51,16 @@ void invoke(
         unif[1] = done.addresses()[0]
 */
 
-	printf("============================\n");
-	printf("This would run the v3d code!\n");
-	printf("============================\n");
+//	printf("============================\n");
+//	printf("This would run the v3d code!\n");
+//	printf("============================\n");
 
   Driver drv;
+	drv.add_bo(getBufferObject());
 
-#if NOT_DONE_YET
-	auto csd = drv.compute_shader_dispatcher();
-	csd.dispatch(codeMem, &unif);
-#endif // NOT_DONE_YET
+//#if NOT_DONE_YET
+	drv.execute(codeMem, &unif);
+//#endif // NOT_DONE_YET
 }
 
 }  // v3d

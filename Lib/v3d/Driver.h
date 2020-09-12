@@ -26,21 +26,11 @@ public:
 		m_bo_handles.push_back(bo_handle);
 	}
 
-	bool execute(
-		SharedArray<uint64_t> &code,
-		SharedArray<uint32_t> *uniforms = nullptr,
-		int thread = 1);
+	bool execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms = nullptr, uint32_t thread = 1);
 
 private:
 	BoHandles m_bo_handles;
   int       m_timeout_sec = 10;
-
-
-	bool dispatch(
-		uint32_t code_phyaddr,
-		uint32_t unif_phyaddr,
-		uint32_t thread = 1);
-
 };  // class Driver
 
 }  // v3d

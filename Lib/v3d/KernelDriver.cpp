@@ -790,11 +790,11 @@ void KernelDriver::encode(int numQPUs) {
 }
 
 
-void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
+void KernelDriver::invoke(int numQPUs, Seq<int32_t> *params) {
 	debug("Called v3d KernelDriver::invoke()");
 	assert(instructions.size() > 0);
 
-	// Assumption: code in a kernel, once allocated, doesnt' change
+	// Assumption: code in a kernel, once allocated, doesn't change
 	if (qpuCodeMem.allocated()) {
 		assert(instructions.size() == qpuCodeMem.size());  // Tentative check, not perfect
 	} else {

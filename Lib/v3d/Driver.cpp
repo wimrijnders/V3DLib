@@ -33,18 +33,13 @@
 //	- 3-5 QPU's return with only reg's 0-5 filled, which QPU's vary
 //
 ///////////////////////////////////////////////////////////////////////////////
-#include <cassert>
 #include <algorithm>  // find()
+#include "Support/debug.h"
 #include "Driver.h"
 #include "v3d.h"
 
 namespace QPULib {
 namespace v3d {
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Class Driver
-///////////////////////////////////////////////////////////////////////////////
 
 /**
  * @return true if execution went well and no timeout,
@@ -58,13 +53,12 @@ namespace v3d {
  *
  * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
  */
-bool Driver::dispatch(
-	uint32_t code_phyaddr,
-	uint32_t unif_phyaddr,
-	uint32_t thread
-) {
+bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms, uint32_t thread) {
+	uint32_t code_phyaddr = code.getAddress();
+	uint32_t unif_phyaddr = (uniforms == nullptr)?0u:uniforms->getAddress();
+
 	assert(m_timeout_sec > 0);
-	assert(m_bo_handles.size() > 0);  // There should be at least one, for the code
+	assertq(m_bo_handles.size() > 0, "v3d execute: There should be at least one buffer object present on execution");
 
 	// See Note 1
 	WorkGroup workgroup = (1, 1, 0);  // Setting last val to 0 ensures all QPU's return all registers
@@ -99,18 +93,6 @@ bool Driver::dispatch(
 		ret = v3d_wait_bo(m_bo_handles, timeout_ns);
 	}
 	return ret;
-}
-
-
-bool Driver::execute(
-	SharedArray<uint64_t> &code,
-	SharedArray<uint32_t> *uniforms,
-	int thread) {
-
-	return dispatch(
-		code.getAddress(),
-		((uniforms == nullptr)?0u:uniforms->getAddress()),
-		thread);
 }
 
 }  // v3d
