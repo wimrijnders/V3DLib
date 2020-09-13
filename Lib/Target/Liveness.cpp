@@ -1,4 +1,10 @@
 // Liveness analysis
+//
+// This follows the following source pretty closely:
+//
+//    https://lambda.uta.edu/cse5317/spring01/notes/node37.html
+//
+///////////////////////////////////////////////////////////////////////////////
 
 #include "Target/Liveness.h"
 
@@ -68,11 +74,11 @@ void useDefReg(Instr instr, UseDefReg* useDef)
   }
 }
 
-// Same function as above, except only yeilds ids of registers in
-// register file A.
 
-void useDef(Instr instr, UseDef* out)
-{
+/**
+ * Same as `useDefReg()`, except only yields ids of registers in register file A.
+ */
+void useDef(Instr instr, UseDef* out) {
   UseDefReg set;
   useDefReg(instr, &set);
   out->use.clear();
@@ -116,29 +122,17 @@ bool getTwoUses(Instr instr, Reg* r1, Reg* r2)
   return false;
 }
 
-// ============================================================================
-// Compute live sets for each instruction
-// ============================================================================
 
-// Compute the live-out variables of an instruction, given the live-in
-// variables of all instructions and the CFG.
+namespace {
 
-void computeLiveOut(CFG* cfg, Liveness* live, InstrId i, LiveSet* liveOut)
-{
-  liveOut->clear();
-  Succs* s = &cfg->elems[i];
-  for (int j = 0; j < s->numElems; j++) {
-    LiveSet* set = &live->elems[s->elems[j]];
-    for (int k = 0; k < set->numElems; k++)
-      liveOut->insert(set->elems[k]);
-  }
-}
 
-void liveness(Seq<Instr>* instrs, CFG* cfg, Liveness* live)
-{
+
+/**
+ * Determine the liveness sets for each instruction.
+ */
+void liveness(Seq<Instr>* instrs, CFG* cfg, Liveness &live) {
   // Initialise live mapping to have one entry per instruction
-  live->setCapacity(instrs->numElems);
-  live->numElems = instrs->numElems;
+	live.setSize(instrs->numElems);
 
   // For storing the 'use' and 'def' sets of each instruction
   UseDef useDefSets;
@@ -161,11 +155,13 @@ void liveness(Seq<Instr>* instrs, CFG* cfg, Liveness* live)
       useDef(instr, &useDefSets);
 
       // Compute live-out variables
-      computeLiveOut(cfg, live, i, &liveOut);
+      live.computeLiveOut(cfg, i, &liveOut);
 
       // Remove the 'def' set from the live-out set to give live-in set
       liveIn.clear();
-      for (int j = 0; j < liveOut.numElems; j++) {
+      for (int j = 0; j < liveOut.size(); j++) {
+        //if (! useDefSets.def.member(liveOut[j]))
+        //  liveIn.insert(liveOut[j]);
         if (! useDefSets.def.member(liveOut.elems[j]))
           liveIn.insert(liveOut.elems[j]);
       }
@@ -175,13 +171,80 @@ void liveness(Seq<Instr>* instrs, CFG* cfg, Liveness* live)
         liveIn.insert(useDefSets.use.elems[j]);
 
       // Insert the live-in variables into the map
-      for (int j = 0; j < liveIn.numElems; j++) {
-        bool inserted = live->elems[i].insert(liveIn.elems[j]);
+      for (int j = 0; j < liveIn.size(); j++) {
+        bool inserted = live.insert(i, liveIn.elems[j]);
         changed = changed || inserted;
       }
     }
   }
 }
 
+
+}  // anon namespace
+
+
+void Liveness::compute(Seq<Instr>* instrs, CFG* cfg) {
+	liveness(instrs, cfg, *this);
+	printf("%s", dump().c_str());
+}
+
+
+/**
+ * Compute live sets for each instruction
+ *
+ * Compute the live-out variables of an instruction, given the live-in
+ * variables of all instructions and the CFG.
+ */
+void Liveness::computeLiveOut(CFG* cfg, InstrId i, LiveSet* liveOut) {
+  liveOut->clear();
+  Succs* s = &cfg->elems[i];
+
+  for (int j = 0; j < s->numElems; j++) {
+    LiveSet &set = get(s->elems[j]);
+
+    for (int k = 0; k < set.size(); k++)
+      //liveOut->insert(set[k]);
+      liveOut->insert(set.elems[k]);
+  }
+}
+
+
+void Liveness::setSize(int size) {
+  m_set.setCapacity(size);
+  m_set.numElems = size;
+}
+
+
+bool Liveness::insert(int index, RegId item) {
+	return m_set.elems[index].insert(item);
+}
+
+
+std::string Liveness::dump() {
+	std::string ret;
+
+	ret += "Liveness dump:\n";
+
+	for (int i = 0; i < m_set.size(); ++i) {
+		ret += std::to_string(i) + ": ";
+
+		auto &item = m_set.elems[i];
+		bool did_first = false;
+		for (int j = 0; j < item.size(); j++) {
+			if (did_first) {
+				ret += ", ";
+			} else {
+				did_first = true;
+			}
+			//ret += std::to_string(item[i]);
+			ret += std::to_string(item.elems[j]);
+		}
+		ret += "\n";
+	}
+
+	ret += "\n";
+
+	return ret;
+}
 
 }  // namespace QPULib

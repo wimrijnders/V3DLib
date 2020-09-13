@@ -123,10 +123,10 @@ void computeGenKill(InstrId id, Instr instr, DefsOf* defsOf, GenKill* genKill)
 // we only return live definitions that reach-in, but on the down-side
 // this means we have to perform liveness analysis first.
 
-void computeReachIn(Seq<Instr>* instrs, CFG* preds, Liveness* live,
+void computeReachIn(Seq<Instr>* instrs, CFG* preds, Liveness &live,
                     ReachingDefs* defs, InstrId i, ReachSet* reachIn)
 {
-  LiveSet* liveIn = &live->elems[i];
+  LiveSet* liveIn = &live[i];
   reachIn->clear();
   Succs* p = &preds->elems[i];
   for (int j = 0; j < p->numElems; j++) {
@@ -147,9 +147,7 @@ void computeReachIn(Seq<Instr>* instrs, CFG* preds, Liveness* live,
   }
 }
 
-void reachingOutDefs(Seq<Instr>* instrs, Liveness* live,
-                     CFG* preds, ReachingDefs* defs)
-{
+void reachingOutDefs(Seq<Instr>* instrs, Liveness &live, CFG* preds, ReachingDefs* defs) {
   // Make sure defs is large enough
   defs->setCapacity(instrs->numElems);
   defs->numElems = instrs->numElems;
@@ -201,11 +199,10 @@ void reachingOutDefs(Seq<Instr>* instrs, Liveness* live,
   }
 }
 
-void reachingDefs(Seq<Instr>* instrs, CFG* cfg, ReachingDefs* defs)
-{
+void reachingDefs(Seq<Instr>* instrs, CFG* cfg, ReachingDefs* defs) {
   // For efficiency, perform liveness analysis first
   Liveness live;
-  liveness(instrs, cfg, &live);
+  live.compute(instrs, cfg);
 
   // Reverse the arrows in the CFG
   CFG preds;
@@ -217,11 +214,11 @@ void reachingDefs(Seq<Instr>* instrs, CFG* cfg, ReachingDefs* defs)
 
   // Compute defs reaching-out of each instruction
   ReachingDefs out;
-  reachingOutDefs(instrs, &live, &preds, &out);
+  reachingOutDefs(instrs, live, &preds, &out);
  
   // Compute defs reaching-in to each instruction
   for (int i = 0; i < defs->numElems; i++)
-    computeReachIn(instrs, &preds, &live, &out, i, &defs->elems[i]);
+    computeReachIn(instrs, &preds, live, &out, i, &defs->elems[i]);
 }
 
 // ============================================================================

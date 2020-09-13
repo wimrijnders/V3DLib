@@ -86,5 +86,22 @@ void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
   seq->append(genOR(tmua, srcData, srcData));
 }
 
+
+/**
+ * For vc4, a preference is determined for register file A or B.
+ *
+ * For v3d, however, there is only one register file.
+ * Set values so that REG_A is always selected
+ *
+ */
+void SourceTranslate::regalloc_determine_regfileAB(Seq<Instr> *instrs, int *prefA, int *prefB, int n) {
+	//breakpoint
+
+  for (int i = 0; i < n; i++) {
+		prefA[i] = 1;
+		prefB[i] = 0;
+	}
+}
+
 }  // namespace v3d
 }  // namespace QPULib

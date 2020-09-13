@@ -1,17 +1,18 @@
+//
 // Sequence data type
-
+//
+///////////////////////////////////////////////////////////////////////////////
 #ifndef _QPULIB_SEQ_H_
 #define _QPULIB_SEQ_H_
+#include <stdlib.h>
+#include <assert.h>
+#include <string>
 
 #define INITIAL_MAX_ELEMS 1024
 
-#include <stdlib.h>
-#include <assert.h>
-
 namespace QPULib {
 
-template <class T> class Seq
-{
+template <class T> class Seq {
   private:
     // Initialisation
     void init(int initialSize)
@@ -26,7 +27,6 @@ template <class T> class Seq
     int numElems;
     T* elems;
 
-    // Constructors
     Seq() { init(INITIAL_MAX_ELEMS); }
     Seq(int initialSize) { init(initialSize); }
 
@@ -38,7 +38,18 @@ template <class T> class Seq
         elems[i] = seq.elems[i];
     }
 
-		bool size() const { return numElems; }
+    ~Seq() { delete [] elems; }
+
+		/**
+		 * Here's one for the Hall of Shame, previous definition:
+		 *
+		 *    bool size() const { return numElems; }
+		 *
+		 * How much of an idiot can I be?
+		 * I kept reading over it for ages, because how can size be wrong, right?
+		 * Hours of confusion have now been explained.
+		 */
+		int size() const { return numElems; }
 
     // Set capacity of sequence
     void setCapacity(int n) {
@@ -71,20 +82,15 @@ template <class T> class Seq
       numElems--;
     }
 
-    // Push
     void push(T x) { append(x); }
 
-    // Pop
     T pop() {
       numElems--;
       return elems[numElems];
     }
 
     // Clear the sequence
-    void clear()
-    {
-      numElems = 0;
-    }
+    void clear() { numElems = 0; }
 
     // Is given value already in sequence?
     bool member(T x) {
@@ -108,12 +114,6 @@ template <class T> class Seq
         elems[j] = elems[j+1];
       numElems--;
       return x;
-    }
-
-    // Destructor
-    ~Seq()
-    {
-      delete [] elems;
     }
 };
 

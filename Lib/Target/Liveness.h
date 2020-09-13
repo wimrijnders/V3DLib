@@ -1,8 +1,10 @@
+//
 // Liveness analysis
-
+//
+///////////////////////////////////////////////////////////////////////////////
 #ifndef _QPULIB_LIVENESS_H_
 #define _QPULIB_LIVENESS_H_
-
+#include <string>
 #include "Common/Seq.h"
 #include "Target/Syntax.h"
 #include "Target/CFG.h"
@@ -31,18 +33,30 @@ bool getTwoUses(Instr instr, Reg* r1, Reg* r2);
 
 // A live set containts the variables
 // that are live-in to an instruction.
+using LiveSet = SmallSeq<RegId>;
 
-typedef SmallSeq<RegId> LiveSet;
 
-// The result of liveness analysis is a set
-// of live variables for each instruction.
+/**
+ * The result of liveness analysis is a set
+ * of live variables for each instruction.
+ */
+class Liveness {
+public:
+	void compute(Seq<Instr>* instrs, CFG* cfg);
+	void computeLiveOut(CFG* cfg, InstrId i, LiveSet* liveOut);
 
-typedef Seq<LiveSet> Liveness;
+	void setSize(int size);
+	bool insert(int index, RegId item);
+	LiveSet &operator[](int index) { return get(index); }
 
-// Determine the liveness sets for each instruction.
+private:
+	Seq<LiveSet> m_set;
 
-void liveness(Seq<Instr>* instrs, CFG* cfg, Liveness* liveness);
-void computeLiveOut(CFG* cfg, Liveness* live, InstrId i, LiveSet* liveOut);
+	std::string dump();
+	LiveSet &get(int index) { return m_set.elems[index]; }
+};
+
+
 
 }  // namespace QPULib
 

@@ -4,7 +4,7 @@
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
 #include "Target/Subst.h"
-#include "Target/Liveness.h"
+#include "SourceTranslate.h"
 
 namespace QPULib {
 
@@ -23,7 +23,7 @@ namespace QPULib {
 //   i:  acc <- f(...)
 //   j:  g(..., acc, ...)
 
-void introduceAccum(CFG* cfg, Liveness* live, Seq<Instr>* instrs)
+void introduceAccum(CFG* cfg, Liveness &live, Seq<Instr>* instrs)
 {
   UseDef useDefPrev, useDefCurrent;
   LiveSet liveOut;
@@ -46,15 +46,13 @@ void introduceAccum(CFG* cfg, Liveness* live, Seq<Instr>* instrs)
       useDef(instr, &useDefCurrent);
 
       // Compute vars live-out of instr
-      computeLiveOut(cfg, live, i, &liveOut);
+      live.computeLiveOut(cfg, i, &liveOut);
 
       // Check that write is non-conditional
       bool always = (prev.tag == LI && prev.LI.cond.tag == ALWAYS)
                  || (prev.tag == ALU && prev.ALU.cond.tag == ALWAYS);
 
-      if (always &&
-          useDefCurrent.use.member(def)  &&
-          !liveOut.member(def)) {
+      if (always && useDefCurrent.use.member(def) && !liveOut.member(def)) {
         renameDest(&prev, REG_A, def, ACC, 1);
         renameUses(&instr, REG_A, def, ACC, 1);
         instrs->elems[i-1] = prev;
@@ -73,54 +71,33 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs)
   // Step 0
   // Perform liveness analysis
   Liveness live;
-  liveness(instrs, cfg, &live);
+  live.compute(instrs, cfg);
 
   // Optimisation pass that introduces accumulators
-  introduceAccum(cfg, &live, instrs);
+  introduceAccum(cfg, live, instrs);
 
   // Step 1
   // For each variable, determine a preference for register file A or B.
   int n = getFreshVarCount();
   int* prefA = new int [n];
   int* prefB = new int [n];
-  UseDef useDefSet;
-  for (int i = 0; i < n; i++) prefA[i] = prefB[i] = 0;
 
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
-    Reg ra, rb;
-    if (getTwoUses(instr, &ra, &rb) && ra.tag == REG_A && rb.tag == REG_A) {
-      RegId x = ra.regId;
-      RegId y = rb.regId;
-      if (prefA[x] > prefA[y] || prefB[y] > prefB[x])
-        { prefA[x]++; prefB[y]++; }
-      else
-        { prefA[y]++; prefB[x]++; }
-    }
-    else if (instr.tag == ALU &&
-             instr.ALU.srcA.tag == REG &&
-             instr.ALU.srcA.reg.tag == REG_A &&
-             instr.ALU.srcB.tag == IMM) {
-      prefA[instr.ALU.srcA.reg.regId]++;
-    }
-    else if (instr.tag == ALU &&
-             instr.ALU.srcB.tag == REG &&
-             instr.ALU.srcB.reg.tag == REG_A &&
-             instr.ALU.srcA.tag == IMM) {
-      prefA[instr.ALU.srcB.reg.regId]++;
-    }
-  }
+	getSourceTranslate().regalloc_determine_regfileAB(instrs, prefA, prefB, n);
 
   // Step 2
   // For each variable, determine all variables ever live at same time
   LiveSet* liveWith = new LiveSet [n];
   LiveSet liveOut;
+  UseDef useDefSet;
+
   for (int i = 0; i < instrs->numElems; i++) {
-    computeLiveOut(cfg, &live, i, &liveOut);
+    live.computeLiveOut(cfg, i, &liveOut);
     useDef(instrs->elems[i], &useDefSet);
-    for (int j = 0; j < liveOut.numElems; j++) {
+    for (int j = 0; j < liveOut.size(); j++) {
+      //RegId rx = liveOut[j];
       RegId rx = liveOut.elems[j];
-      for (int k = 0; k < liveOut.numElems; k++) {
+      for (int k = 0; k < liveOut.size(); k++) {
+        //RegId ry = liveOut[k];
         RegId ry = liveOut.elems[k];
         if (rx != ry) liveWith[rx].insert(ry);
       }
@@ -136,6 +113,8 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs)
 
   // Step 3
   // Allocate a register to each variable
+	//breakpoint
+
   RegTag prevChosenRegFile = REG_B;
   Reg* alloc = new Reg [n];
   for (int i = 0; i < n; i++) alloc[i].tag = NONE;
@@ -149,9 +128,11 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs)
       possibleA[j] = possibleB[j] = true;
 
     // Eliminate impossible choices of register for this variable
-    LiveSet* set = &liveWith[i];
-    for (int j = 0; j < set->numElems; j++) {
-      Reg neighbour = alloc[set->elems[j]];
+    LiveSet &set = liveWith[i];
+    for (int j = 0; j < set.numElems; j++) {
+    //for (int j = 0; j < set.size(); j++) {
+      //Reg neighbour = alloc[set[j]];
+      Reg neighbour = alloc[set.elems[j]];
       if (neighbour.tag == REG_A) possibleA[neighbour.regId] = false;
       if (neighbour.tag == REG_B) possibleB[neighbour.regId] = false;
     }
