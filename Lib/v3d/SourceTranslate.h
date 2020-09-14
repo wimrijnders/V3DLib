@@ -13,6 +13,8 @@ public:
 	void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) override;
 
 	void regalloc_determine_regfileAB(Seq<Instr> *instrs, int *prefA, int *prefB, int n) override;
+
+	Seq<Instr> translate_add_init() override;
 };
 
 

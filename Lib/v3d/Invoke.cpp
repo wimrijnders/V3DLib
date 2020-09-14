@@ -19,13 +19,11 @@ void invoke(
 	done[0] = 0;
 
 	// The first two slots in uniforms for vc4 are used for qpu number and num qpu's respectively
-	//
-	// We reuse these for the same functions in v3d, so as not to screw up the logic too much.
-	// This does mean that two dummy values need to be passed in.
+	// We do the same for v3d, so as not to screw up the logic too much.
 	int offset = 0;
 
-	unif[offset++] = 0;  // qpu number (id for current qpu)
-	unif[offset++] = 0;  // num qpu's running for this job
+	unif[offset++] = 0;        // qpu number (id for current qpu) - placeholder, assigned in init code
+	unif[offset++] = numQPUs;  // num qpu's running for this job
 
 	for (int j = 0; j < params->numElems; j++) {
 		unif[offset++] = params->elems[j];

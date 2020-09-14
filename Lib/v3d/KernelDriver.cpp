@@ -41,35 +41,11 @@ using Instructions = std::vector<instr::Instr>;
 namespace {
 
 uint8_t const NOP_ADDR    = 39;
+uint8_t const REGB_OFFSET = 32;
 
-int local_numQPUs = 0;
+uint8_t local_numQPUs = 0;
 std::vector<std::string> local_errors;
 
-/**
- * TODO move this to snippets and consolidate with calc_offset()
- *
- * source:  https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L22
- */
-Instructions get_num_qpus(Register const &reg) {
-	assert(local_numQPUs == 1 || local_numQPUs == 8);
-	assert(reg.is_dest_acc());
-
-	Instructions ret;
-
-	if (local_numQPUs == 1) {
-		ret << mov(reg, 0);
-	} else { //  num_qpus == 8
-		breakpoint
-		ret << tidx(reg)
-		    << shr(reg, reg, 2)
-		    << band(reg, reg, 0b1111);
-	}
-
-	return ret;
-}
-
-
-uint8_t const REGB_OFFSET = 32;
 
 uint8_t to_waddr(Reg const &reg) {
 	assert(reg.tag == REG_A || reg.tag == REG_B);
@@ -254,7 +230,7 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
         case SPECIAL_QPU_NUM: {
 					warning("SPECIAL_QPU_NUM needs a way to select a register");
 					Register tmp_reg = r1;  // register should be selected on usage in code
-					opcodes << get_num_qpus(tmp_reg);
+					opcodes << get_num_qpus(tmp_reg, local_numQPUs);
 					ret.reset(new Register(tmp_reg));
 				}
 				break;
@@ -681,6 +657,56 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
 
 /**
+ * This is where standard initialization code can be added.
+ *
+ * Called;
+ * - after code for loading uniforms has been encoded
+ * - any other target initialization code has been added
+ * - before the encoding of the main body.
+ *
+ * Serious consideration: Any regfile registers used in the generated code here,
+ * have not participated in the liveness determination. This may lead to screwed up variable assignments.
+ * **Keep this in mind!**
+ */
+Instructions encode_init(uint8_t numQPUs) {
+	Instructions ret;
+
+/*
+	    ret << calc_offset(numQPUs, slots.get_temp_slot());  // offset in r0
+
+			// Add offset to uniforms that are addresses
+			if (!tmu_regs.empty()) {  // Theoretically possible, not gonna happen IRL
+			                          // If there would be no addresses, we also wouln't need to calc offset and stride
+
+				const char *text = "# Set offsets for uniform addresses";
+
+				// For multiple adds here, it would be possible to use alu and mul in parallel,
+				// as happens in the summation kernel.
+
+				bool is_first = true;
+				for (auto n : tmu_regs) {
+					auto instr = add(rf(n), rf(n), r0);
+
+					if (is_first) {
+						instr.comment(text);
+						is_first = false;
+					}
+
+					ret << instr;
+				}
+			}
+
+			ret << calc_stride(numQPUs, slots.get_slot());
+*/
+	ret << set_qpu_id(0)
+	    << set_qpu_num(numQPUs, 1)
+	    << instr::enable_tmu_read();
+
+	return ret;
+}
+
+
+/**
  * Translate instructions from target to v3d
  */
 void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instructions) {
@@ -712,37 +738,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 		// Assumption: uniform loads are always at the top of the instruction list
 		bool doing_init = !did_init && !instr.isUniformLoad();
 		if (doing_init) {
-/*
-	    instructions << calc_offset(numQPUs, slots.get_temp_slot());  // offset in r0
-
-			// Add offset to uniforms that are addresses
-			if (!tmu_regs.empty()) {  // Theoretically possible, not gonna happen IRL
-			                          // If there would be no addresses, we also wouln't need to calc offset and stride
-
-				const char *text = "# Set offsets for uniform addresses";
-
-				// For multiple adds here, it would be possible to use alu and mul in parallel,
-				// as happens in the summation kernel.
-
-				bool is_first = true;
-				for (auto n : tmu_regs) {
-					auto instr = add(rf(n), rf(n), r0);
-
-					if (is_first) {
-						instr.comment(text);
-						is_first = false;
-					}
-
-					instructions << instr;
-				}
-			}
-
-			instructions << calc_stride(numQPUs, slots.get_slot());
-*/
-			instructions << set_qpu_id(0);
-			instructions << set_qpu_num(numQPUs, 1);
-			instructions << instr::enable_tmu_read();
-
+			instructions << encode_init(numQPUs);
 			did_init = true;
 		}
 	
@@ -776,7 +772,7 @@ void KernelDriver::encode(int numQPUs) {
 		errors << "Num QPU's must be 1 or 8";
 		return;
 	}
-	local_numQPUs = numQPUs;
+	local_numQPUs = (uint8_t) numQPUs;
 
 	// Encode target instructions
 	_encode((uint8_t) numQPUs, m_targetCode, instructions);

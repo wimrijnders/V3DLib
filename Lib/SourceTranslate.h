@@ -22,6 +22,8 @@ public:
 	virtual void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) = 0;
 
 	virtual void regalloc_determine_regfileAB(Seq<Instr> *instrs, int *prefA, int *prefB, int n) = 0;
+
+	virtual Seq<Instr> translate_add_init() { return Seq<Instr>(); }
 };
 
 ISourceTranslate &getSourceTranslate();

@@ -43,28 +43,6 @@ Instr genLI(Reg dst, int i)
   return instr;
 }
 
-// Generate move instruction.
-// TODO: Identical to genOR()
-
-Instr genMove(Reg dst, Reg src)
-{
-  AssignCond always;
-  always.tag = ALWAYS;
-
-  Instr instr;
-  instr.tag           = ALU;
-  instr.ALU.setFlags  = false;
-  instr.ALU.cond      = always;
-  instr.ALU.dest      = dst;
-  instr.ALU.srcA.tag  = REG;
-  instr.ALU.srcA.reg  = src;
-  instr.ALU.op        = A_BOR;
-  instr.ALU.srcB.tag  = REG;
-  instr.ALU.srcB.reg  = src;
-
-  return instr;
-}
-
 // Generate bitwise-or instruction.
 
 Instr genOR(Reg dst, Reg srcA, Reg srcB)
@@ -200,5 +178,18 @@ void resetFreshLabelGen(int val)
 {
   globalLabelId = val;
 }
+
+
+namespace Target {
+namespace instr {
+
+Reg const QPU_ID(SPECIAL, SPECIAL_QPU_NUM);
+
+Reg rf(uint8_t index) {
+	return Reg(REG_A, index);
+}
+
+}  // namespace instr
+}  // namespace Target
 
 }  // namespace QPULib

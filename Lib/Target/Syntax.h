@@ -82,12 +82,13 @@ enum Special {
   , SPECIAL_TMU0_S
 };
 
-struct Reg {
-  // What kind of register is it?
-  RegTag tag;
 
-  // Register identifier
-  RegId regId;
+struct Reg {
+  RegTag tag;   // What kind of register is it?
+  RegId regId;  // Register identifier
+
+	Reg() = default;
+	Reg(RegTag in_tag, RegId in_regId) : tag(in_tag), regId(in_regId) {}
 
   bool operator==(Reg const &rhs) const {
     return tag == rhs.tag && regId == rhs.regId;
@@ -419,7 +420,6 @@ inline Instr nop()
 
 // Instruction constructors
 Instr genLI(Reg dst, int i);
-Instr genMove(Reg dst, Reg src);
 Instr genOR(Reg dst, Reg srcA, Reg srcB);
 Instr genADD(Reg dst, Reg srcA, Reg srcB);
 Instr genLShift(Reg dst, Reg srcA, int n);
@@ -447,6 +447,17 @@ int getFreshLabelCount();
 // Reset fresh label generator
 void resetFreshLabelGen();
 void resetFreshLabelGen(int val);
+
+namespace Target {
+namespace instr {
+
+extern Reg const QPU_ID;
+
+Reg rf(uint8_t index);
+inline Instr mov(Reg dst, Reg src) { return genOR(dst, src, src); }
+
+}  // namespace instr
+}  // namespace Target
 
 }  // namespace QPULib
 

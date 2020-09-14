@@ -329,11 +329,6 @@ void loadStorePass(Seq<Instr>* instrs)
 {
   Seq<Instr> newInstrs(instrs->numElems*2);
 
-  // Put QPU number in a register
-  //Reg qpuId = freshReg();
-  //Reg qpuNum; qpuNum.tag = SPECIAL; qpuNum.regId = SPECIAL_QPU_NUM;
-  //newInstrs.append(genMove(qpuId, qpuNum));
-
   for (int i = 0; i < instrs->numElems; i++) {
     Instr instr = instrs->elems[i];
     switch (instr.tag) {

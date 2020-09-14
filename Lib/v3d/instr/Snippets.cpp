@@ -34,6 +34,30 @@ Instructions set_qpu_num(uint8_t num_qpus, uint8_t reg_qpu_num) {
 
 
 /**
+ * TODO Consolidate with calc_offset()
+ *
+ * source:  https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L22
+ */
+Instructions get_num_qpus(Register const &reg, uint8_t num_qpus) {
+	assert(num_qpus == 1 || num_qpus == 8);
+	assert(reg.is_dest_acc());
+
+	Instructions ret;
+
+	if (num_qpus == 1) {
+		ret << mov(reg, 0);
+	} else { //  num_qpus == 8
+		breakpoint
+		ret << tidx(reg)
+		    << shr(reg, reg, 2)
+		    << band(reg, reg, 0b1111);
+	}
+
+	return ret;
+}
+
+
+/**
  * Determine address offset for address registers.
  *
  * The offset is put in r0.

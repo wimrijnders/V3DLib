@@ -120,8 +120,15 @@ void KernelBase::call() {
 // Compile kernel
 // ============================================================================
 
-void compileKernel(Seq<Instr>* targetCode, Stmt* body)
-{
+/**
+ * @param body        top of the AST
+ * @param targetCode  output variable for the target code assembled from the AST and adjusted
+ */
+void compileKernel(Seq<Instr>* targetCode, Stmt* body) {
+	// At this point, the target code contains just the uniform loads
+	// This is a good location to add further initialization code
+	*targetCode << getSourceTranslate().translate_add_init();
+
   // Translate to target code
   translateStmt(targetCode, body);
 

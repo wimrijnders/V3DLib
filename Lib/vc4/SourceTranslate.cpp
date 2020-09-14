@@ -30,22 +30,19 @@ void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride)
 namespace vc4 {
 
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
+	using namespace QPULib::Target::instr;
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
 
-	// QPU id
-	Reg qpuId;
-	qpuId.tag = SPECIAL;
-	qpuId.regId = SPECIAL_QPU_NUM;
 	// Setup VPM
 	Reg addr = freshReg();
 	seq->append(genLI(addr, 16));
-	seq->append(genADD(addr, addr, qpuId));
+	seq->append(genADD(addr, addr, QPU_ID));
 	genSetupVPMStore(seq, addr, 0, 1);
 	// Store address
 	Reg storeAddr = freshReg();
 	seq->append(genLI(storeAddr, 256));
-	seq->append(genADD(storeAddr, storeAddr, qpuId));
+	seq->append(genADD(storeAddr, storeAddr, QPU_ID));
 	// Setup DMA
 	genSetWriteStride(seq, 0);
 	genSetupDMAStore(seq, 16, 1, 1, storeAddr);
@@ -67,27 +64,20 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
  * See comment and preamble code in caller: Target/Translate.cpp, line 52
  */
 void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
-    // Load address
-    Reg loadAddr;
-    loadAddr.tag = SPECIAL;
-    loadAddr.regId = SPECIAL_QPU_NUM;
-    // Setup DMA
-    genSetReadPitch(seq, 4);
-    genSetupDMALoad(seq, 16, 1, 1, 1, loadAddr);
-    // Start DMA load
-    genStartDMALoad(seq, srcReg(e.deref.ptr->var));
-    // Wait for DMA
-    genWaitDMALoad(seq);
-    // Setup VPM
-    Reg addr;
-    addr.tag = SPECIAL;
-    addr.regId = SPECIAL_QPU_NUM;
-    genSetupVPMLoad(seq, 1, addr, 0, 1);
-    // Get from VPM
-    Reg data;
-    data.tag = SPECIAL;
-    data.regId = SPECIAL_VPM_READ;
-    seq->append(genLShift(dstReg(v), data, 0));
+	using namespace QPULib::Target::instr;
+
+	// Setup DMA
+	genSetReadPitch(seq, 4);
+	genSetupDMALoad(seq, 16, 1, 1, 1, QPU_ID);
+	// Start DMA load
+	genStartDMALoad(seq, srcReg(e.deref.ptr->var));
+	// Wait for DMA
+	genWaitDMALoad(seq);
+	// Setup VPM
+	genSetupVPMLoad(seq, 1, QPU_ID, 0, 1);
+	// Get from VPM
+	Reg data(SPECIAL, SPECIAL_VPM_READ);
+	seq->append(genLShift(dstReg(v), data, 0));
 }
 
 
@@ -109,35 +99,30 @@ void SourceTranslate::setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) {
 // than after a write.  This enables other operations to happen in
 // parallel with the write.
 
-void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr)
-{
+void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
+	using namespace QPULib::Target::instr;
+
   if (data->tag != VAR || addr->tag != VAR) {
     data = putInVar(seq, data);
     addr = putInVar(seq, addr);
   }
 
-  // QPU id
-  Reg qpuId;
-  qpuId.tag = SPECIAL;
-  qpuId.regId = SPECIAL_QPU_NUM;
   // Setup VPM
   Reg addrReg = freshReg();
   seq->append(genLI(addrReg, 16));
-  seq->append(genADD(addrReg, addrReg, qpuId));
+  seq->append(genADD(addrReg, addrReg, QPU_ID));
   genSetupVPMStore(seq, addrReg, 0, 1);
   // Store address
   Reg storeAddr = freshReg();
   seq->append(genLI(storeAddr, 256));
-  seq->append(genADD(storeAddr, storeAddr, qpuId));
+  seq->append(genADD(storeAddr, storeAddr, QPU_ID));
   // Wait for any outstanding store to complete
   genWaitDMAStore(seq);
   // Setup DMA
   genSetWriteStride(seq, 0);
   genSetupDMAStore(seq, 16, 1, 1, storeAddr);
   // Put to VPM
-  Reg dataReg;
-  dataReg.tag = SPECIAL;
-  dataReg.regId = SPECIAL_VPM_WRITE;
+  Reg dataReg(SPECIAL, SPECIAL_VPM_WRITE);
   seq->append(genLShift(dataReg, srcReg(data->var), 0));
   // Start DMA
   genStartDMAStore(seq, srcReg(addr->var));

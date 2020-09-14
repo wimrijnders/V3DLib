@@ -9,16 +9,14 @@ namespace v3d {
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
+	using namespace QPULib::Target::instr;
+	Seq<Instr> ret = *seq;
 
-	// TODO: Check if offset by index needed
-
-	Reg dst;
-	dst.tag = SPECIAL;
-	dst.regId = SPECIAL_VPM_WRITE;
-	seq->append(genMove(dst, srcReg(rhs->var)));
+	Reg dst(SPECIAL, SPECIAL_VPM_WRITE);
+	ret << mov(dst, srcReg(rhs->var));
 
 	dst.regId = SPECIAL_DMA_ST_ADDR;
-	seq->append(genMove(dst, srcReg(lhs.deref.ptr->var)));
+	ret << mov(dst, srcReg(lhs.deref.ptr->var));
 
 	return true;
 }
@@ -31,24 +29,24 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
  */
 void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	// TODO: Check if offset by index needed
+	assert(seq != nullptr);
+	using namespace QPULib::Target::instr;
+	Seq<Instr> ret = *seq;
 
 	Reg src = srcReg(e.deref.ptr->var);
 
-	Reg dst;
-	dst.tag = SPECIAL;
-	dst.regId = SPECIAL_TMU0_S;
-	seq->append(genMove(dst, src));
+	Reg dst(SPECIAL,SPECIAL_TMU0_S);
+	ret << mov(dst, src);
 
 	// TODO: Do we need NOP's here?
-
 	// TODO: Check if more fields need to be set
 	// TODO is r4 safe? Do we need to select an accumulator in some way?
   Instr instr;
 	instr.tag = TMU0_TO_ACC4;
-	seq->append(instr);
+	ret << instr;
 
 	dst = srcReg(v);
-	seq->append(move_from_r4(dst));
+	ret << move_from_r4(dst);
 }
 
 
@@ -102,6 +100,16 @@ void SourceTranslate::regalloc_determine_regfileAB(Seq<Instr> *instrs, int *pref
 		prefB[i] = 0;
 	}
 }
+
+
+Seq<Instr> SourceTranslate::translate_add_init() {
+	using namespace QPULib::Target::instr;
+
+	SmallSeq<Instr> ret;
+	ret << mov(rf(0), QPU_ID);  // Index 0 is reserved location for qpu id
+
+	return ret;
+ }
 
 }  // namespace v3d
 }  // namespace QPULib

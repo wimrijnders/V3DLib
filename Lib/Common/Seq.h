@@ -70,8 +70,7 @@ template <class T> class Seq {
     }
 
     // Append
-    void append(T x)
-    {
+    void append(T x) {
       extend();
       elems[numElems-1] = x;
     }
@@ -115,6 +114,21 @@ template <class T> class Seq {
       numElems--;
       return x;
     }
+
+
+	Seq<T> &operator<<(T const &rhs) { 
+		append(rhs);
+		return *this;
+	}
+
+
+	Seq<T> &operator<<(Seq<T> const &rhs) { 
+      for (int j = 0; j < rhs.size(); j++) {
+        append(rhs.elems[j]);
+			}
+
+		return *this;
+	}
 };
 
 // A small sequence is just a sequence with a small initial size
