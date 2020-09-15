@@ -3,6 +3,7 @@
 #include "Common/Seq.h"
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
+#include "Target/CFG.h"
 
 namespace QPULib {
 
@@ -21,9 +22,8 @@ public:
 	virtual void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) = 0;
 	virtual void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) = 0;
 
-	virtual void regalloc_determine_regfileAB(Seq<Instr> *instrs, int *prefA, int *prefB, int n) = 0;
-
-	virtual Seq<Instr> translate_add_init() { return Seq<Instr>(); }
+	virtual void regAlloc(CFG* cfg, Seq<Instr>* instrs) = 0;
+	virtual void add_init(Seq<Instr> &code) {}
 };
 
 ISourceTranslate &getSourceTranslate();

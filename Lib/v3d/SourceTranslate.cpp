@@ -1,7 +1,9 @@
 #include "SourceTranslate.h"
-#include "../Support/debug.h"
-#include "../Source/Translate.h"  // srcReg()
-#include "../Target/LoadStore.h"  // move_from_r4()
+#include "Support/debug.h"
+#include "Source/Translate.h"  // srcReg()
+#include "Target/LoadStore.h"  // move_from_r4()
+#include "Target/Liveness.h"
+#include "Target/Subst.h"
 
 namespace QPULib {
 namespace v3d {
@@ -10,7 +12,7 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
 	using namespace QPULib::Target::instr;
-	Seq<Instr> ret = *seq;
+	Seq<Instr> &ret = *seq;
 
 	Reg dst(SPECIAL, SPECIAL_VPM_WRITE);
 	ret << mov(dst, srcReg(rhs->var));
@@ -85,30 +87,68 @@ void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
 }
 
 
-/**
- * For vc4, a preference is determined for register file A or B.
- *
- * For v3d, however, there is only one register file.
- * Set values so that REG_A is always selected
- *
- */
-void SourceTranslate::regalloc_determine_regfileAB(Seq<Instr> *instrs, int *prefA, int *prefB, int n) {
+void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 	//breakpoint
+  int n = getFreshVarCount();
 
+  // Step 0
+  // Perform liveness analysis
+  Liveness live(*cfg);
+  live.compute(instrs);
+
+  // Step 2
+  // For each variable, determine all variables ever live at same time
+  LiveSets liveWith(n);
+	liveWith.init(instrs, live);
+
+  // Step 3
+  // Allocate a register to each variable
+  std::vector<Reg> alloc(n);
+  for (int i = 0; i < n; i++) alloc[i].tag = NONE;
+
+	// Allocate registers to the variables
   for (int i = 0; i < n; i++) {
-		prefA[i] = 1;
-		prefB[i] = 0;
-	}
+		auto possible = liveWith.possible_registers(i, alloc);
+
+    alloc[i].tag = REG_A;
+    alloc[i].regId = LiveSets::choose_register(possible);
+  }
+
+  // Step 4
+  // Apply the allocation to the code
+  for (int i = 0; i < instrs->numElems; i++) {
+		auto &useDefSet = liveWith.useDefSet;
+    Instr* instr = &instrs->elems[i];
+
+    useDef(*instr, &useDefSet);
+    for (int j = 0; j < useDefSet.def.numElems; j++) {
+      RegId r = useDefSet.def.elems[j];
+      renameDest(instr, REG_A, r, TMP_A, alloc[r].regId);
+    }
+    for (int j = 0; j < useDefSet.use.numElems; j++) {
+      RegId r = useDefSet.use.elems[j];
+      renameUses(instr, REG_A, r, TMP_A, alloc[r].regId);
+    }
+    substRegTag(instr, TMP_A, REG_A);
+  }
 }
 
 
-Seq<Instr> SourceTranslate::translate_add_init() {
+/**
+ * Add extra initialization code after uniform loads
+ */
+void SourceTranslate::add_init(Seq<Instr> &code) {
 	using namespace QPULib::Target::instr;
 
-	SmallSeq<Instr> ret;
-	ret << mov(rf(0), QPU_ID);  // Index 0 is reserved location for qpu id
+	// Find first instruction after uniform loads
+	int index = 0;
+	for (; index < code.size(); ++index) {
+		if (!code[index].isUniformLoad()) break; 
+	}
+	assertq(index >= 2, "Expecting at least two uniform loads.");
 
-	return ret;
+breakpoint
+	code.insert(index, mov(rf(0), QPU_ID));  // Regfile index 0 is reserved location for qpu id
  }
 
 }  // namespace v3d

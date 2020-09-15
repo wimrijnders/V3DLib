@@ -51,8 +51,14 @@ template <class T> class Seq {
 		 */
 		int size() const { return numElems; }
 
+		T &operator[](int index) { return elems[index]; }
+
     // Set capacity of sequence
     void setCapacity(int n) {
+			if (n <= maxElems) {
+				return;
+			}
+
       maxElems = n;
       T* newElems = new T[maxElems];
       for (int i = 0; i < numElems-1; i++)
@@ -98,12 +104,36 @@ template <class T> class Seq {
       return false;
     }
 
-    // Insert element into sequence if not already present
+		/**
+     * Insert element into sequence if not already present
+		 *
+		 * **NOTE:** This is actually a set-method
+		 */
     bool insert(T x) {
       bool alreadyPresent = member(x);
       if (!alreadyPresent) append(x);
       return !alreadyPresent;
     }
+
+
+		/**
+		 * Insert item at specified location
+		 */
+		void insert(int index, T const &item) {
+			assert(index >= 0);
+			assert(index < size());
+    	setCapacity(numElems + 1);
+
+			// Shift tail one position
+			for (int i = numElems - 1; i >= index; --i) {
+				elems[i + 1] = elems[i];
+			}
+
+			// Insert new item
+			elems[index] = item;
+
+			numElems++;
+		}
 
     // Remove element at index
     T remove(int index) {

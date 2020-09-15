@@ -6,7 +6,6 @@
 #include "Target/Liveness.h"
 #include "Target/ReachingDefs.h"
 #include "Target/LiveRangeSplit.h"
-#include "Target/RegAlloc.h"
 #include "Target/Satisfy.h"
 #include "Target/LoadStore.h"
 #include "Target/Encode.h"
@@ -125,12 +124,13 @@ void KernelBase::call() {
  * @param targetCode  output variable for the target code assembled from the AST and adjusted
  */
 void compileKernel(Seq<Instr>* targetCode, Stmt* body) {
-	// At this point, the target code contains just the uniform loads
-	// This is a good location to add further initialization code
-	*targetCode << getSourceTranslate().translate_add_init();
+	assert(targetCode != nullptr);
+	assert(body != nullptr);
 
   // Translate to target code
   translateStmt(targetCode, body);
+
+	getSourceTranslate().add_init(*targetCode);
 
   // Load/store pass
   loadStorePass(targetCode);
@@ -143,10 +143,9 @@ void compileKernel(Seq<Instr>* targetCode, Stmt* body) {
   //liveRangeSplit(targetCode, &cfg);
 
   // Perform register allocation
-  regAlloc(&cfg, targetCode);
+  getSourceTranslate().regAlloc(&cfg, targetCode);
 
   // Satisfy target code constraints
-//breakpoint
   satisfy(targetCode);
 
   // Translate branch-to-labels to relative branches

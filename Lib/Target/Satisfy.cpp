@@ -1,6 +1,5 @@
 #include "Target/Satisfy.h"
 #include "Target/Liveness.h"
-#include "Target/RegAlloc.h"
 #include <assert.h>
 #include <stdio.h>
 

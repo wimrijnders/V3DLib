@@ -12,7 +12,7 @@ public:
 	void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) override;
 	void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) override;
 
-	void regalloc_determine_regfileAB(Seq<Instr> *instrs, int *prefA, int *prefB, int n) override;
+	void regAlloc(CFG* cfg, Seq<Instr>* instrs) override;
 };
 
 

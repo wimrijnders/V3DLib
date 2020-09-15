@@ -201,8 +201,8 @@ void reachingOutDefs(Seq<Instr>* instrs, Liveness &live, CFG* preds, ReachingDef
 
 void reachingDefs(Seq<Instr>* instrs, CFG* cfg, ReachingDefs* defs) {
   // For efficiency, perform liveness analysis first
-  Liveness live;
-  live.compute(instrs, cfg);
+  Liveness live(*cfg);
+  live.compute(instrs);
 
   // Reverse the arrows in the CFG
   CFG preds;

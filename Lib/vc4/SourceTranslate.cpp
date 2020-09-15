@@ -1,9 +1,10 @@
 #include "SourceTranslate.h"
-#include "../Support/debug.h"
-#include "../Target/LoadStore.h"
-#include "../Source/Translate.h"  // srcReg()
-#include "../Target/Liveness.h"   // getTwoUses()
-
+#include "Support/debug.h"
+#include "Source/Translate.h"  // srcReg()
+#include "Target/LoadStore.h"
+#include "Target/Liveness.h"
+#include "Target/Subst.h"
+#include "RegAlloc.h"
 
 namespace QPULib {
 
@@ -128,39 +129,8 @@ void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
   genStartDMAStore(seq, srcReg(addr->var));
 }
 
-
-/**
- * For each variable, determine a preference for register file A or B.
- */
-void SourceTranslate::regalloc_determine_regfileAB(Seq<Instr> *instrs, int *prefA, int *prefB, int n) {
-	//breakpoint
-
-  for (int i = 0; i < n; i++) prefA[i] = prefB[i] = 0;
-
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
-    Reg ra, rb;
-    if (getTwoUses(instr, &ra, &rb) && ra.tag == REG_A && rb.tag == REG_A) {
-      RegId x = ra.regId;
-      RegId y = rb.regId;
-      if (prefA[x] > prefA[y] || prefB[y] > prefB[x])
-        { prefA[x]++; prefB[y]++; }
-      else
-        { prefA[y]++; prefB[x]++; }
-    }
-    else if (instr.tag == ALU &&
-             instr.ALU.srcA.tag == REG &&
-             instr.ALU.srcA.reg.tag == REG_A &&
-             instr.ALU.srcB.tag == IMM) {
-      prefA[instr.ALU.srcA.reg.regId]++;
-    }
-    else if (instr.tag == ALU &&
-             instr.ALU.srcB.tag == REG &&
-             instr.ALU.srcB.reg.tag == REG_A &&
-             instr.ALU.srcA.tag == IMM) {
-      prefA[instr.ALU.srcB.reg.regId]++;
-    }
-  }
+void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
+	vc4::regAlloc(cfg, instrs);
 }
 
 }  // namespace vc4

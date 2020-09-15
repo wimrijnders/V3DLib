@@ -64,121 +64,6 @@ uint8_t to_waddr(Reg const &reg) {
 }
 
 
-class UsedSlots {
-public:
-	UsedSlots();
-	UsedSlots(Seq<QPULib::Instr> &instrs);
-
-	bool in_use(uint8_t n) const { return m_used[n]; }
-	uint8_t get_slot();
-	uint8_t get_temp_slot();
-	void dump();
-
-private:
-	const int NUM_SLOTS = 64;
-
-	std::vector<bool> m_used;
-
-	bool checkUniformAtTop(Seq<QPULib::Instr> &instrs);
-};
-
-
-UsedSlots::UsedSlots() {
-	m_used.reserve(NUM_SLOTS);
-
-	for (int n = 0; n < NUM_SLOTS; ++n) {
-		m_used << false;
-	}
-}
-
-
-/**
- * Check assumption: uniform loads are always at the top of the instruction list.
- */
-bool UsedSlots::checkUniformAtTop(Seq<QPULib::Instr> &instrs) {
-	bool doing_top = true;
-
-  for (int i = 0; i < instrs.numElems; i++) {
-    QPULib::Instr instr = instrs.elems[i];
-		if (doing_top) {
-			if (instr.isUniformLoad()) {
-				continue;  // as expected
-			}
-
-			doing_top = false;
-		} else {
-			if (!instr.isUniformLoad()) {
-				continue;  // as expected
-			}
-
-			return false;  // Encountered uniform NOT at the top of the instruction list
-		}
-	}
-
-	return true;
-}
-
-
-/**
- * Initialize with the known uniform slots
- */
-UsedSlots::UsedSlots(Seq<QPULib::Instr> &instrs) : UsedSlots() {
-	assert(checkUniformAtTop(instrs));
-
-  for (int i = 0; i < instrs.numElems; i++) {
-    QPULib::Instr instr = instrs.elems[i];
-
-		if (instr.isUniformLoad()) {
-			Reg dst_reg = instr.ALU.dest;
-
-			uint8_t addr = to_waddr(dst_reg);
-			assert(0 <= addr && addr < NUM_SLOTS);
-			m_used[(int) addr] = true;
-		}
-	}
-
-	dump();
-}
-
-
-uint8_t UsedSlots::get_slot() {
-	for (int n = 0; n < NUM_SLOTS; ++n) {
-		if (!m_used[n]) {
-			m_used[n] = true;
-			return (uint8_t) n;
-		}
-	}
-
-	assert(false);  // All slots in use! Will prob never happen...?
-	return 0;
-}
-
-
-uint8_t UsedSlots::get_temp_slot() {
-	for (int n = 0; n < NUM_SLOTS; ++n) {
-		if (!m_used[n]) {
-			return (uint8_t) n;
-		}
-	}
-
-	assert(false);  // All slots in use! Will prob never happen...?
-	return 0;
-}
-
-
-void UsedSlots::dump() {
-	printf("UsedSlots used: ");
-
-	for (int n = 0; n < NUM_SLOTS; ++n) {
-		if (m_used[n]) {
-			printf("%u, ", n);
-		}
-	}
-
-	printf("\n");
-}
-
-
 /**
  * Translate imm index value from vc4 to v3d
  */
@@ -229,9 +114,12 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 				break;
         case SPECIAL_QPU_NUM: {
 					warning("SPECIAL_QPU_NUM needs a way to select a register");
-					Register tmp_reg = r1;  // register should be selected on usage in code
-					opcodes << get_num_qpus(tmp_reg, local_numQPUs);
-					ret.reset(new Register(tmp_reg));
+					//Register tmp_reg = r1;  // register should be selected on usage in code
+					//opcodes << get_num_qpus(tmp_reg, local_numQPUs);
+					//ret.reset(new Register(tmp_reg));
+
+					opcodes << tidx(r0).comment("Set QPU id SPECIAL_QPU_NUM", true);
+					ret.reset(new Register(r0));
 				}
 				break;
 
@@ -259,11 +147,13 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 
 	if (ret.get() == nullptr && !is_none) {
 	  fprintf(stderr, "QPULib: missing case in encodeSrcReg\n");
+breakpoint
 		assert(false);
 	}
 
 	return ret;
 }
+
 
 std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 	assert(!src_instr.isUniformLoad());
@@ -698,8 +588,8 @@ Instructions encode_init(uint8_t numQPUs) {
 
 			ret << calc_stride(numQPUs, slots.get_slot());
 */
-	ret << set_qpu_id(0)
-	    << set_qpu_num(numQPUs, 1)
+	ret //<< set_qpu_id(0)           - done in target code
+	    //<< set_qpu_num(numQPUs, 1) - passed in
 	    << instr::enable_tmu_read();
 
 	return ret;
@@ -707,29 +597,38 @@ Instructions encode_init(uint8_t numQPUs) {
 
 
 /**
- * Translate instructions from target to v3d
+ * Check assumption: uniform loads are always at the top of the instruction list.
  */
-void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instructions) {
-	bool did_init = false;
+bool checkUniformAtTop(Seq<QPULib::Instr> &instrs) {
+	bool doing_top = true;
 
-	UsedSlots slots(instrs);
-
-/*
-	// Collect all rf registers used with TMU
-	std::vector<uint8_t> tmu_regs;               // Stores rf indexes
   for (int i = 0; i < instrs.numElems; i++) {
     QPULib::Instr instr = instrs.elems[i];
+		if (doing_top) {
+			if (instr.isUniformLoad()) {
+				continue;  // as expected
+			}
 
-		if (instr.isTMUAWrite()) {
-			tmu_regs << to_waddr(instr.ALU.srcA.reg);
+			doing_top = false;
+		} else {
+			if (!instr.isUniformLoad()) {
+				continue;  // as expected
+			}
+
+			return false;  // Encountered uniform NOT at the top of the instruction list
 		}
 	}
 
-	// Check that these are in fact slots with uniform values
-	for (auto n : tmu_regs) {
-		assert(slots.in_use(n));
-	}
-*/
+	return true;
+}
+
+
+/**
+ * Translate instructions from target to v3d
+ */
+void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instructions) {
+	assert(checkUniformAtTop(instrs));
+	bool did_init = false;
 
 	// Main loop
   for (int i = 0; i < instrs.numElems; i++) {

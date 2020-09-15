@@ -5,10 +5,69 @@
 //    https://lambda.uta.edu/cse5317/spring01/notes/node37.html
 //
 ///////////////////////////////////////////////////////////////////////////////
-
+#include "Support/basics.h"   // fatal()
+#include "Target/Subst.h"
 #include "Target/Liveness.h"
 
 namespace QPULib {
+
+namespace {
+
+// ============================================================================
+// Accumulator allocation
+// ============================================================================
+
+// This is a simple peephole optimisation, captured by the following
+// rewrite rule:
+//
+//   i:  x <- f(...)
+//   j:  g(..., x, ...)
+// 
+// ===> if x not live-out of j
+// 
+//   i:  acc <- f(...)
+//   j:  g(..., acc, ...)
+
+void introduceAccum(Liveness &live, Seq<Instr>* instrs)
+{
+  UseDef useDefPrev, useDefCurrent;
+  LiveSet liveOut;
+
+  Reg acc;
+  acc.tag = ACC;
+  acc.regId = 1;
+
+  for (int i = 1; i < instrs->numElems; i++) {
+    Instr prev  = instrs->elems[i-1];
+    Instr instr = instrs->elems[i];
+
+    // Compute vars defined by prev
+    useDef(prev, &useDefPrev);
+
+    if (useDefPrev.def.numElems > 0) {
+      RegId def = useDefPrev.def.elems[0];
+
+      // Compute vars used by instr
+      useDef(instr, &useDefCurrent);
+
+      // Compute vars live-out of instr
+      live.computeLiveOut(i, &liveOut);
+
+      // Check that write is non-conditional
+      bool always = (prev.tag == LI && prev.LI.cond.tag == ALWAYS)
+                 || (prev.tag == ALU && prev.ALU.cond.tag == ALWAYS);
+
+      if (always && useDefCurrent.use.member(def) && !liveOut.member(def)) {
+        renameDest(&prev, REG_A, def, ACC, 1);
+        renameUses(&instr, REG_A, def, ACC, 1);
+        instrs->elems[i-1] = prev;
+        instrs->elems[i]   = instr;
+      }
+    }
+  }
+}
+
+}  // anon namespace
 
 // ============================================================================
 // Compute 'use' and 'def' sets
@@ -96,9 +155,7 @@ void useDef(Instr instr, UseDef* out) {
 // Compute the union of the 'use' sets of the successors of a given
 // instruction.
 
-void useSetOfSuccs(Seq<Instr>* instrs, CFG* cfg,
-                   InstrId i, SmallSeq<RegId>* use)
-{
+void useSetOfSuccs(Seq<Instr>* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
   use->clear();
   Succs* s = &cfg->elems[i];
   for (int j = 0; j < s->numElems; j++) {
@@ -125,12 +182,10 @@ bool getTwoUses(Instr instr, Reg* r1, Reg* r2)
 
 namespace {
 
-
-
 /**
  * Determine the liveness sets for each instruction.
  */
-void liveness(Seq<Instr>* instrs, CFG* cfg, Liveness &live) {
+void liveness(Seq<Instr>* instrs, Liveness &live) {
   // Initialise live mapping to have one entry per instruction
 	live.setSize(instrs->numElems);
 
@@ -155,7 +210,7 @@ void liveness(Seq<Instr>* instrs, CFG* cfg, Liveness &live) {
       useDef(instr, &useDefSets);
 
       // Compute live-out variables
-      live.computeLiveOut(cfg, i, &liveOut);
+      live.computeLiveOut(i, &liveOut);
 
       // Remove the 'def' set from the live-out set to give live-in set
       liveIn.clear();
@@ -182,10 +237,68 @@ void liveness(Seq<Instr>* instrs, CFG* cfg, Liveness &live) {
 
 }  // anon namespace
 
+void LiveSets::init(Seq<Instr>* instrs, Liveness &live) {
+  LiveSet liveOut;
 
-void Liveness::compute(Seq<Instr>* instrs, CFG* cfg) {
-	liveness(instrs, cfg, *this);
+  for (int i = 0; i < instrs->numElems; i++) {
+    live.computeLiveOut(i, &liveOut);
+    useDef(instrs->elems[i], &useDefSet);
+    for (int j = 0; j < liveOut.size(); j++) {
+      RegId rx = liveOut.elems[j];
+      for (int k = 0; k < liveOut.size(); k++) {
+        RegId ry = liveOut.elems[k];
+        if (rx != ry) m_sets[rx].insert(ry);
+      }
+      for (int k = 0; k < useDefSet.def.numElems; k++) {
+        RegId rd = useDefSet.def.elems[k];
+        if (rd != rx) {
+          m_sets[rx].insert(rd);
+          m_sets[rd].insert(rx);
+        }
+      }
+    }
+  }
+}
+
+
+std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag) {
+  const int NUM_REGS = 32;
+  std::vector<bool> possible(NUM_REGS);
+
+	for (int j = 0; j < NUM_REGS; j++)
+		possible[j] = true;
+
+    // Eliminate impossible choices of register for this variable
+    LiveSet &set = m_sets[index];
+    for (int j = 0; j < set.numElems; j++) {
+      Reg neighbour = alloc[set.elems[j]];
+      if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
+    }
+
+	return possible;
+}
+
+
+RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
+	// Find possible register in each register file
+	RegId chosenA = -1;
+	for (int j = 0; j < possible.size(); j++)
+		if (possible[j]) { chosenA = j; break; }
+
+	if (check_limit && chosenA < 0) {
+		fatal("QPULib: register allocation failed, insufficient capacity");
+	}
+
+	return chosenA;
+}	
+
+
+void Liveness::compute(Seq<Instr>* instrs) {
+	liveness(instrs, *this);
 	printf("%s", dump().c_str());
+
+  // Optimisation pass that introduces accumulators
+  introduceAccum(*this, instrs);
 }
 
 
@@ -195,9 +308,9 @@ void Liveness::compute(Seq<Instr>* instrs, CFG* cfg) {
  * Compute the live-out variables of an instruction, given the live-in
  * variables of all instructions and the CFG.
  */
-void Liveness::computeLiveOut(CFG* cfg, InstrId i, LiveSet* liveOut) {
+void Liveness::computeLiveOut(InstrId i, LiveSet* liveOut) {
   liveOut->clear();
-  Succs* s = &cfg->elems[i];
+  Succs* s = &m_cfg.elems[i];
 
   for (int j = 0; j < s->numElems; j++) {
     LiveSet &set = get(s->elems[j]);
