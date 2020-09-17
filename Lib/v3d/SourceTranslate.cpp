@@ -147,8 +147,40 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	}
 	assertq(index >= 2, "Expecting at least two uniform loads.");
 
-breakpoint
-	code.insert(index, mov(rf(0), QPU_ID));  // Regfile index 0 is reserved location for qpu id
+	Seq<Instr> ret;
+/*
+	ret << mov(rf(RSV_QPU_ID), QPU_ID)  // Set qpu id in reserved location (regfile index 0; uses ACC0)
+	    << nop();                       // Kludge: prevent the peephole optimization `introduceAccum()` from kicking in
+*/
+	ret << mov(ACC1, QPU_ID)
+	    << shr(ACC1, ACC1, 2)
+	    << band(rf(RSV_QPU_ID), ACC1, 0b1111)
+	    << nop();                       // Kludge: prevent the peephole optimization `introduceAccum()` from kicking in
+
+	// offset = 4 * (thread_num + 16 * qpu_num)";
+	ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID
+			<< add(ACC1, ACC1, ELEM_ID)     // ELEM_ID uses ACC0
+	    << shl(ACC0, ACC1, 2);          // offset cwnow in ACC0
+/*
+	ret << mov(ACC1, ELEM_ID)     // ELEM_ID uses ACC0
+	    << shl(ACC0, ACC1, 2);          // offset now in ACC0
+*/
+
+	// add the offset to all the uniform pointers
+	for (int index = 0; index < code.size(); ++index) {
+		auto &instr = code[index];
+
+		if (!instr.isUniformLoad()) {  // Assumption: uniform loads always at top
+			break;
+		}
+
+		if (instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.isUniformPtr) {
+			ret << add(rf((uint8_t) index), rf((uint8_t) index), ACC0);
+		}
+	}
+
+
+	code.insert(index, ret);
  }
 
 }  // namespace v3d

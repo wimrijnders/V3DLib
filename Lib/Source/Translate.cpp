@@ -58,10 +58,13 @@ ALUOp opcode(Op op)
 Reg srcReg(Var v)
 {
   Reg r;
+	r.isUniformPtr = false;
+
   switch (v.tag) {
     case UNIFORM:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_UNIFORM;
+			r.isUniformPtr = v.isUniformPtr;
       return r;
     case QPU_NUM:
       r.tag     = SPECIAL;
@@ -598,12 +601,7 @@ AssignCond boolAnd( Seq<Instr>* seq
 //   * instructions to evaluate the expression are appended to the
 //     given instruction sequence.
 
-AssignCond boolExp( Seq<Instr>* seq
-                  , BExpr* bexpr
-                  , Var v
-                  , bool modify
-                  )
-{
+AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   BExpr b = *bexpr;
 
   AssignCond always;

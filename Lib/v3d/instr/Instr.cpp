@@ -454,8 +454,8 @@ Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const 
 	m_doing_add = false;
 	alu_mul_set(loc1, loc2, loc3);
 
-	sig.small_imm = true;
-	raddr_b = loc1.to_waddr();
+//	sig.small_imm = true;
+//	raddr_b = loc1.to_waddr();
 	alu.mul.op    = V3D_QPU_M_SMUL24;
 
 	return *this;
@@ -577,24 +577,24 @@ void Instr::alu_mul_set_imm_b(SmallImm const &imm) {
 }
 
 
-void Instr::alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3) {
-	alu_add_set_dst(loc1);
-	alu_add_set_reg_a(loc2);
-	alu_add_set_reg_b(loc3);
+void Instr::alu_add_set(Location const &dst, Location const &srca, Location const &srcb) {
+	alu_add_set_dst(dst);
+	alu_add_set_reg_a(srca);
+	alu_add_set_reg_b(srcb);
 }
 
 
-void Instr::alu_add_set(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
-	alu_add_set_dst(loc1);
-	alu_add_set_imm_a(imm2);
-	alu_add_set_reg_b(loc3);
+void Instr::alu_add_set(Location const &dst, SmallImm const &imma, Location const &srcb) {
+	alu_add_set_dst(dst);
+	alu_add_set_imm_a(imma);
+	alu_add_set_reg_b(srcb);
 }
 
 
-void Instr::alu_add_set(Location const &loc1, Location const &loc2,  SmallImm const &imm3) {
-	alu_add_set_dst(loc1);
-	alu_add_set_reg_a(loc2);
-	alu_add_set_imm_b(imm3);
+void Instr::alu_add_set(Location const &dst, Location const &srca, SmallImm const &immb) {
+	alu_add_set_dst(dst);
+	alu_add_set_reg_a(srca);
+	alu_add_set_imm_b(immb);
 }
 
 
@@ -751,16 +751,11 @@ Instr ftoi(Location const &dst, Location const &srca, SmallImm const &immb) {
 /**
  * 'and' is a keyword, hence prefix 'b'
  */
-Instr band(Location const &loc1, Register const &reg, uint8_t val) {
+Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
 	Instr instr;
-	instr.alu_add_set_dst(loc1);
+	instr.alu_add_set(dst, srca, immb);
 
-	instr.sig.small_imm = true; 
-	instr.raddr_b       = val; 
 	instr.alu.add.op    = V3D_QPU_A_AND;
-	instr.alu.add.a     = reg.to_mux();
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-
 	return instr;
 }
 
@@ -967,23 +962,26 @@ Instr branch(int target, bool relative) {
 	instr.branch.cond = V3D_QPU_BRANCH_COND_ALWAYS;
 	instr.branch.ub = false;
 
+	// branch needs 4 delay slots before executing
+	// This means that 3 more instructions will execute after the loop before jumping
+	// The offset value must be compensated for this
+
 	if (relative) {
 		instr.branch.bdi = V3D_QPU_BRANCH_DEST_REL;
 		instr.branch.bdu = V3D_QPU_BRANCH_DEST_REL;  // not used when branch.ub == false, just set a value
+
+		// Asumption: relative jump need not be compensated
+		instr.branch.offset = (unsigned) 8*target;  // TODO check if ok
 	} else {
 		breakpoint
 		instr.branch.bdi = V3D_QPU_BRANCH_DEST_ABS;
 		instr.branch.bdu = V3D_QPU_BRANCH_DEST_ABS;  // not used when branch.ub == false, just set a value
+		instr.branch.offset = (unsigned) 8*(target - 4);  // TODO check if ok
 	}
 
 	instr.branch.msfign = V3D_QPU_MSFIGN_NONE;
 	instr.branch.raddr_a = 0;
 
-	// branch needs 4 delay slots before executing
-	// This means that 3 more instructions will execute after the loop before jumping
-	//
-	// TODO: check if following is OK
-	instr.branch.offset = (unsigned) 8*(target - 4);
 
 	return instr;
 }

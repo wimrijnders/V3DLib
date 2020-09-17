@@ -13,16 +13,7 @@
 namespace QPULib {
 
 template <class T> class Seq {
-  private:
-    // Initialisation
-    void init(int initialSize)
-    {
-      maxElems = initialSize;
-      numElems = 0;
-      elems    = new T[initialSize];
-    }
-
-  public:
+public:
     int maxElems;
     int numElems;
     T* elems;
@@ -97,7 +88,11 @@ template <class T> class Seq {
     // Clear the sequence
     void clear() { numElems = 0; }
 
-    // Is given value already in sequence?
+		/**
+     * Check if given value already in sequence
+		 *
+		 * **NOTE:** This is actually a set-method
+		 */
     bool member(T x) {
       for (int i = 0; i < numElems; i++)
         if (elems[i] == x) return true;
@@ -120,19 +115,20 @@ template <class T> class Seq {
 		 * Insert item at specified location
 		 */
 		void insert(int index, T const &item) {
-			assert(index >= 0);
-			assert(index < size());
-    	setCapacity(numElems + 1);
-
-			// Shift tail one position
-			for (int i = numElems - 1; i >= index; --i) {
-				elems[i + 1] = elems[i];
-			}
-
-			// Insert new item
+			shift_tail(index, 1);
 			elems[index] = item;
+		}
 
-			numElems++;
+
+		/**
+		 * Insert passed sequence at specified location
+		 */
+		void insert(int index, Seq<T> const &items) {
+			shift_tail(index, items.size());
+
+      for (int j = 0; j < items.size(); j++) {
+				elems[index + j] = items.elems[j];
+			}
 		}
 
     // Remove element at index
@@ -159,6 +155,32 @@ template <class T> class Seq {
 
 		return *this;
 	}
+
+
+private:
+	void init(int initialSize) {
+		maxElems = initialSize;
+		numElems = 0;
+		elems    = new T[initialSize];
+	}
+
+
+	/**
+	 * Shift tail of sequence n positions, starting from index
+	 */
+	void shift_tail(int index, int n ) {
+		assert(index >= 0);
+		assert(index < size());
+		assert(n > 0);
+   	setCapacity(numElems + n);
+
+		for (int i = numElems - 1; i >= index; --i) {
+			elems[i + n] = elems[i];
+		}
+
+		numElems += n;
+	}
+
 };
 
 // A small sequence is just a sequence with a small initial size

@@ -308,6 +308,8 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 
 		switch (src_instr.ALU.op) {
 			case A_SHL:  ret << shl(*dst_reg, *src_a, imm);        break;
+			case A_SHR:  ret << shr(*dst_reg, *src_a, imm);        break;
+			case A_BAND: ret << band(*dst_reg, *src_a, imm);       break;
 			case A_SUB:  ret << sub(*dst_reg, *src_a, imm);        break;
 			case A_ADD:  ret << add(*dst_reg, *src_a, imm);        break;
 			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, imm); break;
@@ -336,6 +338,20 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	} else {
 		breakpoint  // Unhandled combination of inputs/output
 		did_something = false;
+	}
+
+	if (src_instr.ALU.setFlags) {
+		if (src_instr.ALU.cond.tag != ALWAYS) {
+			debug_break("Assign condition not ALWAYS");  // Warn me if this happens
+		}
+
+		if (src_instr.ALU.cond.flag != ZS) {
+			debug_break("Assign condition flag not ZS");  // Warn me if this happens
+		}
+
+		Instr &instr = ret.back();
+
+		instr.pushz();  // Assuming/hoping that this translation is correct
 	}
 
 	return did_something;
@@ -475,10 +491,22 @@ Instructions encodeInstr(QPULib::Instr instr) {
 		break;
 
     case BR: { // Branch
-			//breakpoint  // TODO examine
       assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
 
-			ret << branch(instr.BR.target.immOffset, instr.BR.target.relative);
+			breakpoint
+			auto dst_instr = branch(instr.BR.target.immOffset, instr.BR.target.relative);
+
+			if (instr.BR.cond.tag != COND_ALL) {
+				debug_break("Branch condition not COND_ALL");  // Warn me if this happens
+			}
+
+			if (instr.BR.cond.flag != ZC) {
+				debug_break("Branch condition flag not ZC");  // Warn me if this happens
+			}
+
+			dst_instr.na0();  // Assuming/hoping that this translation is correct
+
+			ret << dst_instr;
 
 			// TODO: Figure out how to deal with branch conditions
 			//       The call below is vc4 only, the conditions don't exist on v3d
@@ -495,8 +523,7 @@ Instructions encodeInstr(QPULib::Instr instr) {
 			if (instr.isUniformLoad()) {
 					Reg dst_reg = instr.ALU.dest;
 					uint8_t rf_addr = to_waddr(dst_reg);
-					QPULib::v3d::instr::Instr instr = ldunifrf(rf_addr);
-					ret << instr;
+					ret << ldunifrf(rf_addr);
 					break;
       } else if (translateRotate(instr, ret)) {
 				break;  // all is well

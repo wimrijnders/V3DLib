@@ -70,6 +70,8 @@ struct Var {
 
   // A unique identifier for a standard variable
   VarId id;
+
+	bool isUniformPtr = false;
 };
 
 // Reserved general-purpose vars
@@ -206,15 +208,29 @@ struct PrintStmt {
 
 // What kind of statement is it?
 enum StmtTag {
-  SKIP, ASSIGN, SEQ, WHERE,
-  IF, WHILE, PRINT, FOR,
-  SET_READ_STRIDE, SET_WRITE_STRIDE,
-  LOAD_RECEIVE, STORE_REQUEST,
-  SEND_IRQ_TO_HOST, SEMA_INC, SEMA_DEC,
-  SETUP_VPM_READ, SETUP_VPM_WRITE,
-  SETUP_DMA_READ, SETUP_DMA_WRITE,
-  DMA_READ_WAIT, DMA_WRITE_WAIT,
-  DMA_START_READ, DMA_START_WRITE };
+	SKIP,
+	ASSIGN,
+	SEQ,
+	WHERE,
+	IF,
+	WHILE,
+	PRINT,
+	FOR,
+	SET_READ_STRIDE,
+	SET_WRITE_STRIDE,
+	LOAD_RECEIVE,
+	STORE_REQUEST,
+	SEND_IRQ_TO_HOST,
+	SEMA_INC, SEMA_DEC,
+	SETUP_VPM_READ,
+	SETUP_VPM_WRITE,
+	SETUP_DMA_READ,
+	SETUP_DMA_WRITE,
+	DMA_READ_WAIT,
+	DMA_WRITE_WAIT,
+	DMA_START_READ,
+	 DMA_START_WRITE
+};
 
 struct Stmt {
   // What kind of statement is it?

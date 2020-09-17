@@ -4,6 +4,29 @@
 
 namespace QPULib {
 
+namespace {
+
+Instr genInstr(ALUOp op, Reg dst, Reg srcA, int n) {
+  AssignCond always;
+  always.tag = ALWAYS;
+
+  Instr instr;
+  instr.tag                   = ALU;
+  instr.ALU.setFlags          = false;
+  instr.ALU.cond              = always;
+  instr.ALU.dest              = dst;
+  instr.ALU.srcA.tag          = REG;
+  instr.ALU.srcA.reg          = srcA;
+  instr.ALU.op                = op;
+  instr.ALU.srcB.tag          = IMM;
+  instr.ALU.srcB.smallImm.tag = SMALL_IMM;
+  instr.ALU.srcB.smallImm.val = n;
+
+  return instr;
+}
+
+}  // anon namespace
+
 // =======
 // Globals
 // =======
@@ -89,32 +112,14 @@ Instr genADD(Reg dst, Reg srcA, Reg srcB)
 
 // Generate left-shift instruction.
 
-Instr genLShift(Reg dst, Reg srcA, int n)
-{
+Instr genLShift(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
-
-  AssignCond always;
-  always.tag = ALWAYS;
-
-  Instr instr;
-  instr.tag                   = ALU;
-  instr.ALU.setFlags          = false;
-  instr.ALU.cond              = always;
-  instr.ALU.dest              = dst;
-  instr.ALU.srcA.tag          = REG;
-  instr.ALU.srcA.reg          = srcA;
-  instr.ALU.op                = A_SHL;
-  instr.ALU.srcB.tag          = IMM;
-  instr.ALU.srcB.smallImm.tag = SMALL_IMM;
-  instr.ALU.srcB.smallImm.val = n;
-
-  return instr;
+	return genInstr(A_SHL, dst, srcA, n);
 }
 
 // Generate increment instruction.
 
-Instr genIncr(Reg dst, Reg srcA, int n)
-{
+Instr genIncr(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
 
   AssignCond always;
@@ -183,10 +188,24 @@ void resetFreshLabelGen(int val)
 namespace Target {
 namespace instr {
 
+Reg const ACC0(ACC, 0);
+Reg const ACC1(ACC, 1);
 Reg const QPU_ID(SPECIAL, SPECIAL_QPU_NUM);
+Reg const ELEM_ID(SPECIAL, SPECIAL_ELEM_NUM);
 
 Reg rf(uint8_t index) {
 	return Reg(REG_A, index);
+}
+
+
+Instr shr(Reg dst, Reg srcA, int n) {
+  assert(n >= 0 && n <= 15);
+	return genInstr(A_SHR, dst, srcA, n);
+}
+
+
+Instr band(Reg dst, Reg srcA, int n) {
+	return genInstr(A_BAND, dst, srcA, n);
 }
 
 }  // namespace instr

@@ -57,7 +57,7 @@ void invoke(
 	drv.add_bo(getBufferObject());
 
 //#if NOT_DONE_YET
-	drv.execute(codeMem, &unif);
+	drv.execute(codeMem, &unif, numQPUs);
 //#endif // NOT_DONE_YET
 }
 

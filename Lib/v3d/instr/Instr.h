@@ -98,9 +98,9 @@ public:
 	void alu_mul_set_imm_a(SmallImm const &imm);
 	void alu_mul_set_imm_b(SmallImm const &imm);
 
-	void alu_add_set(Location const &loc1, Location const &loc2, Location const &loc3); 
-	void alu_add_set(Location const &loc1, SmallImm const &imm2, Location const &loc3);
-	void alu_add_set(Location const &loc1, Location const &loc2,  SmallImm const &imm3);
+	void alu_add_set(Location const &dst, Location const &srca, Location const &srcb); 
+	void alu_add_set(Location const &dst, SmallImm const &imma, Location const &srcb);
+	void alu_add_set(Location const &dst, Location const &srca, SmallImm const &immb);
 	void alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_mul_set(Location const &loc1, Location const &loc2, SmallImm const &imm3); 
 
@@ -132,7 +132,7 @@ Instr shr(Location const &reg1, Location const & reg2, SmallImm const &imm3);
 Instr shl(Location const &reg1, Location const & reg2, SmallImm const &imm3);
 Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3);
 
-Instr band(Location const &loc1, Register const &reg, uint8_t val);
+Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr eidx(Register const &reg);
 
 Instr add(Location const &loc1, Location const &loc2, Location const &loc3);

@@ -35,9 +35,6 @@ bool Instr::isUniformLoad() const {
 		assert(aReg == bReg);  // Apparently, this holds (NOT TRUE)
 		return true;
 	} else {
-		//if (bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM) {
-		//	breakpoint
-		//}
 		assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
 		return false;
 	}

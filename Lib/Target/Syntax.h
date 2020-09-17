@@ -87,6 +87,8 @@ struct Reg {
   RegTag tag;   // What kind of register is it?
   RegId regId;  // Register identifier
 
+	bool isUniformPtr;
+
 	Reg() = default;
 	Reg(RegTag in_tag, RegId in_regId) : tag(in_tag), regId(in_regId) {}
 
@@ -451,10 +453,17 @@ void resetFreshLabelGen(int val);
 namespace Target {
 namespace instr {
 
+extern Reg const ACC0;
+extern Reg const ACC1;
 extern Reg const QPU_ID;
+extern Reg const ELEM_ID;
 
 Reg rf(uint8_t index);
-inline Instr mov(Reg dst, Reg src) { return genOR(dst, src, src); }
+inline Instr mov(Reg dst, Reg src)            { return genOR(dst, src, src); }
+inline Instr shl(Reg dst, Reg srcA, int val)  { return genLShift(dst, srcA, val); }
+inline Instr add(Reg dst, Reg srcA, Reg srcB) { return genADD(dst, srcA, srcB); }
+Instr shr(Reg dst, Reg srcA, int n);
+Instr band(Reg dst, Reg srcA, int n);
 
 }  // namespace instr
 }  // namespace Target

@@ -115,6 +115,7 @@ template <typename T> inline PtrExpr<T> getUniformPtr() {
   Expr* e    = mkExpr();
   e->tag     = VAR;
   e->var.tag = UNIFORM;
+  e->var.isUniformPtr = true;
   PtrExpr<T> x; x.expr = e; return x;
 }
 
