@@ -3,9 +3,7 @@
 #include "../KernelDriver.h"
 #include "Common/SharedArray.h"
 #include "Source/Stmt.h"
-#include "Target/Encode.h"
 #include "Invoke.h"
-
 
 namespace QPULib {
 namespace vc4 {

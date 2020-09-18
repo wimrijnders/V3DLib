@@ -8,7 +8,6 @@
 #include "Target/LiveRangeSplit.h"
 #include "Target/Satisfy.h"
 #include "Target/LoadStore.h"
-#include "Target/Encode.h"
 #include "Target/Pretty.h"
 
 namespace QPULib {

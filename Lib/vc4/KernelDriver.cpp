@@ -1,5 +1,6 @@
 #include "KernelDriver.h"
 #include "vc4.h"
+#include "Encode.h"
 
 namespace QPULib {
 namespace vc4 {
@@ -19,7 +20,7 @@ void KernelDriver::kernelFinish() {
 void KernelDriver::encode(int numQPUs) {
 	if (code.size() > 0) return;  // Don't bother if already encoded
 
-	QPULib::encode(&m_targetCode, &code);
+	QPULib::vc4::encode(&m_targetCode, &code);
 }
 
 

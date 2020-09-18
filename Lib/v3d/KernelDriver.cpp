@@ -104,23 +104,10 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 			break;
     case SPECIAL:
       switch (reg.regId) {
-        case SPECIAL_UNIFORM:
-					assert(false);  // Not expecting this, handled before this call
-				break;
+        case SPECIAL_QPU_NUM:
         case SPECIAL_ELEM_NUM:
-					warning("SPECIAL_ELEM_NUM needs a way to select a register");
-					opcodes << eidx(r0);
-					ret.reset(new Register(r0));  // register should be selected on usage in code
-				break;
-        case SPECIAL_QPU_NUM: {
-					warning("SPECIAL_QPU_NUM needs a way to select a register");
-					//Register tmp_reg = r1;  // register should be selected on usage in code
-					//opcodes << get_num_qpus(tmp_reg, local_numQPUs);
-					//ret.reset(new Register(tmp_reg));
-
-					opcodes << tidx(r0).comment("Set QPU id SPECIAL_QPU_NUM", true);
-					ret.reset(new Register(r0));
-				}
+        case SPECIAL_UNIFORM:
+					assertq(false, "encodeSrcReg(): Not expecting this SPECIAL regId, should be handled before call()");
 				break;
 
 				// Not handled (yet)
@@ -146,9 +133,8 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
   }
 
 	if (ret.get() == nullptr && !is_none) {
-	  fprintf(stderr, "QPULib: missing case in encodeSrcReg\n");
-breakpoint
-		assert(false);
+		breakpoint
+	  assertq(false, "QPULib: missing case in encodeSrcReg()");
 	}
 
 	return ret;
@@ -270,6 +256,75 @@ void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_i
 		dst_instr.alu.add.waddr = ret->to_waddr();
 		dst_instr.alu.add.output_pack = ret->output_pack();
 	}
+}
+
+
+/**
+ * QPU and ELEM num are not registers in v3d but instructions.
+ * Both these instructions use r0 here; this might produce conflicts with other instructions
+ * I haven't found a decent way yet to compensate for this.
+ *
+ * The source instruction is adjusted  accordingly.
+ *
+ */
+Instructions translateSpecialIndex(QPULib::Instr &src_instr) {
+  assertq(src_instr.tag == ALU, "translateSpecialIndex() should only be called for alu instructions");
+	Instructions ret;
+
+	bool handled = true;	
+	auto srca = src_instr.ALU.srcA;
+	auto srcb = src_instr.ALU.srcB;
+
+	bool a_is_elem_num = (srca.tag == REG && srca.reg.tag == SPECIAL && srca.reg.regId == SPECIAL_ELEM_NUM);
+	bool a_is_qpu_num  = (srca.tag == REG && srca.reg.tag == SPECIAL && srca.reg.regId == SPECIAL_QPU_NUM);
+	bool b_is_elem_num = (srcb.tag == REG && srcb.reg.tag == SPECIAL && srcb.reg.regId == SPECIAL_ELEM_NUM);
+	bool b_is_qpu_num  = (srcb.tag == REG && srcb.reg.tag == SPECIAL && srcb.reg.regId == SPECIAL_QPU_NUM);
+	bool a_is_special  = a_is_elem_num || a_is_qpu_num;
+	bool b_is_special  = b_is_elem_num || b_is_qpu_num;
+
+	if (!a_is_special && !b_is_special) {
+		return ret;  // Nothing to do
+	}
+
+	if (a_is_special && b_is_special) {
+		assertq(srca == srcb, "translateSpecialIndex(): src a and b must be the same if they are both special num's");
+	}
+
+	if (a_is_elem_num || b_is_elem_num) {
+		warning("SPECIAL_ELEM_NUM needs a way to select a register");
+		ret << eidx(r0);
+	} else if (a_is_qpu_num || b_is_qpu_num) {
+		warning("SPECIAL_ELEM_NUM needs a way to select a register");
+		ret << tidx(r0);
+	} else {
+		assert(false);  // Not expecting this here
+	}
+
+	// Set r0 as source in instruction
+	if (a_is_special && b_is_special) {
+		// Don't bother if target is already r0
+		auto src_dst = src_instr.ALU.dest;
+		bool is_r0 = (src_dst.tag == ACC && src_dst.regId == 0);
+
+		if (is_r0) {
+			return ret;
+		}
+	}
+
+
+	if (a_is_special) {
+		assert(src_instr.ALU.srcA.tag == REG);
+		src_instr.ALU.srcA.reg.tag   = ACC;
+		src_instr.ALU.srcA.reg.regId = 0;
+	}
+
+	if (b_is_special) {
+		assert(src_instr.ALU.srcB.tag == REG);
+		src_instr.ALU.srcB.reg.tag   = ACC;
+		src_instr.ALU.srcB.reg.regId = 0;
+	}
+
+	return ret;
 }
 
 
@@ -493,7 +548,6 @@ Instructions encodeInstr(QPULib::Instr instr) {
     case BR: { // Branch
       assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
 
-			breakpoint
 			auto dst_instr = branch(instr.BR.target.immOffset, instr.BR.target.relative);
 
 			if (instr.BR.cond.tag != COND_ALL) {
@@ -518,17 +572,18 @@ Instructions encodeInstr(QPULib::Instr instr) {
     }
 		break;
 
-    // ALU
     case ALU: {
+      ret << translateSpecialIndex(instr);
+
 			if (instr.isUniformLoad()) {
-					Reg dst_reg = instr.ALU.dest;
-					uint8_t rf_addr = to_waddr(dst_reg);
-					ret << ldunifrf(rf_addr);
-					break;
+				Reg dst_reg = instr.ALU.dest;
+				uint8_t rf_addr = to_waddr(dst_reg);
+				ret << ldunifrf(rf_addr);
+				break;
       } else if (translateRotate(instr, ret)) {
 				break;  // all is well
       } else if (translateOpcode(instr, ret)) {
-				break; // All is well
+				break;  // all is well
       } else {
 				breakpoint  // Something missing, check
 				assert(false);
@@ -536,13 +591,14 @@ Instructions encodeInstr(QPULib::Instr instr) {
     }
 		break;
 
-    case END:
-			assert(false);  // vc4 end program marker, should not receive this
+    case INIT_BEGIN:
+    case INIT_END:
+    case END:         // vc4 end program marker
+			assert(false);  // Should not receive this here
 		break;
 
-    case TMU0_TO_ACC4: {
-			ret << nop().ldtmu(r4);  // NOTE: added by WR
-    }
+    case TMU0_TO_ACC4:
+			ret << nop().ldtmu(r4);
 		break;
 
     // Semaphore increment/decrement
@@ -552,10 +608,9 @@ Instructions encodeInstr(QPULib::Instr instr) {
     }
 		break;
 
-    // No-op instruction
-    case NO_OP:
+		case NO_OP:
 			ret << nop();
-			break;
+		break;
 
     // Print instructions - ignored
     case PRI:
@@ -655,26 +710,34 @@ bool checkUniformAtTop(Seq<QPULib::Instr> &instrs) {
  */
 void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instructions) {
 	assert(checkUniformAtTop(instrs));
-	bool did_init = false;
+	bool prev_was_init_begin = false;
+	bool prev_was_init_end    = false;
 
 	// Main loop
   for (int i = 0; i < instrs.numElems; i++) {
     QPULib::Instr instr = instrs.elems[i];
 
-		// Assumption: uniform loads are always at the top of the instruction list
-		bool doing_init = !did_init && !instr.isUniformLoad();
-		if (doing_init) {
+		if (instr.tag == INIT_BEGIN) {
+			prev_was_init_begin = true;
+		} else if (instr.tag == INIT_END) {
 			instructions << encode_init(numQPUs);
-			did_init = true;
-		}
-	
-		auto ret = v3d::encodeInstr(instr);
+			prev_was_init_end = true;
+		} else {
+			auto ret = v3d::encodeInstr(instr);
 
-		if (doing_init) {
-			ret.front().comment("Main program");
+			if (prev_was_init_begin) {
+				ret.front().comment("Init block");
+				prev_was_init_begin = false;
+			}
+
+			if (prev_was_init_end) {
+				ret.front().comment("Main program");
+				prev_was_init_end = false;
+			}
+
+			instructions << ret;
 		}
 
-		instructions << ret;
   }
 
 	instructions << sync_tmu()

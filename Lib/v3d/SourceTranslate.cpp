@@ -140,18 +140,29 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 void SourceTranslate::add_init(Seq<Instr> &code) {
 	using namespace QPULib::Target::instr;
 
-	// Find first instruction after uniform loads
-	int index = 0;
-	for (; index < code.size(); ++index) {
-		if (!code[index].isUniformLoad()) break; 
+	// Find the init begin marker
+	int insert_index = 0;
+	for (; insert_index < code.size(); ++insert_index) {
+		if (code[insert_index].tag == INIT_BEGIN) break; 
 	}
-	assertq(index >= 2, "Expecting at least two uniform loads.");
+	assertq(insert_index < code.size(), "Expecting INIT_BEGIN marker.");
+	assertq(insert_index >= 2, "Expecting at least two uniform loads.");
 
 	Seq<Instr> ret;
+
 /*
-	ret << mov(rf(RSV_QPU_ID), QPU_ID)  // Set qpu id in reserved location (regfile index 0; uses ACC0)
-	    << nop();                       // Kludge: prevent the peephole optimization `introduceAccum()` from kicking in
+16: A0 <-{sf} sub(A0, 3)                                                                                               
+17: if all(ZC) goto PC+1+3                                                                                             
+18: NOP                                                                                                                
+19: NOP                                                                                                                
+20: NOP                                                                                                                
+21: ACC1 <- 7                                                                                                          
+22: S[VPM_WRITE] <- or(ACC1, ACC1)                                                                                     
+23: S[DMA_ST_ADDR] <- or(A1, A1)   
 */
+	//if (QPU_NUM == 8) {
+	//ret << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
+
 	ret << mov(ACC1, QPU_ID)
 	    << shr(ACC1, ACC1, 2)
 	    << band(rf(RSV_QPU_ID), ACC1, 0b1111)
@@ -180,7 +191,7 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	}
 
 
-	code.insert(index, ret);
+	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
  }
 
 }  // namespace v3d

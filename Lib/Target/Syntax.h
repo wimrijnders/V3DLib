@@ -337,6 +337,10 @@ enum InstrTag {
   // ---------
 
   , VPM_STALL     // Marker for VPM read setup
+
+	// Init program block (v3d only)
+  , INIT_BEGIN     // Marker for start of init block
+  , INIT_END       // Marker for end of init block
 };
 
 // QPU instructions

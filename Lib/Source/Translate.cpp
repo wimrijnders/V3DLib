@@ -1,13 +1,14 @@
+#include "Translate.h"
 #include <cassert>
 #include "../SourceTranslate.h"
 #include "Source/Syntax.h"
-#include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
 #include "Target/LoadStore.h"
 #include "Common/Seq.h"
 
 
 namespace QPULib {
+namespace {
 
 // ============================================================================
 // Opcodes and operands
@@ -54,74 +55,6 @@ ALUOp opcode(Op op)
 	return NOP;
 }
 
-// Translate variable to source register.
-Reg srcReg(Var v)
-{
-  Reg r;
-	r.isUniformPtr = false;
-
-  switch (v.tag) {
-    case UNIFORM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_UNIFORM;
-			r.isUniformPtr = v.isUniformPtr;
-      return r;
-    case QPU_NUM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_QPU_NUM;
-      return r;
-    case ELEM_NUM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_ELEM_NUM;
-      return r;
-    case VPM_READ:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_VPM_READ;
-      return r;
-    case STANDARD:
-      r.tag   = REG_A;
-      r.regId = v.id;
-      return r;
-    case VPM_WRITE:
-    case TMU0_ADDR:
-      printf("QPULib: Reading from write-only special register is forbidden\n");
-      assert(false);
-  }
-
-  // Not reachable
-  assert(false);
-	return r;
-}
-
-// Translate variable to target register.
-Reg dstReg(Var v)
-{
-  Reg r;
-  switch (v.tag) {
-    case UNIFORM:
-    case QPU_NUM:
-    case ELEM_NUM:
-    case VPM_READ:
-      printf("QPULib: writing to read-only special register is forbidden\n");
-      assert(false);
-    case STANDARD:
-      r.tag   = REG_A;
-      r.regId = v.id;
-      return r;
-    case VPM_WRITE:
-      r.tag = SPECIAL;
-      r.regId = SPECIAL_VPM_WRITE;
-      return r;
-    case TMU0_ADDR:
-      r.tag = SPECIAL;
-      r.regId = SPECIAL_TMU0_S;
-      return r;
-  }
-
-  // Not reachable
-  assert(false);
-	return r;
-}
 
 // Translate the argument of an operator (either a variable or a small
 // literal) to a target operand.
@@ -165,161 +98,20 @@ Expr* simplify(Seq<Instr>* seq, Expr* e);
 // Variable assignments
 // ============================================================================
 
-// Translate the conditional assignment of a variable to an expression.
+/**
+ * Translate an expression to a simple expression, generating
+ * instructions along the way.
+ */
+Expr* simplify(Seq<Instr>* seq, Expr* e) {
+  if (isSimple(e)) {
+		return e;
+	}
 
-void varAssign( Seq<Instr>* seq   // Target instruction sequence to extend
-              , AssignCond cond   // Condition on assignment
-              , Var v             // Variable on LHS
-              , Expr* expr        // Expression on RHS
-              )
-{
-  Expr e = *expr;
-
-  // -----------------------------------------
-  // Case: v := w, where v and w are variables
-  // -----------------------------------------
-  if (e.tag == VAR) {
-    Var w = e.var;
-    Instr instr;
-    instr.tag                   = ALU;
-    instr.ALU.setFlags          = false;
-    instr.ALU.cond              = cond;
-    instr.ALU.dest              = dstReg(v);
-    instr.ALU.srcA.tag          = REG;
-    instr.ALU.srcA.reg          = srcReg(w);
-    instr.ALU.op                = A_BOR;
-    instr.ALU.srcB.tag          = REG;
-    instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
-    seq->append(instr);
-    return;
-  }
-
-  // -------------------------------------------
-  // Case: v := i, where i is an integer literal
-  // -------------------------------------------
-  if (e.tag == INT_LIT) {
-    int i = e.intLit;
-    Instr instr;
-    instr.tag           = LI;
-    instr.LI.setFlags   = false;
-    instr.LI.cond       = cond;
-    instr.LI.dest       = dstReg(v);
-    instr.LI.imm.tag    = IMM_INT32;
-    instr.LI.imm.intVal = i;
-    seq->append(instr);
-    return;
-  }
-
-  // ----------------------------------------
-  // Case: v := f, where f is a float literal
-  // ----------------------------------------
-  if (e.tag == FLOAT_LIT) {
-    float f = e.floatLit;
-    Instr instr;
-    instr.tag             = LI;
-    instr.LI.setFlags     = false;
-    instr.LI.cond         = cond;
-    instr.LI.dest         = dstReg(v);
-    instr.LI.imm.tag      = IMM_FLOAT32;
-    instr.LI.imm.floatVal = f;
-    seq->append(instr);
-    return;
-  }
-
-  // ----------------------------------------------
-  // Case: v := x op y, where x or y are not simple
-  // ----------------------------------------------
-  if (e.tag == APPLY &&
-            (!isSimple(e.apply.lhs) ||
-             !isSimple(e.apply.rhs))) {
-    e.apply.lhs = simplify(seq, e.apply.lhs);
-    e.apply.rhs = simplify(seq, e.apply.rhs);
-  }
-
-  // --------------------------------------------------
-  // Case: v := x op y, where x and y are both literals
-  // --------------------------------------------------
-  if (e.tag == APPLY && isLit(e.apply.lhs) && isLit(e.apply.rhs)) {
-    Var tmpVar = freshVar();
-    varAssign(seq, cond, tmpVar, e.apply.lhs);
-    e.apply.lhs = mkVar(tmpVar);
-  }
- 
-  // -------------------------------------------
-  // Case: v := x op y, where x and y are simple
-  // -------------------------------------------
-  if (e.tag == APPLY) {
-    Instr instr;
-    instr.tag            = ALU;
-    instr.ALU.setFlags   = false;
-    instr.ALU.cond       = cond;
-    instr.ALU.dest       = dstReg(v);
-    instr.ALU.srcA       = operand(e.apply.lhs);
-    instr.ALU.op         = opcode(e.apply.op);
-    instr.ALU.srcB       = operand(e.apply.rhs);
-    seq->append(instr);
-    return;
-  }
-
-  // ---------------------------------------
-  // Case: v := *w where w is not a variable
-  // ---------------------------------------
-  if (e.tag == DEREF &&
-           e.deref.ptr->tag != VAR) {
-    assert(!isLit(e.deref.ptr));
-    e.deref.ptr = simplify(seq, e.deref.ptr);
-  }
-
-  // -----------------------------------
-  // Case: v := *w where w is a variable
-  // -----------------------------------
-  //
-  // Restriction: we disallow dereferencing in conditional ('where')
-  // assignments for simplicity.  In most (all?) cases it should be
-  // trivial to lift these outside the 'where'.
-  //
-  if (e.tag == DEREF) {
-    if (cond.tag != ALWAYS) {
-      printf("QPULib: dereferencing not yet supported inside 'where'\n");
-      assert(false);
-    }
-		getSourceTranslate().varassign_deref_var(seq, v, e);
-    return;
-  }
-
-  // This case should not be reachable
-  assert(false);
-}
-
-// Translate an expression to a simple expression, generating
-// instructions along the way.
-
-Expr* simplify(Seq<Instr>* seq, Expr* e)
-{
-  if (!isSimple(e)) {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var tmp = freshVar();
-    varAssign(seq, always, tmp, e);
-    return mkVar(tmp);
-  }
-  else
-    return e;
-}
-
-// Similar to 'simplify' but ensure that the result is a variable.
-
-Expr* putInVar(Seq<Instr>* seq, Expr* e)
-{
-  if (e->tag != VAR) {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var tmp = freshVar();
-    varAssign(seq, always, tmp, e);
-    return mkVar(tmp);
-  }
-  else
-    return e;
+	AssignCond always;
+	always.tag = ALWAYS;
+	Var tmp = freshVar();
+	varAssign(seq, always, tmp, e);
+	return mkVar(tmp);
 }
 
 // ============================================================================
@@ -1280,30 +1072,275 @@ void stmt(Seq<Instr>* seq, Stmt* s)
   assert(false);
 }
 
-// ============================================================================
-// End code
-// ============================================================================
 
-void insertEndCode(Seq<Instr>* seq)
-{
+/**
+ * Insert 'end' instruction
+ */
+void insertEndCode(Seq<Instr> &seq) {
   Instr instr;
-
-  // Insert 'end' instruction
   instr.tag = END;
-  seq->append(instr);
+
+	seq << instr;
 }
+
+
+/**
+ * Insert markers for initialization code
+ *
+ * Only used for `v3d`.
+ */
+void insertInitBlock(Seq<Instr> &code) {
+	// Find first instruction after uniform loads
+	int index = 0;
+	for (; index < code.size(); ++index) {
+		if (!code[index].isUniformLoad()) break; 
+	}
+	assertq(index >= 2, "Expecting at least two uniform loads.");
+
+	Seq<Instr> ret;
+
+  Instr instr;
+  instr.tag = INIT_BEGIN;
+	ret << instr;
+  instr.tag = INIT_END;
+	ret << instr;
+
+	code.insert(index, ret);
+}
+
+}  // anon namespace
+
 
 // ============================================================================
 // Interface
 // ============================================================================
 
-// Top-level translation function for statements.
-
-void translateStmt(Seq<Instr>* seq, Stmt* s)
+// Translate variable to source register.
+Reg srcReg(Var v)
 {
+  Reg r;
+	r.isUniformPtr = false;
+
+  switch (v.tag) {
+    case UNIFORM:
+      r.tag     = SPECIAL;
+      r.regId   = SPECIAL_UNIFORM;
+			r.isUniformPtr = v.isUniformPtr;
+      return r;
+    case QPU_NUM:
+      r.tag     = SPECIAL;
+      r.regId   = SPECIAL_QPU_NUM;
+      return r;
+    case ELEM_NUM:
+      r.tag     = SPECIAL;
+      r.regId   = SPECIAL_ELEM_NUM;
+      return r;
+    case VPM_READ:
+      r.tag     = SPECIAL;
+      r.regId   = SPECIAL_VPM_READ;
+      return r;
+    case STANDARD:
+      r.tag   = REG_A;
+      r.regId = v.id;
+      return r;
+    case VPM_WRITE:
+    case TMU0_ADDR:
+      printf("QPULib: Reading from write-only special register is forbidden\n");
+      assert(false);
+  }
+
+  // Not reachable
+  assert(false);
+	return r;
+}
+
+
+// Translate variable to target register.
+Reg dstReg(Var v)
+{
+  Reg r;
+  switch (v.tag) {
+    case UNIFORM:
+    case QPU_NUM:
+    case ELEM_NUM:
+    case VPM_READ:
+      printf("QPULib: writing to read-only special register is forbidden\n");
+      assert(false);
+    case STANDARD:
+      r.tag   = REG_A;
+      r.regId = v.id;
+      return r;
+    case VPM_WRITE:
+      r.tag = SPECIAL;
+      r.regId = SPECIAL_VPM_WRITE;
+      return r;
+    case TMU0_ADDR:
+      r.tag = SPECIAL;
+      r.regId = SPECIAL_TMU0_S;
+      return r;
+  }
+
+  // Not reachable
+  assert(false);
+	return r;
+}
+
+
+/**
+ * Variable assignments
+ *
+ * Translate the conditional assignment of a variable to an expression.
+ *
+ * @param seq   Target instruction sequence to extend
+ * @param cond  Condition on assignment
+ * @param v     Variable on LHS
+ * @param expr  Expression on RHS
+ */
+void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
+  Expr e = *expr;
+
+  // -----------------------------------------
+  // Case: v := w, where v and w are variables
+  // -----------------------------------------
+  if (e.tag == VAR) {
+    Var w = e.var;
+    Instr instr;
+    instr.tag                   = ALU;
+    instr.ALU.setFlags          = false;
+    instr.ALU.cond              = cond;
+    instr.ALU.dest              = dstReg(v);
+    instr.ALU.srcA.tag          = REG;
+    instr.ALU.srcA.reg          = srcReg(w);
+    instr.ALU.op                = A_BOR;
+    instr.ALU.srcB.tag          = REG;
+    instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
+    seq->append(instr);
+    return;
+  }
+
+  // -------------------------------------------
+  // Case: v := i, where i is an integer literal
+  // -------------------------------------------
+  if (e.tag == INT_LIT) {
+    int i = e.intLit;
+    Instr instr;
+    instr.tag           = LI;
+    instr.LI.setFlags   = false;
+    instr.LI.cond       = cond;
+    instr.LI.dest       = dstReg(v);
+    instr.LI.imm.tag    = IMM_INT32;
+    instr.LI.imm.intVal = i;
+    seq->append(instr);
+    return;
+  }
+
+  // ----------------------------------------
+  // Case: v := f, where f is a float literal
+  // ----------------------------------------
+  if (e.tag == FLOAT_LIT) {
+    float f = e.floatLit;
+    Instr instr;
+    instr.tag             = LI;
+    instr.LI.setFlags     = false;
+    instr.LI.cond         = cond;
+    instr.LI.dest         = dstReg(v);
+    instr.LI.imm.tag      = IMM_FLOAT32;
+    instr.LI.imm.floatVal = f;
+    seq->append(instr);
+    return;
+  }
+
+  // ----------------------------------------------
+  // Case: v := x op y, where x or y are not simple
+  // ----------------------------------------------
+  if (e.tag == APPLY &&
+            (!isSimple(e.apply.lhs) ||
+             !isSimple(e.apply.rhs))) {
+    e.apply.lhs = simplify(seq, e.apply.lhs);
+    e.apply.rhs = simplify(seq, e.apply.rhs);
+  }
+
+  // --------------------------------------------------
+  // Case: v := x op y, where x and y are both literals
+  // --------------------------------------------------
+  if (e.tag == APPLY && isLit(e.apply.lhs) && isLit(e.apply.rhs)) {
+    Var tmpVar = freshVar();
+    varAssign(seq, cond, tmpVar, e.apply.lhs);
+    e.apply.lhs = mkVar(tmpVar);
+  }
+ 
+  // -------------------------------------------
+  // Case: v := x op y, where x and y are simple
+  // -------------------------------------------
+  if (e.tag == APPLY) {
+    Instr instr;
+    instr.tag            = ALU;
+    instr.ALU.setFlags   = false;
+    instr.ALU.cond       = cond;
+    instr.ALU.dest       = dstReg(v);
+    instr.ALU.srcA       = operand(e.apply.lhs);
+    instr.ALU.op         = opcode(e.apply.op);
+    instr.ALU.srcB       = operand(e.apply.rhs);
+    seq->append(instr);
+    return;
+  }
+
+  // ---------------------------------------
+  // Case: v := *w where w is not a variable
+  // ---------------------------------------
+  if (e.tag == DEREF &&
+           e.deref.ptr->tag != VAR) {
+    assert(!isLit(e.deref.ptr));
+    e.deref.ptr = simplify(seq, e.deref.ptr);
+  }
+
+  // -----------------------------------
+  // Case: v := *w where w is a variable
+  // -----------------------------------
+  //
+  // Restriction: we disallow dereferencing in conditional ('where')
+  // assignments for simplicity.  In most (all?) cases it should be
+  // trivial to lift these outside the 'where'.
+  //
+  if (e.tag == DEREF) {
+    if (cond.tag != ALWAYS) {
+      printf("QPULib: dereferencing not yet supported inside 'where'\n");
+      assert(false);
+    }
+		getSourceTranslate().varassign_deref_var(seq, v, e);
+    return;
+  }
+
+  // This case should not be reachable
+  assert(false);
+}
+
+
+/**
+ * Similar to 'simplify' but ensure that the result is a variable.
+ */
+Expr* putInVar(Seq<Instr>* seq, Expr* e) {
+	if (e->tag == VAR) {
+		return e;
+	}
+
+	AssignCond always;
+	always.tag = ALWAYS;
+	Var tmp = freshVar();
+	varAssign(seq, always, tmp, e);
+	return mkVar(tmp);
+}
+
+
+/**
+ * Top-level translation function for statements.
+ */
+void translateStmt(Seq<Instr>* seq, Stmt* s) {
   stmt(seq, s);
 	if (compiling_for_vc4()) {
-	  insertEndCode(seq);
+	  insertEndCode(*seq);
+	} else {
+	  insertInitBlock(*seq);
 	};
 }
 

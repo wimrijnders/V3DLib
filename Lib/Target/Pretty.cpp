@@ -207,7 +207,13 @@ void pretty(FILE *f, Instr instr)
       pretty(f, instr.ALU.srcB);
       fprintf(f, ")\n");
       return;
-    case END:
+    case INIT_BEGIN:  // v3d
+      fprintf(f, "INIT_BEGIN\n");
+      return;
+    case INIT_END:    // v3d
+      fprintf(f, "INIT_END\n");
+      return;
+    case END:         // vc4
       fprintf(f, "END\n");
       return;
     case BR:

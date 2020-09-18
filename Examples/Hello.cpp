@@ -10,13 +10,12 @@ QPULib::Settings settings;
 
 void hello(Ptr<Int> p)
 {
-  //*p = index();
-  //*p = me();
-	//*p = 4*(index() + 16*me());
-	//*p = (index() + me() << 4) << 2;
-	*p = (index() + (me() << 4)) << 2;
+  *p = 1;
+	//*p = 4*(index() + 16*me());        // TODO: Should do the same as shift left, but doesn't. debug
+	//*p = (index() + me() << 4) << 2;   // TODO: execution order appears wrong, verify and fix
+	//*p = (index() + (me() << 4)) << 2;
 
-	If (me() == 0) 
+	If (me() == 3) 
 		*p = 7;	
 	End
 }

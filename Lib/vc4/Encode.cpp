@@ -1,13 +1,15 @@
-#include "Target/Encode.h"
+#include "Encode.h"
+#include <stdio.h>
+#include <stdlib.h>
 #include "Support/basics.h"  // fatal()
 #include "Target/Satisfy.h"
 #include "Target/Pretty.h"
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <assert.h>
 
 namespace QPULib {
+namespace vc4 {
+
+namespace {
 
 // ===========
 // ALU opcodes
@@ -387,15 +389,16 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
       return;
   }
 
-  fatal("QPULib: missing case in encodeInstr");
+  fatal("QPULib: missing case in vc4 encodeInstr");
 }
+
+}  // anon namespace
 
 // =================
 // Top-level encoder
 // =================
 
-void encode(Seq<Instr>* instrs, Seq<uint32_t>* code)
-{
+void encode(Seq<Instr>* instrs, Seq<uint32_t>* code) {
   uint32_t high, low;
   for (int i = 0; i < instrs->numElems; i++) {
     Instr instr = instrs->elems[i];
@@ -405,4 +408,5 @@ void encode(Seq<Instr>* instrs, Seq<uint32_t>* code)
   }
 }
 
+}  // namespace vc4
 }  // namespace QPULib

@@ -22,7 +22,7 @@ void invoke(
 	// We do the same for v3d, so as not to screw up the logic too much.
 	int offset = 0;
 
-	unif[offset++] = 0;        // qpu number (id for current qpu) - placeholder, assigned in init code
+	unif[offset++] = 0;        // qpu number (id for current qpu) - 0 is for 1 QPU
 	unif[offset++] = numQPUs;  // num qpu's running for this job
 
 	for (int j = 0; j < params->numElems; j++) {
