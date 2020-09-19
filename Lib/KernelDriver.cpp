@@ -4,6 +4,7 @@
 #include "Source/Syntax.h"  // stmtStack
 #include "Source/Pretty.h"
 #include "Source/Translate.h"
+#include "Source/Stmt.h"  // initStmt
 #include "Target/Pretty.h"
 #include "Target/Satisfy.h"
 #include "Target/LoadStore.h"
@@ -50,14 +51,27 @@ void compileKernel(Seq<Instr>* targetCode, Stmt* body) {
   removeLabels(targetCode);
 }
 
+
+void KernelDriver::init_compile() {
+	initStmt(m_stmtStack);
+	resetFreshVarGen();
+	resetFreshLabelGen();
+
+	// Reserved general-purpose variables
+	Int qpuId, qpuCount;
+	qpuId = getUniformInt();
+	qpuCount = getUniformInt();
+}
+
+
 void KernelDriver::compile() {
 	kernelFinish();
+	finishStmt();
 
 	// Obtain the AST
-	body = stmtStack.top();  // stmtStack is a global
-	stmtStack.pop();
+	body = m_stmtStack.top();
+	m_stmtStack.pop();
 
-	// Compile
 	compileKernel(&m_targetCode, body);
 }
 

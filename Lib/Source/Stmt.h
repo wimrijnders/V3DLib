@@ -4,7 +4,6 @@
 #include "Source/Cond.h"
 #include "Source/Syntax.h"
 #include "Source/Ptr.h"
-#include "Source/StmtExtra.h"
 
 namespace QPULib {
 
@@ -50,8 +49,14 @@ void dmaWaitRead();
 void dmaWaitWrite();
 void vpmSetupRead(Dir dir, int n, IntExpr addr, int stride = 1);
 void vpmSetupWrite(Dir dir, IntExpr addr, int stride = 1);
+void initStmt(Stack<Stmt> &stmtStack);
+void finishStmt();
 void kernelFinish();
+Stack<Stmt> &stmtStack();
 
 }  // namespace QPULib
+
+
+#include "gather.h"
 
 #endif  // _QPULIB_SOURCE_STMT_H_

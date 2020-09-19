@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <vector>
 #include <string>
+#include "Common/Stack.h"
 #include "Target/CFG.h"
 #include "Common/SharedArray.h"
 
@@ -22,6 +23,7 @@ public:
 	virtual void encode(int numQPUs) = 0;
 
 	void pretty(const char *filename = nullptr);
+	void init_compile();
 	void compile();
 
 	/**
@@ -47,11 +49,20 @@ protected:
 	virtual void emit_opcodes(FILE *f) {} 
 
 private:
+	Stack<Stmt> m_stmtStack;
   Stmt *body = nullptr;
 
 	void print_source_code(FILE *f);
 	void emit_target_code(FILE *f);
 };
+
+
+#ifdef DEBUG
+
+// Expose for unit tests
+void compileKernel(Seq<Instr>* targetCode, Stmt* body);
+
+#endif
 
 }  // namespace QPULib
 

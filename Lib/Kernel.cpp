@@ -38,20 +38,6 @@ void KernelBase::pretty(bool output_for_vc4, const char *filename) {
 }
 
 
-void KernelBase::init_compile() {
-	controlStack.clear();
-	stmtStack.clear();         // Needs to be run before getUniformInt() below
-	stmtStack.push(mkSkip());  // idem
-	resetFreshVarGen();
-	resetFreshLabelGen();
-
-	// Reserved general-purpose variables
-	Int qpuId, qpuCount;
-	qpuId = getUniformInt();
-	qpuCount = getUniformInt();
-}
-
-
 void KernelBase::invoke_qpu(QPULib::KernelDriver &kernel_driver) {
 	kernel_driver.encode(numQPUs);
 	if (!kernel_driver.handle_errors()) {

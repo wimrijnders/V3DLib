@@ -166,7 +166,6 @@ protected:
 	v3d::KernelDriver m_v3d_driver;
 #endif
 
-	void init_compile();
 	void invoke_qpu(QPULib::KernelDriver &kernel_driver);
 };
 
@@ -190,7 +189,7 @@ protected:
  *   for the kernel.
  *
  *   At time of writing (20200818), for the source code it is notably the end
- *   program sequence (see `kernelFinish()`).
+ *   program sequence (see `KernelDriver::kernelFinish()`).
  *
  *   The interpreter and emulator, however, work with vc4 code. For this reason
  *   it is necessary to have the vc4 kernel driver in use in all build cases.
@@ -205,7 +204,7 @@ public:
 	 */
   Kernel(KernelFunction f) {
 		{
-			init_compile();
+			m_vc4_driver.init_compile();
 			set_compiling_for_vc4(true);
 
 	    // Construct the AST for vc4
@@ -218,11 +217,12 @@ public:
 
 #ifdef QPU_MODE
 		{
-			init_compile();
+			m_v3d_driver.init_compile();
 			set_compiling_for_vc4(false);
 
 	    // Construct the AST for v3d
 	    f(mkArg<ts>()...);
+
 			m_v3d_driver.compile();
 		}
 #endif  // QPU_MODE

@@ -3,9 +3,22 @@
 #include "Support/basics.h"  // fatal()
 #include "Common/Stack.h"
 #include "Source/Int.h"
+#include "Source/StmtExtra.h"
 
 
 namespace QPULib {
+
+namespace {
+	Stack<Stmt> *p_stmtStack = nullptr;
+	Stack<Stmt> controlStack;
+} // anon namespace
+
+
+Stack<Stmt> &stmtStack() {
+	assert(p_stmtStack != nullptr);
+	return *p_stmtStack;
+}
+
 
 // Interface to the embedded language.
 
@@ -15,7 +28,7 @@ namespace QPULib {
 
 void assign(Expr* lhs, Expr* rhs) {
   Stmt* s = mkAssign(lhs, rhs);
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 //=============================================================================
@@ -26,7 +39,7 @@ void If_(Cond c)
 {
   Stmt* s = mkIf(c.cexpr, NULL, NULL);
   controlStack.push(s);
-  stmtStack.push(mkSkip());
+  stmtStack().push(mkSkip());
 }
 
 void If_(BoolExpr b)
@@ -44,13 +57,13 @@ void Else_()
   if (controlStack.size > 0) {
     Stmt* s = controlStack.top();
     if (s->tag == IF && s->ifElse.thenStmt == NULL) {
-      s->ifElse.thenStmt = stmtStack.top();
-      stmtStack.replace(mkSkip());
+      s->ifElse.thenStmt = stmtStack().top();
+      stmtStack().replace(mkSkip());
       ok = 1;
     }
     if (s->tag == WHERE && s->where.thenStmt == NULL) {
-      s->where.thenStmt = stmtStack.top();
-      stmtStack.replace(mkSkip());
+      s->where.thenStmt = stmtStack().top();
+      stmtStack().replace(mkSkip());
       ok = 1;
     }
   }
@@ -70,29 +83,29 @@ void End_()
   if (controlStack.size > 0) {
     Stmt* s = controlStack.top();
     if (s->tag == IF && s->ifElse.thenStmt == NULL) {
-      s->ifElse.thenStmt = stmtStack.top();
+      s->ifElse.thenStmt = stmtStack().top();
       ok = 1;
     }
     else if (s->tag == IF && s->ifElse.elseStmt == NULL) {
-      s->ifElse.elseStmt = stmtStack.top();
+      s->ifElse.elseStmt = stmtStack().top();
       ok = 1;
     }
     if (s->tag == WHERE && s->where.thenStmt == NULL) {
-      s->where.thenStmt = stmtStack.top();
+      s->where.thenStmt = stmtStack().top();
       ok = 1;
     }
     else if (s->tag == WHERE && s->where.elseStmt == NULL) {
-      s->where.elseStmt = stmtStack.top();
+      s->where.elseStmt = stmtStack().top();
       ok = 1;
     }
     if (s->tag == WHILE && s->loop.body == NULL) {
-      s->loop.body = stmtStack.top();
+      s->loop.body = stmtStack().top();
       ok = 1;
     }
     if (s->tag == FOR && s->forLoop.body == NULL) {
       // Convert 'for' loop to 'while' loop
       CExpr* whileCond = s->forLoop.cond;
-      Stmt* whileBody = mkSeq(stmtStack.top(), s->forLoop.inc);
+      Stmt* whileBody = mkSeq(stmtStack().top(), s->forLoop.inc);
       s->tag = WHILE;
       s->loop.body = whileBody;
       s->loop.cond = whileCond;
@@ -100,8 +113,8 @@ void End_()
     }
 
     if (ok) {
-      stmtStack.pop();
-      stmtStack.replace(mkSeq(stmtStack.top(), s));
+      stmtStack().pop();
+      stmtStack().replace(mkSeq(stmtStack().top(), s));
       controlStack.pop();
     }
   }
@@ -119,7 +132,7 @@ void While_(Cond c)
 {
   Stmt* s = mkWhile(c.cexpr, NULL);
   controlStack.push(s);
-  stmtStack.push(mkSkip());
+  stmtStack().push(mkSkip());
 }
 
 void While_(BoolExpr b)
@@ -135,7 +148,7 @@ void Where__(BExpr* b)
 {
   Stmt* s = mkWhere(b, NULL, NULL);
   controlStack.push(s);
-  stmtStack.push(mkSkip());
+  stmtStack().push(mkSkip());
 }
 
 //=============================================================================
@@ -146,7 +159,7 @@ void For_(Cond c)
 {
   Stmt* s = mkFor(c.cexpr, NULL, NULL);
   controlStack.push(s);
-  stmtStack.push(mkSkip());
+  stmtStack().push(mkSkip());
 }
 
 void For_(BoolExpr b)
@@ -157,9 +170,9 @@ void For_(BoolExpr b)
 void ForBody_()
 {
   Stmt* s = controlStack.top();
-  s->forLoop.inc = stmtStack.top();
-  stmtStack.pop();
-  stmtStack.push(mkSkip());
+  s->forLoop.inc = stmtStack().top();
+  stmtStack().pop();
+  stmtStack().push(mkSkip());
 }
 
 //=============================================================================
@@ -172,7 +185,7 @@ void Print(const char* str)
   s->tag = PRINT;
   s->print.tag = PRINT_STR;
   s->print.str = str;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 void Print(IntExpr x)
@@ -181,7 +194,7 @@ void Print(IntExpr x)
   s->tag = PRINT;
   s->print.tag = PRINT_INT;
   s->print.expr = x.expr;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 //=============================================================================
@@ -196,7 +209,7 @@ static void vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride)
   s->setupVPMRead.stride = stride;
   s->setupVPMRead.hor = hor;
   s->setupVPMRead.addr = addr.expr;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 static void vpmSetupWriteCore(IntExpr addr, bool hor, int stride)
@@ -206,7 +219,7 @@ static void vpmSetupWriteCore(IntExpr addr, bool hor, int stride)
   s->setupVPMWrite.stride = stride;
   s->setupVPMWrite.hor = hor;
   s->setupVPMWrite.addr = addr.expr;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 void vpmSetupRead(Dir d, int n, IntExpr addr, int stride)
@@ -228,7 +241,7 @@ void dmaSetReadPitch(IntExpr stride)
   Stmt* s = mkStmt();
   s->tag = SET_READ_STRIDE;
   s->stride = stride.expr;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 void dmaSetWriteStride(IntExpr stride)
@@ -236,7 +249,7 @@ void dmaSetWriteStride(IntExpr stride)
   Stmt* s = mkStmt();
   s->tag = SET_WRITE_STRIDE;
   s->stride = stride.expr;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr,
@@ -249,7 +262,7 @@ void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr,
   s->setupDMARead.rowLen = rowLen;
   s->setupDMARead.vpitch = vpitch;
   s->setupDMARead.vpmAddr = vpmAddr.expr;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen)
@@ -260,29 +273,34 @@ void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen)
   s->setupDMAWrite.numRows = numRows;
   s->setupDMAWrite.rowLen = rowLen;
   s->setupDMAWrite.vpmAddr = vpmAddr.expr;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 void dmaWaitRead()
 {
   Stmt* s = mkStmt();
   s->tag = DMA_READ_WAIT;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 void dmaWaitWrite()
 {
   Stmt* s = mkStmt();
   s->tag = DMA_WRITE_WAIT;
-  stmtStack.replace(mkSeq(stmtStack.top(), s));
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
 // ============================================================================
 // QPU code for clean exit
 // ============================================================================
 
-void kernelFinish()
-{
+void finishStmt() {
+	assert(p_stmtStack != nullptr);
+	p_stmtStack = nullptr;
+}
+
+
+void kernelFinish() {
   // Ensure outstanding DMAs have completed
   dmaWaitRead();
   dmaWaitWrite();
@@ -298,6 +316,16 @@ void kernelFinish()
   Else
     semaInc(15);
   End
+}
+
+
+void initStmt(Stack<Stmt> &stmtStack) {
+	controlStack.clear();
+	stmtStack.clear();
+	stmtStack.push(mkSkip());
+
+	assert(p_stmtStack == nullptr);
+	p_stmtStack = &stmtStack;
 }
 
 }  // namespace QPULib

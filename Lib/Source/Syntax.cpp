@@ -14,8 +14,6 @@ static int globalVarId = 0;
 
 // Used for constructing abstract syntax trees
 Heap        astHeap("abstract syntax tree", AST_HEAP_SIZE);
-Stack<Stmt> stmtStack;
-Stack<Stmt> controlStack;
 
 // ============================================================================
 // Functions on global variables

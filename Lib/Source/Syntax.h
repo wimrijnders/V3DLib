@@ -318,8 +318,6 @@ void resetFreshVarGen(int val);
 
 // Used for constructing abstract syntax trees
 extern Heap        astHeap;
-extern Stack<Stmt> stmtStack;
-extern Stack<Stmt> controlStack;
 
 }  // namespace QPULib
 
