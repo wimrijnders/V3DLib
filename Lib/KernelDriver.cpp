@@ -3,11 +3,52 @@
 #include "Support/debug.h"
 #include "Source/Syntax.h"  // stmtStack
 #include "Source/Pretty.h"
-#include "compileKernel.h"
+#include "Source/Translate.h"
 #include "Target/Pretty.h"
+#include "Target/Satisfy.h"
+#include "Target/LoadStore.h"
+#include "Target/RemoveLabels.h"
+#include "SourceTranslate.h"
 
 
 namespace QPULib {
+
+// ============================================================================
+// Compile kernel
+// ============================================================================
+
+/**
+ * @param body        top of the AST
+ * @param targetCode  output variable for the target code assembled from the AST and adjusted
+ */
+void compileKernel(Seq<Instr>* targetCode, Stmt* body) {
+	assert(targetCode != nullptr);
+	assert(body != nullptr);
+
+  // Translate to target code
+  translateStmt(targetCode, body);
+
+	getSourceTranslate().add_init(*targetCode);
+
+  // Load/store pass
+  loadStorePass(targetCode);
+
+  // Construct control-flow graph
+  CFG cfg;
+  buildCFG(targetCode, &cfg);
+
+  // Apply live-range splitter
+  //liveRangeSplit(targetCode, &cfg);
+
+  // Perform register allocation
+  getSourceTranslate().regAlloc(&cfg, targetCode);
+
+  // Satisfy target code constraints
+  satisfy(targetCode);
+
+  // Translate branch-to-labels to relative branches
+  removeLabels(targetCode);
+}
 
 void KernelDriver::compile() {
 	kernelFinish();

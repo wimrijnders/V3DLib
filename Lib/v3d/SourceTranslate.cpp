@@ -61,7 +61,7 @@ void SourceTranslate::setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) {
  * @param seq  list of generated instructions up till now
  */
 void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
-	printf("Entered storeRequest for v3d\n");
+	//printf("Entered storeRequest for v3d\n");
 
   if (data->tag != VAR || addr->tag != VAR) {
     data = putInVar(seq, data);
@@ -151,14 +151,14 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	Seq<Instr> ret;
 
 /*
-16: A0 <-{sf} sub(A0, 3)                                                                                               
-17: if all(ZC) goto PC+1+3                                                                                             
-18: NOP                                                                                                                
-19: NOP                                                                                                                
-20: NOP                                                                                                                
-21: ACC1 <- 7                                                                                                          
-22: S[VPM_WRITE] <- or(ACC1, ACC1)                                                                                     
-23: S[DMA_ST_ADDR] <- or(A1, A1)   
+16: A0 <-{sf} sub(A0, 3)
+17: if all(ZC) goto PC+1+3
+18: NOP
+19: NOP
+20: NOP
+21: ACC1 <- 7
+22: S[VPM_WRITE] <- or(ACC1, ACC1)
+23: S[DMA_ST_ADDR] <- or(A1, A1)
 */
 	//if (QPU_NUM == 8) {
 	//ret << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()

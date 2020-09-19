@@ -6,7 +6,6 @@
 #include "Source/Ptr.h"
 #include "Source/Cond.h"
 #include "Source/Stmt.h"
-#include "compileKernel.h"
 #include "Kernel.h"
 
 #endif
