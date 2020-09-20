@@ -1,4 +1,5 @@
 #include "QPULib.h"
+#include "Source/DMA.h"
 #include "Support/Settings.h"
 
 using namespace QPULib;

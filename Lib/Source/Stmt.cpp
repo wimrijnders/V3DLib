@@ -3,14 +3,45 @@
 #include "Support/basics.h"  // fatal()
 #include "Common/Stack.h"
 #include "Source/Int.h"
-#include "Source/StmtExtra.h"
-
 
 namespace QPULib {
 
 namespace {
 	Stack<Stmt> *p_stmtStack = nullptr;
 	Stack<Stmt> controlStack;
+
+
+//=============================================================================
+// Host IRQ
+//=============================================================================
+
+inline void hostIRQ()
+{
+  Stmt* s = mkStmt();
+  s->tag = SEND_IRQ_TO_HOST;
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
+}
+
+//=============================================================================
+// Semaphore access
+//=============================================================================
+
+inline void semaInc(int semaId)
+{
+  Stmt* s = mkStmt();
+  s->tag = SEMA_INC;
+  s->semaId = semaId;
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
+}
+
+inline void semaDec(int semaId)
+{
+  Stmt* s = mkStmt();
+  s->tag = SEMA_DEC;
+  s->semaId = semaId;
+  stmtStack().replace(mkSeq(stmtStack().top(), s));
+}
+
 } // anon namespace
 
 

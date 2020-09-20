@@ -295,7 +295,7 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 
 void Liveness::compute(Seq<Instr>* instrs) {
 	liveness(instrs, *this);
-	printf("%s", dump().c_str());
+	//printf("%s", dump().c_str());
 
   // Optimisation pass that introduces accumulators
   introduceAccum(*this, instrs);

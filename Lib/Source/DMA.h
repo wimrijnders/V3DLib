@@ -1,38 +1,7 @@
-#ifndef _QPULIB_SOURCE_STMTEXTRA_H_
-#define _QPULIB_SOURCE_STMTEXTRA_H_
+#ifndef _QPULIB_SOURCE_DMA_H_
+#define _QPULIB_SOURCE_DMA_H_
 
 namespace QPULib {
-
-//=============================================================================
-// Host IRQ
-//=============================================================================
-
-inline void hostIRQ()
-{
-  Stmt* s = mkStmt();
-  s->tag = SEND_IRQ_TO_HOST;
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
-}
-
-//=============================================================================
-// Semaphore access
-//=============================================================================
-
-inline void semaInc(int semaId)
-{
-  Stmt* s = mkStmt();
-  s->tag = SEMA_INC;
-  s->semaId = semaId;
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
-}
-
-inline void semaDec(int semaId)
-{
-  Stmt* s = mkStmt();
-  s->tag = SEMA_DEC;
-  s->semaId = semaId;
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
-}
 
 //=============================================================================
 // VPM operations
@@ -86,4 +55,4 @@ template <typename T> inline void dmaStartWrite(Ptr<T> &memAddr)
   { dmaStartWriteExpr(memAddr.expr); }
 }  // namespace QPULib
 
-#endif  // _QPULIB_SOURCE_STMTEXTRA_H_
+#endif  // _QPULIB_SOURCE_DMA_H_
