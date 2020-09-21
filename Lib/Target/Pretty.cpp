@@ -229,7 +229,7 @@ void pretty(FILE *f, Instr instr)
       fprintf(f, " goto L%i\n", instr.BRL.label);
       return;
     case LAB:
-      fprintf(f, "L%i:\n", instr.label);
+      fprintf(f, "L%i:\n", instr.label());
       return;
     case NO_OP:
       fprintf(f, "NOP\n");

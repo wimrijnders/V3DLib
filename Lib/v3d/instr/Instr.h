@@ -131,6 +131,7 @@ Instr tidx(Register const &reg);
 Instr shr(Location const &reg1, Location const & reg2, SmallImm const &imm3);
 Instr shl(Location const &reg1, Location const & reg2, SmallImm const &imm3);
 Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3);
+Instr asr(Location const &reg1, Location const & reg2, SmallImm const &imm3);
 
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr eidx(Register const &reg);

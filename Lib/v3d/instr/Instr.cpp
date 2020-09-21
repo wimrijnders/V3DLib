@@ -716,6 +716,15 @@ Instr shl(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 }
 
 
+Instr asr(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+	Instr instr;
+	instr.alu_add_set(loc1, loc2,  imm3);
+
+	instr.alu.add.op    = V3D_QPU_A_ASR;
+	return instr;
+}
+
+
 Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3) {
 	assertq(imm2 == imm3, "Operands a and b can only be both immediates if they are the exact same value");
 

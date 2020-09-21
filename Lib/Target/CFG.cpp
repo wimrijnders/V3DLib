@@ -51,8 +51,8 @@ void buildCFG(Seq<Instr>* instrs, CFG* cfg)
 
     // Remember location of each label
     if (instr.tag == LAB) {
-      assert(instr.label >= 0 && instr.label < numLabels);
-      labelMap[instr.label] = i;
+      assert(instr.label() >= 0 && instr.label() < numLabels);
+      labelMap[instr.label()] = i;
     }
   }
 

@@ -109,7 +109,6 @@ Instr genADD(Reg dst, Reg srcA, Reg srcB)
 }
 
 
-
 // Generate left-shift instruction.
 
 Instr genLShift(Reg dst, Reg srcA, int n) {
@@ -121,23 +120,7 @@ Instr genLShift(Reg dst, Reg srcA, int n) {
 
 Instr genIncr(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
-
-  AssignCond always;
-  always.tag = ALWAYS;
-
-  Instr instr;
-  instr.tag                   = ALU;
-  instr.ALU.setFlags          = false;
-  instr.ALU.cond              = always;
-  instr.ALU.dest              = dst;
-  instr.ALU.srcA.tag          = REG;
-  instr.ALU.srcA.reg          = srcA;
-  instr.ALU.op                = A_ADD;
-  instr.ALU.srcB.tag          = IMM;
-  instr.ALU.srcB.smallImm.tag = SMALL_IMM;
-  instr.ALU.srcB.smallImm.val = n;
-
-  return instr;
+	return genInstr(A_ADD, dst, srcA, n);
 }
 
 // Is last instruction in a basic block?
@@ -201,6 +184,12 @@ Reg rf(uint8_t index) {
 Instr shr(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
 	return genInstr(A_SHR, dst, srcA, n);
+}
+
+
+Instr sub(Reg dst, Reg srcA, int n) {
+  assert(n >= 0 && n <= 15);
+	return genInstr(A_SUB, dst, srcA, n);
 }
 
 

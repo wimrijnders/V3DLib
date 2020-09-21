@@ -28,7 +28,7 @@ void removeLabels(Seq<Instr>* instrs)
   for (int i = 0, j = 0; i < instrs->numElems; i++) {
     Instr instr = instrs->elems[i];
     if (instr.tag == LAB) {
-      labels[instr.label] = j;
+      labels[instr.label()] = j;
     }
     else {
       newInstrs.append(instr);

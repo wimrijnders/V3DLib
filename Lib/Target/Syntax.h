@@ -284,6 +284,27 @@ struct BranchTarget {
 
 typedef int Label;
 
+
+// =========================
+// Fresh variable generation
+// =========================
+
+Reg freshReg();
+
+// ======================
+// Fresh label generation
+// ======================
+
+// Obtain a fresh label
+Label freshLabel();
+
+// Number of fresh labels used
+int getFreshLabelCount();
+
+// Reset fresh label generator
+void resetFreshLabelGen();
+void resetFreshLabelGen(int val);
+
 // ============================================================================
 // Instructions
 // ============================================================================
@@ -348,6 +369,7 @@ struct Instr {
   // What kind of instruction is it?
   InstrTag tag;
 
+
   union {
     // Load immediate
     struct { bool setFlags; AssignCond cond; Reg dest; Imm imm; } LI;
@@ -367,7 +389,8 @@ struct Instr {
     struct { BranchCond cond; Label label; } BRL;
 
     // Labels, denoting branch targets
-    Label label;
+    Label m_label;  // Renamed during debugging
+		                // TODO perhaps revert
 
     // Semaphores
     // ----------
@@ -407,6 +430,42 @@ struct Instr {
 	bool isMul() const;
 	bool isUniformLoad() const;
 	bool isTMUAWrite() const;
+
+	Instr &setFlags() {
+		if (tag == InstrTag::LI) {
+			LI.setFlags = true;
+		} else if (tag == InstrTag::ALU) {
+			ALU.setFlags = true;
+		} else {
+			assert(false);
+		}
+
+		return *this;
+	}
+
+
+	Instr &allzc() {
+		assert(tag == InstrTag::BRL);
+		BRL.cond.tag  = COND_ALL;
+		BRL.cond.flag = Flag::ZC;
+		return *this;
+	}
+
+	Label cond_label() {
+		assert(tag == InstrTag::BRL);
+		return BRL.label;
+	}
+
+
+	void label(Label val) {
+		assert(tag == InstrTag::LAB);
+		m_label = val;
+	}
+
+	Label label() const {
+		assert(tag == InstrTag::LAB);
+		return m_label;
+	}
 };
 
 // Instruction id: also the index of an instruction
@@ -434,25 +493,6 @@ Instr genIncr(Reg dst, Reg srcA, int n);
 // Is last instruction in a basic block?
 bool isLast(Instr instr);
 
-// =========================
-// Fresh variable generation
-// =========================
-
-Reg freshReg();
-
-// ======================
-// Fresh label generation
-// ======================
-
-// Obtain a fresh label
-Label freshLabel();
-
-// Number of fresh labels used
-int getFreshLabelCount();
-
-// Reset fresh label generator
-void resetFreshLabelGen();
-void resetFreshLabelGen(int val);
 
 namespace Target {
 namespace instr {
@@ -466,6 +506,7 @@ Reg rf(uint8_t index);
 inline Instr mov(Reg dst, Reg src)            { return genOR(dst, src, src); }
 inline Instr shl(Reg dst, Reg srcA, int val)  { return genLShift(dst, srcA, val); }
 inline Instr add(Reg dst, Reg srcA, Reg srcB) { return genADD(dst, srcA, srcB); }
+Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
 Instr band(Reg dst, Reg srcA, int n);
 

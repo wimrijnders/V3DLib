@@ -15,8 +15,10 @@ void hello(Ptr<Int> p)
 	//*p = (index() + me() << 4) << 2;   // TODO: execution order appears wrong, verify and fix
 	//*p = (index() + (me() << 4)) << 2;
 
-	If (me() == 3) 
-		*p = 7;	
+	Int id;
+
+	If (numQPUs() == 8)  // Alternative is 1, then qpu num initalized to 0 is ok
+		id = (numQPUs() >> 2) & 0b1111;
 	End
 }
 

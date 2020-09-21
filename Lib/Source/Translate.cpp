@@ -859,7 +859,6 @@ void stmt(Seq<Instr>* seq, Stmt* s)
     BranchCond cond  = condExp(seq, s->ifElse.cond);
     
     // Branch to 'else' statement
-    Instr branchElse;
     instr.tag       = BRL;
     instr.BRL.cond  = negBranchCond(cond);
     instr.BRL.label = elseLabel;
@@ -876,7 +875,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
 
     // Label for 'else' statement
     instr.tag   = LAB;
-    instr.label = elseLabel;
+    instr.label(elseLabel);
     seq->append(instr);
 
     // Compile 'else' statement
@@ -884,7 +883,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
 
     // Label for endif
     instr.tag   = LAB;
-    instr.label = endifLabel;
+    instr.label(endifLabel);
     seq->append(instr);
 
     return;
@@ -909,7 +908,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
 
     // Start label
     instr.tag   = LAB;
-    instr.label = startLabel;
+    instr.label(startLabel);
     seq->append(instr);
 
     // Compile body
@@ -926,7 +925,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
 
     // End label
     instr.tag   = LAB;
-    instr.label = endLabel;
+    instr.label(endLabel);
     seq->append(instr);
 
     return;

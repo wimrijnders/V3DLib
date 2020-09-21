@@ -134,6 +134,27 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 }
 
 
+Instr cond_branch(Label label) {
+	Instr instr;
+
+	instr.tag       = BRL;
+	instr.BRL.cond.tag  = COND_ALWAYS;    // Will be set with another call
+	instr.BRL.label = label;
+
+	return instr;
+}
+
+
+Instr label(Label in_label) {
+	Instr instr;
+
+	instr.tag = LAB;
+	instr.label(in_label);
+
+	return instr;
+}
+
+
 /**
  * Add extra initialization code after uniform loads
  */
@@ -150,23 +171,24 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 
 	Seq<Instr> ret;
 
-/*
-16: A0 <-{sf} sub(A0, 3)
-17: if all(ZC) goto PC+1+3
-18: NOP
-19: NOP
-20: NOP
-21: ACC1 <- 7
-22: S[VPM_WRITE] <- or(ACC1, ACC1)
-23: S[DMA_ST_ADDR] <- or(A1, A1)
-*/
-	//if (QPU_NUM == 8) {
-	//ret << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
-
 	ret << mov(ACC1, QPU_ID)
 	    << shr(ACC1, ACC1, 2)
 	    << band(rf(RSV_QPU_ID), ACC1, 0b1111)
 	    << nop();                       // Kludge: prevent the peephole optimization `introduceAccum()` from kicking in
+
+	// Broadly:
+	//
+	// If (numQPUs() == 8)  // Alternative is 1, then qpu num initalized to 0 is ok
+	// 	me() = (qpu_id() >> 2) & 0b1111;
+	// End
+	Label endifLabel = freshLabel();
+
+	ret << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
+	    << cond_branch(endifLabel).allzc()  // nop()'s added downstream
+			<< mov(ACC0, QPU_ID)
+			<< shr(ACC0, ACC0, 2)
+	    << band(rf(RSV_QPU_ID), ACC0, 15)
+			<< label(endifLabel);
 
 	// offset = 4 * (thread_num + 16 * qpu_num)";
 	ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID

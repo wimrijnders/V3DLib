@@ -306,9 +306,15 @@ Instructions translateSpecialIndex(QPULib::Instr &src_instr) {
 		auto src_dst = src_instr.ALU.dest;
 		bool is_r0 = (src_dst.tag == ACC && src_dst.regId == 0);
 
-		if (is_r0) {
-			return ret;
-		}
+		// The goal here is to prevent mov(r0, r0)
+		// However, returning screws up the code handling later,
+		// because the special reg's are not translated
+		//if (is_r0) {
+		//	return ret;
+		//}
+
+		// For now, let mov(r0, r0) just happen
+		// (tried NO_OP, assertion fails on dest reg because we're in the ALU processing branch
 	}
 
 
@@ -364,6 +370,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		switch (src_instr.ALU.op) {
 			case A_SHL:  ret << shl(*dst_reg, *src_a, imm);        break;
 			case A_SHR:  ret << shr(*dst_reg, *src_a, imm);        break;
+			case A_ASR:  ret << asr(*dst_reg, *src_a, imm);        break;
 			case A_BAND: ret << band(*dst_reg, *src_a, imm);       break;
 			case A_SUB:  ret << sub(*dst_reg, *src_a, imm);        break;
 			case A_ADD:  ret << add(*dst_reg, *src_a, imm);        break;
@@ -400,8 +407,9 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 			debug_break("Assign condition not ALWAYS");  // Warn me if this happens
 		}
 
-		if (src_instr.ALU.cond.flag != ZS) {
-			debug_break("Assign condition flag not ZS");  // Warn me if this happens
+		// Warn me if unhandled cases happen
+		if (src_instr.ALU.cond.flag != ZS && src_instr.ALU.cond.flag != ZC) {
+			debug_break("Assign condition flag not ZS/ZC");
 		}
 
 		Instr &instr = ret.back();
