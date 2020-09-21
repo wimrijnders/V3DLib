@@ -464,9 +464,9 @@ Instr &Instr::fmul(Location const &loc1, Location const &loc2, SmallImm const &i
 }
 
 
-Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const &loc3) {
+Instr &Instr::smul24(Location const &dst, Location const &loca, Location const &locb) {
 	m_doing_add = false;
-	alu_mul_set(loc1, loc2, loc3);
+	alu_mul_set(dst, loca, locb);
 
 	alu.mul.op    = V3D_QPU_M_SMUL24;
 	return *this;
@@ -477,16 +477,21 @@ Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const 
  * NOTE: Added this one myself, not sure if correct
  * TODO verify correctness
  */
-Instr &Instr::smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
+Instr &Instr::smul24(Location const &dst, SmallImm const &imma, Location const &locb) {
 	m_doing_add = false;
+	alu_mul_set(dst, imma, locb);
 
-	alu_mul_set_dst(loc1);
-	alu_mul_set_imm_a(imm2);
-	alu_mul_set_reg_a(loc3);
+	alu.mul.op    = V3D_QPU_M_SMUL24;
+	return *this;
+}
 
-	//alu.mul.a     = V3D_QPU_MUX_B;
-	alu.mul.b     = V3D_QPU_MUX_A;
-	alu.mul.b_unpack = loc3.input_unpack();
+
+/**
+ * TODO verify correctness
+ */
+Instr &Instr::smul24(Location const &dst, Location const &loca, SmallImm const &immb) {
+	m_doing_add = false;
+	alu_mul_set(dst, loca, immb);
 
 	alu.mul.op    = V3D_QPU_M_SMUL24;
 	return *this;
@@ -495,10 +500,9 @@ Instr &Instr::smul24(Location const &loc1, SmallImm const &imm2, Location const 
 
 Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3) {
 	m_doing_add = false;
-
 	alu_mul_set(rf_addr1, reg2, reg3);
-	alu.mul.op = V3D_QPU_M_VFMUL;
 
+	alu.mul.op = V3D_QPU_M_VFMUL;
 	return *this;
 }
 
@@ -615,6 +619,17 @@ void Instr::alu_mul_set_dst(Location const &loc1) {
 }
 
 
+bool Instr::raddr_a_is_safe(Location const &loc) const {
+	// Is raddr_a in use by add alu?
+	bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_A) || (alu.add.b == V3D_QPU_MUX_A);
+
+	// Is it by chance the same value?
+	bool raddr_a_same = (raddr_a == loc.to_waddr());
+
+	return (!raddr_a_in_use || raddr_a_same);
+}
+
+
 void Instr::alu_mul_set_reg_a(Location const &loc2) {
 	if (!loc2.is_rf()) {
 		// src is a register
@@ -622,24 +637,16 @@ void Instr::alu_mul_set_reg_a(Location const &loc2) {
 	} else {
 		// src is a register file index
 
-		// Is raddr_a in use by add alu?
-		bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_A) || (alu.add.b == V3D_QPU_MUX_A);
-
-		// Is it by chance the same value?
-		bool raddr_a_same = (raddr_a == loc2.to_waddr());
-
-		if (raddr_a_in_use && !raddr_a_same) {
+		if (raddr_a_is_safe(loc2)) {
+			raddr_a   = loc2.to_waddr();  // This could overwrite with the same value
+			alu.mul.a = V3D_QPU_MUX_A;
+		} else {
 			// Use raddr_b instead
 			assertq(!(alu.add.a == V3D_QPU_MUX_B) || (alu.add.b == V3D_QPU_MUX_B),
 			  "alu_mul_set_reg_a: both raddr a and b in use by add alu");
 
-			raddr_b    = loc2.to_waddr();
+			raddr_b    = loc2.to_waddr();  // This could 
 			alu.mul.a  = V3D_QPU_MUX_B;
-
-		} else {
-			// raddr_a is safe
-			raddr_a   = loc2.to_waddr();
-			alu.mul.a = V3D_QPU_MUX_A;
 		}
 	}
 
@@ -652,12 +659,18 @@ void Instr::alu_mul_set_reg_b(Location const &loc3) {
 		alu.mul.b        = loc3.to_mux();
 	} else {
 		if (alu.mul.a == V3D_QPU_MUX_B) {
-			assertq((raddr_b == loc3.to_waddr()), "alu_mul_set_reg_b: raddr b in use by mul alu a with different value");
-			// TODO if fires, handle this case
-		}
+			//assertq((raddr_b == loc3.to_waddr()), "alu_mul_set_reg_b: raddr b in use by mul alu a with different value");
 
-		raddr_b          = loc3.to_waddr(); 
-		alu.mul.b        = V3D_QPU_MUX_B;
+			if (raddr_a_is_safe(loc3)) {
+				raddr_a          = loc3.to_waddr(); 
+				alu.mul.b        = V3D_QPU_MUX_A;
+			} else {
+				debug_break("alu_mul_set_reg_b(): raddr_a in use by add alu and raddr_b in use for immediate");	
+			}
+		} else {
+			raddr_b          = loc3.to_waddr(); 
+			alu.mul.b        = V3D_QPU_MUX_B;
+		}
 	}
 
 	alu.mul.b_unpack = loc3.input_unpack();
@@ -675,6 +688,13 @@ void Instr::alu_mul_set(Location const &loc1, Location const &loc2, SmallImm con
 	alu_mul_set_dst(loc1);
 	alu_mul_set_reg_a(loc2);
 	alu_mul_set_imm_b(imm3);
+}
+
+
+void Instr::alu_mul_set(Location const &dst, SmallImm const &imma, Location const &locb) {
+	alu_mul_set_dst(dst);
+	alu_mul_set_imm_a(imma);
+	alu_mul_set_reg_b(locb);
 }
 
 

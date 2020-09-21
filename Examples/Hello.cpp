@@ -10,8 +10,6 @@ QPULib::Settings settings;
 void hello(Ptr<Int> p)
 {
   *p = 1;
-  //Int val = *p * 2;
-  //*p = val;
 }
 
 
@@ -21,7 +19,7 @@ int main(int argc, const char *argv[]) {
 
   // Construct kernel
   auto k = compile(hello);
-  k.setNumQPUs(8);
+  k.setNumQPUs(8);  // TODO: with '1' no output, find out why
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(8*16);

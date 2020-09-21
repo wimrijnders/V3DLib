@@ -79,8 +79,9 @@ public:
 	Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
 	Instr &fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3);
-	Instr &smul24(Location const &loc1, Location const &loc2, Location const &loc3); 
-	Instr &smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3); 
+	Instr &smul24(Location const &dst, Location const &loca, Location const &locb); 
+	Instr &smul24(Location const &dst, SmallImm const &imma, Location const &locb); 
+	Instr &smul24(Location const &dst, Location const &loca, SmallImm const &immb); 
 	Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
 
 	Instr &rotate(Location const &dst, Location const &loca, SmallImm const &immb);
@@ -104,6 +105,7 @@ public:
 	void alu_add_set(Location const &dst, Location const &srca, SmallImm const &immb);
 	void alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_mul_set(Location const &loc1, Location const &loc2, SmallImm const &imm3); 
+	void alu_mul_set(Location const &dst, SmallImm const &imma, Location const &locb); 
 
 private:
 	static uint64_t const NOP;
@@ -118,6 +120,8 @@ private:
 	void set_c(v3d_qpu_cond val);
 	void set_uf(v3d_qpu_uf val);
 	void set_pf(v3d_qpu_pf val);
+
+	bool raddr_a_is_safe(Location const &loc) const;
 };
 
 
@@ -129,10 +133,10 @@ Instr nop();
 Instr ldunifrf(uint8_t rf_address);
 Instr tidx(Register const &reg);
 
-Instr shr(Location const &reg1, Location const & reg2, SmallImm const &imm3);
-Instr shl(Location const &reg1, Location const & reg2, SmallImm const &imm3);
+Instr shr(Location const &reg1, Location const &reg2, SmallImm const &imm3);
+Instr shl(Location const &reg1, Location const &reg2, SmallImm const &imm3);
 Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3);
-Instr asr(Location const &reg1, Location const & reg2, SmallImm const &imm3);
+Instr asr(Location const &reg1, Location const &reg2, SmallImm const &imm3);
 
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr eidx(Register const &reg);
