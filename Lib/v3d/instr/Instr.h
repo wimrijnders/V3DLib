@@ -71,9 +71,10 @@ public:
 	Instr &add(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 
-	Instr &mov(Register const &reg, uint8_t val);
+	Instr &mov(Location const &dst, uint8_t val);
 	Instr &mov(uint8_t rf_addr, Register const &reg);
 	Instr &mov(Location const &loc1, Location const &loc2);
+	Instr &fmov(Location const &dst, SmallImm const &imma);
 
 	Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);

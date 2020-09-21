@@ -81,13 +81,13 @@ bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniform
 		{0,0,0,0},
 		(uint64_t) m_bo_handles.data(),
 		m_bo_handles.size(),
-		0,
-		0
+		0,   // in_sync
+		0    // out_sync
 	};
 
-	uint64_t  timeout_ns = 1000000000llu * m_timeout_sec;
+	uint64_t timeout_ns = 1000000000llu * m_timeout_sec;
 
-	bool ret = 0 == v3d_submit_csd(st);
+	bool ret = (0 == v3d_submit_csd(st));
 	assert(ret);
 	if (ret) {
 		ret = v3d_wait_bo(m_bo_handles, timeout_ns);

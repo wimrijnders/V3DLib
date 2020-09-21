@@ -16,6 +16,36 @@
 
 - [X] Enable debug-build, for debugging. Currently, an indication is given in the Makefile how to do this.
 
+## Compile source code
+
+- [ ] Following generation is wrong *(this is probably a v3d issue)*. Source code:
+
+    *p = 4*(index() + 16*me());
+
+  Target code:
+
+    22: ACC1 <- 16
+    23: ACC1 <- mul24(ACC1, A0)
+    24: ACC1 <- add(S[ELEM_NUM], ACC1)
+    25: ACC1 <- mul24(4, ACC1)
+    26: S[VPM_WRITE] <- or(ACC1, ACC1)
+    27: S[DMA_ST_ADDR] <- or(A2, A2)
+
+  `v3d` assembly:
+
+    or  r1, 0x41800000, 0x41800000; nop
+    nop                  ; smul24  r1, r1, rf0
+    eidx  r0             ; nop
+    add  r1, r0, r1      ; nop
+    nop                  ; smul24  r1, 4, rf0   // Should be `smul24 r1, 4, r1` or similar
+    or  tmud, r1, r1     ; nop
+    or  tmua, rf2, rf2   ; nop
+
+  In assembled code, rf0 (QPU_NUM) gets reloaded, cancelling the previous operations
+  The result is thus: `*p = 4*me()`
+
+
+
 
 ## Documentation
 

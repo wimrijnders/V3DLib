@@ -171,11 +171,6 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 
 	Seq<Instr> ret;
 
-	ret << mov(ACC1, QPU_ID)
-	    << shr(ACC1, ACC1, 2)
-	    << band(rf(RSV_QPU_ID), ACC1, 0b1111)
-	    << nop();                       // Kludge: prevent the peephole optimization `introduceAccum()` from kicking in
-
 	// Broadly:
 	//
 	// If (numQPUs() == 8)  // Alternative is 1, then qpu num initalized to 0 is ok

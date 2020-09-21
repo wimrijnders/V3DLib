@@ -7,19 +7,11 @@ QPULib::Settings settings;
 
 
 // Define function that runs on the GPU.
-
 void hello(Ptr<Int> p)
 {
   *p = 1;
-	//*p = 4*(index() + 16*me());        // TODO: Should do the same as shift left, but doesn't. debug
-	//*p = (index() + me() << 4) << 2;   // TODO: execution order appears wrong, verify and fix
-	//*p = (index() + (me() << 4)) << 2;
-
-	Int id;
-
-	If (numQPUs() == 8)  // Alternative is 1, then qpu num initalized to 0 is ok
-		id = (numQPUs() >> 2) & 0b1111;
-	End
+  //Int val = *p * 2;
+  //*p = val;
 }
 
 

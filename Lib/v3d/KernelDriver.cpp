@@ -368,15 +368,16 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		SmallImm imm = encodeSmallImm(reg_b);
 
 		switch (src_instr.ALU.op) {
-			case A_SHL:  ret << shl(*dst_reg, *src_a, imm);        break;
-			case A_SHR:  ret << shr(*dst_reg, *src_a, imm);        break;
-			case A_ASR:  ret << asr(*dst_reg, *src_a, imm);        break;
-			case A_BAND: ret << band(*dst_reg, *src_a, imm);       break;
-			case A_SUB:  ret << sub(*dst_reg, *src_a, imm);        break;
-			case A_ADD:  ret << add(*dst_reg, *src_a, imm);        break;
-			case M_FMUL: ret << nop().fmul(*dst_reg, *src_a, imm); break;
-			case A_ItoF: ret << itof(*dst_reg, *src_a, imm);       break;
-			case A_FtoI: ret << ftoi(*dst_reg, *src_a, imm);       break;
+			case A_SHL:   ret << shl(*dst_reg, *src_a, imm);          break;
+			case A_SHR:   ret << shr(*dst_reg, *src_a, imm);          break;
+			case A_ASR:   ret << asr(*dst_reg, *src_a, imm);          break;
+			case A_BAND:  ret << band(*dst_reg, *src_a, imm);         break;
+			case A_SUB:   ret << sub(*dst_reg, *src_a, imm);          break;
+			case A_ADD:   ret << add(*dst_reg, *src_a, imm);          break;
+			case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, imm);   break;
+			//case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;  // Not working yet
+			case A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;
+			case A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -403,13 +404,13 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	}
 
 	if (src_instr.ALU.setFlags) {
-		if (src_instr.ALU.cond.tag != ALWAYS) {
-			debug_break("Assign condition not ALWAYS");  // Warn me if this happens
-		}
+		if (src_instr.ALU.cond.tag != ALWAYS) { // Assuming that cond.flag is irrelevant if tag == ALWAYS
+			breakpoint
 
-		// Warn me if unhandled cases happen
-		if (src_instr.ALU.cond.flag != ZS && src_instr.ALU.cond.flag != ZC) {
-			debug_break("Assign condition flag not ZS/ZC");
+			// Warn me if unhandled cases happen
+			if (src_instr.ALU.cond.flag != ZS && src_instr.ALU.cond.flag != ZC) {
+				debug_break("Assign condition flag not ZS/ZC");
+			}
 		}
 
 		Instr &instr = ret.back();
@@ -470,26 +471,53 @@ Instructions encodeLoadImmediate(QPULib::Instr instr) {
 	assert(instr.tag == LI);
 
 	Instructions ret;
+	auto dst = encodeDestReg(instr);
+	Instr out_instr;
 	int rep_value;
 
-	if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
-		// TODO: figure out how to handle large immediates, if necessary at all
-		std::string str = "LI: Can't handle value '";
-		str += std::to_string(instr.LI.imm.intVal);
-		str += "'as small immediate";
+	if (instr.LI.imm.tag == IMM_INT32) {
+		if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
+			// TODO: figure out how to handle large immediates, if necessary at all
+			std::string str = "LI: Can't handle int value '";
+			str += std::to_string(instr.LI.imm.intVal);
+			str += "' as small immediate";
 
-		local_errors << str;
-		ret << nop().comment(str, true);
-		return ret;
+			breakpoint
+
+			local_errors << str;
+			ret << nop().comment(str, true);
+			return ret;
+		}
+
+		SmallImm imm(rep_value);
+		out_instr = mov(*dst, imm);
+
+	} else if (instr.LI.imm.tag == IMM_FLOAT32) {
+		if (!SmallImm::to_opcode_value(instr.LI.imm.floatVal, rep_value)) {
+			// TODO: figure out how to handle large immediates, if necessary at all
+			std::string str = "LI: Can't handle float value '";
+			str += std::to_string(instr.LI.imm.floatVal);
+			str += "' as small immediate";
+
+			breakpoint
+
+			local_errors << str;
+			ret << nop().comment(str, true);
+			return ret;
+		}
+
+		out_instr = nop().fmov(*dst, rep_value);  // TODO perhaps make 2nd param Small Imm
+
+	} else if (instr.LI.imm.tag == IMM_MASK) {
+		debug_break("encodeLoadImmediate(): IMM_MASK not handled yet");
+	} else {
+		debug_break("encodeLoadImmediate(): unknown tag value");
 	}
+
 
 	if (instr.LI.setFlags) {
 		breakpoint;  // to check what flags need to be set - case not handled yet
 	}
-
-	auto dst = encodeDestReg(instr);
-	SmallImm imm(rep_value);
-	auto out_instr = mov(*dst, imm);
 
 	if (instr.LI.cond.tag != ALWAYS) {  // ALWAYS executes always (duh)
 		//

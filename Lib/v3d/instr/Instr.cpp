@@ -382,18 +382,33 @@ Instr &Instr::sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 }
 
 
-Instr &Instr::mov(Register const &reg,  uint8_t val) {
+Instr &Instr::mov(Location const &dst,  uint8_t val) {
 	m_doing_add = false;
+	alu_mul_set_dst(dst);
 
 	alu.mul.op    = V3D_QPU_M_MOV;
 	alu.mul.a     = V3D_QPU_MUX_B;
 	alu.mul.b     = V3D_QPU_MUX_B;
-	alu.mul.waddr = reg.to_waddr();
 
 	return *this;
 }
 
 
+Instr &Instr::fmov(Location const &dst,  SmallImm const &imma) {
+	m_doing_add = false;
+	alu_mul_set_dst(dst);
+	alu_mul_set_imm_a(imma);
+
+	alu.mul.op    = V3D_QPU_M_FMOV;
+	alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
+
+	return *this;
+}
+
+
+/**
+ * Can't consolidate this yet, required for special register vpm
+ */
 Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
 	m_doing_add = false;
 
@@ -426,7 +441,6 @@ Instr &Instr::fmul(Location const &loc1, Location const &loc2, Location const &l
 }
 
 
-// TODO: how does small imm value get used?
 Instr &Instr::fmul(Location const &loc1, SmallImm imm2, Location const &loc3) {
 	m_doing_add = false;
 	alu_mul_set_dst(loc1);
@@ -454,10 +468,7 @@ Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const 
 	m_doing_add = false;
 	alu_mul_set(loc1, loc2, loc3);
 
-//	sig.small_imm = true;
-//	raddr_b = loc1.to_waddr();
 	alu.mul.op    = V3D_QPU_M_SMUL24;
-
 	return *this;
 }
 
@@ -469,21 +480,15 @@ Instr &Instr::smul24(Location const &loc1, Location const &loc2, Location const 
 Instr &Instr::smul24(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 	m_doing_add = false;
 
-	//breakpoint
 	alu_mul_set_dst(loc1);
 	alu_mul_set_imm_a(imm2);
-	alu_mul_set_reg_a(loc3);  // ??? Perhaps param 2 and 3 get switched around? 
-	                          // TODO check, also compare with fmul
+	alu_mul_set_reg_a(loc3);
 
-	alu.mul.op    = V3D_QPU_M_SMUL24;
-
-	// Apparently, MUX A and B are switched around when 2nd param is SmallImm
-	// TODO: verify
-
-	alu.mul.a     = V3D_QPU_MUX_B;
+	//alu.mul.a     = V3D_QPU_MUX_B;
 	alu.mul.b     = V3D_QPU_MUX_A;
 	alu.mul.b_unpack = loc3.input_unpack();
 
+	alu.mul.op    = V3D_QPU_M_SMUL24;
 	return *this;
 }
 
@@ -611,7 +616,6 @@ void Instr::alu_mul_set_dst(Location const &loc1) {
 
 
 void Instr::alu_mul_set_reg_a(Location const &loc2) {
-
 	if (!loc2.is_rf()) {
 		// src is a register
 		alu.mul.a     = loc2.to_mux();
@@ -629,13 +633,13 @@ void Instr::alu_mul_set_reg_a(Location const &loc2) {
 			assertq(!(alu.add.a == V3D_QPU_MUX_B) || (alu.add.b == V3D_QPU_MUX_B),
 			  "alu_mul_set_reg_a: both raddr a and b in use by add alu");
 
-			raddr_b = loc2.to_waddr();
-			alu.mul.a     = V3D_QPU_MUX_B;
+			raddr_b    = loc2.to_waddr();
+			alu.mul.a  = V3D_QPU_MUX_B;
 
 		} else {
 			// raddr_a is safe
-			raddr_a = loc2.to_waddr();
-			alu.mul.a     = V3D_QPU_MUX_A;
+			raddr_a   = loc2.to_waddr();
+			alu.mul.a = V3D_QPU_MUX_A;
 		}
 	}
 
@@ -1385,7 +1389,7 @@ Instr rotate(Location const &dst, Location const &loca, Location const &locb) {
 	Instr instr;
 	instr.alu_add_set(r1, r0, r5);
 	instr.sig.rotate = true;
-	instr.alu.add.op = V3D_QPU_A_OR;  // actually mov
+	instr.alu.add.op = V3D_QPU_A_OR;  // mov intended
 
 	return instr;
 }
@@ -1408,7 +1412,7 @@ Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb) {
 		instr.sig.rotate = true;
 	}
 	instr.sig.small_imm = false;      // Should *not* be set for rotate
-	instr.alu.add.op = V3D_QPU_A_OR;  // actually mov
+	instr.alu.add.op = V3D_QPU_A_OR;  // mov intended
 
 	return instr;
 }
