@@ -142,8 +142,8 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 
 	// When DMA is used, the index number is compensated for automatically, hence no need for it
 	// offset = 4 * ( 16 * qpu_num);
-	//ret << shl(ACC0, rf(RSV_QPU_ID), 4 + 2);
-	ret << shl(ACC0, QPU_ID, 4 + 2);
+	ret << shl(ACC0, rf(RSV_QPU_ID), 4 + 2);
+	//ret << shl(ACC0, QPU_ID, 4 + 2);
 	ret << add_uniform_pointer_offset(code);
 
 	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
