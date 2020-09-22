@@ -9,7 +9,7 @@ QPULib::Settings settings;
 // Define function that runs on the GPU.
 void hello(Ptr<Int> p)
 {
-  *p = 1;
+  *p = index();
 }
 
 
@@ -19,10 +19,10 @@ int main(int argc, const char *argv[]) {
 
   // Construct kernel
   auto k = compile(hello);
-  k.setNumQPUs(8);  // TODO: with '1' no output, find out why
+  k.setNumQPUs(1);  // TODO: with '1' no output, find out why
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(8*16);
+  SharedArray<int> array(16);
   for (int i = 0; i < array.size(); i++)
     array[i] = 100;
 

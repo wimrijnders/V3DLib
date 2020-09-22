@@ -847,7 +847,12 @@ void emulate(
             else state.sema[instr.semaId]--;
             break;
           }
-          // Unreachable
+
+					case INIT_BEGIN:
+					case INIT_END:
+						break;  // ignore
+
+          // Should not be reached
           default: assert(false);
         }
       }

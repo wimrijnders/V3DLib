@@ -402,6 +402,11 @@ void encode(Seq<Instr>* instrs, Seq<uint32_t>* code) {
   uint32_t high, low;
   for (int i = 0; i < instrs->numElems; i++) {
     Instr instr = instrs->elems[i];
+
+		if (instr.tag == INIT_BEGIN || instr.tag == INIT_END) {
+			continue;  // Don't encode these block markers
+		}
+
     encodeInstr(instr, &high, &low);
     code->append(low);
     code->append(high);

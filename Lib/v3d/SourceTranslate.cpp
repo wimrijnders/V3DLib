@@ -161,23 +161,25 @@ Instr label(Label in_label) {
 void SourceTranslate::add_init(Seq<Instr> &code) {
 	using namespace QPULib::Target::instr;
 
-	// Find the init begin marker
-	int insert_index = 0;
-	for (; insert_index < code.size(); ++insert_index) {
-		if (code[insert_index].tag == INIT_BEGIN) break; 
-	}
-	assertq(insert_index < code.size(), "Expecting INIT_BEGIN marker.");
-	assertq(insert_index >= 2, "Expecting at least two uniform loads.");
+	int insert_index = get_init_begin_marker(code);
 
 	Seq<Instr> ret;
 
+	Label endifLabel = freshLabel();
+
+	// Determine the qpu index for 'current' QPU
+	// This is derived from the thread index. 
+	//
 	// Broadly:
 	//
 	// If (numQPUs() == 8)  // Alternative is 1, then qpu num initalized to 0 is ok
-	// 	me() = (qpu_id() >> 2) & 0b1111;
+	// 	me() = (thread_index() >> 2) & 0b1111;
 	// End
-	Label endifLabel = freshLabel();
-
+	//
+	// This works because the thread indexes are consecutive for multiple reserved
+	// threads. It's probably also the reason why you can select only 1 or 8 (max)
+	// threads, otherwise there would be gaps in the qpu id.
+	//
 	ret << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
 	    << cond_branch(endifLabel).allzc()  // nop()'s added downstream
 			<< mov(ACC0, QPU_ID)
@@ -185,31 +187,15 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	    << band(rf(RSV_QPU_ID), ACC0, 15)
 			<< label(endifLabel);
 
-	// offset = 4 * (thread_num + 16 * qpu_num)";
+	// offset = 4 * (thread_num + 16 * qpu_num);
 	ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID
 			<< add(ACC1, ACC1, ELEM_ID)     // ELEM_ID uses ACC0
-	    << shl(ACC0, ACC1, 2);          // offset cwnow in ACC0
-/*
-	ret << mov(ACC1, ELEM_ID)     // ELEM_ID uses ACC0
 	    << shl(ACC0, ACC1, 2);          // offset now in ACC0
-*/
 
-	// add the offset to all the uniform pointers
-	for (int index = 0; index < code.size(); ++index) {
-		auto &instr = code[index];
-
-		if (!instr.isUniformLoad()) {  // Assumption: uniform loads always at top
-			break;
-		}
-
-		if (instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.isUniformPtr) {
-			ret << add(rf((uint8_t) index), rf((uint8_t) index), ACC0);
-		}
-	}
-
+	ret << add_uniform_pointer_offset(code);
 
 	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
- }
+}
 
 }  // namespace v3d
 }  // namespace QPULib

@@ -1336,10 +1336,9 @@ Expr* putInVar(Seq<Instr>* seq, Expr* e) {
  */
 void translateStmt(Seq<Instr>* seq, Stmt* s) {
   stmt(seq, s);
+	insertInitBlock(*seq);
 	if (compiling_for_vc4()) {
 	  insertEndCode(*seq);
-	} else {
-	  insertInitBlock(*seq);
 	};
 }
 

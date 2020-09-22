@@ -23,7 +23,11 @@ public:
 	virtual void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) = 0;
 
 	virtual void regAlloc(CFG* cfg, Seq<Instr>* instrs) = 0;
-	virtual void add_init(Seq<Instr> &code) {}
+	virtual void add_init(Seq<Instr> &code) = 0; 
+
+protected:
+	int get_init_begin_marker(Seq<Instr> &code);
+	Seq<Instr> add_uniform_pointer_offset(Seq<Instr> &code);
 };
 
 ISourceTranslate &getSourceTranslate();
