@@ -4,19 +4,21 @@ Source code
 v0 = UNIFORM;
 v1 = UNIFORM;
 v2 = UNIFORM;
+v3 = (v0 << 4);
+v2 = (v2+(v3 << 2));
 TMU0_ADDR = (v2+(ELEM_NUM << 2));
 TMU0_ADDR = ((v2+64)+(ELEM_NUM << 2));
-receive(v3)
 receive(v4)
-*v2 = (v3+v4);
+receive(v5)
+*v2 = (v4+v5);
 dmaReadWait();
 dmaWriteWait();
 If (any(v0==0))
-  v5 = (v1-1);
-  v6 = 0;
-  While (any(v6<v5))
+  v6 = (v1-1);
+  v7 = 0;
+  While (any(v7<v6))
     semaDec(15)
-    v6 = (v6+1);
+    v7 = (v7+1);
   End
   hostIRQ()
 Else
@@ -29,65 +31,70 @@ Target code
 0: A0 <- or(S[UNIFORM], S[UNIFORM])
 1: A1 <- or(S[UNIFORM], S[UNIFORM])
 2: B0 <- or(S[UNIFORM], S[UNIFORM])
-3: ACC1 <- shl(S[ELEM_NUM], 2)
-4: S[TMU0_S] <- add(B0, ACC1)
-5: ACC1 <- 64
-6: B1 <- add(B0, ACC1)
-7: ACC1 <- shl(S[ELEM_NUM], 2)
-8: S[TMU0_S] <- add(B1, ACC1)
-9: TMU0_TO_ACC4
-10: A2 <- or(ACC4, ACC4)
-11: TMU0_TO_ACC4
-12: ACC1 <- or(ACC4, ACC4)
-13: A2 <- add(A2, ACC1)
-14: B1 <- 16
-15: NOP
-16: ACC0 <- or(B1, B1)
-17: B1 <- add(ACC0, S[QPU_NUM])
-18: ACC1 <- 4608
-19: S[WR_SETUP] <- or(B1, ACC1)
-20: A3 <- 256
-21: NOP
-22: A3 <- add(A3, S[QPU_NUM])
-23: S[WR_SETUP] <- -1073741824
-24: B1 <- -2013184000
-25: ACC1 <- shl(A3, 3)
-26: S[WR_SETUP] <- or(B1, ACC1)
-27: S[VPM_WRITE] <- shl(A2, 0)
-28: S[DMA_ST_ADDR] <- or(B0, B0)
-29: where never: _ <- or(S[DMA_ST_WAIT], S[DMA_ST_WAIT])
-30: where never: _ <- or(S[DMA_LD_WAIT], S[DMA_LD_WAIT])
-31: where never: _ <- or(S[DMA_ST_WAIT], S[DMA_ST_WAIT])
-32: B0 <-{sf} sub(A0, 0)
-33: if all(ZC) goto PC+1+22
-34: NOP
-35: NOP
-36: NOP
-37: A0 <- sub(A1, 1)
-38: B0 <- 0
+3: INIT_BEGIN
+4: INIT_END
+5: ACC1 <- shl(A0, 4)
+6: ACC1 <- shl(ACC1, 2)
+7: B0 <- add(B0, ACC1)
+8: ACC1 <- shl(S[ELEM_NUM], 2)
+9: S[TMU0_S] <- add(B0, ACC1)
+10: ACC1 <- 64
+11: A2 <- add(B0, ACC1)
+12: ACC1 <- shl(S[ELEM_NUM], 2)
+13: S[TMU0_S] <- add(A2, ACC1)
+14: TMU0_TO_ACC4
+15: B1 <- or(ACC4, ACC4)
+16: TMU0_TO_ACC4
+17: ACC1 <- or(ACC4, ACC4)
+18: A2 <- add(B1, ACC1)
+19: B1 <- 16
+20: NOP
+21: ACC0 <- or(B1, B1)
+22: B1 <- add(ACC0, S[QPU_NUM])
+23: ACC1 <- 4608
+24: S[WR_SETUP] <- or(B1, ACC1)
+25: A3 <- 256
+26: NOP
+27: A3 <- add(A3, S[QPU_NUM])
+28: S[WR_SETUP] <- -1073741824
+29: B1 <- -2013184000
+30: ACC1 <- shl(A3, 3)
+31: S[WR_SETUP] <- or(B1, ACC1)
+32: S[VPM_WRITE] <- shl(A2, 0)
+33: S[DMA_ST_ADDR] <- or(B0, B0)
+34: where never: _ <- or(S[DMA_ST_WAIT], S[DMA_ST_WAIT])
+35: where never: _ <- or(S[DMA_LD_WAIT], S[DMA_LD_WAIT])
+36: where never: _ <- or(S[DMA_ST_WAIT], S[DMA_ST_WAIT])
+37: B0 <-{sf} sub(A0, 0)
+38: if all(ZC) goto PC+1+22
 39: NOP
-40: A1 <-{sf} sub(B0, A0)
-41: if all(NC) goto PC+1+9
-42: NOP
-43: NOP
+40: NOP
+41: NOP
+42: A0 <- sub(A1, 1)
+43: B0 <- 0
 44: NOP
-45: SDEC 15
-46: ACC0 <- or(B0, B0)
-47: B0 <- add(ACC0, 1)
+45: A1 <-{sf} sub(B0, A0)
+46: if all(NC) goto PC+1+9
+47: NOP
 48: NOP
-49: B1 <-{sf} sub(B0, A0)
-50: if any(NS) goto PC+1+-9
-51: NOP
-52: NOP
+49: NOP
+50: SDEC 15
+51: ACC0 <- or(B0, B0)
+52: B0 <- add(ACC0, 1)
 53: NOP
-54: IRQ
-55: if always goto PC+1+1
+54: B1 <-{sf} sub(B0, A0)
+55: if any(NS) goto PC+1+-9
 56: NOP
 57: NOP
 58: NOP
-59: SINC 15
-60: END
+59: IRQ
+60: if always goto PC+1+1
 61: NOP
 62: NOP
 63: NOP
+64: SINC 15
+65: END
+66: NOP
+67: NOP
+68: NOP
 

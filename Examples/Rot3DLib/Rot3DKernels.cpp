@@ -70,8 +70,8 @@ void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
 void rot3D_3(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
 {
   Int inc = numQPUs() << 4;
-  Ptr<Float> p = x + index() + (me() << 4);
-  Ptr<Float> q = y + index() + (me() << 4);
+  Ptr<Float> p = x + index(); // + (me() << 4);  TODO Not sufficient
+  Ptr<Float> q = y + index(); // + (me() << 4);
   gather(p); gather(q);
  
   Float xOld, yOld;
