@@ -28,6 +28,7 @@ void compareResults(
   for (int i = 0; i < size; i++) {
 		INFO("Comparing " << label << " for index " << i);
 		if (compare_exact) {
+			INFO("y2[i]: " << y2[i]);
 			REQUIRE(x1[i] == x2[i]);
 			REQUIRE(y1[i] == y2[i]);
 		} else {

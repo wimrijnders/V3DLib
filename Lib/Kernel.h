@@ -245,8 +245,6 @@ public:
 	    auto args = std::make_tuple(mkArg<ts>()...);
 
 			// Add offsets to the uniform pointers
-			printf("int ptr size: %d\n", uniform_int_pointers.size());
-			printf("float ptr size: %d\n", uniform_float_pointers.size());
 			Int offset = me() << 4;
 
 			for (auto &expr : uniform_int_pointers) {
