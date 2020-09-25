@@ -1,5 +1,6 @@
 #ifndef _QPULIB_KERNEL_H_
 #define _QPULIB_KERNEL_H_
+#include <tuple>
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
 #include "Common/SharedArray.h"
@@ -11,6 +12,36 @@
 #include  "SourceTranslate.h"  // set_compiling_for_vc4()
 
 namespace QPULib {
+
+// implementation details, users never invoke these directly
+namespace detail
+{
+    template <typename F, typename Tuple, bool Done, int Total, int... N>
+    struct call_impl
+    {
+        static void call(F f, Tuple && t)
+        {
+            call_impl<F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::call(f, std::forward<Tuple>(t));
+        }
+    };
+
+    template <typename F, typename Tuple, int Total, int... N>
+    struct call_impl<F, Tuple, true, Total, N...>
+    {
+        static void call(F f, Tuple && t)
+        {
+            f(std::get<N>(std::forward<Tuple>(t))...);
+        }
+    };
+}
+
+// user invokes this
+template <typename F, typename Tuple>
+void apply(F f, Tuple && t)
+{
+    typedef typename std::decay<Tuple>::type ttype;
+    detail::call_impl<F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call(f, std::forward<Tuple>(t));
+}
 
 
 // ============================================================================
@@ -65,6 +96,8 @@ namespace QPULib {
 // ============================================================================
 
 // Construct an argument of QPU type 't'.
+extern std::vector<Ptr<Int>>   uniform_int_pointers;
+extern std::vector<Ptr<Float>> uniform_float_pointers;
 
 template <typename t> inline t mkArg();
 
@@ -83,12 +116,14 @@ template <> inline Float mkArg<Float>() {
 template <> inline Ptr<Int> mkArg< Ptr<Int> >() {
   Ptr<Int> x;
   x = getUniformPtr<Int>();
+	uniform_int_pointers.push_back(x);
   return x;
 }
 
 template <> inline Ptr<Float> mkArg< Ptr<Float> >() {
   Ptr<Float> x;
   x = getUniformPtr<Float>();
+	uniform_float_pointers.push_back(x);
   return x;
 }
 
@@ -207,8 +242,23 @@ public:
 			m_vc4_driver.init_compile();
 			set_compiling_for_vc4(true);
 
+	    auto args = std::make_tuple(mkArg<ts>()...);
+
+			// Add offsets to the uniform pointers
+			printf("int ptr size: %d\n", uniform_int_pointers.size());
+			printf("float ptr size: %d\n", uniform_float_pointers.size());
+			Int offset = me() << 4;
+
+			for (auto &expr : uniform_int_pointers) {
+				expr = expr + offset;
+			}
+			for (auto &expr : uniform_float_pointers) {
+				expr = expr + offset;
+			}
+
 	    // Construct the AST for vc4
-	    f(mkArg<ts>()...);
+	    //f(mkArg<ts>()...);
+	    apply(f, args);
 			m_vc4_driver.compile();
 
     	// Remember the number of variables used - for emulator/interpreter

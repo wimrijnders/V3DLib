@@ -681,9 +681,9 @@ void interpreter(
 		s.emuHeap.heap_view(heap);
   }
 
-  // Put statement on each core's control stack
-  for (int i = 0; i < numCores; i++)
-   state.core[i].stack.push(stmt);
+	// Put statement on each core's control stack
+	for (int i = 0; i < numCores; i++)
+		state.core[i].stack.push(stmt);
 
   // Run code
   bool running = true;

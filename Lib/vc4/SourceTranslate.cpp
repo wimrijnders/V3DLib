@@ -134,6 +134,7 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 }
 
 void SourceTranslate::add_init(Seq<Instr> &code) {
+/*
 	using namespace QPULib::Target::instr;
 
 	int insert_index = get_init_begin_marker(code);
@@ -147,6 +148,7 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	ret << add_uniform_pointer_offset(code);
 
 	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
+*/
 }
 
 }  // namespace vc4

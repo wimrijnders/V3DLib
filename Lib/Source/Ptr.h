@@ -66,17 +66,21 @@ template <typename T> struct Ptr {
     assign(this->expr, rhs.expr);
   }
 
+/*
   // Copy constructors
   Ptr<T>(Ptr<T>& x) {
+printf("Ptr copy ctor called\n");
     Var v    = freshVar();
     this->expr = mkVar(v);
     assign(this->expr, x.expr);
   }
   Ptr<T>(const Ptr<T>& x) {
+printf("Ptr const copy ctor called\n");
     Var v    = freshVar();
     this->expr = mkVar(v);
     assign(this->expr, x.expr);
   }
+*/
 
   // Assignment
   Ptr<T>& operator=(Ptr<T>& rhs) {
