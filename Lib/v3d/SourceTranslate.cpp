@@ -15,7 +15,15 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	Seq<Instr> &ret = *seq;
 
 	Reg dst(SPECIAL, SPECIAL_VPM_WRITE);
-	ret << mov(dst, srcReg(rhs->var));
+
+	if (rhs->var.tag == ELEM_NUM) {
+		debug("TODO: is ACC0 safe here?");
+		assert(srcReg(rhs->var) == ELEM_ID);
+		ret << mov(ACC0, ELEM_ID)
+		    << mov(dst, ACC0);
+	} else {
+		ret << mov(dst, srcReg(rhs->var));
+	}
 
 	dst.regId = SPECIAL_DMA_ST_ADDR;
 	ret << mov(dst, srcReg(lhs.deref.ptr->var));
@@ -36,7 +44,6 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	Seq<Instr> ret = *seq;
 
 	Reg src = srcReg(e.deref.ptr->var);
-
 	Reg dst(SPECIAL,SPECIAL_TMU0_S);
 	ret << mov(dst, src);
 
@@ -47,7 +54,7 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	instr.tag = TMU0_TO_ACC4;
 	ret << instr;
 
-	dst = srcReg(v);
+	dst = dstReg(v);
 	ret << move_from_r4(dst);
 }
 
@@ -61,34 +68,24 @@ void SourceTranslate::setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) {
  * @param seq  list of generated instructions up till now
  */
 void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
-	//printf("Entered storeRequest for v3d\n");
+	using namespace QPULib::Target::instr;
 
-  if (data->tag != VAR || addr->tag != VAR) {
-    data = putInVar(seq, data);
+  if (addr->tag != VAR || data->tag != VAR) {
     addr = putInVar(seq, addr);
+    data = putInVar(seq, data);
   }
 
-	// Output should be:
-	//
-	// mov(tmud, data)
-  // mov(tmua, addr)
-
 	Reg srcAddr = srcReg(addr->var);
-  Reg tmud;
-  tmud.tag = SPECIAL;
-  tmud.regId = SPECIAL_VPM_WRITE;
-  seq->append(genOR(tmud, srcAddr, srcAddr));
+  Reg tmud(SPECIAL, SPECIAL_VPM_WRITE);
+  *seq << mov(tmud, srcAddr);
 
 	Reg srcData = srcReg(data->var);
-  Reg tmua;
-  tmua.tag = SPECIAL;
-  tmua.regId = SPECIAL_DMA_ST_ADDR;
-  seq->append(genOR(tmua, srcData, srcData));
+  Reg tmua(SPECIAL, SPECIAL_DMA_ST_ADDR);
+  *seq << mov(tmua, srcData);
 }
 
 
 void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
-	//breakpoint
   int n = getFreshVarCount();
 
   // Step 0
@@ -136,10 +133,9 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 
 Instr cond_branch(Label label) {
 	Instr instr;
-
-	instr.tag       = BRL;
-	instr.BRL.cond.tag  = COND_ALWAYS;    // Will be set with another call
-	instr.BRL.label = label;
+	instr.tag          = BRL;
+	instr.BRL.cond.tag = COND_ALWAYS;    // Will be set with another call
+	instr.BRL.label    = label;
 
 	return instr;
 }
@@ -147,7 +143,6 @@ Instr cond_branch(Label label) {
 
 Instr label(Label in_label) {
 	Instr instr;
-
 	instr.tag = LAB;
 	instr.label(in_label);
 
@@ -162,9 +157,7 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	using namespace QPULib::Target::instr;
 
 	int insert_index = get_init_begin_marker(code);
-
 	Seq<Instr> ret;
-
 	Label endifLabel = freshLabel();
 
 	// Determine the qpu index for 'current' QPU
@@ -180,6 +173,7 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	// threads. It's probably also the reason why you can select only 1 or 8 (max)
 	// threads, otherwise there would be gaps in the qpu id.
 	//
+	ret << mov(rf(RSV_QPU_ID), 0);
 	ret << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
 	    << cond_branch(endifLabel).allzc()  // nop()'s added downstream
 			<< mov(ACC0, QPU_ID)
@@ -188,9 +182,10 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 			<< label(endifLabel);
 
 	// offset = 4 * (thread_num + 16 * qpu_num);
-	ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID
-			<< add(ACC1, ACC1, ELEM_ID)     // ELEM_ID uses ACC0
-	    << shl(ACC0, ACC1, 2);          // offset now in ACC0
+	ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID (next stmt)
+			<< mov(ACC0, ELEM_ID)
+			<< add(ACC1, ACC1, ACC0)
+	    << shl(ACC0, ACC1, 2);          // Post: offset in ACC0
 
 	ret << add_uniform_pointer_offset(code);
 

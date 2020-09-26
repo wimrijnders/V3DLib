@@ -258,20 +258,31 @@ void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_i
 	}
 }
 
-
 /**
- * QPU and ELEM num are not registers in v3d but instructions.
- * Both these instructions use r0 here; this might produce conflicts with other instructions
- * I haven't found a decent way yet to compensate for this.
+ * For v3d, the QPU and ELEM num are not special registers but instructions.
  *
- * The source instruction is adjusted  accordingly.
+ * In order to not disturb the code translation too much, they are derived from the target instructions:
  *
+ *    mov(ACC0, QPU_ID)   // vc4: QPU_NUM  or SPECIAL_QPU_NUM
+ *    mov(ACC0, ELEM_ID)  // vc4: ELEM_NUM or SPECIAL_ELEM_NUM
+ *
+ * This is the **only** operation in which they can be used.
+ * This function checks that proper usage.
+ * These special cases get translated to `tidx(r0)` and `eidx(r0)` respectively, as a special case
+ * for A_BOR.
+ *
+ * If the check fails, a fatal exception is thrown.
+ *
+ * ==================================================================================================
+ *
+ * * Both these instructions use r0 here; this might produce conflicts with other instructions
+ *   I haven't found a decent way yet to compensate for this.
  */
-Instructions translateSpecialIndex(QPULib::Instr &src_instr) {
-  assertq(src_instr.tag == ALU, "translateSpecialIndex() should only be called for alu instructions");
-	Instructions ret;
+void checkSpecialIndex(QPULib::Instr const &src_instr) {
+  if (src_instr.tag != ALU) {
+		return;  // no problem here
+	}
 
-	bool handled = true;	
 	auto srca = src_instr.ALU.srcA;
 	auto srcb = src_instr.ALU.srcB;
 
@@ -283,54 +294,69 @@ Instructions translateSpecialIndex(QPULib::Instr &src_instr) {
 	bool b_is_special  = b_is_elem_num || b_is_qpu_num;
 
 	if (!a_is_special && !b_is_special) {
-		return ret;  // Nothing to do
+		return;  // Nothing to do
 	}
 
-	if (a_is_special && b_is_special) {
-		assertq(srca == srcb, "translateSpecialIndex(): src a and b must be the same if they are both special num's");
+	if (src_instr.ALU.op != A_BOR) {
+		// All other instructions disallowed
+breakpoint
+		fatal("For v3d, special registers QPU_NUM and ELEM_NUM can only be used in a move instruction");
+		return;
 	}
 
-	if (a_is_elem_num || b_is_elem_num) {
+	assertq((a_is_special && b_is_special), "src a and src b must both be special for QPU and ELEM nums");
+	assertq(srca == srcb, "checkSpecialIndex(): src a and b must be the same if they are both special num's");
+
+
+	// For now, we enforce r0 as destination
+
+	auto src_dst = src_instr.ALU.dest;
+	bool is_r0 = (src_dst.tag == ACC && src_dst.regId == 0);
+	if (is_r0) {
+		return;  // If target is already r0, all is well
+	} else {
+		fatal("Destination must be r0 for special num's");
+	}
+
+	// Here we can safely assume that src a and are the same
+
+	if (a_is_elem_num) {
 		warning("SPECIAL_ELEM_NUM needs a way to select a register");
-		ret << eidx(r0);
-	} else if (a_is_qpu_num || b_is_qpu_num) {
-		warning("SPECIAL_ELEM_NUM needs a way to select a register");
-		ret << tidx(r0);
+	} else if (a_is_qpu_num) {
+		warning("SPECIAL_QPU_NUM needs a way to select a register");
 	} else {
 		assert(false);  // Not expecting this here
 	}
+}
 
-	// Set r0 as source in instruction
-	if (a_is_special && b_is_special) {
-		// Don't bother if target is already r0
-		auto src_dst = src_instr.ALU.dest;
-		bool is_r0 = (src_dst.tag == ACC && src_dst.regId == 0);
 
-		// The goal here is to prevent mov(r0, r0)
-		// However, returning screws up the code handling later,
-		// because the special reg's are not translated
-		//if (is_r0) {
-		//	return ret;
-		//}
+/**
+ * Pre: `checkSpecialIndex()` has been called
+ */
+bool is_special_index(QPULib::Instr const &src_instr, Special index ) {
+	assert(index == SPECIAL_ELEM_NUM || SPECIAL_QPU_NUM);
 
-		// For now, let mov(r0, r0) just happen
-		// (tried NO_OP, assertion fails on dest reg because we're in the ALU processing branch
+  if (src_instr.tag != ALU) {
+		return false;
+	}
+
+	auto src_dst = src_instr.ALU.dest;
+	bool is_r0 = (src_dst.tag == ACC && src_dst.regId == 0);
+
+	if (src_instr.ALU.op != A_BOR) {
+		return false;
+	}
+	if (!is_r0) {
+		return false;
 	}
 
 
-	if (a_is_special) {
-		assert(src_instr.ALU.srcA.tag == REG);
-		src_instr.ALU.srcA.reg.tag   = ACC;
-		src_instr.ALU.srcA.reg.regId = 0;
-	}
+	auto srca = src_instr.ALU.srcA;
+	auto srcb = src_instr.ALU.srcB;
+	bool a_is_qpu_num = (srca.tag == REG && srca.reg.tag == SPECIAL && srca.reg.regId == index);
+	bool b_is_qpu_num = (srcb.tag == REG && srcb.reg.tag == SPECIAL && srcb.reg.regId == index);
 
-	if (b_is_special) {
-		assert(src_instr.ALU.srcB.tag == REG);
-		src_instr.ALU.srcB.reg.tag   = ACC;
-		src_instr.ALU.srcB.reg.regId = 0;
-	}
-
-	return ret;
+	return (a_is_qpu_num && b_is_qpu_num);
 }
 
 
@@ -343,24 +369,31 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	auto dst_reg = encodeDestReg(src_instr);
 
 	if (dst_reg && reg_a.tag == REG && reg_b.tag == REG) {
-		auto src_a = encodeSrcReg(reg_a.reg, ret);
-		auto src_b = encodeSrcReg(reg_b.reg, ret);
-		assert(src_a && src_b);
+		checkSpecialIndex(src_instr);
+		if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
+			ret << tidx(r0);
+		} else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
+			ret << eidx(r0);
+		} else {
+			auto src_a = encodeSrcReg(reg_a.reg, ret);
+			auto src_b = encodeSrcReg(reg_b.reg, ret);
+			assert(src_a && src_b);
 
-		switch (src_instr.ALU.op) {
-			case A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
-			case A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
-			case A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
-			case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
-			case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
-			case A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
-			case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
-			case A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
-			case A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
-			default:
-				breakpoint  // unimplemented op
-				did_something = false;
-			break;
+			switch (src_instr.ALU.op) {
+				case A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
+				case A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
+				case A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
+				case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
+				case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
+				case A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
+				case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
+				case A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
+				case A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
+				default:
+					breakpoint  // unimplemented op
+					did_something = false;
+				break;
+			}
 		}
 	} else if (dst_reg && reg_a.tag == REG && reg_b.tag == IMM) {
 		auto src_a = encodeSrcReg(reg_a.reg, ret);
@@ -393,6 +426,17 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 			case M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
 			case A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
 			case A_SUB:   ret << sub(*dst_reg, imm, *src_b);          break;
+			default:
+				breakpoint  // unimplemented op
+				did_something = false;
+			break;
+		}
+	} else if (dst_reg && reg_a.tag == IMM && reg_b.tag == IMM) {
+		SmallImm imm_a = encodeSmallImm(reg_a);
+		SmallImm imm_b = encodeSmallImm(reg_b);
+
+		switch (src_instr.ALU.op) {
+			case A_BOR:   ret << bor(*dst_reg, imm_a, imm_b);          break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -609,8 +653,6 @@ Instructions encodeInstr(QPULib::Instr instr) {
 		break;
 
     case ALU: {
-      ret << translateSpecialIndex(instr);
-
 			if (instr.isUniformLoad()) {
 				Reg dst_reg = instr.ALU.dest;
 				uint8_t rf_addr = to_waddr(dst_reg);

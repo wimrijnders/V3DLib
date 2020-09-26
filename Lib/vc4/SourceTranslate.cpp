@@ -37,20 +37,18 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 
 	// Setup VPM
 	Reg addr = freshReg();
-	seq->append(genLI(addr, 16));
-	seq->append(genADD(addr, addr, QPU_ID));
+	*seq << genLI(addr, 16)
+	     << add(addr, addr, QPU_ID);
 	genSetupVPMStore(seq, addr, 0, 1);
 	// Store address
 	Reg storeAddr = freshReg();
-	seq->append(genLI(storeAddr, 256));
-	seq->append(genADD(storeAddr, storeAddr, QPU_ID));
+	*seq << genLI(storeAddr, 256)
+	     << add(storeAddr, storeAddr, QPU_ID);
 	// Setup DMA
 	genSetWriteStride(seq, 0);
 	genSetupDMAStore(seq, 16, 1, 1, storeAddr);
 	// Put to VPM
-	Reg data;
-	data.tag = SPECIAL;
-	data.regId = SPECIAL_VPM_WRITE;
+	Reg data(SPECIAL, SPECIAL_VPM_WRITE);
 	seq->append(genLShift(data, srcReg(rhs->var), 0));
 	// Start DMA
 	genStartDMAStore(seq, srcReg(lhs.deref.ptr->var));
@@ -110,13 +108,13 @@ void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
 
   // Setup VPM
   Reg addrReg = freshReg();
-  seq->append(genLI(addrReg, 16));
-  seq->append(genADD(addrReg, addrReg, QPU_ID));
+  *seq << genLI(addrReg, 16)
+       << add(addrReg, addrReg, QPU_ID);
   genSetupVPMStore(seq, addrReg, 0, 1);
   // Store address
   Reg storeAddr = freshReg();
-  seq->append(genLI(storeAddr, 256));
-  seq->append(genADD(storeAddr, storeAddr, QPU_ID));
+  *seq << genLI(storeAddr, 256)
+       << add(storeAddr, storeAddr, QPU_ID);
   // Wait for any outstanding store to complete
   genWaitDMAStore(seq);
   // Setup DMA

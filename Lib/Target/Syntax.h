@@ -484,9 +484,10 @@ inline Instr nop()
   { Instr instr; instr.tag = NO_OP; return instr; }
 
 // Instruction constructors
+Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB);
+Instr genLI(AssignCond cond, Reg dst, int i);
 Instr genLI(Reg dst, int i);
 Instr genOR(Reg dst, Reg srcA, Reg srcB);
-Instr genADD(Reg dst, Reg srcA, Reg srcB);
 Instr genLShift(Reg dst, Reg srcA, int n);
 Instr genIncr(Reg dst, Reg srcA, int n);
 
@@ -503,9 +504,10 @@ extern Reg const QPU_ID;
 extern Reg const ELEM_ID;
 
 Reg rf(uint8_t index);
+Instr mov(Reg dst, int n);
 inline Instr mov(Reg dst, Reg src)            { return genOR(dst, src, src); }
 inline Instr shl(Reg dst, Reg srcA, int val)  { return genLShift(dst, srcA, val); }
-inline Instr add(Reg dst, Reg srcA, Reg srcB) { return genADD(dst, srcA, srcB); }
+Instr add(Reg dst, Reg srcA, Reg srcB);
 Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
 Instr band(Reg dst, Reg srcA, int n);

@@ -1127,10 +1127,12 @@ Reg srcReg(Var v)
 			r.isUniformPtr = v.isUniformPtr;
       return r;
     case QPU_NUM:
+			//if (!compiling_for_vc4()) breakpoint
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_QPU_NUM;
       return r;
     case ELEM_NUM:
+			//if (!compiling_for_vc4()) breakpoint
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_ELEM_NUM;
       return r;
@@ -1202,18 +1204,10 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // Case: v := w, where v and w are variables
   // -----------------------------------------
   if (e.tag == VAR) {
-    Var w = e.var;
-    Instr instr;
-    instr.tag                   = ALU;
-    instr.ALU.setFlags          = false;
-    instr.ALU.cond              = cond;
-    instr.ALU.dest              = dstReg(v);
-    instr.ALU.srcA.tag          = REG;
-    instr.ALU.srcA.reg          = srcReg(w);
-    instr.ALU.op                = A_BOR;
-    instr.ALU.srcB.tag          = REG;
-    instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
-    seq->append(instr);
+    Var w   = e.var;
+    Reg src = srcReg(w);
+
+		*seq << genInstr(A_BOR, cond, dstReg(v), src, src);
     return;
   }
 
@@ -1222,14 +1216,7 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // -------------------------------------------
   if (e.tag == INT_LIT) {
     int i = e.intLit;
-    Instr instr;
-    instr.tag           = LI;
-    instr.LI.setFlags   = false;
-    instr.LI.cond       = cond;
-    instr.LI.dest       = dstReg(v);
-    instr.LI.imm.tag    = IMM_INT32;
-    instr.LI.imm.intVal = i;
-    seq->append(instr);
+		*seq << genLI(cond, dstReg(v), i);
     return;
   }
 

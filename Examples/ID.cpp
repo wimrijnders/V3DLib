@@ -7,8 +7,7 @@ QPULib::Settings settings;
 
 // Define function that runs on the GPU.
 
-void id_kernel(Ptr<Int> p, Ptr<Int> q)
-{
+void id_kernel(Ptr<Int> p, Ptr<Int> q) {
   *p = me();
   *q = index();
 }

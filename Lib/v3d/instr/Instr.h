@@ -103,6 +103,7 @@ public:
 	void alu_add_set(Location const &dst, Location const &srca, Location const &srcb); 
 	void alu_add_set(Location const &dst, SmallImm const &imma, Location const &srcb);
 	void alu_add_set(Location const &dst, Location const &srca, SmallImm const &immb);
+	void alu_add_set(Location const &dst, SmallImm const &imma, SmallImm const &immb);
 	void alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_mul_set(Location const &loc1, Location const &loc2, SmallImm const &imm3); 
 	void alu_mul_set(Location const &dst, SmallImm const &imma, Location const &locb); 
@@ -153,7 +154,8 @@ Instr mov(Location const &loc1, SmallImm val);
 Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
 Instr mov(Location const &loc1, Location const &loc2);
 
-Instr bor(Location const &loc1, Location const &loc2, Location const &loc3);
+Instr bor(Location const &dst, Location const &srca, Location const &srcb);
+Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);

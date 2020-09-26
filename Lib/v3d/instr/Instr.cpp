@@ -607,6 +607,13 @@ void Instr::alu_add_set(Location const &dst, Location const &srca, SmallImm cons
 }
 
 
+void Instr::alu_add_set(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
+	alu_add_set_dst(dst);
+	alu_add_set_imm_a(imma);
+	alu_add_set_imm_b(immb);
+}
+
+
 void Instr::alu_mul_set_dst(Location const &loc1) {
 	if (loc1.is_rf()) {
 		alu.mul.magic_write = false;
@@ -930,12 +937,20 @@ Instr mov(Location const &loc1, Location const &loc2) {
 
 
 // or is reserved keyword
-Instr bor(Location const &loc1, Location const &loc2, Location const &loc3) {
+Instr bor(Location const &dst, Location const &srca, Location const &srcb) {
 	Instr instr;
-	instr.alu_add_set(loc1, loc2, loc3);
+	instr.alu_add_set(dst, srca, srcb);
 
 	instr.alu.add.op    = V3D_QPU_A_OR;
+	return instr;
+}
 
+
+Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
+	Instr instr;
+	instr.alu_add_set(dst, imma, immb);
+
+	instr.alu.add.op    = V3D_QPU_A_OR;
 	return instr;
 }
 

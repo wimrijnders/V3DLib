@@ -4,7 +4,30 @@
 
 namespace QPULib {
 
+Instr genInstr(ALUOp op, AssignCond cond,  Reg dst, Reg srcA, Reg srcB) {
+  Instr instr;
+  instr.tag           = ALU;
+  instr.ALU.setFlags  = false;
+  instr.ALU.cond      = cond;
+  instr.ALU.dest      = dst;
+  instr.ALU.srcA.tag  = REG;
+  instr.ALU.srcA.reg  = srcA;
+  instr.ALU.op        = op;
+  instr.ALU.srcB.tag  = REG;
+  instr.ALU.srcB.reg  = srcB;
+
+  return instr;
+}
+
+
 namespace {
+
+Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
+  AssignCond always;
+  always.tag = ALWAYS;
+	return genInstr(op, always, dst, srcA, srcB);
+}
+
 
 Instr genInstr(ALUOp op, Reg dst, Reg srcA, int n) {
   AssignCond always;
@@ -23,6 +46,35 @@ Instr genInstr(ALUOp op, Reg dst, Reg srcA, int n) {
   instr.ALU.srcB.smallImm.val = n;
 
   return instr;
+}
+
+
+Instr genInstr(ALUOp op, Reg dst, int n, int m) {
+  AssignCond always;
+  always.tag = ALWAYS;
+
+  Instr instr;
+  instr.tag                   = ALU;
+  instr.ALU.setFlags          = false;
+  instr.ALU.cond              = always;
+  instr.ALU.dest              = dst;
+  instr.ALU.srcA.tag          = IMM;
+  instr.ALU.srcA.smallImm.tag = SMALL_IMM;
+  instr.ALU.srcA.smallImm.val = n;
+  instr.ALU.op                = op;
+  instr.ALU.srcB.tag          = IMM;
+  instr.ALU.srcB.smallImm.tag = SMALL_IMM;
+  instr.ALU.srcB.smallImm.val = m;
+
+  return instr;
+}
+
+
+/**
+ * Generate addition instruction.
+ */
+Instr genADD(Reg dst, Reg srcA, Reg srcB) {
+	return genInstr(A_ADD, dst, srcA, srcB);
 }
 
 }  // anon namespace
@@ -50,15 +102,14 @@ bool isCondAssign(Instr* instr)
 
 // Generate load-immediate instruction.
 
-Instr genLI(Reg dst, int i)
-{
+Instr genLI(AssignCond cond, Reg dst, int i) {
   AssignCond always;
   always.tag = ALWAYS;
 
   Instr instr;
   instr.tag           = LI;
   instr.LI.setFlags   = false;
-  instr.LI.cond       = always;
+  instr.LI.cond       = cond;
   instr.LI.dest       = dst;
   instr.LI.imm.tag    = IMM_INT32;
   instr.LI.imm.intVal = i;
@@ -66,46 +117,18 @@ Instr genLI(Reg dst, int i)
   return instr;
 }
 
-// Generate bitwise-or instruction.
 
-Instr genOR(Reg dst, Reg srcA, Reg srcB)
-{
+Instr genLI(Reg dst, int i) {
   AssignCond always;
   always.tag = ALWAYS;
-
-  Instr instr;
-  instr.tag           = ALU;
-  instr.ALU.setFlags  = false;
-  instr.ALU.cond      = always;
-  instr.ALU.dest      = dst;
-  instr.ALU.srcA.tag  = REG;
-  instr.ALU.srcA.reg  = srcA;
-  instr.ALU.op        = A_BOR;
-  instr.ALU.srcB.tag  = REG;
-  instr.ALU.srcB.reg  = srcB;
-
-  return instr;
+	return genLI(always, dst, i);
 }
 
-// Generate addition instruction.
 
-Instr genADD(Reg dst, Reg srcA, Reg srcB)
-{
-  AssignCond always;
-  always.tag = ALWAYS;
+// Generate bitwise-or instruction.
 
-  Instr instr;
-  instr.tag           = ALU;
-  instr.ALU.setFlags  = false;
-  instr.ALU.cond      = always;
-  instr.ALU.dest      = dst;
-  instr.ALU.srcA.tag  = REG;
-  instr.ALU.srcA.reg  = srcA;
-  instr.ALU.op        = A_ADD;
-  instr.ALU.srcB.tag  = REG;
-  instr.ALU.srcB.reg  = srcB;
-
-  return instr;
+Instr genOR(Reg dst, Reg srcA, Reg srcB) {
+	return genInstr(A_BOR, dst, srcA, srcB);
 }
 
 
@@ -181,9 +204,19 @@ Reg rf(uint8_t index) {
 }
 
 
+Instr mov(Reg dst, int n) {
+	return genInstr(A_BOR, dst, n, n);
+}
+
 Instr shr(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
 	return genInstr(A_SHR, dst, srcA, n);
+}
+
+
+Instr add(Reg dst, Reg srcA, Reg srcB) {
+//	breakpoint
+	return genADD(dst, srcA, srcB);
 }
 
 
