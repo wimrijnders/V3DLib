@@ -7,8 +7,6 @@
 
 namespace QPULib {
 
-Instr move_from_r4(Reg &dst);
-
 void genSetupVPMLoad(Seq<Instr>* instrs, int n,
                        int addr, int hor, int stride);
 void genSetupVPMLoad(Seq<Instr>* instrs, int n,
@@ -39,7 +37,6 @@ void genSetReadPitch(Seq<Instr>* instrs, Reg pitch);
 void genSetWriteStride(Seq<Instr>* instrs, int stride);
 void genSetWriteStride(Seq<Instr>* instrs, Reg stride);
 
-void loadStorePass(Seq<Instr>* instrs);
 
 }  // namespace QPULib
 

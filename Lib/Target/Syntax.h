@@ -500,6 +500,7 @@ namespace instr {
 
 extern Reg const ACC0;
 extern Reg const ACC1;
+extern Reg const ACC4;
 extern Reg const QPU_ID;
 extern Reg const ELEM_ID;
 

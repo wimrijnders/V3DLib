@@ -1,6 +1,6 @@
 #include "Translate.h"
 #include "Source/Translate.h"
-#include "Target/LoadStore.h"
+#include "LoadStore.h"
 
 namespace QPULib {
 

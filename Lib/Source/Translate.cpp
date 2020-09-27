@@ -1089,4 +1089,35 @@ void translateStmt(Seq<Instr>* seq, Stmt* s) {
 	};
 }
 
+
+// ============================================================================
+// Load/Store pass
+// ============================================================================
+
+void loadStorePass(Seq<Instr>* instrs) {
+	using namespace QPULib::Target::instr;
+
+  Seq<Instr> newInstrs(instrs->numElems*2);
+
+  for (int i = 0; i < instrs->numElems; i++) {
+    Instr instr = instrs->elems[i];
+    switch (instr.tag) {
+      case RECV: {
+        instr.tag = TMU0_TO_ACC4;
+        newInstrs << instr
+				          << mov(instr.RECV.dest, ACC4); //move_from_r4(instr.RECV.dest));
+        break;
+      }
+      default:
+        newInstrs << instr;
+        break;
+    }
+  }
+
+  // Update original instruction sequence
+  instrs->clear();
+	*instrs << newInstrs;
+}
+
+
 }  // namespace QPULib

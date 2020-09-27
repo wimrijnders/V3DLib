@@ -1,13 +1,12 @@
 #include "KernelDriver.h"
-#include <iostream>  // cout
+#include <iostream>            // cout
 #include "Support/debug.h"
-#include "Source/Syntax.h"  // stmtStack
+#include "Source/Syntax.h"     // stmtStack
 #include "Source/Pretty.h"
 #include "Source/Translate.h"
-#include "Source/Stmt.h"  // initStmt
+#include "Source/Stmt.h"       // initStmt
 #include "Target/Pretty.h"
 #include "Target/Satisfy.h"
-#include "Target/LoadStore.h"
 #include "Target/RemoveLabels.h"
 #include "SourceTranslate.h"
 

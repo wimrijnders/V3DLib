@@ -1,7 +1,7 @@
+#include "LoadStore.h"
 #include <assert.h>
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
-#include "Target/LoadStore.h"
 
 namespace QPULib {
 
@@ -296,58 +296,4 @@ void genSetWriteStride(Seq<Instr>* instrs, Reg stride)
   Reg dst; dst.tag = SPECIAL; dst.regId = SPECIAL_WR_SETUP;
   instrs->append(genOR(dst, tmp, stride));
 }
-
-// ============================================================================
-// WRI addition
-// ============================================================================
-
-Instr move_from_r4(Reg &dst) {
-	//printf("Called mov_from_r4()\n");
-
-	Instr move;
-	move.tag                = ALU;
-	move.ALU.setFlags       = false;
-	move.ALU.cond.tag       = ALWAYS;
-	move.ALU.dest           = dst;
-	move.ALU.srcA.tag       = REG;
-	move.ALU.srcA.reg.tag   = ACC;
-	move.ALU.srcA.reg.regId = 4;
-	move.ALU.op             = A_BOR;
-	move.ALU.srcB.tag       = REG;
-	move.ALU.srcB.reg.tag   = ACC;
-	move.ALU.srcB.reg.regId = 4;
-
-	return move;
-}
-
-
-// ============================================================================
-// Load/Store pass
-// ============================================================================
-
-void loadStorePass(Seq<Instr>* instrs)
-{
-  Seq<Instr> newInstrs(instrs->numElems*2);
-
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
-    switch (instr.tag) {
-      case RECV: {
-        instr.tag = TMU0_TO_ACC4;
-        newInstrs.append(instr);
-        newInstrs.append(move_from_r4(instr.RECV.dest));
-        break;
-      }
-      default:
-        newInstrs.append(instr);
-        break;
-    }
-  }
-
-  // Update original instruction sequence
-  instrs->clear();
-  for (int i = 0; i < newInstrs.numElems; i++)
-    instrs->append(newInstrs.elems[i]);
-}
-
 }  // namespace QPULib

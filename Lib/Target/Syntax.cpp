@@ -196,6 +196,7 @@ namespace instr {
 
 Reg const ACC0(ACC, 0);
 Reg const ACC1(ACC, 1);
+Reg const ACC4(ACC, 4);
 Reg const QPU_ID(SPECIAL, SPECIAL_QPU_NUM);
 Reg const ELEM_ID(SPECIAL, SPECIAL_ELEM_NUM);
 

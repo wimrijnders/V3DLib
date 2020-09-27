@@ -1,7 +1,6 @@
 #include "SourceTranslate.h"
 #include "Support/debug.h"
 #include "Source/Translate.h"  // srcReg()
-#include "Target/LoadStore.h"  // move_from_r4()
 #include "Target/Liveness.h"
 #include "Target/Subst.h"
 
@@ -80,7 +79,7 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	ret << instr;
 
 	dst = dstReg(v);
-	ret << move_from_r4(dst);
+	ret << mov(dst, ACC4);
 }
 
 
