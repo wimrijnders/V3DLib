@@ -20,12 +20,10 @@ void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
   }
 
 	Reg srcAddr = srcReg(addr->var);
-  Reg tmud(SPECIAL, SPECIAL_VPM_WRITE);
-  *seq << mov(tmud, srcAddr);
-
 	Reg srcData = srcReg(data->var);
-  Reg tmua(SPECIAL, SPECIAL_DMA_ST_ADDR);
-  *seq << mov(tmua, srcData);
+
+  *seq << mov(TMUD, srcAddr)
+       << mov(TMUA, srcData);
 }
 
 }  // anon namespace
@@ -33,24 +31,23 @@ void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
 namespace v3d {
 
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
+	using namespace QPULib::Target::instr;
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
-	using namespace QPULib::Target::instr;
-	Seq<Instr> &ret = *seq;
 
-	Reg dst(SPECIAL, SPECIAL_VPM_WRITE);
+	Reg srcAddr = srcReg(rhs->var);
+	Reg srcData = srcReg(lhs.deref.ptr->var);
 
 	if (rhs->var.tag == ELEM_NUM) {
 		debug("TODO: is ACC0 safe here?");
-		assert(srcReg(rhs->var) == ELEM_ID);
-		ret << mov(ACC0, ELEM_ID)
-		    << mov(dst, ACC0);
+		assert(srcAddr == ELEM_ID);
+		*seq << mov(ACC0, ELEM_ID)
+		     << mov(TMUD, ACC0);
 	} else {
-		ret << mov(dst, srcReg(rhs->var));
+		*seq << mov(TMUD, srcAddr);
 	}
 
-	dst.regId = SPECIAL_DMA_ST_ADDR;
-	ret << mov(dst, srcReg(lhs.deref.ptr->var));
+	*seq << mov(TMUA, srcData);
 
 	return true;
 }
@@ -62,24 +59,22 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
  * Basically the same as `deref_var_var()` above.
  */
 void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
-	// TODO: Check if offset by index needed
-	assert(seq != nullptr);
 	using namespace QPULib::Target::instr;
-	Seq<Instr> ret = *seq;
+	assert(seq != nullptr);
 
-	Reg src = srcReg(e.deref.ptr->var);
-	Reg dst(SPECIAL,SPECIAL_TMU0_S);
-	ret << mov(dst, src);
+	// TODO: Check if offset by index needed
 
-	// TODO: Do we need NOP's here?
-	// TODO: Check if more fields need to be set
-	// TODO is r4 safe? Do we need to select an accumulator in some way?
   Instr instr;
 	instr.tag = TMU0_TO_ACC4;
-	ret << instr;
 
-	dst = dstReg(v);
-	ret << mov(dst, ACC4);
+	Reg src = srcReg(e.deref.ptr->var);
+	*seq << mov(TMU0_S, src)
+
+	     // TODO: Do we need NOP's here?
+	     // TODO: Check if more fields need to be set
+	     // TODO is r4 safe? Do we need to select an accumulator in some way?
+	     << instr
+	     << mov(dstReg(v), ACC4);
 }
 
 
@@ -171,8 +166,8 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	// threads. It's probably also the reason why you can select only 1 or 8 (max)
 	// threads, otherwise there would be gaps in the qpu id.
 	//
-	ret << mov(rf(RSV_QPU_ID), 0);
-	ret << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
+	ret << mov(rf(RSV_QPU_ID), 0)           // not needed, already init'd to 0. Left here to counter future brainfarts
+	    << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
 	    << cond_branch(endifLabel).allzc()  // nop()'s added downstream
 			<< mov(ACC0, QPU_ID)
 			<< shr(ACC0, ACC0, 2)
@@ -183,9 +178,8 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID (next stmt)
 			<< mov(ACC0, ELEM_ID)
 			<< add(ACC1, ACC1, ACC0)
-	    << shl(ACC0, ACC1, 2);          // Post: offset in ACC0
-
-	ret << add_uniform_pointer_offset(code);
+	    << shl(ACC0, ACC1, 2)           // Post: offset now in ACC0
+	    << add_uniform_pointer_offset(code);
 
 	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
 }

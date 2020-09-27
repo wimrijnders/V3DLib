@@ -143,6 +143,9 @@ struct AssignCond {
 
   // Condition flag
   Flag flag;
+
+	AssignCond() = default;
+	AssignCond(AssignCondTag in_tag) : tag(in_tag) {}
 };
 
 // ============================================================================
@@ -326,30 +329,25 @@ enum InstrTag {
 
   // DMA
   // ---
-
   , DMA_LOAD_WAIT    // Wait for DMA load to complete
   , DMA_STORE_WAIT   // Wait for DMA store to complete
 
   // Semaphores
   // ----------
-
   , SINC          // Increment semaphore
   , SDEC          // Decrement semaphore
 
   // Send IRQ to host
   // ----------------
-
   , IRQ
 
   // Load receive via TMU
   // --------------------
-
   , RECV
   , TMU0_TO_ACC4
 
   // Print instructions
   // ------------------
-
   , PRS           // Print string
   , PRI           // Print integer
   , PRF           // Print float
@@ -368,7 +366,6 @@ enum InstrTag {
 struct Instr {
   // What kind of instruction is it?
   InstrTag tag;
-
 
   union {
     // Load immediate
@@ -418,15 +415,8 @@ struct Instr {
   };
 
 
-	bool hasImm() const {
-  	return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM;
-	}
-
-
-	bool isRot() const {
-		return ALU.op == M_ROTATE;
-	}
-
+	bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
+	bool isRot() const { return ALU.op == M_ROTATE; }
 	bool isMul() const;
 	bool isUniformLoad() const;
 	bool isTMUAWrite() const;
@@ -456,7 +446,6 @@ struct Instr {
 		return BRL.label;
 	}
 
-
 	void label(Label val) {
 		assert(tag == InstrTag::LAB);
 		m_label = val;
@@ -485,11 +474,6 @@ inline Instr nop()
 
 // Instruction constructors
 Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB);
-Instr genLI(AssignCond cond, Reg dst, int i);
-Instr genLI(Reg dst, int i);
-Instr genOR(Reg dst, Reg srcA, Reg srcB);
-Instr genLShift(Reg dst, Reg srcA, int n);
-Instr genIncr(Reg dst, Reg srcA, int n);
 
 // Is last instruction in a basic block?
 bool isLast(Instr instr);
@@ -503,15 +487,32 @@ extern Reg const ACC1;
 extern Reg const ACC4;
 extern Reg const QPU_ID;
 extern Reg const ELEM_ID;
+extern Reg const TMU0_S;
+extern Reg const VPM_WRITE;
+extern Reg const VPM_READ;
+extern Reg const WR_SETUP;
+extern Reg const RD_SETUP;
+extern Reg const DMA_ST_WAIT;
+
+// Following registers are synonyms for v3d code generation,
+// to better indicate the intent. Definitions of vc4 concepts
+// are reused here, in order to prevent the code getting into a mess.
+extern Reg const TMUD;
+extern Reg const TMUA;
+
 
 Reg rf(uint8_t index);
+Instr bor(Reg dst, Reg srcA, Reg srcB);
 Instr mov(Reg dst, int n);
-inline Instr mov(Reg dst, Reg src)            { return genOR(dst, src, src); }
-inline Instr shl(Reg dst, Reg srcA, int val)  { return genLShift(dst, srcA, val); }
+Instr mov(Reg dst, Reg src);
+Instr shl(Reg dst, Reg srcA, int val);
 Instr add(Reg dst, Reg srcA, Reg srcB);
+Instr add(Reg dst, Reg srcA, int n);
 Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
 Instr band(Reg dst, Reg srcA, int n);
+Instr li(AssignCond cond, Reg dst, int i);
+Instr li(Reg dst, int i);
 
 }  // namespace instr
 }  // namespace Target

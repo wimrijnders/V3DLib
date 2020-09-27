@@ -100,51 +100,6 @@ bool isCondAssign(Instr* instr)
   return false;
 }
 
-// Generate load-immediate instruction.
-
-Instr genLI(AssignCond cond, Reg dst, int i) {
-  AssignCond always;
-  always.tag = ALWAYS;
-
-  Instr instr;
-  instr.tag           = LI;
-  instr.LI.setFlags   = false;
-  instr.LI.cond       = cond;
-  instr.LI.dest       = dst;
-  instr.LI.imm.tag    = IMM_INT32;
-  instr.LI.imm.intVal = i;
- 
-  return instr;
-}
-
-
-Instr genLI(Reg dst, int i) {
-  AssignCond always;
-  always.tag = ALWAYS;
-	return genLI(always, dst, i);
-}
-
-
-// Generate bitwise-or instruction.
-
-Instr genOR(Reg dst, Reg srcA, Reg srcB) {
-	return genInstr(A_BOR, dst, srcA, srcB);
-}
-
-
-// Generate left-shift instruction.
-
-Instr genLShift(Reg dst, Reg srcA, int n) {
-  assert(n >= 0 && n <= 15);
-	return genInstr(A_SHL, dst, srcA, n);
-}
-
-// Generate increment instruction.
-
-Instr genIncr(Reg dst, Reg srcA, int n) {
-  assert(n >= 0 && n <= 15);
-	return genInstr(A_ADD, dst, srcA, n);
-}
 
 // Is last instruction in a basic block?
 bool isLast(Instr instr)
@@ -197,8 +152,18 @@ namespace instr {
 Reg const ACC0(ACC, 0);
 Reg const ACC1(ACC, 1);
 Reg const ACC4(ACC, 4);
-Reg const QPU_ID(SPECIAL, SPECIAL_QPU_NUM);
-Reg const ELEM_ID(SPECIAL, SPECIAL_ELEM_NUM);
+Reg const QPU_ID(     SPECIAL, SPECIAL_QPU_NUM);
+Reg const ELEM_ID(    SPECIAL, SPECIAL_ELEM_NUM);
+Reg const TMU0_S(     SPECIAL, SPECIAL_TMU0_S);
+Reg const VPM_WRITE(  SPECIAL, SPECIAL_VPM_WRITE);
+Reg const VPM_READ(   SPECIAL, SPECIAL_VPM_READ);
+Reg const WR_SETUP(   SPECIAL, SPECIAL_WR_SETUP);
+Reg const RD_SETUP(   SPECIAL, SPECIAL_RD_SETUP);
+Reg const DMA_ST_WAIT(SPECIAL, SPECIAL_DMA_ST_WAIT);
+
+// Synonyms for v3d
+Reg const TMUD(SPECIAL, SPECIAL_VPM_WRITE);
+Reg const TMUA(SPECIAL, SPECIAL_DMA_ST_ADDR);
 
 Reg rf(uint8_t index) {
 	return Reg(REG_A, index);
@@ -208,6 +173,30 @@ Reg rf(uint8_t index) {
 Instr mov(Reg dst, int n) {
 	return genInstr(A_BOR, dst, n, n);
 }
+
+
+
+/**
+ * Generate bitwise-or instruction.
+ */
+Instr bor(Reg dst, Reg srcA, Reg srcB) {
+	return genInstr(A_BOR, dst, srcA, srcB);
+}
+
+
+Instr mov(Reg dst, Reg src) {
+	return bor(dst, src, src);
+}
+
+
+/**
+ * Generate left-shift instruction.
+ */
+Instr shl(Reg dst, Reg srcA, int val) {
+  assert(val >= 0 && val <= 15);
+	return genInstr(A_SHL, dst, srcA, val);
+}
+
 
 Instr shr(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
@@ -221,6 +210,12 @@ Instr add(Reg dst, Reg srcA, Reg srcB) {
 }
 
 
+Instr add(Reg dst, Reg srcA, int n) {
+  assert(n >= 0 && n <= 15);
+	return genInstr(A_ADD, dst, srcA, n);
+}
+
+
 Instr sub(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
 	return genInstr(A_SUB, dst, srcA, n);
@@ -229,6 +224,30 @@ Instr sub(Reg dst, Reg srcA, int n) {
 
 Instr band(Reg dst, Reg srcA, int n) {
 	return genInstr(A_BAND, dst, srcA, n);
+}
+
+
+/**
+ * Generate load-immediate instruction.
+ */
+Instr li(AssignCond cond, Reg dst, int i) {
+  Instr instr;
+  instr.tag           = LI;
+  instr.LI.setFlags   = false;
+  instr.LI.cond       = cond;
+  instr.LI.dest       = dst;
+  instr.LI.imm.tag    = IMM_INT32;
+  instr.LI.imm.intVal = i;
+ 
+  return instr;
+}
+
+
+/**
+ * Generate load-immediate instruction.
+ */
+Instr li(Reg dst, int i) {
+	return li(AssignCond(ALWAYS), dst, i);
 }
 
 }  // namespace instr

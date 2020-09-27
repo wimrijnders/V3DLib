@@ -11,30 +11,12 @@ namespace QPULib {
 namespace vc4 {
 
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
-	using namespace QPULib::Target::instr;
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
 
-	// Setup VPM
-	Reg addr = freshReg();
-	*seq << genLI(addr, 16)
-	     << add(addr, addr, QPU_ID);
-	genSetupVPMStore(seq, addr, 0, 1);
-	// Store address
-	Reg storeAddr = freshReg();
-	*seq << genLI(storeAddr, 256)
-	     << add(storeAddr, storeAddr, QPU_ID);
-	// Setup DMA
-	genSetWriteStride(seq, 0);
-	genSetupDMAStore(seq, 16, 1, 1, storeAddr);
-	// Put to VPM
-	Reg data(SPECIAL, SPECIAL_VPM_WRITE);
-	seq->append(genLShift(data, srcReg(rhs->var), 0));
-	// Start DMA
-	genStartDMAStore(seq, srcReg(lhs.deref.ptr->var));
+	StoreRequest(*seq, lhs.deref.ptr->var, rhs->var);
 	// Wait for store to complete
 	genWaitDMAStore(seq);
-
 	return true;
 }
 
@@ -55,8 +37,7 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	// Setup VPM
 	genSetupVPMLoad(seq, 1, QPU_ID, 0, 1);
 	// Get from VPM
-	Reg data(SPECIAL, SPECIAL_VPM_READ);
-	seq->append(genLShift(dstReg(v), data, 0));
+	*seq << shl(dstReg(v), Target::instr::VPM_READ, 0);
 }
 
 

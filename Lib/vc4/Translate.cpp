@@ -158,7 +158,7 @@ void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride)
 
 
 // ============================================================================
-// Store request
+// Store request operation
 // ============================================================================
 
 // A 'store' operation of data to addr is almost the same as
@@ -167,7 +167,7 @@ void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride)
 // than after a write.  This enables other operations to happen in
 // parallel with the write.
 
-void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
+void storeRequestOperation(Seq<Instr>* seq, Expr* data, Expr* addr) {
 	using namespace QPULib::Target::instr;
 
   if (data->tag != VAR || addr->tag != VAR) {
@@ -175,25 +175,7 @@ void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
     addr = putInVar(seq, addr);
   }
 
-  // Setup VPM
-  Reg addrReg = freshReg();
-  *seq << genLI(addrReg, 16)
-       << add(addrReg, addrReg, QPU_ID);
-  genSetupVPMStore(seq, addrReg, 0, 1);
-  // Store address
-  Reg storeAddr = freshReg();
-  *seq << genLI(storeAddr, 256)
-       << add(storeAddr, storeAddr, QPU_ID);
-  // Wait for any outstanding store to complete
-  genWaitDMAStore(seq);
-  // Setup DMA
-  genSetWriteStride(seq, 0);
-  genSetupDMAStore(seq, 16, 1, 1, storeAddr);
-  // Put to VPM
-  Reg dataReg(SPECIAL, SPECIAL_VPM_WRITE);
-  seq->append(genLShift(dataReg, srcReg(data->var), 0));
-  // Start DMA
-  genStartDMAStore(seq, srcReg(addr->var));
+	vc4::StoreRequest(*seq, addr->var, data->var, true);
 }
 
 }  // anon namespace
@@ -209,7 +191,7 @@ bool stmt(Seq<Instr>* seq, Stmt* s) {
   // Case: store(e0, e1) where e1 and e2 are exprs
   // ---------------------------------------------
   if (s->tag == STORE_REQUEST) {
-		storeRequest(seq, s->storeReq.data, s->storeReq.addr);
+		storeRequestOperation(seq, s->storeReq.data, s->storeReq.addr);
     return true;
   }
 
@@ -319,6 +301,39 @@ bool stmt(Seq<Instr>* seq, Stmt* s) {
 
 
 	return false;
+}
+
+
+// ============================================================================
+// Store request
+// ============================================================================
+
+void StoreRequest(Seq<Instr> &seq, Var addr_var, Var data_var,  bool wait) {
+	using namespace QPULib::Target::instr;
+
+	Reg addr      = freshReg();
+	Reg storeAddr = freshReg();
+
+	// Setup VPM
+	seq << li(addr, 16)
+	    << add(addr, addr, QPU_ID);
+	genSetupVPMStore(&seq, addr, 0, 1);
+	// Store address
+	seq << li(storeAddr, 256)
+	    << add(storeAddr, storeAddr, QPU_ID);
+
+	if (wait) {
+		// Wait for any outstanding store to complete
+		genWaitDMAStore(&seq);
+	}
+
+	// Setup DMA
+	genSetWriteStride(&seq, 0);
+	genSetupDMAStore(&seq, 16, 1, 1, storeAddr);
+	// Put to VPM
+	seq << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0);
+	// Start DMA
+	genStartDMAStore(&seq, srcReg(addr_var));
 }
 
 }  // namespace vc4

@@ -139,9 +139,7 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
   // ---------------------------------------------------------
   // Case: *lhs := rhs where lhs is not a var or rhs not a var
   // ---------------------------------------------------------
-  if (lhs.tag == DEREF &&
-        (lhs.deref.ptr->tag != VAR ||
-         rhs->tag != VAR)) {
+  if (lhs.tag == DEREF && (lhs.deref.ptr->tag != VAR || rhs->tag != VAR)) {
     assert(!isLit(lhs.deref.ptr));
     lhs.deref.ptr = simplify(seq, lhs.deref.ptr);
     rhs = putInVar(seq, rhs);
@@ -917,33 +915,28 @@ Reg srcReg(Var v)
 
 
 // Translate variable to target register.
-Reg dstReg(Var v)
-{
-  Reg r;
+Reg dstReg(Var v) {
+	using namespace QPULib::Target::instr;
+
   switch (v.tag) {
     case UNIFORM:
     case QPU_NUM:
     case ELEM_NUM:
-    case VPM_READ:
-      printf("QPULib: writing to read-only special register is forbidden\n");
-      assert(false);
-    case STANDARD:
-      r.tag   = REG_A;
-      r.regId = v.id;
-      return r;
-    case VPM_WRITE:
-      r.tag = SPECIAL;
-      r.regId = SPECIAL_VPM_WRITE;
-      return r;
-    case TMU0_ADDR:
-      r.tag = SPECIAL;
-      r.regId = SPECIAL_TMU0_S;
-      return r;
-  }
+    case VarTag::VPM_READ:
+      fatal("QPULib: writing to read-only special register is forbidden");
+			return Reg();  // Return anything
 
-  // Not reachable
-  assert(false);
-	return r;
+    case STANDARD:
+			return Reg(REG_A, v.id);
+    case VarTag::VPM_WRITE:
+			return Target::instr::VPM_WRITE;
+    case TMU0_ADDR:
+			return TMU0_S;
+
+		default:
+			fatal("Unhandled case in dstReg()");
+			return Reg();  // Return anything
+  }
 }
 
 
@@ -958,6 +951,8 @@ Reg dstReg(Var v)
  * @param expr  Expression on RHS
  */
 void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
+	using namespace QPULib::Target::instr;
+
   Expr e = *expr;
 
   // -----------------------------------------
@@ -975,8 +970,7 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // Case: v := i, where i is an integer literal
   // -------------------------------------------
   if (e.tag == INT_LIT) {
-    int i = e.intLit;
-		*seq << genLI(cond, dstReg(v), i);
+		*seq << li(cond, dstReg(v), e.intLit);
     return;
   }
 
