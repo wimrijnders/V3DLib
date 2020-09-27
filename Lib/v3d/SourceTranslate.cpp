@@ -6,6 +6,31 @@
 #include "Target/Subst.h"
 
 namespace QPULib {
+
+namespace {
+
+/**
+ * @param seq  list of generated instructions up till now
+ */
+void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
+	using namespace QPULib::Target::instr;
+
+  if (addr->tag != VAR || data->tag != VAR) {
+    addr = putInVar(seq, addr);
+    data = putInVar(seq, data);
+  }
+
+	Reg srcAddr = srcReg(addr->var);
+  Reg tmud(SPECIAL, SPECIAL_VPM_WRITE);
+  *seq << mov(tmud, srcAddr);
+
+	Reg srcData = srcReg(data->var);
+  Reg tmua(SPECIAL, SPECIAL_DMA_ST_ADDR);
+  *seq << mov(tmua, srcData);
+}
+
+}  // anon namespace
+
 namespace v3d {
 
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
@@ -56,32 +81,6 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 
 	dst = dstReg(v);
 	ret << move_from_r4(dst);
-}
-
-
-void SourceTranslate::setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) {
-	// ignore
-}
-
-
-/**
- * @param seq  list of generated instructions up till now
- */
-void SourceTranslate::storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
-	using namespace QPULib::Target::instr;
-
-  if (addr->tag != VAR || data->tag != VAR) {
-    addr = putInVar(seq, addr);
-    data = putInVar(seq, data);
-  }
-
-	Reg srcAddr = srcReg(addr->var);
-  Reg tmud(SPECIAL, SPECIAL_VPM_WRITE);
-  *seq << mov(tmud, srcAddr);
-
-	Reg srcData = srcReg(data->var);
-  Reg tmua(SPECIAL, SPECIAL_DMA_ST_ADDR);
-  *seq << mov(tmua, srcData);
 }
 
 
@@ -190,6 +189,23 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	ret << add_uniform_pointer_offset(code);
 
 	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
+}
+
+
+/**
+ * @return true if statement handled, false otherwise
+ */
+bool SourceTranslate::stmt(Seq<Instr>* seq, Stmt* s) {
+
+  // ---------------------------------------------
+  // Case: store(e0, e1) where e1 and e2 are exprs
+  // ---------------------------------------------
+  if (s->tag == STORE_REQUEST) {
+		storeRequest(seq, s->storeReq.data, s->storeReq.addr);
+    return true;
+  }
+
+	return false;
 }
 
 }  // namespace v3d

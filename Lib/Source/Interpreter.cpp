@@ -194,6 +194,7 @@ Vec eval(CoreState* s, Expr* e)
 #ifdef DEBUG
 			breakpoint  // TODO test and verify following
 			            // If working, we can consolidate heap access
+									// DONE tested and verified
 
       for (int i = 0; i < NUM_LANES; i++) {
         uint32_t addr = (uint32_t) a.elems[i].intVal;
