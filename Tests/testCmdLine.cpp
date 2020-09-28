@@ -15,10 +15,12 @@
 //	#pragma message "QPU mode enabled"
 #define POSTFIX_QPU "qpu"
 const char *SUDO = (Platform::instance().has_vc4)? "sudo " : "";  // sudo needed for vc4
+bool const use_sudo = true;
 
 #else
 #define POSTFIX_QPU "emu"
 const char *SUDO = "";
+bool const use_sudo = false;
 
 #endif
 
@@ -66,6 +68,16 @@ void check_output_run(std::string const &program, RunType run_type) {
 	REQUIRE(!system(diff_cmd.c_str()));
 }
 
+
+void make_test_dir() {
+	std::string cmd = "mkdir -p obj/test";
+
+	if (use_sudo) {
+		cmd = SUDO + cmd;
+	}
+	REQUIRE(!system(cmd.c_str()));
+}
+
 }  // anon namespace
 
 //
@@ -87,7 +99,7 @@ TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline
 
 
 TEST_CASE("ReqRecv check output and generation", "[cmdline]") {
-	REQUIRE(!system("mkdir -p obj/test"));
+	make_test_dir();
 
 	SECTION("Generated code should be as expected") {
 		// WRI DEBUG disabled temporarily
@@ -118,7 +130,7 @@ TEST_CASE("ReqRecv check output and generation", "[cmdline]") {
 
 
 TEST_CASE("ID check output", "[cmdline]") {
-	REQUIRE(!system("mkdir -p obj/test"));
+	make_test_dir();
 
 	SECTION("ID should give correct output for all three run options") {
 		check_output_run("ID", QPU);
@@ -129,7 +141,7 @@ TEST_CASE("ID check output", "[cmdline]") {
 
 
 TEST_CASE("Hello check output", "[cmdline]") {
-	REQUIRE(!system("mkdir -p obj/test"));
+	make_test_dir();
 
 	SECTION("Hello should give correct output for all three run options") {
 		check_output_run("Hello", QPU);
