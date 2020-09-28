@@ -42,7 +42,7 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	Reg srcData = srcReg(lhs.deref.ptr->var);
 
 	if (rhs->var.tag == ELEM_NUM) {
-		debug("TODO: is ACC0 safe here?");
+		//TODO: is ACC0 safe here?
 		assert(srcAddr == ELEM_ID);
 		*seq << mov(ACC0, ELEM_ID)
 		     << mov(TMUD, ACC0);
