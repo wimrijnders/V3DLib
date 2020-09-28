@@ -1,5 +1,9 @@
 #ifndef _QPULIB_SOURCE_DMA_H_
 #define _QPULIB_SOURCE_DMA_H_
+#include "Source/Int.h"     // IntExpr
+#include "Source/Ptr.h"
+#include "Source/Syntax.h"  // Expr
+#include "Source/Stmt.h"    // stmtStack()
 
 namespace QPULib {
 
@@ -53,6 +57,21 @@ template <typename T> inline void dmaStartWrite(PtrExpr<T> memAddr)
 
 template <typename T> inline void dmaStartWrite(Ptr<T> &memAddr)
   { dmaStartWriteExpr(memAddr.expr); }
+
+
+void vpmSetupRead(Dir dir, int n, IntExpr addr, int stride = 1);
+void vpmSetupWrite(Dir dir, IntExpr addr, int stride = 1);
+void dmaSetReadPitch(IntExpr n);
+void dmaSetWriteStride(IntExpr n);
+void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr,
+                    int rowLen = 16, int vpitch = 1);
+void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen = 16);
+void dmaWaitRead();
+void dmaWaitWrite();
+void semaInc(int semaId);
+void semaDec(int semaId);
+void hostIRQ();
+
 }  // namespace QPULib
 
 #endif  // _QPULIB_SOURCE_DMA_H_

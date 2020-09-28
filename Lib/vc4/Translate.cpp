@@ -317,6 +317,7 @@ void StoreRequest(Seq<Instr> &seq, Var addr_var, Var data_var,  bool wait) {
 	// Setup VPM
 	seq << li(addr, 16)
 	    << add(addr, addr, QPU_ID);
+
 	genSetupVPMStore(&seq, addr, 0, 1);
 	// Store address
 	seq << li(storeAddr, 256)

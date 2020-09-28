@@ -1099,7 +1099,7 @@ void loadStorePass(Seq<Instr>* instrs) {
       case RECV: {
         instr.tag = TMU0_TO_ACC4;
         newInstrs << instr
-				          << mov(instr.RECV.dest, ACC4); //move_from_r4(instr.RECV.dest));
+				          << mov(instr.RECV.dest, ACC4);
         break;
       }
       default:

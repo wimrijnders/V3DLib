@@ -43,6 +43,15 @@ struct InterpreterState {
 	}
 };
 
+
+void storeToHeap(CoreState *s, Vec &index, Vec &val) {
+  uint32_t hp = (uint32_t) index.elems[0].intVal;
+  for (int i = 0; i < NUM_LANES; i++) {
+    s->emuHeap.phy(hp>>2) = val.elems[i].intVal;
+    hp += 4 + s->writeStride;
+  }
+}
+
 }  // anon namespace
 
 // ============================================================================
@@ -383,11 +392,7 @@ void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
 		// Comparable to execStoreRequest()
     case DEREF: {
       Vec index = eval(s, lhs->deref.ptr);
-      uint32_t hp = (uint32_t) index.elems[0].intVal;
-      for (int i = 0; i < NUM_LANES; i++) {
-        s->emuHeap.phy(hp>>2) = val.elems[i].intVal;
-        hp += 4 + s->writeStride;
-      }
+			storeToHeap(s, index, val);
       return;
     }
   }
@@ -522,15 +527,13 @@ void execLoadReceive(CoreState* s, Expr* e)
   assignToVar(s, vecAlways(), e->var, val);
 }
 
+
 void execStoreRequest(CoreState* s, Expr* data, Expr* addr) {
   Vec val = eval(s, data);
   Vec index = eval(s, addr);
-  uint32_t hp = (uint32_t) index.elems[0].intVal;
-  for (int i = 0; i < NUM_LANES; i++) {
-    s->emuHeap.phy(hp>>2) = val.elems[i].intVal;
-    hp += 4 + s->writeStride;
-  }
+	storeToHeap(s, index, val);
 }
+
 
 // ============================================================================
 // Execute code

@@ -40,18 +40,8 @@ void For_(BoolExpr b);
 void ForBody_();
 void Print(const char *);
 void Print(IntExpr x);
-void dmaSetReadPitch(IntExpr n);
-void dmaSetWriteStride(IntExpr n);
-void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr,
-                    int rowLen = 16, int vpitch = 1);
-void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen = 16);
-void dmaWaitRead();
-void dmaWaitWrite();
-void vpmSetupRead(Dir dir, int n, IntExpr addr, int stride = 1);
-void vpmSetupWrite(Dir dir, IntExpr addr, int stride = 1);
 void initStmt(Stack<Stmt> &stmtStack);
 void finishStmt();
-void kernelFinish();
 Stack<Stmt> &stmtStack();
 
 }  // namespace QPULib

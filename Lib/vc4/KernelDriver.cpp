@@ -1,6 +1,7 @@
 #include "KernelDriver.h"
 #include "vc4.h"
 #include "Encode.h"
+#include "DMA.h"
 
 namespace QPULib {
 namespace vc4 {
@@ -10,7 +11,21 @@ KernelDriver::~KernelDriver() {}
 
 
 void KernelDriver::kernelFinish() {
-	QPULib::kernelFinish();  // QPU code to cleanly exit
+  // Ensure outstanding DMAs have completed
+  dmaWaitRead();
+  dmaWaitWrite();
+
+  // QPU 0 waits until all other QPUs have finished
+  // before sending a host IRQ.
+  If (me() == 0)
+    Int n = numQPUs()-1;
+    For (Int i = 0, i < n, i++)
+      semaDec(15);
+    End
+    hostIRQ();
+  Else
+    semaInc(15);
+  End
 }
 
 
