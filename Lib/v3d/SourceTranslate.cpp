@@ -50,7 +50,8 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 		*seq << mov(TMUD, srcAddr);
 	}
 
-	*seq << mov(TMUA, srcData);
+	*seq << mov(TMUA, srcData)
+	     << tmuwt();
 
 	return true;
 }

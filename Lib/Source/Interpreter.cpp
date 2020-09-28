@@ -191,20 +191,13 @@ Vec eval(CoreState* s, Expr* e)
       Vec a = eval(s, e->deref.ptr);
       uint32_t hp = (uint32_t) a.elems[0].intVal;
 
-#ifdef DEBUG
-			breakpoint  // TODO test and verify following
-			            // If working, we can consolidate heap access
-									// DONE tested and verified
-
-      for (int i = 0; i < NUM_LANES; i++) {
-        uint32_t addr = (uint32_t) a.elems[i].intVal;
-				assert(hp == addr);
-      }
-#endif
+			// NOTE: `hp` is the same for all lanes.
+			//       This has been tested and verified.
+			//       So, all we need to do here is add the index number to the pointer.
 
       Vec v;
       for (int i = 0; i < NUM_LANES; i++) {
-        v.elems[i].intVal = s->emuHeap.phy(hp>>2);
+        v.elems[i].intVal = s->emuHeap.phy((hp >> 2) + i); // WRI added '+ i'
         hp += s->readStride;
       }
       return v;

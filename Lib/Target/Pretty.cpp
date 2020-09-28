@@ -183,7 +183,7 @@ const char *pretty_instr_tag(InstrTag tag) {
 		case ALU:          return "ALU";
 		case BR:           return "BR";
 		case LAB:          return "LAB";
-		case NO_OP:        return "NOOP";
+		case NO_OP:        return "NOP";
 		case END:          return "END";
 		case RECV:         return "RECV";
 		case IRQ:          return "IRQ";
@@ -191,6 +191,7 @@ const char *pretty_instr_tag(InstrTag tag) {
 		case TMU0_TO_ACC4: return "TMU0_TO_ACC4";
 		case INIT_BEGIN:   return "INIT_BEGIN";
 		case INIT_END:     return "INIT_END";
+		case TMUWT:        return "TMUWT";
 
 		// TODO add rest of tags here as required
 
@@ -210,6 +211,7 @@ void pretty(FILE *f, Instr instr)
         pretty(f, instr.LI.cond);
         fprintf(f, ": ");
       }
+      fprintf(f, "LI ");
       pretty(f, instr.LI.dest);
       fprintf(f, " <-%s ", instr.LI.setFlags ? "{sf}" : "");
       pretty(f, instr.LI.imm);
@@ -276,7 +278,8 @@ void pretty(FILE *f, Instr instr)
     case NO_OP:
     case IRQ:
     case VPM_STALL:
-      fprintf(f, "%d\n", pretty_instr_tag(instr.tag));
+    case TMUWT:
+      fprintf(f, "%s\n", pretty_instr_tag(instr.tag));
       return;
     default:
       fprintf(f, "<<UNKNOWN:%d>>\n", instr.tag);

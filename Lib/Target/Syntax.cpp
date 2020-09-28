@@ -250,6 +250,13 @@ Instr li(Reg dst, int i) {
 	return li(AssignCond(ALWAYS), dst, i);
 }
 
+
+Instr tmuwt() {
+	Instr instr;
+	instr.tag = TMUWT;
+	return instr;
+}
+
 }  // namespace instr
 }  // namespace Target
 

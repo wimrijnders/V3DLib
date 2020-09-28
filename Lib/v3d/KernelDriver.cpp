@@ -107,6 +107,7 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
         case SPECIAL_QPU_NUM:
         case SPECIAL_ELEM_NUM:
         case SPECIAL_UNIFORM:
+					breakpoint
 					assertq(false, "encodeSrcReg(): Not expecting this SPECIAL regId, should be handled before call()");
 				break;
 
@@ -511,93 +512,151 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 }
 
 
-Instructions encodeLoadImmediate(QPULib::Instr instr) {
-	assert(instr.tag == LI);
+void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
+	if (cond.tag == ALWAYS) {
+		return; // ALWAYS executes always (duh, is default)
+	}
+	assert(cond.tag != NEVER);  // Not expecting this (yet)
+	assert(cond.tag == NEVER);  // The only remaining option
+
+	//
+	// qpu_instr.h, line 74, enum v3d_qpu_uf:
+	//
+	// How I interpret this:
+	//  - AND: if all bits set
+	//  - NOR: if no bits set
+	//  - N  : field not set
+	//  - Z  : Field zero
+	//  - N  : field negative set
+	//  - C  : Field negative cleared
+	//
+	// What the bits are is not clear at this point.
+	// These assumptions are probably wrong, but I need a starting point.
+	// TODO: make tests to verify these assumptions (how? No clue right now)
+	// ------------------------------------------------------------------------
+	// So:
+	// - vc4 `if all(nc)...` -> ANDC
+	//
+	// vc4 `nc` - negative clear, ie. >= 0
+	// vc4 `ns` - negative set,   ie.  < 0
+	//
+	switch (cond.flag) {
+		// TODO test what happens here, for vc4 as well as v3d
+		//      v3d flags used are prob wrong!
+		// TODO how to distinguish here between add and mul ALU?
+		case NC: out_instr.andc();  break;
+		case NS: out_instr.andnc(); break;
+		default:
+			breakpoint;        // check,  case not handled yet
+	}
+}
+
+
+void setCondTag(AssignCond cond, Instructions &ret) {
+	for (auto &instr : ret) {
+		setCondTag(cond, instr);
+	}
+}
+
+
+Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
+	assert(full_instr.tag == LI);
+	auto &instr = full_instr.LI;
+	auto dst = encodeDestReg(full_instr);
 
 	Instructions ret;
-	auto dst = encodeDestReg(instr);
-	Instr out_instr;
 	int rep_value;
 
-	if (instr.LI.imm.tag == IMM_INT32) {
-		if (!SmallImm::to_opcode_value((float) instr.LI.imm.intVal, rep_value)) {
-			// TODO: figure out how to handle large immediates, if necessary at all
-			std::string str = "LI: Can't handle int value '";
-			str += std::to_string(instr.LI.imm.intVal);
-			str += "' as small immediate";
+	std::string err_label;
+	std::string err_value;
 
-			breakpoint
+	if (instr.imm.tag == IMM_INT32) {
+		int value = instr.imm.intVal;
+		int left_shift = 0;
 
-			local_errors << str;
-			ret << nop().comment(str, true);
-			return ret;
+		while (value != 0 && (value & 1) == 0) {
+			left_shift++;
+			value >>= 1;
 		}
 
-		SmallImm imm(rep_value);
-		out_instr = mov(*dst, imm);
+		if (SmallImm::int_to_opcode_value(value, rep_value)) {
+			SmallImm imm(rep_value);
+			ret << mov(*dst, imm);
 
-	} else if (instr.LI.imm.tag == IMM_FLOAT32) {
-		if (!SmallImm::to_opcode_value(instr.LI.imm.floatVal, rep_value)) {
-			// TODO: figure out how to handle large immediates, if necessary at all
-			std::string str = "LI: Can't handle float value '";
-			str += std::to_string(instr.LI.imm.floatVal);
-			str += "' as small immediate";
+			if (left_shift > 0) {
+				warning("extra instruction may screw up branching!");
+				ret << shl(*dst, *dst, SmallImm(left_shift));
+			}
 
-			breakpoint
-
-			local_errors << str;
-			ret << nop().comment(str, true);
-			return ret;
+		} else {
+			// TODO: figure out how to handle other int immediates, if necessary at all
+			err_label = "int";
+			err_value = std::to_string(value);
 		}
 
-		out_instr = nop().fmov(*dst, rep_value);  // TODO perhaps make 2nd param Small Imm
+	} else if (instr.imm.tag == IMM_FLOAT32) {
+		float value = instr.imm.floatVal;
 
-	} else if (instr.LI.imm.tag == IMM_MASK) {
+		if (SmallImm::float_to_opcode_value(value, rep_value)) {
+			ret << nop().fmov(*dst, rep_value);  // TODO perhaps make 2nd param Small Imm
+		} else {
+			// TODO: figure out how to handle other float immediates, if necessary at all
+			err_label = "float";
+			err_value = std::to_string(value);
+		}
+	} else if (instr.imm.tag == IMM_MASK) {
 		debug_break("encodeLoadImmediate(): IMM_MASK not handled yet");
 	} else {
 		debug_break("encodeLoadImmediate(): unknown tag value");
 	}
 
+	if (!err_value.empty()) {
+		assert(!err_label.empty());
 
-	if (instr.LI.setFlags) {
+		std::string str = "LI: Can't handle ";
+		str += err_label + " value '" + err_value;
+		str += "' as small immediate";
+
+		breakpoint
+		local_errors << str;
+		ret << nop().comment(str, true);
+	}
+
+
+	if (instr.setFlags) {
 		breakpoint;  // to check what flags need to be set - case not handled yet
 	}
 
-	if (instr.LI.cond.tag != ALWAYS) {  // ALWAYS executes always (duh)
-		//
-		// qpu_instr.h, line 74, enum v3d_qpu_uf:
-		//
-		// How I interpret this:
-		//  - AND: if all bits set
-		//  - NOR: if no bits set
-		//  - N  : field not set
-		//  - Z  : Field zero
-		//  - N  : field negative set
-		//  - C  : Field negative cleared
-		//
-		// What the bits are is not clear at this point.
-		// These assumptions are probably wrong, but I need a starting point.
-		// TODO: make tests to verify these assumptions (how? No clue right now)
-		// ------------------------------------------------------------------------
-		// So:
-		// - vc4 `if all(nc)...` -> ANDC
-		//
-		// vc4 `nc` - negative clear, ie. >= 0
-		// vc4 `ns` - negative set,   ie.  < 0
-		//
-		switch (instr.LI.cond.flag) {
-			// TODO test what happens here, for vc4 as well as v3d
-			//      v3d flags used are prob wrong!
-			// TODO how to distinguish here between add and mul ALU?
-			case NC: out_instr.andc();  break;
-			case NS: out_instr.andnc(); break;
-			default:
-				breakpoint;        // check,  case not handled yet
-		}
+	setCondTag(instr.cond, ret);
+	return ret;
+}
+
+
+v3d::instr::Instr encodeBranch(QPULib::Instr full_instr) {
+	assert(full_instr.tag == BR);
+
+	auto &instr = full_instr.BR;
+	assert(!instr.target.useRegOffset);  // Register offset not (yet) supported
+
+	if (instr.cond.tag != COND_ALL) {
+		debug_break("Branch condition not COND_ALL");  // Warn me if this happens
 	}
 
-	ret << out_instr;
-	return ret;
+	if (instr.cond.flag != ZC) {
+		debug_break("Branch condition flag not ZC");  // Warn me if this happens
+	}
+
+	// TODO: Figure out how to deal with branch conditions
+	//       The call below is vc4 only, the conditions don't exist on v3d
+	//
+	// See 'Condition Codes' in the vc4 ref guide
+/*
+	uint32_t cond = encodeBranchCond(instr.BR.cond) << 20;
+*/
+
+	auto dst_instr = branch(instr.target.immOffset, instr.target.relative);
+	dst_instr.na0();  // Assuming/hoping that this translation is correct
+	return dst_instr;
 }
 
 
@@ -612,36 +671,8 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
   // Encode core instruction
   switch (instr.tag) {
-    case LI:  // Load immediate
-			ret << encodeLoadImmediate(instr); 
-		break;
-
-    case BR: { // Branch
-      assert(!instr.BR.target.useRegOffset);  // Register offset not (yet) supported
-
-			auto dst_instr = branch(instr.BR.target.immOffset, instr.BR.target.relative);
-
-			if (instr.BR.cond.tag != COND_ALL) {
-				debug_break("Branch condition not COND_ALL");  // Warn me if this happens
-			}
-
-			if (instr.BR.cond.flag != ZC) {
-				debug_break("Branch condition flag not ZC");  // Warn me if this happens
-			}
-
-			dst_instr.na0();  // Assuming/hoping that this translation is correct
-
-			ret << dst_instr;
-
-			// TODO: Figure out how to deal with branch conditions
-			//       The call below is vc4 only, the conditions don't exist on v3d
-			//
-			// See 'Condition Codes' in the vc4 ref guide
-/*
-      uint32_t cond = encodeBranchCond(instr.BR.cond) << 20;
-*/
-    }
-		break;
+    case LI: ret << encodeLoadImmediate(instr); break;
+    case BR: ret << encodeBranch(instr);        break;
 
     case ALU: {
 			if (instr.isUniformLoad()) {
@@ -665,13 +696,9 @@ Instructions encodeInstr(QPULib::Instr instr) {
 			assert(false);  // Should not receive this here
 		break;
 
-    case TMU0_TO_ACC4:
-			ret << nop().ldtmu(r4);
-		break;
-
-		case NO_OP:
-			ret << nop();
-		break;
+    case TMU0_TO_ACC4: ret << nop().ldtmu(r4); break;
+		case NO_OP:        ret << nop();           break;
+		case TMUWT:        ret << tmuwt();         break;
 
     // Print instructions - ignored
     case PRI:

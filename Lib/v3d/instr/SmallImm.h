@@ -21,7 +21,8 @@ public:
 	SmallImm l() const;
 	SmallImm ff() const;
 
-	static bool to_opcode_value(float value, int &rep_value);
+	static bool int_to_opcode_value(int value, int &rep_value);
+	static bool float_to_opcode_value(float value, int &rep_value);
 
 private:
 	int m_val = 0;

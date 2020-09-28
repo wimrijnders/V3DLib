@@ -314,62 +314,52 @@ void resetFreshLabelGen(int val);
 
 // QPU instruction tags
 enum InstrTag {
-	LI,            // Load immediate
-	ALU,           // ALU operation
-	BR,            // Conditional branch to target
-	END,           // Program end (halt)
+	LI,             // Load immediate
+	ALU,            // ALU operation
+	BR,             // Conditional branch to target
+	END,            // Program end (halt)
 
   // ==================================================
   // Intermediate-language constructs
   // ==================================================
 
-	BRL,           // Conditional branch to label
-	LAB,           // Label
-	NO_OP,         // No-op
+	BRL,            // Conditional branch to label
+	LAB,            // Label
+	NO_OP,          // No-op
 
 	VC4_ONLY,
 
-  // DMA
-  // ---
-	DMA_LOAD_WAIT = VC4_ONLY,    // Wait for DMA load to complete
-	DMA_STORE_WAIT   // Wait for DMA store to complete
-
-  // Semaphores
-  // ----------
-  , SINC          // Increment semaphore
-  , SDEC          // Decrement semaphore
-
-  // Send IRQ to host
-  // ----------------
-  , IRQ
+	DMA_LOAD_WAIT = VC4_ONLY, // Wait for DMA load to complete
+	DMA_STORE_WAIT, // Wait for DMA store to complete
+	SINC,           // Increment semaphore
+	SDEC,           // Decrement semaphore
+	IRQ,            // Send IRQ to host
 
   // Print instructions
-  // ------------------
-  , PRS           // Print string
-  , PRI           // Print integer
-  , PRF           // Print float
+	PRS,            // Print string
+	PRI,            // Print integer
+	PRF,            // Print float
 
-  // VPM stall
-  // ---------
-
-  , VPM_STALL,     // Marker for VPM read setup
+	VPM_STALL,      // Marker for VPM read setup
 
 	END_VC4_ONLY,
 
   // Load receive via TMU
-  // --------------------
 	RECV = END_VC4_ONLY,
 	TMU0_TO_ACC4,
 
 	// Init program block (Currently filled only for v3d)
-	INIT_BEGIN,    // Marker for start of init block
-	INIT_END,      // Marker for end of init block
+	INIT_BEGIN,     // Marker for start of init block
+	INIT_END,       // Marker for end of init block
 
   // ==================================================
   // v3d-only instructions
   // ==================================================
 	V3D_ONLY,
-	// TODO
+
+	TMUWT = V3D_ONLY,
+	// TODO Add as required here
+
 	END_V3D_ONLY
 };
 
@@ -543,6 +533,9 @@ Instr shr(Reg dst, Reg srcA, int n);
 Instr band(Reg dst, Reg srcA, int n);
 Instr li(AssignCond cond, Reg dst, int i);
 Instr li(Reg dst, int i);
+
+// v3d only
+Instr tmuwt();
 
 }  // namespace instr
 }  // namespace Target
