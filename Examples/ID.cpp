@@ -14,24 +14,26 @@ void id_kernel(Ptr<Int> p, Ptr<Int> q) {
 
 
 int main(int argc, const char *argv[]) {
+	int numQPUs = 8;
+
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
   // Construct kernel
   auto k = compile(id_kernel);
+  k.setNumQPUs(numQPUs);  // Value is max for v3d
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> id_array(16*k.maxQPUs());
+  SharedArray<int> id_array(16*numQPUs);
   for (int i = 0; i < id_array.size(); i++)
     id_array[i] = 0;
 
-  SharedArray<int> index_array(16*k.maxQPUs());
+  SharedArray<int> index_array(16*numQPUs);
   for (int i = 0; i < index_array.size(); i++)
     index_array[i] = 0;
 
-  k.setNumQPUs(k.maxQPUs());        // Invoke the kernel
 	k.load(&id_array, &index_array);  // Load the uniforms
-	settings.process(k);
+	settings.process(k);              // Invoke the kernel
 
 	// Display the result
   for (int i = 0; i < id_array.size(); i++) {

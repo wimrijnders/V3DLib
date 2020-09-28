@@ -59,22 +59,30 @@ void check_output_run(std::string const &program, RunType run_type) {
 
 	output_filename   += "_output.txt";
 
-	std::string cmdline = BIN_PATH "/";
+	std::string cmdline = SUDO;
+	cmdline += BIN_PATH "/";
 	cmdline += program + " " + params + " > " + output_filename;
 	INFO("Cmdline: " << cmdline);
 	REQUIRE(!system(cmdline.c_str()));
 
 	std::string diff_cmd = "diff " + output_filename + " " + expected_filename;
+	INFO("diff command: " << diff_cmd);
 	REQUIRE(!system(diff_cmd.c_str()));
 }
 
 
 void make_test_dir() {
-	std::string cmd = "mkdir -p obj/test";
+	std::string cmd = SUDO;
+	cmd += "mkdir -p obj/test";
 
-	if (use_sudo) {
-		cmd = SUDO + cmd;
-	}
+	REQUIRE(!system(cmd.c_str()));
+
+	cmd  = SUDO;
+	cmd += "chmod ugo+rw obj/test";
+	REQUIRE(!system(cmd.c_str()));
+
+	cmd  = SUDO;
+	cmd += "chmod ugo+rw obj/test/*";
 	REQUIRE(!system(cmd.c_str()));
 }
 
