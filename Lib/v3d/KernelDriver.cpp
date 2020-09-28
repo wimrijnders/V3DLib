@@ -602,22 +602,13 @@ Instructions encodeLoadImmediate(QPULib::Instr instr) {
 
 
 /**
- * Convert intermediate instruction into core instruction
+ * Convert intermediate instruction into core instruction.
+ *
+ * **Pre:** All instructions not meant for v3d are detected beforehand and flagged as error.
  */
 Instructions encodeInstr(QPULib::Instr instr) {
 	Instructions ret;
 	bool no_output = false;
-
-  switch (instr.tag) {
-    case IRQ:
-			assert(false);  // Not wanting this
-      break;
-    case DMA_LOAD_WAIT:
-    case DMA_STORE_WAIT: {
-			assert(false);  // Not wanting this
-      break;
-    }
-	}
 
   // Encode core instruction
   switch (instr.tag) {
@@ -626,7 +617,7 @@ Instructions encodeInstr(QPULib::Instr instr) {
 		break;
 
     case BR: { // Branch
-      assert(!instr.BR.target.useRegOffset);  // Register offset not yet supported
+      assert(!instr.BR.target.useRegOffset);  // Register offset not (yet) supported
 
 			auto dst_instr = branch(instr.BR.target.immOffset, instr.BR.target.relative);
 
@@ -657,14 +648,13 @@ Instructions encodeInstr(QPULib::Instr instr) {
 				Reg dst_reg = instr.ALU.dest;
 				uint8_t rf_addr = to_waddr(dst_reg);
 				ret << ldunifrf(rf_addr);
-				break;
       } else if (translateRotate(instr, ret)) {
-				break;  // all is well
+				// all is well
       } else if (translateOpcode(instr, ret)) {
-				break;  // all is well
+				// all is well
       } else {
 				breakpoint  // Something missing, check
-				assert(false);
+				fatal("Missing translate operation for ALU instruction");
 			}
     }
 		break;
@@ -677,13 +667,6 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
     case TMU0_TO_ACC4:
 			ret << nop().ldtmu(r4);
-		break;
-
-    // Semaphore increment/decrement
-    case SINC:
-    case SDEC: {
-			assert(false);  // TODO examine
-    }
 		break;
 
 		case NO_OP:
@@ -794,6 +777,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 	// Main loop
   for (int i = 0; i < instrs.numElems; i++) {
     QPULib::Instr instr = instrs.elems[i];
+		check_instruction_tag_for_platform(instr.tag, false);
 
 		if (instr.tag == INIT_BEGIN) {
 			prev_was_init_begin = true;

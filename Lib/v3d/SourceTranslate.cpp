@@ -30,6 +30,9 @@ void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
 
 namespace v3d {
 
+/**
+ * Case: *v := rhs where v is a var and rhs is a var
+ */
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	using namespace QPULib::Target::instr;
 	assert(seq != nullptr);
@@ -54,18 +57,14 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 
 
 /**
- * See comment and preamble code in caller: Target/Translate.cpp, line 52
- *
- * Basically the same as `deref_var_var()` above.
+ * Case: v := *w where w is a variable
  */
 void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	using namespace QPULib::Target::instr;
 	assert(seq != nullptr);
 
-	// TODO: Check if offset by index needed
-
-  Instr instr;
-	instr.tag = TMU0_TO_ACC4;
+  Instr ldtmu_r4;
+	ldtmu_r4.tag = TMU0_TO_ACC4;
 
 	Reg src = srcReg(e.deref.ptr->var);
 	*seq << mov(TMU0_S, src)
@@ -73,7 +72,9 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	     // TODO: Do we need NOP's here?
 	     // TODO: Check if more fields need to be set
 	     // TODO is r4 safe? Do we need to select an accumulator in some way?
-	     << instr
+	     << nop()
+	     << nop()
+	     << ldtmu_r4
 	     << mov(dstReg(v), ACC4);
 }
 

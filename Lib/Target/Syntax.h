@@ -314,23 +314,25 @@ void resetFreshLabelGen(int val);
 
 // QPU instruction tags
 enum InstrTag {
-    LI            // Load immediate
-  , ALU           // ALU operation
-  , BR            // Conditional branch to target
-  , END           // Program end (halt)
+	LI,            // Load immediate
+	ALU,           // ALU operation
+	BR,            // Conditional branch to target
+	END,           // Program end (halt)
 
   // ==================================================
-  // The remainder are intermediate-language constructs
+  // Intermediate-language constructs
   // ==================================================
 
-  , BRL           // Conditional branch to label
-  , LAB           // Label
-  , NO_OP         // No-op
+	BRL,           // Conditional branch to label
+	LAB,           // Label
+	NO_OP,         // No-op
+
+	VC4_ONLY,
 
   // DMA
   // ---
-  , DMA_LOAD_WAIT    // Wait for DMA load to complete
-  , DMA_STORE_WAIT   // Wait for DMA store to complete
+	DMA_LOAD_WAIT = VC4_ONLY,    // Wait for DMA load to complete
+	DMA_STORE_WAIT   // Wait for DMA store to complete
 
   // Semaphores
   // ----------
@@ -341,11 +343,6 @@ enum InstrTag {
   // ----------------
   , IRQ
 
-  // Load receive via TMU
-  // --------------------
-  , RECV
-  , TMU0_TO_ACC4
-
   // Print instructions
   // ------------------
   , PRS           // Print string
@@ -355,12 +352,28 @@ enum InstrTag {
   // VPM stall
   // ---------
 
-  , VPM_STALL     // Marker for VPM read setup
+  , VPM_STALL,     // Marker for VPM read setup
 
-	// Init program block (v3d only)
-  , INIT_BEGIN     // Marker for start of init block
-  , INIT_END       // Marker for end of init block
+	END_VC4_ONLY,
+
+  // Load receive via TMU
+  // --------------------
+	RECV = END_VC4_ONLY,
+	TMU0_TO_ACC4,
+
+	// Init program block (Currently filled only for v3d)
+	INIT_BEGIN,    // Marker for start of init block
+	INIT_END,      // Marker for end of init block
+
+  // ==================================================
+  // v3d-only instructions
+  // ==================================================
+	V3D_ONLY,
+	// TODO
+	END_V3D_ONLY
 };
+
+void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4);
 
 // QPU instructions
 struct Instr {
@@ -369,21 +382,38 @@ struct Instr {
 
   union {
     // Load immediate
-    struct { bool setFlags; AssignCond cond; Reg dest; Imm imm; } LI;
+		struct {
+			bool setFlags;
+			AssignCond cond;
+			Reg dest;
+			Imm imm;
+		} LI;
 
     // ALU operation
-    struct { bool setFlags; AssignCond cond; Reg dest;
-             RegOrImm srcA; ALUOp op; RegOrImm srcB; } ALU;
+		struct {
+			bool setFlags;
+			AssignCond cond;
+			Reg dest;
+			RegOrImm srcA;
+			ALUOp op;
+			RegOrImm srcB;
+		} ALU;
 
     // Conditional branch (to target)
-    struct { BranchCond cond; BranchTarget target; } BR;
+		struct {
+			BranchCond cond;
+			BranchTarget target;
+		} BR;
 
     // ==================================================
     // The remainder are intermediate-language constructs
     // ==================================================
 
     // Conditional branch (to label)
-    struct { BranchCond cond; Label label; } BRL;
+		struct {
+			BranchCond cond;
+			Label label;
+		} BRL;
 
     // Labels, denoting branch targets
     Label m_label;  // Renamed during debugging

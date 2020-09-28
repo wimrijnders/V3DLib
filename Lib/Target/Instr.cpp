@@ -1,4 +1,6 @@
-#include "Syntax.h"  // Location of definition struct Instr
+#include "Syntax.h"         // Location of definition struct Instr
+#include "Target/Pretty.h"  // pretty_instr_tag()
+#include "Support/basics.h" // fatal()
 
 namespace QPULib {
 
@@ -66,6 +68,32 @@ bool Instr::isTMUAWrite() const {
 	}
 
 	return ret;
+}
+
+
+/**
+ * Check if given tag is for the specified platform
+ */
+void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4) {
+	char const *platform = nullptr;
+
+	if (for_vc4) {
+		if (tag >= V3D_ONLY && tag < END_V3D_ONLY) {
+			platform = "vc4";
+		} 
+	} else {  // v3d
+		if (tag >= VC4_ONLY && tag < END_VC4_ONLY) {
+			platform = "v3d";
+		}
+	}
+
+	if (platform != nullptr) {
+		std::string msg = "Instruction tag ";
+		msg += pretty_instr_tag(tag);
+		msg += "(" + std::to_string(tag) + ")" + " can not be used on ";
+		msg += platform;
+		fatal(msg);
+	}
 }
 
 }  // namespace QPULib

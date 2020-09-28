@@ -6,6 +6,8 @@
 
 namespace QPULib {
 
+const char *pretty_instr_tag(InstrTag tag);
+
 // Pretty printer for the QPULib target language
 void pretty(FILE *f, Instr instr);
 

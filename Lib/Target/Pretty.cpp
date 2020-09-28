@@ -176,6 +176,29 @@ void pretty(FILE *f, BranchTarget target)
   fprintf(f, "%i", target.immOffset);
 }
 
+
+const char *pretty_instr_tag(InstrTag tag) {
+	switch(tag) {
+		case LI:           return "LI";
+		case ALU:          return "ALU";
+		case BR:           return "BR";
+		case LAB:          return "LAB";
+		case NO_OP:        return "NOOP";
+		case END:          return "END";
+		case RECV:         return "RECV";
+		case IRQ:          return "IRQ";
+		case VPM_STALL:    return "VPM_STALL";
+		case TMU0_TO_ACC4: return "TMU0_TO_ACC4";
+		case INIT_BEGIN:   return "INIT_BEGIN";
+		case INIT_END:     return "INIT_END";
+
+		// TODO add rest of tags here as required
+
+		default:           return "<UNKNOWN>";
+	}
+}
+
+
 void pretty(FILE *f, Instr instr)
 {
   assert(f != nullptr);
@@ -207,15 +230,6 @@ void pretty(FILE *f, Instr instr)
       pretty(f, instr.ALU.srcB);
       fprintf(f, ")\n");
       return;
-    case INIT_BEGIN:
-      fprintf(f, "INIT_BEGIN\n");
-      return;
-    case INIT_END:
-      fprintf(f, "INIT_END\n");
-      return;
-    case END:         // vc4
-      fprintf(f, "END\n");
-      return;
     case BR:
       fprintf(f, "if ");
       pretty(f, instr.BR.cond);
@@ -230,9 +244,6 @@ void pretty(FILE *f, Instr instr)
       return;
     case LAB:
       fprintf(f, "L%i:\n", instr.label());
-      return;
-    case NO_OP:
-      fprintf(f, "NOP\n");
       return;
     case PRS:
       fprintf(f, "PRS(\"%s\")", instr.PRS);
@@ -252,20 +263,20 @@ void pretty(FILE *f, Instr instr)
       pretty(f, instr.RECV.dest);
       fprintf(f, ")\n");
       return;
-    case TMU0_TO_ACC4:
-      fprintf(f, "TMU0_TO_ACC4\n");
-      return;
     case SINC:
       fprintf(f, "SINC %i\n", instr.semaId);
       return;
     case SDEC:
       fprintf(f, "SDEC %i\n", instr.semaId);
       return;
+    case INIT_BEGIN:
+    case INIT_END:
+    case END:         // vc4
+    case TMU0_TO_ACC4:
+    case NO_OP:
     case IRQ:
-      fprintf(f, "IRQ\n");
-      return;
     case VPM_STALL:
-      fprintf(f, "VPM_STALL\n");
+      fprintf(f, "%d\n", pretty_instr_tag(instr.tag));
       return;
     default:
       fprintf(f, "<<UNKNOWN:%d>>\n", instr.tag);

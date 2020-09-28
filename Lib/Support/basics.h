@@ -24,6 +24,11 @@ inline void fatal(const char *msg) {
 	throw Exception(str);
 }
 
+
+inline void fatal(std::string const &msg) {
+	fatal(msg.c_str());
+}
+
 }  // QPULib
 
 

@@ -402,6 +402,7 @@ void encode(Seq<Instr>* instrs, Seq<uint32_t>* code) {
   uint32_t high, low;
   for (int i = 0; i < instrs->numElems; i++) {
     Instr instr = instrs->elems[i];
+		check_instruction_tag_for_platform(instr.tag, true);
 
 		if (instr.tag == INIT_BEGIN || instr.tag == INIT_END) {
 			continue;  // Don't encode these block markers
