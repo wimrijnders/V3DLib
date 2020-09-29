@@ -6,6 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include "Settings.h"
 #include <memory>
+#include <iostream>
 #include "Kernel.h"
 
 #ifdef QPU_MODE
@@ -116,7 +117,12 @@ CmdParameters base_params = {
 		"Select run type",
 		"-r=",
 		{"default", "emulator", "interpreter"},
-		"Run on the QPU emulator or run on the interpreter"
+		"Run the kernel on the QPU, emulator or on the interpreter"
+	}, {
+		"Disable logging",
+		"-s", "-silent",
+		ParamType::NONE,     // Prefix needed to dsambiguate
+		"Do not show the logging output on standard output"
 #ifdef QPU_MODE
 		}, {
     "Performance Counters",
@@ -163,7 +169,6 @@ CmdParameters &instance(bool use_numqpus = false) {
 
 namespace QPULib {
 
-
 CmdParameters const &Settings::base_params(bool use_numqpus) {
 	return instance(use_numqpus);
 }
@@ -172,8 +177,15 @@ CmdParameters const &Settings::base_params(bool use_numqpus) {
 int Settings::init(int argc, const char *argv[]) {
 	set_name(argv[0]);
 
+	if (instance().has_errors()) {
+		std::cout << instance().get_errors();
+		return CmdParameters::EXIT_ERROR;
+	}
+
 	auto ret = instance().handle_commandline(argc, argv, false);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+	if (ret != CmdParameters::ALL_IS_WELL) {
+		return ret;
+	}
 
 	process();
 
@@ -211,6 +223,10 @@ bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 				return false;
 			}
 		}
+	}
+
+	if (params.parameters()["Disable logging"]->get_bool_value()) {
+		disable_logging();
 	}
 
 	return true;

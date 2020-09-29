@@ -46,7 +46,4 @@ Stack<Stmt> &stmtStack();
 
 }  // namespace QPULib
 
-
-#include "gather.h"
-
 #endif  // _QPULIB_SOURCE_STMT_H_

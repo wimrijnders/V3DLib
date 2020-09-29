@@ -61,7 +61,7 @@ void check_output_run(std::string const &program, RunType run_type) {
 
 	std::string cmdline = SUDO;
 	cmdline += BIN_PATH "/";
-	cmdline += program + " " + params + " > " + output_filename;
+	cmdline += program + " -silent " + params + " > " + output_filename;
 	INFO("Cmdline: " << cmdline);
 	REQUIRE(!system(cmdline.c_str()));
 
@@ -106,11 +106,11 @@ TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline
 }
 
 
-TEST_CASE("ReqRecv check output and generation", "[cmdline]") {
+TEST_CASE("ReqRecv check code generation", "[cmdline]") {
 	make_test_dir();
 
 	SECTION("Generated code should be as expected") {
-		// WRI DEBUG disabled temporarily
+		// WRI DEBUG disabled temporarily - I have doubts that this is useful (generated code a moving target)
 /*
 
 		std::string output_filename   = "obj/test/ReqRecv_code.txt";
@@ -126,32 +126,25 @@ TEST_CASE("ReqRecv check output and generation", "[cmdline]") {
 		REQUIRE(!system(diff_cmd.c_str()));
 */
 	}
-
-	SECTION("ReqRecv should give correct output for all three run options") {
-		if (Platform::instance().has_vc4) {  // TODO: enable for v3d when assembly completed
-			check_output_run("ReqRecv", QPU);
-		}
-		check_output_run("ReqRecv", INTERPRETER);
-		check_output_run("ReqRecv", EMULATOR);
-	}
 }
 
 
-TEST_CASE("ID check output", "[cmdline]") {
+TEST_CASE("Check correct output example programs for all three run options", "[cmdline]") {
 	make_test_dir();
 
-	SECTION("ID should give correct output for all three run options") {
+	SECTION("Check output ReqRecv") {
+		check_output_run("ReqRecv", QPU);
+		check_output_run("ReqRecv", INTERPRETER);
+		check_output_run("ReqRecv", EMULATOR);
+	}
+
+	SECTION("Check output ID") {
 		check_output_run("ID", QPU);
 		check_output_run("ID", INTERPRETER);
 		check_output_run("ID", EMULATOR);
 	}
-}
 
-
-TEST_CASE("Hello check output", "[cmdline]") {
-	make_test_dir();
-
-	SECTION("Hello should give correct output for all three run options") {
+	SECTION("Check output Hello") {
 		check_output_run("Hello", QPU);
 		check_output_run("Hello", INTERPRETER);
 		check_output_run("Hello", EMULATOR);

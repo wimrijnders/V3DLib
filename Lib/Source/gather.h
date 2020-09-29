@@ -1,5 +1,6 @@
 #ifndef _QPULIB_SOURCE_GATHER_H_
 #define _QPULIB_SOURCE_GATHER_H_
+#include "../SourceTranslate.h"
 
 namespace QPULib {
 
@@ -14,11 +15,25 @@ inline void gatherExpr(Expr* e)
   stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
-template <typename T> inline void gather(PtrExpr<T> addr)
-  { gatherExpr(addr.expr); }
+template <typename T>
+inline void gather(PtrExpr<T> addr) {
+	Ptr<T> temp = addr;
+	if (compiling_for_vc4()) {
+		temp = temp + index();
+	}
 
-template <typename T> inline void gather(Ptr<T>& addr)
-  { gatherExpr(addr.expr); }
+	gatherExpr(temp.expr);
+}
+
+template <typename T>
+inline void gather(Ptr<T>& addr) {
+	Ptr<T> temp = addr + 0;     // '+ 0' forces a copy of the pointer, otherwise temp behaves like a reference
+	if (compiling_for_vc4()) {
+		temp = temp + index();
+	}
+
+	gatherExpr(temp.expr);
+}
 
 inline void receiveExpr(Expr* e)
 {
