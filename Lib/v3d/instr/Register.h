@@ -59,6 +59,8 @@ extern Register const tlb;
 extern Register const recip;
 extern Register const rsqrt;
 extern Register const log;
+extern Register const exp;
+extern Register const sin;
 
 // For branch
 extern BranchDest const lri;

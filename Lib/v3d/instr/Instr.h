@@ -36,10 +36,11 @@ public:
 	Instr &pushc();
 	Instr &pushn();
 	Instr &ldtmu(Register const &reg);
-	Instr &ldvary(bool val = true);
-	Instr &ldunif(bool val = true);
-	Instr &ldunifa(bool val = true);
-	Instr &ldvpm(bool val = true);
+	Instr &ldvary();
+	Instr &ldunif();
+	Instr &ldunifa();
+	Instr &ldunifarf(RFAddress const &addr);
+	Instr &ldvpm();
 	Instr &norn();
 	Instr &nornn();
 	Instr &ifnb();
@@ -49,6 +50,8 @@ public:
 	Instr &ifb();
 	Instr &ifna();
 	Instr &ifa();
+	Instr &andn();
+	Instr &andz();
 	Instr &andc();
 	Instr &andnc();
 	Instr &andnn();
@@ -134,9 +137,10 @@ Instr nop();
 Instr ldunifrf(uint8_t rf_address);
 Instr tidx(Register const &reg);
 
-Instr shr(Location const &reg1, Location const &reg2, SmallImm const &imm3);
-Instr shl(Location const &reg1, Location const &reg2, SmallImm const &imm3);
-Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3);
+Instr shr(Location const &dst, Location const &srca, SmallImm const &immb);
+Instr shl(Location const &dst, Location const &srca, SmallImm const &immb);
+Instr shl(Location const &dsta, SmallImm const &imma, SmallImm const &immb);
+Instr shl(Location const &dst, Location const &srca, Location const &srcb);
 Instr asr(Location const &reg1, Location const &reg2, SmallImm const &imm3);
 
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb);

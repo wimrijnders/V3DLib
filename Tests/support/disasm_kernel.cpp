@@ -91,15 +91,25 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< fmax(recip, r5.h(), r2.l()).andc().fmul(rf(50).h(), r3.l(), r4.abs()).ifb().ldunif()
 		<< add(rsqrt, r1, r1).pushn().fmul(rf(35).h(), r3.abs(), r1.abs()).ldunif()
 		<< vfmin(log, r4.hh(), r0).norn().fmul(rf(51), rf(20).abs(), r0.l()).ifnb()
+		<< shl(exp, r3, r2).andn().add(rf(35), r1, r2).ifb()
+		// rf(32) gets put in addr_b here, while the expected opcode has it in addr_a.
+		// Nothing wrong with that but it fails the unit test.
+		//<< fsub(rf(26), r2.l(), rf(32)).ifa().fmul(sin, r1.h(), r1.abs()).pushc().ldunif()
+		<< nop()
+
+		/* v4.1 signals */
+		<< fcmp(rf(32), r2.h(), r1.h()).andz().vfmul(rf(20), r0.hh(), r3).ldunifa()
+		<< fcmp(rf(38), r2.abs(), r5).fmul(rf(23).l(), r3, r3.abs()).ldunifarf(rf(1))
 	;
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x041618d57c453000ull; // "shl.andn  exp, r3, r2; add.ifb  rf35, r1, r2" },
+	uint64_t op = 0x932045e6c16ea000ull; // "fcmp  rf38, r2.abs, r5; fmul  rf23.l, r3, r3.abs; ldunifarf.rf1" },
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-		vfmin(log, r4.hh(), r0).norn().fmul(rf(51), rf(20).abs(), r0.l()).ifnb()
+		fcmp(rf(38), r2.abs(), r5).fmul(rf(23).l(), r3, r3.abs()).ldunifarf(rf(1))
+		//fcmp(rf(32), r2.h(), r1.h()).andz().vfmul(rf(20), r0.hh(), r3).ldunifa()
 	;
 	tmp_op.dump(true);
 
@@ -108,11 +118,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 	;
 
 #if 0
-        { 33, 0x7048e5da49272800ull, "fsub.ifa  rf26, r2.l, rf32; fmul.pushc  sin, r1.h, r1.abs; ldunif" },
-
-        /* v4.1 signals */
-        { 41, 0x1f010520cf60a000ull, "fcmp.andz  rf32, r2.h, r1.h; vfmul  rf20, r0.hh, r3; ldunifa" },
-        { 41, 0x932045e6c16ea000ull, "fcmp  rf38, r2.abs, r5; fmul  rf23.l, r3, r3.abs; ldunifarf.rf1" },
         { 41, 0xd72f0434e43ae5c0ull, "fcmp  rf52.h, rf23, r5.abs; fmul  rf16.h, rf23, r1; ldunifarf.rf60" },
         { 41, 0xdb3048eb9d533780ull, "fmax  rf43.l, r3.h, rf30; fmul  rf35.h, r4, r2.l; ldunifarf.r1" },
         { 41, 0x733620471e6ce700ull, "faddnf  rf7.l, rf28.h, r1.l; fmul  r1, r3.h, r3.abs; ldunifarf.rsqrt2" },

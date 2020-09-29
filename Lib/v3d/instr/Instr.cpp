@@ -288,6 +288,8 @@ Instr &Instr::nornc() { set_uf(V3D_QPU_UF_NORNC); return *this; }
 Instr &Instr::norz()  { set_uf(V3D_QPU_UF_NORZ);  return *this; }
 Instr &Instr::norn()  { set_uf(V3D_QPU_UF_NORN);  return *this; }
 Instr &Instr::nornn() { set_uf(V3D_QPU_UF_NORNN); return *this; }
+Instr &Instr::andn()  { set_uf(V3D_QPU_UF_ANDN);  return *this; }
+Instr &Instr::andz()  { set_uf(V3D_QPU_UF_ANDZ);  return *this; }
 Instr &Instr::andc()  { set_uf(V3D_QPU_UF_ANDC);  return *this; }
 Instr &Instr::andnc() { set_uf(V3D_QPU_UF_ANDNC); return *this; }
 Instr &Instr::andnn() { set_uf(V3D_QPU_UF_ANDNN); return *this; }
@@ -312,17 +314,17 @@ Instr &Instr::ldtmu(Register const &reg) {
 }
 
 
-Instr &Instr::ldvary(bool val) {
-	sig.ldvary = val;
+Instr &Instr::ldvary()  { sig.ldvary = true;  return *this; }
+Instr &Instr::ldunif()  { sig.ldunif = true;  return *this; }
+Instr &Instr::ldunifa() { sig.ldunifa = true; return *this; }
+Instr &Instr::ldvpm()   { sig.ldvpm = true;   return *this; }
+
+Instr &Instr::ldunifarf(RFAddress const &addr) {
+	sig.ldunifarf = true;
+	sig_addr = addr.to_waddr();
+	sig_magic = false;
 	return *this;
 }
-
-
-Instr &Instr::ldunif(bool val) {
-	sig.ldunif = val;
-	return *this;
-}
-
 
 //
 // Conditions  branch instructions
@@ -346,18 +348,6 @@ Instr &Instr::anynaq() { branch.msfign =  V3D_QPU_MSFIGN_Q; return anyna(); }
 Instr &Instr::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna(); }
 
 // End Conditions  branch instructions
-
-
-Instr &Instr::ldunifa(bool val) {
-	sig.ldunifa = val;
-	return *this;
-}
-
-
-Instr &Instr::ldvpm(bool val) {
-	sig.ldvpm = val;
-	return *this;
-}
 
 
 Instr &Instr::add(Location const &loc1, Location const &loc2, Location const &loc3) {
@@ -725,9 +715,9 @@ Instr ldunifrf(uint8_t rf_address) {
 }
 
 
-Instr shr(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+Instr shr(Location const &dst, Location const &srca, SmallImm const &immb) {
 	Instr instr;
-	instr.alu_add_set(loc1, loc2,  imm3);
+	instr.alu_add_set(dst, srca, immb);
 
 	instr.alu.add.op    = V3D_QPU_A_SHR;
 	instr.sig_magic     = true;    // TODO: need this? Also for shl?
@@ -736,9 +726,35 @@ Instr shr(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 }
 
 
-Instr shl(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+Instr shl(Location const &dst, Location const &srca, SmallImm const &immb) {
 	Instr instr;
-	instr.alu_add_set(loc1, loc2,  imm3);
+	instr.alu_add_set(dst, srca, immb);
+
+	instr.alu.add.op    = V3D_QPU_A_SHL;
+	//?? instr.sig_magic     = true;  // Set in shr, need it here?
+
+	return instr;
+}
+
+
+Instr shl(Location const &dst, Location const &srca, Location const &srcb) {
+	Instr instr;
+	instr.alu_add_set(dst, srca, srcb);
+
+	instr.alu.add.op    = V3D_QPU_A_SHL;
+	//?? instr.sig_magic     = true;  // Set in shr, need it here?
+
+	return instr;
+}
+
+
+Instr shl(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
+	assertq(imma == immb, "Operands a and b can only be both immediates if they are the exact same value");
+
+	Instr instr;
+	instr.alu_add_set_dst(dst);
+	instr.alu_add_set_imm_a(imma);
+	instr.alu_add_set_imm_b(immb);
 
 	instr.alu.add.op    = V3D_QPU_A_SHL;
 	//?? instr.sig_magic     = true;  // Set in shr, need it here?
@@ -752,21 +768,6 @@ Instr asr(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	instr.alu_add_set(loc1, loc2,  imm3);
 
 	instr.alu.add.op    = V3D_QPU_A_ASR;
-	return instr;
-}
-
-
-Instr shl(Location const &loc1, SmallImm const &imm2, SmallImm const &imm3) {
-	assertq(imm2 == imm3, "Operands a and b can only be both immediates if they are the exact same value");
-
-	Instr instr;
-	instr.alu_add_set_dst(loc1);
-	instr.alu_add_set_imm_a(imm2);
-	instr.alu_add_set_imm_b(imm3);
-
-	instr.alu.add.op    = V3D_QPU_A_SHL;
-	//?? instr.sig_magic     = true;  // Set in shr, need it here?
-
 	return instr;
 }
 
@@ -1097,7 +1098,7 @@ Instr bb(uint32_t addr) {
 
 
 Instr bu(uint32_t addr, Location const &loc2) {
-	printf("called bu(uint32_t addr, Location const &loc2)\n");
+	//printf("called bu(uint32_t addr, Location const &loc2)\n");
 
 	Instr instr;
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
@@ -1123,7 +1124,7 @@ Instr bu(uint32_t addr, Location const &loc2) {
  * NOTE: loc2 not used?
  */
 Instr bu(BranchDest const &loc1, Location const &loc2) {
-	printf("called Instr bu(BranchDest const &loc1, Location const &loc2)\n");
+	//printf("called Instr bu(BranchDest const &loc1, Location const &loc2)\n");
 
 	Instr instr;
 	instr.type = V3D_QPU_INSTR_TYPE_BRANCH;
@@ -1151,8 +1152,6 @@ Instr bu(BranchDest const &loc1, Location const &loc2) {
 		}
 	}
 	
-
-
 	instr.branch.raddr_a = loc1.to_waddr();
 	instr.branch.offset = 0;
 
