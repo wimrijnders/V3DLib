@@ -54,6 +54,7 @@ void introduceAccum(Liveness &live, Seq<Instr>* instrs)
       live.computeLiveOut(i, &liveOut);
 
       // Check that write is non-conditional
+			auto ALWAYS = AssignCond::Tag::ALWAYS;
       bool always = (prev.tag == LI && prev.LI.cond.tag == ALWAYS)
                  || (prev.tag == ALU && prev.ALU.cond.tag == ALWAYS);
 
@@ -76,10 +77,12 @@ void introduceAccum(Liveness &live, Seq<Instr>* instrs)
 // 'use' set: the variables read by an instruction
 // 'def' set: the variables modified by an instruction
 
-// Compute 'use' and 'def' sets for a given instruction
+/**
+ * Compute 'use' and 'def' sets for a given instruction
+ */
+void useDefReg(Instr instr, UseDefReg* useDef) {
+	auto ALWAYS = AssignCond::Tag::ALWAYS;
 
-void useDefReg(Instr instr, UseDefReg* useDef)
-{
   // Make the 'use' and 'def' sets empty
   useDef->use.clear();
   useDef->def.clear();

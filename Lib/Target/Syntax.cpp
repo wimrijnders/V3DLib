@@ -4,10 +4,38 @@
 
 namespace QPULib {
 
-Instr genInstr(ALUOp op, AssignCond cond,  Reg dst, Reg srcA, Reg srcB) {
-  Instr instr;
-  instr.tag           = ALU;
-  instr.ALU.setFlags  = false;
+/**
+ * Initialize the fields per selected instruction tag.
+ *
+ * Done like this, because union members can't have non-trivial constructors.
+ */
+Instr::Instr(InstrTag in_tag) {
+	switch (in_tag) {
+	case InstrTag::ALU:
+  	tag          = InstrTag::ALU;
+	  ALU.setFlags = false;
+	  ALU.setCond  = SetCond::NO_COND;
+	  ALU.cond     = AssignCond::always;
+		break;
+	case InstrTag::LI:
+    tag          = InstrTag::LI;
+    LI.setFlags  = false;
+	  LI.setCond   = SetCond::NO_COND;
+	  LI.cond      = AssignCond::always;
+		break;
+	case InstrTag::RECV:
+	case InstrTag::PRI:
+    tag          = in_tag;
+		break;
+	default:
+		assert(false);
+		break;
+	}
+}
+
+
+Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB) {
+  Instr instr(ALU);
   instr.ALU.cond      = cond;
   instr.ALU.dest      = dst;
   instr.ALU.srcA.tag  = REG;
@@ -23,20 +51,12 @@ Instr genInstr(ALUOp op, AssignCond cond,  Reg dst, Reg srcA, Reg srcB) {
 namespace {
 
 Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
-  AssignCond always;
-  always.tag = ALWAYS;
-	return genInstr(op, always, dst, srcA, srcB);
+	return genInstr(op, AssignCond::always, dst, srcA, srcB);
 }
 
 
 Instr genInstr(ALUOp op, Reg dst, Reg srcA, int n) {
-  AssignCond always;
-  always.tag = ALWAYS;
-
-  Instr instr;
-  instr.tag                   = ALU;
-  instr.ALU.setFlags          = false;
-  instr.ALU.cond              = always;
+  Instr instr(ALU);
   instr.ALU.dest              = dst;
   instr.ALU.srcA.tag          = REG;
   instr.ALU.srcA.reg          = srcA;
@@ -50,13 +70,7 @@ Instr genInstr(ALUOp op, Reg dst, Reg srcA, int n) {
 
 
 Instr genInstr(ALUOp op, Reg dst, int n, int m) {
-  AssignCond always;
-  always.tag = ALWAYS;
-
-  Instr instr;
-  instr.tag                   = ALU;
-  instr.ALU.setFlags          = false;
-  instr.ALU.cond              = always;
+  Instr instr(ALU);
   instr.ALU.dest              = dst;
   instr.ALU.srcA.tag          = IMM;
   instr.ALU.srcA.smallImm.tag = SMALL_IMM;
@@ -70,40 +84,100 @@ Instr genInstr(ALUOp op, Reg dst, int n, int m) {
 }
 
 
-/**
- * Generate addition instruction.
- */
-Instr genADD(Reg dst, Reg srcA, Reg srcB) {
-	return genInstr(A_ADD, dst, srcA, srcB);
-}
+int globalLabelId = 0;  // Used for fresh label generation
 
 }  // anon namespace
 
-// =======
-// Globals
-// =======
 
-// Used for fresh label generation
-static int globalLabelId = 0;
+/**
+ * Function to negate a condition flag
+ */
+Flag negFlag(Flag flag) {
+  switch(flag) {
+    case ZS: return ZC;
+    case ZC: return ZS;
+    case NS: return NC;
+    case NC: return NS;
+  }
+
+  // Not reachable
+  assert(false);
+	return ZS;
+}
+
+
+AssignCond AssignCond::always(Tag::ALWAYS);
+AssignCond AssignCond::never(Tag::NEVER);
+
+AssignCond AssignCond::negate() const {
+	AssignCond ret = *this;
+
+  switch (tag) {
+    case NEVER:  ret.tag = ALWAYS; break;
+    case ALWAYS: ret.tag = NEVER;  break;
+    case FLAG:   ret.flag = negFlag(flag); break;
+		default:
+			assert(false);
+			break;
+  }
+
+	return ret;
+}
+
+
+Instr Instr::nop() {
+	Instr instr;
+	instr.tag = NO_OP;
+	return instr;
+}
+
+
+/**
+ * Determine if instruction is a conditional assignment
+ */
+bool Instr::isCondAssign() const {
+  if (tag == InstrTag::LI && !LI.cond.is_always())
+    return true;
+
+  if (tag == InstrTag::ALU && !ALU.cond.is_always())
+    return true;
+
+  return false;
+}
+
+
+void Instr::setFlags() {
+	if (tag == InstrTag::LI) {
+		LI.setFlags = true;
+	} else if (tag == InstrTag::ALU) {
+		ALU.setFlags = true;
+	} else {
+		assert(false);
+	}
+}
+
+
+Instr &Instr::pushz() {
+	setFlags();
+
+	if (tag == InstrTag::LI) {
+		LI.setCond = SetCond::Z;
+	} else if (tag == InstrTag::ALU) {
+		ALU.setCond = SetCond::Z;
+	} else {
+		assert(false);
+	}
+
+	return *this;
+}
+
 
 // ======================
 // Handy syntax functions
 // ======================
 
-// Determine if instruction is a conditional assignment
-bool isCondAssign(Instr* instr)
-{
-  if (instr->tag == LI && instr->LI.cond.tag != ALWAYS)
-    return true;
-  if (instr->tag == ALU && instr->ALU.cond.tag != ALWAYS)
-    return true;
-  return false;
-}
-
-
 // Is last instruction in a basic block?
-bool isLast(Instr instr)
-{
+bool isLast(Instr instr) {
   return instr.tag == BRL || instr.tag == BR || instr.tag == END;
 }
 
@@ -149,6 +223,7 @@ void resetFreshLabelGen(int val)
 namespace Target {
 namespace instr {
 
+Reg const None(NONE, 0);
 Reg const ACC0(ACC, 0);
 Reg const ACC1(ACC, 1);
 Reg const ACC4(ACC, 4);
@@ -159,7 +234,10 @@ Reg const VPM_WRITE(  SPECIAL, SPECIAL_VPM_WRITE);
 Reg const VPM_READ(   SPECIAL, SPECIAL_VPM_READ);
 Reg const WR_SETUP(   SPECIAL, SPECIAL_WR_SETUP);
 Reg const RD_SETUP(   SPECIAL, SPECIAL_RD_SETUP);
+Reg const DMA_LD_WAIT(SPECIAL, SPECIAL_DMA_LD_WAIT);
 Reg const DMA_ST_WAIT(SPECIAL, SPECIAL_DMA_ST_WAIT);
+Reg const DMA_LD_ADDR(SPECIAL, SPECIAL_DMA_LD_ADDR);
+Reg const DMA_ST_ADDR(SPECIAL, SPECIAL_DMA_ST_ADDR);
 
 // Synonyms for v3d
 Reg const TMUD(SPECIAL, SPECIAL_VPM_WRITE);
@@ -175,17 +253,22 @@ Instr mov(Reg dst, int n) {
 }
 
 
+Instr mov(Reg dst, Reg src, AssignCond cond) {
+	return genInstr(A_BOR, cond, dst, src, src);
+}
+
+
+Instr mov(Reg dst, Reg src) {
+	return bor(dst, src, src);
+}
+
+
 
 /**
  * Generate bitwise-or instruction.
  */
 Instr bor(Reg dst, Reg srcA, Reg srcB) {
 	return genInstr(A_BOR, dst, srcA, srcB);
-}
-
-
-Instr mov(Reg dst, Reg src) {
-	return bor(dst, src, src);
 }
 
 
@@ -204,9 +287,11 @@ Instr shr(Reg dst, Reg srcA, int n) {
 }
 
 
+/**
+ * Generate addition instruction.
+ */
 Instr add(Reg dst, Reg srcA, Reg srcB) {
-//	breakpoint
-	return genADD(dst, srcA, srcB);
+	return genInstr(A_ADD, dst, srcA, srcB);
 }
 
 
@@ -231,9 +316,7 @@ Instr band(Reg dst, Reg srcA, int n) {
  * Generate load-immediate instruction.
  */
 Instr li(AssignCond cond, Reg dst, int i) {
-  Instr instr;
-  instr.tag           = LI;
-  instr.LI.setFlags   = false;
+  Instr instr(LI);
   instr.LI.cond       = cond;
   instr.LI.dest       = dst;
   instr.LI.imm.tag    = IMM_INT32;
@@ -247,10 +330,27 @@ Instr li(AssignCond cond, Reg dst, int i) {
  * Generate load-immediate instruction.
  */
 Instr li(Reg dst, int i) {
-	return li(AssignCond(ALWAYS), dst, i);
+	return li(AssignCond::always, dst, i);
 }
 
 
+/**
+ * This creates an unconditional branch.
+ * Conditions can be specified with helper methods (e.g. see `allzc()`)
+ */
+Instr branch(Label label) {
+	Instr instr;
+	instr.tag          = BRL;
+	instr.BRL.cond.tag = COND_ALWAYS;    // Will be set with another call
+	instr.BRL.label    = label;
+
+	return instr;
+}
+
+
+/**
+ * v3d only
+ */
 Instr tmuwt() {
 	Instr instr;
 	instr.tag = TMUWT;

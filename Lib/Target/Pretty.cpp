@@ -85,12 +85,14 @@ void pretty(FILE *f, BranchCond cond)
   }
 }
 
-void pretty(FILE *f, AssignCond cond)
-{
+
+void pretty(FILE *f, AssignCond cond) {
+	using Tag = AssignCond::Tag;
+
   switch (cond.tag) {
-    case ALWAYS: fprintf(f, "always"); return;
-    case NEVER: fprintf(f, "never"); return;
-    case FLAG: pretty(f, cond.flag); return;
+    case Tag::ALWAYS: fprintf(f, "always"); return;
+    case Tag::NEVER: fprintf(f, "never"); return;
+    case Tag::FLAG: pretty(f, cond.flag); return;
   }
 }
 
@@ -200,8 +202,8 @@ const char *pretty_instr_tag(InstrTag tag) {
 }
 
 
-void pretty(FILE *f, Instr instr)
-{
+void pretty(FILE *f, Instr instr) {
+	auto ALWAYS = AssignCond::Tag::ALWAYS;
   assert(f != nullptr);
 
   switch (instr.tag) {

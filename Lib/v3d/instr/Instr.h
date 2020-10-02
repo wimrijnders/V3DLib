@@ -43,15 +43,18 @@ public:
 	Instr &ldtmu(Register const &reg);
 	Instr &ldvpm();
 
+	// Conditional execution of instructions
+	Instr &ifa();
+	Instr &ifna();
+	Instr &ifb();
+	Instr &ifnb();
+
 	Instr &norn();
 	Instr &nornn();
 	Instr &norc();
 	Instr &nornc();
 	Instr &norz();
-	Instr &ifnb();
-	Instr &ifb();
-	Instr &ifna();
-	Instr &ifa();
+
 	Instr &andn();
 	Instr &andz();
 	Instr &andc();

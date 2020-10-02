@@ -144,25 +144,29 @@ void genSetupDMALoad( Seq<Instr>* instrs, int numRows, int rowLen, int hor, int 
 
 
 void genStartDMALoad(Seq<Instr>* instrs, Reg memAddr) {
-  Reg dst(SPECIAL, SPECIAL_DMA_LD_ADDR);
-  *instrs << mov(dst, memAddr);
+  *instrs << mov(DMA_LD_ADDR, memAddr);
 }
 
 
-void genWaitDMALoad(Seq<Instr>* instrs)
-{
+void genWaitDMALoad(Seq<Instr>* instrs) {
+	*instrs << mov(None, DMA_LD_WAIT, AssignCond::never);
+/*
   Instr instr;
   instr.tag                   = ALU;
   instr.ALU.setFlags          = false;
   instr.ALU.cond.tag          = NEVER;
   instr.ALU.op                = A_BOR;
+
   instr.ALU.dest.tag          = NONE;
+
   instr.ALU.srcA.tag          = REG;
   instr.ALU.srcA.reg.tag      = SPECIAL;
   instr.ALU.srcA.reg.regId    = SPECIAL_DMA_LD_WAIT;
   instr.ALU.srcB.tag          = REG;
   instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
-  instrs->append(instr);
+
+  *instrs << instr;
+*/
 }
 
 // Generate instructions to do DMA store.
@@ -190,13 +194,12 @@ void genSetupDMAStore( Seq<Instr>* instrs, int numRows, int rowLen, int hor, Reg
 
 
 void genStartDMAStore(Seq<Instr>* instrs, Reg memAddr) {
-  Reg dst(SPECIAL, SPECIAL_DMA_ST_ADDR);
-  *instrs << mov(dst, memAddr);
+  *instrs << mov(DMA_ST_ADDR, memAddr);
 }
 
 
 void genWaitDMAStore(Seq<Instr>* instrs) {
-	*instrs << genInstr(A_BOR, AssignCond(NEVER), Reg(NONE, 0), DMA_ST_WAIT, DMA_ST_WAIT);
+	*instrs << mov(None, DMA_ST_WAIT, AssignCond::NEVER);
 }
 
 // =============================================================================

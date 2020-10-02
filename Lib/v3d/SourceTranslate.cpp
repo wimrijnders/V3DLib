@@ -73,8 +73,8 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	     // TODO: Do we need NOP's here?
 	     // TODO: Check if more fields need to be set
 	     // TODO is r4 safe? Do we need to select an accumulator in some way?
-	     << nop()
-	     << nop()
+	     << Instr::nop()
+	     << Instr::nop()
 	     << ldtmu_r4
 	     << mov(dstReg(v), ACC4);
 }
@@ -126,16 +126,6 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 }
 
 
-Instr cond_branch(Label label) {
-	Instr instr;
-	instr.tag          = BRL;
-	instr.BRL.cond.tag = COND_ALWAYS;    // Will be set with another call
-	instr.BRL.label    = label;
-
-	return instr;
-}
-
-
 Instr label(Label in_label) {
 	Instr instr;
 	instr.tag = LAB;
@@ -169,14 +159,12 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	// threads, otherwise there would be gaps in the qpu id.
 	//
 	ret << mov(rf(RSV_QPU_ID), 0)           // not needed, already init'd to 0. Left here to counter future brainfarts
-/*
-	    << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
-	    << cond_branch(endifLabel).allzc()  // nop()'s added downstream
+	    << sub(ACC0, rf(RSV_NUM_QPUS), 8).pushz()
+	    << branch(endifLabel).allzc()       // nop()'s added downstream
 			<< mov(ACC0, QPU_ID)
 			<< shr(ACC0, ACC0, 2)
 	    << band(rf(RSV_QPU_ID), ACC0, 15)
 			<< label(endifLabel)
-*/
 	;
 
 	// offset = 4 * (thread_num + 16 * qpu_num);

@@ -106,10 +106,8 @@ Expr* simplify(Seq<Instr>* seq, Expr* e) {
 		return e;
 	}
 
-	AssignCond always;
-	always.tag = ALWAYS;
 	Var tmp = freshVar();
-	varAssign(seq, always, tmp, e);
+	varAssign(seq, AssignCond::always, tmp, e);
 	return mkVar(tmp);
 }
 
@@ -125,14 +123,11 @@ Expr* simplify(Seq<Instr>* seq, Expr* e) {
 void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
   Expr lhs = *lhsExpr;
 
-  AssignCond always;
-  always.tag = ALWAYS;
-
   // -----------------------------------------------------------
   // Case: v := rhs, where v is a variable and rhs an expression
   // -----------------------------------------------------------
   if (lhs.tag == VAR) {
-    varAssign(seq, always, lhs.var, rhs);
+    varAssign(seq, AssignCond::always, lhs.var, rhs);
     return;
   }
 
@@ -177,41 +172,11 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
 // an ALU instruction is 'true'.  The condition vector can be read
 // from an assignment condition or in a branch condition.
 
-// Function to negate a condition flag
 
-Flag negFlag(Flag flag)
-{
-  switch(flag) {
-    case ZS: return ZC;
-    case ZC: return ZS;
-    case NS: return NC;
-    case NC: return NS;
-  }
-
-  // Not reachable
-  assert(false);
-	return ZS;
-}
-
-// Function to negate an assignment condition.
-
-AssignCond negAssignCond(AssignCond cond)
-{
-  switch (cond.tag) {
-    case NEVER:  cond.tag = ALWAYS; return cond;
-    case ALWAYS: cond.tag = NEVER;  return cond;
-    case FLAG:   cond.flag = negFlag(cond.flag); return cond;
-  }
-
-  // Not reachable
-  assert(false);
-	return cond;
-}
-
-// Function to negate a branch condition.
-
-BranchCond negBranchCond(BranchCond cond)
-{
+/**
+ * Function to negate a branch condition.
+ */
+BranchCond negBranchCond(BranchCond cond) {
   switch (cond.tag) {
     case COND_NEVER:  cond.tag  = COND_ALWAYS; return cond;
     case COND_ALWAYS: cond.tag  = COND_NEVER;  return cond;
@@ -247,19 +212,14 @@ int setFlag(Flag f)
 	return -1;
 }
 
-// Set the condition vector using given variable.
 
-Instr setCond(Var v)
-{
-  AssignCond always;
-  always.tag = ALWAYS;
-  Reg r;
-  r.tag = NONE;
-  Instr instr;
-  instr.tag                   = ALU;
-  instr.ALU.setFlags          = true;
-  instr.ALU.cond              = always;
-  instr.ALU.dest              = r;
+/**
+ * Set the condition vector using given variable.
+ */
+Instr setCond(Var v) {
+  Instr instr(ALU);
+	instr. ALU.setFlags         = true;
+  instr.ALU.dest              = Target::instr::None;
   instr.ALU.srcA.tag          = REG;
   instr.ALU.srcA.reg          = srcReg(v);
   instr.ALU.op                = A_BOR;
@@ -268,22 +228,14 @@ Instr setCond(Var v)
   return instr;
 }
 
-// A shorthand 'move' instruction is handy later.
 
-Instr move(Var dst, Var src, bool setFlags)
-{
-  AssignCond always;
-  always.tag = ALWAYS;
-  Instr instr;
-  instr.tag                   = ALU;
+/**
+ * A shorthand 'move' instruction is handy later.
+ */
+Instr move(Var dst, Var src, bool setFlags) {
+  Instr instr = Target::instr::mov(dstReg(dst), srcReg(src));
   instr.ALU.setFlags          = setFlags;
-  instr.ALU.cond              = always;
-  instr.ALU.dest              = dstReg(dst);
-  instr.ALU.srcA.tag          = REG;
-  instr.ALU.srcA.reg          = srcReg(src);
-  instr.ALU.op                = A_BOR;
-  instr.ALU.srcB.tag          = REG;
-  instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
+
   return instr;
 }
 
@@ -324,56 +276,56 @@ Instr move(Var dst, Var src, bool setFlags)
 // disjunction, and the corresponding condFlag will be returned as a
 // result.
 
-AssignCond boolOr( Seq<Instr>* seq
-                 , AssignCond condA
-                 , Var condVarA
-                 , AssignCond condB
-                 , bool modify )
-{
-  if (condA.tag == ALWAYS) return condA;
-  else if (condB.tag == ALWAYS) return condB;
-  else if (condB.tag == NEVER) {
-    if (modify) seq->append(setCond(condVarA));
+AssignCond boolOr(
+	Seq<Instr>* seq,
+	AssignCond condA,
+	Var condVarA,
+	AssignCond condB,
+	bool modify
+) {
+  if (condA.is_always()) return condA;
+  else if (condB.is_always()) return condB;
+  else if (condB.is_never()) {
+    if (modify) *seq << setCond(condVarA);
     return condA;
   }
-  else if (condA.tag == NEVER) {
-    Instr instr;
-    instr.tag           = LI;
-    instr.LI.setFlags   = false;
+  else if (condA.is_never()) {
+    Instr instr(LI);
     instr.LI.cond       = condB;
     instr.LI.dest       = dstReg(condVarA);
     instr.LI.imm.tag    = IMM_INT32;
     instr.LI.imm.intVal = setFlag(condB.flag);
-    seq->append(instr);
+
+    *seq << instr;
     return condB;
   }
   else {
-    Instr instr;
-    instr.tag           = LI;
-    instr.LI.setFlags   = false;
+    Instr instr(LI);
     instr.LI.cond       = condB;
     instr.LI.dest       = dstReg(condVarA);
     instr.LI.imm.tag    = IMM_INT32;
     instr.LI.imm.intVal = setFlag(condA.flag);
-    seq->append(instr);
 
-    if (modify) seq->append(setCond(condVarA));
+    *seq << instr;
+    if (modify) *seq << setCond(condVarA);
     return condA;
   }
 }
 
-// Conjunction is now easy thanks to De Morgan's law:
 
-AssignCond boolAnd( Seq<Instr>* seq
-                  , AssignCond condA
-                  , Var condVarA
-                  , AssignCond condB
-                  , bool modify )
-{
-  return negAssignCond(
-           boolOr(seq, negAssignCond(condA), condVarA,
-                       negAssignCond(condB), modify));
+/**
+ * Conjunction is now easy thanks to De Morgan's law
+ */
+AssignCond boolAnd(
+	Seq<Instr>* seq,
+	AssignCond condA,
+	Var condVarA,
+	AssignCond condB,
+	bool modify
+) {
+  return boolOr(seq, condA.negate(), condVarA, condB.negate(), modify).negate();
 }
+
 
 // Now the translation scheme for general boolean expressions.
 // The interface is:
@@ -393,9 +345,6 @@ AssignCond boolAnd( Seq<Instr>* seq
 
 AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   BExpr b = *bexpr;
-
-  AssignCond always;
-  always.tag = ALWAYS;
 
   // -------------------------------
   // Case: x > y, replace with y < x
@@ -436,7 +385,7 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   // ---------------------------------------------
   if (b.tag == CMP && isLit(b.cmp.lhs) && isLit(b.cmp.rhs)) {
     Var tmpVar = freshVar();
-    varAssign(seq, always, tmpVar, b.cmp.lhs);
+    varAssign(seq, AssignCond::always, tmpVar, b.cmp.lhs);
     b.cmp.lhs = mkVar(tmpVar);
   }
 
@@ -445,8 +394,8 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   // --------------------------------------
   if (b.tag == CMP) {
     // Compute condition flag
-    AssignCond cond;
-    cond.tag = FLAG;
+    AssignCond cond(AssignCond::Tag::FLAG);
+
     switch(b.cmp.op.op) {
       case EQ:  cond.flag = ZS; break;
       case NEQ: cond.flag = ZC; break;
@@ -459,10 +408,9 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
     Op op;
     op.type = b.cmp.op.type;
     op.op   = SUB;
-    Instr instr;
-    instr.tag          = ALU;
+
+    Instr instr(ALU);
     instr.ALU.setFlags = true;
-    instr.ALU.cond     = always;
     instr.ALU.dest     = dstReg(v);
     instr.ALU.srcA     = operand(b.cmp.lhs);
     instr.ALU.op       = opcode(op);
@@ -477,7 +425,7 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   // -----------------------------------------
   if (b.tag == NOT) {
     AssignCond cond = boolExp(seq, b.neg, v, modify);
-    return negAssignCond(cond);
+    return cond.negate();
   }
 
   // ------------------------------------------------
@@ -501,7 +449,7 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
 
   // Not reachable
   assert(false);
-	return always;
+	return AssignCond::always;
 }
 
 
@@ -509,16 +457,15 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
 // Conditional expressions
 // ============================================================================
 
-BranchCond condExp(Seq<Instr>* seq, CExpr* c)
-{
+BranchCond condExp(Seq<Instr>* seq, CExpr* c) {
   Var v = freshVar();
   AssignCond cond = boolExp(seq, c->bexpr, v, true);
 
   BranchCond bcond;
-  if (cond.tag == ALWAYS) { bcond.tag = COND_ALWAYS; return bcond; }
-  if (cond.tag == NEVER) { bcond.tag = COND_NEVER; return bcond; }
+  if (cond.is_always()) { bcond.tag = COND_ALWAYS; return bcond; }
+  if (cond.is_never())  { bcond.tag = COND_NEVER; return bcond; }
 
-  assert(cond.tag == FLAG);
+  assert(cond.tag == AssignCond::Tag::FLAG);
 
   bcond.flag = cond.flag;
   if (c->tag == ANY) {
@@ -574,7 +521,7 @@ void whereStmt( Seq<Instr>* seq
   //                        s0 and s1 are statements.
   // ----------------------------------------------------------
   if (s->tag == WHERE) {
-    if (cond.tag == ALWAYS) {
+    if (cond.is_always()) {
       // This case has a cheaper implementation
 
       // Compile new boolean expression
@@ -587,8 +534,7 @@ void whereStmt( Seq<Instr>* seq
 
       // Compile 'else' statement
       if (s->where.elseStmt != NULL)
-        whereStmt(seq, s->where.elseStmt, condVar,
-                    negAssignCond(newCond), false);
+        whereStmt(seq, s->where.elseStmt, condVar, newCond.negate(), false);
     }
     else {
       // Save condVar
@@ -613,8 +559,7 @@ void whereStmt( Seq<Instr>* seq
 
       if (s->where.elseStmt != NULL) {
         // AND negation of new boolean expression with original condition
-        AssignCond andCond = boolAnd(seq, negAssignCond(newCond), newCondVar,
-                               cond, true);
+        AssignCond andCond = boolAnd(seq, newCond.negate(), newCondVar, cond, true);
   
         // Compile 'else' statement
         whereStmt(seq, s->where.elseStmt, newCondVar, andCond, false);
@@ -637,31 +582,29 @@ void whereStmt( Seq<Instr>* seq
 // Print statements
 // ============================================================================
 
-void printStmt(Seq<Instr>* seq, PrintStmt s)
-{
-  Instr instr;
+void printStmt(Seq<Instr>* seq, PrintStmt s) {
+  Instr instr(PRI);
+
   switch (s.tag) {
     case PRINT_INT:
     case PRINT_FLOAT: {
-      AssignCond always;
-      always.tag = ALWAYS;
       Var tmpVar = freshVar();
-      varAssign(seq, always, tmpVar, s.expr);
+      varAssign(seq, AssignCond::always, tmpVar, s.expr);
+
       if (s.tag == PRINT_INT) {
-        instr.tag = PRI;
         instr.PRI = srcReg(tmpVar);
       }
       else {
-        instr.tag = PRF;
         instr.PRF = srcReg(tmpVar);
       }
-      seq->append(instr);
+
+      *seq << instr;
       return;
     }
     case PRINT_STR:
       instr.tag = PRS;
       instr.PRS = s.str;
-      seq->append(instr);
+      *seq << instr;
       return;
   }
 
@@ -671,20 +614,18 @@ void printStmt(Seq<Instr>* seq, PrintStmt s)
 // Load receive statements
 // ============================================================================
 
-void loadReceive(Seq<Instr>* seq, Expr* dest)
-{
+void loadReceive(Seq<Instr>* seq, Expr* dest) {
   assert(dest->tag == VAR);
-  Instr instr;
-  instr.tag = RECV;
+  Instr instr(RECV);
+
   instr.RECV.dest = dstReg(dest->var);
-  seq->append(instr);
+  *seq << instr;
 }
 // ============================================================================
 // Statements
 // ============================================================================
 
-void stmt(Seq<Instr>* seq, Stmt* s)
-{
+void stmt(Seq<Instr>* seq, Stmt* s) {
   if (s == NULL) return;
 
   // ----------
@@ -798,9 +739,7 @@ void stmt(Seq<Instr>* seq, Stmt* s)
   // ----------------------------------------------------------------------
   if (s->tag == WHERE) {
     Var condVar = freshVar();
-    AssignCond always;
-    always.tag = ALWAYS;
-    whereStmt(seq, s, condVar, always, false);
+    whereStmt(seq, s, condVar, AssignCond::always, false);
     return;
   }
 
@@ -960,9 +899,7 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // -----------------------------------------
   if (e.tag == VAR) {
     Var w   = e.var;
-    Reg src = srcReg(w);
-
-		*seq << genInstr(A_BOR, cond, dstReg(v), src, src);
+		*seq << mov(dstReg(v), srcReg(w), cond);
     return;
   }
 
@@ -979,9 +916,8 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // ----------------------------------------
   if (e.tag == FLOAT_LIT) {
     float f = e.floatLit;
-    Instr instr;
-    instr.tag             = LI;
-    instr.LI.setFlags     = false;
+
+    Instr instr(LI);
     instr.LI.cond         = cond;
     instr.LI.dest         = dstReg(v);
     instr.LI.imm.tag      = IMM_FLOAT32;
@@ -1013,15 +949,14 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // Case: v := x op y, where x and y are simple
   // -------------------------------------------
   if (e.tag == APPLY) {
-    Instr instr;
-    instr.tag            = ALU;
-    instr.ALU.setFlags   = false;
+    Instr instr(ALU);
     instr.ALU.cond       = cond;
     instr.ALU.dest       = dstReg(v);
     instr.ALU.srcA       = operand(e.apply.lhs);
     instr.ALU.op         = opcode(e.apply.op);
     instr.ALU.srcB       = operand(e.apply.rhs);
-    seq->append(instr);
+
+    *seq << instr;
     return;
   }
 
@@ -1043,7 +978,7 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // trivial to lift these outside the 'where'.
   //
   if (e.tag == DEREF) {
-    if (cond.tag != ALWAYS) {
+    if (!cond.is_always()) {
       printf("QPULib: dereferencing not yet supported inside 'where'\n");
       assert(false);
     }
@@ -1064,10 +999,8 @@ Expr* putInVar(Seq<Instr>* seq, Expr* e) {
 		return e;
 	}
 
-	AssignCond always;
-	always.tag = ALWAYS;
 	Var tmp = freshVar();
-	varAssign(seq, always, tmp, e);
+	varAssign(seq, AssignCond::always, tmp, e);
 	return mkVar(tmp);
 }
 

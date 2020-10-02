@@ -284,6 +284,7 @@ void Instr::set_pf(v3d_qpu_pf val) {
 Instr &Instr::pushc() { set_pf(V3D_QPU_PF_PUSHC); return *this; }
 Instr &Instr::pushn() { set_pf(V3D_QPU_PF_PUSHN); return *this; }
 Instr &Instr::pushz() { set_pf(V3D_QPU_PF_PUSHZ); return *this; }
+
 Instr &Instr::norc()  { set_uf(V3D_QPU_UF_NORC);  return *this; }
 Instr &Instr::nornc() { set_uf(V3D_QPU_UF_NORNC); return *this; }
 Instr &Instr::norz()  { set_uf(V3D_QPU_UF_NORZ);  return *this; }
@@ -294,6 +295,7 @@ Instr &Instr::andz()  { set_uf(V3D_QPU_UF_ANDZ);  return *this; }
 Instr &Instr::andc()  { set_uf(V3D_QPU_UF_ANDC);  return *this; }
 Instr &Instr::andnc() { set_uf(V3D_QPU_UF_ANDNC); return *this; }
 Instr &Instr::andnn() { set_uf(V3D_QPU_UF_ANDNN); return *this; }
+
 Instr &Instr::ifnb()  { set_c(V3D_QPU_COND_IFNB); return *this; }
 Instr &Instr::ifb()   { set_c(V3D_QPU_COND_IFB);  return *this; }
 Instr &Instr::ifna()  { set_c(V3D_QPU_COND_IFNA); return *this; }

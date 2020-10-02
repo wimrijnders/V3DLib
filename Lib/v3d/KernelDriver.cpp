@@ -1,23 +1,31 @@
 /**
- * Collected comments for creating opcodes
  *
- *     uint32_t cond = encodeAssignCond(instr.LI.cond) << 17;
+ * ============================================================================
+ * NOTES
+ * =====
  *
- * LI:
- *     uint32_t sig   = ((instr.hasImm() || instr.isRot) ? 13 : 1) << 28;
- *     uint32_t cond  = encodeAssignCond(instr.ALU.cond) << (instr.isMul() ? 14 : 17);
- *     uint32_t ws;  // bitfield that selects between regfile A and B
- *			              // There is no such distinction on v3d, there is one regfile
- *     uint32_t sf    = (instr.ALU.setFlags ? 1 : 0) << 13;
- *     *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
+ * * Setting of branch conditions
  *
- * ALU:
- *     uint32_t waddr_add = 39 << 6;
- *     uint32_t waddr_mul = 39;
- *     uint32_t sig = 0xe8000000;
- *     uint32_t incOrDec = (instr.tag == SINC ? 0 : 1) << 4;
- *     *high = sig | waddr_add | waddr_mul;
- *     *low = incOrDec | instr.semaId;
+ * * qpu_instr.h, line 74, enum v3d_qpu_uf:
+ *
+ *   How I interpret this:
+ *   - AND: if all bits set
+ *   - NOR: if no bits set
+ *   - N  : field not set
+ *   - Z  : Field zero
+ *   - N  : field negative set
+ *   - C  : Field negative cleared
+ *
+ *   What the bits are is not clear at this point.
+ *   These assumptions are probably wrong, but I need a starting point.
+ *
+ *   TODO: make tests to verify these assumptions (how? No clue right now)
+ *
+ *   So:
+ *   - vc4 `if all(nc)...` -> ANDC
+ *     vc4 `nc` - negative clear, ie. >= 0
+ *     vc4 `ns` - negative set,   ie.  < 0
+ * 
  */
 #include "KernelDriver.h"
 #include <memory>
@@ -351,7 +359,6 @@ bool is_special_index(QPULib::Instr const &src_instr, Special index ) {
 		return false;
 	}
 
-
 	auto srca = src_instr.ALU.srcA;
 	auto srcb = src_instr.ALU.srcB;
 	bool a_is_qpu_num = (srca.tag == REG && srca.reg.tag == SPECIAL && srca.reg.regId == index);
@@ -362,55 +369,22 @@ bool is_special_index(QPULib::Instr const &src_instr, Special index ) {
 
 
 /**
- *
- * ============================================================================
- * NOTES
- * =====
- *
- * * qpu_instr.h, line 74, enum v3d_qpu_uf:
- *
- *   How I interpret this:
- *   - AND: if all bits set
- *   - NOR: if no bits set
- *   - N  : field not set
- *   - Z  : Field zero
- *   - N  : field negative set
- *   - C  : Field negative cleared
- *
- *   What the bits are is not clear at this point.
- *   These assumptions are probably wrong, but I need a starting point.
- *
- *   TODO: make tests to verify these assumptions (how? No clue right now)
- *
- *   So:
- *   - vc4 `if all(nc)...` -> ANDC
- *     vc4 `nc` - negative clear, ie. >= 0
- *     vc4 `ns` - negative set,   ie.  < 0
  */
 void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
-	if (cond.tag == ALWAYS) {
-		return; // ALWAYS executes always (duh, is default)
+	if (cond.is_always()) {
+		return;
 	}
-	assert(cond.tag != NEVER);  // Not expecting this (yet)
-	assert(cond.tag == FLAG);  // The only remaining option
+	assert(cond.tag != AssignCond::Tag::NEVER);  // Not expecting this (yet)
+	assert(cond.tag == AssignCond::Tag::FLAG);   // The only remaining option
 
 	// NOTE: condition tags are set for add alu only here
 	// TODO: Set for mul tag as well if required
-	//       Prob the easiest is to always set the for both for now
+	//       Prob the easiest is to always set them for both for now
 
 	// TODO test what happens here, for vc4 as well as v3d
 	//      v3d flags used are prob wrong!
 
-/*
-	switch (cond.flag) {
-		case NC: out_instr.andc();  break;
-		case NS: out_instr.andnc(); break;
-		default:
-			breakpoint;  // check,  case not handled yet
-	}
-*/
-	//out_instr.andn();
-	out_instr.ifa(); //.andz();
+	out_instr.ifa(); 
 }
 
 
@@ -425,38 +399,21 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 	auto &cond = src_instr.ALU.cond;
 
 	// src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
-	assertq(cond.tag != NEVER,                      "NEVER encountered in ALU.cond.tag", true);  // Not expecting it
-	assertq(cond.tag == FLAG || cond.tag == ALWAYS, "Really expecting FLAG here", true);         // Pedantry
+	assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);             // Not expecting it
+	assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
 
 	if (src_instr.ALU.setFlags) {
 		// Set a condition flag with current instruction
-		assertq(cond.tag == ALWAYS, "Currently expecting only ALWAYS here", true);
+		assertq(cond.is_always(), "Currently expecting only ALWAYS here", true);
 
 		// Note that it is only set for the last in the list.
 		// Any preceding instructions are assumed to be for calculating the condition
 		Instr &instr = ret.back();
-
-/*
-		// Disabled: Have a case where flag field is not set
-
-		switch (cond.flag) {
-			case ZS:
-			case ZC:
-				instr.pushz();
-				break;
-			default:
-				// Warn me if unhandled cases happen
-				assertq(false, "Assign condition flag not ZS/ZC", true);
-		}
-*/
-
-		instr.pushz();
-		//instr.pushn();
-		//instr.pushc();
+		instr.pushn();
 
 	} else {
 		// use flag as run condition for current instruction(s)
-		if (cond.tag == ALWAYS) {
+		if (cond.is_always()) {
 			return; // ALWAYS executes always (duh, is default)
 		}
 

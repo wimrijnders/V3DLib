@@ -112,6 +112,8 @@ enum Flag {
   , NC              // Negative clear
 };
 
+Flag negFlag(Flag flag);
+
 // Branch conditions
 
 enum BranchCondTag {
@@ -122,30 +124,43 @@ enum BranchCondTag {
 };
 
 struct BranchCond {
-  // ALL or ANY reduction?
-  BranchCondTag tag;
-
-  // Condition flag
-  Flag flag;
+  BranchCondTag tag;  // ALL or ANY reduction?
+  Flag flag;          // Condition flag
 };
 
-// Assignment conditions
 
-enum AssignCondTag {
-    NEVER
-  , ALWAYS
-  , FLAG
+// v3d only
+enum SetCond {
+	NO_COND,
+	Z,
+	N,
+	C
 };
 
+
+/**
+ * Assignment conditions
+ */
 struct AssignCond {
-  // Kind of assignment condition
-  AssignCondTag tag;
 
-  // Condition flag
-  Flag flag;
+	enum Tag {
+		NEVER,
+		ALWAYS,
+		FLAG
+	};
+
+  Tag tag;    // Kind of assignment condition
+  Flag flag;  // Condition flag
 
 	AssignCond() = default;
-	AssignCond(AssignCondTag in_tag) : tag(in_tag) {}
+	AssignCond(Tag in_tag) : tag(in_tag) {}
+
+	bool is_always() const { return tag == ALWAYS; }
+	bool is_never()  const { return tag == NEVER; }
+	AssignCond negate() const;
+
+	static AssignCond always;
+	static AssignCond never;
 };
 
 // ============================================================================
@@ -373,20 +388,22 @@ struct Instr {
   union {
     // Load immediate
 		struct {
-			bool setFlags;
+			bool       setFlags;
+			SetCond    setCond; // v3d only
 			AssignCond cond;
-			Reg dest;
-			Imm imm;
+			Reg        dest;
+			Imm        imm;
 		} LI;
 
     // ALU operation
 		struct {
-			bool setFlags;
+			bool       setFlags;
+			SetCond    setCond; // v3d only
 			AssignCond cond;
-			Reg dest;
-			RegOrImm srcA;
-			ALUOp op;
-			RegOrImm srcB;
+			Reg        dest;
+			RegOrImm   srcA;
+			ALUOp      op;
+			RegOrImm   srcB;
 		} ALU;
 
     // Conditional branch (to target)
@@ -396,7 +413,7 @@ struct Instr {
 		} BR;
 
     // ==================================================
-    // The remainder are intermediate-language constructs
+    // Intermediate-language constructs
     // ==================================================
 
     // Conditional branch (to label)
@@ -410,56 +427,32 @@ struct Instr {
 		                // TODO perhaps revert
 
     // Semaphores
-    // ----------
-
-    // Semaphore id (range 0..15)
-    int semaId;
+    int semaId;                 // Semaphore id (range 0..15)
 
     // Load receive via TMU
-    // --------------------
-
-    // Destination register for load receive
-    struct { Reg dest; } RECV;
+    struct { Reg dest; } RECV;  // Destination register for load receive
 
     // Print instructions
-    // ------------------
-
-    // Print string
-    const char* PRS;
-
-    // Print integer
-    Reg PRI;
-
-    // Print float
-    Reg PRF;
+    const char* PRS;            // Print string
+    Reg PRI;                    // Print integer
+    Reg PRF;                    // Print float
   };
 
+
+	Instr() = default;
+	Instr(InstrTag in_tag);
+
+
+	// ==================================================
+	// Helper methods
+	// ==================================================
+	bool isCondAssign() const;
 
 	bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
 	bool isRot() const { return ALU.op == M_ROTATE; }
 	bool isMul() const;
 	bool isUniformLoad() const;
 	bool isTMUAWrite() const;
-
-	Instr &setFlags() {
-		if (tag == InstrTag::LI) {
-			LI.setFlags = true;
-		} else if (tag == InstrTag::ALU) {
-			ALU.setFlags = true;
-		} else {
-			assert(false);
-		}
-
-		return *this;
-	}
-
-
-	Instr &allzc() {
-		assert(tag == InstrTag::BRL);
-		BRL.cond.tag  = COND_ALL;
-		BRL.cond.flag = Flag::ZC;
-		return *this;
-	}
 
 	Label cond_label() {
 		assert(tag == InstrTag::BRL);
@@ -475,25 +468,33 @@ struct Instr {
 		assert(tag == InstrTag::LAB);
 		return m_label;
 	}
+
+	static Instr nop();
+
+	// ==================================================
+	// v3d-specific  methods
+	// ==================================================
+	Instr &pushz();
+
+	Instr &allzc() {
+		assert(tag == InstrTag::BRL);
+		BRL.cond.tag  = COND_ALL;
+		BRL.cond.flag = Flag::ZC;
+		return *this;
+	}
+
+private:
+	void setFlags();
 };
 
 // Instruction id: also the index of an instruction
 // in the main instruction sequence
 typedef int InstrId;
 
+
 // ============================================================================
 // Handy functions
 // ============================================================================
-
-// Determine if instruction is a conditional assignment
-bool isCondAssign(Instr* instr);
-
-// Make a no-op
-inline Instr nop()
-  { Instr instr; instr.tag = NO_OP; return instr; }
-
-// Instruction constructors
-Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB);
 
 // Is last instruction in a basic block?
 bool isLast(Instr instr);
@@ -502,6 +503,7 @@ bool isLast(Instr instr);
 namespace Target {
 namespace instr {
 
+extern Reg const None;
 extern Reg const ACC0;
 extern Reg const ACC1;
 extern Reg const ACC4;
@@ -512,7 +514,10 @@ extern Reg const VPM_WRITE;
 extern Reg const VPM_READ;
 extern Reg const WR_SETUP;
 extern Reg const RD_SETUP;
+extern Reg const DMA_LD_WAIT;
 extern Reg const DMA_ST_WAIT;
+extern Reg const DMA_LD_ADDR;
+extern Reg const DMA_ST_ADDR;
 
 // Following registers are synonyms for v3d code generation,
 // to better indicate the intent. Definitions of vc4 concepts
@@ -520,11 +525,12 @@ extern Reg const DMA_ST_WAIT;
 extern Reg const TMUD;
 extern Reg const TMUA;
 
-
 Reg rf(uint8_t index);
+
 Instr bor(Reg dst, Reg srcA, Reg srcB);
 Instr mov(Reg dst, int n);
 Instr mov(Reg dst, Reg src);
+Instr mov(Reg dst, Reg src, AssignCond cond);
 Instr shl(Reg dst, Reg srcA, int val);
 Instr add(Reg dst, Reg srcA, Reg srcB);
 Instr add(Reg dst, Reg srcA, int n);
@@ -533,6 +539,7 @@ Instr shr(Reg dst, Reg srcA, int n);
 Instr band(Reg dst, Reg srcA, int n);
 Instr li(AssignCond cond, Reg dst, int i);
 Instr li(Reg dst, int i);
+Instr branch(Label label);
 
 // v3d only
 Instr tmuwt();

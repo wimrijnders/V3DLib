@@ -235,12 +235,13 @@ Vec readReg(QPUState* s, State* g, Reg reg)
 // Given an assignment condition and an vector index, determine if the
 // condition is true at that index using the implicit condition flags.
 
-inline bool checkAssignCond(QPUState* s, AssignCond cond, int i)
-{
+inline bool checkAssignCond(QPUState* s, AssignCond cond, int i) {
+	using Tag = AssignCond::Tag;
+
   switch (cond.tag) {
-    case NEVER:  return false;
-    case ALWAYS: return true;
-    case FLAG:
+    case Tag::NEVER:  return false;
+    case Tag::ALWAYS: return true;
+    case Tag::FLAG:
       switch (cond.flag) {
         case ZS: return s->zeroFlags[i];
         case ZC: return !s->zeroFlags[i];
@@ -740,6 +741,8 @@ void emulate(
 
   bool anyRunning = true;
   while (anyRunning) {
+		auto ALWAYS = AssignCond::Tag::ALWAYS;
+
     anyRunning = false;
 
     // Execute an instruction in each active QPU

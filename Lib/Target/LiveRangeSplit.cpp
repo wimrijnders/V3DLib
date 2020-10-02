@@ -46,7 +46,7 @@ void renameDef(Seq<Instr>* instrs,
       InstrId d = ds->elems[k];
       // If r is reached-by d
       if (reachedBy->elems[d].member(rid)
-            || (d == rid && isCondAssign(r)))
+            || (d == rid && r->isCondAssign()))
         // Recursively modify definition d to define w
         renameDef(instrs, d, v, w, visited, reachedBy, defsOf);
     }

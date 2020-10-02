@@ -25,10 +25,8 @@ void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e)
       genSetWriteStride(seq, srcReg(e->var));
   }
   else {
-    AssignCond always;
-    always.tag = ALWAYS;
     Var v = freshVar();
-    varAssign(seq, always, v, e);
+    varAssign(seq, AssignCond::always, v, e);
     if (tag == SET_READ_STRIDE)
       genSetReadPitch(seq, srcReg(v));
     else
@@ -47,10 +45,8 @@ void setupVPMReadStmt(Seq<Instr>* seq, int n, Expr* e, int hor, int stride)
   else if (e->tag == VAR)
     genSetupVPMLoad(seq, n, srcReg(e->var), hor, stride);
   else {
-    AssignCond always;
-    always.tag = ALWAYS;
     Var v = freshVar();
-    varAssign(seq, always, v, e);
+    varAssign(seq, AssignCond::always, v, e);
     genSetupVPMLoad(seq, n, srcReg(v), hor, stride);
   }
 }
@@ -67,10 +63,8 @@ void setupDMAReadStmt(Seq<Instr>* seq, int numRows, int rowLen,
   else if (e->tag == VAR)
     genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, srcReg(e->var));
   else {
-    AssignCond always;
-    always.tag = ALWAYS;
     Var v = freshVar();
-    varAssign(seq, always, v, e);
+    varAssign(seq, AssignCond::always, v, e);
     genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, srcReg(v));
   }
 }
@@ -83,10 +77,8 @@ void setupDMAWriteStmt(Seq<Instr>* seq, int numRows, int rowLen,
   else if (e->tag == VAR)
     genSetupDMAStore(seq, numRows, rowLen, hor, srcReg(e->var));
   else {
-    AssignCond always;
-    always.tag = ALWAYS;
     Var v = freshVar();
-    varAssign(seq, always, v, e);
+    varAssign(seq, AssignCond::always, v, e);
     genSetupDMAStore(seq, numRows, rowLen, hor, srcReg(v));
   }
 }
@@ -96,10 +88,8 @@ void startDMAReadStmt(Seq<Instr>* seq, Expr* e)
   if (e->tag == VAR)
     genStartDMALoad(seq, srcReg(e->var));
   else {
-    AssignCond always;
-    always.tag = ALWAYS;
     Var v = freshVar();
-    varAssign(seq, always, v, e);
+    varAssign(seq, AssignCond::always, v, e);
     genStartDMALoad(seq, srcReg(e->var));
   }
 }
@@ -109,10 +99,8 @@ void startDMAWriteStmt(Seq<Instr>* seq, Expr* e)
   if (e->tag == VAR)
     genStartDMAStore(seq, srcReg(e->var));
   else {
-    AssignCond always;
-    always.tag = ALWAYS;
     Var v = freshVar();
-    varAssign(seq, always, v, e);
+    varAssign(seq, AssignCond::always, v, e);
     genStartDMAStore(seq, srcReg(e->var));
   }
 }
@@ -121,37 +109,33 @@ void startDMAWriteStmt(Seq<Instr>* seq, Expr* e)
 // Semaphores
 // ============================================================================
 
-void semaphore(Seq<Instr>* seq, StmtTag tag, int semaId)
-{
+void semaphore(Seq<Instr>* seq, StmtTag tag, int semaId) {
   Instr instr;
-  instr.tag = tag == SEMA_INC ? SINC : SDEC;
+  instr.tag = (tag == SEMA_INC)? SINC : SDEC;
   instr.semaId = semaId;
-  seq->append(instr);
+	
+  *seq << instr;
 }
 
 // ============================================================================
 // Host IRQ
 // ============================================================================
 
-void sendIRQToHost(Seq<Instr>* seq)
-{
+void sendIRQToHost(Seq<Instr>* seq) {
   Instr instr;
   instr.tag = IRQ;
-  seq->append(instr);
+  *seq << instr;
 }
 
 
-void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride)
-{
+void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride) {
   if (e->tag == INT_LIT)
     genSetupVPMStore(seq, e->intLit, hor, stride);
   else if (e->tag == VAR)
     genSetupVPMStore(seq, srcReg(e->var), hor, stride);
   else {
-    AssignCond always;
-    always.tag = ALWAYS;
     Var v = freshVar();
-    varAssign(seq, always, v, e);
+    varAssign(seq, AssignCond::always, v, e);
     genSetupVPMStore(seq, srcReg(v), hor, stride);
   }
 }

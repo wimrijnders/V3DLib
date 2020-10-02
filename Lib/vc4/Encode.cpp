@@ -72,9 +72,9 @@ uint32_t encodeMulOp(ALUOp op)
 uint32_t encodeAssignCond(AssignCond cond)
 {
   switch (cond.tag) {
-    case NEVER:  return 0;
-    case ALWAYS: return 1;
-    case FLAG:
+    case AssignCond::Tag::NEVER:  return 0;
+    case AssignCond::Tag::ALWAYS: return 1;
+    case AssignCond::Tag::FLAG:
       switch (cond.flag) {
         case ZS: return 2;
         case ZC: return 3;
@@ -197,7 +197,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
     case IRQ:
       instr.tag           = LI;
       instr.LI.setFlags   = false;
-      instr.LI.cond.tag   = ALWAYS;
+      instr.LI.cond.tag   = AssignCond::Tag::ALWAYS;
       instr.LI.dest.tag   = SPECIAL;
       instr.LI.dest.regId = SPECIAL_HOST_INT;
       instr.LI.imm.tag    = IMM_INT32;
@@ -209,7 +209,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
                   SPECIAL_DMA_ST_WAIT;
       instr.tag                   = ALU;
       instr.ALU.setFlags          = false;
-      instr.ALU.cond.tag          = NEVER;
+      instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
       instr.ALU.op                = A_BOR;
       instr.ALU.dest.tag          = NONE;
       instr.ALU.srcA.tag          = REG;
