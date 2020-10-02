@@ -4,6 +4,7 @@
 #include <bits/stdc++.h>  // swap()
 #include "../../Support/debug.h"
 #include "dump_instr.h"
+#include "Support/basics.h"
 
 namespace {
 
@@ -299,12 +300,6 @@ Instr &Instr::ifna()  { set_c(V3D_QPU_COND_IFNA); return *this; }
 Instr &Instr::ifa()   { set_c(V3D_QPU_COND_IFA);  return *this; }
 
 
-Instr &Instr::thrsw(bool val) {
-	sig.thrsw = val;
-	return *this;
-}
-
-
 Instr &Instr::ldtmu(Register const &reg) {
 	sig.ldtmu = true;
 	sig_addr  = reg.to_waddr(); 
@@ -314,10 +309,11 @@ Instr &Instr::ldtmu(Register const &reg) {
 }
 
 
-Instr &Instr::ldvary()  { sig.ldvary = true;  return *this; }
-Instr &Instr::ldunif()  { sig.ldunif = true;  return *this; }
+Instr &Instr::thrsw()   { sig.thrsw   = true; return *this; }
+Instr &Instr::ldvary()  { sig.ldvary  = true; return *this; }
+Instr &Instr::ldunif()  { sig.ldunif  = true; return *this; }
 Instr &Instr::ldunifa() { sig.ldunifa = true; return *this; }
-Instr &Instr::ldvpm()   { sig.ldvpm = true;   return *this; }
+Instr &Instr::ldvpm()   { sig.ldvpm   = true; return *this; }
 
 Instr &Instr::ldunifarf(RFAddress const &addr) {
 	sig.ldunifarf = true;
@@ -339,7 +335,7 @@ Instr &Instr::set_branch_condition(v3d_qpu_branch_cond cond) {
 Instr &Instr::a0()     { return set_branch_condition(V3D_QPU_BRANCH_COND_A0); }
 Instr &Instr::na0()    { return set_branch_condition(V3D_QPU_BRANCH_COND_NA0); }
 Instr &Instr::alla()   { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
-Instr &Instr::allna()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLA); }
+Instr &Instr::allna()  { return set_branch_condition(V3D_QPU_BRANCH_COND_ALLNA); }
 Instr &Instr::anya()   { return set_branch_condition(V3D_QPU_BRANCH_COND_ANYA); }
 Instr &Instr::anyaq()  { branch.msfign =  V3D_QPU_MSFIGN_Q; return anya(); }
 Instr &Instr::anyap()  { branch.msfign =  V3D_QPU_MSFIGN_P; return anya(); }
@@ -372,13 +368,20 @@ Instr &Instr::sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 }
 
 
-Instr &Instr::mov(Location const &dst,  uint8_t val) {
+Instr &Instr::nop() {
+	m_doing_add = false;
+	// With normal usage, the mul-part is already nop
+	return *this;
+}
+
+
+Instr &Instr::mov(Location const &dst,  SmallImm const &imm) {
 	m_doing_add = false;
 	alu_mul_set_dst(dst);
+	alu_mul_set_imm_a(imm);
 
 	alu.mul.op    = V3D_QPU_M_MOV;
-	alu.mul.a     = V3D_QPU_MUX_B;
-	alu.mul.b     = V3D_QPU_MUX_B;
+	alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
 
 	return *this;
 }
@@ -413,10 +416,9 @@ Instr &Instr::mov(uint8_t rf_addr, Register const &reg) {
 
 Instr &Instr::mov(Location const &loc1, Location const &loc2) {
 	m_doing_add = false;
-
 	alu_mul_set(loc1, loc2, loc2); 
-	alu.mul.op    = V3D_QPU_M_MOV;
 
+	alu.mul.op    = V3D_QPU_M_MOV;
 	return *this;
 }
 
@@ -533,24 +535,36 @@ void Instr::alu_add_set_reg_b(Location const &loc3) {
 }
 
 
-void Instr::alu_add_set_imm_a(SmallImm const &imm3) {
-	// Apparently, imm is always set in raddr_b, even
-	// if it's the second param in the instruction
-	sig.small_imm = true; 
-	raddr_b       = imm3.to_raddr(); 
-
-	alu.add.a     = V3D_QPU_MUX_B;
-	alu.add.a_unpack = imm3.input_unpack();
+/**
+ * Set the immediate value for an operations
+ *
+ * The immediate value is always set in raddr_b.
+ * Multiple immediate operands are allowed in an instruction  only if they are the same value
+ */
+void Instr::alu_set_imm(SmallImm const &imm) {
+	if (sig.small_imm == true) {
+		if (raddr_b != imm.to_raddr()) {
+			fatal("Multiple immediate values in an operation only allowed if they are the same value");
+		}
+	} else {
+		// All is well
+		sig.small_imm = true; 
+		raddr_b       = imm.to_raddr(); 
+	}
 }
 
-void Instr::alu_add_set_imm_b(SmallImm const &imm3) {
-	// Apparently, imm is always set in raddr_b, even
-	// if it's the second param in the instruction
-	sig.small_imm = true; 
-	raddr_b       = imm3.to_raddr(); 
 
-	alu.add.b     = V3D_QPU_MUX_B;
-	alu.add.b_unpack = imm3.input_unpack();
+void Instr::alu_add_set_imm_a(SmallImm const &imm) {
+	alu_set_imm(imm);
+	alu.add.a        = V3D_QPU_MUX_B;
+	alu.add.a_unpack = imm.input_unpack();
+}
+
+
+void Instr::alu_add_set_imm_b(SmallImm const &imm) {
+	alu_set_imm(imm);
+	alu.add.b        = V3D_QPU_MUX_B;
+	alu.add.b_unpack = imm.input_unpack();
 }
 
 
@@ -559,18 +573,14 @@ void Instr::alu_add_set_imm_b(SmallImm const &imm3) {
  * TODO verify in some way
  */
 void Instr::alu_mul_set_imm_a(SmallImm const &imm) {
-	sig.small_imm = true; 
-	raddr_b       = imm.to_raddr(); 
-
-	alu.mul.a     = V3D_QPU_MUX_B;
+	alu_set_imm(imm);
+	alu.mul.a        = V3D_QPU_MUX_B;
 	alu.mul.a_unpack = imm.input_unpack();
 }
 
 
 void Instr::alu_mul_set_imm_b(SmallImm const &imm) {
-	sig.small_imm = true; 
-	raddr_b       = imm.to_raddr(); 
-
+	alu_set_imm(imm);
 	alu.mul.b     = V3D_QPU_MUX_B;
 	alu.mul.b_unpack = imm.input_unpack();
 }

@@ -132,7 +132,7 @@ Instructions enable_tmu_read(Instr const *last_slot) {
 		"This also enables TMU read requests without the thread switch signal, and\n"
 		"the eight-depth TMU read request queue.";
 
-	ret << nop().thrsw(true).comment(text)
+	ret << nop().thrsw().comment(text)
 	    << nop();
 
 	if (last_slot != nullptr) {
@@ -152,7 +152,7 @@ Instructions sync_tmu() {
 		"This synchronization is needed between the last TMU operation and the\n"
 		"program end with the thread switch just before the main body above.";
 
-	ret << barrierid(syncb).thrsw(true).comment(text)
+	ret << barrierid(syncb).thrsw().comment(text)
 	    << nop()
 	    << nop();
 
@@ -163,11 +163,11 @@ Instructions sync_tmu() {
 Instructions end_program() {
 	Instructions ret;
 
-	ret << nop().thrsw(true).comment("Program tail")
-	    << nop().thrsw(true)
+	ret << nop().thrsw().comment("Program tail")
+	    << nop().thrsw()
 	    << nop()
 	    << nop()
-	    << nop().thrsw(true)
+	    << nop().thrsw()
 	    << nop()
 	    << nop()
 	    << nop();

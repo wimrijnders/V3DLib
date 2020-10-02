@@ -31,22 +31,24 @@ public:
 
 	operator uint64_t() const { return code(); }
 
-	Instr &thrsw(bool val = true);
 	Instr &pushz();
 	Instr &pushc();
 	Instr &pushn();
-	Instr &ldtmu(Register const &reg);
+
+	Instr &thrsw();
 	Instr &ldvary();
 	Instr &ldunif();
 	Instr &ldunifa();
 	Instr &ldunifarf(RFAddress const &addr);
+	Instr &ldtmu(Register const &reg);
 	Instr &ldvpm();
+
 	Instr &norn();
 	Instr &nornn();
-	Instr &ifnb();
 	Instr &norc();
 	Instr &nornc();
 	Instr &norz();
+	Instr &ifnb();
 	Instr &ifb();
 	Instr &ifna();
 	Instr &ifa();
@@ -68,13 +70,15 @@ public:
 	Instr &anynap();
 	Instr &allna();
 
+	//
 	// Calls to set the mul part of the instruction
-	Instr &nop() { return *this; }  // With normal usage, the mul-part is already nop
+	//
+	Instr &nop();
 
 	Instr &add(Location const &loc1, Location const &loc2, Location const &loc3);
 	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 
-	Instr &mov(Location const &dst, uint8_t val);
+	Instr &mov(Location const &dst, SmallImm const &imm);
 	Instr &mov(uint8_t rf_addr, Register const &reg);
 	Instr &mov(Location const &loc1, Location const &loc2);
 	Instr &fmov(Location const &dst, SmallImm const &imma);
@@ -93,13 +97,14 @@ public:
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
 	void alu_add_set_dst(Location const &loc1); 
+	void alu_mul_set_dst(Location const &loc1); 
 	void alu_add_set_reg_a(Location const &loc2);
 	void alu_add_set_reg_b(Location const &loc3);
-	void alu_add_set_imm_a(SmallImm const &imm3);
-	void alu_add_set_imm_b(SmallImm const &imm3);
-	void alu_mul_set_dst(Location const &loc1); 
 	void alu_mul_set_reg_a(Location const &loc2);
 	void alu_mul_set_reg_b(Location const &loc3);
+	void alu_set_imm(SmallImm const &imm);
+	void alu_add_set_imm_a(SmallImm const &imm);
+	void alu_add_set_imm_b(SmallImm const &imm);
 	void alu_mul_set_imm_a(SmallImm const &imm);
 	void alu_mul_set_imm_b(SmallImm const &imm);
 

@@ -51,12 +51,20 @@ void disable_logging() {
  * This is always enabled, also when not building for DEBUG.
  * See header comment of `fatal()` in `basics.h`
  */
-void assertq(bool cond, const char *msg) {
-	if (!cond) {
-		std::string str = "Assertion failed: ";
-		str += msg;
-		//breakpoint
-		throw QPULib::Exception(str);
+void assertq(bool cond, const char *msg, bool do_break) {
+	if (cond) {
+		return;
 	}
+
+	std::string str = "Assertion failed: ";
+	str += msg;
+
+#ifdef DEBUG
+	if (do_break) {
+		breakpoint
+	}
+#endif
+
+	throw QPULib::Exception(str);
 }
 

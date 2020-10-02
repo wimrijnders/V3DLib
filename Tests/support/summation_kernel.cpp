@@ -839,7 +839,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 			<< adjust_length_for_unroll(num_qpus, unroll_shift, reg_length)
 
 	    << enable_tmu_read(
-	       	&bxor(reg_sum, 1, 1).mov(r1, 1)                       // Passed opcode fills last delay slot
+	       	&bxor(reg_sum, 1, 1).mov(r1, SmallImm(1))            // Passed opcode fills last delay slot
 	       )
 
 	    << align_code(ret.size() + code_offset, 170);            // Why the magic number?

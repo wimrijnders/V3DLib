@@ -169,12 +169,15 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	// threads, otherwise there would be gaps in the qpu id.
 	//
 	ret << mov(rf(RSV_QPU_ID), 0)           // not needed, already init'd to 0. Left here to counter future brainfarts
+/*
 	    << sub(ACC0, rf(RSV_NUM_QPUS), 8).setFlags()
 	    << cond_branch(endifLabel).allzc()  // nop()'s added downstream
 			<< mov(ACC0, QPU_ID)
 			<< shr(ACC0, ACC0, 2)
 	    << band(rf(RSV_QPU_ID), ACC0, 15)
-			<< label(endifLabel);
+			<< label(endifLabel)
+*/
+	;
 
 	// offset = 4 * (thread_num + 16 * qpu_num);
 	ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID (next stmt)

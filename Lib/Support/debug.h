@@ -28,6 +28,6 @@ inline void debug_break(const char *str) {}
 #endif  // DEBUG
 
 void disable_logging();
-void assertq(bool cond, const char *msg);
+void assertq(bool cond, const char *msg, bool do_break = false);
 
 #endif  // _LIB_SUPPORT_DEBUG_H

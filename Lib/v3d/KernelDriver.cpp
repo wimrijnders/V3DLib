@@ -361,6 +361,110 @@ bool is_special_index(QPULib::Instr const &src_instr, Special index ) {
 }
 
 
+/**
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * qpu_instr.h, line 74, enum v3d_qpu_uf:
+ *
+ *   How I interpret this:
+ *   - AND: if all bits set
+ *   - NOR: if no bits set
+ *   - N  : field not set
+ *   - Z  : Field zero
+ *   - N  : field negative set
+ *   - C  : Field negative cleared
+ *
+ *   What the bits are is not clear at this point.
+ *   These assumptions are probably wrong, but I need a starting point.
+ *
+ *   TODO: make tests to verify these assumptions (how? No clue right now)
+ *
+ *   So:
+ *   - vc4 `if all(nc)...` -> ANDC
+ *     vc4 `nc` - negative clear, ie. >= 0
+ *     vc4 `ns` - negative set,   ie.  < 0
+ */
+void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
+	if (cond.tag == ALWAYS) {
+		return; // ALWAYS executes always (duh, is default)
+	}
+	assert(cond.tag != NEVER);  // Not expecting this (yet)
+	assert(cond.tag == FLAG);  // The only remaining option
+
+	// NOTE: condition tags are set for add alu only here
+	// TODO: Set for mul tag as well if required
+	//       Prob the easiest is to always set the for both for now
+
+	// TODO test what happens here, for vc4 as well as v3d
+	//      v3d flags used are prob wrong!
+
+/*
+	switch (cond.flag) {
+		case NC: out_instr.andc();  break;
+		case NS: out_instr.andnc(); break;
+		default:
+			breakpoint;  // check,  case not handled yet
+	}
+*/
+	//out_instr.andn();
+	out_instr.ifa(); //.andz();
+}
+
+
+void setCondTag(AssignCond cond, Instructions &ret) {
+	for (auto &instr : ret) {
+		setCondTag(cond, instr);
+	}
+}
+
+
+void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
+	auto &cond = src_instr.ALU.cond;
+
+	// src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
+	assertq(cond.tag != NEVER,                      "NEVER encountered in ALU.cond.tag", true);  // Not expecting it
+	assertq(cond.tag == FLAG || cond.tag == ALWAYS, "Really expecting FLAG here", true);         // Pedantry
+
+	if (src_instr.ALU.setFlags) {
+		// Set a condition flag with current instruction
+		assertq(cond.tag == ALWAYS, "Currently expecting only ALWAYS here", true);
+
+		// Note that it is only set for the last in the list.
+		// Any preceding instructions are assumed to be for calculating the condition
+		Instr &instr = ret.back();
+
+/*
+		// Disabled: Have a case where flag field is not set
+
+		switch (cond.flag) {
+			case ZS:
+			case ZC:
+				instr.pushz();
+				break;
+			default:
+				// Warn me if unhandled cases happen
+				assertq(false, "Assign condition flag not ZS/ZC", true);
+		}
+*/
+
+		instr.pushz();
+		//instr.pushn();
+		//instr.pushc();
+
+	} else {
+		// use flag as run condition for current instruction(s)
+		if (cond.tag == ALWAYS) {
+			return; // ALWAYS executes always (duh, is default)
+		}
+
+		setCondTag(cond, ret);
+	}
+}
+
+
 bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	bool did_something = true;
 
@@ -448,21 +552,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		did_something = false;
 	}
 
-	if (src_instr.ALU.setFlags) {
-		if (src_instr.ALU.cond.tag != ALWAYS) { // Assuming that cond.flag is irrelevant if tag == ALWAYS
-			breakpoint
-
-			// Warn me if unhandled cases happen
-			if (src_instr.ALU.cond.flag != ZS && src_instr.ALU.cond.flag != ZC) {
-				debug_break("Assign condition flag not ZS/ZC");
-			}
-		}
-
-		Instr &instr = ret.back();
-
-		instr.pushz();  // Assuming/hoping that this translation is correct
-	}
-
+	handle_condition_tags(src_instr, ret);
 	return did_something;
 }
 
@@ -509,53 +599,6 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 	}
 
 	return true;
-}
-
-
-void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
-	if (cond.tag == ALWAYS) {
-		return; // ALWAYS executes always (duh, is default)
-	}
-	assert(cond.tag != NEVER);  // Not expecting this (yet)
-	assert(cond.tag == NEVER);  // The only remaining option
-
-	//
-	// qpu_instr.h, line 74, enum v3d_qpu_uf:
-	//
-	// How I interpret this:
-	//  - AND: if all bits set
-	//  - NOR: if no bits set
-	//  - N  : field not set
-	//  - Z  : Field zero
-	//  - N  : field negative set
-	//  - C  : Field negative cleared
-	//
-	// What the bits are is not clear at this point.
-	// These assumptions are probably wrong, but I need a starting point.
-	// TODO: make tests to verify these assumptions (how? No clue right now)
-	// ------------------------------------------------------------------------
-	// So:
-	// - vc4 `if all(nc)...` -> ANDC
-	//
-	// vc4 `nc` - negative clear, ie. >= 0
-	// vc4 `ns` - negative set,   ie.  < 0
-	//
-	switch (cond.flag) {
-		// TODO test what happens here, for vc4 as well as v3d
-		//      v3d flags used are prob wrong!
-		// TODO how to distinguish here between add and mul ALU?
-		case NC: out_instr.andc();  break;
-		case NS: out_instr.andnc(); break;
-		default:
-			breakpoint;        // check,  case not handled yet
-	}
-}
-
-
-void setCondTag(AssignCond cond, Instructions &ret) {
-	for (auto &instr : ret) {
-		setCondTag(cond, instr);
-	}
 }
 
 
@@ -638,24 +681,29 @@ v3d::instr::Instr encodeBranch(QPULib::Instr full_instr) {
 	auto &instr = full_instr.BR;
 	assert(!instr.target.useRegOffset);  // Register offset not (yet) supported
 
-	if (instr.cond.tag != COND_ALL) {
-		debug_break("Branch condition not COND_ALL");  // Warn me if this happens
-	}
-
-	if (instr.cond.flag != ZC) {
-		debug_break("Branch condition flag not ZC");  // Warn me if this happens
-	}
-
-	// TODO: Figure out how to deal with branch conditions
-	//       The call below is vc4 only, the conditions don't exist on v3d
-	//
-	// See 'Condition Codes' in the vc4 ref guide
-/*
-	uint32_t cond = encodeBranchCond(instr.BR.cond) << 20;
-*/
 
 	auto dst_instr = branch(instr.target.immOffset, instr.target.relative);
-	dst_instr.na0();  // Assuming/hoping that this translation is correct
+
+	// Incoming conditions are vc4 only, the conditions don't exist on v3d.
+	// They therefore need to be translated.
+	if (instr.cond.tag == COND_ALL) {
+		if (instr.cond.flag == ZC) {
+			dst_instr.na0();  // Verified correct
+		} else if (instr.cond.flag == ZS) {
+			dst_instr.a0();  // TODO: verify
+		} else {
+			debug_break("Unknown branch condition under COND_ALL");  // Warn me if this happens
+		}
+	} else if (instr.cond.tag == COND_ANY) {
+		if (instr.cond.flag == ZC) {
+			dst_instr.anyna();  // TODO: verify
+		} else {
+			debug_break("Unknown branch condition under COND_ANY");  // Warn me if this happens
+		}
+	} else {
+		debug_break("Branch condition not COND_ALL or COND_ANY");  // Warn me if this happens
+	}
+
 	return dst_instr;
 }
 

@@ -79,7 +79,7 @@ bool v3d_init() {
 	return true;
 }
 
-}  // anon 
+}  // anon namespace
 
 
 /*
