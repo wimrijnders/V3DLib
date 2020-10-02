@@ -107,7 +107,7 @@ Expr* simplify(Seq<Instr>* seq, Expr* e) {
 	}
 
 	Var tmp = freshVar();
-	varAssign(seq, AssignCond::always, tmp, e);
+	varAssign(seq, tmp, e);
 	return mkVar(tmp);
 }
 
@@ -127,7 +127,7 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
   // Case: v := rhs, where v is a variable and rhs an expression
   // -----------------------------------------------------------
   if (lhs.tag == VAR) {
-    varAssign(seq, AssignCond::always, lhs.var, rhs);
+    varAssign(seq, lhs.var, rhs);
     return;
   }
 
@@ -385,7 +385,7 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   // ---------------------------------------------
   if (b.tag == CMP && isLit(b.cmp.lhs) && isLit(b.cmp.rhs)) {
     Var tmpVar = freshVar();
-    varAssign(seq, AssignCond::always, tmpVar, b.cmp.lhs);
+    varAssign(seq, tmpVar, b.cmp.lhs);
     b.cmp.lhs = mkVar(tmpVar);
   }
 
@@ -589,7 +589,7 @@ void printStmt(Seq<Instr>* seq, PrintStmt s) {
     case PRINT_INT:
     case PRINT_FLOAT: {
       Var tmpVar = freshVar();
-      varAssign(seq, AssignCond::always, tmpVar, s.expr);
+      varAssign(seq, tmpVar, s.expr);
 
       if (s.tag == PRINT_INT) {
         instr.PRI = srcReg(tmpVar);
@@ -991,6 +991,11 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
 }
 
 
+void varAssign(Seq<Instr>* seq, Var v, Expr* expr) {
+	varAssign(seq, AssignCond::always, v, expr);
+}
+
+
 /**
  * Similar to 'simplify' but ensure that the result is a variable.
  */
@@ -1000,7 +1005,7 @@ Expr* putInVar(Seq<Instr>* seq, Expr* e) {
 	}
 
 	Var tmp = freshVar();
-	varAssign(seq, AssignCond::always, tmp, e);
+	varAssign(seq, tmp, e);
 	return mkVar(tmp);
 }
 

@@ -15,6 +15,7 @@ void loadStorePass(Seq<Instr>* instrs);
 Reg srcReg(Var v);
 Reg dstReg(Var v);
 void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr);
+void varAssign(Seq<Instr>* seq, Var v, Expr* expr);
 Expr* putInVar(Seq<Instr>* seq, Expr* e);
 
 }  // namespace QPULib

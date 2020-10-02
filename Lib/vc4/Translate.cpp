@@ -26,7 +26,7 @@ void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e)
   }
   else {
     Var v = freshVar();
-    varAssign(seq, AssignCond::always, v, e);
+    varAssign(seq, v, e);
     if (tag == SET_READ_STRIDE)
       genSetReadPitch(seq, srcReg(v));
     else
@@ -46,7 +46,7 @@ void setupVPMReadStmt(Seq<Instr>* seq, int n, Expr* e, int hor, int stride)
     genSetupVPMLoad(seq, n, srcReg(e->var), hor, stride);
   else {
     Var v = freshVar();
-    varAssign(seq, AssignCond::always, v, e);
+    varAssign(seq, v, e);
     genSetupVPMLoad(seq, n, srcReg(v), hor, stride);
   }
 }
@@ -64,7 +64,7 @@ void setupDMAReadStmt(Seq<Instr>* seq, int numRows, int rowLen,
     genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, srcReg(e->var));
   else {
     Var v = freshVar();
-    varAssign(seq, AssignCond::always, v, e);
+    varAssign(seq, v, e);
     genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, srcReg(v));
   }
 }
@@ -78,18 +78,18 @@ void setupDMAWriteStmt(Seq<Instr>* seq, int numRows, int rowLen,
     genSetupDMAStore(seq, numRows, rowLen, hor, srcReg(e->var));
   else {
     Var v = freshVar();
-    varAssign(seq, AssignCond::always, v, e);
+    varAssign(seq, v, e);
     genSetupDMAStore(seq, numRows, rowLen, hor, srcReg(v));
   }
 }
 
-void startDMAReadStmt(Seq<Instr>* seq, Expr* e)
-{
+
+void startDMAReadStmt(Seq<Instr>* seq, Expr* e) {
   if (e->tag == VAR)
     genStartDMALoad(seq, srcReg(e->var));
   else {
     Var v = freshVar();
-    varAssign(seq, AssignCond::always, v, e);
+    varAssign(seq, v, e);
     genStartDMALoad(seq, srcReg(e->var));
   }
 }
@@ -100,7 +100,7 @@ void startDMAWriteStmt(Seq<Instr>* seq, Expr* e)
     genStartDMAStore(seq, srcReg(e->var));
   else {
     Var v = freshVar();
-    varAssign(seq, AssignCond::always, v, e);
+    varAssign(seq, v, e);
     genStartDMAStore(seq, srcReg(e->var));
   }
 }
@@ -135,7 +135,7 @@ void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride) {
     genSetupVPMStore(seq, srcReg(e->var), hor, stride);
   else {
     Var v = freshVar();
-    varAssign(seq, AssignCond::always, v, e);
+    varAssign(seq, v, e);
     genSetupVPMStore(seq, srcReg(v), hor, stride);
   }
 }
