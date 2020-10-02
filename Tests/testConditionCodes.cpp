@@ -16,6 +16,17 @@
 //
 // * In the test, `pushn` and `pushc` appear to do the same thing!
 //
+// * Condition code handling is different vor `vc4` and `v3d`:
+//
+//   - vc4: Each index element has associated vectors of status bits: Z,N,C
+//          There is one such bit vector for the add alu and one for the mul alu
+//          If field `sf (setFlags)` is set in an instruction, these are all
+//          set depending on the result of the result of the instruction
+//   - v3d: There are two condition bits per index element: a, b
+//          There is an a/b bit for the add alu and the same set for the mul alu
+//          The instruction explicitly states which condition should be tested: Z,N,C
+//          The result of the condition goes into a. The previous value of a goes into b
+//
 ///////////////////////////////////////////////////////////////////////////////
 #ifdef QPU_MODE
 #include <iostream>
