@@ -81,9 +81,10 @@ void make_test_dir() {
 	cmd += "chmod ugo+rw obj/test";
 	REQUIRE(!system(cmd.c_str()));
 
-	cmd  = SUDO;
-	cmd += "chmod ugo+rw obj/test/*";
-	REQUIRE(!system(cmd.c_str()));
+	// Fails if no file present; doesn't appear to be necessary
+	//cmd  = SUDO;
+	//cmd += "chmod ugo+rw obj/test/*";
+	//REQUIRE(!system(cmd.c_str()));
 }
 
 }  // anon namespace

@@ -11,7 +11,7 @@ using namespace Rot3DLib;
 using KernelType = decltype(rot3D_1);  // All kernel functions except scalar have same prototype
 
 // Number of vertices and angle of rotation
-const int N = 192000; // 192000
+const int SIZE = 192000; // 192000
 const float THETA = (float) 3.14159;
 
 
@@ -73,8 +73,6 @@ struct Rot3DSettings : public Settings {
 // Local functions
 // ============================================================================
 
-
-
 /**
  * TODO: Consolidate with Mandelbrot
  */
@@ -95,19 +93,19 @@ void run_qpu_kernel(KernelType &kernel) {
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> x(N), y(N);
-  for (int i = 0; i < N; i++) {
+  SharedArray<float> x(SIZE), y(SIZE);
+  for (int i = 0; i < SIZE; i++) {
     x[i] = (float) i;
     y[i] = (float) i;
   }
 
-  k.load(N, cosf(THETA), sinf(THETA), &x, &y);
+  k.load(SIZE, cosf(THETA), sinf(THETA), &x, &y);
   settings.process(k);
 
 	end_timer(tvStart);
 
 	if (settings.show_results) {
-  	for (int i = 0; i < N; i++)
+  	for (int i = 0; i < SIZE; i++)
   		printf("%f %f\n", x[i], y[i]);
 	}
 }
@@ -118,21 +116,21 @@ void run_scalar_kernel() {
   gettimeofday(&tvStart, NULL);
 
   // Allocate and initialise
-  float* x = new float [N];
-  float* y = new float [N];
-  for (int i = 0; i < N; i++) {
+  float* x = new float[SIZE];
+  float* y = new float[SIZE];
+  for (int i = 0; i < SIZE; i++) {
     x[i] = (float) i;
     y[i] = (float) i;
   }
 
 	if (settings.compile_only) {
-	  rot3D(N, cosf(THETA), sinf(THETA), x, y);
+	  rot3D(SIZE, cosf(THETA), sinf(THETA), x, y);
 	}
 
 	end_timer(tvStart);
 
 	if (settings.show_results) {
-  	for (int i = 0; i < N; i++)
+  	for (int i = 0; i < SIZE; i++)
   		printf("%f %f\n", x[i], y[i]);
 	}
 }
