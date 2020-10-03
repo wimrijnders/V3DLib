@@ -73,7 +73,7 @@ std::string Instr::mnemonic() const {
  * For display purposes only, when generating a dump of the opcodes.
  */
 Instr &Instr::comment(std::string const &comment, bool is_side_comment) {
-	assertq(m_comment.empty(), "Comment already has a value when setting comment");
+	assertq(m_comment.empty(), "Comment already has a value when setting comment", true);
 	m_comment = comment;
 	findAndReplaceAll(m_comment, "\n", "\n# ");
 

@@ -13,7 +13,7 @@ namespace QPULib {
  * instruction to the given accumulator.
  */
 Instr remapAToAccum(Instr* instr, RegId acc) {
-	debug("Entered remapAToAccum()");
+	//debug("Entered remapAToAccum()");
   assert(instr->ALU.srcA.tag == REG);
 
 /*
@@ -43,7 +43,7 @@ Instr remapAToAccum(Instr* instr, RegId acc) {
  *
  */
 Instr remapBToAccum(Instr* instr, RegId acc) {
-	debug("Entered remapBToAccum()");
+	//debug("Entered remapBToAccum()");
   assert(instr->ALU.srcB.tag == REG);
 
 /*
