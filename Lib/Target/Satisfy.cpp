@@ -13,22 +13,7 @@ namespace QPULib {
  * instruction to the given accumulator.
  */
 Instr remapAToAccum(Instr* instr, RegId acc) {
-	//debug("Entered remapAToAccum()");
   assert(instr->ALU.srcA.tag == REG);
-
-/*
-  Instr move;
-  move.tag                   = ALU;
-  move.ALU.setFlags          = false;
-  move.ALU.cond              = AssignCond::always;
-  move.ALU.dest.tag          = ACC;
-  move.ALU.dest.regId        = acc;
-  move.ALU.srcA.tag          = REG;
-  move.ALU.srcA.reg          = instr->ALU.srcA.reg;
-  move.ALU.op                = A_BOR;
-  move.ALU.srcB.tag          = REG;
-  move.ALU.srcB.reg          = instr->ALU.srcA.reg;
-*/
 
 	Reg src = instr->ALU.srcA.reg;
   instr->ALU.srcA.reg.tag    = ACC;
@@ -43,22 +28,7 @@ Instr remapAToAccum(Instr* instr, RegId acc) {
  *
  */
 Instr remapBToAccum(Instr* instr, RegId acc) {
-	//debug("Entered remapBToAccum()");
   assert(instr->ALU.srcB.tag == REG);
-
-/*
-  Instr move;
-  move.tag                   = ALU;
-  move.ALU.setFlags          = false;
-  move.ALU.cond              = AssignCond::always;
-  move.ALU.dest.tag          = ACC;
-  move.ALU.dest.regId        = acc;
-  move.ALU.srcA.tag          = REG;
-  move.ALU.srcA.reg          = instr->ALU.srcB.reg;
-  move.ALU.op                = A_BOR;
-  move.ALU.srcB.tag          = REG;
-  move.ALU.srcB.reg          = instr->ALU.srcB.reg;
-*/
 
 	Reg src = instr->ALU.srcB.reg;
   instr->ALU.srcB.reg.tag   = ACC;

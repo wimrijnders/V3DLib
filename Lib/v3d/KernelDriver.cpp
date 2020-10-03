@@ -120,18 +120,10 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
 				break;
 
 				// Not handled (yet)
-        case SPECIAL_VPM_READ: // return 48;
-					breakpoint
-				break;
+        case SPECIAL_VPM_READ:
         case SPECIAL_DMA_LD_WAIT:
-					breakpoint
-          // // in REG_A
-					// return 50;
-				break;
         case SPECIAL_DMA_ST_WAIT:
 					breakpoint
-          // // in REG_B;
-					// return 50;
 				break;
       }
 			break;
@@ -315,19 +307,6 @@ void checkSpecialIndex(QPULib::Instr const &src_instr) {
 	assertq((a_is_special && b_is_special), "src a and src b must both be special for QPU and ELEM nums");
 	assertq(srca == srcb, "checkSpecialIndex(): src a and b must be the same if they are both special num's");
 
-
-/*
-	// For now, we enforce r0 as destination
-
-	auto src_dst = src_instr.ALU.dest;
-	bool is_r0 = (src_dst.tag == ACC && src_dst.regId == 0);
-	if (is_r0) {
-		return;  // If target is already r0, all is well
-	} else {
-		fatal("Destination must be r0 for special num's");
-	}
-*/
-
 	// Here we can safely assume that src a and b are the same
 
 	if (a_is_elem_num) {
@@ -350,17 +329,9 @@ bool is_special_index(QPULib::Instr const &src_instr, Special index ) {
 		return false;
 	}
 
-	auto src_dst = src_instr.ALU.dest;
-	bool is_r0 = (src_dst.tag == ACC && src_dst.regId == 0);
-
 	if (src_instr.ALU.op != A_BOR) {
 		return false;
 	}
-/*
-	if (!is_r0) {
-		return false;
-	}
-*/
 
 	auto srca = src_instr.ALU.srcA;
 	auto srcb = src_instr.ALU.srcB;
@@ -412,7 +383,8 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 		// Note that it is only set for the last in the list.
 		// Any preceding instructions are assumed to be for calculating the condition
 		Instr &instr = ret.back();
-		instr.pushn();
+		//instr.pushn();
+		instr.pushz();
 
 	} else {
 		// use flag as run condition for current instruction(s)
@@ -542,7 +514,7 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
 		auto src_b = encodeSrcReg(reg_b.reg, ret);
 
-		ret << nop().comment("required for rotate", true)
+		ret << nop().comment("required for rotate")
 		    << rotate(r1, *src_a, *src_b)
 		    << bor(*dst_reg, r1, r1)
 		;
@@ -552,7 +524,7 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		                                                               // Also tested in rotate()
 		SmallImm imm = encodeSmallImm(reg_b);
 
-		ret << nop().comment("required for rotate", true)
+		ret << nop().comment("required for rotate")
 		    << rotate(r1, *src_a, imm)
 		    << bor(*dst_reg, r1, r1)
 		;
@@ -624,7 +596,7 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 
 		breakpoint
 		local_errors << str;
-		ret << nop().comment(str, true);
+		ret << nop().comment(str);
 	}
 
 
@@ -724,7 +696,7 @@ Instructions encodeInstr(QPULib::Instr instr) {
 	assert(no_output || !ret.empty());
 
 	if (!ret.empty() && !instr.comment().empty()) {
-		ret.front().comment(instr.comment(), instr.is_side_comment());
+		ret.front().comment(instr.comment());
 	}
 
 	return ret;
@@ -830,12 +802,12 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 			auto ret = v3d::encodeInstr(instr);
 
 			if (prev_was_init_begin) {
-				ret.front().comment("Init block");
+				ret.front().header("Init block");
 				prev_was_init_begin = false;
 			}
 
 			if (prev_was_init_end) {
-				ret.front().comment("Main program");
+				ret.front().header("Main program");
 				prev_was_init_end = false;
 			}
 
@@ -919,13 +891,13 @@ void KernelDriver::emit_opcodes(FILE *f) {
 		fprintf(f, "<No opcodes to print>\n");
 	} else {
 		for (auto const &instr : instructions) {
+
+			if (!instr.header().empty()) {
+				fprintf(f, "\n# %s\n", instr.header().c_str());
+			}
+
 			if (!instr.comment().empty()) {
-				if (instr.is_side_comment()) {
-					fprintf(f, "%s  # %s\n", instr.mnemonic().c_str(), instr.comment().c_str());
-				} else {
-					fprintf(f, "\n# %s\n", instr.comment().c_str());
-					fprintf(f, "%s\n", instr.mnemonic().c_str());
-				}
+				fprintf(f, "%s  # %s\n", instr.mnemonic().c_str(), instr.comment().c_str());
 			} else {
 				fprintf(f, "%s\n", instr.mnemonic().c_str());
 			}
