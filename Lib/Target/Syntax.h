@@ -160,9 +160,10 @@ struct AssignCond {
 	bool is_never()  const { return tag == NEVER; }
 	AssignCond negate() const;
 
-	static AssignCond always;
-	static AssignCond never;
 };
+
+extern AssignCond always;  // Is a global to reduce eyestrain in gdb
+extern AssignCond never;   // idem
 
 // ============================================================================
 // Immediates

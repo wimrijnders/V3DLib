@@ -15,13 +15,13 @@ Instr::Instr(InstrTag in_tag) {
   	tag          = InstrTag::ALU;
 	  ALU.setFlags = false;
 	  ALU.setCond  = SetCond::NO_COND;
-	  ALU.cond     = AssignCond::always;
+	  ALU.cond     = always;
 		break;
 	case InstrTag::LI:
     tag          = InstrTag::LI;
     LI.setFlags  = false;
 	  LI.setCond   = SetCond::NO_COND;
-	  LI.cond      = AssignCond::always;
+	  LI.cond      = always;
 		break;
 	case InstrTag::RECV:
 	case InstrTag::PRI:
@@ -51,7 +51,7 @@ Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB) {
 namespace {
 
 Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
-	return genInstr(op, AssignCond::always, dst, srcA, srcB);
+	return genInstr(op, always, dst, srcA, srcB);
 }
 
 
@@ -106,8 +106,8 @@ Flag negFlag(Flag flag) {
 }
 
 
-AssignCond AssignCond::always(Tag::ALWAYS);
-AssignCond AssignCond::never(Tag::NEVER);
+AssignCond always(AssignCond::Tag::ALWAYS);  // Is a global to reduce eyestrain in gdb
+AssignCond never(AssignCond::Tag::NEVER);    // idem
 
 AssignCond AssignCond::negate() const {
 	AssignCond ret = *this;
@@ -330,7 +330,7 @@ Instr li(AssignCond cond, Reg dst, int i) {
  * Generate load-immediate instruction.
  */
 Instr li(Reg dst, int i) {
-	return li(AssignCond::always, dst, i);
+	return li(always, dst, i);
 }
 
 

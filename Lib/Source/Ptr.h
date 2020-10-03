@@ -133,6 +133,10 @@ template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, int b) {
   PtrExpr<T> x; x.expr = e; return x;
 }
 
+template <typename T> inline PtrExpr<T> operator+=(Ptr<T> &a, int b) {
+  return a = a + b;
+}
+
 template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, IntExpr b) {
   Expr* e = mkApply(a.expr, mkOp(ADD, INT32), (b<<2).expr);
   PtrExpr<T> x; x.expr = e; return x;

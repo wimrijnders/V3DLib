@@ -173,4 +173,69 @@ TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
 	}
 }
 
+
+#include "QPULib.h"
+using namespace QPULib;
+
+void next(Ptr<Int> &result, Int &r) {
+	*result = r;
+	result += 16;
+	r = 0;
+}
+
+void where_kernel(Ptr<Int> result) {
+	Int a = index();
+	Int r = 0;
+
+	Where (a < 8)
+		r = 1;
+	End
+	next(result, r);
+
+	Where (a <= 8)
+		r = 1;
+	End
+	next(result, r);
+
+	Where (a == 8)
+		r = 1;
+	End
+	*result = r;
+}
+
+TEST_CASE("Test Where blocks", "[where][cond]") {
+	const int SIZE = 16;
+
+
+  auto k = compile(where_kernel);
+
+  QPULib::SharedArray<int> result(3*SIZE);
+
+	k.load(&result);
+
+	k.pretty(false);
+
+	k.call();
+	//k.emu();
+	//k.interpret();
+
+  for (int i = 0; i < result.size(); i++)
+    printf("%i: %i\n", i, result[i]);
+
+	auto check = [&result] (int block, uint32_t *expected) {
+		for (uint32_t n = 0; n < SIZE; ++n) {
+			INFO("block " << block <<  ", index " << n);
+			REQUIRE(result[block * SIZE + n] == expected[n]);
+		}
+	};
+
+	uint32_t expected_smaller_than[SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+	uint32_t expected_smaller_equal[SIZE] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
+	uint32_t expected_equal[SIZE]         = {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
+
+	check(0, expected_smaller_than);
+	check(1, expected_smaller_equal);
+	check(2, expected_equal);
+}
+
 #endif  // ifdef QPU_MODE

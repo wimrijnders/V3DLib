@@ -73,6 +73,7 @@ std::string Instr::mnemonic() const {
  * For display purposes only, when generating a dump of the opcodes.
  */
 Instr &Instr::comment(std::string const &comment, bool is_side_comment) {
+	assertq(m_comment.empty(), "Comment already has a value when setting comment");
 	m_comment = comment;
 	findAndReplaceAll(m_comment, "\n", "\n# ");
 
@@ -817,8 +818,11 @@ Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
  * Returns index of current vector itemi on a given QPU.
  * This will be something in the range [0..15]
  */
-Instr eidx(Register const &reg) {
+//Instr eidx(Register const &reg) {
+Instr eidx(Location const &reg) {
 	Instr instr;
+	assert(!reg.is_rf());
+	//instr.alu_add_set_dst(reg);
 
 	instr.alu.add.op    = V3D_QPU_A_EIDX;
 	instr.alu.add.waddr = reg.to_waddr();
@@ -829,8 +833,11 @@ Instr eidx(Register const &reg) {
 }
 
 
-Instr tidx(Register const &reg) {
+//Instr tidx(Register const &reg) {
+Instr tidx(Location const &reg) {
 	Instr instr;
+	assert(!reg.is_rf());
+	//instr.alu_add_set_dst(reg);
 
 	instr.sig_magic  = true; 
 	instr.alu.add.op = V3D_QPU_A_TIDX;
@@ -896,7 +903,7 @@ Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3) {
 Instr mov(Location const &loc1, SmallImm val) {
 	Instr instr;
 
-	// hypothesis: magic_write true selects register, false address in register file 
+	// hypothesis: magic_write true selects register, false selects address in register file 
 	if (loc1.is_rf()) {
 		instr.alu.add.magic_write = false;
 	} else {

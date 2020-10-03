@@ -149,8 +149,8 @@ void genStartDMALoad(Seq<Instr>* instrs, Reg memAddr) {
 }
 
 
-Instr  genWaitDMALoad(bool might_be_end) {
-	Instr instr = mov(None, DMA_LD_WAIT, AssignCond::never);
+Instr genWaitDMALoad(bool might_be_end) {
+	Instr instr = mov(None, DMA_LD_WAIT, never);
 
 	if (might_be_end) {
 		instr.comment("DMA load wait (possible start of finish program)", true);

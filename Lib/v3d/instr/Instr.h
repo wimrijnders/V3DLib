@@ -143,7 +143,10 @@ const uint32_t zero_addr = 0;
 
 Instr nop();
 Instr ldunifrf(uint8_t rf_address);
-Instr tidx(Register const &reg);
+//Instr tidx(Register const &reg);
+//Instr eidx(Register const &reg);
+Instr tidx(Location const &reg);
+Instr eidx(Location const &reg);
 
 Instr shr(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr shl(Location const &dst, Location const &srca, SmallImm const &immb);
@@ -152,7 +155,6 @@ Instr shl(Location const &dst, Location const &srca, Location const &srcb);
 Instr asr(Location const &reg1, Location const &reg2, SmallImm const &imm3);
 
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
-Instr eidx(Register const &reg);
 
 Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3);

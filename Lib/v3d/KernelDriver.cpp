@@ -276,7 +276,7 @@ void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_i
  *    mov(ACC0, ELEM_ID)  // vc4: ELEM_NUM or SPECIAL_ELEM_NUM
  *
  * This is the **only** operation in which they can be used.
- * This function checks that proper usage.
+ * This function checks for proper usage.
  * These special cases get translated to `tidx(r0)` and `eidx(r0)` respectively, as a special case
  * for A_BOR.
  *
@@ -308,7 +308,6 @@ void checkSpecialIndex(QPULib::Instr const &src_instr) {
 
 	if (src_instr.ALU.op != A_BOR) {
 		// All other instructions disallowed
-breakpoint
 		fatal("For v3d, special registers QPU_NUM and ELEM_NUM can only be used in a move instruction");
 		return;
 	}
@@ -317,6 +316,7 @@ breakpoint
 	assertq(srca == srcb, "checkSpecialIndex(): src a and b must be the same if they are both special num's");
 
 
+/*
 	// For now, we enforce r0 as destination
 
 	auto src_dst = src_instr.ALU.dest;
@@ -326,8 +326,9 @@ breakpoint
 	} else {
 		fatal("Destination must be r0 for special num's");
 	}
+*/
 
-	// Here we can safely assume that src a and are the same
+	// Here we can safely assume that src a and b are the same
 
 	if (a_is_elem_num) {
 		warning("SPECIAL_ELEM_NUM needs a way to select a register");
@@ -355,16 +356,18 @@ bool is_special_index(QPULib::Instr const &src_instr, Special index ) {
 	if (src_instr.ALU.op != A_BOR) {
 		return false;
 	}
+/*
 	if (!is_r0) {
 		return false;
 	}
+*/
 
 	auto srca = src_instr.ALU.srcA;
 	auto srcb = src_instr.ALU.srcB;
-	bool a_is_qpu_num = (srca.tag == REG && srca.reg.tag == SPECIAL && srca.reg.regId == index);
-	bool b_is_qpu_num = (srcb.tag == REG && srcb.reg.tag == SPECIAL && srcb.reg.regId == index);
+	bool a_is_special = (srca.tag == REG && srca.reg.tag == SPECIAL && srca.reg.regId == index);
+	bool b_is_special = (srcb.tag == REG && srcb.reg.tag == SPECIAL && srcb.reg.regId == index);
 
-	return (a_is_qpu_num && b_is_qpu_num);
+	return (a_is_special && b_is_special);
 }
 
 
@@ -434,8 +437,10 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		checkSpecialIndex(src_instr);
 		if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
 			ret << tidx(r0);
+			//ret << tidx(*dst_reg);
 		} else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
 			ret << eidx(r0);
+			//ret << eidx(*dst_reg);
 		} else {
 			auto src_a = encodeSrcReg(reg_a.reg, ret);
 			auto src_b = encodeSrcReg(reg_b.reg, ret);

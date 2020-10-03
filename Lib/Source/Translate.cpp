@@ -449,7 +449,7 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
 
   // Not reachable
   assert(false);
-	return AssignCond::always;
+	return always;
 }
 
 
@@ -739,7 +739,7 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
   // ----------------------------------------------------------------------
   if (s->tag == WHERE) {
     Var condVar = freshVar();
-    whereStmt(seq, s, condVar, AssignCond::always, false);
+    whereStmt(seq, s, condVar, always, false);
     return;
   }
 
@@ -992,7 +992,8 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
 
 
 void varAssign(Seq<Instr>* seq, Var v, Expr* expr) {
-	varAssign(seq, AssignCond::always, v, expr);
+	varAssign(seq, always, v, expr);  // TODO: For some reason, always *must* be passed in.
+	                                  //       Overloaded call generates segfault
 }
 
 
