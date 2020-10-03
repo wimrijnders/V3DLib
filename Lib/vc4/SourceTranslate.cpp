@@ -28,16 +28,17 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	using namespace QPULib::Target::instr;
 
 	// Setup DMA
-	genSetReadPitch(seq, 4);
+	*seq << genSetReadPitch(4).comment("Start DMA load var", true);
 	genSetupDMALoad(seq, 16, 1, 1, 1, QPU_ID);
 	// Start DMA load
 	genStartDMALoad(seq, srcReg(e.deref.ptr->var));
 	// Wait for DMA
-	genWaitDMALoad(seq);
+	*seq << genWaitDMALoad(false);
+
 	// Setup VPM
 	genSetupVPMLoad(seq, 1, QPU_ID, 0, 1);
 	// Get from VPM
-	*seq << shl(dstReg(v), Target::instr::VPM_READ, 0);
+	*seq << shl(dstReg(v), Target::instr::VPM_READ, 0).comment("End DMA load var", true);
 }
 
 

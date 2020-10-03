@@ -717,6 +717,11 @@ Instructions encodeInstr(QPULib::Instr instr) {
   }
 
 	assert(no_output || !ret.empty());
+
+	if (!ret.empty() && !instr.comment().empty()) {
+		ret.front().comment(instr.comment(), instr.is_side_comment());
+	}
+
 	return ret;
 }
 
@@ -831,7 +836,6 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 
 			instructions << ret;
 		}
-
   }
 
 	instructions << sync_tmu()

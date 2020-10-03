@@ -10,11 +10,10 @@ namespace {
 // Set-stride statements
 // ============================================================================
 
-void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e)
-{
+void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e) {
   if (e->tag == INT_LIT) {
     if (tag == SET_READ_STRIDE)
-      genSetReadPitch(seq, e->intLit);
+      *seq << genSetReadPitch(e->intLit);
     else
       genSetWriteStride(seq, e->intLit);
   }
@@ -55,11 +54,9 @@ void setupVPMReadStmt(Seq<Instr>* seq, int n, Expr* e, int hor, int stride)
 // DMA statements
 // ============================================================================
 
-void setupDMAReadStmt(Seq<Instr>* seq, int numRows, int rowLen,
-                        int hor, Expr* e, int vpitch)
-{
+void setupDMAReadStmt(Seq<Instr>* seq, int numRows, int rowLen, int hor, Expr* e, int vpitch) {
   if (e->tag == INT_LIT)
-    genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, e->intLit);
+    *seq << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->intLit);
   else if (e->tag == VAR)
     genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, srcReg(e->var));
   else {
@@ -97,11 +94,11 @@ void startDMAReadStmt(Seq<Instr>* seq, Expr* e) {
 void startDMAWriteStmt(Seq<Instr>* seq, Expr* e)
 {
   if (e->tag == VAR)
-    genStartDMAStore(seq, srcReg(e->var));
+    *seq << genStartDMAStore(srcReg(e->var));
   else {
     Var v = freshVar();
     varAssign(seq, v, e);
-    genStartDMAStore(seq, srcReg(e->var));
+    *seq << genStartDMAStore(srcReg(e->var));
   }
 }
 
@@ -130,7 +127,7 @@ void sendIRQToHost(Seq<Instr>* seq) {
 
 void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride) {
   if (e->tag == INT_LIT)
-    genSetupVPMStore(seq, e->intLit, hor, stride);
+    *seq << genSetupVPMStore(e->intLit, hor, stride);
   else if (e->tag == VAR)
     genSetupVPMStore(seq, srcReg(e->var), hor, stride);
   else {
@@ -255,7 +252,7 @@ bool stmt(Seq<Instr>* seq, Stmt* s) {
   // Case: dmaReadWait()
   // -------------------
   if (s->tag == DMA_READ_WAIT) {
-    genWaitDMALoad(seq);
+    *seq << genWaitDMALoad();
     return true;
   }
 
@@ -299,7 +296,7 @@ void StoreRequest(Seq<Instr> &seq, Var addr_var, Var data_var,  bool wait) {
 	Reg storeAddr = freshReg();
 
 	// Setup VPM
-	seq << li(addr, 16)
+	seq << li(addr, 16).comment("Start DMA store request", true)
 	    << add(addr, addr, QPU_ID);
 
 	genSetupVPMStore(&seq, addr, 0, 1);
@@ -318,7 +315,7 @@ void StoreRequest(Seq<Instr> &seq, Var addr_var, Var data_var,  bool wait) {
 	// Put to VPM
 	seq << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0);
 	// Start DMA
-	genStartDMAStore(&seq, srcReg(addr_var));
+	seq << genStartDMAStore(srcReg(addr_var)).comment("End DMA store request", true);
 }
 
 }  // namespace vc4

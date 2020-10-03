@@ -74,6 +74,7 @@ void KernelDriver::compile() {
 	compileKernel(&m_targetCode, body);
 }
 
+
 /**
  * @return true if errors present, false otherwise
  */
@@ -145,8 +146,7 @@ void KernelDriver::emit_target_code(FILE *f) {
 	fprintf(f, "Target code\n");
 	fprintf(f, "===========\n\n");
 	for (int i = 0; i < m_targetCode.numElems; i++) {
-		fprintf(f, "%i: ", i);
-		QPULib::pretty(f, m_targetCode.elems[i]);
+		QPULib::pretty(f, m_targetCode.elems[i], i);
 	}
 	fprintf(f, "\n");
 	fflush(f);

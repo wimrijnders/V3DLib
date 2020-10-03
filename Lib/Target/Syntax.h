@@ -1,6 +1,7 @@
 #ifndef _QPULIB_TARGET_SYNTAX_H_
 #define _QPULIB_TARGET_SYNTAX_H_
 #include <stdint.h>
+#include <string>
 #include "../Support/debug.h"
 
 namespace QPULib {
@@ -470,6 +471,26 @@ struct Instr {
 	}
 
 	static Instr nop();
+
+	// ==================================================
+	// Comment support
+	// ==================================================
+
+private:
+	std::string m_comment;
+	bool m_is_side_comment = false;
+
+public:
+	Instr &comment(std::string const &str, bool in_is_side_comment = false) {
+		assertq(m_comment.empty(), "Comment already set");
+		m_comment = str;
+		m_is_side_comment = in_is_side_comment;
+		return *this;
+	}
+
+	std::string const &comment() const { return m_comment; }
+	bool is_side_comment() const { return m_is_side_comment; }
+
 
 	// ==================================================
 	// v3d-specific  methods

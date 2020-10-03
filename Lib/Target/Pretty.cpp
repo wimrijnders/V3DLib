@@ -202,9 +202,15 @@ const char *pretty_instr_tag(InstrTag tag) {
 }
 
 
-void pretty(FILE *f, Instr instr) {
+void pretty(FILE *f, Instr instr, int index) {
 	auto ALWAYS = AssignCond::Tag::ALWAYS;
   assert(f != nullptr);
+
+	if (!instr.comment().empty() && !instr.is_side_comment()) {
+		fprintf(f, "\n# %s\n", instr.comment().c_str());
+	}
+
+	fprintf(f, "%i: ", index);
 
   switch (instr.tag) {
     case LI:
@@ -217,8 +223,7 @@ void pretty(FILE *f, Instr instr) {
       pretty(f, instr.LI.dest);
       fprintf(f, " <-%s ", instr.LI.setFlags ? "{sf}" : "");
       pretty(f, instr.LI.imm);
-      fprintf(f, "\n");
-      return;
+      break;
     case ALU:
       if (instr.ALU.cond.tag != ALWAYS) {
         fprintf(f, "where ");
@@ -232,47 +237,46 @@ void pretty(FILE *f, Instr instr) {
       pretty(f, instr.ALU.srcA);
       fprintf(f, ", ");
       pretty(f, instr.ALU.srcB);
-      fprintf(f, ")\n");
-      return;
+      fprintf(f, ")");
+      break;
     case BR:
       fprintf(f, "if ");
       pretty(f, instr.BR.cond);
       fprintf(f, " goto ");
       pretty(f, instr.BR.target);
-      fprintf(f, "\n");
-      return;
+      break;
     case BRL:
       fprintf(f, "if ");
       pretty(f, instr.BRL.cond);
-      fprintf(f, " goto L%i\n", instr.BRL.label);
-      return;
+      fprintf(f, " goto L%i", instr.BRL.label);
+      break;
     case LAB:
-      fprintf(f, "L%i:\n", instr.label());
-      return;
+      fprintf(f, "L%i:", instr.label());
+      break;
     case PRS:
       fprintf(f, "PRS(\"%s\")", instr.PRS);
-      return;
+      break;
     case PRI:
       fprintf(f, "PRI(");
       pretty(f, instr.PRI);
-      fprintf(f, ")\n");
-      return;
+      fprintf(f, ")");
+      break;
     case PRF:
       fprintf(f, "PRF(");
       pretty(f, instr.PRF);
-      fprintf(f, ")\n");
-      return;
+      fprintf(f, ")");
+      break;
     case RECV:
       fprintf(f, "RECV(");
       pretty(f, instr.RECV.dest);
-      fprintf(f, ")\n");
-      return;
+      fprintf(f, ")");
+      break;
     case SINC:
-      fprintf(f, "SINC %i\n", instr.semaId);
-      return;
+      fprintf(f, "SINC %i", instr.semaId);
+      break;;
     case SDEC:
-      fprintf(f, "SDEC %i\n", instr.semaId);
-      return;
+      fprintf(f, "SDEC %i", instr.semaId);
+      break;
     case INIT_BEGIN:
     case INIT_END:
     case END:         // vc4
@@ -281,12 +285,18 @@ void pretty(FILE *f, Instr instr) {
     case IRQ:
     case VPM_STALL:
     case TMUWT:
-      fprintf(f, "%s\n", pretty_instr_tag(instr.tag));
-      return;
+      fprintf(f, "%s", pretty_instr_tag(instr.tag));
+      break;
     default:
-      fprintf(f, "<<UNKNOWN:%d>>\n", instr.tag);
-      return;
+      fprintf(f, "<<UNKNOWN:%d>>", instr.tag);
+      break;
   }
+
+	if (!instr.comment().empty() && instr.is_side_comment()) {
+		fprintf(f, "  # %s\n", instr.comment().c_str());
+	} else {
+		fprintf(f, "\n");
+	}
 }
 
 }  // namespace QPULib

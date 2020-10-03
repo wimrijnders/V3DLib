@@ -41,7 +41,7 @@ public:
 protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
-  Seq<Instr> m_targetCode;  // AST representing the target code
+  Seq<Instr> m_targetCode;            // Target code generated from AST
 
   int qpuCodeMemOffset = 0;
 	std::vector<std::string> errors;
