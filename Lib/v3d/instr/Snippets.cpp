@@ -80,7 +80,7 @@ Instructions calc_offset(uint8_t num_qpus, uint8_t reg_qpu_num) {
 		"Determine offset -> r0\n"
 		"addr += 4 * (thread_num + 16 * qpu_num)";
 
-	ret.front().header(text);
+	ret.front().comment(text);
 
 	return ret;
 }

@@ -187,40 +187,32 @@ void where_kernel(Ptr<Int> result) {
 	Int a = index();
 	Int r = 0;
 
-	Where (a < 8)
-		r = 1;
-	End
-	next(result, r);
-
-	Where (a <= 8)
-		r = 1;
-	End
-	next(result, r);
-
-	Where (a == 8)
-		r = 1;
-	End
+	Where (a <  8) r = 1; End; next(result, r);
+	Where (a <= 8) r = 1; End; next(result, r);
+	Where (a == 8) r = 1; End; next(result, r);
+	Where (a != 8) r = 1; End; next(result, r);
+	Where (a >  8) r = 1; End; next(result, r);
+	Where (a >=  8) r = 1; End
 	*result = r;
 }
 
 TEST_CASE("Test Where blocks", "[where][cond]") {
-	const int SIZE = 16;
-
+	const int SIZE      = 16;
+	const int NUM_TESTS = 6;
 
   auto k = compile(where_kernel);
 
-  QPULib::SharedArray<int> result(3*SIZE);
+  QPULib::SharedArray<int> result(NUM_TESTS*SIZE);
 
 	k.load(&result);
-
-	k.pretty(false);
+	//k.pretty(false);
 
 	k.call();
 	//k.emu();
 	//k.interpret();
 
-  for (int i = 0; i < result.size(); i++)
-    printf("%i: %i\n", i, result[i]);
+  //for (int i = 0; i < result.size(); i++)
+  //  printf("%i: %i\n", i, result[i]);
 
 	auto check = [&result] (int block, uint32_t *expected) {
 		for (uint32_t n = 0; n < SIZE; ++n) {
@@ -232,10 +224,16 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 	uint32_t expected_smaller_than[SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_smaller_equal[SIZE] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_equal[SIZE]         = {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
+	uint32_t expected_not_equal[SIZE]     = {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1};
+	uint32_t expected_larger_than[SIZE]   = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
+	uint32_t expected_larger_equal[SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1};
 
 	check(0, expected_smaller_than);
 	check(1, expected_smaller_equal);
 	check(2, expected_equal);
+	check(3, expected_not_equal);
+	check(4, expected_larger_than);
+	check(5, expected_larger_equal);
 }
 
 #endif  // ifdef QPU_MODE

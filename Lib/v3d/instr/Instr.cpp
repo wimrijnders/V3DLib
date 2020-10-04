@@ -539,8 +539,19 @@ void Instr::alu_add_set_reg_a(Location const &loc2) {
 
 void Instr::alu_add_set_reg_b(Location const &loc3) {
 	if (loc3.is_rf()) {
-		raddr_b          = loc3.to_waddr(); 
-		alu.add.b        = V3D_QPU_MUX_B;
+		// Prefer raddr_b - strictly speaking not required
+	  // TODO: This might be why instructions (currently 1) fail in disasm kernel, examine
+		if (!sig.small_imm) {
+			// This should always be OK, add.a will never use raddr_b at this point
+			raddr_b          = loc3.to_waddr(); 
+			alu.add.b        = V3D_QPU_MUX_B;
+		} else {
+			// raddr_b contains a small imm, do raddr_a instead
+			assert(alu.add.a == V3D_QPU_MUX_B);
+
+			raddr_a          = loc3.to_waddr(); 
+			alu.add.b        = V3D_QPU_MUX_A;
+		}
 	} else {
 		alu.add.b        = loc3.to_mux();
 	}
@@ -550,10 +561,10 @@ void Instr::alu_add_set_reg_b(Location const &loc3) {
 
 
 /**
- * Set the immediate value for an operations
+ * Set the immediate value for an operation
  *
  * The immediate value is always set in raddr_b.
- * Multiple immediate operands are allowed in an instruction  only if they are the same value
+ * Multiple immediate operands are allowed in an instruction only if they are the same value
  */
 void Instr::alu_set_imm(SmallImm const &imm) {
 	if (sig.small_imm == true) {
@@ -826,17 +837,14 @@ Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
 
 
 /**
- * Returns index of current vector itemi on a given QPU.
+ * Returns index of current vector item on a given QPU.
  * This will be something in the range [0..15]
  */
-//Instr eidx(Register const &reg) {
 Instr eidx(Location const &reg) {
 	Instr instr;
-	assert(!reg.is_rf());
-	//instr.alu_add_set_dst(reg);
+	instr.alu_add_set_dst(reg);
 
 	instr.alu.add.op    = V3D_QPU_A_EIDX;
-	instr.alu.add.waddr = reg.to_waddr();
 	instr.alu.add.a     = V3D_QPU_MUX_R2;
 	instr.alu.add.b     = V3D_QPU_MUX_R0;
 
@@ -844,15 +852,12 @@ Instr eidx(Location const &reg) {
 }
 
 
-//Instr tidx(Register const &reg) {
 Instr tidx(Location const &reg) {
 	Instr instr;
-	assert(!reg.is_rf());
-	//instr.alu_add_set_dst(reg);
+	instr.alu_add_set_dst(reg);
 
-	instr.sig_magic  = true; 
+	instr.sig_magic  = true;  // TODO is this really needed? Not present in eidx
 	instr.alu.add.op = V3D_QPU_A_TIDX;
-	instr.alu.add.waddr = reg.to_waddr();
 	instr.alu.add.a  = V3D_QPU_MUX_R1;
 	instr.alu.add.b  = V3D_QPU_MUX_R0;
 

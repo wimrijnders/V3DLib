@@ -394,13 +394,14 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   // --------------------------------------
   if (b.tag == CMP) {
     // Compute condition flag
+		SetCond set_cond = NO_COND;  // For v3d
     AssignCond cond(AssignCond::Tag::FLAG);
 
     switch(b.cmp.op.op) {
-      case EQ:  cond.flag = ZS; break;
-      case NEQ: cond.flag = ZC; break;
-      case LT:  cond.flag = NS; break;
-      case GE:  cond.flag = NC; break;
+      case EQ:  cond.flag = ZS; set_cond = Z; break;
+      case NEQ: cond.flag = ZC; set_cond = Z; break;
+      case LT:  cond.flag = NS; set_cond = N; break;
+      case GE:  cond.flag = NC; set_cond = N; break;
       default:  assert(false);
     }
 
@@ -411,6 +412,7 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
 
     Instr instr(ALU);
     instr.ALU.setFlags = true;
+    instr.ALU.setCond  = set_cond;
     instr.ALU.dest     = dstReg(v);
     instr.ALU.srcA     = operand(b.cmp.lhs);
     instr.ALU.op       = opcode(op);

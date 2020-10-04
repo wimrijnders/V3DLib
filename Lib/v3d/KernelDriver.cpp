@@ -306,16 +306,6 @@ void checkSpecialIndex(QPULib::Instr const &src_instr) {
 
 	assertq((a_is_special && b_is_special), "src a and src b must both be special for QPU and ELEM nums");
 	assertq(srca == srcb, "checkSpecialIndex(): src a and b must be the same if they are both special num's");
-
-	// Here we can safely assume that src a and b are the same
-
-	if (a_is_elem_num) {
-		warning("SPECIAL_ELEM_NUM needs a way to select a register");
-	} else if (a_is_qpu_num) {
-		warning("SPECIAL_QPU_NUM needs a way to select a register");
-	} else {
-		assert(false);  // Not expecting this here
-	}
 }
 
 
@@ -355,10 +345,18 @@ void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
 	// TODO: Set for mul tag as well if required
 	//       Prob the easiest is to always set them for both for now
 
-	// TODO test what happens here, for vc4 as well as v3d
-	//      v3d flags used are prob wrong!
+	switch(cond.flag) {
+		case ZS:
+		case NS:
+			out_instr.ifa(); 
+			break;
+		case ZC:
+		case NC:
+			out_instr.ifna(); 
+			break;
+		default:  assert(false);
+	}
 
-	out_instr.ifa(); 
 }
 
 
@@ -383,8 +381,13 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 		// Note that it is only set for the last in the list.
 		// Any preceding instructions are assumed to be for calculating the condition
 		Instr &instr = ret.back();
-		//instr.pushn();
-		instr.pushz();
+
+		assert(src_instr.ALU.setCond == Z || src_instr.ALU.setCond == N); 
+		if (src_instr.ALU.setCond == Z) {
+			instr.pushz();
+		} else {
+			instr.pushn();
+		}
 
 	} else {
 		// use flag as run condition for current instruction(s)
@@ -408,11 +411,9 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	if (dst_reg && reg_a.tag == REG && reg_b.tag == REG) {
 		checkSpecialIndex(src_instr);
 		if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
-			ret << tidx(r0);
-			//ret << tidx(*dst_reg);
+			ret << tidx(*dst_reg);
 		} else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
-			ret << eidx(r0);
-			//ret << eidx(*dst_reg);
+			ret << eidx(*dst_reg);
 		} else {
 			auto src_a = encodeSrcReg(reg_a.reg, ret);
 			auto src_b = encodeSrcReg(reg_b.reg, ret);
