@@ -695,8 +695,14 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
 	assert(no_output || !ret.empty());
 
-	if (!ret.empty() && !instr.comment().empty()) {
-		ret.front().comment(instr.comment());
+	if (!ret.empty()) {
+		if (!instr.header().empty()) {
+			ret.front().header(instr.header());
+		}
+
+		if (!instr.comment().empty()) {
+			ret.front().comment(instr.comment());
+		}
 	}
 
 	return ret;

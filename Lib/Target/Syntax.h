@@ -474,23 +474,29 @@ struct Instr {
 	static Instr nop();
 
 	// ==================================================
-	// Comment support
+	// Comments 
 	// ==================================================
 
 private:
+	std::string m_header;
 	std::string m_comment;
-	bool m_is_side_comment = false;
 
 public:
-	Instr &comment(std::string const &str, bool in_is_side_comment = false) {
-		assertq(m_comment.empty(), "Comment already set");
-		m_comment = str;
-		m_is_side_comment = in_is_side_comment;
+
+	Instr &header(std::string const &str) {
+		assertq(m_header.empty(), "Header already set");
+		m_header = str;
 		return *this;
 	}
 
+	Instr &comment(std::string const &str) {
+		assertq(m_comment.empty(), "Comment already set");
+		m_comment = str;
+		return *this;
+	}
+
+	std::string const &header() const { return m_header; }
 	std::string const &comment() const { return m_comment; }
-	bool is_side_comment() const { return m_is_side_comment; }
 
 
 	// ==================================================

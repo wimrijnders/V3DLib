@@ -68,16 +68,27 @@ std::string Instr::mnemonic() const {
 
 
 /**
+ * Assign header comment to current instance
+ *
+ * For display purposes only, when generating a dump of the opcodes.
+ */
+Instr &Instr::header(std::string const &msg) {
+	assertq(m_header.empty(), "Header comment already has a value when setting it", true);
+	m_header = msg;
+	findAndReplaceAll(m_header, "\n", "\n# ");
+	return *this;
+}
+
+
+/**
  * Assign comment to current instance
  *
  * For display purposes only, when generating a dump of the opcodes.
  */
-Instr &Instr::comment(std::string const &comment, bool is_side_comment) {
-	assertq(m_comment.empty(), "Comment already has a value when setting comment", true);
-	m_comment = comment;
+Instr &Instr::comment(std::string const &msg) {
+	assertq(m_comment.empty(), "Comment already has a value when setting it", true);
+	m_comment = msg;
 	findAndReplaceAll(m_comment, "\n", "\n# ");
-
-	m_is_side_comment = is_side_comment;
 	return *this;
 }
 

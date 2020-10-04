@@ -8,7 +8,7 @@ namespace instr {
 Instructions set_qpu_id(uint8_t reg_qpu_id) {
 	Instructions ret;
 
-	ret << tidx(r0).comment("Set QPU id")
+	ret << tidx(r0).header("Set QPU id")
 			<< bor(rf(reg_qpu_id), r0, r0);  // Actually mov
 
 	return ret;
@@ -27,7 +27,7 @@ Instructions set_qpu_num(uint8_t num_qpus, uint8_t reg_qpu_num) {
 		assert(false);  // num_qpus must be 1 or 8
 	}
 
-	ret.front().comment("Set number of QPU's");
+	ret.front().header("Set number of QPU's");
 
 	return ret;
 }
@@ -80,7 +80,7 @@ Instructions calc_offset(uint8_t num_qpus, uint8_t reg_qpu_num) {
 		"Determine offset -> r0\n"
 		"addr += 4 * (thread_num + 16 * qpu_num)";
 
-	ret.front().comment(text);
+	ret.front().header(text);
 
 	return ret;
 }
@@ -113,7 +113,7 @@ Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
 
 	const char *text = "stride = 4 * 16 * num_qpus";
 
-	ret << mov(rf(reg_stride), 1).comment(text)
+	ret << mov(rf(reg_stride), 1).header(text)
 	    << shl(rf(reg_stride), rf(reg_stride), 6 + num_qpus_shift);
 
 	return ret;
@@ -132,7 +132,7 @@ Instructions enable_tmu_read(Instr const *last_slot) {
 		"This also enables TMU read requests without the thread switch signal, and\n"
 		"the eight-depth TMU read request queue.";
 
-	ret << nop().thrsw().comment(text)
+	ret << nop().thrsw().header(text)
 	    << nop();
 
 	if (last_slot != nullptr) {
@@ -152,7 +152,7 @@ Instructions sync_tmu() {
 		"This synchronization is needed between the last TMU operation and the\n"
 		"program end with the thread switch just before the main body above.";
 
-	ret << barrierid(syncb).thrsw().comment(text)
+	ret << barrierid(syncb).thrsw().header(text)
 	    << nop()
 	    << nop();
 
@@ -163,7 +163,7 @@ Instructions sync_tmu() {
 Instructions end_program() {
 	Instructions ret;
 
-	ret << nop().thrsw().comment("Program tail")
+	ret << nop().thrsw().header("Program tail")
 	    << nop().thrsw()
 	    << nop()
 	    << nop()

@@ -206,8 +206,8 @@ void pretty(FILE *f, Instr instr, int index) {
 	auto ALWAYS = AssignCond::Tag::ALWAYS;
   assert(f != nullptr);
 
-	if (!instr.comment().empty() && !instr.is_side_comment()) {
-		fprintf(f, "\n# %s\n", instr.comment().c_str());
+	if (!instr.header().empty()) {
+		fprintf(f, "\n# %s\n", instr.header().c_str());
 	}
 
 	fprintf(f, "%i: ", index);
@@ -292,7 +292,7 @@ void pretty(FILE *f, Instr instr, int index) {
       break;
   }
 
-	if (!instr.comment().empty() && instr.is_side_comment()) {
+	if (!instr.comment().empty()) {
 		fprintf(f, "  # %s\n", instr.comment().c_str());
 	} else {
 		fprintf(f, "\n");

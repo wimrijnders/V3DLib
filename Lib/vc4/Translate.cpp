@@ -296,7 +296,7 @@ void StoreRequest(Seq<Instr> &seq, Var addr_var, Var data_var,  bool wait) {
 	Reg storeAddr = freshReg();
 
 	// Setup VPM
-	seq << li(addr, 16).comment("Start DMA store request", true)
+	seq << li(addr, 16).comment("Start DMA store request")
 	    << add(addr, addr, QPU_ID);
 
 	genSetupVPMStore(&seq, addr, 0, 1);
@@ -312,10 +312,9 @@ void StoreRequest(Seq<Instr> &seq, Var addr_var, Var data_var,  bool wait) {
 	// Setup DMA
 	genSetWriteStride(&seq, 0);
 	genSetupDMAStore(&seq, 16, 1, 1, storeAddr);
-	// Put to VPM
-	seq << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0);
-	// Start DMA
-	seq << genStartDMAStore(srcReg(addr_var)).comment("End DMA store request", true);
+
+	seq << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0)                    // Put to VPM
+	    << genStartDMAStore(srcReg(addr_var)).comment("End DMA store request");  // Start DMA
 }
 
 }  // namespace vc4

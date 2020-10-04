@@ -25,10 +25,6 @@ public:
 	static void show(uint64_t in_code);
 	static std::string mnemonic(uint64_t in_code);
 
-	Instr &comment(std::string const &comment, bool is_side_comment = false);
-	std::string const &comment() const { return m_comment; }
-	bool is_side_comment() const { return m_is_side_comment; }
-
 	operator uint64_t() const { return code(); }
 
 	Instr &pushz();
@@ -119,12 +115,29 @@ public:
 	void alu_mul_set(Location const &loc1, Location const &loc2, SmallImm const &imm3); 
 	void alu_mul_set(Location const &dst, SmallImm const &imma, Location const &locb); 
 
+
+	// ==================================================
+	// Comments 
+	// ==================================================
+
+private:
+	std::string m_header;
+	std::string m_comment;
+
+public:
+	Instr &header(std::string const &msg);
+	Instr &comment(std::string const &msg);
+	std::string const &header() const { return m_header; }
+	std::string const &comment() const { return m_comment; }
+
+
+	// ==================================================
+	// Private State 
+	// ==================================================
+
 private:
 	static uint64_t const NOP;
-
 	bool m_doing_add = true;
-	std::string m_comment;
-	bool m_is_side_comment = false;
 
 	void init_ver() const;
 	void init(uint64_t in_code);

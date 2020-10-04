@@ -153,7 +153,7 @@ Instr genWaitDMALoad(bool might_be_end) {
 	Instr instr = mov(None, DMA_LD_WAIT, never);
 
 	if (might_be_end) {
-		instr.comment("DMA load wait (possible start of finish program)", true);
+		instr.comment("DMA load wait (likely start of program end)");
 	}
 
 	return instr;

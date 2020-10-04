@@ -369,7 +369,7 @@ ByteCode rotate_kernel(bool use_add_alu) {
 		<< nop()
 		<< nop()
 		<< nop().ldtmu(r0)
-		<< nop().comment("required before rotate", true);
+		<< nop().comment("required before rotate");
 	;
 
 	for (int i = -15; i < 16; ++i) {
@@ -389,7 +389,7 @@ ByteCode rotate_kernel(bool use_add_alu) {
 	for (int i = -15; i < 16; ++i) {
 		ret
 		  << mov(r5, si(i))
-		  << nop().comment("required before rotate", true);
+		  << nop().comment("required before rotate");
 
 		if (use_add_alu) {
 			ret << rotate(r1, r0, r5);       // add alias
