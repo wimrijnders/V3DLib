@@ -610,34 +610,52 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 }
 
 
-v3d::instr::Instr encodeBranch(QPULib::Instr full_instr) {
-	assert(full_instr.tag == BR);
-
-	auto &instr = full_instr.BR;
+/**
+ * Create a branch instruction, including any branch conditions,
+ * from Target source instruction
+ *
+ * Convert conditions from Target source to v3d.
+ *
+ * Incoming conditions are vc4 only, the conditions don't exist on v3d.
+ * They therefore need to be translated.
+ */
+v3d::instr::Instr encodeBranch(QPULib::Instr src_instr) {
+	assert(src_instr.tag == BR);
+	auto &instr = src_instr.BR;
 	assert(!instr.target.useRegOffset);  // Register offset not (yet) supported
-
 
 	auto dst_instr = branch(instr.target.immOffset, instr.target.relative);
 
-	// Incoming conditions are vc4 only, the conditions don't exist on v3d.
-	// They therefore need to be translated.
+	// TODO How to deal with:
+	//
+	//      dst_instr.na0();  // Verified correct
+	//      dst_instr.a0();  // TODO: verify
+
 	if (instr.cond.tag == COND_ALL) {
-		if (instr.cond.flag == ZC) {
-			//dst_instr.na0();  // Verified correct
-			dst_instr.allna();
-		} else if (instr.cond.flag == ZS) {
-			//dst_instr.a0();  // TODO: verify
-			dst_instr.alla();
-		} else {
-			debug_break("Unknown branch condition under COND_ALL");  // Warn me if this happens
+		switch (instr.cond.flag) {
+			case ZC:
+			case NC:
+				dst_instr.allna();
+				break;
+			case ZS:
+			case NS:
+				dst_instr.alla();
+				break;
+			default:
+				debug_break("Unknown branch condition under COND_ALL");  // Warn me if this happens
 		}
 	} else if (instr.cond.tag == COND_ANY) {
-		if (instr.cond.flag == ZC) {
-			dst_instr.anyna();  // TODO: verify
-		} else if (instr.cond.flag == ZS) {
-			dst_instr.anya();  // TODO: verify
-		} else {
-			debug_break("Unknown branch condition under COND_ANY");  // Warn me if this happens
+		switch (instr.cond.flag) {
+			case ZC:
+			case NC:
+				dst_instr.anyna();  // TODO: verify
+				break;
+			case ZS:
+			case NS:
+				dst_instr.anya();  // TODO: verify
+				break;
+			default:
+				debug_break("Unknown branch condition under COND_ANY");  // Warn me if this happens
 		}
 	} else {
 		debug_break("Branch condition not COND_ALL or COND_ANY");  // Warn me if this happens

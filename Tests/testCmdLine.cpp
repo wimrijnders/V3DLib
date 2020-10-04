@@ -117,19 +117,9 @@ TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline
 TEST_CASE("Check correct output example programs for all three run options", "[cmdline]") {
 	make_test_dir();
 
-	SECTION("Check output ReqRecv") {
-		check_output_example("ReqRecv");
-	}
-
-	SECTION("Check output ID") {
-		check_output_example("ID");
-	}
-
-	SECTION("Check output Hello") {
-		check_output_example("Hello");
-	}
-
-	SECTION("Check output GCD") {
-		check_output_example("GCD");
-	}
+	SECTION("Check output ReqRecv") { check_output_example("ReqRecv"); }
+	SECTION("Check output ID")      { check_output_example("ID"); }
+	SECTION("Check output Hello")   { check_output_example("Hello"); }
+	SECTION("Check output GCD")     { check_output_example("GCD"); }
+	SECTION("Check output Tri")     { check_output_example("Tri"); }
 }

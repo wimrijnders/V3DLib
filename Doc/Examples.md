@@ -35,10 +35,9 @@ sudo obj-qpu/bin/<name>
 ```
 
 - **GCD**       - [Euclid's algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm), The GCD's of some random pairs of integers
-- **Tri**       - Computes [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number), using three kernels:
-  * single QPU with integers
-  * multiple QPU's with integers
-  * using floats instead of integers
+- **Tri**       - Computes [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number), using two kernels:
+  1. with integer in- and output
+  2. with float in- and output
 - **OET**       - [Odd-even transposition sorter](https://en.wikipedia.org/wiki/Odd%E2%80%93even_sort) for 32 integers
 - **HeatMap**   - Modelling heat flow across a 2D surface; outputs an image in [pgm](http://netpbm.sourceforge.net/doc/pgm.html) format, and notes the time taken
 - **Rot3D**     -  3D rotation of a random objecti; outputs the time taken

@@ -61,13 +61,13 @@ public:
 	Instr &a0();
 	Instr &na0();
 	Instr &alla();
+	Instr &allna();
 	Instr &anya();
 	Instr &anyaq();
 	Instr &anyap();
 	Instr &anyna();
 	Instr &anynaq();
 	Instr &anynap();
-	Instr &allna();
 
 	//
 	// Calls to set the mul part of the instruction
@@ -156,8 +156,6 @@ const uint32_t zero_addr = 0;
 
 Instr nop();
 Instr ldunifrf(uint8_t rf_address);
-//Instr tidx(Register const &reg);
-//Instr eidx(Register const &reg);
 Instr tidx(Location const &reg);
 Instr eidx(Location const &reg);
 
