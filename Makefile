@@ -211,7 +211,7 @@ $(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB)
 	@mkdir -p $(@D)
 	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
 
-make_test: $(UNIT_TESTS) ID Hello Rot3D ReqRecv detectPlatform
+make_test: $(UNIT_TESTS) ID Hello Rot3D ReqRecv GCD detectPlatform
 
 test : make_test
 	@echo Running unit tests with \'$(SUDO) $(UNIT_TESTS)\'

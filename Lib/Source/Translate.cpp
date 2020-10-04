@@ -49,9 +49,7 @@ ALUOp opcode(Op op)
     }
   }
 
-  // Not reachable
-  assert(false);
-	return NOP;
+	return NOP;  // Not reachable
 }
 
 
@@ -110,6 +108,7 @@ Expr* simplify(Seq<Instr>* seq, Expr* e) {
 	varAssign(seq, tmp, e);
 	return mkVar(tmp);
 }
+
 
 // ============================================================================
 // Assignment statements
@@ -238,6 +237,7 @@ Instr move(Var dst, Var src, bool setFlags) {
 
   return instr;
 }
+
 
 // ============================================================================
 // Boolean expressions

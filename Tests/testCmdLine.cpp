@@ -71,6 +71,13 @@ void check_output_run(std::string const &program, RunType run_type) {
 }
 
 
+void check_output_example(std::string const &program) {
+		check_output_run(program, QPU);
+		check_output_run(program, INTERPRETER);
+		check_output_run(program, EMULATOR);
+}
+
+
 void make_test_dir() {
 	std::string cmd = SUDO;
 	cmd += "mkdir -p obj/test";
@@ -107,47 +114,22 @@ TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline
 }
 
 
-TEST_CASE("ReqRecv check code generation", "[cmdline]") {
-	make_test_dir();
-
-	SECTION("Generated code should be as expected") {
-		// WRI DEBUG disabled temporarily - I have doubts that this is useful (generated code a moving target)
-/*
-
-		std::string output_filename   = "obj/test/ReqRecv_code.txt";
-		std::string expected_filename = "Tests/data/ReqRecv_expected_code.txt";
-
-		std::string cmdline = "cd obj/test && ../../" BIN_PATH "/ReqRecv ";
-		cmdline +=  "-r=emulator -c -f > /dev/null";
-		INFO("Cmdline: " << cmdline);
-		REQUIRE(!system(cmdline.c_str()));
-
-		std::string diff_cmd = "diff " + output_filename + " " + expected_filename;
-		INFO(diff_cmd);
-		REQUIRE(!system(diff_cmd.c_str()));
-*/
-	}
-}
-
-
 TEST_CASE("Check correct output example programs for all three run options", "[cmdline]") {
 	make_test_dir();
 
 	SECTION("Check output ReqRecv") {
-		check_output_run("ReqRecv", QPU);
-		check_output_run("ReqRecv", INTERPRETER);
-		check_output_run("ReqRecv", EMULATOR);
+		check_output_example("ReqRecv");
 	}
 
 	SECTION("Check output ID") {
-		check_output_run("ID", QPU);
-		check_output_run("ID", INTERPRETER);
-		check_output_run("ID", EMULATOR);
+		check_output_example("ID");
 	}
 
 	SECTION("Check output Hello") {
-		check_output_run("Hello", QPU);
-		check_output_run("Hello", INTERPRETER);
-		check_output_run("Hello", EMULATOR);
+		check_output_example("Hello");
+	}
+
+	SECTION("Check output GCD") {
+		check_output_example("GCD");
 	}
 }

@@ -18,6 +18,7 @@
 
 ## Compile source code
 
+- [ ] `If (a != b)` appears to do the same as  `any(a1 != b`, verify
 - [ ] Following generation is wrong *(this is probably a v3d issue)*. Source code:
 
     *p = 4*(index() + 16*me());
@@ -62,7 +63,8 @@
 ## Unit Tests
 
 - [x] Add test on expected source and target output for pretty print in `compileKernel`. Done for `ReqRecv`
-- [ ] Add tests to compare QPU and Emulation mode output (when build can be done with both)
+- [x] Add tests to compare QPU and Emulation mode output (when build can be done with both)
+- [x] Make display of Performance Counters a cmdline option for examples (see `Rot3D`)
 - [ ] Language
   - [ ] Test missing `End` on blocks
   - [ ] Test missing `Else` without `If`
@@ -78,11 +80,6 @@
       Comparing Rot3D_2 for index 19184
 
   This error happens twice, for `testRot3D`.
-
-
-## Unit Tests
-
-- [x] Make display of Performance Counters a cmdline option for examples (see `Rot3D`)
 
 
 ## Investigate

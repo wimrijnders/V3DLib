@@ -10,9 +10,7 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
   Int a = *p;
   Int b = *q;
 
-/*
-  //While (any(a != b))
-  If (any(a != b))
+  While (all(a != b))
     Where (a > b)
       a = a-b;
     End
@@ -20,10 +18,6 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
       b = b-a;
     End
   End
-*/
-    Where (a > b)
-      a = a-b;
-    End
 
   *r = a;
 }
@@ -40,12 +34,8 @@ int main(int argc, const char *argv[]) {
   SharedArray<int> a(16), b(16), r(16);
   srand(0);
   for (int i = 0; i < 16; i++) {
-/*
     a[i] = 100 + (rand() % 100);
     b[i] = 100 + (rand() % 100);
-*/
-		a[i] = -8 + i;
-		b[i] = 7 - i;
   }
 
   // Invoke the kernel
