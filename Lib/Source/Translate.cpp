@@ -484,16 +484,18 @@ BranchCond condExp(Seq<Instr>* seq, CExpr* c) {
 	return bcond;
 }
 
+
 // ============================================================================
 // Where statements
 // ============================================================================
 
-void whereStmt( Seq<Instr>* seq
-              , Stmt* s
-              , Var condVar
-              , AssignCond cond
-              , bool saveRestore )
-{
+void whereStmt(
+	Seq<Instr>* seq,
+	Stmt* s,
+	Var condVar,
+	AssignCond cond,
+	bool saveRestore
+) {
   if (s == NULL) return;
 
   // ----------
@@ -580,6 +582,7 @@ void whereStmt( Seq<Instr>* seq
   assert(false);
 }
 
+
 // ============================================================================
 // Print statements
 // ============================================================================
@@ -612,6 +615,8 @@ void printStmt(Seq<Instr>* seq, PrintStmt s) {
 
   assert(false);
 }
+
+
 // ============================================================================
 // Load receive statements
 // ============================================================================
@@ -623,6 +628,8 @@ void loadReceive(Seq<Instr>* seq, Expr* dest) {
   instr.RECV.dest = dstReg(dest->var);
   *seq << instr;
 }
+
+
 // ============================================================================
 // Statements
 // ============================================================================
@@ -657,39 +664,22 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
   // Case: if (c) s0 s1, where c is a condition, and lhs,rhs expressions
   // -------------------------------------------------------------------
   if (s->tag == IF) {
-    Instr instr;
+		using namespace Target::instr;
+
     Label elseLabel  = freshLabel();
     Label endifLabel = freshLabel();
-    // Compile condition
-    BranchCond cond  = condExp(seq, s->ifElse.cond);
+    BranchCond cond  = condExp(seq, s->ifElse.cond);  // Compile condition
     
-    // Branch to 'else' statement
-    instr.tag       = BRL;
-    instr.BRL.cond  = negBranchCond(cond);
-    instr.BRL.label = elseLabel;
-    seq->append(instr);
+		*seq << branch(negBranchCond(cond), elseLabel);   // Branch to 'else' statement
+    stmt(seq, s->ifElse.thenStmt);                    // Compile 'then' statement
 
-    // Compile 'then' statement
-    stmt(seq, s->ifElse.thenStmt);
+    if (s->ifElse.elseStmt != NULL) {
+			*seq << branch(endifLabel);                     // Branch to endif
+		}
 
-    // Branch to endif
-    instr.tag          = BRL;
-    instr.BRL.cond.tag = COND_ALWAYS;
-    instr.BRL.label    = endifLabel;
-    if (s->ifElse.elseStmt != NULL) seq->append(instr);
-
-    // Label for 'else' statement
-    instr.tag   = LAB;
-    instr.label(elseLabel);
-    seq->append(instr);
-
-    // Compile 'else' statement
-    stmt(seq, s->ifElse.elseStmt);
-
-    // Label for endif
-    instr.tag   = LAB;
-    instr.label(endifLabel);
-    seq->append(instr);
+		*seq << label(elseLabel);                         // Label for 'else' statement
+    stmt(seq, s->ifElse.elseStmt);                    // Compile 'else' statement
+		*seq << label(endifLabel);                        // Label for endif
 
     return;
   }
@@ -698,40 +688,21 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
   // Case: while (c) s where c is a condition, and s a statement
   // -----------------------------------------------------------
   if (s->tag == WHILE) {
-    Instr instr;
+		using namespace Target::instr;
+
     Label startLabel = freshLabel();
     Label endLabel   = freshLabel();
-    // Compile condition
-    BranchCond cond  = condExp(seq, s->loop.cond);
+    BranchCond cond  = condExp(seq, s->loop.cond);      // Compile condition
  
-    // Branch over loop body
-    Instr branchEnd;
-    instr.tag       = BRL;
-    instr.BRL.cond  = negBranchCond(cond);
-    instr.BRL.label = endLabel;
-    seq->append(instr);
+		*seq << branch(negBranchCond(cond), endLabel)       // Branch over loop body
+		     << label(startLabel);                          // Start label
 
-    // Start label
-    instr.tag   = LAB;
-    instr.label(startLabel);
-    seq->append(instr);
+    if (s->loop.body != NULL) stmt(seq, s->loop.body);  // Compile body
+    condExp(seq, s->loop.cond);                         // Compute condition again
+		                                                    // TODO why is this necessary?
 
-    // Compile body
-    if (s->loop.body != NULL) stmt(seq, s->loop.body);
-
-    // Compute condition again
-    condExp(seq, s->loop.cond);
-
-    // Branch to start
-    instr.tag       = BRL;
-    instr.BRL.cond  = cond;
-    instr.BRL.label = startLabel;
-    seq->append(instr);
-
-    // End label
-    instr.tag   = LAB;
-    instr.label(endLabel);
-    seq->append(instr);
+		*seq << branch(cond, startLabel)                    // Branch to start
+		     << label(endLabel);                            // End label
 
     return;
   }

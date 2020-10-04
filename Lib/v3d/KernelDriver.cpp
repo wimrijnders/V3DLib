@@ -623,15 +623,19 @@ v3d::instr::Instr encodeBranch(QPULib::Instr full_instr) {
 	// They therefore need to be translated.
 	if (instr.cond.tag == COND_ALL) {
 		if (instr.cond.flag == ZC) {
-			dst_instr.na0();  // Verified correct
+			//dst_instr.na0();  // Verified correct
+			dst_instr.allna();
 		} else if (instr.cond.flag == ZS) {
-			dst_instr.a0();  // TODO: verify
+			//dst_instr.a0();  // TODO: verify
+			dst_instr.alla();
 		} else {
 			debug_break("Unknown branch condition under COND_ALL");  // Warn me if this happens
 		}
 	} else if (instr.cond.tag == COND_ANY) {
 		if (instr.cond.flag == ZC) {
 			dst_instr.anyna();  // TODO: verify
+		} else if (instr.cond.flag == ZS) {
+			dst_instr.anya();  // TODO: verify
 		} else {
 			debug_break("Unknown branch condition under COND_ANY");  // Warn me if this happens
 		}

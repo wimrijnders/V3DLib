@@ -568,6 +568,8 @@ Instr band(Reg dst, Reg srcA, int n);
 Instr li(AssignCond cond, Reg dst, int i);
 Instr li(Reg dst, int i);
 Instr branch(Label label);
+Instr branch(BranchCond cond, Label label);
+Instr label(Label in_label);
 
 // v3d only
 Instr tmuwt();

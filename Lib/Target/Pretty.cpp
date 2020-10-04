@@ -3,6 +3,8 @@
 
 namespace QPULib {
 
+namespace {
+
 const char* pretty(SubWord sw)
 {
   switch (sw) {
@@ -131,43 +133,83 @@ void pretty(FILE *f, RegOrImm r)
   }
 }
 
-void pretty(FILE *f, ALUOp op)
-{
+
+const char *pretty_op(ALUOp op) {
   switch (op) {
-    case NOP:       fprintf(f, "nop"); return;
-    case A_FADD:    fprintf(f, "addf"); return;
-    case A_FSUB:    fprintf(f, "subf"); return;
-    case A_FMIN:    fprintf(f, "minf"); return;
-    case A_FMAX:    fprintf(f, "maxf"); return;
-    case A_FMINABS: fprintf(f, "minabsf"); return;
-    case A_FMAXABS: fprintf(f, "maxabsf"); return;
-    case A_FtoI:    fprintf(f, "ftoi"); return;
-    case A_ItoF:    fprintf(f, "itof"); return;
-    case A_ADD:     fprintf(f, "add"); return;
-    case A_SUB:     fprintf(f, "sub"); return;
-    case A_SHR:     fprintf(f, "shr"); return;
-    case A_ASR:     fprintf(f, "asr"); return;
-    case A_ROR:     fprintf(f, "ror"); return;
-    case A_SHL:     fprintf(f, "shl"); return;
-    case A_MIN:     fprintf(f, "min"); return;
-    case A_MAX:     fprintf(f, "max"); return;
-    case A_BAND:    fprintf(f, "and"); return;
-    case A_BOR:     fprintf(f, "or"); return;
-    case A_BXOR:    fprintf(f, "xor"); return;
-    case A_BNOT:    fprintf(f, "not"); return;
-    case A_CLZ:     fprintf(f, "clz"); return;
-    case A_V8ADDS:  fprintf(f, "addsatb"); return;
-    case A_V8SUBS:  fprintf(f, "subsatb"); return;
-    case M_FMUL:    fprintf(f, "mulf"); return;
-    case M_MUL24:   fprintf(f, "mul24"); return;
-    case M_V8MUL:   fprintf(f, "mulb"); return;
-    case M_V8MIN:   fprintf(f, "minb"); return;
-    case M_V8MAX:   fprintf(f, "maxb"); return;
-    case M_V8ADDS:  fprintf(f, "m_addsatb"); return;
-    case M_V8SUBS:  fprintf(f, "m_subsatb"); return;
-    case M_ROTATE:  fprintf(f, "rotate"); return;
+    case NOP:       return "nop";
+    case A_FADD:    return "addf";
+    case A_FSUB:    return "subf";
+    case A_FMIN:    return "minf";
+    case A_FMAX:    return "maxf";
+    case A_FMINABS: return "minabsf";
+    case A_FMAXABS: return "maxabsf";
+    case A_FtoI:    return "ftoi";
+    case A_ItoF:    return "itof";
+    case A_ADD:     return "add";
+    case A_SUB:     return "sub";
+    case A_SHR:     return "shr";
+    case A_ASR:     return "asr";
+    case A_ROR:     return "ror";
+    case A_SHL:     return "shl";
+    case A_MIN:     return "min";
+    case A_MAX:     return "max";
+    case A_BAND:    return "and";
+    case A_BOR:     return "or";
+    case A_BXOR:    return "xor";
+    case A_BNOT:    return "not";
+    case A_CLZ:     return "clz";
+    case A_V8ADDS:  return "addsatb";
+    case A_V8SUBS:  return "subsatb";
+    case M_FMUL:    return "mulf";
+    case M_MUL24:   return "mul24";
+    case M_V8MUL:   return "mulb";
+    case M_V8MIN:   return "minb";
+    case M_V8MAX:   return "maxb";
+    case M_V8ADDS:  return "m_addsatb";
+    case M_V8SUBS:  return "m_subsatb";
+    case M_ROTATE:  return "rotate";
+		default:
+			assert(false);
+			return "";
   }
 }
+
+
+std::string pretty_conditions(Instr const &instr) {
+	std::string ret;
+
+	auto set_cond = [] (SetCond cond) -> const char * {
+		switch (cond) {
+			case NO_COND: return "None";
+			case Z:       return "Z";
+			case N:       return "N";
+			case C:       return "C";
+			default:
+				assert(false);
+				return "";
+		}
+	};
+
+  switch (instr.tag) {
+    case LI:
+			if (instr.LI.setFlags) {
+				ret += "{sf-";
+				ret += set_cond(instr.LI.setCond);
+				ret += "}";
+			}
+			break;
+    case ALU:
+			if (instr.ALU.setFlags) {
+				ret += "{sf-";
+				ret += set_cond(instr.ALU.setCond);
+				ret += "}";
+			}
+			break;
+	}
+
+	return ret;
+}
+
 
 void pretty(FILE *f, BranchTarget target)
 {
@@ -177,6 +219,8 @@ void pretty(FILE *f, BranchTarget target)
     fprintf(f, "A%i+", target.regOffset);
   fprintf(f, "%i", target.immOffset);
 }
+
+}  // anon namespace
 
 
 const char *pretty_instr_tag(InstrTag tag) {
@@ -194,10 +238,9 @@ const char *pretty_instr_tag(InstrTag tag) {
 		case INIT_BEGIN:   return "INIT_BEGIN";
 		case INIT_END:     return "INIT_END";
 		case TMUWT:        return "TMUWT";
-
-		// TODO add rest of tags here as required
-
-		default:           return "<UNKNOWN>";
+		default:
+			assert(false);  // Add other tags here as required
+			return "<UNKNOWN>";
 	}
 }
 
@@ -221,7 +264,7 @@ void pretty(FILE *f, Instr instr, int index) {
       }
       fprintf(f, "LI ");
       pretty(f, instr.LI.dest);
-      fprintf(f, " <-%s ", instr.LI.setFlags ? "{sf}" : "");
+      fprintf(f, " <-%s ", pretty_conditions(instr).c_str());
       pretty(f, instr.LI.imm);
       break;
     case ALU:
@@ -231,8 +274,8 @@ void pretty(FILE *f, Instr instr, int index) {
         fprintf(f, ": ");
       }
       pretty(f, instr.ALU.dest);
-      fprintf(f, " <-%s ", instr.ALU.setFlags ? "{sf}" : "");
-      pretty(f, instr.ALU.op);
+      fprintf(f, " <-%s ", pretty_conditions(instr).c_str());
+      fprintf(f, "%s", pretty_op(instr.ALU.op));
       fprintf(f, "(");
       pretty(f, instr.ALU.srcA);
       fprintf(f, ", ");

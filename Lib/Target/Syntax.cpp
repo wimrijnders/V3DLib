@@ -335,14 +335,42 @@ Instr li(Reg dst, int i) {
 
 
 /**
- * This creates an unconditional branch.
- * Conditions can be specified with helper methods (e.g. see `allzc()`)
+ * Create an unconditional branch.
+ *
+ * Conditions can still be specified with helper methods (e.g. see `allzc()`)
  */
 Instr branch(Label label) {
 	Instr instr;
 	instr.tag          = BRL;
-	instr.BRL.cond.tag = COND_ALWAYS;    // Will be set with another call
+	instr.BRL.cond.tag = COND_ALWAYS;    // Can still be changed
 	instr.BRL.label    = label;
+
+	return instr;
+}
+
+/**
+ * Create label instruction.
+ *
+ * This is a meta-instruction for Target source.
+ */
+Instr label(Label in_label) {
+	Instr instr;
+	instr.tag = LAB;
+	instr.label(in_label);
+
+	return instr;
+}
+
+
+
+/**
+ * Create a conditional branch.
+ */
+Instr branch(BranchCond cond, Label label) {
+	Instr instr;
+	instr.tag       = BRL;
+	instr.BRL.cond  = cond; 
+	instr.BRL.label = label;
 
 	return instr;
 }
