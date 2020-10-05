@@ -86,11 +86,9 @@ SmallImm encodeSmallImm(RegOrImm const &src_reg) {
 
 
 /**
- * @param opcodes  current list of output instruction, out-parameter.
- *                 Passed in because some extra instruction may be needed
- *                 for v3d.
+ *
  */
-std::unique_ptr<Location> encodeSrcReg(Reg reg, Instructions &opcodes) {
+std::unique_ptr<Location> encodeSrcReg(Reg reg) {
 	bool is_none = false;
 	std::unique_ptr<Location> ret;
 
@@ -224,9 +222,7 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 			&& ((src_instr.ALU.srcA.reg.tag == REG_A && src_instr.ALU.srcA.reg.tag == src_instr.ALU.srcB.reg.tag)
 			|| (src_instr.ALU.srcA.reg.tag == REG_B && src_instr.ALU.srcA.reg.tag == src_instr.ALU.srcB.reg.tag))
 			&& (src_instr.ALU.srcA.reg.regId == src_instr.ALU.srcB.reg.regId)) {
-				Instructions dummy;
-				ret = encodeSrcReg(src_instr.ALU.srcA.reg, dummy);
-				assert(dummy.empty());
+				ret = encodeSrcReg(src_instr.ALU.srcA.reg);
 			} else {
 				breakpoint  // case not handled yet
 			}
@@ -415,8 +411,8 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		} else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
 			ret << eidx(*dst_reg);
 		} else {
-			auto src_a = encodeSrcReg(reg_a.reg, ret);
-			auto src_b = encodeSrcReg(reg_b.reg, ret);
+			auto src_a = encodeSrcReg(reg_a.reg);
+			auto src_b = encodeSrcReg(reg_b.reg);
 			assert(src_a && src_b);
 
 			switch (src_instr.ALU.op) {
@@ -436,7 +432,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 			}
 		}
 	} else if (dst_reg && reg_a.tag == REG && reg_b.tag == IMM) {
-		auto src_a = encodeSrcReg(reg_a.reg, ret);
+		auto src_a = encodeSrcReg(reg_a.reg);
 		assert(src_a);
 		SmallImm imm = encodeSmallImm(reg_b);
 
@@ -458,7 +454,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		}
 	} else if (dst_reg && reg_a.tag == IMM && reg_b.tag == REG) {
 		SmallImm imm = encodeSmallImm(reg_a);
-		auto src_b = encodeSrcReg(reg_b.reg, ret);
+		auto src_b = encodeSrcReg(reg_b.reg);
 		assert(src_b);
 
 		switch (src_instr.ALU.op) {
@@ -506,14 +502,14 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 	assert(dst_reg->to_mux() != V3D_QPU_MUX_R1);  // anything except dest of rotate
 
 	auto reg_a = instr.ALU.srcA;
-	auto src_a = encodeSrcReg(reg_a.reg, ret);    // Must be r0, checked in rotate()
+	auto src_a = encodeSrcReg(reg_a.reg);         // Must be r0, checked in rotate()
 	auto reg_b = instr.ALU.srcB;                  // reg b is either r5 or small imm
 
 	if (reg_b.tag == REG) {
 		breakpoint
 
 		assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
-		auto src_b = encodeSrcReg(reg_b.reg, ret);
+		auto src_b = encodeSrcReg(reg_b.reg);
 
 		ret << nop().comment("required for rotate")
 		    << rotate(r1, *src_a, *src_b)

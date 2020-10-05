@@ -2,7 +2,6 @@
 #include <cstdio>
 #include "Exception.h"
 
-#ifdef DEBUG
 
 namespace {
 
@@ -16,6 +15,8 @@ enum LogLevel {
 LogLevel log_level = ALL;
 
 }  // anon namespace
+
+#ifdef DEBUG
 
 void debug(const char *str) {
 	if (log_level <= LEVEL_DEBUG) {

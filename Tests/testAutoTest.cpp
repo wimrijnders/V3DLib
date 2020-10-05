@@ -10,7 +10,7 @@
 #include "catch.hpp"
 #include "QPULib.h"
 #include "Common/Seq.h"
-#include "Source/Gen.h"
+#include "support/Gen.h"
 #include "Source/Pretty.h"
 
 using namespace QPULib;

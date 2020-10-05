@@ -1,9 +1,11 @@
 // A random source-program generator
 
 #include <stdlib.h>
-#include "Source/Gen.h"
+#include "Gen.h"
 
 namespace QPULib {
+
+namespace {
 
 // ============================================================================
 // Types of expressions
@@ -29,28 +31,6 @@ int randRange(int min, int max)
   int n = r % (1+max-min);
   return min+n;
 }
-
-// ============================================================================
-// Random literals
-// ============================================================================
-
-// Generate random integer literal
-int genIntLit()
-{
-  if (randRange(0,10) == 0)
-    return rand();
-  else
-    return randRange(-50, 50);
-}
-
-// Generate random float literal
-float genFloatLit()
-{
-  float num   = (float) randRange(0, 1000);
-  float denom = (float) randRange(1, 100);
-  return num/denom;
-}
-
 // ============================================================================
 // Random variables
 // ============================================================================
@@ -467,6 +447,31 @@ Stmt* genStmt(GenOptions* opts, int depth, int length)
   assert(false);
 	return nullptr;
 }
+
+}  // anon namespace
+
+
+// ============================================================================
+// Random literals
+// ============================================================================
+
+// Generate random integer literal
+int genIntLit()
+{
+  if (randRange(0,10) == 0)
+    return rand();
+  else
+    return randRange(-50, 50);
+}
+
+// Generate random float literal
+float genFloatLit()
+{
+  float num   = (float) randRange(0, 1000);
+  float denom = (float) randRange(1, 100);
+  return num/denom;
+}
+
 
 // ============================================================================
 // Top-level program generator

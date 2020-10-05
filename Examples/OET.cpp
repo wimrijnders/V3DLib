@@ -45,14 +45,14 @@ int main(int argc, const char *argv[]) {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> a(32);
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < a.size(); i++)
     a[i] = 100-i;
 
 	k.load(&a);           // Load the uniforms
 	settings.process(k);  // Invoke the kernel
 
 	// Display the result
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < a.size(); i++)
     printf("%i: %i\n", i, (i & 1) ? a[16+(i>>1)] : a[i>>1]);
   
   return 0;
