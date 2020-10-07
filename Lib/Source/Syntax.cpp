@@ -65,11 +65,50 @@ CmpOp mkCmpOp(CmpOpId op, BaseType type) {
   return o;
 }
 
-// Is operator unary?
-bool isUnary(Op op)
-{
-  return (op.op == BNOT || op.op == ItoF || op.op == FtoI);
+// ============================================================================
+// Class Op
+// ============================================================================
+
+const char *Op::to_string() {
+	switch (op) {
+		case ADD:    return "+";
+		case SUB:    return "-";
+		case MUL:    return "*";
+		case MIN:    return " min ";
+		case MAX:    return " max ";
+		case ROTATE: return " rotate ";
+		case SHL:    return " << ";
+		case SHR:    return " >> ";
+		case USHR:   return " _>> ";
+		case ROR:    return " ror ";
+		case BOR:    return " | ";
+		case BAND:   return " & ";
+		case BXOR:   return " ^ ";
+		case BNOT:   return "~";
+		case ItoF:   return "(Float) ";
+		case FtoI:   return "(Int) ";
+		// v3d-specific
+		case TIDX:   return "tidx";
+		case EIDX:   return "eidx";
+	}
+
+	assertq(false, "opToString(): unknown opcode", true);
+	return nullptr;
 }
+
+bool Op::noParams() {
+  return (op == TIDX || op == EIDX);
+}
+
+
+bool Op::isUnary() {
+  return (op == BNOT || op == ItoF || op == FtoI);
+}
+
+// ============================================================================
+// End Class Op
+// ============================================================================
+
 
 // Is given operator commutative?
 bool isCommutative(Op op)

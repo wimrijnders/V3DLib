@@ -88,14 +88,17 @@ Word decodeSmallLit(int x)
 
 // Display a small literal.
 
-void printSmallLit(FILE *f, int x)
-{
+std::string printSmallLit(int x) {
+	std::string ret;
+
   if (x >= 32)
-    fprintf(f, "%f", smallFloats[x-32]);
+    ret << smallFloats[x-32];
   else if (x >= 16)
-    fprintf(f, "%i", x-32);
+		ret << (x-32);
   else if (x >= 0)
-    fprintf(f, "%i", x);
+		ret << x;
+
+	return ret;
 }
 
 }  // namespace QPULib

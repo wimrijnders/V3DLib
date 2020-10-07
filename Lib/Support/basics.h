@@ -55,4 +55,29 @@ inline std::vector<std::string> &operator<<(std::vector<std::string> &a, char co
 	return a;
 }
 
+
+inline std::string &operator<<(std::string &a, char const *str) {
+	a += str;
+	return a;
+}
+
+
+inline std::string &operator<<(std::string &a, std::string const &str) {
+	a += str;
+	return a;
+}
+
+
+inline std::string &operator<<(std::string &a, int val) {
+	a += std::to_string(val);
+	return a;
+}
+
+
+inline std::string &operator<<(std::string &a, float val) {
+	a += std::to_string(val);
+	return a;
+}
+
+
 #endif  // _LIB_SUPPORT_BASICS_H

@@ -8,7 +8,7 @@ namespace QPULib {
 
 int encodeSmallLit(Expr* e);
 bool isSmallLit(Expr* e);
-void printSmallLit(FILE *f, int x);
+std::string printSmallLit(int x);
 Word decodeSmallLit(int x);
 
 }  // namespace QPULib

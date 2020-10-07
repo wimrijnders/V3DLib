@@ -425,6 +425,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 				case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
 				case A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
 				case A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
+				case A_EIDX:  ret << eidx(*dst_reg);                         break;  // Note src reg's unused
 				default:
 					breakpoint  // unimplemented op
 					did_something = false;

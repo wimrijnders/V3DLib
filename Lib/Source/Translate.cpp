@@ -1,5 +1,4 @@
 #include "Translate.h"
-#include <cassert>
 #include "../SourceTranslate.h"
 #include "Source/Syntax.h"
 #include "Target/SmallLiteral.h"
@@ -45,11 +44,19 @@ ALUOp opcode(Op op)
       case BXOR:   return A_BXOR;
       case BNOT:   return A_BNOT;
       case ROTATE: return M_ROTATE;
-      default:     assert(false);
+      case TIDX: 
+				assertq(!compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
+				return A_TIDX;
+      case EIDX: 
+				assertq(!compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
+				return A_EIDX;
+      default:
+				assertq(false, "Not expecting this op for int in opcode()", true);
+				break;
     }
   }
 
-	return NOP;  // Not reachable
+	return NOP;
 }
 
 

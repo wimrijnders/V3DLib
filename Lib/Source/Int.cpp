@@ -1,6 +1,7 @@
 #include "Source/Int.h"
 #include "Source/Stmt.h"
 #include "Source/Float.h"
+#include "SourceTranslate.h"
 
 namespace QPULib {
 
@@ -71,7 +72,7 @@ IntExpr Int::operator=(IntExpr rhs)
 // Generic operations
 // ============================================================================
 
-inline IntExpr mkIntApply(IntExpr a,Op op,IntExpr b)
+inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 {
   Expr* e = mkApply(a.expr, op, b.expr);
   return mkIntExpr(e);
@@ -90,13 +91,25 @@ IntExpr getUniformInt()
   return mkIntExpr(e);
 }
 
-// A vector containing integers 0..15
-IntExpr index()
-{
-  Expr* e    = mkExpr();
-  e->tag     = VAR;
-  e->var.tag = ELEM_NUM;
-  return mkIntExpr(e);
+
+/**
+ * A vector containing integers 0..15
+ *
+ * On `vc4` this is a special register, on `v3d` this is an instruction.
+ */
+IntExpr index() {
+	if (compiling_for_vc4()) {
+	  Expr* e    = mkExpr();
+	  e->tag     = VAR;
+	  e->var.tag = ELEM_NUM;
+	  return mkIntExpr(e);
+	} else {
+  	Var v   = freshVar();  // Add dummy parameter so as not to screw the program logic too much
+		                       // This is unused, eidx has no input, only an output
+		Expr *a = mkVar(v);
+  	Expr *e =  mkApply(a, mkOp(EIDX, INT32), a);
+  	return mkIntExpr(e);
+	}
 }
 
 // A vector containing the QPU id

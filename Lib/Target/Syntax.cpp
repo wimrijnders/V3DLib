@@ -106,8 +106,70 @@ Flag negFlag(Flag flag) {
 }
 
 
+namespace {
+
+const char *pretty(Flag flag) {
+  switch (flag) {
+    case ZS: return "ZS";
+    case ZC: return "ZC";
+    case NS: return "NS";
+    case NC: return "NC";
+		default: assert(false); return "";
+  }
+}
+
+}  // anon namespace
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class BranchCond
+///////////////////////////////////////////////////////////////////////////////
+
+std::string BranchCond::to_string() const {
+	std::string ret;
+
+  switch (tag) {
+    case COND_ALL:
+      ret << "all(" << pretty(flag) << ")";
+      break;
+    case COND_ANY:
+      ret << "any(" << pretty(flag) << ")";
+      break;
+    case COND_ALWAYS:
+      ret = "always";
+      break;
+    case COND_NEVER:
+      ret = "never";
+      break;
+  }
+
+	return ret;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class AssignCond
+///////////////////////////////////////////////////////////////////////////////
+
+namespace {
+
+std::string pretty(AssignCond cond) {
+	using Tag = AssignCond::Tag;
+
+  switch (cond.tag) {
+    case Tag::ALWAYS: return "always";
+    case Tag::NEVER:  return "never";
+    case Tag::FLAG:   return pretty(cond.flag);
+		default: assert(false); return "";
+  }
+}
+
+}  // anon namespace
+
+
 AssignCond always(AssignCond::Tag::ALWAYS);  // Is a global to reduce eyestrain in gdb
 AssignCond never(AssignCond::Tag::NEVER);    // idem
+
 
 AssignCond AssignCond::negate() const {
 	AssignCond ret = *this;
@@ -124,6 +186,23 @@ AssignCond AssignCond::negate() const {
 	return ret;
 }
 
+
+std::string AssignCond::to_string() const {
+	auto ALWAYS = AssignCond::Tag::ALWAYS;
+
+	if (tag == ALWAYS) {
+		return "";
+	} else {
+		std::string ret;
+		ret << "where " << pretty(*this) << ": ";
+		return ret;
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// End Class AssignCond
+///////////////////////////////////////////////////////////////////////////////
 
 Instr Instr::nop() {
 	Instr instr;

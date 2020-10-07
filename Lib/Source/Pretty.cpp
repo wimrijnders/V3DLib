@@ -1,5 +1,5 @@
 #include "Source/Pretty.h"
-#include <cassert>
+//#include <cassert>
 #include <cstdio>
 
 
@@ -8,32 +8,6 @@ namespace QPULib {
 // ============================================================================
 // Operators
 // ============================================================================
-
-const char* opToString(Op op)
-{
-  switch (op.op) {
-    case ADD:    return "+";
-    case SUB:    return "-";
-    case MUL:    return "*";
-    case MIN:    return " min ";
-    case MAX:    return " max ";
-    case ROTATE: return " rotate ";
-    case SHL:    return " << ";
-    case SHR:    return " >> ";
-    case USHR:   return " _>> ";
-    case ROR:    return " ror ";
-    case BOR:    return " | ";
-    case BAND:   return " & ";
-    case BXOR:   return " ^ ";
-    case BNOT:   return "~";
-    case ItoF:   return "(Float) ";
-    case FtoI:   return "(Int) ";
-  }
-
-  // Not reachable
-  assert(false);
-	return nullptr;
-}
 
 const char* cmpOpToString(CmpOp op)
 {
@@ -90,21 +64,24 @@ void pretty(FILE *f, Expr* e)
       break;
 
     // Applications
-    case APPLY:
-      if (isUnary(e->apply.op)) {
+    case APPLY: {
+      if (e->apply.op.noParams()) {
+        fprintf(f, "%s()", e->apply.op.to_string());
+      } else if (e->apply.op.isUnary()) {
         fprintf(f, "(");
-        fprintf(f, "%s", opToString(e->apply.op));
+        fprintf(f, "%s", e->apply.op.to_string());
         pretty(f, e->apply.lhs);
         fprintf(f, ")");
       }
       else {
         fprintf(f, "(");
         pretty(f, e->apply.lhs);
-        fprintf(f, "%s", opToString(e->apply.op));
+        fprintf(f, "%s", e->apply.op.to_string());
         pretty(f, e->apply.rhs);
         fprintf(f, ")");
       }
-      break;
+		}
+		break;
 
     // Dereference
     case DEREF:

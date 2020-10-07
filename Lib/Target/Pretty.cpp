@@ -39,9 +39,10 @@ const char* specialStr(RegId rid)
 
   // Unreachable
   assert(false);
-	return nullptr;
+	return "";
 }
 
+/*
 void pretty(FILE *f, Reg r)
 {
   switch (r.tag) {
@@ -54,49 +55,23 @@ void pretty(FILE *f, Reg r)
     case NONE: fprintf(f, "_"); return;
   }
 }
+*/
 
-void pretty(FILE *f, Flag flag)
-{
-  switch (flag) {
-    case ZS: fprintf(f, "ZS"); return;
-    case ZC: fprintf(f, "ZC"); return;
-    case NS: fprintf(f, "NS"); return;
-    case NC: fprintf(f, "NC"); return;
+std::string pretty(Reg r) {
+	std::string ret;
+
+  switch (r.tag) {
+    case REG_A:   ret <<   "A" << r.regId; break;
+    case REG_B:   ret <<   "B" << r.regId; break;
+    case ACC:     ret << "ACC" << r.regId; break;
+    case SPECIAL: ret <<  "S[" << specialStr(r.regId) << "]"; break;
+    case NONE:    ret <<   "_"; break;
+		default: assert(false); break;
   }
+
+	return ret;
 }
 
-void pretty(FILE *f, BranchCond cond)
-{
-  switch (cond.tag) {
-    case COND_ALL:
-      fprintf(f, "all(");
-      pretty(f, cond.flag);
-      fprintf(f, ")");
-      return;
-    case COND_ANY:
-      fprintf(f, "any(");
-      pretty(f, cond.flag);
-      fprintf(f, ")");
-      return;
-    case COND_ALWAYS:
-      fprintf(f, "always");
-      return;
-    case COND_NEVER:
-      fprintf(f, "never");
-      return;
-  }
-}
-
-
-void pretty(FILE *f, AssignCond cond) {
-	using Tag = AssignCond::Tag;
-
-  switch (cond.tag) {
-    case Tag::ALWAYS: fprintf(f, "always"); return;
-    case Tag::NEVER: fprintf(f, "never"); return;
-    case Tag::FLAG: pretty(f, cond.flag); return;
-  }
-}
 
 void pretty(FILE *f, Imm imm) {
   switch (imm.tag) {
@@ -116,20 +91,25 @@ void pretty(FILE *f, Imm imm) {
   }
 }
 
-void pretty(FILE *f, SmallImm imm)
-{
+std::string pretty(SmallImm imm) {
   switch (imm.tag) {
-    case SMALL_IMM: printSmallLit(f, imm.val); return;
-    case ROT_ACC: fprintf(f, "ROT(ACC5)"); return;
-    case ROT_IMM: fprintf(f, "ROT(%i)", imm.val); return;
+    case SMALL_IMM: return printSmallLit(imm.val);
+    case ROT_ACC:   return "ROT(ACC5)";
+    case ROT_IMM: {
+			std::string ret;
+			ret << "ROT(" << imm.val << ")";
+			return ret;
+		}
+		default: assert(false); return "";
   }
 }
 
-void pretty(FILE *f, RegOrImm r)
-{
+
+std::string pretty(RegOrImm r) {
   switch (r.tag) {
-    case REG: pretty(f, r.reg); return;
-    case IMM: pretty(f, r.smallImm); return;
+    case REG: return pretty(r.reg);
+    case IMM: return pretty(r.smallImm);
+		default: assert(false); return "";
   }
 }
 
@@ -168,8 +148,11 @@ const char *pretty_op(ALUOp op) {
     case M_V8ADDS:  return "m_addsatb";
     case M_V8SUBS:  return "m_subsatb";
     case M_ROTATE:  return "rotate";
+		// v3d-specific
+    case A_TIDX:    return "tidx";
+    case A_EIDX:    return "eidx";
 		default:
-			assert(false);
+			assertq(false, "pretty_op(): Unknown alu opcode", true);
 			return "";
   }
 }
@@ -246,7 +229,6 @@ const char *pretty_instr_tag(InstrTag tag) {
 
 
 void pretty(FILE *f, Instr instr, int index) {
-	auto ALWAYS = AssignCond::Tag::ALWAYS;
   assert(f != nullptr);
 
 	if (!instr.header().empty()) {
@@ -256,43 +238,43 @@ void pretty(FILE *f, Instr instr, int index) {
 	fprintf(f, "%i: ", index);
 
   switch (instr.tag) {
-    case LI:
-      if (instr.LI.cond.tag != ALWAYS) {
-        fprintf(f, "where ");
-        pretty(f, instr.LI.cond);
-        fprintf(f, ": ");
-      }
-      fprintf(f, "LI ");
-      pretty(f, instr.LI.dest);
-      fprintf(f, " <-%s ", pretty_conditions(instr).c_str());
+    case LI: {
+			std::string buf;  // WRI tryout for output, see case ALU
+
+			buf << instr.LI.cond.to_string()
+			    << "LI " << pretty(instr.LI.dest)
+			    << " <-" << pretty_conditions(instr) << " ";
+      fprintf(f, "%s", buf.c_str());
       pretty(f, instr.LI.imm);
-      break;
-    case ALU:
-      if (instr.ALU.cond.tag != ALWAYS) {
-        fprintf(f, "where ");
-        pretty(f, instr.ALU.cond);
-        fprintf(f, ": ");
-      }
-      pretty(f, instr.ALU.dest);
-      fprintf(f, " <-%s ", pretty_conditions(instr).c_str());
-      fprintf(f, "%s", pretty_op(instr.ALU.op));
-      fprintf(f, "(");
-      pretty(f, instr.ALU.srcA);
-      fprintf(f, ", ");
-      pretty(f, instr.ALU.srcB);
-      fprintf(f, ")");
-      break;
-    case BR:
-      fprintf(f, "if ");
-      pretty(f, instr.BR.cond);
-      fprintf(f, " goto ");
+		}
+		break;
+    case ALU: {
+			std::string buf;  // WRI tryout for output, with the intention of moving f usage up and out
+			                  //     It's too much work to do this rigorously right now.
+			                  // TODO either do all code or revert.
+
+			buf << instr.ALU.cond.to_string()
+          << pretty(instr.ALU.dest)
+			    << " <-" << pretty_conditions(instr) << " "
+			    << pretty_op(instr.ALU.op) << "(" << pretty(instr.ALU.srcA) << ", " << pretty(instr.ALU.srcB) << ")";
+
+      fprintf(f, "%s", buf.c_str());
+		}
+		break;
+    case BR: {
+			std::string buf;  // WRI tryout for output
+
+      buf << "if " << instr.BR.cond.to_string() << " goto ";
+      fprintf(f, "%s", buf.c_str());
       pretty(f, instr.BR.target);
-      break;
-    case BRL:
-      fprintf(f, "if ");
-      pretty(f, instr.BRL.cond);
-      fprintf(f, " goto L%i", instr.BRL.label);
-      break;
+		}
+		break;
+    case BRL: {
+			std::string buf;  // WRI tryout for output
+      buf << "if " << instr.BRL.cond.to_string() << " goto L" << instr.BRL.label;
+      fprintf(f, "%s", buf.c_str());
+		}
+		break;
     case LAB:
       fprintf(f, "L%i:", instr.label());
       break;
@@ -300,19 +282,13 @@ void pretty(FILE *f, Instr instr, int index) {
       fprintf(f, "PRS(\"%s\")", instr.PRS);
       break;
     case PRI:
-      fprintf(f, "PRI(");
-      pretty(f, instr.PRI);
-      fprintf(f, ")");
+      fprintf(f, "PRI(%s)", pretty(instr.PRI).c_str());
       break;
     case PRF:
-      fprintf(f, "PRF(");
-      pretty(f, instr.PRF);
-      fprintf(f, ")");
+      fprintf(f, "PRF(%s)", pretty(instr.PRF).c_str());
       break;
     case RECV:
-      fprintf(f, "RECV(");
-      pretty(f, instr.RECV.dest);
-      fprintf(f, ")");
+      fprintf(f, "RECV(%s)", pretty(instr.RECV.dest).c_str());
       break;
     case SINC:
       fprintf(f, "SINC %i", instr.semaId);

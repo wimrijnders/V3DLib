@@ -124,9 +124,12 @@ enum BranchCondTag {
   , COND_NEVER
 };
 
+
 struct BranchCond {
   BranchCondTag tag;  // ALL or ANY reduction?
   Flag flag;          // Condition flag
+
+	std::string to_string() const;
 };
 
 
@@ -160,6 +163,7 @@ struct AssignCond {
 	bool is_never()  const { return tag == NEVER; }
 	AssignCond negate() const;
 
+	std::string to_string() const;
 };
 
 extern AssignCond always;  // Is a global to reduce eyestrain in gdb
@@ -279,8 +283,11 @@ enum ALUOp {
   , M_V8MAX       // Max per 8-bit element
   , M_V8ADDS      // Add with saturation per 8-bit element
   , M_V8SUBS      // Subtract with saturation per 8-bit element
-  , M_ROTATE      // Rotation (intermediate op-code)
+  , M_ROTATE,     // Rotation (intermediate op-code)
 
+	// v3d only
+	A_TIDX,
+	A_EIDX
 };
 
 // ============================================================================
