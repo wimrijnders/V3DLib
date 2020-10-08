@@ -63,6 +63,36 @@ std::string Instr::dump(bool to_stdout) const {
 
 std::string Instr::mnemonic() const {
 	std::string ret = instr_mnemonic(this);
+
+	auto indent = [] (int size) -> std::string {
+		const int TAB_POS = 42;  // tab position for signal in mnemonic
+		size++;                  // Fudging to get position right
+		std::string ret;
+
+		while (size < TAB_POS) {
+			ret << " ";
+			size++;
+		}
+
+		return ret;
+	};
+
+
+	// Output rotate signal (not done in MESA)
+	if (sig.rotate) {
+
+		// Only two possibilities here: r5 or small imm (sig for small imm not set!)
+		if (alu.mul.b == V3D_QPU_MUX_R5) {
+			ret << ", r5";
+		} else if (alu.mul.b == V3D_QPU_MUX_B) {
+			ret << ", " << raddr_b;
+		} else {
+			assertq(false, "mnemonic(): unexpected mux value for mul b for rotate", true);
+		}
+
+		ret << indent(ret.size()) << "; rot";
+	}
+
 	return ret;
 }
 
@@ -1516,11 +1546,11 @@ Instr &Instr::rotate(Location const &dst, Location const &loca, Location const &
 }
 
 
+/**
+ * TODO: research what this is for (tmu write?), no clue right now
+ */
 Instr tmuwt() {
-	// TODO: research what this is for (tmu write?), no clue right now
-
 	Instr instr;
-
 	instr.alu.add.op = V3D_QPU_A_TMUWT;
 
 	return instr;
