@@ -255,8 +255,14 @@ void pretty(FILE *f, Instr instr, int index) {
 
 			buf << instr.ALU.cond.to_string()
           << pretty(instr.ALU.dest)
-			    << " <-" << pretty_conditions(instr) << " "
-			    << pretty_op(instr.ALU.op) << "(" << pretty(instr.ALU.srcA) << ", " << pretty(instr.ALU.srcB) << ")";
+			    << " <-" << pretty_conditions(instr) << " ";
+
+			if (instr.ALU.op == A_TIDX || instr.ALU.op == A_EIDX) {
+				// These have no source operands
+				buf << pretty_op(instr.ALU.op) << "()";
+			} else {
+				buf << pretty_op(instr.ALU.op) << "(" << pretty(instr.ALU.srcA) << ", " << pretty(instr.ALU.srcB) << ")";
+			}
 
       fprintf(f, "%s", buf.c_str());
 		}
