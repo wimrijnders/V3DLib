@@ -16,6 +16,20 @@ using si = SmallImm;
 
 
 class Instr : public v3d_qpu_instr {
+
+	// Label support
+private:
+	bool m_is_label = false;
+	int  m_label = -1;
+
+public:
+	bool is_label()        const { assert(false) /* TODO */; return m_is_label; }
+	int  label()           const { assert(false) /* TODO */; assert(m_is_label); return m_label; }
+	bool is_branch_label() const { assert(false) /* TODO */; return false; }
+	int  branch_label()    const { assert(false) /* TODO */; return -1; }
+	void label_to_target(int offset) { assert(false) /* TODO */; }
+
+
 public:
 	Instr(uint64_t in_code = NOP);
 

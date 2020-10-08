@@ -24,6 +24,7 @@ private:
   SharedArray<uint32_t> paramMem;
 	Instructions          instructions;
 
+	std::vector<uint64_t> to_opcodes();
 	void emit_opcodes(FILE *f) override;
 };
 

@@ -193,16 +193,6 @@ std::string pretty_conditions(Instr const &instr) {
 	return ret;
 }
 
-
-void pretty(FILE *f, BranchTarget target)
-{
-  if (target.relative)
-    fprintf(f, "PC+1+");
-  if (target.useRegOffset)
-    fprintf(f, "A%i+", target.regOffset);
-  fprintf(f, "%i", target.immOffset);
-}
-
 }  // anon namespace
 
 
@@ -270,9 +260,8 @@ void pretty(FILE *f, Instr instr, int index) {
     case BR: {
 			std::string buf;  // WRI tryout for output
 
-      buf << "if " << instr.BR.cond.to_string() << " goto ";
+      buf << "if " << instr.BR.cond.to_string() << " goto " << instr.BR.target.to_string();
       fprintf(f, "%s", buf.c_str());
-      pretty(f, instr.BR.target);
 		}
 		break;
     case BRL: {

@@ -32,6 +32,7 @@
 #include <iostream>
 #include "../Support/basics.h"
 #include "Target/SmallLiteral.h"  // decodeSmallLit()
+#include "Target/RemoveLabels.h"
 #include "Invoke.h"
 #include "instr/Snippets.h"
 
@@ -876,18 +877,36 @@ void KernelDriver::encode(int numQPUs) {
 }
 
 
-void KernelDriver::invoke(int numQPUs, Seq<int32_t> *params) {
-	//debug("Called v3d KernelDriver::invoke()");
+/**
+ * Generate the opcodes for the currrent v3d instruction sequence
+ */
+std::vector<uint64_t> KernelDriver::to_opcodes() {
 	assert(instructions.size() > 0);
+
+	// As the final step before opcode generation, replace
+	// the labels with actual offsets
+	removeLabels(instructions);
+
+
+	std::vector<uint64_t> code;  // opcodes for v3d
+
+	for (auto const &inst : instructions) {
+		code << inst.code();
+	}
+
+	return code;
+}
+
+
+void KernelDriver::invoke(int numQPUs, Seq<int32_t> *params) {
 
 	// Assumption: code in a kernel, once allocated, doesn't change
 	if (qpuCodeMem.allocated()) {
-		assert(instructions.size() == qpuCodeMem.size());  // Tentative check, not perfect
+		assert(instructions.size() > 0);
+		assert(instructions.size() >= qpuCodeMem.size());  // Tentative check, not perfect
+		                                                   // actual opcode seq can be smaller due to removal labels
 	} else {
-		std::vector<uint64_t> code;  // opcodes for v3d
-		for (auto const &inst : instructions) {
-			code << inst.code();
-		}
+		std::vector<uint64_t> code = to_opcodes();
 
 		// Allocate memory for the QPU code
 		qpuCodeMem.alloc(code.size());

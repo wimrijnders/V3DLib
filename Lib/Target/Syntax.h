@@ -295,16 +295,16 @@ enum ALUOp {
 // ============================================================================
 
 struct BranchTarget {
-  // Branch is absolute or relative to PC+4
-  bool relative;
+  bool relative;      // Branch is absolute or relative to PC+4
 
-  // Plus value from register file A (optional)
-  bool useRegOffset;
+  bool useRegOffset;  // Plus value from register file A (optional)
   RegId regOffset;
 
-  // Plus 32-bit immediate value
-  int immOffset;
+  int immOffset;      // Plus 32-bit immediate value
+
+	std::string to_string() const;
 };
+
 
 // We allow labels for branching, represented by integer identifiers.  These
 // will be translated to actual branch targets in a linking phase.
@@ -463,11 +463,22 @@ struct Instr {
 	bool isUniformLoad() const;
 	bool isTMUAWrite() const;
 
-	Label cond_label() {
+	static Instr nop();
+
+	/////////////////////////////////////
+	// Label support
+	/////////////////////////////////////
+
+	bool is_label() const { return tag == InstrTag::LAB; }
+	bool is_branch_label() const { return tag == InstrTag::BRL; }
+
+	Label branch_label() const {
 		assert(tag == InstrTag::BRL);
 		return BRL.label;
 	}
 
+	void label_to_target(int offset);
+    
 	void label(Label val) {
 		assert(tag == InstrTag::LAB);
 		m_label = val;
@@ -478,7 +489,6 @@ struct Instr {
 		return m_label;
 	}
 
-	static Instr nop();
 
 	// ==================================================
 	// Comments 

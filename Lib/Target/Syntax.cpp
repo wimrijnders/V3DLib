@@ -201,8 +201,23 @@ std::string AssignCond::to_string() const {
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// End Class AssignCond
+// Class BranchTarget
 ///////////////////////////////////////////////////////////////////////////////
+
+std::string BranchTarget::to_string() const {
+	std::string ret;
+
+	if (relative) ret << "PC+1+";
+	if (useRegOffset) ret << "A" << regOffset << "+";
+	ret << immOffset;
+
+	return ret;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// End Class BranchTarget
+///////////////////////////////////////////////////////////////////////////////
+
 
 Instr Instr::nop() {
 	Instr instr;
@@ -248,6 +263,27 @@ Instr &Instr::pushz() {
 	}
 
 	return *this;
+}
+
+
+/**
+ * Convert branch label to branch target
+ * 
+ * @param offset  offset to the label from current instruction
+ */
+void Instr::label_to_target(int offset) {
+	assert(tag == InstrTag::BRL);
+
+	// Convert branch label (BRL) instruction to branch instruction with offset (BR)
+	// Following assumes that BranchCond field 'cond' survives the transition to another union member
+
+	BranchTarget t;
+	t.relative       = true;
+	t.useRegOffset   = false;
+	t.immOffset      = offset - 4;  // Compensate for the 4-op delay for executing a branch
+
+	tag        = InstrTag::BR;
+	BR.target  = t;
 }
 
 
