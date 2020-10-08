@@ -6,6 +6,11 @@
 #include "rotate_kernel.h"
 #include "v3d/instr/Snippets.h"
 
+//
+// Issue: disassembly code in MESA does not output rotate flag
+//
+// **NOTE:* python code changed in the meantime! This is the previous version.
+//
 ByteCode const qpu_rotate_alias_code = {
 	0x3c403180bb802000,  // eidx  r0             ; nop               ; ldunif
 	0x3c402180b682d000,  // or  rf0, r5, r5      ; nop               ; ldunif
@@ -346,12 +351,9 @@ ByteCode const qpu_rotate_alias_code = {
 
 /**
  * Derived from `def qpu_rotate_alias(asm)` in `py-videocore6/blob/master/tests/test_signals.py`
- *
- * **NOTE:** rotate with add alu not working!
- *           It is entriely possible that rotate only works via the mul alu.
- *           in that case, the rotate alu alias should refer to the mul alu rotate.
+ * **NOTE:* python code changed in the meantime! This works with the previous version.
  */
-ByteCode rotate_kernel(bool use_add_alu) {
+ByteCode rotate_kernel() {
 	using namespace QPULib::v3d::instr;
 
 	Instructions ret;
@@ -373,13 +375,8 @@ ByteCode rotate_kernel(bool use_add_alu) {
 	;
 
 	for (int i = -15; i < 16; ++i) {
-		if (use_add_alu) {
-			ret << rotate(r1, r0, i);       // add alias
-		} else {
-			ret << nop().rotate(r1, r0, i); // mul alias
-		}
-
 		ret
+			<< rotate(r1, r0, i)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, i)`
 		  << mov(tmud, r1)
 		  << mov(tmua, rf(1))
 		  << tmuwt().add(rf(1), rf(1), r3);
@@ -389,15 +386,8 @@ ByteCode rotate_kernel(bool use_add_alu) {
 	for (int i = -15; i < 16; ++i) {
 		ret
 		  << mov(r5, si(i))
-		  << nop().comment("required before rotate");
-
-		if (use_add_alu) {
-			ret << rotate(r1, r0, r5);       // add alias
-		} else {
-			ret << nop().rotate(r1, r0, r5); // mul alias
-		}
-
-		ret
+		  << nop().comment("required before rotate")
+			<< rotate(r1, r0, r5)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, r5)`
 		  << mov(tmud, r1)
 		  << mov(tmua, rf(1))
 		  << tmuwt().add(rf(1), rf(1), r3);

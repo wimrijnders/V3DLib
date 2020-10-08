@@ -96,10 +96,6 @@ Instr &Instr::comment(std::string const &msg) {
 uint64_t Instr::code() const {
 	init_ver();
 
-	//if (sig.rotate) {
-	//	breakpoint
-	//}
-
   uint64_t repack = instr_pack(&devinfo, const_cast<Instr *>(this));
 	return repack;
 }
@@ -1403,9 +1399,13 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  * ============================================================================
  * NOTES
  * -----
+ * 
+ * * Message from the `py-videocore6` maintainer:
  *
- * * Rotate signal not outputted in broadcom menmonic dump!
- *   Hoping this is not an error....
+ *    > Yes, rotate only works on mul ALU as in VC4 QPU.
+ *
+ * * Rotate signal is not outputted in broadcom menmonic dump.
+ *   This is most likely because rotate is of no use to MESA.
  *
  * * From python6 project(test_signals.py):
  *
@@ -1440,7 +1440,7 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  *   Only 2. relevant for QPULib code, skip rest for now
  *
  *   - nop required before rotate (but lines 82, 147 only done once before loop)
- *   - Both add and mul can do rotate in v3d
+ *   - Only mul alu can do rotate (vc4 AND v3d)
  *   - dst apparently always r1
  *   - src apparently always r0 for 'full rotate'; TODO likely not true, check
  *   - offset is either a SmallImm or in r5
@@ -1449,46 +1449,28 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  *
  */
 Instr rotate(Location const &dst, Location const &loca, Location const &locb) {
-	//warning("rotate called, really not sure if correct.");
-	assertq(dst.to_mux()  == V3D_QPU_MUX_R1, "rotate dest can only be r1");
-	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0");
-	assertq(locb.to_mux() == V3D_QPU_MUX_R5, "rotate src b can only be r5");
-	// TODO: check value r5 within range -15,15 inclusive, possible?
-
 	Instr instr;
-	instr.alu_add_set(r1, r0, r5);
-	instr.sig.rotate = true;
-	instr.alu.add.op = V3D_QPU_A_OR;  // mov intended
-
-	return instr;
+	return instr.rotate(dst, loca, locb);  // Use mul alu version
 }
 
 
 /**
- * Rotate for add alu.
+ * Rotate.
+ *
+ * Rotate only works via the mul ALU.
  *
  * See notes in header comment of rotate overload above.
  */
 Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb) {
-	//warning("rotate called, really not sure if correct.");
-	assertq(dst.to_mux()  == V3D_QPU_MUX_R1, "rotate dest can only be r1");
-	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0");
-	assertq(-15 <= immb.val() && immb.val() < 16, "rotate: smallimm must be in proper range");
-
 	Instr instr;
-	instr.alu_add_set(r1, r0, immb);
-	if (immb.val() != 0) {  // Don't bother rotating if there is no rotate
-		instr.sig.rotate = true;
-	}
-	instr.sig.small_imm = false;      // Should *not* be set for rotate
-	instr.alu.add.op = V3D_QPU_A_OR;  // mov intended
-
-	return instr;
+	return instr.rotate(dst, loca, immb);  // Use mul alu version
 }
 
 
 /**
  * Rotate for mul alu.
+ *
+ * Rotate only works via the mul ALU.
  *
  * See notes in header comment of rotate overload for add alu above.
  */
