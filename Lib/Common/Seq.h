@@ -5,7 +5,6 @@
 #ifndef _QPULIB_SEQ_H_
 #define _QPULIB_SEQ_H_
 #include <stdlib.h>
-//#include <assert.h>
 #include <string>
 #include "Support/debug.h"
 

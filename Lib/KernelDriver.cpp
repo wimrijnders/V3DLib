@@ -36,9 +36,6 @@ void compileKernel(Seq<Instr> &targetCode, Stmt* body) {
   CFG cfg;
   buildCFG(&targetCode, &cfg);
 
-  // Apply live-range splitter
-  //liveRangeSplit(targetCode, &cfg);
-
   // Perform register allocation
   getSourceTranslate().regAlloc(&cfg, &targetCode);
 

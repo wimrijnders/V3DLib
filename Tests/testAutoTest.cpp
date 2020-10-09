@@ -76,7 +76,7 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 
 	    Seq<Instr> targetCode;
 	    resetFreshVarGen(numVars);
-	    compileKernel(&targetCode, s);
+	    compileKernel(targetCode, s);
 	    numEmuVars = getFreshVarCount();
 	    Seq<int32_t> params;
 	    params.clear();

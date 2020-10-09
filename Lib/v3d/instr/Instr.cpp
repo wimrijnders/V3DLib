@@ -1054,7 +1054,6 @@ bool Instr::is_branch_label() const {
 
 
 void Instr::label_to_target(int offset) {
-//	breakpoint
 	assert(!m_is_label);
 	assert(0 <= branch_label());  // only do this to a branch instruction with a label
 	assert(branch.offset == 0);   // Shouldn't have been set already
@@ -1074,8 +1073,10 @@ void Instr::label_to_target(int offset) {
 /**
  * Jump relative
  *
- * NOTE: needs condition set to work!
- *       eg. `cond na0`
+ * This creates an unconditionial jump.
+ * Add conditions with the associated methods, eg. `na0()`
+ *
+ * TODO: can we get rid of this in favor of  the override?
  */
 Instr branch(int target, int current) {
 	Instr instr;
@@ -1101,8 +1102,8 @@ Instr branch(int target, int current) {
 /**
  * Jump absolute
  *
- * NOTE: needs condition set to work!
- *       eg. `cond na0`
+ * This creates an unconditionial jump.
+ * Add conditions with the associated methods, eg. `na0()`
  */
 Instr branch(int target, bool relative) {
 	Instr instr;

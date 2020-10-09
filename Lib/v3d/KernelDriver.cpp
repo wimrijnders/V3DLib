@@ -608,8 +608,12 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 }
 
 
-namespace {
-
+/**
+ * Convert conditions from Target source to v3d
+ *
+ * Incoming conditions are vc4 only, the conditions don't exist on v3d.
+ * They therefore need to be translated.
+ */
 void encodeBranchCondition(v3d::instr::Instr &dst_instr, QPULib::BranchCond src_cond) {
 	// TODO How to deal with:
 	//
@@ -647,38 +651,18 @@ void encodeBranchCondition(v3d::instr::Instr &dst_instr, QPULib::BranchCond src_
 	}
 }
 
-}  // anon namespace
 
-
+/**
+ * Create a branch instruction, including any branch conditions,
+ * from Target source instruction.
+ */
 v3d::instr::Instr encodeBranchLabel(QPULib::Instr src_instr) {
 	assert(src_instr.tag == BRL);
 	auto &instr = src_instr.BRL;
 
 	// Prepare as branch without offset but with label
-	auto dst_instr = branch(0, true); // TODO: 'relative' is a boolean, not a branch offset!
+	auto dst_instr = branch(0, true);
 	dst_instr.label(instr.label);
-	encodeBranchCondition(dst_instr, instr.cond);
-
-	return dst_instr;
-}
-
-
-/**
- * Create a branch instruction, including any branch conditions,
- * from Target source instruction
- *
- * Convert conditions from Target source to v3d.
- *
- * Incoming conditions are vc4 only, the conditions don't exist on v3d.
- * They therefore need to be translated.
- */
-v3d::instr::Instr encodeBranch(QPULib::Instr src_instr) {
-	assert(src_instr.tag == BR);
-	auto &instr = src_instr.BR;
-	assert(!instr.target.useRegOffset);  // Register offset not (yet) supported
-
-	auto dst_instr = branch(instr.target.immOffset, instr.target.relative); // TODO: 'relative' is a boolean, not a 
-	                                                                        //       branch offset!
 	encodeBranchCondition(dst_instr, instr.cond);
 
 	return dst_instr;
@@ -718,8 +702,7 @@ Instructions encodeInstr(QPULib::Instr instr) {
     case LI: ret << encodeLoadImmediate(instr); break;
 
     case BR:
-			assert(false); // Not expecting this any more
-			ret << encodeBranch(instr);
+			 assertq(false, "Not expecting BR any more, branch creation now goes with BRL", true);
 		break;
 
     case ALU: {

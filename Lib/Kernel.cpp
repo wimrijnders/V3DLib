@@ -3,7 +3,6 @@
 #include "Target/CFG.h"
 #include "Target/Liveness.h"
 #include "Target/ReachingDefs.h"
-#include "Target/LiveRangeSplit.h"
 #include "Target/Pretty.h"
 
 namespace QPULib {
@@ -97,7 +96,5 @@ void KernelBase::call() {
 #endif
 #endif
 };
-
-
 
 }  // namespace QPULib

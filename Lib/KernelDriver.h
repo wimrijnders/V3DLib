@@ -54,6 +54,14 @@ private:
 	void emit_target_code(FILE *f);
 };
 
+
+#ifdef DEBUG
+
+// Expose for unit test `AutoTest`
+void compileKernel(Seq<Instr> &targetCode, Stmt* body);
+
+#endif
+
 }  // namespace QPULib
 
 #endif  // _LIB_vc4_KERNELDRIVER_H
