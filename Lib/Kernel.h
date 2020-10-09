@@ -255,7 +255,6 @@ public:
 			}
 
 	    // Construct the AST for vc4
-	    //f(mkArg<ts>()...);
 	    apply(f, args);
 			m_vc4_driver.compile();
 

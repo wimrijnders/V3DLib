@@ -14,9 +14,7 @@ class Stmt;
 class KernelDriver {
 public:
 	KernelDriver(BufferType in_buffer_type) : buffer_type(in_buffer_type) {}
-	virtual ~KernelDriver() {
-		// TODO: shouldn't body be cleaned up?
-	}
+	virtual ~KernelDriver();
 
 	virtual void kernelFinish() {} 
 	virtual void invoke(int numQPUs, Seq<int32_t>* params) = 0;
@@ -55,14 +53,6 @@ private:
 	void print_source_code(FILE *f);
 	void emit_target_code(FILE *f);
 };
-
-
-#ifdef DEBUG
-
-// Expose for unit tests
-void compileKernel(Seq<Instr>* targetCode, Stmt* body);
-
-#endif
 
 }  // namespace QPULib
 

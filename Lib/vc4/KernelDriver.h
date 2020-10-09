@@ -11,7 +11,6 @@ namespace vc4 {
 class KernelDriver : public QPULib::KernelDriver {
 public:
 	KernelDriver();
-	~KernelDriver() override;
 
 	void kernelFinish() override;
 	void invoke(int numQPUs, Seq<int32_t>* params) override;

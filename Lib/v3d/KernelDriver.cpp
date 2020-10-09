@@ -608,29 +608,16 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 }
 
 
-/**
- * Create a branch instruction, including any branch conditions,
- * from Target source instruction
- *
- * Convert conditions from Target source to v3d.
- *
- * Incoming conditions are vc4 only, the conditions don't exist on v3d.
- * They therefore need to be translated.
- */
-v3d::instr::Instr encodeBranch(QPULib::Instr src_instr) {
-	assert(src_instr.tag == BR);
-	auto &instr = src_instr.BR;
-	assert(!instr.target.useRegOffset);  // Register offset not (yet) supported
+namespace {
 
-	auto dst_instr = branch(instr.target.immOffset, instr.target.relative);
-
+void encodeBranchCondition(v3d::instr::Instr &dst_instr, QPULib::BranchCond src_cond) {
 	// TODO How to deal with:
 	//
 	//      dst_instr.na0();  // Verified correct
 	//      dst_instr.a0();  // TODO: verify
 
-	if (instr.cond.tag == COND_ALL) {
-		switch (instr.cond.flag) {
+	if (src_cond.tag == COND_ALL) {
+		switch (src_cond.flag) {
 			case ZC:
 			case NC:
 				dst_instr.allna();
@@ -642,8 +629,8 @@ v3d::instr::Instr encodeBranch(QPULib::Instr src_instr) {
 			default:
 				debug_break("Unknown branch condition under COND_ALL");  // Warn me if this happens
 		}
-	} else if (instr.cond.tag == COND_ANY) {
-		switch (instr.cond.flag) {
+	} else if (src_cond.tag == COND_ANY) {
+		switch (src_cond.flag) {
 			case ZC:
 			case NC:
 				dst_instr.anyna();  // TODO: verify
@@ -658,6 +645,41 @@ v3d::instr::Instr encodeBranch(QPULib::Instr src_instr) {
 	} else {
 		debug_break("Branch condition not COND_ALL or COND_ANY");  // Warn me if this happens
 	}
+}
+
+}  // anon namespace
+
+
+v3d::instr::Instr encodeBranchLabel(QPULib::Instr src_instr) {
+	assert(src_instr.tag == BRL);
+	auto &instr = src_instr.BRL;
+
+	// Prepare as branch without offset but with label
+	auto dst_instr = branch(0, true); // TODO: 'relative' is a boolean, not a branch offset!
+	dst_instr.label(instr.label);
+	encodeBranchCondition(dst_instr, instr.cond);
+
+	return dst_instr;
+}
+
+
+/**
+ * Create a branch instruction, including any branch conditions,
+ * from Target source instruction
+ *
+ * Convert conditions from Target source to v3d.
+ *
+ * Incoming conditions are vc4 only, the conditions don't exist on v3d.
+ * They therefore need to be translated.
+ */
+v3d::instr::Instr encodeBranch(QPULib::Instr src_instr) {
+	assert(src_instr.tag == BR);
+	auto &instr = src_instr.BR;
+	assert(!instr.target.useRegOffset);  // Register offset not (yet) supported
+
+	auto dst_instr = branch(instr.target.immOffset, instr.target.relative); // TODO: 'relative' is a boolean, not a 
+	                                                                        //       branch offset!
+	encodeBranchCondition(dst_instr, instr.cond);
 
 	return dst_instr;
 }
@@ -674,8 +696,31 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
   // Encode core instruction
   switch (instr.tag) {
+		// Label handling
+		case LAB: {
+			// create a label meta-instruction
+			Instr n;
+			n.is_label(true);
+			n.label(instr.label());
+			
+			ret << n;
+		}
+		break;
+
+		case BRL: {
+			// Create branch instruction with label
+			ret << encodeBranchLabel(instr);
+		}
+		break;
+
+		// End label handling
+
     case LI: ret << encodeLoadImmediate(instr); break;
-    case BR: ret << encodeBranch(instr);        break;
+
+    case BR:
+			assert(false); // Not expecting this any more
+			ret << encodeBranch(instr);
+		break;
 
     case ALU: {
 			if (instr.isUniformLoad()) {
@@ -867,6 +912,7 @@ void KernelDriver::encode(int numQPUs) {
 
 	// Encode target instructions
 	_encode((uint8_t) numQPUs, m_targetCode, instructions);
+	removeLabels(instructions);
 
 	if (!local_errors.empty()) {
 		breakpoint
@@ -882,11 +928,6 @@ void KernelDriver::encode(int numQPUs) {
  */
 std::vector<uint64_t> KernelDriver::to_opcodes() {
 	assert(instructions.size() > 0);
-
-	// As the final step before opcode generation, replace
-	// the labels with actual offsets
-	removeLabels(instructions);
-
 
 	std::vector<uint64_t> code;  // opcodes for v3d
 

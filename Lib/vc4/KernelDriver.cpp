@@ -7,7 +7,6 @@ namespace QPULib {
 namespace vc4 {
 
 KernelDriver::KernelDriver() : QPULib::KernelDriver(Vc4Buffer) {}
-KernelDriver::~KernelDriver() {}
 
 
 void KernelDriver::kernelFinish() {

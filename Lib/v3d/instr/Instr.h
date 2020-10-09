@@ -20,14 +20,18 @@ class Instr : public v3d_qpu_instr {
 	// Label support
 private:
 	bool m_is_label = false;
-	int  m_label = -1;
+	int  m_label    = -1;     // Also use for branch with label
 
 public:
-	bool is_label()        const { assert(false) /* TODO */; return m_is_label; }
-	int  label()           const { assert(false) /* TODO */; assert(m_is_label); return m_label; }
-	bool is_branch_label() const { assert(false) /* TODO */; return false; }
-	int  branch_label()    const { assert(false) /* TODO */; return -1; }
-	void label_to_target(int offset) { assert(false) /* TODO */; }
+	bool is_label()        const { return m_is_label; }
+	int  label()           const { assert(m_is_label); return m_label; }
+	bool is_branch_label() const;
+	int  branch_label()    const;
+
+	void is_label(bool val) { m_is_label = val; }
+	void label(int val);
+	void label_to_target(int offset);
+	// End Label support
 
 
 public:

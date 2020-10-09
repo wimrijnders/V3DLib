@@ -1032,6 +1032,45 @@ Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
 }
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Label support
+//////////////////////////////////////////////////////////////////////////////
+
+void Instr::label(int val) {
+	assert(val >= 0);
+	m_label = val;
+}
+
+
+int Instr::branch_label() const {
+	assert(is_branch_label());
+	return m_label;
+}
+
+
+bool Instr::is_branch_label() const {
+	return type == V3D_QPU_INSTR_TYPE_BRANCH && m_label >= 0;
+}
+
+
+void Instr::label_to_target(int offset) {
+//	breakpoint
+	assert(!m_is_label);
+	assert(0 <= branch_label());  // only do this to a branch instruction with a label
+	assert(branch.offset == 0);   // Shouldn't have been set already
+
+	// branch needs 4 delay slots before executing, hence the 4
+	// This means that 3 more instructions will execute after the loop before jumping
+	branch.offset = (unsigned) 8*(offset - 4);
+
+	m_label = -1;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// End Label support
+///////////////////////////////////////////////////////////////////////////////
+
+
 /**
  * Jump relative
  *

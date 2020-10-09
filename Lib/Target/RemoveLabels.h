@@ -57,7 +57,6 @@ void removeLabels(Instructions &instrs) {
     }
   }
 
-	breakpoint
 	instrs = newInstrs;
 
   delete [] labels;

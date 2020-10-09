@@ -5,8 +5,9 @@
 #ifndef _QPULIB_SEQ_H_
 #define _QPULIB_SEQ_H_
 #include <stdlib.h>
-#include <assert.h>
+//#include <assert.h>
 #include <string>
+#include "Support/debug.h"
 
 #define INITIAL_MAX_ELEMS 1024
 
@@ -14,22 +15,38 @@ namespace QPULib {
 
 template <class T> class Seq {
 public:
-    int maxElems;
-    int numElems;
-    T* elems;
+    int maxElems = 0;
+    int numElems = 0;
+    T* elems     = nullptr;
 
     Seq() { init(INITIAL_MAX_ELEMS); }
     Seq(int initialSize) { init(initialSize); }
 
     // Copy constructor
-    Seq(const Seq<T>& seq) {
+    Seq(Seq<T> const &seq) {
+			*this = seq;
+    }
+
+		// Assignment operator - really needed! Other assignment does shallow copy
+    Seq<T> & operator=(Seq<T> const &seq) {
       init(seq.maxElems);
+
       numElems = seq.numElems;
       for (int i = 0; i < seq.numElems; i++)
         elems[i] = seq.elems[i];
-    }
 
-    ~Seq() { delete [] elems; }
+			return *this;
+    }
+		
+
+    ~Seq() {
+			if (elems == nullptr) {  // WRI debug
+				breakpoint
+			}
+
+			delete [] elems;
+			elems = nullptr;
+		}
 
 		/**
 		 * Here's one for the Hall of Shame, previous definition:
@@ -42,25 +59,32 @@ public:
 		 */
 		int size() const { return numElems; }
 
-		T &operator[](int index) { return elems[index]; }
+		T &operator[](int index) {
+			assert(0 <= index && index < numElems);
+			return elems[index];
+		}
 
     // Set capacity of sequence
     void setCapacity(int n) {
+			assert(n > 0);
 			if (n <= maxElems) {
+				assert(elems != nullptr);
 				return;
 			}
 
       maxElems = n;
       T* newElems = new T[maxElems];
-      for (int i = 0; i < numElems-1; i++)
+
+      for (int i = 0; i < numElems; i++) {
         newElems[i] = elems[i];
+			}
+
       delete [] elems;
       elems = newElems;
     }
 
     // Extend size of sequence by one
-    void extend()
-    {
+    void extend() {
       numElems++;
       if (numElems > maxElems)
         setCapacity(maxElems*2);
@@ -73,14 +97,14 @@ public:
     }
 
     // Delete last element
-    void deleteLast()
-    {
+    void deleteLast() {
       numElems--;
     }
 
     void push(T x) { append(x); }
 
     T pop() {
+			assert(numElems > 0);
       numElems--;
       return elems[numElems];
     }
@@ -90,19 +114,17 @@ public:
 
 		/**
      * Check if given value already in sequence
-		 *
-		 * **NOTE:** This is actually a set-method
 		 */
     bool member(T x) {
-      for (int i = 0; i < numElems; i++)
+      for (int i = 0; i < numElems; i++) {
         if (elems[i] == x) return true;
+			}
       return false;
     }
 
+
 		/**
      * Insert element into sequence if not already present
-		 *
-		 * **NOTE:** This is actually a set-method
 		 */
     bool insert(T x) {
       bool alreadyPresent = member(x);
@@ -131,12 +153,17 @@ public:
 			}
 		}
 
+
     // Remove element at index
     T remove(int index) {
-      assert(index < numElems);
+			assert(numElems > 0);
+      assert(0 <= index && index < numElems);
       T x = elems[index];
-      for (int j = index; j < numElems-1; j++)
+
+      for (int j = index; j < numElems-1; j++) {
         elems[j] = elems[j+1];
+			}
+
       numElems--;
       return x;
     }
@@ -149,19 +176,19 @@ public:
 
 
 	Seq<T> &operator<<(Seq<T> const &rhs) { 
-      for (int j = 0; j < rhs.size(); j++) {
-        append(rhs.elems[j]);
-			}
+		for (int j = 0; j < rhs.size(); j++) {
+			append(rhs.elems[j]);
+		}
 
 		return *this;
 	}
 
 
 private:
+
 	void init(int initialSize) {
-		maxElems = initialSize;
-		numElems = 0;
-		elems    = new T[initialSize];
+		//numElems = 0;
+    setCapacity(initialSize);
 	}
 
 
@@ -182,6 +209,7 @@ private:
 	}
 
 };
+
 
 // A small sequence is just a sequence with a small initial size
 template <class T> class SmallSeq : public Seq<T> {

@@ -21,35 +21,41 @@ namespace QPULib {
  * @param body        top of the AST
  * @param targetCode  output variable for the target code assembled from the AST and adjusted
  */
-void compileKernel(Seq<Instr>* targetCode, Stmt* body) {
-	assert(targetCode != nullptr);
+void compileKernel(Seq<Instr> &targetCode, Stmt* body) {
 	assert(body != nullptr);
 
   // Translate to target code
-  translateStmt(targetCode, body);
+  translateStmt(&targetCode, body);
 
-	getSourceTranslate().add_init(*targetCode);
+	getSourceTranslate().add_init(targetCode);
 
   // Load/store pass
-  loadStorePass(targetCode);
+  loadStorePass(&targetCode);
 
   // Construct control-flow graph
   CFG cfg;
-  buildCFG(targetCode, &cfg);
+  buildCFG(&targetCode, &cfg);
 
   // Apply live-range splitter
   //liveRangeSplit(targetCode, &cfg);
 
   // Perform register allocation
-  getSourceTranslate().regAlloc(&cfg, targetCode);
+  getSourceTranslate().regAlloc(&cfg, &targetCode);
 
   // Satisfy target code constraints
-  satisfy(targetCode);
+  satisfy(&targetCode);
 
   // Translate branch-to-labels to relative branches
-	debug_break("Do following for vc4 only");
-  removeLabels(*targetCode);
+	if (compiling_for_vc4()) {  // For v3d, it happens in `v3d::KernelDriver::to_opcodes()` 
+	  removeLabels(targetCode);
+	}
 }
+
+
+/**
+ * Don't clean up `body` here, it's a pointer to the top of the AST.
+ */
+KernelDriver::~KernelDriver() {}
 
 
 void KernelDriver::init_compile() {
@@ -72,7 +78,7 @@ void KernelDriver::compile() {
 	body = m_stmtStack.top();
 	m_stmtStack.pop();
 
-	compileKernel(&m_targetCode, body);
+	compileKernel(m_targetCode, body);
 }
 
 
