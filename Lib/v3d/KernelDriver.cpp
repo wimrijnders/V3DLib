@@ -375,7 +375,7 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 		// Set a condition flag with current instruction
 		assertq(cond.is_always(), "Currently expecting only ALWAYS here", true);
 
-		// Note that it is only set for the last in the list.
+		// Note that the condition is only set for the last in the list.
 		// Any preceding instructions are assumed to be for calculating the condition
 		Instr &instr = ret.back();
 
@@ -485,7 +485,6 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 		did_something = false;
 	}
 
-	handle_condition_tags(src_instr, ret);
 	return did_something;
 }
 
@@ -507,29 +506,26 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 	auto src_a = encodeSrcReg(reg_a.reg);         // Must be r0, checked in rotate()
 	auto reg_b = instr.ALU.srcB;                  // reg b is either r5 or small imm
 
+	// TODO: the Target source step already adds a nop. Check and add a nop here conditionally
+	ret << nop().comment("required for rotate");
+
 	if (reg_b.tag == REG) {
 		breakpoint
 
 		assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
 		auto src_b = encodeSrcReg(reg_b.reg);
 
-		ret << nop().comment("required for rotate")
-		    << rotate(r1, *src_a, *src_b)
-		    << bor(*dst_reg, r1, r1)
-		;
+		ret << rotate(r1, *src_a, *src_b);
 
 	} else if (reg_b.tag == IMM) {
-		assert(-15 <= reg_b.smallImm.val && reg_b.smallImm.val <= 16); // smallimm must be in proper range
-		                                                               // Also tested in rotate()
-		SmallImm imm = encodeSmallImm(reg_b);
+		SmallImm imm = encodeSmallImm(reg_b);  // Legal values small imm tested in rotate()
 
-		ret << nop().comment("required for rotate")
-		    << rotate(r1, *src_a, imm)
-		    << bor(*dst_reg, r1, r1)
-		;
+		ret << rotate(r1, *src_a, imm);
 	} else {
 		breakpoint  // Unhandled combination of inputs/output
 	}
+
+	ret << bor(*dst_reg, r1, r1);
 
 	return true;
 }
@@ -560,7 +556,6 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 			ret << mov(*dst, imm);
 
 			if (left_shift > 0) {
-				warning("extra instruction may screw up branching!");
 				ret << shl(*dst, *dst, SmallImm(left_shift));
 			}
 
@@ -604,6 +599,26 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 	}
 
 	setCondTag(instr.cond, ret);
+	return ret;
+}
+
+
+Instructions encodeALUOp(QPULib::Instr instr) {
+	Instructions ret;
+
+	if (instr.isUniformLoad()) {
+		Reg dst_reg = instr.ALU.dest;
+		uint8_t rf_addr = to_waddr(dst_reg);
+		ret << ldunifrf(rf_addr);
+ 	} else if (translateRotate(instr, ret)) {
+		handle_condition_tags(instr, ret);
+	} else if (translateOpcode(instr, ret)) {
+		handle_condition_tags(instr, ret);
+	} else {
+		assertq(false, "Missing translate operation for ALU instruction", true);  // Something missing, check
+	}
+
+	assert(!ret.empty());
 	return ret;
 }
 
@@ -680,7 +695,29 @@ Instructions encodeInstr(QPULib::Instr instr) {
 
   // Encode core instruction
   switch (instr.tag) {
+		//
+		// Unhandled tags - ignored or should have been handled beforehand
+		//
+    case BR:
+			 assertq(false, "Not expecting BR any more, branch creation now goes with BRL", true);
+		break;
+
+    case INIT_BEGIN:
+    case INIT_END:
+    case END:         // vc4 end program marker
+			assertq(false, "Not expecting INIT or END tag here", true);
+		break;
+
+    // Print instructions - ignored
+    case PRI:
+    case PRS:
+    case PRF:
+			no_output = true;
+		break;
+
+		//
 		// Label handling
+		//
 		case LAB: {
 			// create a label meta-instruction
 			Instr n;
@@ -697,46 +734,14 @@ Instructions encodeInstr(QPULib::Instr instr) {
 		}
 		break;
 
-		// End label handling
-
-    case LI: ret << encodeLoadImmediate(instr); break;
-
-    case BR:
-			 assertq(false, "Not expecting BR any more, branch creation now goes with BRL", true);
-		break;
-
-    case ALU: {
-			if (instr.isUniformLoad()) {
-				Reg dst_reg = instr.ALU.dest;
-				uint8_t rf_addr = to_waddr(dst_reg);
-				ret << ldunifrf(rf_addr);
-      } else if (translateRotate(instr, ret)) {
-				// all is well
-      } else if (translateOpcode(instr, ret)) {
-				// all is well
-      } else {
-				breakpoint  // Something missing, check
-				fatal("Missing translate operation for ALU instruction");
-			}
-    }
-		break;
-
-    case INIT_BEGIN:
-    case INIT_END:
-    case END:         // vc4 end program marker
-			assert(false);  // Should not receive this here
-		break;
-
-    case TMU0_TO_ACC4: ret << nop().ldtmu(r4); break;
-		case NO_OP:        ret << nop();           break;
-		case TMUWT:        ret << tmuwt();         break;
-
-    // Print instructions - ignored
-    case PRI:
-    case PRS:
-    case PRF:
-			no_output = true;
-		break;
+		//
+		// Handled tags
+		//
+    case LI:           ret << encodeLoadImmediate(instr); break;
+    case ALU:          ret << encodeALUOp(instr);         break;
+    case TMU0_TO_ACC4: ret << nop().ldtmu(r4);            break;
+		case NO_OP:        ret << nop();                      break;
+		case TMUWT:        ret << tmuwt();                    break;
 
 		default:
   		fatal("v3d: missing case in encodeInstr");

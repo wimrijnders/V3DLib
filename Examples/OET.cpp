@@ -18,7 +18,6 @@ void oet(Ptr<Int> p) {
 
     Int evens3 = rotate(evens2, 15);
     Int odds3  = odds2;
-
     Where (index() != 15)
       odds2 = min(evens3, odds3);
     End

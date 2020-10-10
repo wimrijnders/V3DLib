@@ -122,4 +122,5 @@ TEST_CASE("Check correct output example programs for all three run options", "[c
 	SECTION("Check output Hello")   { check_output_example("Hello"); }
 	SECTION("Check output GCD")     { check_output_example("GCD"); }
 	SECTION("Check output Tri")     { check_output_example("Tri"); }
+	SECTION("Check output OET")     { check_output_example("OET"); }
 }
