@@ -1,9 +1,9 @@
 #include <QPULib.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
-#include <CmdParameters.h>
 #include "Support/Settings.h"
+#include "Support/Timer.h"
+#include <CmdParameters.h>
 
 using namespace QPULib;
 using std::string;
@@ -276,19 +276,6 @@ void run_kernel() {
 
 
 // ============================================================================
-// Local functions
-// ============================================================================
-
-void end_timer(timeval tvStart) {
-  timeval tvEnd, tvDiff;
-  gettimeofday(&tvEnd, NULL);
-  timersub(&tvEnd, &tvStart, &tvDiff);
-
-  printf("%ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
-}
-
-
-// ============================================================================
 // Main
 // ============================================================================
 
@@ -296,8 +283,7 @@ int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-  timeval tvStart;
-  gettimeofday(&tvStart, NULL);
+	Timer timer;
 
 	switch (settings.kernel) {
 		case 0: run_kernel();  break;	
@@ -305,8 +291,11 @@ int main(int argc, const char *argv[]) {
 	}
 
 	auto name = kernels[settings.kernel];
-	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
-	end_timer(tvStart);
+
+	if (!settings.silent) {
+		printf("Ran kernel '%s' with %d QPU's\n", name, settings.num_qpus);
+	}
+	timer.end(!settings.silent);
 
   return 0;
 }

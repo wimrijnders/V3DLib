@@ -7,12 +7,12 @@
  *     sudo obj-qpu/bin/Mandelbrot -k=2 -pgmmpoep
  *
  ******************************************************************************/
-#include <sys/time.h>
 #include <string>
 #include <QPULib.h>
 #include <CmdParameters.h>
-#include "vc4/RegisterMap.h"
+#include "Support/Timer.h"
 #include "Support/Settings.h"
+#include "vc4/RegisterMap.h"
 
 
 using namespace QPULib;
@@ -79,20 +79,8 @@ struct MandSettings : public Settings {
 		kernel      = params.parameters()["Kernel"]->get_int_value();
 		kernel_name = params.parameters()["Kernel"]->get_string_value();
 		output_pgm  = params.parameters()["Output PGM file"]->get_bool_value();
-		//output();
 
 		return ret;
-	}
-
-
-	void output() {
-		printf("Settings:\n");
-		printf("  kernel index: %d\n", kernel);
-		printf("  kernel name : %s\n", kernel_name.c_str());
-		printf("  Num QPU's   : %d\n", num_qpus);
-		printf("  Num items   : %d\n", num_items());
-		printf("  Output PGM  : %s\n", output_pgm?"true":"false");
-		printf("\n");
 	}
 } settings;
 
@@ -143,7 +131,8 @@ void mandelbrotCore(
   Float reC, Float imC,
   Int &resultIndex,
   Int &numIterations,
-  Ptr<Int> &result) {
+  Ptr<Int> &result
+) {
   Float re = reC;
   Float im = imC;
   Int count = 0;
@@ -179,7 +168,8 @@ void mandelbrot_single(
   Float offsetX, Float offsetY,
   Int numStepsWidth, Int numStepsHeight,
   Int numIterations,
-  Ptr<Int> result) {
+  Ptr<Int> result
+) {
   For (Int yStep = 0, yStep < numStepsHeight, yStep++)
     For (Int xStep = 0, xStep < numStepsWidth, xStep = xStep + 16)
       Int xIndex = index() + xStep;
@@ -204,7 +194,8 @@ void mandelbrot_multi(
   Float offsetX, Float offsetY,
   Int numStepsWidth, Int numStepsHeight,
   Int numIterations,
-  Ptr<Int> result) {
+  Ptr<Int> result
+) {
   Int inc = numQPUs();
 
   For (Int yStep = 0, yStep < numStepsHeight, yStep = yStep + inc)
@@ -287,15 +278,6 @@ void output_pgm(Array &result) {
 }
 
 
-void end_timer(timeval tvStart) {
-  timeval tvEnd, tvDiff;
-  gettimeofday(&tvEnd, NULL);
-  timersub(&tvEnd, &tvStart, &tvDiff);
-
-  printf("%ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
-}
-
-
 void run_qpu_kernel( decltype(mandelbrot_single) &kernel) {
   auto k = compile(kernel);
 
@@ -323,8 +305,7 @@ void run_qpu_kernel( decltype(mandelbrot_single) &kernel) {
  * Run a kernel as specified by the passed kernel index
  */
 void run_kernel(int kernel_index) {
-  timeval tvStart;
-  gettimeofday(&tvStart, NULL);
+	Timer timer;
 
 	switch (kernel_index) {
 		case 0: run_qpu_kernel(mandelbrot_multi);  break;	
@@ -341,8 +322,12 @@ void run_kernel(int kernel_index) {
 	}
 
 	auto name = kernels[kernel_index];
-	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
-	end_timer(tvStart);
+
+	timer.end(!settings.silent);
+
+	if (!settings.silent) {
+		printf("Ran kernel '%s' with %d QPU's\n", name, settings.num_qpus);
+	}
 }
 
 

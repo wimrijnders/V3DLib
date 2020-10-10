@@ -204,6 +204,7 @@ bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 
 	output_code  = params.parameters()["Output Generated Code"]->get_bool_value();
 	compile_only = params.parameters()["Compile Only"]->get_bool_value();
+	silent       = params.parameters()["Disable logging"]->get_bool_value();
 	run_type     = params.parameters()["Select run type"]->get_int_value();
 #ifdef QPU_MODE
 	show_perf_counters  = params.parameters()["Performance Counters"]->get_bool_value();
@@ -225,7 +226,7 @@ bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 		}
 	}
 
-	if (params.parameters()["Disable logging"]->get_bool_value()) {
+	if (silent) {
 		disable_logging();
 	}
 

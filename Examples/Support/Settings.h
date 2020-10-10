@@ -1,5 +1,5 @@
-#ifndef _EXAMPLE_SUPPORT_SETINGS_H
-#define _EXAMPLE_SUPPORT_SETINGS_H
+#ifndef _EXAMPLE_SUPPORT_SETTINGS_H
+#define _EXAMPLE_SUPPORT_SETTINGS_H
 #include <cassert>
 #include <string>
 #include <CmdParameters.h>
@@ -13,6 +13,7 @@ struct Settings {
 
 	bool output_code;
 	bool compile_only;
+	bool silent;
 	int  run_type;
 	int  num_qpus = 1;
 #ifdef QPU_MODE
@@ -22,7 +23,6 @@ struct Settings {
 	CmdParameters const &base_params(bool use_numqpus = false);
 	int init(int argc, const char *argv[]);
 	bool process(CmdParameters *in_params = nullptr, bool use_numqpus = false);
-
 	void process(KernelBase &k);
 
 protected:
@@ -36,4 +36,4 @@ private:
 
 }  // namespace
 
-#endif  // _EXAMPLE_SUPPORT_SETINGS_H
+#endif  // _EXAMPLE_SUPPORT_SETTINGS_H

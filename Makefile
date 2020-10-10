@@ -98,11 +98,7 @@ TESTS_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(TESTS_FILES))
 
 
 # Example object files
-EXAMPLES_EXTRA = \
-	Rot3DLib/Rot3DKernels.o \
-	Support/Settings.o
-
-EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
+EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(EXAMPLES_EXTRA))
 #$(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files

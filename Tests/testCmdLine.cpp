@@ -96,6 +96,7 @@ void make_test_dir() {
 
 }  // anon namespace
 
+
 //
 // This test is fairly useless; it just checks if both the shell script and the C++ program
 // fail or succeed at the same time.
