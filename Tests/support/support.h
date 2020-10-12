@@ -20,6 +20,7 @@ template<typename T>
 using SharedArray = QPULib::SharedArray<T>;
 
 double get_time();
+bool running_on_v3d();
 
 void match_kernel_outputs(
 	std::vector<uint64_t> const &expected,

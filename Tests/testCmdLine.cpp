@@ -1,5 +1,6 @@
 #include "catch.hpp"
 #include "../Lib/Support/Platform.h"
+#include "support/support.h"  // running_on_v3d()
 
 
 //
@@ -137,7 +138,18 @@ TEST_CASE("Check correct output example programs for all three run options", "[c
 	// For vc4, there is difference in output due to rounding.
 	// In addition, at time of writing the multi-QPU version of kernel 2 is not working
 
-	// v3d
-	SECTION("Check output Rot3D")   { check_output_example("Rot3D", "-d"); }
-	SECTION("Check output Rot3D")   { check_output_example("Rot3D", "-d -k=1"); }
+	if (running_on_v3d()) {
+		SECTION("Check output Rot3D")   { check_output_example("Rot3D", "-d -k=2"); }
+		SECTION("Check output Rot3D")   { check_output_example("Rot3D", "-d -k=1"); }
+	} else {
+		// These should be no problem
+		check_output_run("Rot3D", INTERPRETER, "-d -k=1");
+		check_output_run("Rot3D", EMULATOR,    "-d -k=1");
+		check_output_run("Rot3D", INTERPRETER, "-d -k=2");
+		check_output_run("Rot3D", EMULATOR,    "-d -k=2");
+
+		// Running on QPU will fail due to rounding errors
+		// This gets checked in `testRot3D`, where the kernels are run directly
+		//check_output_run("Rot3D", QPU, "-d -k=1");
+	}
 }

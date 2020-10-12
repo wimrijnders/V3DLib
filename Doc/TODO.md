@@ -5,7 +5,8 @@
 
 - [ ] Figure out when and how `sig_magic` and `sig_addr` are used.
       Clues: `mesa/src/compiler/vir_to_qpu.c`, `mesa/src/broadcom/qpu/qpu_disasm.c`
-- [ ] Add performance counters (see `Rot3D` for usage under `vc4`
+- [ ] Add performance counters (see `Rot3D` for usage under `vc4`)
+- [ ] Fix unit test for Rot3D kernel 2 with >1 QPU
 
 
 ## Makefile

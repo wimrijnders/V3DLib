@@ -92,7 +92,21 @@ So, calculation:
 - The improved hardware in `v3d` may compensate for performance.
 - v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
 
-## Differences in execution
+
+## Differences in execution between `vc4` and `v3d`
+
+# 'vc4': Float multiplication on the QPU always rounds downwards
+
+*NOTE: This issue is for `vc4` only; `v3d` does do rounding as expected.*
+
+Most CPU's make an effort to round up or down to the value nearest to the actual result of a multiplication. The `ARM` is one of those. The QPU's of `vc4`, however, do not make such an effort: *they always round downward*.
+
+This means that there will be small differences in the outputs of the exact same calculation on the CPU and a QPU; at first only in the least significant bits, but if you continue calculating, the differences will accumulate.
+
+**Expect results to differ between CPU and QPU calculations for `vc4`.**
+
+Of special note, the results between the `QPULib` interpreter and emulator, which run on the CPU,
+and the  `vc4` hardware will likely be different.
 
 
 ### `vc4` integer multiplication with negative integers yields unexpected results
@@ -120,17 +134,6 @@ As long a you run `compile()` on a single thread at a time, you're OK.
 
 **TODO:** examine further.
 
-
------
-# Float multiplication on the QPU always rounds downwards
-
-Most CPU's make an effort to round up or down to the value nearest to the actual result of a multiplication. The `ARM` is one of those. The QPU's of the `VideoCore`, however, do not make such an effort: *they always round downward*.
-
-This means that there will be small differences in the outputs of the exact same calculation on the CPU and a QPU; at first only in the least significant bits, but if you continue calculating, the differences will accumulate.
-
-**Expect results to differ between CPU and QPU calculations.**
-
-Of special note, the results between the `QPULib` interpreter and the actual hardware `VideoCore` will likely be different.
 
 
 -----

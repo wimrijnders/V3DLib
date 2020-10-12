@@ -43,3 +43,25 @@ void match_kernel_outputs(
 			REQUIRE(Instr::compare_codes(expected[n], received[n]));
 		}
 }
+
+
+/**
+ * Check if running on v4d
+ *
+ * Supplies a one-time warning if not.
+ *
+ * @param return true if running on v3d, false otherwise
+ */
+bool running_on_v3d() {
+	static bool did_first = false;
+
+	if (Platform::instance().has_vc4) {
+		if (!did_first) {
+			printf("Skipping v3d tests with calls to driver\n");
+			did_first = true;
+		}
+		return false;
+	}
+
+	return true;
+}

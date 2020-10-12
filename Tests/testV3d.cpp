@@ -57,21 +57,8 @@ uint64_t do_nothing[] = {
 // Test support routines
 //////////////////////////////////
 
-
-
-//////////////////////////////////
-// v3d routines
-//////////////////////////////////
-
 bool v3d_init() {
-	static bool did_first = false;
-
-	// Skip test if not on Pi4
-	if (Platform::instance().has_vc4) {
-		if (!did_first) {
-			printf("Skipping v3d tests with calls to driver\n");
-			did_first = true;
-		}
+	if (!running_on_v3d()) {
 		return false;
 	}
 
@@ -81,6 +68,11 @@ bool v3d_init() {
 
 }  // anon namespace
 
+
+
+//////////////////////////////////
+// The actual tests
+//////////////////////////////////
 
 /*
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d

@@ -127,6 +127,7 @@ TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
 	using namespace QPULib::v3d;
 
 	SECTION("Test condition push a") {
+		if (!running_on_v3d()) return;
 		const int DATA_SIZE = 16;
 
 		ByteCode bytecode = qpu_cond_push_a();
