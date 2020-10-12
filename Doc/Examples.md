@@ -373,13 +373,12 @@ Times taken to rotate an object with 192,000 vertices:
 Non-blocking loads and stores (vector version 2) give a
 significant performance boost: in this case a factor of 2.
 
-Unforunately, the program does not scale well to multiple QPUs.  I'm
-not entirely sure why, but my suspicion is that the compute-to-memory
-ratio is too low: we do only 2 arithmetic operations for every memory
-access, perhaps overwhelming the memory subsystem.  If there are
-possibilities for QPULib to generate better code here, hopefully they
-will be discovered in due course.  (Do let me know if you
-have any suggestions.)
+This program does not scale well to multiple QPUs.  
+This is likely becaue the compute-to-memory ratio is too low:
+only 2 arithmetic operations are done for every memory access, perhaps overwhelming the memory subsystem.
+
+Example `Mandelbrot` had a much better compute-to-memory ratio, and is therefore a better candidate for
+measuring performance with respect to scaling.
 
 ## Example 3: 2D Convolution (Heat Transfer)
 
