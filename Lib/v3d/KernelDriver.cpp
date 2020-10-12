@@ -637,10 +637,12 @@ Instructions encodeALUOp(QPULib::Instr instr) {
 void encodeBranchCondition(v3d::instr::Instr &dst_instr, QPULib::BranchCond src_cond) {
 	// TODO How to deal with:
 	//
-	//      dst_instr.na0();  // Verified correct
-	//      dst_instr.a0();  // TODO: verify
+	//      dst_instr.na0();
+	//      dst_instr.a0();
 
-	if (src_cond.tag == COND_ALL) {
+	if (src_cond.tag == COND_ALWAYS) {
+		return;  // nothing to do
+	} else if (src_cond.tag == COND_ALL) {
 		switch (src_cond.flag) {
 			case ZC:
 			case NC:
