@@ -35,7 +35,7 @@ enum RunType {
 };
 
 
-void check_output_run(std::string const &program, RunType run_type) {
+void check_output_run(std::string const &program, RunType run_type, std::string const &extra_params) {
 	std::string params = "";
 	std::string output_filename = "obj/test/";
 	std::string expected_filename = "Tests/data/";
@@ -57,6 +57,12 @@ void check_output_run(std::string const &program, RunType run_type) {
 		break;
 	}
 
+	if (!extra_params.empty()) {
+		params += " ";
+		params += extra_params;
+		params += " ";
+	}
+
 	output_filename   += "_output.txt";
 
 	std::string cmdline = SUDO;
@@ -71,10 +77,10 @@ void check_output_run(std::string const &program, RunType run_type) {
 }
 
 
-void check_output_example(std::string const &program) {
-		check_output_run(program, QPU);
-		check_output_run(program, INTERPRETER);
-		check_output_run(program, EMULATOR);
+void check_output_example(std::string const &program, std::string const &extra_params = "") {
+	check_output_run(program, QPU, extra_params);
+	check_output_run(program, INTERPRETER, extra_params);
+	check_output_run(program, EMULATOR, extra_params);
 }
 
 
@@ -124,4 +130,14 @@ TEST_CASE("Check correct output example programs for all three run options", "[c
 	SECTION("Check output GCD")     { check_output_example("GCD"); }
 	SECTION("Check output Tri")     { check_output_example("Tri"); }
 	SECTION("Check output OET")     { check_output_example("OET"); }
+
+	// Rot3D, the expected output is taken from the scalar kernel
+	// For v3d, the match should be exact in all cases.
+	//
+	// For vc4, there is difference in output due to rounding.
+	// In addition, at time of writing the multi-QPU version of kernel 2 is not working
+
+	// v3d
+	SECTION("Check output Rot3D")   { check_output_example("Rot3D", "-d"); }
+	SECTION("Check output Rot3D")   { check_output_example("Rot3D", "-d -k=1"); }
 }
