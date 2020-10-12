@@ -17,7 +17,6 @@
     * [Scalar version](#scalar-version-1)
     * [Vector version 1](#vector-version-1-1)
     * [Vector version 2: non-blocking loads and stores](#vectorversion2nonblockingloadsandstores)
-    * [Vector version 3: multiple QPUs](#vectorversion3multipleqpus)
     * [Performance](#performance)
 * [Example 3: 2D Convolution (Heat Transfer)](#example32dconvolutionheattransfer)
     * [Scalar version](#scalar-version-2)
@@ -261,8 +260,7 @@ The following function will rotate `n` vertices about the Z axis by
 &theta; degrees.
 
 ```c++
-void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y)
-{
+void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
   for (int i = 0; i < n; i++) {
     float xOld = x[i];
     float yOld = y[i];
@@ -290,8 +288,7 @@ above: the only difference is that each loop iteration now processes
 16 vertices at a time rather than a single vertex.
 
 ```c++
-void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
+void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   For (Int i = 0, i < n, i = i+16)
     Float xOld = x[i];
     Float yOld = y[i];
@@ -301,127 +298,67 @@ void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
 }
 ```
 
-Unfortunately, this simple solution is not the most efficient: it will
-spend a lot of time blocked on the memory subsystem, waiting for
-vector loads and stores to complete.  To get good performance on a
-QPU, it is desirable to overlap memory access with computation, and
-the current QPULib compiler is not clever enough to do this
-automatically.  We can however solve the problem manually, using
-*non-blocking* load and store operations.
+This simple solution will spend a lot of time blocked on the memory subsystem, waiting for
+vector loads and stores to complete.
+To get good performance on a QPU, it is desirable to overlap memory access with computation, and
+the current QPULib compiler is not clever enough to do this automatically (TODO!).
+We can however solve the problem manually, using *non-blocking* load and store operations.
 
 ### Vector version 2: non-blocking loads and stores
 
-QPULib supports non-blocking loads through two functions:
+QPULib supports non-blocking loads through these functions:
 
-  * Given a vector of addresses `p`, the
-    statement `gather(p)` will *request* 
-    the value at each address in `p`.
+  * `gather(p)`   - Given a vector of addresses `p`, *request* the value at each address in `p`.
+                    Will block if all corresponding `receive()` calls have not been completed.
+  * `receive(x)`  - Loads values collected by `gather(p)` and stores these in `x`.
+                    Will block if the values are not yet available.
+  * `store(x, p)` - Given vector of addresses `p` and a vector `x`,
+                    write vector `x` to the memory beginning at the first address in `p`.
+                    Will block until a previous `store()` has completed, iotherwise does not block QPU execution.
 
-  * A subsequent a call to `receive(x)`, where `x` is vector,
-    will block until the value at each address in
-    `p` has been loaded into `x`.
-
-Unlike the statement `x = *p`, the statement `gather(p)` will request
-the value *at each address* in `p`, not the vector beginning at the
-first address in `p`.  In addition, `gather(p)` does not
-block until the loads have completed: between `gather(p)`
-and `receive(x)` the program is free to perform computation *in
-parallel* with the slow memory accesses.
+Between `gather(p)` and `receive(x)` the program is free to perform computation *in parallel*
+with the (slow) memory accesses.
 
 Inside the QPU, an 4-element FIFO is used to hold `gather`
 requests: each call to `gather` will enqueue the FIFO, and each call
 to `receive` will dequeue it.  This means that a maximum of four
 `gather` calls may be issued before a `receive` must be called.
 
-Non-blocking stores are not as powerfull, but they are
-still useful:
+For `vc4`, unlike the statement `*p = x`, the statement `store(p, x)` does not wait until `x` has been written.
+Future improvements to QPULib could allow several outstanding stores instead of just one.
 
-  * Given vector of addresses `p` and a vector `x`,
-    the statement `store(x, p)` will write
-    vector `x` to memory beginning at the first address in `p`.
-
-Unlike the statement `*p = x`, the statement `store(p, x)` will not
-wait until `x` has been written.  However, any subsequent call to
-`store` will wait until the previous store has completed.  (Future
-improvements to QPULib could allow several outstanding stores instead of
-just one.)
-
-We are now ready to implement a vectorised rotation routine that
-overlaps memory access with computation:
+A vectorised rotation routine that overlaps memory access with computation might be as follows:
 
 ```c++
-void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
-  // Function index() returns vector <0 1 2 ... 14 15>
-  Ptr<Float> p = x + index();
-  Ptr<Float> q = y + index();
-  // Pre-fetch first two vectors
-  gather(p); gather(q);
-
-  Float xOld, yOld;
-  For (Int i = 0, i < n, i = i+16)
-    // Pre-fetch two vectors for the *next* iteration
-    gather(p+16); gather(q+16);
-    // Receive vectors for *this* iteration
-    receive(xOld); receive(yOld);
-    // Store results
-    store(xOld * cosTheta - yOld * sinTheta, p);
-    store(yOld * cosTheta + xOld * sinTheta, q);
-    p = p+16; q = q+16;
-  End
-
-  // Discard pre-fetched vectors from final iteration
-  receive(xOld); receive(yOld);
-}
-```
-
-While the outputs from one iteration are being computed and written to
-memory, the inputs for the *next* iteration are being loaded *in
-parallel*.
-
-### Vector version 3: multiple QPUs
-
-QPULib provides a simple mechanism to execute the same kernel on
-multiple QPUs in parallel: before invoking a kernel `k`, call
-`k.setNumQPUs(n)` to use `n` QPUs.
-For this to be useful the programmer needs a way to tell
-each QPU to compute a different part of the overall result.
-Accordingly,
-QPULib provides the `me()` function which returns the unique id of the
-QPU that called it.  More specifically, `me()` returns a vector of
-type `Int` with all elements holding the QPU id.  In addition, the
-`numQPUs()` function returns the number of QPUs that are executing the
-kernel.  A QPU id will always lie in the range `0` to `numQPUs()-1`.
-
-Now, to spread the `rot3D` computation accross multiple QPUs we will
-use a loop increment of `16*numQPUs()` instead of `16`, and offset the
-initial pointers `x` and `y` by `16*me()`.
-
-```c++
-void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
+void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   Int inc = numQPUs() << 4;
-  Ptr<Float> p = x + index() + (me() << 4);
-  Ptr<Float> q = y + index() + (me() << 4);
+  Ptr<Float> p = x;
+  Ptr<Float> q = y;
   gather(p); gather(q);
-
+ 
   Float xOld, yOld;
   For (Int i = 0, i < n, i = i+inc)
-    gather(p+inc); gather(q+inc);
+    gather(p+inc); gather(q+inc); 
     receive(xOld); receive(yOld);
     store(xOld * cosTheta - yOld * sinTheta, p);
     store(yOld * cosTheta + xOld * sinTheta, q);
     p = p+inc; q = q+inc;
   End
 
-  // Discard pre-fetched vectors from final iteration
   receive(xOld); receive(yOld);
 }
 ```
 
+While the outputs from one iteration are being computed and written to
+memory, the inputs for the *next* iteration are being loaded *in parallel*.
+
+Variable `inc` is there to take into account multiple QPU's running.
+Each QPU will handle a distinct block of 16 elements.
+
 ### Performance
 
 Times taken to rotate an object with 192,000 vertices:
+(**TODO** Make a test case using the actual Example program with supplied inputs)
 
 ```
   Version  | Number of QPUs | Run-time (s) |

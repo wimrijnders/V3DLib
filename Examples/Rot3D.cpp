@@ -19,7 +19,7 @@ const float THETA = (float) 3.14159;
 // Command line handling
 // ============================================================================
 
-std::vector<const char *> const kernels = { "3", "2", "1", "cpu" };  // First is default
+std::vector<const char *> const kernels = { "2", "1", "cpu" };  // First is default
 
 
 CmdParameters params = {
@@ -103,8 +103,8 @@ void run_qpu_kernel(KernelType &kernel) {
   k.load(SIZE, cosf(THETA), sinf(THETA), &x, &y);
   settings.process(k);
 
-	timer.end(!settings.silent);
 	disp_arrays(x, y);
+	timer.end(!settings.silent);
 }
 
 
@@ -116,12 +116,12 @@ void run_scalar_kernel() {
   float* y = new float[SIZE];
 	init_arrays(x, y);
 
-	if (settings.compile_only) {
+	if (!settings.compile_only) {
 	  rot3D(SIZE, cosf(THETA), sinf(THETA), x, y);
 	}
 
-	timer.end(!settings.silent);
 	disp_arrays(x, y);
+	timer.end(!settings.silent);
 	delete [] x;
 	delete [] y;
 }
@@ -132,10 +132,9 @@ void run_scalar_kernel() {
  */
 void run_kernel(int kernel_index) {
 	switch (kernel_index) {
-		case 0: run_qpu_kernel(rot3D_3);  break;	
-		case 1: run_qpu_kernel(rot3D_2);  break;	
-		case 2: run_qpu_kernel(rot3D_1);  break;	
-		case 3: run_scalar_kernel(); break;
+		case 0: run_qpu_kernel(rot3D_2);  break;	
+		case 1: run_qpu_kernel(rot3D_1);  break;	
+		case 2: run_scalar_kernel(); break;
 	}
 
 	auto name = kernels[kernel_index];

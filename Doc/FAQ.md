@@ -17,7 +17,7 @@ This also serves as a central location for essential info.
 # What are the differences between VideoCore IV and VI?
 
 There is no architecture specification available yet for VC5 and/or VC6.
-The stuff below is cobbled from whatever others have found out.
+The stuff below is cobbled from whatever I and others have found out.
 The strategy appears to be to investigate the available open source drivers.
 
 [Source](https://www.raspberrypi.org/forums/viewtopic.php?t=244519)
@@ -33,14 +33,14 @@ The strategy appears to be to investigate the available open source drivers.
 
 Here is an overview for the easily comparable stuff:
 
-| Item                | vc4          | v3d | Comment |
-|---------------------|--------------|-----|-|
-| **Clock speed :**   | 400MHz (Pi3+)  | 500MHz | |
-| **Num QPU's:**      | 12  | 8 | |
-| **Threads per QPU** | | | *Shows  num registers from register file per thread* |
-| 1 thread | 64 registers |  *not supported* | 
-| 2 threads     | 32 registers | 64 registers | |
-| 4 threads | *not supported* | 32 registers | |
+| Item                | vc4             | v3d              | Comment |
+|---------------------|-----------------|------------------|-|
+| **Clock speed :**   | 400MHz (Pi3+)   | 500MHz           | |
+| **Num QPU's:**      | 12              | 8                | |
+| **Threads per QPU** |                 |                  | *Shows  num registers from register file per thread* |
+| 1 thread            | 64 registers    |  *not supported* | |
+| 2 threads           | 32 registers    | 64 registers     | |
+| 4 threads           | *not supported* | 32 registers     | |
 
 - vc5 added a four thread per QPU mode, with 16 registers per thread. vc5 was skipped in the Pi's.
 - v3d doubled the size of the register file (A and B combined, see note below).
@@ -91,6 +91,23 @@ So, calculation:
 
 - The improved hardware in `v3d` may compensate for performance.
 - v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
+
+## Differences in execution
+
+
+### `vc4` integer multiplication with negative integers yields unexpected results
+
+The following source code statements yield different results for `vc4` and `v3d`
+
+    a = 16
+    b = -1 * a
+
+  - For `v3d`, this yields the expected result `-16`
+  - For `vc4`, the result is `268435440`
+
+  This has to do with the integer multiply instruction working on 24 bit integers only. Thus, a negative value
+  gets its ones-complement prefix chopped off, and whatever is left is treated as an integer.
+  `v3d` does a better job at this.
 
 -----
 # Function `compile()` is not Thread-Safe

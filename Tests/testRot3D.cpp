@@ -97,21 +97,14 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 			compareResults(x_1, y_1, x, y, N, "Rot3D_2");
 		}
 
+		// Do rot3D_2 with multiple QPU's
 		{
-	  	auto k = compile(rot3D_3);
-			initSharedArrays(x, y, N);
-  		k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
-			compareResults(x_1, y_1, x, y, N, "Rot3D_3");
-		}
-
-		// Do rot3D_3 with multiple QPU's
-		{
-	  	auto k = compile(rot3D_3);
+	  	auto k = compile(rot3D_2);
 			INFO("Running with 8 kernels");
   		k.setNumQPUs(8);
 			initSharedArrays(x, y, N);
   		k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
-			compareResults(x_1, y_1, x, y, N, "Rot3D_3 8 QPU's");
+			compareResults(x_1, y_1, x, y, N, "Rot3D_2 8 QPU's");
 		}
 	}
 

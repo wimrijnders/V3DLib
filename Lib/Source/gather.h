@@ -17,22 +17,26 @@ inline void gatherExpr(Expr* e)
 
 template <typename T>
 inline void gather(PtrExpr<T> addr) {
-	Ptr<T> temp = addr;
 	if (compiling_for_vc4()) {
-		temp = temp + index();
+		//Ptr<T> temp = addr;
+		//temp = temp + index();
+		Ptr<T> temp = addr + index();
+		gatherExpr(temp.expr);
+	} else {
+		gatherExpr(addr.expr);
 	}
-
-	gatherExpr(temp.expr);
 }
 
 template <typename T>
 inline void gather(Ptr<T>& addr) {
-	Ptr<T> temp = addr + 0;     // '+ 0' forces a copy of the pointer, otherwise temp behaves like a reference
 	if (compiling_for_vc4()) {
-		temp = temp + index();
+		//Ptr<T> temp = addr + 0;     // '+ 0' forces a copy of the pointer, otherwise temp behaves like a reference
+		//temp = temp + index();
+		Ptr<T> temp = addr + index();
+		gatherExpr(temp.expr);
+	} else {
+		gatherExpr(addr.expr);
 	}
-
-	gatherExpr(temp.expr);
 }
 
 inline void receiveExpr(Expr* e)
@@ -61,17 +65,21 @@ inline void storeExpr(Expr* e0, Expr* e1)
   stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
-inline void store(IntExpr data, PtrExpr<Int> addr)
-  { storeExpr(data.expr, addr.expr); }
+inline void store(IntExpr data, PtrExpr<Int> addr) {
+	storeExpr(data.expr, addr.expr);
+}
 
-inline void store(FloatExpr data, PtrExpr<Float> addr)
-  { storeExpr(data.expr, addr.expr); }
+inline void store(FloatExpr data, PtrExpr<Float> addr) {
+	storeExpr(data.expr, addr.expr);
+}
 
-inline void store(IntExpr data, Ptr<Int> &addr)
-  { storeExpr(data.expr, addr.expr); }
+inline void store(IntExpr data, Ptr<Int> &addr) {
+	storeExpr(data.expr, addr.expr);
+}
 
-inline void store(FloatExpr data, Ptr<Float> &addr)
-  { storeExpr(data.expr, addr.expr); }
+inline void store(FloatExpr data, Ptr<Float> &addr) {
+	storeExpr(data.expr, addr.expr);
+}
 
 }  // namespace QPULib
 

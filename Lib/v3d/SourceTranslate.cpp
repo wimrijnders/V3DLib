@@ -22,8 +22,8 @@ void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
 	Reg srcAddr = srcReg(addr->var);
 	Reg srcData = srcReg(data->var);
 
-  *seq << mov(TMUD, srcAddr)
-       << mov(TMUA, srcData);
+  *seq << mov(TMUD, srcData).comment("Store request")
+       << mov(TMUA, srcAddr);
 }
 
 }  // anon namespace

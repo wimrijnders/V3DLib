@@ -6,21 +6,22 @@ namespace QPULib {
 namespace v3d {
 namespace instr {
 
+/**
+ * @return true if conversion succeeded, false otherwise
+ */
 bool SmallImm::int_to_opcode_value(int value, int &rep_value) {
-	bool converted  = true;
-
-	// The first small values pass through as is
-	// Note that this negates usage of next 4 if-s.
-	if (-16 <= value && value <= 15) {
+	if (-16 <= value && value <= 15) {  // This is the range of legal int values for small imm
 		rep_value = (int) value;
-	} else {
-		converted = false;
+		return true;
 	}
 
-	return converted;
+	return false;
 }
 
 
+/**
+ * @return true if conversion succeeded, false otherwise
+ */
 bool SmallImm::float_to_opcode_value(float value, int &rep_value) {
 	bool converted  = true;
 	// NOTE: Apparently, these are the hex representations of the floats

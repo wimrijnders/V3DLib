@@ -44,34 +44,10 @@ void rot3D_1(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
 // Vector version 2
 // ============================================================================
 
-void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
-  Int inc = 16;
-  Ptr<Float> p = x + index();
-  Ptr<Float> q = y + index();
-  gather(p); gather(q);
- 
-  Float xOld, yOld;
-  For (Int i = 0, i < n, i = i+inc)
-    gather(p+inc); gather(q+inc); 
-    receive(xOld); receive(yOld);
-    store(xOld * cosTheta - yOld * sinTheta, p);
-    store(yOld * cosTheta + xOld * sinTheta, q);
-    p = p+inc; q = q+inc;
-  End
-
-  receive(xOld); receive(yOld);
-}
-
-// ============================================================================
-// Vector version 3
-// ============================================================================
-
-void rot3D_3(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
+void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   Int inc = numQPUs() << 4;
-  Ptr<Float> p = x + index(); // + (me() << 4);  TODO Not sufficient
-  Ptr<Float> q = y + index(); // + (me() << 4);
+  Ptr<Float> p = x;
+  Ptr<Float> q = y;
   gather(p); gather(q);
  
   Float xOld, yOld;
@@ -85,6 +61,5 @@ void rot3D_3(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
 
   receive(xOld); receive(yOld);
 }
-
 
 }  // namespace Rot3DLib

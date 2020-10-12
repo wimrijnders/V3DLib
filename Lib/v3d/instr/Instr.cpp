@@ -1352,8 +1352,7 @@ Instr fsub(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, loc3);
 
-	instr.alu.add.op    = V3D_QPU_A_FSUB;
-
+	instr.alu.add.op = V3D_QPU_A_FSUB;
 	return instr;
 }
 
@@ -1362,7 +1361,7 @@ Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 	Instr instr;
 	instr.alu_add_set(loc1, imm2, loc3);
 
-	instr.alu.add.op    = V3D_QPU_A_FSUB;
+	instr.alu.add.op = V3D_QPU_A_FSUB;
 	return instr;
 }
 
@@ -1520,7 +1519,7 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  */
 Instr rotate(Location const &dst, Location const &loca, Location const &locb) {
 	Instr instr;
-	return instr.rotate(dst, loca, locb);  // Use mul alu version
+	return instr.rotate(dst, loca, locb);
 }
 
 
@@ -1533,7 +1532,7 @@ Instr rotate(Location const &dst, Location const &loca, Location const &locb) {
  */
 Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb) {
 	Instr instr;
-	return instr.rotate(dst, loca, immb);  // Use mul alu version
+	return instr.rotate(dst, loca, immb);
 }
 
 

@@ -543,6 +543,7 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 	std::string err_value;
 
 	if (instr.imm.tag == IMM_INT32) {
+		// Allows for the legal int small imm values and powers of them
 		int value = instr.imm.intVal;
 		int left_shift = 0;
 
@@ -566,9 +567,13 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 		}
 
 	} else if (instr.imm.tag == IMM_FLOAT32) {
+		// Allows for the legal int small imm values and their negatives
 		float value = instr.imm.floatVal;
 
-		if (SmallImm::float_to_opcode_value(value, rep_value)) {
+		if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
+			ret << nop().fmov(*dst, rep_value)   // TODO perhaps make 2nd param Small Imm
+			    << fsub(*dst, 0, *dst);          // This only works because the floating point representation of zero is 0x0
+		} else if (SmallImm::float_to_opcode_value(value, rep_value)) {
 			ret << nop().fmov(*dst, rep_value);  // TODO perhaps make 2nd param Small Imm
 		} else {
 			// TODO: figure out how to handle other float immediates, if necessary at all
