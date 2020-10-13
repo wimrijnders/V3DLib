@@ -3,12 +3,13 @@
 #include <stdlib.h>
 #include "Support/Settings.h"
 #include "Support/Timer.h"
+#include "Support/pgm.h"
 #include <CmdParameters.h>
 
 using namespace QPULib;
 using std::string;
 
-// Heat dissapation constant
+// Heat dissipation constant
 #define K 0.25
 
 
@@ -103,6 +104,8 @@ void run_scalar() {
     map2D[y][x] = 1000.0f*((float) t);
   }
 
+	output_pgm_file(map, WIDTH, HEIGHT, 255, "heatmap_pre.pgm");
+
   // Simulate
   for (int i = 0; i < NSTEPS; i++) {
     scalar_step(map2D, mapOut2D, WIDTH, HEIGHT);
@@ -110,16 +113,7 @@ void run_scalar() {
   }
 
   // Display results
-  printf("P2\n%i %i\n255\n", WIDTH, HEIGHT);
-  for (int y = 0; y < HEIGHT; y++) {
-    for (int x = 0; x < WIDTH; x++) {
-      int t = (int) map2D[y][x];
-      t = t < 0   ? 0 : t;
-      t = t > 255 ? 255 : t;
-      printf("%d ", t);
-    }
-    printf("\n");
-	}
+	output_pgm_file(map, WIDTH, HEIGHT, 255, "heatmap.pgm");
 }
 
 
@@ -174,7 +168,7 @@ struct Cursor {
 void step(Ptr<Float> map, Ptr<Float> mapOut, Int pitch, Int width, Int height)
 {
   Cursor row[3];
-  map = map + pitch*me() + index();
+  map = map + pitch*me() + index(); // WRI DEBUG
 
   // Skip first row of output map
   mapOut = mapOut + pitch;
@@ -262,6 +256,8 @@ void run_kernel() {
   }
 
   // Display results
+	output_pgm_file(mapB, WIDTH, HEIGHT, 255, "heatmap.pgm");
+/*
   printf("P2\n%i %i\n255\n", WIDTH, HEIGHT);
   for (int y = 0; y < HEIGHT; y++) {
     for (int x = 0; x < WIDTH; x++) {
@@ -272,6 +268,7 @@ void run_kernel() {
     }
     printf("\n");
 	}
+*/
 }
 
 

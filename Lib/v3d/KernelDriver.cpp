@@ -570,7 +570,10 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 		// Allows for the legal int small imm values and their negatives
 		float value = instr.imm.floatVal;
 
-		if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
+		if (value == 0.0) {
+			ret << nop().fmov(*dst, 0.0);  // This only works because the floating point representation of zero is 0x0
+			                               // TODO check correct output
+		} else if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
 			ret << nop().fmov(*dst, rep_value)   // TODO perhaps make 2nd param Small Imm
 			    << fsub(*dst, 0, *dst);          // This only works because the floating point representation of zero is 0x0
 		} else if (SmallImm::float_to_opcode_value(value, rep_value)) {

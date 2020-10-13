@@ -12,6 +12,7 @@
 #include <CmdParameters.h>
 #include "Support/Timer.h"
 #include "Support/Settings.h"
+#include "Support/pgm.h"
 #include "vc4/RegisterMap.h"
 
 
@@ -220,12 +221,6 @@ void mandelbrot_multi(
 // Local functions
 // ============================================================================
 
-/**
- * Two format limits need to be taken into account:
- *
- * - Max line length of 70 characters, 'count' handles this
- * - Max gray value of 65536
- */
 template<class Array>
 void output_pgm(Array &result) {
 	if (!settings.output_pgm) return;
@@ -234,47 +229,7 @@ void output_pgm(Array &result) {
 	int height = settings.numStepsHeight;
 	int numIterations = settings.numIterations;
 
-	const int GrayLimit = 65536;
-	float factor = -1.0f;
-	int maxGray = numIterations;
-
-	if (maxGray > GrayLimit) {
-		// printf ("output_pgm adjust max gray\n");
-		factor = ((float) GrayLimit)/((float) maxGray);
-		maxGray = GrayLimit;
-	}
-
-	auto scale = [factor] (int value) -> int {
-		if (factor == -1.0f) return value;
-		return (int) (factor*((float) value));
-	};
-
-
-  FILE *fd = fopen("mandelbrot.pgm", "w") ;
-  if (fd == nullptr) {
-    printf("can't open file for pgm output\n");
-    return;
-  }
-
-  // Write header
-  fprintf(fd, "P2\n");
-  fprintf(fd, "%d %d\n", width, height);
-  fprintf(fd, "%d\n", maxGray);
-
-  int count = 0; // Limit output to 10 elements per line
-  for (int y = 0; y < height; y++) {
-    for (int x = 0; x < width; x++) {
-      fprintf(fd, "%d ", scale(result[x + width*y]));
-      count++;
-      if (count >= 10) {
-        fprintf(fd, "\n");
-        count = 0;
-      }
-    }
-    fprintf(fd, "\n");
-  }
-
-  fclose(fd);
+	output_pgm_file(result, width, height, numIterations, "mandelbrot.pgm");
 }
 
 
