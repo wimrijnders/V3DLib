@@ -82,12 +82,22 @@ public:
       elems = newElems;
     }
 
-    // Extend size of sequence by one
-    void extend() {
-      numElems++;
-      if (numElems > maxElems)
-        setCapacity(maxElems*2);
+
+		/**
+     * Extend size of sequence by passed number of elements
+		 */
+    void extend(int step = 1) {
+			assert(step > 0);
+
+      numElems += step;
+
+			int newSize = maxElems;
+      while (numElems > newSize)
+				newSize *= 2;
+
+        setCapacity(newSize);
     }
+
 
     // Append
     void append(T x) {
@@ -196,12 +206,17 @@ private:
 	 */
 	void shift_tail(int index, int n ) {
 		assert(index >= 0);
-		assert(index < size());
 		assert(n > 0);
-   	setCapacity(numElems + n);
+		assert(index <= size());  // index == size amounts to append
 
-		for (int i = numElems - 1; i >= index; --i) {
-			elems[i + n] = elems[i];
+		int prevNum = numElems;
+   	extend(n);
+
+		if (index < size()) {  // for index == size, nothing to move
+			for (int i = prevNum - 1; i >= index; --i) {
+				elems[i + n] = elems[i];
+			}
+
 		}
 
 		numElems += n;
