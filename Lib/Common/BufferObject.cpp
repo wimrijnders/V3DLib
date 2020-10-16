@@ -139,7 +139,7 @@ uint32_t BufferObject::getHandle() const {
 
 
 BufferObject &getBufferObject() {
-	if (Platform::instance().emulator_only) {
+	if (Platform::instance().use_main_memory()) {
 		return emu::getHeap();
 	} else if (Platform::instance().has_vc4) {
 		return vc4::getHeap();

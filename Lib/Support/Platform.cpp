@@ -125,8 +125,24 @@ PlatformInfo::PlatformInfo() {
 	}
 
 #ifndef QPU_MODE
-	emulator_only = true;
-	has_vc4 = true;       // Emulator and interpreter run vc4 only
+	// Allow only emulator and interpreter modes, no hardware
+	m_use_main_memory = true;
+	has_vc4 = true;       // run vc4 code only
+#endif
+}
+
+
+void PlatformInfo::use_main_memory(bool val) {
+#ifndef QPU_MODE
+	// Pedantic paranoia
+	warning("use_main_memory() called with no QPU mode");
+	assertq(m_use_main_memory, "Should only use main memory for emulator and interpreter", true);
+	if (!val) {
+		fatal("Can only use main memory for emulator and interpreter");
+	}
+#else
+	debug("use_main_memory() called");
+	m_use_main_memory = val;
 #endif
 }
 
@@ -154,7 +170,7 @@ void PlatformInfo::output() {
 }
 
 
-const PlatformInfo &Platform::instance() {
+PlatformInfo &Platform::instance_local() {
 	if (!local_instance) {
 		local_instance.reset(new PlatformInfo);
 	}
@@ -162,3 +178,12 @@ const PlatformInfo &Platform::instance() {
 	return *local_instance;
 }
 
+
+PlatformInfo const  &Platform::instance() {
+	return instance_local();
+}
+
+
+void Platform::use_main_memory(bool val) {
+	instance_local().use_main_memory(val);
+}

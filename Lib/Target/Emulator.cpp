@@ -243,9 +243,9 @@ inline bool checkAssignCond(QPUState* s, AssignCond cond, int i) {
     case Tag::ALWAYS: return true;
     case Tag::FLAG:
       switch (cond.flag) {
-        case ZS: return s->zeroFlags[i];
+        case ZS: return  s->zeroFlags[i];
         case ZC: return !s->zeroFlags[i];
-        case NS: return s->negFlags[i];
+        case NS: return  s->negFlags[i];
         case NC: return !s->negFlags[i];
       }
   }
@@ -268,9 +268,9 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond)
     case COND_ANY:
       for (int i = 0; i < NUM_LANES; i++)
         switch (cond.flag) {
-          case ZS: bools[i] = s->zeroFlags[i];  break;
+          case ZS: bools[i] =  s->zeroFlags[i]; break;
           case ZC: bools[i] = !s->zeroFlags[i]; break;
-          case NS: bools[i] = s->negFlags[i];   break;
+          case NS: bools[i] =  s->negFlags[i];  break;
           case NC: bools[i] = !s->negFlags[i];  break;
           default: assert(false); break;
         }
