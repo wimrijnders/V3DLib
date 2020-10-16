@@ -226,6 +226,10 @@ bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 		}
 	}
 
+	if (compile_only || run_type != 0) {
+		Platform::use_main_memory(true);
+	}
+
 	if (silent) {
 		disable_logging();
 	}
