@@ -47,6 +47,8 @@ public:
 			elems = nullptr;
 		}
 
+		T *data() { return elems; }
+
 		/**
 		 * Here's one for the Hall of Shame, previous definition:
 		 *
@@ -59,6 +61,11 @@ public:
 		int size() const { return numElems; }
 
 		T &operator[](int index) {
+			assert(0 <= index && index < numElems);
+			return elems[index];
+		}
+
+		T operator[](int index) const {
 			assert(0 <= index && index < numElems);
 			return elems[index];
 		}
@@ -83,25 +90,10 @@ public:
     }
 
 
-		/**
-     * Extend size of sequence by passed number of elements
-		 */
-    void extend(int step = 1) {
-			assert(step > 0);
-
-      numElems += step;
-
-			int newSize = maxElems;
-      while (numElems > newSize)
-				newSize *= 2;
-
-        setCapacity(newSize);
-    }
-
-
     // Append
     void append(T x) {
-      extend();
+      extend_by(1);
+			numElems++;
       elems[numElems-1] = x;
     }
 
@@ -203,6 +195,9 @@ private:
 
 	/**
 	 * Shift tail of sequence n positions, starting from index
+	 *
+	 * `numElems` gets adjusted here; this means that there are some unassigned
+	 * positions in the sequence that still need to be filled in by caller.
 	 */
 	void shift_tail(int index, int n ) {
 		assert(index >= 0);
@@ -210,16 +205,29 @@ private:
 		assert(index <= size());  // index == size amounts to append
 
 		int prevNum = numElems;
-   	extend(n);
+   	extend_by(n);
+		numElems += n;
 
 		if (index < size()) {  // for index == size, nothing to move
 			for (int i = prevNum - 1; i >= index; --i) {
 				elems[i + n] = elems[i];
 			}
-
 		}
+	}
 
-		numElems += n;
+
+	/**
+	 * Ensure that sequence can contain current num elements + passed value
+	 *
+	 */
+ 	void extend_by(int step = 1) {
+		assert(step > 0);
+
+		int newSize = maxElems;
+		while (numElems > newSize)
+			newSize *= 2;
+
+		setCapacity(newSize);
 	}
 
 };

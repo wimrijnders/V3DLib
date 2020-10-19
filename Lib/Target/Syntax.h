@@ -2,6 +2,7 @@
 #define _QPULIB_TARGET_SYNTAX_H_
 #include <stdint.h>
 #include <string>
+#include "Common/Seq.h"  // for check_zeroes()
 #include "../Support/debug.h"
 
 namespace QPULib {
@@ -456,12 +457,14 @@ struct Instr {
 	// Helper methods
 	// ==================================================
 	bool isCondAssign() const;
-
 	bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
 	bool isRot() const { return ALU.op == M_ROTATE; }
 	bool isMul() const;
 	bool isUniformLoad() const;
 	bool isTMUAWrite() const;
+	bool isZero() const;
+
+	std::string mnemonic() const;
 
 	static Instr nop();
 
@@ -541,9 +544,8 @@ typedef int InstrId;
 // Handy functions
 // ============================================================================
 
-// Is last instruction in a basic block?
-bool isLast(Instr instr);
-
+bool isLast(Instr instr);               // Is last instruction in a basic block?
+void check_zeroes(Seq<Instr> const &instrs);
 
 namespace Target {
 namespace instr {

@@ -7,42 +7,12 @@
 #include "v3d/Invoke.h"
 #include "vc4/vc4.h"
 #include "Support/Platform.h"
+#include "Support/assign.h"
 #include  "vc4/KernelDriver.h"
 #include  "v3d/KernelDriver.h"
 #include  "SourceTranslate.h"  // set_compiling_for_vc4()
 
 namespace QPULib {
-
-// implementation details, users never invoke these directly
-namespace detail
-{
-    template <typename F, typename Tuple, bool Done, int Total, int... N>
-    struct call_impl
-    {
-        static void call(F f, Tuple && t)
-        {
-            call_impl<F, Tuple, Total == 1 + sizeof...(N), Total, N..., sizeof...(N)>::call(f, std::forward<Tuple>(t));
-        }
-    };
-
-    template <typename F, typename Tuple, int Total, int... N>
-    struct call_impl<F, Tuple, true, Total, N...>
-    {
-        static void call(F f, Tuple && t)
-        {
-            f(std::get<N>(std::forward<Tuple>(t))...);
-        }
-    };
-}
-
-// user invokes this
-template <typename F, typename Tuple>
-void apply(F f, Tuple && t)
-{
-    typedef typename std::decay<Tuple>::type ttype;
-    detail::call_impl<F, Tuple, 0 == std::tuple_size<ttype>::value, std::tuple_size<ttype>::value>::call(f, std::forward<Tuple>(t));
-}
-
 
 // ============================================================================
 // Modes of operation
@@ -139,35 +109,33 @@ template <typename t, typename u>
 inline bool passParam(Seq<int32_t>* uniforms, u x);
 
 // Pass an int
-template <> inline bool passParam<Int, int>
-  (Seq<int32_t>* uniforms, int x)
-{
+template <>
+inline bool passParam<Int, int> (Seq<int32_t>* uniforms, int x) {
   uniforms->append((int32_t) x);
   return true;
 }
 
+
 // Pass a float
-template <> inline bool passParam<Float, float>
-	(Seq<int32_t>* uniforms, float x)
-{
+template <>
+inline bool passParam<Float, float> (Seq<int32_t>* uniforms, float x) {
   int32_t* bits = (int32_t*) &x;
   uniforms->append(*bits);
   return true;
 }
 
+
 // Pass a SharedArray<int>*
-template <> inline bool passParam< Ptr<Int>, SharedArray<int>* >
-  (Seq<int32_t>* uniforms, SharedArray<int>* p)
-{
+template <>
+inline bool passParam< Ptr<Int>, SharedArray<int>* > (Seq<int32_t>* uniforms, SharedArray<int>* p) {
   uniforms->append(p->getAddress());
   return true;
 }
 
 
 // Pass a SharedArray<float>*
-template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
-  (Seq<int32_t>* uniforms, SharedArray<float>* p)
-{
+template <>
+inline bool passParam< Ptr<Float>, SharedArray<float>* > (Seq<int32_t>* uniforms, SharedArray<float>* p) {
   uniforms->append(p->getAddress());
   return true;
 }
@@ -200,8 +168,6 @@ protected:
 #ifdef QPU_MODE
 	v3d::KernelDriver m_v3d_driver;
 #endif
-
-	void invoke_qpu(QPULib::KernelDriver &kernel_driver);
 };
 
 
@@ -292,8 +258,8 @@ public:
 
 // Initialiser
 
-template <typename... ts> Kernel<ts...> compile(void (*f)(ts... params))
-{
+template <typename... ts>
+Kernel<ts...> compile(void (*f)(ts... params)) {
   Kernel<ts...> k(f);
   return k;
 }

@@ -48,6 +48,7 @@ public:
 	void computeLiveOut(InstrId i, LiveSet* liveOut);
 
 	void setSize(int size);
+	int size() const { return m_set.size(); }
 	bool insert(int index, RegId item);
 	LiveSet &operator[](int index) { return get(index); }
 
@@ -77,6 +78,7 @@ public:
 	std::vector<bool> possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag = REG_A);
 
 	static RegId choose_register(std::vector<bool> &possible, bool check_limit = true);	
+	static void  dump_possible(std::vector<bool> &possible, int index = -1);
 
 private:
 	int m_size = 0;

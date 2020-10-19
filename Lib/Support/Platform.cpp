@@ -141,7 +141,7 @@ void PlatformInfo::use_main_memory(bool val) {
 		fatal("Can only use main memory for emulator and interpreter");
 	}
 #else
-	debug("use_main_memory() called");
+	//debug("use_main_memory() called");
 	m_use_main_memory = val;
 #endif
 }

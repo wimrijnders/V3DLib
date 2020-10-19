@@ -1452,7 +1452,9 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
 
 
 /**
- * Perform full rotate with offset in r5 using add ALU.
+ * Perform full rotate with offset in r5.
+ *
+ * Only mul ALU can do rotate, so this method just redirects.
  *
  * - dest is r1
  * - reg a is r0
@@ -1462,8 +1464,6 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  * Since dest, src are fixed, these are not passed in.
  * If this conflicts with syntax of any other assemblers, change this
  * (it already conflicts with python6 assembler).
- *
- * TODO: both add and mul can do rotate in v3d, fix.
  *
  * ============================================================================
  * NOTES
@@ -1544,9 +1544,8 @@ Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb) {
  * See notes in header comment of rotate overload for add alu above.
  */
 Instr &Instr::rotate(Location const &dst, Location const &loca, SmallImm const &immb) {
-	//warning("rotate called, really not sure if correct.");
 	assertq(dst.to_mux()  == V3D_QPU_MUX_R1, "rotate dest can only be r1");
-	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0");
+	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0", true);
 	assertq(-15 <= immb.val() && immb.val() < 16, "rotate: smallimm must be in proper range");
 
 	m_doing_add = false;
@@ -1569,7 +1568,6 @@ Instr &Instr::rotate(Location const &dst, Location const &loca, SmallImm const &
  * See notes in header comment of rotate overload for add alu above.
  */
 Instr &Instr::rotate(Location const &dst, Location const &loca, Location const &locb) {
-	//warning("rotate called, really not sure if correct.");
 	assertq(dst.to_mux()  == V3D_QPU_MUX_R1, "rotate dest can only be r1");
 	assertq(loca.to_mux() == V3D_QPU_MUX_R0, "rotate src a can only be r0");
 	assertq(locb.to_mux() == V3D_QPU_MUX_R5, "rotate src b can only be r5");

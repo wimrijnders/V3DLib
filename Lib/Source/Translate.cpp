@@ -791,9 +791,10 @@ void insertInitBlock(Seq<Instr> &code) {
 // Interface
 // ============================================================================
 
-// Translate variable to source register.
-Reg srcReg(Var v)
-{
+/**
+ * Translate variable to source register.
+ */
+Reg srcReg(Var v) {
   Reg r;
 	r.isUniformPtr = false;
 
@@ -802,33 +803,39 @@ Reg srcReg(Var v)
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_UNIFORM;
 			r.isUniformPtr = v.isUniformPtr;
-      return r;
+			break;
     case QPU_NUM:
 			//if (!compiling_for_vc4()) breakpoint
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_QPU_NUM;
-      return r;
+			break;
     case ELEM_NUM:
 			//if (!compiling_for_vc4()) breakpoint
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_ELEM_NUM;
-      return r;
+			break;
     case VPM_READ:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_VPM_READ;
-      return r;
+			break;
     case STANDARD:
       r.tag   = REG_A;
       r.regId = v.id;
-      return r;
+			break;
     case VPM_WRITE:
     case TMU0_ADDR:
       printf("QPULib: Reading from write-only special register is forbidden\n");
       assert(false);
+			break;
+    case DUMMY:
+      r.tag   = NONE;
+      r.regId = v.id;
+			break;
+		default:
+			assert(false);
+			break;
   }
 
-  // Not reachable
-  assert(false);
 	return r;
 }
 
@@ -997,6 +1004,7 @@ Expr* putInVar(Seq<Instr>* seq, Expr* e) {
 void translateStmt(Seq<Instr>* seq, Stmt* s) {
   stmt(seq, s);
 	insertInitBlock(*seq);
+
 	if (compiling_for_vc4()) {
 	  insertEndCode(*seq);
 	};

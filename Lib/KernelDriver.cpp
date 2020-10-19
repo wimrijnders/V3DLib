@@ -1,6 +1,6 @@
 #include "KernelDriver.h"
 #include <iostream>            // cout
-#include "Support/debug.h"
+#include "Support/basics.h"
 #include "Source/Syntax.h"     // stmtStack
 #include "Source/Pretty.h"
 #include "Source/Translate.h"
@@ -75,7 +75,19 @@ void KernelDriver::compile() {
 	body = m_stmtStack.top();
 	m_stmtStack.pop();
 
-	compileKernel(m_targetCode, body);
+	try {
+		compileKernel(m_targetCode, body);
+	} catch (QPULib::Exception const &e) {
+		std::string msg = "Exception occured during compilation: ";
+		msg += e.msg();  // WHY doesn't << work here???
+		//std::cerr << msg << std::endl;
+
+		if (e.msg().compare(0, 5, "ERROR") == 0) {
+			errors.push_back(msg); // WHY doesn't << work here???
+		} else {
+			throw;  // Must be a fatal()
+		}
+	}
 }
 
 
@@ -90,7 +102,7 @@ bool KernelDriver::handle_errors() {
 		return false;
 	}
 
-	cout << "Errors encountered during encoding:\n";
+	cout << "Errors encountered during compilation and/or encoding:\n";
 
 	for (auto const &err : errors) {
 		cout << "  " << err << "\n";
@@ -106,7 +118,7 @@ bool KernelDriver::handle_errors() {
 *
 * @param filename  if specified, print the output to this file. Otherwise, print to stdout
 */
-void KernelDriver::pretty(const char *filename) {
+void KernelDriver::pretty(int numQPUs, const char *filename) {
 	FILE *f = nullptr;
 
 	if (filename == nullptr)
@@ -119,8 +131,18 @@ void KernelDriver::pretty(const char *filename) {
 		}
 	}
 
+
+	if (has_errors()) {
+		fprintf(f, "=== There were errors during compilation, the output here is likely incorrect or incomplete  ===\n");
+		fprintf(f, "=== Encoding and displaying output as best as possible                                       ===\n\n\n");
+	}
+
 	print_source_code(f);
 	emit_target_code(f);
+
+	if (!has_errors()) {
+		encode(numQPUs);  // generate opcodes if not already done
+	}
 	emit_opcodes(f);
 
 	if (filename != nullptr) {
@@ -149,12 +171,29 @@ void KernelDriver::emit_target_code(FILE *f) {
 	// Emit target code
 	fprintf(f, "Target code\n");
 	fprintf(f, "===========\n\n");
+
 	for (int i = 0; i < m_targetCode.numElems; i++) {
-		QPULib::pretty(f, m_targetCode.elems[i], i);
+		auto &instr = m_targetCode.elems[i];
+
+		fprintf(f, "%s", QPULib::pretty(instr, i, true).c_str());
 	}
+
 	fprintf(f, "\n");
 	fflush(f);
 }
 
+
+void KernelDriver::invoke(int numQPUs, Seq<int32_t> &params) {
+	if (!has_errors()) {
+		encode(numQPUs);
+	}
+
+	if (handle_errors()) {
+		fatal("Errors during kernel compilation/encoding, can't continue.");
+	}
+
+ 	// Invoke kernel on QPUs
+	invoke_intern(numQPUs, &params);
+}
 
 }  // namespace QPULib

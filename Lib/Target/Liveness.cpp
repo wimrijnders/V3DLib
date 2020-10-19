@@ -246,12 +246,15 @@ void LiveSets::init(Seq<Instr>* instrs, Liveness &live) {
   for (int i = 0; i < instrs->numElems; i++) {
     live.computeLiveOut(i, &liveOut);
     useDef(instrs->elems[i], &useDefSet);
+
     for (int j = 0; j < liveOut.size(); j++) {
       RegId rx = liveOut.elems[j];
+
       for (int k = 0; k < liveOut.size(); k++) {
         RegId ry = liveOut.elems[k];
         if (rx != ry) m_sets[rx].insert(ry);
       }
+
       for (int k = 0; k < useDefSet.def.numElems; k++) {
         RegId rd = useDefSet.def.elems[k];
         if (rd != rx) {
@@ -264,6 +267,11 @@ void LiveSets::init(Seq<Instr>* instrs, Liveness &live) {
 }
 
 
+/**
+ * Determine the available register in the register file, to use for variable 'index'.
+ *
+ * @param index  index of variable
+ */
 std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag) {
   const int NUM_REGS = 32;
   std::vector<bool> possible(NUM_REGS);
@@ -271,10 +279,11 @@ std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &allo
 	for (int j = 0; j < NUM_REGS; j++)
 		possible[j] = true;
 
-    // Eliminate impossible choices of register for this variable
     LiveSet &set = m_sets[index];
-    for (int j = 0; j < set.numElems; j++) {
-      Reg neighbour = alloc[set.elems[j]];
+
+    // Eliminate impossible choices of register for this variable
+    for (int j = 0; j < set.size(); j++) {
+      Reg neighbour = alloc[set[j]];
       if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
     }
 
@@ -282,14 +291,39 @@ std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &allo
 }
 
 
+/**
+ * Debug function to output the contents of the possible-vector
+ */
+void LiveSets::dump_possible(std::vector<bool> &possible, int index) {
+	std::string buf = "possible: ";
+
+	if (index >=0) {
+		if (index < 10) buf << "  ";
+		else if (index < 100) buf << " ";
+
+		buf << index;
+	}
+	buf << ": ";
+
+	for (int j = possible.size() - 1; j >= 0; j--) {
+		buf << (possible[j]?"1":"0");
+	}
+	debug(buf.c_str());
+}
+
+
+/**
+ * Find possible register in each register file
+ */
 RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
-	// Find possible register in each register file
+	assert(!possible.empty());
 	RegId chosenA = -1;
+
 	for (int j = 0; j < possible.size(); j++)
 		if (possible[j]) { chosenA = j; break; }
 
 	if (check_limit && chosenA < 0) {
-		fatal("QPULib: register allocation failed, insufficient capacity");
+		fatal("LiveSets::choose_register(): register allocation failed, insufficient capacity");
 	}
 
 	return chosenA;

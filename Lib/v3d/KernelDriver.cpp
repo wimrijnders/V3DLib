@@ -51,9 +51,21 @@ namespace {
 
 uint8_t const NOP_ADDR    = 39;
 uint8_t const REGB_OFFSET = 32;
+uint8_t const NUM_REGS_RF = 64;  // Number of available registers in the register file
 
 uint8_t local_numQPUs = 0;
 std::vector<std::string> local_errors;
+
+
+void check_reg(Reg reg) {
+	if (reg.regId < 0) {
+		error("Unassigned regId value", true);
+	}
+	if (reg.regId >= NUM_REGS_RF) {
+		breakpoint
+		error("regId value out of range", true);
+	}
+}
 
 
 uint8_t to_waddr(Reg const &reg) {
@@ -66,6 +78,7 @@ uint8_t to_waddr(Reg const &reg) {
 	uint8_t reg_offset = 0;
 
 	if (reg.tag == REG_B) {
+		debug_break("to_waddr(): Not expecting REG_B any more, examine");
 		reg_offset = REGB_OFFSET;
 	}
 
@@ -94,9 +107,11 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
 	std::unique_ptr<Location> ret;
 
   switch (reg.tag) {
+    case REG_B:
+			debug_break("encodeSrcReg(): Not expecting REG_B any more, examine");
+			// Fall-thru
     case REG_A:
-    case REG_B:  // same as encodeDstReg()
-      assert(reg.regId >= 0 && reg.regId < 32);
+      check_reg(reg);
 			ret.reset(new RFAddress(to_waddr(reg)));
 			break;
     case ACC:
@@ -156,9 +171,11 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 	}
 
   switch (reg.tag) {
-    case REG_A:
     case REG_B:
-      assert(reg.regId >= 0 && reg.regId < 32);
+			debug_break("encodeDestReg(): Not expecting REG_B any more, examine");
+			// fall-thru
+    case REG_A:
+      check_reg(reg);
 			ret.reset(new RFAddress(to_waddr(reg)));
 			break;
     case ACC:
@@ -240,22 +257,6 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 }
 
 
-void setDestReg(QPULib::Instr const &src_instr, QPULib::v3d::instr::Instr &dst_instr) {
-	std::unique_ptr<Location> ret = encodeDestReg(src_instr);
-	if (ret.get() == nullptr) {
-		breakpoint
-		return;
-	}
-
-	if (src_instr.isMul()) {
-		dst_instr.alu.mul.waddr = ret->to_waddr();
-		dst_instr.alu.mul.output_pack = ret->output_pack();
-	} else {
-		dst_instr.alu.add.waddr = ret->to_waddr();
-		dst_instr.alu.add.output_pack = ret->output_pack();
-	}
-}
-
 /**
  * For v3d, the QPU and ELEM num are not special registers but instructions.
  *
@@ -335,8 +336,8 @@ void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
 	if (cond.is_always()) {
 		return;
 	}
-	assert(cond.tag != AssignCond::Tag::NEVER);  // Not expecting this (yet)
-	assert(cond.tag == AssignCond::Tag::FLAG);   // The only remaining option
+	assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
+	assertq(cond.tag == AssignCond::Tag::FLAG,  "const.tag can only be FLAG here");  // The only remaining option
 
 	// NOTE: condition tags are set for add alu only here
 	// TODO: Set for mul tag as well if required
@@ -406,11 +407,21 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 	auto dst_reg = encodeDestReg(src_instr);
 
 	if (dst_reg && reg_a.tag == REG && reg_b.tag == REG) {
+		// TODO this special index handling is probably obsolete, verify and remove
 		checkSpecialIndex(src_instr);
 		if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
 			ret << tidx(*dst_reg);
 		} else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
 			ret << eidx(*dst_reg);
+		} else if (reg_a.reg.tag == NONE && reg_b.reg.tag == NONE) {
+			switch (src_instr.ALU.op) {
+				case A_TIDX:  ret << tidx(*dst_reg); break;
+				case A_EIDX:  ret << eidx(*dst_reg); break;
+				default:
+					breakpoint  // unimplemented op
+					did_something = false;
+				break;
+			}
 		} else {
 			auto src_a = encodeSrcReg(reg_a.reg);
 			auto src_b = encodeSrcReg(reg_b.reg);
@@ -426,7 +437,6 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 				case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
 				case A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
 				case A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
-				case A_EIDX:  ret << eidx(*dst_reg);                         break;  // Note src reg's unused
 				default:
 					breakpoint  // unimplemented op
 					did_something = false;
@@ -503,11 +513,17 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 	assert(dst_reg->to_mux() != V3D_QPU_MUX_R1);  // anything except dest of rotate
 
 	auto reg_a = instr.ALU.srcA;
-	auto src_a = encodeSrcReg(reg_a.reg);         // Must be r0, checked in rotate()
+	auto src_a = encodeSrcReg(reg_a.reg);
 	auto reg_b = instr.ALU.srcB;                  // reg b is either r5 or small imm
 
-	// TODO: the Target source step already adds a nop. Check and add a nop here conditionally
-	ret << nop().comment("required for rotate");
+	if (src_a->to_mux() != V3D_QPU_MUX_R0) {
+		ret << mov(r0, *src_a).comment("moving param 2 of rotate to r0. WARNING: r0 might already be in use, check!");
+	}
+
+
+	// TODO: the Target source step already adds a nop.
+	//       With the addition of previous mov to r0, the 'other' nop becomes useless, remove that one for v3d.
+	ret << nop().comment("NOP required for rotate");
 
 	if (reg_b.tag == REG) {
 		breakpoint
@@ -515,12 +531,12 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 		assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
 		auto src_b = encodeSrcReg(reg_b.reg);
 
-		ret << rotate(r1, *src_a, *src_b);
+		ret << rotate(r1, r0, *src_b);
 
 	} else if (reg_b.tag == IMM) {
 		SmallImm imm = encodeSmallImm(reg_b);  // Legal values small imm tested in rotate()
 
-		ret << rotate(r1, *src_a, imm);
+		ret << rotate(r1, r0, imm);
 	} else {
 		breakpoint  // Unhandled combination of inputs/output
 	}
@@ -861,6 +877,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 	// Main loop
   for (int i = 0; i < instrs.numElems; i++) {
     QPULib::Instr instr = instrs.elems[i];
+		assertq(!instr.isZero(), "Zero instruction encountered", true);
 		check_instruction_tag_for_platform(instr.tag, false);
 
 		if (instr.tag == INIT_BEGIN) {
@@ -937,7 +954,7 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 }
 
 
-void KernelDriver::invoke(int numQPUs, Seq<int32_t> *params) {
+void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t> *params) {
 
 	// Assumption: code in a kernel, once allocated, doesn't change
 	if (qpuCodeMem.allocated()) {

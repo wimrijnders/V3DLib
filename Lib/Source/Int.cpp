@@ -104,9 +104,11 @@ IntExpr index() {
 	  e->var.tag = ELEM_NUM;
 	  return mkIntExpr(e);
 	} else {
-  	Var v   = freshVar();  // Add dummy parameter so as not to screw the program logic too much
-		                       // This is unused, eidx has no input, only an output
-		Expr *a = mkVar(v);
+		Var dummy;
+		dummy.tag = DUMMY;
+		dummy.id  = 0;
+
+		Expr *a = mkVar(dummy);
   	Expr *e =  mkApply(a, mkOp(EIDX, INT32), a);
   	return mkIntExpr(e);
 	}

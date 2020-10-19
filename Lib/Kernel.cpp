@@ -2,7 +2,6 @@
 #include "Target/Emulator.h"
 #include "Target/CFG.h"
 #include "Target/Liveness.h"
-#include "Target/ReachingDefs.h"
 #include "Target/Pretty.h"
 
 namespace QPULib {
@@ -27,12 +26,10 @@ int KernelBase::maxQPUs() {
 
 void KernelBase::pretty(bool output_for_vc4, const char *filename) {
 	if (output_for_vc4) {
-		m_vc4_driver.encode(numQPUs);
-		m_vc4_driver.pretty(filename);
+		m_vc4_driver.pretty(numQPUs, filename);
 	} else {
 #ifdef QPU_MODE
-		m_v3d_driver.encode(numQPUs);
-		m_v3d_driver.pretty(filename);
+		m_v3d_driver.pretty(numQPUs, filename);
 #else
 		fatal("KernelBase::pretty(): v3d code not generated for this platform.");
 #endif
@@ -40,30 +37,24 @@ void KernelBase::pretty(bool output_for_vc4, const char *filename) {
 }
 
 
-void KernelBase::invoke_qpu(QPULib::KernelDriver &kernel_driver) {
-	kernel_driver.encode(numQPUs);
-	if (!kernel_driver.handle_errors()) {
-   	// Invoke kernel on QPUs
-		kernel_driver.invoke(numQPUs, &uniforms);
-	}
-}
-
-
+/**
+ * Invoke the emulator
+ *
+ * The emulator runs vc4 code.
+ */
 void KernelBase::emu() {
 	assert(uniforms.size() != 0);
-
-	// Emulator runs the vc4 code
 	emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, &uniforms, getBufferObject());
 }
 
 
 /**
  * Invoke the interpreter
+ *
+ * The interpreter parses the CFG ('source code') directly.
  */
 void KernelBase::interpret() {
 	assert(uniforms.size() != 0);
-
-	// Interpreter runs the vc4 code
 	interpreter(numQPUs, m_vc4_driver.sourceCode(), numVars, &uniforms, getBufferObject());
 }
 
@@ -76,9 +67,9 @@ void KernelBase::qpu() {
 	assert(uniforms.size() != 0);
 
 	if (Platform::instance().has_vc4) {
-		invoke_qpu(m_vc4_driver);
+		m_vc4_driver.invoke(numQPUs, uniforms);
 	} else {
-		invoke_qpu(m_v3d_driver);
+		m_v3d_driver.invoke(numQPUs, uniforms);
 	}
 }
 #endif  // QPU_MODE

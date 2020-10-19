@@ -2,6 +2,7 @@
 #include "vc4.h"
 #include "Encode.h"
 #include "DMA.h"
+//#include "gallium/drivers/vc4/vc4_qpu.h"  // vc4_qpu_disasm()
 
 namespace QPULib {
 namespace vc4 {
@@ -38,7 +39,13 @@ void KernelDriver::encode(int numQPUs) {
 }
 
 
-void KernelDriver::invoke(int numQPUs, Seq<int32_t>* params) {
+void KernelDriver::emit_opcodes(FILE *f) {
+	debug("vc4 emit_opcodes() called - TODO");
+	// vc4_qpu_disasm(m_targetCode.data(), m_targetCode.size());
+}
+
+
+void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
 	//debug("Called vc4 KernelDriver::invoke()");	
 	assert(code.size() > 0);
 

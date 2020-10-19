@@ -1,6 +1,7 @@
 #ifndef _LIB_SUPPORT_DEBUG_H
 #define _LIB_SUPPORT_DEBUG_H
 #include <signal.h>  // raise(SIGTRAP)
+#include <string>
 
 #if defined __cplusplus
 #include <cassert>
@@ -26,6 +27,9 @@ inline void warning(const char *str) {}
 inline void debug_break(const char *str) {}
 
 #endif  // DEBUG
+
+void error(const char *str, bool do_throw = false);
+inline void error(std::string const &msg, bool do_throw = false) { error(msg.c_str(), do_throw); }
 
 void disable_logging();
 void assertq(bool cond, const char *msg, bool do_break = false);

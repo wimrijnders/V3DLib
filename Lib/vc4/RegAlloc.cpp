@@ -53,6 +53,8 @@ void regalloc_determine_regfileAB(Seq<Instr> *instrs, int *prefA, int *prefB, in
 namespace vc4 {
 
 void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
+  int numVars = getFreshVarCount();
+
   // Step 0
   // Perform liveness analysis
   Liveness live(*cfg);
@@ -60,24 +62,23 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 
   // Step 1
   // For each variable, determine a preference for register file A or B.
-  int n = getFreshVarCount();
-  int* prefA = new int [n];
-  int* prefB = new int [n];
+  int* prefA = new int [numVars];
+  int* prefB = new int [numVars];
 
-	regalloc_determine_regfileAB(instrs, prefA, prefB, n);
+	regalloc_determine_regfileAB(instrs, prefA, prefB, numVars);
 
   // Step 2
   // For each variable, determine all variables ever live at same time
-  LiveSets liveWith(n);
+  LiveSets liveWith(numVars);
 	liveWith.init(instrs, live);
 
   // Step 3
   // Allocate a register to each variable
   RegTag prevChosenRegFile = REG_B;
-  std::vector<Reg> alloc(n);
-  for (int i = 0; i < n; i++) alloc[i].tag = NONE;
+  std::vector<Reg> alloc(numVars);
+  for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
 
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < numVars; i++) {
 		auto possibleA = liveWith.possible_registers(i, alloc);
 		auto possibleB = liveWith.possible_registers(i, alloc, REG_B);
 
@@ -88,7 +89,7 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
     // Choose a register file
     RegTag chosenRegFile;
     if (chosenA < 0 && chosenB < 0) {
-      fatal("QPULib: register allocation failed, insufficient capacity");
+      error("regAlloc(): register allocation failed, insufficient capacity", true);
     }
     else if (chosenA < 0) chosenRegFile = REG_B;
     else if (chosenB < 0) chosenRegFile = REG_A;

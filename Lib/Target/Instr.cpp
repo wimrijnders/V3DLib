@@ -72,6 +72,31 @@ bool Instr::isTMUAWrite() const {
 
 
 /**
+ * Determine if this instruction has all fields set to zero.
+ *
+ * This is an illegal instruction, but has popped up.
+ */
+bool Instr::isZero() const {
+	return tag == InstrTag::LI
+		  && LI.setFlags   == false
+		  && LI.setCond    == NO_COND
+		  && LI.cond.tag   == AssignCond::NEVER
+		  && LI.cond.flag  == ZS
+		  && LI.dest.tag   == REG_A
+		  && LI.dest.regId == 0
+		  && LI.dest.isUniformPtr == false 
+		  && LI.imm.tag    == IMM_INT32
+		  && LI.imm.intVal == 0
+	;
+}
+
+
+std::string Instr::mnemonic() const {
+	return pretty(*this);
+}
+
+
+/**
  * Check if given tag is for the specified platform
  */
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4) {
@@ -89,10 +114,32 @@ void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4) {
 
 	if (platform != nullptr) {
 		std::string msg = "Instruction tag ";
-		msg += pretty_instr_tag(tag);
-		msg += "(" + std::to_string(tag) + ")" + " can not be used on ";
-		msg += platform;
+		msg << pretty_instr_tag(tag) << "(" + std::to_string(tag) + ")" << " can not be used on " << platform;
 		fatal(msg);
+	}
+}
+
+
+/**
+ * Debug function - check for presence of zero-instructions in instruction sequence
+ *
+ */
+void check_zeroes(Seq<Instr> const &instrs) {
+	bool success = true;
+
+	for (int i = 0; i < instrs.size(); ++i ) {
+		if (instrs[i].isZero()) {
+			std::string msg = "Zero instruction encountered at position ";
+			// Grumbl not working:  msg << i;
+			msg += std::to_string(i);
+			warning(msg.c_str());
+
+			success = false;
+		}
+	}
+
+	if (!success) {
+		error("zeroes encountered in instruction sequence", true);
 	}
 }
 

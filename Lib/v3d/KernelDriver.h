@@ -17,13 +17,13 @@ public:
 	KernelDriver();
 
 	void encode(int numQPUs) override;
-	void invoke(int numQPUs, Seq<int32_t>* params) override;
 
 private:
   SharedArray<uint64_t> qpuCodeMem;
   SharedArray<uint32_t> paramMem;
 	Instructions          instructions;
 
+	void invoke_intern(int numQPUs, Seq<int32_t>* params) override;
 	std::vector<uint64_t> to_opcodes();
 	void emit_opcodes(FILE *f) override;
 };

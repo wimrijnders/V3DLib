@@ -45,7 +45,6 @@ void buildCFG(Seq<Instr>* instrs, CFG* cfg)
     bool end = instr.tag == END || i+1 == instrs->numElems;
 
     // Add successor
-    cfg->extend();
     if (! (uncond || end))
       cfg->elems[i].insert(i+1);
 

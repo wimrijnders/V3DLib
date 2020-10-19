@@ -17,12 +17,12 @@ public:
 	virtual ~KernelDriver();
 
 	virtual void kernelFinish() {} 
-	virtual void invoke(int numQPUs, Seq<int32_t>* params) = 0;
 	virtual void encode(int numQPUs) = 0;
 
-	void pretty(const char *filename = nullptr);
 	void init_compile();
 	void compile();
+	void invoke(int numQPUs, Seq<int32_t> &params);
+	void pretty(int numQPUs, const char *filename = nullptr);
 
 	/**
 	 * @return AST representing the source code
@@ -31,10 +31,7 @@ public:
 
 	Seq<Instr> &targetCode() { return m_targetCode; }
 
-	bool handle_errors();
-
 	BufferType const buffer_type;
-
 
 protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
@@ -50,6 +47,9 @@ private:
 	Stack<Stmt> m_stmtStack;
   Stmt *body = nullptr;
 
+	virtual void invoke_intern(int numQPUs, Seq<int32_t>* params) = 0;
+	bool has_errors() const { return !errors.empty(); }
+	bool handle_errors();
 	void print_source_code(FILE *f);
 	void emit_target_code(FILE *f);
 };

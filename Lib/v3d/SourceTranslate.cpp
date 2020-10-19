@@ -81,29 +81,39 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 
 
 void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
-  int n = getFreshVarCount();
+  int numVars = getFreshVarCount();
 
   // Step 0
   // Perform liveness analysis
   Liveness live(*cfg);
   live.compute(instrs);
+	assert(instrs->size() == live.size());
 
   // Step 2
-  // For each variable, determine all variables ever live at same time
-  LiveSets liveWith(n);
+  // For each variable, determine all variables ever live at the same time
+  LiveSets liveWith(numVars);
 	liveWith.init(instrs, live);
 
   // Step 3
   // Allocate a register to each variable
-  std::vector<Reg> alloc(n);
-  for (int i = 0; i < n; i++) alloc[i].tag = NONE;
+  std::vector<Reg> alloc(numVars);
+  for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
 
 	// Allocate registers to the variables
-  for (int i = 0; i < n; i++) {
+  for (int i = 0; i < numVars; i++) {
 		auto possible = liveWith.possible_registers(i, alloc);
+		LiveSets::dump_possible(possible, i);
 
     alloc[i].tag = REG_A;
-    alloc[i].regId = LiveSets::choose_register(possible);
+    RegId regId = LiveSets::choose_register(possible, false);
+
+		if (regId < 0) {
+			std::string buf = "v3d regAlloc(): register allocation failed for instruction ";
+			buf << i << ": " << (*instrs)[i].mnemonic();
+			error(buf, true);
+		} else {
+    	alloc[i].regId = regId;
+		}
   }
 
   // Step 4

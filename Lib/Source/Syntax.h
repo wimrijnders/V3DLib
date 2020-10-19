@@ -75,6 +75,9 @@ enum VarTag {
   , VPM_READ     // (Read-only.) Read a vector from the VPM.
   , VPM_WRITE    // (Write-only.) Write a vector to the VPM.
   , TMU0_ADDR    // (Write-only.) Initiate load via TMU
+
+	, DUMMY        // No variable. As a source variable, it indicates that given operation has no input
+	               // TODO: As a destination variable, it indicates that the result can be ignored
 };
 
 typedef int VarId;
@@ -331,7 +334,7 @@ void resetFreshVarGen();
 void resetFreshVarGen(int val);
 
 // Used for constructing abstract syntax trees
-extern Heap        astHeap;
+extern Heap astHeap;
 
 }  // namespace QPULib
 
