@@ -44,8 +44,8 @@ class Liveness {
 public:
 	Liveness(CFG &cfg) : m_cfg(cfg) {}
 
-	void compute(Seq<Instr>* instrs);
-	void computeLiveOut(InstrId i, LiveSet* liveOut);
+	void compute(Seq<Instr> &instrs);
+	void computeLiveOut(InstrId i, LiveSet &liveOut);
 
 	void setSize(int size);
 	int size() const { return m_set.size(); }
@@ -57,7 +57,7 @@ private:
 	Seq<LiveSet> m_set;
 
 	std::string dump();
-	LiveSet &get(int index) { return m_set.elems[index]; }
+	LiveSet &get(int index) { return m_set[index]; }
 };
 
 
@@ -73,7 +73,7 @@ public:
 		delete [] m_sets;
 	}
 
-	void init(Seq<Instr>* instrs, Liveness &live);
+	void init(Seq<Instr> &instrs, Liveness &live);
 	LiveSet &operator[](int index) { return m_sets[index]; }
 	std::vector<bool> possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag = REG_A);
 

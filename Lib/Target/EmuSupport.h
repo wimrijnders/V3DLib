@@ -21,7 +21,17 @@ union Word {
 
 // Vector values
 struct Vec {
-  Word elems[NUM_LANES];
+	Word &get(int index) {
+		assert(0 <= index && index < NUM_LANES);
+		return elems[index];
+	}
+
+	Word &operator[](int index) {
+		return get(index);
+	}
+
+private:
+ 	Word elems[NUM_LANES];
 };
 
 // In-flight DMA request
@@ -67,7 +77,6 @@ struct DMAStoreReq {
 Vec rotate(Vec v, int n);
 
 // Printing routines
-void emitChar(Seq<char>* out, char c);
 void emitStr(Seq<char>* out, const char* s);
 void printIntVec(Seq<char>* out, Vec x);
 void printFloatVec(Seq<char>* out, Vec x);

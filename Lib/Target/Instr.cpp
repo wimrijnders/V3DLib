@@ -5,6 +5,36 @@
 namespace QPULib {
 
 /**
+ * Initialize the fields per selected instruction tag.
+ *
+ * Done like this, because union members can't have non-trivial constructors.
+ */
+Instr::Instr(InstrTag in_tag) {
+	switch (in_tag) {
+	case InstrTag::ALU:
+  	tag          = InstrTag::ALU;
+	  ALU.setFlags = false;
+	  ALU.setCond  = SetCond::NO_COND;
+	  ALU.cond     = always;
+		break;
+	case InstrTag::LI:
+    tag          = InstrTag::LI;
+    LI.setFlags  = false;
+	  LI.setCond   = SetCond::NO_COND;
+	  LI.cond      = always;
+		break;
+	case InstrTag::RECV:
+	case InstrTag::PRI:
+    tag          = in_tag;
+		break;
+	default:
+		assert(false);
+		break;
+	}
+}
+
+
+/**
  * Determines if the mul-ALU needs to be used
  *
  * TODO: Examine if this is still true for v3d
@@ -19,6 +49,85 @@ bool Instr::isMul() const {
 
 	return ret;
 }
+
+
+Instr Instr::nop() {
+	Instr instr;
+	instr.tag = NO_OP;
+	return instr;
+}
+
+
+/**
+ * Determine if instruction is a conditional assignment
+ */
+bool Instr::isCondAssign() const {
+  if (tag == InstrTag::LI && !LI.cond.is_always())
+    return true;
+
+  if (tag == InstrTag::ALU && !ALU.cond.is_always())
+    return true;
+
+  return false;
+}
+
+
+/**
+ * Determine if this is the last instruction in a basic block
+ *
+ * TODO Unused, do we need this?
+ */
+bool Instr::isLast() const {
+  return tag == QPULib::BRL || tag == QPULib::BR || tag == QPULib::END;
+}
+
+
+void Instr::setFlags() {
+	if (tag == InstrTag::LI) {
+		LI.setFlags = true;
+	} else if (tag == InstrTag::ALU) {
+		ALU.setFlags = true;
+	} else {
+		assert(false);
+	}
+}
+
+
+Instr &Instr::pushz() {
+	setFlags();
+
+	if (tag == InstrTag::LI) {
+		LI.setCond = SetCond::Z;
+	} else if (tag == InstrTag::ALU) {
+		ALU.setCond = SetCond::Z;
+	} else {
+		assert(false);
+	}
+
+	return *this;
+}
+
+
+/**
+ * Convert branch label to branch target
+ * 
+ * @param offset  offset to the label from current instruction
+ */
+void Instr::label_to_target(int offset) {
+	assert(tag == InstrTag::BRL);
+
+	// Convert branch label (BRL) instruction to branch instruction with offset (BR)
+	// Following assumes that BranchCond field 'cond' survives the transition to another union member
+
+	BranchTarget t;
+	t.relative       = true;
+	t.useRegOffset   = false;
+	t.immOffset      = offset - 4;  // Compensate for the 4-op delay for executing a branch
+
+	tag        = InstrTag::BR;
+	BR.target  = t;
+}
+
 
 
 bool Instr::isUniformLoad() const {

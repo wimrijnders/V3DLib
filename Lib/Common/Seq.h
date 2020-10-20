@@ -14,19 +14,13 @@ namespace QPULib {
 
 template <class T> class Seq {
 public:
-    int maxElems = 0;
-    int numElems = 0;
-    T* elems     = nullptr;
-
     Seq() { init(INITIAL_MAX_ELEMS); }
     Seq(int initialSize) { init(initialSize); }
+    Seq(Seq<T> const &seq) { *this = seq; }
 
-    // Copy constructor
-    Seq(Seq<T> const &seq) {
-			*this = seq;
-    }
-
-		// Assignment operator - really needed! Other assignment does shallow copy
+		/**
+		 * Assignment operator - really needed! Default assignment does shallow copy
+		 */
     Seq<T> & operator=(Seq<T> const &seq) {
       init(seq.maxElems);
 
@@ -60,6 +54,22 @@ public:
 		 */
 		int size() const { return numElems; }
 
+
+		void set_size(int new_size) {
+			assert(new_size > 0);
+  		setCapacity(new_size);
+		  numElems = new_size;
+		}
+
+
+		/**
+		 * Synonym for operator[]
+		 */
+		T &get(int index) {
+			assert(0 <= index && index < numElems);
+			return elems[index];
+		}
+
 		T &operator[](int index) {
 			assert(0 <= index && index < numElems);
 			return elems[index];
@@ -70,12 +80,15 @@ public:
 			return elems[index];
 		}
 
-    // Set capacity of sequence
+
+		/**
+     * Set capacity of sequence, resizing if required.
+		 */
     void setCapacity(int n) {
 			assert(n > 0);
 			if (n <= maxElems) {
 				assert(elems != nullptr);
-				return;
+				return;  // Don't bother resizing if already big enough
 			}
 
       maxElems = n;
@@ -186,9 +199,11 @@ public:
 
 
 private:
+	int maxElems = 0;
+	int numElems = 0;
+	T* elems     = nullptr;
 
 	void init(int initialSize) {
-		//numElems = 0;
     setCapacity(initialSize);
 	}
 

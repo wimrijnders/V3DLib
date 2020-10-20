@@ -9,21 +9,13 @@
 namespace QPULib {
 
 // A set of successors.
-
 typedef SmallSeq<InstrId> Succs;
 
-// A CFG is simply a set of successors
-// for each instruction.
-
+// A CFG is a set of successors for each instruction.
 typedef Seq<Succs> CFG;
 
 // Function to construct a CFG.
-
-void buildCFG(Seq<Instr>* instrs, CFG* cfg);
-
-// Function to reverse the arrows in a CFG.
-
-void reverseCFG(CFG* succs, CFG* preds);
+void buildCFG(Seq<Instr> &instrs, CFG &cfg);
 
 }  // namespace QPULib
 

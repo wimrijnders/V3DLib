@@ -10,7 +10,7 @@ void invoke(
   int numQPUs,
   SharedArray<uint64_t> &codeMem,
   int qpuCodeMemOffset,
-  Seq<int32_t>* params);
+  Seq<int32_t> &params);
 
 }  // v3d
 }  // QPULib

@@ -10,10 +10,10 @@ namespace QPULib {
 // Build control-flow graph
 // ============================================================================
 
-// Build a CFG for a given instruction sequence.
-
-void buildCFG(Seq<Instr>* instrs, CFG* cfg)
-{
+/**
+ * Build a CFG for a given instruction sequence.
+ */
+void buildCFG(Seq<Instr> &instrs, CFG &cfg) {
   // ----------
   // First pass
   // ----------
@@ -34,19 +34,19 @@ void buildCFG(Seq<Instr>* instrs, CFG* cfg)
   for (int i = 0; i < numLabels; i++)
     labelMap[i] = -1;
 
-  for (int i = 0; i < instrs->numElems; i++) {
+  for (int i = 0; i < instrs.size(); i++) {
     // Get instruction
-    Instr instr = instrs->elems[i];
+    Instr instr = instrs[i];
 
     // Is it an unconditional jump?
     bool uncond = instr.tag == BRL && instr.BRL.cond.tag == COND_ALWAYS;
 
     // Is it a final instruction?
-    bool end = instr.tag == END || i+1 == instrs->numElems;
+    bool end = instr.tag == END || i+1 == instrs.size();
 
     // Add successor
     if (! (uncond || end))
-      cfg->elems[i].insert(i+1);
+      cfg[i].insert(i+1);
 
     // Remember location of each label
     if (instr.tag == LAB) {
@@ -61,40 +61,16 @@ void buildCFG(Seq<Instr>* instrs, CFG* cfg)
   //
   // Add a successor for each conditional jump.
 
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
     if (instr.tag == BRL) {
       assert(labelMap[instr.BRL.label] >= 0);
-      cfg->elems[i].insert(labelMap[instr.BRL.label]);
+      cfg[i].insert(labelMap[instr.BRL.label]);
     }
   }
 
   // Free memory
   delete [] labelMap;
-}
-
-// ============================================================================
-// Reverse the arrows in a CFG
-// ============================================================================
-
-// Given a mapping from instruction ids to successors, produce a
-// mapping from instruction ids to predecessors.
-
-void reverseCFG(CFG* succs, CFG* preds)
-{
-  int n = succs->numElems;
-
-  // Make preds the same size as succs
-  preds->setCapacity(n);
-  preds->numElems = n;
-
-  for (int i = 0; i < n; i++) {
-    Succs* s = &succs->elems[i];
-    for (int j = 0; j < s->numElems; j++) {
-      InstrId succ = s->elems[j];
-      preds->elems[succ].insert(i);
-    }
-  }
 }
 
 }  // namespace QPULib

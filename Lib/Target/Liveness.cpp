@@ -28,8 +28,7 @@ namespace {
 //   i:  acc <- f(...)
 //   j:  g(..., acc, ...)
 
-void introduceAccum(Liveness &live, Seq<Instr>* instrs)
-{
+void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
   UseDef useDefPrev, useDefCurrent;
   LiveSet liveOut;
 
@@ -37,21 +36,21 @@ void introduceAccum(Liveness &live, Seq<Instr>* instrs)
   acc.tag = ACC;
   acc.regId = 1;
 
-  for (int i = 1; i < instrs->numElems; i++) {
-    Instr prev  = instrs->elems[i-1];
-    Instr instr = instrs->elems[i];
+  for (int i = 1; i < instrs.size(); i++) {
+    Instr prev  = instrs[i-1];
+    Instr instr = instrs[i];
 
     // Compute vars defined by prev
     useDef(prev, &useDefPrev);
 
-    if (useDefPrev.def.numElems > 0) {
-      RegId def = useDefPrev.def.elems[0];
+    if (useDefPrev.def.size() > 0) {
+      RegId def = useDefPrev.def[0];
 
       // Compute vars used by instr
       useDef(instr, &useDefCurrent);
 
       // Compute vars live-out of instr
-      live.computeLiveOut(i, &liveOut);
+      live.computeLiveOut(i, liveOut);
 
       // Check that write is non-conditional
 			auto ALWAYS = AssignCond::Tag::ALWAYS;
@@ -61,8 +60,8 @@ void introduceAccum(Liveness &live, Seq<Instr>* instrs)
       if (always && useDefCurrent.use.member(def) && !liveOut.member(def)) {
         renameDest(&prev, REG_A, def, ACC, 1);
         renameUses(&instr, REG_A, def, ACC, 1);
-        instrs->elems[i-1] = prev;
-        instrs->elems[i]   = instr;
+        instrs[i-1] = prev;
+        instrs[i]   = instr;
       }
     }
   }
@@ -145,29 +144,32 @@ void useDef(Instr instr, UseDef* out) {
   useDefReg(instr, &set);
   out->use.clear();
   out->def.clear();
-  for (int i = 0; i < set.use.numElems; i++) {
-    Reg r = set.use.elems[i];
+  for (int i = 0; i < set.use.size(); i++) {
+    Reg r = set.use[i];
     if (r.tag == REG_A) out->use.append(r.regId);
   }
-  for (int i = 0; i < set.def.numElems; i++) {
-    Reg r = set.def.elems[i];
+  for (int i = 0; i < set.def.size(); i++) {
+    Reg r = set.def[i];
     if (r.tag == REG_A) out->def.append(r.regId);
   }
 }
 
+
+/*
 // Compute the union of the 'use' sets of the successors of a given
 // instruction.
 
 void useSetOfSuccs(Seq<Instr>* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
   use->clear();
   Succs* s = &cfg->elems[i];
-  for (int j = 0; j < s->numElems; j++) {
+  for (int j = 0; j < s->size(); j++) {
     UseDef set;
     useDef(instrs->elems[s->elems[j]], &set);
-    for (int k = 0; k < set.use.numElems; k++)
-      use->insert(set.use.elems[k]);
+    for (int k = 0; k < set.use.size(); k++)
+      use->insert(set.use[k]);
   }
 }
+*/
 
 // Return true if given instruction has two register operands.
 
@@ -188,9 +190,9 @@ namespace {
 /**
  * Determine the liveness sets for each instruction.
  */
-void liveness(Seq<Instr>* instrs, Liveness &live) {
+void liveness(Seq<Instr> &instrs, Liveness &live) {
   // Initialise live mapping to have one entry per instruction
-	live.setSize(instrs->numElems);
+	live.setSize(instrs.size());
 
   // For storing the 'use' and 'def' sets of each instruction
   UseDef useDefSets;
@@ -207,30 +209,28 @@ void liveness(Seq<Instr>* instrs, Liveness &live) {
     changed = false;
 
     // Propagate live variables backwards
-    for (int i = instrs->numElems-1; i >= 0; i--) {
+    for (int i = instrs.size()-1; i >= 0; i--) {
       // Compute 'use' and 'def' sets
-      Instr instr = instrs->elems[i];
+      Instr instr = instrs[i];
       useDef(instr, &useDefSets);
 
       // Compute live-out variables
-      live.computeLiveOut(i, &liveOut);
+      live.computeLiveOut(i, liveOut);
 
       // Remove the 'def' set from the live-out set to give live-in set
       liveIn.clear();
       for (int j = 0; j < liveOut.size(); j++) {
-        //if (! useDefSets.def.member(liveOut[j]))
-        //  liveIn.insert(liveOut[j]);
-        if (! useDefSets.def.member(liveOut.elems[j]))
-          liveIn.insert(liveOut.elems[j]);
+        if (!useDefSets.def.member(liveOut[j]))
+          liveIn.insert(liveOut[j]);
       }
 
       // Add the 'use' set to the live-in set
-      for (int j = 0; j < useDefSets.use.numElems; j++)
-        liveIn.insert(useDefSets.use.elems[j]);
+      for (int j = 0; j < useDefSets.use.size(); j++)
+        liveIn.insert(useDefSets.use[j]);
 
       // Insert the live-in variables into the map
       for (int j = 0; j < liveIn.size(); j++) {
-        bool inserted = live.insert(i, liveIn.elems[j]);
+        bool inserted = live.insert(i, liveIn[j]);
         changed = changed || inserted;
       }
     }
@@ -240,23 +240,24 @@ void liveness(Seq<Instr>* instrs, Liveness &live) {
 
 }  // anon namespace
 
-void LiveSets::init(Seq<Instr>* instrs, Liveness &live) {
+
+void LiveSets::init(Seq<Instr> &instrs, Liveness &live) {
   LiveSet liveOut;
 
-  for (int i = 0; i < instrs->numElems; i++) {
-    live.computeLiveOut(i, &liveOut);
-    useDef(instrs->elems[i], &useDefSet);
+  for (int i = 0; i < instrs.size(); i++) {
+    live.computeLiveOut(i, liveOut);
+    useDef(instrs[i], &useDefSet);
 
     for (int j = 0; j < liveOut.size(); j++) {
-      RegId rx = liveOut.elems[j];
+      RegId rx = liveOut[j];
 
       for (int k = 0; k < liveOut.size(); k++) {
-        RegId ry = liveOut.elems[k];
+        RegId ry = liveOut[k];
         if (rx != ry) m_sets[rx].insert(ry);
       }
 
-      for (int k = 0; k < useDefSet.def.numElems; k++) {
-        RegId rd = useDefSet.def.elems[k];
+      for (int k = 0; k < useDefSet.def.size(); k++) {
+        RegId rd = useDefSet.def[k];
         if (rd != rx) {
           m_sets[rx].insert(rd);
           m_sets[rd].insert(rx);
@@ -330,7 +331,7 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 }	
 
 
-void Liveness::compute(Seq<Instr>* instrs) {
+void Liveness::compute(Seq<Instr> &instrs) {
 	liveness(instrs, *this);
 	//printf("%s", dump().c_str());
 
@@ -345,28 +346,26 @@ void Liveness::compute(Seq<Instr>* instrs) {
  * Compute the live-out variables of an instruction, given the live-in
  * variables of all instructions and the CFG.
  */
-void Liveness::computeLiveOut(InstrId i, LiveSet* liveOut) {
-  liveOut->clear();
-  Succs* s = &m_cfg.elems[i];
+void Liveness::computeLiveOut(InstrId i, LiveSet &liveOut) {
+  liveOut.clear();
+  Succs &s = m_cfg[i];
 
-  for (int j = 0; j < s->numElems; j++) {
-    LiveSet &set = get(s->elems[j]);
+  for (int j = 0; j < s.size(); j++) {
+    LiveSet &set = get(s[j]);
 
     for (int k = 0; k < set.size(); k++)
-      //liveOut->insert(set[k]);
-      liveOut->insert(set.elems[k]);
+      liveOut.insert(set[k]);
   }
 }
 
 
 void Liveness::setSize(int size) {
-  m_set.setCapacity(size);
-  m_set.numElems = size;
+  m_set.set_size(size);
 }
 
 
 bool Liveness::insert(int index, RegId item) {
-	return m_set.elems[index].insert(item);
+	return m_set[index].insert(item);
 }
 
 
@@ -378,7 +377,7 @@ std::string Liveness::dump() {
 	for (int i = 0; i < m_set.size(); ++i) {
 		ret += std::to_string(i) + ": ";
 
-		auto &item = m_set.elems[i];
+		auto &item = m_set[i];
 		bool did_first = false;
 		for (int j = 0; j < item.size(); j++) {
 			if (did_first) {
@@ -386,8 +385,7 @@ std::string Liveness::dump() {
 			} else {
 				did_first = true;
 			}
-			//ret += std::to_string(item[i]);
-			ret += std::to_string(item.elems[j]);
+			ret += std::to_string(item[j]);
 		}
 		ret += "\n";
 	}

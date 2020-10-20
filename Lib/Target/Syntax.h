@@ -463,6 +463,7 @@ struct Instr {
 	bool isUniformLoad() const;
 	bool isTMUAWrite() const;
 	bool isZero() const;
+	bool isLast() const;
 
 	std::string mnemonic() const;
 
@@ -544,7 +545,6 @@ typedef int InstrId;
 // Handy functions
 // ============================================================================
 
-bool isLast(Instr instr);               // Is last instruction in a basic block?
 void check_zeroes(Seq<Instr> const &instrs);
 
 namespace Target {

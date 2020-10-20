@@ -30,11 +30,11 @@ void compileKernel(Seq<Instr> &targetCode, Stmt* body) {
 	getSourceTranslate().add_init(targetCode);
 
   // Load/store pass
-  loadStorePass(&targetCode);
+  loadStorePass(targetCode);
 
   // Construct control-flow graph
   CFG cfg;
-  buildCFG(&targetCode, &cfg);
+  buildCFG(targetCode, cfg);
 
   // Perform register allocation
   getSourceTranslate().regAlloc(&cfg, &targetCode);
@@ -172,8 +172,8 @@ void KernelDriver::emit_target_code(FILE *f) {
 	fprintf(f, "Target code\n");
 	fprintf(f, "===========\n\n");
 
-	for (int i = 0; i < m_targetCode.numElems; i++) {
-		auto &instr = m_targetCode.elems[i];
+	for (int i = 0; i < m_targetCode.size(); i++) {
+		auto &instr = m_targetCode[i];
 
 		fprintf(f, "%s", QPULib::pretty(instr, i, true).c_str());
 	}

@@ -10,11 +10,11 @@ void invoke(
   int numQPUs,
   SharedArray<uint64_t> &codeMem,
   int qpuCodeMemOffset,
-  Seq<int32_t>* params) {
+  Seq<int32_t> &params) {
 
 	assert(codeMem.size() != 0);
 
-	SharedArray<uint32_t> unif(params->numElems + 3);
+	SharedArray<uint32_t> unif(params.size() + 3);
 	SharedArray<uint32_t> done(1);
 	done[0] = 0;
 
@@ -25,8 +25,8 @@ void invoke(
 	unif[offset++] = 0;        // qpu number (id for current qpu) - 0 is for 1 QPU
 	unif[offset++] = numQPUs;  // num qpu's running for this job
 
-	for (int j = 0; j < params->numElems; j++) {
-		unif[offset++] = params->elems[j];
+	for (int j = 0; j < params.size(); j++) {
+		unif[offset++] = params[j];
 	}
 
 	// The last item is for the 'done' location;
@@ -34,31 +34,9 @@ void invoke(
 	// TODO: scrutinize the python project for this
 	unif[offset] = (uint32_t) done.getAddress();
 
-/*
-	Example from python project (search for more):
-
-        f = pow(2, 25)
-
-        code = drv.program(qpu_clock)
-        unif = drv.alloc(2, dtype = 'uint32')
-        done = drv.alloc(1, dtype = 'uint32')
-
-        done[:] = 0
-
-        unif[0] = f
-        unif[1] = done.addresses()[0]
-*/
-
-//	printf("============================\n");
-//	printf("This would run the v3d code!\n");
-//	printf("============================\n");
-
   Driver drv;
 	drv.add_bo(getBufferObject());
-
-//#if NOT_DONE_YET
 	drv.execute(codeMem, &unif, numQPUs);
-//#endif // NOT_DONE_YET
 }
 
 }  // v3d

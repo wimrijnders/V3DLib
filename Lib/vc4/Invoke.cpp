@@ -15,7 +15,7 @@ void invoke(
   int mb = getMailbox();
 
   // Number of 32-bit words needed for kernel code & parameters
-  int numWords = qpuCodeMemOffset + (params->numElems+2)*numQPUs + 2*numQPUs;
+  int numWords = qpuCodeMemOffset + (params->size()+2)*numQPUs + 2*numQPUs;
 	//printf("numWords    : %d\n", numWords);
 	//printf("codeMem.size: %d\n", codeMem.size());
 
@@ -31,8 +31,8 @@ void invoke(
     paramsPtr[i] = qpuCodePtr + offset;
     codeMem[offset++] = (uint32_t) i; // Unique QPU ID
     codeMem[offset++] = (uint32_t) numQPUs; // QPU count
-    for (int j = 0; j < params->numElems; j++)
-      codeMem[offset++] = params->elems[j];
+    for (int j = 0; j < params->size(); j++)
+      codeMem[offset++] = params->get(j);
   }
 
   // Copy launch messages

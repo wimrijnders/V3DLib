@@ -1015,13 +1015,14 @@ void translateStmt(Seq<Instr>* seq, Stmt* s) {
 // Load/Store pass
 // ============================================================================
 
-void loadStorePass(Seq<Instr>* instrs) {
+void loadStorePass(Seq<Instr> &instrs) {
 	using namespace QPULib::Target::instr;
 
-  Seq<Instr> newInstrs(instrs->numElems*2);
+  Seq<Instr> newInstrs(instrs.size()*2);
 
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
+
     switch (instr.tag) {
       case RECV: {
         instr.tag = TMU0_TO_ACC4;
@@ -1036,8 +1037,8 @@ void loadStorePass(Seq<Instr>* instrs) {
   }
 
   // Update original instruction sequence
-  instrs->clear();
-	*instrs << newInstrs;
+  instrs.clear();
+	instrs << newInstrs;
 }
 
 

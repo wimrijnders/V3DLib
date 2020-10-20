@@ -845,8 +845,8 @@ Instructions encode_init(uint8_t numQPUs) {
 bool checkUniformAtTop(Seq<QPULib::Instr> &instrs) {
 	bool doing_top = true;
 
-  for (int i = 0; i < instrs.numElems; i++) {
-    QPULib::Instr instr = instrs.elems[i];
+  for (int i = 0; i < instrs.size(); i++) {
+    QPULib::Instr instr = instrs[i];
 		if (doing_top) {
 			if (instr.isUniformLoad()) {
 				continue;  // as expected
@@ -875,8 +875,8 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 	bool prev_was_init_end    = false;
 
 	// Main loop
-  for (int i = 0; i < instrs.numElems; i++) {
-    QPULib::Instr instr = instrs.elems[i];
+  for (int i = 0; i < instrs.size(); i++) {
+    QPULib::Instr instr = instrs[i];
 		assertq(!instr.isZero(), "Zero instruction encountered", true);
 		check_instruction_tag_for_platform(instr.tag, false);
 
@@ -955,6 +955,7 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 
 
 void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t> *params) {
+	assert(params != nullptr);
 
 	// Assumption: code in a kernel, once allocated, doesn't change
 	if (qpuCodeMem.allocated()) {
@@ -968,7 +969,7 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t> *params) {
 		qpuCodeMem.alloc(code.size());
 		qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
 
-		qpuCodeMemOffset = 8*code.size();  // TODO check if correct
+		qpuCodeMemOffset = 8*code.size();
 	}
 
 	// Allocate memory for the parameters if not done already
@@ -980,7 +981,7 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t> *params) {
 		paramMem.alloc(numWords);
 	}
 
-	v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
+	v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, *params);
 }
 
 

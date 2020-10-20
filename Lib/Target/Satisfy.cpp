@@ -102,9 +102,9 @@ bool resolveRegFileConflict(Instr* instr, Instr* newInstr)
 
 // First pass: insert move-to-accumulator instructions.
 
-static void insertMoves(Seq<Instr>* instrs, Seq<Instr>* newInstrs) {
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
+static void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
     RegId r; RegTag rt;
 
     if (instr.tag == ALU && instr.ALU.op == M_ROTATE) {
@@ -142,39 +142,39 @@ static void insertMoves(Seq<Instr>* instrs, Seq<Instr>* newInstrs) {
   }
 }
 
+
 // Second pass: insert NOPs
-static void insertNops(Seq<Instr>* instrs, Seq<Instr>* newInstrs)
-{
+static void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
   // Use/def sets
   UseDefReg mySet, prevSet;
 
   // Previous instruction
   Instr prev = Instr::nop();
 
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
     RegId r; RegTag rt;
 
     // Insert NOPs to avoid data hazards
     useDefReg(prev, &prevSet);
     useDefReg(instr, &mySet);
-    for (int j = 0; j < prevSet.def.numElems; j++) {
-      Reg defReg = prevSet.def.elems[j];
+    for (int j = 0; j < prevSet.def.size(); j++) {
+      Reg defReg = prevSet.def[j];
       bool needNop = defReg.tag == REG_A || defReg.tag == REG_B;
 
       if (needNop && mySet.use.member(defReg)) {
-        *newInstrs << Instr::nop();
+        newInstrs << Instr::nop();
         break;
       }
     }
 
     // Put current instruction into the new sequence
-    newInstrs->append(instr);
+    newInstrs << instr;
 
     // Insert NOPs in branch delay slots
     if (instr.tag == BRL || instr.tag == END) {
       for (int j = 0; j < 3; j++)
-        *newInstrs << Instr::nop();
+        newInstrs << Instr::nop();
 
       prev = Instr::nop();
     }
@@ -182,8 +182,8 @@ static void insertNops(Seq<Instr>* instrs, Seq<Instr>* newInstrs)
     // Update previous instruction
     if (instr.tag != LAB) prev = instr;
   }
-
 }
+
 
 // Return true for any instruction that doesn't read from the VPM
 bool notVPMGet(Instr instr)
@@ -192,8 +192,8 @@ bool notVPMGet(Instr instr)
   UseDefReg useDef;
 
   useDefReg(instr, &useDef);
-  for (int i = 0; i < useDef.use.numElems; i++) {
-    Reg useReg = useDef.use.elems[i];
+  for (int i = 0; i < useDef.use.size(); i++) {
+    Reg useReg = useDef.use[i];
     if (useReg.tag == SPECIAL && useReg.regId == SPECIAL_VPM_READ)
       return false;
   }
@@ -201,43 +201,43 @@ bool notVPMGet(Instr instr)
 }
 
 // Insert NOPs between VPM setup and VPM read, if needed
-static void removeVPMStall(Seq<Instr>* instrs, Seq<Instr>* newInstrs)
-{
+static void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
   // Use/def sets
   UseDefReg useDef;
 
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
     if (instr.tag != VPM_STALL)
-      newInstrs->append(instr);
+      newInstrs << instr;
     else {
       int numNops = 3;  // Number of nops to insert
       for (int j = 1; j <= 3; j++) {
-        if ((i+j) >= instrs->numElems) break;
-        Instr next = instrs->elems[i+j];
+        if ((i+j) >= instrs.size()) break;
+        Instr next = instrs[i+j];
         if (next.tag == LAB) break;
         if (notVPMGet(next)) numNops--; else break;
       }
 
       for (int j = 0; j < numNops; j++)
-        *newInstrs << Instr::nop();
+        newInstrs << Instr::nop();
     }
   }
 }
 
 // Combine passes
 
-void satisfy(Seq<Instr>* instrs)
-{
+void satisfy(Seq<Instr>* instrs) {
+	assert(instrs != nullptr);
+
   // New instruction sequence
-  Seq<Instr> newInstrs0(instrs->numElems * 2);
-  Seq<Instr> newInstrs1(instrs->numElems * 2);
+  Seq<Instr> newInstrs0(instrs->size() * 2);
+  Seq<Instr> newInstrs1(instrs->size() * 2);
 
   // Apply passes
-  insertMoves(instrs, &newInstrs0);
-  insertNops(&newInstrs0, &newInstrs1);
+  insertMoves(*instrs, &newInstrs0);
+  insertNops(newInstrs0, newInstrs1);
   instrs->clear();
-  removeVPMStall(&newInstrs1, instrs);
+  removeVPMStall(newInstrs1, *instrs);
 }
 
 }  // namespace QPULib

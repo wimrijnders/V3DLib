@@ -86,13 +86,13 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
   // Step 0
   // Perform liveness analysis
   Liveness live(*cfg);
-  live.compute(instrs);
+  live.compute(*instrs);
 	assert(instrs->size() == live.size());
 
   // Step 2
   // For each variable, determine all variables ever live at the same time
   LiveSets liveWith(numVars);
-	liveWith.init(instrs, live);
+	liveWith.init(*instrs, live);
 
   // Step 3
   // Allocate a register to each variable
@@ -118,20 +118,20 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 
   // Step 4
   // Apply the allocation to the code
-  for (int i = 0; i < instrs->numElems; i++) {
+  for (int i = 0; i < instrs->size(); i++) {
 		auto &useDefSet = liveWith.useDefSet;
-    Instr* instr = &instrs->elems[i];
+    Instr &instr = instrs->get(i);
 
-    useDef(*instr, &useDefSet);
-    for (int j = 0; j < useDefSet.def.numElems; j++) {
-      RegId r = useDefSet.def.elems[j];
-      renameDest(instr, REG_A, r, TMP_A, alloc[r].regId);
+    useDef(instr, &useDefSet);
+    for (int j = 0; j < useDefSet.def.size(); j++) {
+      RegId r = useDefSet.def[j];
+      renameDest(&instr, REG_A, r, TMP_A, alloc[r].regId);
     }
-    for (int j = 0; j < useDefSet.use.numElems; j++) {
-      RegId r = useDefSet.use.elems[j];
-      renameUses(instr, REG_A, r, TMP_A, alloc[r].regId);
+    for (int j = 0; j < useDefSet.use.size(); j++) {
+      RegId r = useDefSet.use[j];
+      renameUses(&instr, REG_A, r, TMP_A, alloc[r].regId);
     }
-    substRegTag(instr, TMP_A, REG_A);
+    substRegTag(&instr, TMP_A, REG_A);
   }
 }
 

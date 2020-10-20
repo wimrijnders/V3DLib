@@ -4,35 +4,7 @@
 
 namespace QPULib {
 
-/**
- * Initialize the fields per selected instruction tag.
- *
- * Done like this, because union members can't have non-trivial constructors.
- */
-Instr::Instr(InstrTag in_tag) {
-	switch (in_tag) {
-	case InstrTag::ALU:
-  	tag          = InstrTag::ALU;
-	  ALU.setFlags = false;
-	  ALU.setCond  = SetCond::NO_COND;
-	  ALU.cond     = always;
-		break;
-	case InstrTag::LI:
-    tag          = InstrTag::LI;
-    LI.setFlags  = false;
-	  LI.setCond   = SetCond::NO_COND;
-	  LI.cond      = always;
-		break;
-	case InstrTag::RECV:
-	case InstrTag::PRI:
-    tag          = in_tag;
-		break;
-	default:
-		assert(false);
-		break;
-	}
-}
-
+namespace {
 
 Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB) {
   Instr instr(ALU);
@@ -48,7 +20,6 @@ Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB) {
 }
 
 
-namespace {
 
 Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
 	return genInstr(op, always, dst, srcA, srcB);
@@ -214,95 +185,17 @@ std::string BranchTarget::to_string() const {
 	return ret;
 }
 
+
 ///////////////////////////////////////////////////////////////////////////////
-// End Class BranchTarget
-///////////////////////////////////////////////////////////////////////////////
-
-
-Instr Instr::nop() {
-	Instr instr;
-	instr.tag = NO_OP;
-	return instr;
-}
-
-
-/**
- * Determine if instruction is a conditional assignment
- */
-bool Instr::isCondAssign() const {
-  if (tag == InstrTag::LI && !LI.cond.is_always())
-    return true;
-
-  if (tag == InstrTag::ALU && !ALU.cond.is_always())
-    return true;
-
-  return false;
-}
-
-
-void Instr::setFlags() {
-	if (tag == InstrTag::LI) {
-		LI.setFlags = true;
-	} else if (tag == InstrTag::ALU) {
-		ALU.setFlags = true;
-	} else {
-		assert(false);
-	}
-}
-
-
-Instr &Instr::pushz() {
-	setFlags();
-
-	if (tag == InstrTag::LI) {
-		LI.setCond = SetCond::Z;
-	} else if (tag == InstrTag::ALU) {
-		ALU.setCond = SetCond::Z;
-	} else {
-		assert(false);
-	}
-
-	return *this;
-}
-
-
-/**
- * Convert branch label to branch target
- * 
- * @param offset  offset to the label from current instruction
- */
-void Instr::label_to_target(int offset) {
-	assert(tag == InstrTag::BRL);
-
-	// Convert branch label (BRL) instruction to branch instruction with offset (BR)
-	// Following assumes that BranchCond field 'cond' survives the transition to another union member
-
-	BranchTarget t;
-	t.relative       = true;
-	t.useRegOffset   = false;
-	t.immOffset      = offset - 4;  // Compensate for the 4-op delay for executing a branch
-
-	tag        = InstrTag::BR;
-	BR.target  = t;
-}
-
-
-// ======================
 // Handy syntax functions
-// ======================
-
-// Is last instruction in a basic block?
-bool isLast(Instr instr) {
-  return instr.tag == BRL || instr.tag == BR || instr.tag == END;
-}
+///////////////////////////////////////////////////////////////////////////////
 
 // =========================
 // Fresh variable generation
 // =========================
 
 // Obtain a fresh variable
-Reg freshReg()
-{
+Reg freshReg() {
   Var v = freshVar();
   Reg r;
   r.tag = REG_A;

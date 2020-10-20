@@ -49,7 +49,7 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
 	//debug("Called vc4 KernelDriver::invoke()");	
 	assert(code.size() > 0);
 
-	int numWords = code.numElems + 12*MAX_KERNEL_PARAMS + 12*2;
+	int numWords = code.size() + 12*MAX_KERNEL_PARAMS + 12*2;
 
 	// Assumption: code in a kernel, once allocated, doesnt' change
 	if (qpuCodeMem.allocated()) {
@@ -63,8 +63,8 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
 
 		// Copy kernel to code memory
 		int offset = 0;
-		for (int i = 0; i < code.numElems; i++) {
-			qpuCodeMem[offset++] = code.elems[i];
+		for (int i = 0; i < code.size(); i++) {
+			qpuCodeMem[offset++] = code[i];
 		}
 		qpuCodeMemOffset = offset;
 	}

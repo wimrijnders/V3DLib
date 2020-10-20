@@ -45,14 +45,13 @@ struct InterpreterState {
 
 
 void storeToHeap(CoreState *s, Vec &index, Vec &val) {
-  uint32_t hp = (uint32_t) index.elems[0].intVal;
+  uint32_t hp = (uint32_t) index[0].intVal;
   for (int i = 0; i < NUM_LANES; i++) {
-    s->emuHeap.phy(hp>>2) = val.elems[i].intVal;
+    s->emuHeap.phy(hp>>2) = val[i].intVal;
     hp += 4 + s->writeStride;
   }
 }
 
-}  // anon namespace
 
 // ============================================================================
 // Evaluate a variable
@@ -68,15 +67,15 @@ Vec evalVar(CoreState* s, Var v)
 
     // Return next uniform
     case UNIFORM: {
-      assert(s->nextUniform < s->uniforms->numElems);
+      assert(s->nextUniform < s->uniforms->size());
       Vec x;
       for (int i = 0; i < NUM_LANES; i++)
         if (s->nextUniform == -2)
-          x.elems[i].intVal = s->id;
+          x[i].intVal = s->id;
         else if (s->nextUniform == -1)
-          x.elems[i].intVal = s->numCores;
+          x[i].intVal = s->numCores;
         else
-          x.elems[i].intVal = s->uniforms->elems[s->nextUniform];
+          x[i].intVal = s->uniforms->get(s->nextUniform);
       s->nextUniform++;
       return x;
     }
@@ -85,7 +84,7 @@ Vec evalVar(CoreState* s, Var v)
     case QPU_NUM: {
       Vec x;
       for (int i = 0; i < NUM_LANES; i++)
-        x.elems[i].intVal = s->id;
+        x[i].intVal = s->id;
       return x;
     }
 
@@ -93,7 +92,7 @@ Vec evalVar(CoreState* s, Var v)
     case ELEM_NUM: {
       Vec x;
       for (int i = 0; i < NUM_LANES; i++)
-        x.elems[i].intVal = i;
+        x[i].intVal = i;
       return x;
     }
 
@@ -110,31 +109,34 @@ Vec evalVar(CoreState* s, Var v)
 	return Vec();
 }
 
-// ============================================================================
-// Evaluate an arithmetic expression
-// ============================================================================
 
 // Bitwise rotate-right
-inline int32_t rotRight(int32_t x, int32_t n)
-{
+inline int32_t rotRight(int32_t x, int32_t n) {
   uint32_t ux = (uint32_t) x;
   return (ux >> n) | (x << (32-n));
 }
 
-Vec eval(CoreState* s, Expr* e)
-{
+}  // anon namespace
+
+
+// ============================================================================
+// Evaluate an arithmetic expression
+// ============================================================================
+
+
+Vec eval(CoreState* s, Expr* e) {
   Vec v;
   switch (e->tag) {
     // Integer literal
     case INT_LIT:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = e->intLit;
+        v[i].intVal = e->intLit;
       return v;
 
     // Float literal
     case FLOAT_LIT:
        for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].floatVal = e->floatLit;
+        v[i].floatVal = e->floatLit;
       return v;
    
     // Variable
@@ -147,21 +149,21 @@ Vec eval(CoreState* s, Expr* e)
       Vec b = eval(s, e->apply.rhs);
       if (e->apply.op.op == ROTATE) {
         // Vector rotation
-        v = rotate(a, b.elems[0].intVal);
+        v = rotate(a, b[0].intVal);
       }
       else if (e->apply.op.type == FLOAT) {
         // Floating-point operation
         for (int i = 0; i < NUM_LANES; i++) {
-          float x = a.elems[i].floatVal;
-          float y = b.elems[i].floatVal;
+          float x = a[i].floatVal;
+          float y = b[i].floatVal;
           switch (e->apply.op.op) {
-            case ADD:  v.elems[i].floatVal = x+y; break;
-            case SUB:  v.elems[i].floatVal = x-y; break;
-            case MUL:  v.elems[i].floatVal = x*y; break;
-            case ItoF: v.elems[i].floatVal = (float) a.elems[i].intVal; break;
-            case FtoI: v.elems[i].intVal   = (int) a.elems[i].floatVal; break;
-            case MIN:  v.elems[i].floatVal = x<y?x:y; break;
-            case MAX:  v.elems[i].floatVal = x>y?x:y; break;
+            case ADD:  v[i].floatVal = x+y; break;
+            case SUB:  v[i].floatVal = x-y; break;
+            case MUL:  v[i].floatVal = x*y; break;
+            case ItoF: v[i].floatVal = (float) a[i].intVal; break;
+            case FtoI: v[i].intVal   = (int) a[i].floatVal; break;
+            case MIN:  v[i].floatVal = x<y?x:y; break;
+            case MAX:  v[i].floatVal = x>y?x:y; break;
             default: assert(false);
           }
         }
@@ -169,25 +171,25 @@ Vec eval(CoreState* s, Expr* e)
       else {
         // Integer operation
         for (int i = 0; i < NUM_LANES; i++) {
-          int32_t x   = a.elems[i].intVal;
-          int32_t y   = b.elems[i].intVal;
+          int32_t x   = a[i].intVal;
+          int32_t y   = b[i].intVal;
           uint32_t ux = (uint32_t) x;
           switch (e->apply.op.op) {
-            case ADD:  v.elems[i].intVal = x+y; break;
-            case SUB:  v.elems[i].intVal = x-y; break;
-            case MUL:  v.elems[i].intVal = (x&0xffffff)*(y&0xffffff); break;
-            case SHL:  v.elems[i].intVal = x<<y; break;
-            case SHR:  v.elems[i].intVal = x>>y; break;
-            case USHR: v.elems[i].intVal = (int32_t) (ux >> y); break;
-            case ItoF: v.elems[i].floatVal = (float) a.elems[i].intVal; break;
-            case FtoI: v.elems[i].intVal   = (int) a.elems[i].floatVal; break;
-            case MIN:  v.elems[i].intVal = x<y?x:y; break;
-            case MAX:  v.elems[i].intVal = x>y?x:y; break;
-            case BOR:  v.elems[i].intVal = x|y; break;
-            case BAND: v.elems[i].intVal = x&y; break;
-            case BXOR: v.elems[i].intVal = x^y; break;
-            case BNOT: v.elems[i].intVal = ~x; break;
-            case ROR: v.elems[i].intVal = rotRight(x, y);
+            case ADD:  v[i].intVal = x+y; break;
+            case SUB:  v[i].intVal = x-y; break;
+            case MUL:  v[i].intVal = (x&0xffffff)*(y&0xffffff); break;
+            case SHL:  v[i].intVal = x<<y; break;
+            case SHR:  v[i].intVal = x>>y; break;
+            case USHR: v[i].intVal = (int32_t) (ux >> y); break;
+            case ItoF: v[i].floatVal = (float) a[i].intVal; break;
+            case FtoI: v[i].intVal   = (int) a[i].floatVal; break;
+            case MIN:  v[i].intVal = x<y?x:y; break;
+            case MAX:  v[i].intVal = x>y?x:y; break;
+            case BOR:  v[i].intVal = x|y; break;
+            case BAND: v[i].intVal = x&y; break;
+            case BXOR: v[i].intVal = x^y; break;
+            case BNOT: v[i].intVal = ~x; break;
+            case ROR:  v[i].intVal = rotRight(x, y);
             default: assert(false);
           }
         }
@@ -198,7 +200,7 @@ Vec eval(CoreState* s, Expr* e)
     // Dereference pointer
     case DEREF:
       Vec a = eval(s, e->deref.ptr);
-      uint32_t hp = (uint32_t) a.elems[0].intVal;
+      uint32_t hp = (uint32_t) a[0].intVal;
 
 			// NOTE: `hp` is the same for all lanes.
 			//       This has been tested and verified.
@@ -206,7 +208,7 @@ Vec eval(CoreState* s, Expr* e)
 
       Vec v;
       for (int i = 0; i < NUM_LANES; i++) {
-        v.elems[i].intVal = s->emuHeap.phy((hp >> 2) + i); // WRI added '+ i'
+        v[i].intVal = s->emuHeap.phy((hp >> 2) + i); // WRI added '+ i'
         hp += s->readStride;
       }
       return v;
@@ -216,19 +218,20 @@ Vec eval(CoreState* s, Expr* e)
 	return Vec();
 }
 
+
 // ============================================================================
 // Evaluate boolean expression
 // ============================================================================
 
-Vec evalBool(CoreState* s, BExpr* e)
-{
+Vec evalBool(CoreState* s, BExpr* e) {
   Vec v;
+
   switch (e->tag) {
     // Negation
     case NOT:
       v = evalBool(s, e->neg);
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = !v.elems[i].intVal;
+        v[i].intVal = !v[i].intVal;
       return v;
 
     // Conjunction
@@ -236,7 +239,7 @@ Vec evalBool(CoreState* s, BExpr* e)
       Vec a = evalBool(s, e->conj.lhs);
       Vec b = evalBool(s, e->conj.rhs);
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = a.elems[i].intVal && b.elems[i].intVal;
+        v[i].intVal = a[i].intVal && b[i].intVal;
       return v;
     }
 
@@ -245,7 +248,7 @@ Vec evalBool(CoreState* s, BExpr* e)
       Vec a = evalBool(s, e->disj.lhs);
       Vec b = evalBool(s, e->disj.rhs);
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = a.elems[i].intVal || b.elems[i].intVal;
+        v[i].intVal = a[i].intVal || b[i].intVal;
       return v;
     }
 
@@ -256,15 +259,15 @@ Vec evalBool(CoreState* s, BExpr* e)
       if (e->cmp.op.type == FLOAT) {
         // Floating-point comparison
         for (int i = 0; i < NUM_LANES; i++) {
-          float x = a.elems[i].floatVal;
-          float y = b.elems[i].floatVal;
+          float x = a[i].floatVal;
+          float y = b[i].floatVal;
           switch (e->cmp.op.op) {
-            case EQ:  v.elems[i].intVal = x == y; break;
-            case NEQ: v.elems[i].intVal = x != y; break;
-            case LT:  v.elems[i].intVal = x <  y; break;
-            case GT:  v.elems[i].intVal = x >  y; break;
-            case LE:  v.elems[i].intVal = x <= y; break;
-            case GE:  v.elems[i].intVal = x >= y; break;
+            case EQ:  v[i].intVal = x == y; break;
+            case NEQ: v[i].intVal = x != y; break;
+            case LT:  v[i].intVal = x <  y; break;
+            case GT:  v[i].intVal = x >  y; break;
+            case LE:  v[i].intVal = x <= y; break;
+            case GE:  v[i].intVal = x >= y; break;
             default:  assert(false);
           }
         }
@@ -273,21 +276,21 @@ Vec evalBool(CoreState* s, BExpr* e)
       else {
         // Integer comparison
         for (int i = 0; i < NUM_LANES; i++) {
-          int32_t x = a.elems[i].intVal;
-          int32_t y = b.elems[i].intVal;
+          int32_t x = a[i].intVal;
+          int32_t y = b[i].intVal;
           switch (e->cmp.op.op) {
-            case EQ:  v.elems[i].intVal = x == y; break;
-            case NEQ: v.elems[i].intVal = x != y; break;
+            case EQ:  v[i].intVal = x == y; break;
+            case NEQ: v[i].intVal = x != y; break;
             // Ideally compiler would implement:
-            // case LT:  v.elems[i].intVal = x <  y; break;
-            // case GT:  v.elems[i].intVal = x >  y; break;
-            // case LE:  v.elems[i].intVal = x <= y; break;
-            // case GE:  v.elems[i].intVal = x >= y; break;
+            // case LT:  v[i].intVal = x <  y; break;
+            // case GT:  v[i].intVal = x >  y; break;
+            // case LE:  v[i].intVal = x <= y; break;
+            // case GE:  v[i].intVal = x >= y; break;
             // But currently it implements:
-            case LT: v.elems[i].intVal = ((x-y) & 0x80000000) != 0; break;
-            case GE: v.elems[i].intVal = ((x-y) & 0x80000000) == 0; break;
-            case LE: v.elems[i].intVal = ((y-x) & 0x80000000) == 0; break;
-            case GT: v.elems[i].intVal = ((y-x) & 0x80000000) != 0; break;
+            case LT: v[i].intVal = ((x-y) & 0x80000000) != 0; break;
+            case GE: v[i].intVal = ((x-y) & 0x80000000) == 0; break;
+            case LE: v[i].intVal = ((y-x) & 0x80000000) == 0; break;
+            case GT: v[i].intVal = ((y-x) & 0x80000000) != 0; break;
             default:  assert(false);
           }
         }
@@ -314,14 +317,14 @@ bool evalCond(CoreState* s, CExpr* e)
     case ALL: {
       bool b = true;
       for (int i = 0; i < NUM_LANES; i++)
-        b = b && v.elems[i].intVal;
+        b = b && v[i].intVal;
       return b;
     }
       
     case ANY: {
       bool b = false;
       for (int i = 0; i < NUM_LANES; i++)
-        b = b || v.elems[i].intVal;
+        b = b || v[i].intVal;
       return b;
     }
   }
@@ -341,18 +344,18 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
     // Normal variable
     case STANDARD:
       for (int i = 0; i < NUM_LANES; i++)
-        if (cond.elems[i].intVal) {
-          s->env[v.id].elems[i] = x.elems[i];
+        if (cond[i].intVal) {
+          s->env[v.id][i] = x[i];
         }
       return;
 
     // Load via TMU
     case TMU0_ADDR: {
-      assert(s->loadBuffer.numElems < 8);
+      assert(s->loadBuffer.size() < 8);
       Vec w;
       for (int i = 0; i < NUM_LANES; i++) {
-        uint32_t addr = (uint32_t) x.elems[i].intVal;
-        w.elems[i].intVal = s->emuHeap.phy(addr>>2);
+        uint32_t addr = (uint32_t) x[i].intVal;
+        w[i].intVal = s->emuHeap.phy(addr>>2);
       }
       s->loadBuffer.append(w);
       return;
@@ -410,7 +413,7 @@ Vec vecAlways()
 {
   Vec always;
   for (int i = 0; i < NUM_LANES; i++)
-    always.elems[i].intVal = 1;
+    always[i].intVal = 1;
   return always;
 }
 
@@ -419,7 +422,7 @@ Vec vecNeg(Vec cond)
 {
   Vec v;
   for (int i = 0; i < NUM_LANES; i++)
-    v.elems[i].intVal = !cond.elems[i].intVal;
+    v[i].intVal = !cond[i].intVal;
   return v;
 }
 
@@ -428,7 +431,7 @@ Vec vecAnd(Vec x, Vec y)
 {
   Vec v;
   for (int i = 0; i < NUM_LANES; i++)
-    v.elems[i].intVal = x.elems[i].intVal && y.elems[i].intVal;
+    v[i].intVal = x[i].intVal && y[i].intVal;
   return v;
 }
 
@@ -510,9 +513,9 @@ void execSetStride(CoreState* s, StmtTag tag, Expr* e)
 {
   Vec v = eval(s, e);
   if (tag == SET_READ_STRIDE)
-    s->readStride = v.elems[0].intVal;
+    s->readStride = v[0].intVal;
   else
-    s->writeStride = v.elems[0].intVal;
+    s->writeStride = v[0].intVal;
 }
 
 // ============================================================================
@@ -521,7 +524,7 @@ void execSetStride(CoreState* s, StmtTag tag, Expr* e)
 
 void execLoadReceive(CoreState* s, Expr* e)
 {
-  assert(s->loadBuffer.numElems > 0);
+  assert(s->loadBuffer.size() > 0);
   assert(e->tag == VAR);
   Vec val = s->loadBuffer.remove(0);
   assignToVar(s, vecAlways(), e->var, val);
@@ -542,7 +545,7 @@ void execStoreRequest(CoreState* s, Expr* data, Expr* addr) {
 void exec(InterpreterState* state, CoreState* s)
 {
   // Control stack must be non-empty
-  assert(s->stack.numElems > 0);
+  assert(s->stack.size() > 0);
 
   // Pop the statement at the top of the stack
   Stmt* stmt = s->stack.pop();
@@ -687,7 +690,7 @@ void interpreter(
   while (running) {
     running = false;
     for (int i = 0; i < numCores; i++) {
-      if (state.core[i].stack.numElems > 0) {
+      if (state.core[i].stack.size() > 0) {
         running = true;
         exec(&state, &state.core[i]);
       }

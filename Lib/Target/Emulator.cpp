@@ -98,24 +98,24 @@ Vec readReg(QPUState* s, State* g, Reg reg)
     case SPECIAL:
       if (reg.regId == SPECIAL_ELEM_NUM) {
         for (int i = 0; i < NUM_LANES; i++)
-          v.elems[i].intVal = i;
+          v[i].intVal = i;
         return v;
       }
       else if (reg.regId == SPECIAL_UNIFORM) {
-        assert(s->nextUniform < g->uniforms->numElems);
+        assert(s->nextUniform < g->uniforms->size());
         for (int i = 0; i < NUM_LANES; i++)
           if (s->nextUniform == -2)
-            v.elems[i].intVal = s->id;
+            v[i].intVal = s->id;
           else if (s->nextUniform == -1)
-            v.elems[i].intVal = s->numQPUs;
+            v[i].intVal = s->numQPUs;
           else
-            v.elems[i].intVal = g->uniforms->elems[s->nextUniform];
+            v[i].intVal = g->uniforms->get(s->nextUniform);
         s->nextUniform++;
         return v;
       }
       else if (reg.regId == SPECIAL_QPU_NUM) {
         for (int i = 0; i < NUM_LANES; i++)
-          v.elems[i].intVal = s->id;
+          v[i].intVal = s->id;
         return v;
       }
       else if (reg.regId == SPECIAL_VPM_READ) {
@@ -128,7 +128,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int i = 0; i < NUM_LANES; i++) {
             int index = (16*req->addr+i);
             assert(index < VPM_SIZE);
-            v.elems[i] = g->vpm[index];
+            v[i] = g->vpm[index];
           }
         }
         else {
@@ -138,7 +138,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
             uint32_t y = req->addr >> 4;
             int index = (y*16*16 + x + i*16);
             assert(index < VPM_SIZE);
-            v.elems[i] = g->vpm[index];
+            v[i] = g->vpm[index];
           }
         }
         req->numVecs--;
@@ -219,7 +219,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
       fatal("QPULib: can't read special register");
     case NONE:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = 0;
+        v[i].intVal = 0;
       return v;
   }
 
@@ -293,9 +293,7 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond)
 // Write a vector to a register
 // ============================================================================
 
-void writeReg(QPUState* s, State* g, bool setFlags,
-                AssignCond cond, Reg dest, Vec v)
-{
+void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, Vec v) {
   switch (dest.tag) {
     case REG_A:
     case REG_B:
@@ -318,8 +316,8 @@ void writeReg(QPUState* s, State* g, bool setFlags,
       
       for (int i = 0; i < NUM_LANES; i++)
         if (checkAssignCond(s, cond, i)) {
-          Word x = v.elems[i];
-          if (dest.tag != NONE) w->elems[i] = x;
+          Word x = v[i];
+          if (dest.tag != NONE) w->get(i) = x;
           if (setFlags) {
             s->zeroFlags[i] = x.intVal == 0;
             s->negFlags[i]  = x.intVal < 0;
@@ -330,7 +328,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
     case SPECIAL:
       switch (dest.regId) {
         case SPECIAL_RD_SETUP: {
-          int setup = v.elems[0].intVal;
+          int setup = v[0].intVal;
           if ((setup & 0xf0000000) == 0x90000000) {
             // Set read pitch
             int pitch = (setup & 0x1fff);
@@ -368,7 +366,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
           break;
         }
         case SPECIAL_WR_SETUP: {
-          int setup = v.elems[0].intVal;
+          int setup = v[0].intVal;
           if ((setup & 0xc0000000) == 0xc0000000) {
             // Set write stride
             int stride = setup & 0x1fff;
@@ -404,7 +402,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
             for (int i = 0; i < NUM_LANES; i++) {
               int index = (16*req->addr+i);
               assert(index < VPM_SIZE);
-              g->vpm[index] = v.elems[i];
+              g->vpm[index] = v[i];
             }
           }
           else {
@@ -414,7 +412,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
             for (int i = 0; i < NUM_LANES; i++) {
               int index = (y*16*16 + x + i*16);
               assert(index < VPM_SIZE);
-              g->vpm[index] = v.elems[i];
+              g->vpm[index] = v[i];
             }
           }
           req->addr = req->addr + req->stride;
@@ -424,25 +422,25 @@ void writeReg(QPUState* s, State* g, bool setFlags,
           // Initiate DMA load
           assert(!s->dmaLoad.active);
           s->dmaLoad.active = true;
-          s->dmaLoad.addr   = v.elems[0];
+          s->dmaLoad.addr   = v[0];
           return;
         }
         case SPECIAL_DMA_ST_ADDR: {
           // Initiate DMA store
           assert(!s->dmaStore.active);
           s->dmaStore.active = true;
-          s->dmaStore.addr   = v.elems[0];
+          s->dmaStore.addr   = v[0];
           return;
         }
         case SPECIAL_HOST_INT: {
           return;
         }
         case SPECIAL_TMU0_S: {
-          assert(s->loadBuffer.numElems < 4);
+          assert(s->loadBuffer.size() < 4);
           Vec val;
           for (int i = 0; i < NUM_LANES; i++) {
-            uint32_t a = (uint32_t) v.elems[i].intVal;
-            val.elems[i].intVal = g->emuHeap.phy(a>>2);
+            uint32_t a = (uint32_t) v[i].intVal;
+            val[i].intVal = g->emuHeap.phy(a>>2);
           }
           s->loadBuffer.append(val);
           return;
@@ -469,15 +467,15 @@ Vec evalImm(Imm imm)
   switch (imm.tag) {
     case IMM_INT32:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = imm.intVal;
+        v[i].intVal = imm.intVal;
       return v;
     case IMM_FLOAT32:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].floatVal = imm.floatVal;
+        v[i].floatVal = imm.floatVal;
       return v;
     case IMM_MASK:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = (imm.intVal >> i) & 1;
+        v[i].intVal = (imm.intVal >> i) & 1;
       return v;
   }
 
@@ -497,13 +495,13 @@ Vec evalSmallImm(QPUState* s, SmallImm imm)
     case SMALL_IMM: {
       Word w = decodeSmallLit(imm.val);
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i] = w;
+        v[i] = w;
       return v;
     }
     case ROT_ACC:
     case ROT_IMM:
       int amount = (imm.tag == ROT_IMM)
-                 ? imm.val : (int) s->accum[4].elems[0].intVal;
+                 ? imm.val : (int) s->accum[4][0].intVal;
       return rotate(v, amount);
   }
 
@@ -552,19 +550,14 @@ inline int32_t clz(int32_t x)
 // ALU
 // ============================================================================
 
-Vec alu(QPUState* s, State* g,
-        RegOrImm srcA, ALUOp op, RegOrImm srcB)
-{
+Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
   // First, obtain vector operands
-  Vec x, y, z;
-  x = readRegOrImm(s, g, srcA);
+  Vec a, b, c;
+  a = readRegOrImm(s, g, srcA);
   if (srcA.tag == REG && srcB.tag == REG && srcA.reg == srcB.reg)
-    y = x;
+    b = a;
   else
-    y = readRegOrImm(s, g, srcB);
-  Word* a = x.elems;
-  Word* b = y.elems;
-  Word* c = z.elems;
+    b = readRegOrImm(s, g, srcB);
 
   // Now evaluate the operation
   switch (op) {
@@ -694,7 +687,7 @@ Vec alu(QPUState* s, State* g,
       break;
     case M_ROTATE:
       // Vector rotation
-      z = rotate(x, (int) b[0].intVal);
+      c = rotate(a, (int) b[0].intVal);
       break;
     case A_V8ADDS:
     case A_V8SUBS:
@@ -709,7 +702,8 @@ Vec alu(QPUState* s, State* g,
       fatal(buf);
 		}
   }
-  return z;
+
+  return c;
 }
 
 // ============================================================================
@@ -750,8 +744,8 @@ void emulate(
       QPUState* s = &state.qpu[i];
       if (s->running) {
         anyRunning = true;
-        assert(s->pc < instrs->numElems);
-        Instr instr = instrs->elems[s->pc++];
+        assert(s->pc < instrs->size());
+        Instr instr = instrs->get(s->pc++);
         switch (instr.tag) {
           // Load immediate
           case LI: {
@@ -814,7 +808,7 @@ void emulate(
           }
           // RECV: receive load-via-TMU response
           case RECV: {
-            assert(s->loadBuffer.numElems > 0);
+            assert(s->loadBuffer.size() > 0);
             Vec val = s->loadBuffer.remove(0);
             AssignCond always;
             always.tag = ALWAYS;
@@ -823,7 +817,7 @@ void emulate(
           }
           // Read from TMU0 into accumulator 4
           case TMU0_TO_ACC4: {
-            assert(s->loadBuffer.numElems > 0);
+            assert(s->loadBuffer.size() > 0);
             Vec val = s->loadBuffer.remove(0);
             AssignCond always;
             always.tag = ALWAYS;
