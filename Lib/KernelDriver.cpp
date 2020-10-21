@@ -43,7 +43,7 @@ void compileKernel(Seq<Instr> &targetCode, Stmt* body) {
   satisfy(&targetCode);
 
   // Translate branch-to-labels to relative branches
-	if (compiling_for_vc4()) {  // For v3d, it happens in `v3d::KernelDriver::to_opcodes()` 
+	if (Platform::instance().compiling_for_vc4()) {  // For v3d, it happens in `v3d::KernelDriver::to_opcodes()` 
 	  removeLabels(targetCode);
 	}
 }

@@ -1,4 +1,5 @@
 #include "Translate.h"
+#include "Support/Platform.h"
 #include "../SourceTranslate.h"
 #include "Source/Syntax.h"
 #include "Target/SmallLiteral.h"
@@ -45,10 +46,10 @@ ALUOp opcode(Op op)
       case BNOT:   return A_BNOT;
       case ROTATE: return M_ROTATE;
       case TIDX: 
-				assertq(!compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
+				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
 				return A_TIDX;
       case EIDX: 
-				assertq(!compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
+				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
 				return A_EIDX;
       default:
 				assertq(false, "Not expecting this op for int in opcode()", true);
@@ -805,12 +806,10 @@ Reg srcReg(Var v) {
 			r.isUniformPtr = v.isUniformPtr;
 			break;
     case QPU_NUM:
-			//if (!compiling_for_vc4()) breakpoint
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_QPU_NUM;
 			break;
     case ELEM_NUM:
-			//if (!compiling_for_vc4()) breakpoint
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_ELEM_NUM;
 			break;
@@ -1005,7 +1004,7 @@ void translateStmt(Seq<Instr>* seq, Stmt* s) {
   stmt(seq, s);
 	insertInitBlock(*seq);
 
-	if (compiling_for_vc4()) {
+	if (Platform::instance().compiling_for_vc4()) {
 	  insertEndCode(*seq);
 	};
 }

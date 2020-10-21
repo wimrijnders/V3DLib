@@ -132,21 +132,6 @@ PlatformInfo::PlatformInfo() {
 }
 
 
-void PlatformInfo::use_main_memory(bool val) {
-#ifndef QPU_MODE
-	// Pedantic paranoia
-	warning("use_main_memory() called with no QPU mode");
-	assertq(m_use_main_memory, "Should only use main memory for emulator and interpreter", true);
-	if (!val) {
-		fatal("Can only use main memory for emulator and interpreter");
-	}
-#else
-	//debug("use_main_memory() called");
-	m_use_main_memory = val;
-#endif
-}
-
-
 void PlatformInfo::output() {
 	if (!platform_id.empty()) {
 		printf("Platform: %s\n", platform_id.c_str());
@@ -185,5 +170,53 @@ PlatformInfo const  &Platform::instance() {
 
 
 void Platform::use_main_memory(bool val) {
-	instance_local().use_main_memory(val);
+#ifndef QPU_MODE
+	// Pedantic paranoia - prob too strict, eg. for non-pi platforms.
+	warning("use_main_memory() called with QPU mode disabled");
+	assertq(instance_local().m_use_main_memory, "Should only use main memory for emulator and interpreter", true);
+	if (!val) {
+		fatal("Can only use main memory for emulator and interpreter");
+	}
+#else
+	instance_local().m_use_main_memory = val;
+#endif
+}
+
+
+/**
+ * Sets the target platform to compile to.
+ *
+ * This is distinct from the platform we are actually running on.
+ * The compilation can occur on any platform, including non-pi.
+ */
+void Platform::compiling_for_vc4(bool val) {
+	instance_local().m_compiling_for_vc4 = val;
+}
+
+
+/**
+ * Returns the number of available registers in a register file for the current
+ * target platform
+ *
+ * For `vc4`, which has two register files 'A' and 'B' per QPU, returns the size
+ * of each register file.
+ * `v3d` has one single dual-port register file 'A' per QPU.
+ *
+ * Current implementation assumes no multi-threading has been enabled on the
+ * QPU's. If that ever happens (not likely in this project), the size becomes
+ * `size/num_threads`.
+ *
+ * However, according to internet hearsay, the default and minimum number of
+ * threads for `v3d` is actually 2 per QPU. Still, 64 for `v3d` appears to be the
+ * correct return value in this case.
+ *
+ * This all goes to show that something that appears to be exceedingly simple in
+ * concept can actually be convoluted as f*** underwater.
+ */
+int PlatformInfo::size_regfile() const {
+	if (m_compiling_for_vc4) {
+		return 32;
+	} else {
+		return 64;
+	}
 }

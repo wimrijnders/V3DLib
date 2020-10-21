@@ -102,7 +102,6 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 	// Allocate registers to the variables
   for (int i = 0; i < numVars; i++) {
 		auto possible = liveWith.possible_registers(i, alloc);
-		LiveSets::dump_possible(possible, i);
 
     alloc[i].tag = REG_A;
     RegId regId = LiveSets::choose_register(possible, false);

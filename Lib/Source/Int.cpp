@@ -2,6 +2,7 @@
 #include "Source/Stmt.h"
 #include "Source/Float.h"
 #include "SourceTranslate.h"
+#include "Support/Platform.h"
 
 namespace QPULib {
 
@@ -98,7 +99,7 @@ IntExpr getUniformInt()
  * On `vc4` this is a special register, on `v3d` this is an instruction.
  */
 IntExpr index() {
-	if (compiling_for_vc4()) {
+	if (Platform::instance().compiling_for_vc4()) {
 	  Expr* e    = mkExpr();
 	  e->tag     = VAR;
 	  e->var.tag = ELEM_NUM;

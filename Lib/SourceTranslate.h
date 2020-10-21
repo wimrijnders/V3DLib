@@ -30,8 +30,6 @@ protected:
 };
 
 ISourceTranslate &getSourceTranslate();
-void set_compiling_for_vc4(bool val);
-bool compiling_for_vc4();
 
 }  // namespace QPULib
 

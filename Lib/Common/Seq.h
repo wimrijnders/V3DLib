@@ -54,25 +54,21 @@ public:
 		 */
 		int size() const { return numElems; }
 
-
 		void set_size(int new_size) {
 			assert(new_size > 0);
   		setCapacity(new_size);
 		  numElems = new_size;
 		}
 
+		bool empty() const { return size() ==0; }
 
-		/**
-		 * Synonym for operator[]
-		 */
 		T &get(int index) {
-			assert(0 <= index && index < numElems);
+			assertq(0 <= index && index < numElems, "Seq[] index out of range", true);
 			return elems[index];
 		}
 
 		T &operator[](int index) {
-			assert(0 <= index && index < numElems);
-			return elems[index];
+			return get(index);
 		}
 
 		T operator[](int index) const {

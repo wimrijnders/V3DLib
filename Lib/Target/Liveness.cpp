@@ -5,7 +5,8 @@
 //    https://lambda.uta.edu/cse5317/spring01/notes/node37.html
 //
 ///////////////////////////////////////////////////////////////////////////////
-#include "Support/basics.h"   // fatal()
+#include "Support/basics.h"    // fatal()
+#include "Support/Platform.h"  // size_regfile()
 #include "Target/Subst.h"
 #include "Target/Liveness.h"
 
@@ -274,7 +275,7 @@ void LiveSets::init(Seq<Instr> &instrs, Liveness &live) {
  * @param index  index of variable
  */
 std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag) {
-  const int NUM_REGS = 32;
+  const int NUM_REGS = Platform::instance().size_regfile();
   std::vector<bool> possible(NUM_REGS);
 
 	for (int j = 0; j < NUM_REGS; j++)
@@ -294,11 +295,19 @@ std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &allo
 
 /**
  * Debug function to output the contents of the possible-vector
+ *
+ * Returns a string of 0's and 1's for each slot in the possible-vector.
+ * - '0' - in use, not available for assignment for variable with index 'index'.
+ * - '1' - not in use, available for assignment
+ *
+ * This falls under the category "You probably don't need it, but when you need it, you need it bad".
+ *
+ * @param index - index value of current variable displayed. If `-1`, don't show. For display purposes only.
  */
 void LiveSets::dump_possible(std::vector<bool> &possible, int index) {
 	std::string buf = "possible: ";
 
-	if (index >=0) {
+	if (index >= 0) {
 		if (index < 10) buf << "  ";
 		else if (index < 100) buf << " ";
 
@@ -306,7 +315,7 @@ void LiveSets::dump_possible(std::vector<bool> &possible, int index) {
 	}
 	buf << ": ";
 
-	for (int j = possible.size() - 1; j >= 0; j--) {
+	for (int j = 0; j < possible.size(); j++) {
 		buf << (possible[j]?"1":"0");
 	}
 	debug(buf.c_str());

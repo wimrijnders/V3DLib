@@ -6,8 +6,6 @@
 #include "v3d/SourceTranslate.h"
 
 namespace {
-
-	bool _compiling_for_vc4 = true;
 	std::unique_ptr<QPULib::ISourceTranslate> _vc4_source_translate;
 	std::unique_ptr<QPULib::ISourceTranslate> _v3d_source_translate;
 
@@ -15,15 +13,6 @@ namespace {
 
 
 namespace QPULib {
-
-void set_compiling_for_vc4(bool val) {
-	_compiling_for_vc4 = val;
-}
-
-
-bool compiling_for_vc4() {
-	return _compiling_for_vc4;
-}
 
 int ISourceTranslate::get_init_begin_marker(Seq<Instr> &code) {
 	// Find the init begin marker
@@ -66,7 +55,7 @@ Seq<Instr> ISourceTranslate::add_uniform_pointer_offset(Seq<Instr> &code) {
 
 
 ISourceTranslate &getSourceTranslate() {
-	if (_compiling_for_vc4) {
+	if (Platform::instance().compiling_for_vc4()) {
 		if (_vc4_source_translate.get() == nullptr) {
 			_vc4_source_translate.reset(new vc4::SourceTranslate());
 		}
