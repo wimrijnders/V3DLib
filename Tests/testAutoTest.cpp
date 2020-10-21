@@ -40,15 +40,16 @@ GenOptions basicGenOpts()
   return opts;
 }
 
+
 // ============================================================================
 // Helpers
 // ============================================================================
 
-void printCharSeq(Seq<char>* s)
-{
-  for (int i = 0; i < s->numElems; i++)
-    printf("%c", s->elems[i]);
+void printCharSeq(Seq<char> &s) {
+	for (int i = 0; i < s.size(); i++)
+		printf("%c", s[i]);
 }
+
 
 // ============================================================================
 // Main
@@ -56,7 +57,7 @@ void printCharSeq(Seq<char>* s)
 
 TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	SECTION("Should generate the same output") {
-		set_compiling_for_vc4(true);  // emulator is vc4 only
+		Platform::compiling_for_vc4(true);  // emulator is vc4 only
 
 	  // Seed random generator
 	  srand(0);
@@ -89,24 +90,24 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	    emulate(1, &targetCode, numEmuVars, &params, getBufferObject(), &emuOut);
 
 	    bool differs = false;
-	    if (interpOut.numElems != emuOut.numElems)
+	    if (interpOut.size() != emuOut.size())
 	      differs = true;
 	    else {
-	      for (int i = 0; i < interpOut.numElems; i++)
-	        if (interpOut.elems[i] != emuOut.elems[i]) { differs = true; break; }
+	      for (int i = 0; i < interpOut.size(); i++)
+	        if (interpOut[i] != emuOut[i]) { differs = true; break; }
 	    }
 	
 	    if (differs) {
 	      printf("Failed test %i.\n", test);
 	      pretty(s);
 	      printf("Params: ");
-	      for (int i = 0; i < params.numElems; i++) {
-	        printf("%i ", params.elems[i]);
+	      for (int i = 0; i < params.size(); i++) {
+	        printf("%i ", params[i]);
 	      }
 	      printf("\nTarget emulator says:\n");
-	      printCharSeq(&emuOut);
+	      printCharSeq(emuOut);
 	      printf("\nSource interpreter says:\n");
-	      printCharSeq(&interpOut);
+	      printCharSeq(interpOut);
 	      printf("\n");
 	    }
 	    else
@@ -114,7 +115,8 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 
 			REQUIRE(!differs);
   	}
-	
+
+		printf("AutoTest iteration: %i\n", numTests);
 	  //printf("OK, passed %i tests\n", numTests);
 	}
 }
