@@ -10,7 +10,6 @@
 #include "Support/assign.h"
 #include  "vc4/KernelDriver.h"
 #include  "v3d/KernelDriver.h"
-#include  "SourceTranslate.h"  // set_compiling_for_vc4()
 
 namespace QPULib {
 
@@ -206,7 +205,7 @@ public:
   Kernel(KernelFunction f) {
 		{
 			m_vc4_driver.init_compile();
-			set_compiling_for_vc4(true);
+			Platform::compiling_for_vc4(true);
 
 	    auto args = std::make_tuple(mkArg<ts>()...);
 
@@ -231,7 +230,7 @@ public:
 #ifdef QPU_MODE
 		{
 			m_v3d_driver.init_compile();
-			set_compiling_for_vc4(false);
+			Platform::compiling_for_vc4(false);
 
 	    // Construct the AST for v3d
 	    f(mkArg<ts>()...);

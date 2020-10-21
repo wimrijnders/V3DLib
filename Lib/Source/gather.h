@@ -1,6 +1,6 @@
 #ifndef _QPULIB_SOURCE_GATHER_H_
 #define _QPULIB_SOURCE_GATHER_H_
-#include "../SourceTranslate.h"
+#include "Support/Platform.h"
 
 namespace QPULib {
 
@@ -17,9 +17,7 @@ inline void gatherExpr(Expr* e)
 
 template <typename T>
 inline void gather(PtrExpr<T> addr) {
-	if (compiling_for_vc4()) {
-		//Ptr<T> temp = addr;
-		//temp = temp + index();
+	if (Platform::instance().compiling_for_vc4()) {
 		Ptr<T> temp = addr + index();
 		gatherExpr(temp.expr);
 	} else {
@@ -29,9 +27,7 @@ inline void gather(PtrExpr<T> addr) {
 
 template <typename T>
 inline void gather(Ptr<T>& addr) {
-	if (compiling_for_vc4()) {
-		//Ptr<T> temp = addr + 0;     // '+ 0' forces a copy of the pointer, otherwise temp behaves like a reference
-		//temp = temp + index();
+	if (Platform::instance().compiling_for_vc4()) {
 		Ptr<T> temp = addr + index();
 		gatherExpr(temp.expr);
 	} else {

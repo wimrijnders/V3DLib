@@ -2,7 +2,6 @@
 #include "Support/debug.h"
 #include "Source/Translate.h"  // srcReg()
 #include "LoadStore.h"
-#include "Target/Liveness.h"
 #include "Target/Subst.h"
 #include "Translate.h"
 #include "RegAlloc.h"
