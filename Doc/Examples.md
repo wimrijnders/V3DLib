@@ -383,8 +383,8 @@ measuring performance with respect to scaling.
 ## Example 3: 2D Convolution (Heat Transfer)
 
 Let's move to a somewhat more substantial example: modelling the heat
-flow across a 2D surface.  [Newton's law of
-cooling](https://en.wikipedia.org/wiki/Newton%27s_law_of_cooling)
+flow across a 2D surface.
+[Newton's law of cooling](https://en.wikipedia.org/wiki/Newton%27s_law_of_cooling)
 states that an object cools at a rate proportional to the difference
 between its temperature `T` and the temperature of its environment (or
 ambient temperature) `A`:
@@ -393,10 +393,27 @@ ambient temperature) `A`:
 dT/dt = −k(T − A)
 ```
 
-When simulating this equation below, we will consider each point on
-our 2D surface to be a seperate object, and the ambient temperature of
-each object to be the average of the temperatures of the 8 surrounding
-objects.  This is very similar to 2D convolution using a mean filter.
+When simulating this equation, we will consider each point on our 2D surface
+to be a separate object, and the ambient temperature of each object to be the
+average of the temperatures of the 8 surrounding objects.
+This is very similar to 2D convolution using a mean filter.
+
+If we apply heat at the north and east edges of our 2D surface, and
+cold at the south and west edges, then ultimately the result is:
+
+<img src="Doc/heat.png" alt="Heat flow across 2D surface" width=30%>
+
+The `HeatMap` example program initializes a number of heat points and then
+iteratively calculates the diffusion. The default implementation starts out
+as follows:
+<img src="Doc/heatmap_0.png" alt="HeatMap step 0" width=30%>
+
+After 100 iterations, this becomes:
+<img src="Doc/heatmap_100.png" alt="HeatMap step 0" width=30%>
+
+After 1500 iterations, this becomes:
+<img src="Doc/heatmap_1500.png" alt="HeatMap step 0" width=30%>
+
 
 ### <a name="scalar-version-2"></a> Scalar version
 
@@ -419,11 +436,6 @@ void step(float** grid, float** gridOut, int width, int height)
 }
 ```
 
-If we apply heat at the north and east edges of our 2D surface, and
-cold at the south and west edges, then after of several simulation
-steps we get:
-
-<img src="Doc/heat.png" alt="Heat flow across 2D surface" width=30%>
 
 ### Vector version
 

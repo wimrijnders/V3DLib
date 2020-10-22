@@ -152,11 +152,11 @@ However, in a previous version of the DSL unit test, the following was done befo
   outIndex = outIndex + 16;
 ```
 
-This is the 'old', pre-`v3d` way of doing things. It would expect DMA to write to wrong locations.
+This is the 'old', pre-`v3d` way of doing things. I would expect DMA to write to wrong locations.
 
 **But it doesn't**
 
-The DMA write just ignores this offset and writes to the correct location, i.e..
+The DMA write ignores this offset and writes to the correct location, i.e. just like:
 
 ```
   ...
@@ -169,7 +169,7 @@ As far as I'm concerned, DMA writes are old-school, and relevant only to `vc4` a
 If it works, it works.
 
 I much prefer to focus on `v3d`, which uses only TMU for main memory access.
-One day, I'll rewrite the `vc4` assembly to do the same *(hereby noted as TODO)*.
+Maybe one day I'll rewrite the `vc4` assembly to do the same *(hereby noted as TODO)*.
 
 -----
 

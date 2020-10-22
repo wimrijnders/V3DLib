@@ -95,7 +95,7 @@ So, calculation:
 
 ## Differences in execution between `vc4` and `v3d`
 
-# 'vc4': Float multiplication on the QPU always rounds downwards
+### 'vc4': Float multiplication on the QPU always rounds downwards
 
 *NOTE: This issue is for `vc4` only; `v3d` does do rounding as expected.*
 
