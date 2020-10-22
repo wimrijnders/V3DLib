@@ -131,7 +131,7 @@ Source code:
 
 # Mysteries
 
-## `vc4` DMA write: destination pointer impervious to offset changes
+## vc4 DMA write: destination pointer impervious to offset changes
 
 Pointers are initialized on kernel startup to contain offsets.
 For all intents and purposes, they are redefined as follows:
@@ -152,7 +152,7 @@ However, in a previous version of the DSL unit test, the following was done befo
   outIndex = outIndex + 16;
 ```
 
-This is the 'old', pre-`v3d` way of doing things. It should now lead to DMA writes to wrong locations.
+This is the 'old', pre-`v3d` way of doing things. It would expect DMA to write to wrong locations.
 
 **But it doesn't**
 
@@ -164,11 +164,12 @@ The DMA write just ignores this offset and writes to the correct location, i.e..
   ...
 ```
 
-This undoubtedly has something to do with DMA setup. But I have no patience to examine this.
-
+This undoubtedly has something to do with DMA setup. I really have no patience to examine this.
 As far as I'm concerned, DMA writes are old-school, and relevant only to `vc4` anyway.
-If it works, it works. I much prefer to focus on `v3d`, which uses only TMU for main memory access.
-One day, I'll rewrite the `vc4` assembly to do the same (*hereby noted as TODO*).
+If it works, it works.
+
+I much prefer to focus on `v3d`, which uses only TMU for main memory access.
+One day, I'll rewrite the `vc4` assembly to do the same *(hereby noted as TODO)*.
 
 -----
 
