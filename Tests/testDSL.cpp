@@ -44,14 +44,14 @@ string showExpected(const std::vector<int> &expected) {
 // Kernel definition(s)
 //=============================================================================
 
-void out(Int &res, Int &outIndex, Ptr<Int> &result) {
-  result[outIndex] = res;
-  outIndex = outIndex + 16;
+void out(Int &res, Ptr<Int> &result) {
+  *result = res;
+  result = result + 16;
 }
 
 
-void test(Cond cond, Int &outIndex, Ptr<Int> &result) {
-  Int res = -1;
+void test(Cond cond, Ptr<Int> &result) {
+  Int res = -1;  // temp variable for result of condition, -1 is unexpected value
 
   If (cond)
     res = 1;
@@ -59,7 +59,7 @@ void test(Cond cond, Int &outIndex, Ptr<Int> &result) {
     res = 0;
   End
 
-  out(res, outIndex, result);
+  out(res, result);
 }
 
 
@@ -68,8 +68,8 @@ void test(Cond cond, Int &outIndex, Ptr<Int> &result) {
  *
  * TODO: Why is distinction BoolExpr <-> Cond necessary? Almost the same
  */
-void test(BoolExpr cond, Int &outIndex, Ptr<Int> &result) {
-  Int res = -1;
+void test(BoolExpr cond, Ptr<Int> &result) {
+  Int res = -1;  // temp variable for result of condition, -1 is unexpected value
 
   If (cond)
     res = 1;
@@ -77,7 +77,7 @@ void test(BoolExpr cond, Int &outIndex, Ptr<Int> &result) {
     res = 0;
   End
 
-  out(res, outIndex, result);
+  out(res, result);
 }
 
 
@@ -87,60 +87,118 @@ void test(BoolExpr cond, Int &outIndex, Ptr<Int> &result) {
 void kernelIfWhen(Ptr<Int> result) {
   Int outIndex = index();
   Int a = index();
-  Int res = -1;  // temp variable for result of condition, -1 is unexpected value
 
   // any
-  test(any(a <   0), outIndex, result);
-  test(any(a <   8), outIndex, result);
-  test(any(a <=  0), outIndex, result);  // Boundary check
-  test(any(a >= 15), outIndex, result);  // Boundary check
-  test(any(a <  32), outIndex, result);
-  test(any(a >  32), outIndex, result);
+  test(any(a <   0), result);
+  test(any(a <   8), result);
+  test(any(a <=  0), result);  // Boundary check
+  test(any(a >= 15), result);  // Boundary check
+  test(any(a <  32), result);
+  test(any(a >  32), result);
 
   // all
-  test(all(a <   0), outIndex, result);
-  test(all(a <   8), outIndex, result);
-  test(all(a <=  0), outIndex, result);  // Boundary check
-  test(all(a >= 15), outIndex, result);  // Boundary check
-  test(all(a <  32), outIndex, result);
-  test(all(a >  32), outIndex, result);
+  test(all(a <   0), result);
+  test(all(a <   8), result);
+  test(all(a <=  0), result);  // Boundary check
+  test(all(a >= 15), result);  // Boundary check
+  test(all(a <  32), result);
+  test(all(a >  32), result);
 
   // Just If - should be same as any
-  test((a <  0),     outIndex, result);
-  test((a <  8),     outIndex, result);
-  test((a <=  0),    outIndex, result);  // Boundary check
-  test((a >= 15),    outIndex, result);  // Boundary check
-  test((a <  32),    outIndex, result);
-  test((a >  32),    outIndex, result);
+  test((a <   0), result);
+  test((a <   8), result);
+  test((a <=  0), result);     // Boundary check
+  test((a >= 15), result);     // Boundary check
+  test((a <  32), result);
+  test((a >  32), result);
 
   // When
-  res = -1;
+  Int res = -1;  // temp variable for result of condition, -1 is unexpected value
   Where (a < 0) res = 1; Else res = 0; End
-  out(res, outIndex, result);
+  out(res, result);
 
   res = -1;
   Where (a <= 0) res = 1; Else res = 0; End  // Boundary check
-  out(res, outIndex, result);
+  out(res, result);
 
   res = -1;
   Where (a >= 15) res = 1; Else res = 0; End  // Boundary check
-  out(res, outIndex, result);
+  out(res, result);
 
   res = -1;
   Where (a < 8) res = 1; Else res = 0; End
-  out(res, outIndex, result);
+  out(res, result);
 
   res = -1;
   Where (a >= 8) res = 1; Else res = 0; End
-  out(res, outIndex, result);
+  out(res, result);
 
   res = -1;
   Where (a < 32) res = 1; Else res = 0; End
-  out(res, outIndex, result);
+  out(res, result);
 
   res = -1;
   Where (a > 32) res = 1; Else res = 0; End
-  out(res, outIndex, result);
+  out(res, result);
+}
+
+
+void check_conditionals(SharedArray<int> &result, int N) {
+	vector<int> allZeroes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	vector<int> allOnes   = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+
+  auto assertResult = [N] (
+    SharedArray<int> &result,
+    int index,
+    const std::vector<int> &expected) {
+    INFO("index: " << index);
+
+    REQUIRE(result.size() == N*16);
+    REQUIRE(expected.size() == 16);
+
+    bool passed = true;
+		int j = 0;
+    for (; j < 16; ++j) {
+      if (result[16*index + j] != expected[j]) {
+        passed = false;
+        break;
+      }
+    }
+
+		INFO("j: " << j);
+    INFO(showResult(result, index) << showExpected(expected));
+    REQUIRE(passed);
+  };
+
+	// any
+	assertResult(result,  0, allZeroes);
+	assertResult(result,  1, allOnes);
+	assertResult(result,  2, allOnes);
+	assertResult(result,  3, allOnes);
+	assertResult(result,  4, allOnes);
+	assertResult(result,  5, allZeroes);
+	// all
+	assertResult(result,  6, allZeroes);
+	assertResult(result,  7, allZeroes);
+	assertResult(result,  8, allZeroes);
+	assertResult(result,  9, allZeroes);
+	assertResult(result, 10, allOnes);
+	assertResult(result, 11, allZeroes);
+	// Just If - should be same as any
+	assertResult(result, 12, allZeroes);
+	assertResult(result, 13, allOnes);
+	assertResult(result, 14, allOnes);
+	assertResult(result, 15, allOnes);
+	assertResult(result, 16, allOnes);
+	assertResult(result, 17, allZeroes);
+	// where
+	assertResult(result, 18, allZeroes);
+	assertResult(result, 19, {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
+	assertResult(result, 20, {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1});
+	assertResult(result, 21, {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0});
+	assertResult(result, 22, {0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1});
+	assertResult(result, 23, allOnes);
+	assertResult(result, 24, allZeroes);
 }
 
 
@@ -230,32 +288,6 @@ void kernelComplex(Ptr<Float> input, Ptr<Float> result) {
 
 TEST_CASE("Test correct working DSL", "[dsl]") {
 	const int N = 25;  // Number of expected result vectors
-  vector<int> allZeroes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-  vector<int> allOnes   = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
-
-  auto assertResult = [] (
-    SharedArray<int> &result,
-    int index,
-    const std::vector<int> &expected) {
-    INFO("index: " << index);
-
-    INFO("length result: " << result.size());
-    REQUIRE(result.size() == N*16);
-
-    INFO("length expected: " << expected.size());
-    REQUIRE(expected.size() == 16);
-
-    bool passed = true;
-    for (int j = 0; j < 16; ++j) {
-      if (result[16*index + j] != expected[j]) {
-        passed = false;
-        break;
-      }
-    }
-
-    INFO(showResult(result, index) << showExpected(expected));
-    REQUIRE(passed);
-  };
 
 
   //
@@ -264,45 +296,31 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
   SECTION("Conditionals work as expected") {
     // Construct kernel
     auto k = compile(kernelIfWhen);
+		//k.pretty(true);
 
-    // Allocate an array for result values
     SharedArray<int> result(16*N);
-    for (int i = 0; i < N; i++) {
-      result[i] = -1;  // Initialize to unexpected value
-    }
 
-    // Run kernel
+		// Reset result array to unexpected values
+		auto reset = [&result] () {
+    	for (int i = 0; i < N; i++) {
+	      result[i] = -2;  // Initialize to unexpected value
+	    }
+		};
+
+		//
+    // Run kernel in the three different run modes
+		//
+		reset();
    	k.load(&result).call();
+		check_conditionals(result, N);
 
-    // any
-    assertResult(result,  0, allZeroes);
-    assertResult(result,  1, allOnes);
-    assertResult(result,  2, allOnes);
-    assertResult(result,  3, allOnes);
-    assertResult(result,  4, allOnes);
-    assertResult(result,  5, allZeroes);
-    // all
-    assertResult(result,  6, allZeroes);
-    assertResult(result,  7, allZeroes);
-    assertResult(result,  8, allZeroes);
-    assertResult(result,  9, allZeroes);
-    assertResult(result, 10, allOnes);
-    assertResult(result, 11, allZeroes);
-    // Just If - should be same as any
-    assertResult(result, 12, allZeroes);
-    assertResult(result, 13, allOnes);
-    assertResult(result, 14, allOnes);
-    assertResult(result, 15, allOnes);
-    assertResult(result, 16, allOnes);
-    assertResult(result, 17, allZeroes);
-    // where
-    assertResult(result, 18, allZeroes);
-    assertResult(result, 19, {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
-    assertResult(result, 20, {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1});
-    assertResult(result, 21, {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0});
-    assertResult(result, 22, {0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1});
-    assertResult(result, 23, allOnes);
-    assertResult(result, 24, allZeroes);
+		reset();
+   	k.load(&result).emu();
+		check_conditionals(result, N);
+
+		reset();
+   	k.load(&result).interpret();
+		check_conditionals(result, N);
   }
 }
 
@@ -327,6 +345,6 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
     // Run kernel
     k.load(&input, &result).call();
 
-    cout << showResult(result, 0) << endl;
+    //cout << showResult(result, 0) << endl;
   }
 }
