@@ -1,6 +1,7 @@
 #include "Source/Syntax.h"
 #include "Common/Heap.h"
 #include "Common/Stack.h"
+#include "Target/SmallLiteral.h"
 #include "Params.h"
 
 namespace QPULib {
@@ -66,14 +67,27 @@ bool Op::isUnary() {
   return (op == BNOT || op == ItoF || op == FtoI);
 }
 
+
 // ============================================================================
-// End Class Op
+// Class Expr
+// ============================================================================
+
+/**
+ * An expression is 'simple' if it is a small literal or a variable.
+ */
+bool Expr::isSimple() const {
+	bool isSmallLit = encodeSmallLit(*this) >= 0;
+
+  return (tag == VAR) || isSmallLit;
+}
+
+// ============================================================================
+// End Class Expr
 // ============================================================================
 
 
 // Is given operator commutative?
-bool isCommutative(Op op)
-{
+bool isCommutative(Op op) {
   if (op.type != FLOAT) {
     return op.op == ADD
         || op.op == MUL

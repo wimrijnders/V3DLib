@@ -1,13 +1,13 @@
 #include "Pretty.h"
+#include "Support/basics.h"
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
 
-namespace QPULib {
 
+namespace QPULib {
 namespace {
 
-const char* pretty(SubWord sw)
-{
+const char* pretty(SubWord sw) {
   switch (sw) {
     case A8:  return "[7:0]";
     case B8:  return "[15:8]";

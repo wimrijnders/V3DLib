@@ -6,6 +6,9 @@ namespace QPULib {
 
 namespace {
 
+int globalLabelId = 0;  // Used for fresh label generation
+
+
 Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
   Instr instr(ALU);
   instr.ALU.cond      = always;
@@ -49,11 +52,6 @@ Instr genInstr(ALUOp op, Reg dst, int n, int m) {
 }
 
 
-int globalLabelId = 0;  // Used for fresh label generation
-
-}  // anon namespace
-
-
 /**
  * Function to negate a condition flag
  */
@@ -71,8 +69,6 @@ Flag negFlag(Flag flag) {
 }
 
 
-namespace {
-
 const char *pretty(Flag flag) {
   switch (flag) {
     case ZS: return "ZS";
@@ -89,6 +85,23 @@ const char *pretty(Flag flag) {
 ///////////////////////////////////////////////////////////////////////////////
 // Class BranchCond
 ///////////////////////////////////////////////////////////////////////////////
+
+BranchCond BranchCond::negate() const {
+	BranchCond ret;
+
+  switch (tag) {
+    case COND_NEVER:  ret.tag  = COND_ALWAYS; break;
+    case COND_ALWAYS: ret.tag  = COND_NEVER;  break;
+    case COND_ANY:    ret.tag  = COND_ALL; ret.flag = negFlag(flag); break;
+    case COND_ALL:    ret.tag  = COND_ANY; ret.flag = negFlag(flag); break;
+		default:
+			assert(false);
+			break;
+  }
+
+	return ret;
+}
+
 
 std::string BranchCond::to_string() const {
 	std::string ret;

@@ -1,13 +1,12 @@
 #ifndef _QPULIB_SMALL_LITERAL_H_
 #define _QPULIB_SMALL_LITERAL_H_
-
-#include "Source/Syntax.h"
 #include "EmuSupport.h"  // Word
 
 namespace QPULib {
 
-int encodeSmallLit(Expr* e);
-bool isSmallLit(Expr* e);
+class Expr;
+
+int encodeSmallLit(Expr const &e);
 std::string printSmallLit(int x);
 Word decodeSmallLit(int x);
 

@@ -57,8 +57,6 @@ enum Flag {
   , NC              // Negative clear
 };
 
-Flag negFlag(Flag flag);
-
 // Branch conditions
 
 enum BranchCondTag {
@@ -73,6 +71,7 @@ struct BranchCond {
   BranchCondTag tag;  // ALL or ANY reduction?
   Flag flag;          // Condition flag
 
+	BranchCond negate() const;
 	std::string to_string() const;
 };
 

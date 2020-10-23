@@ -84,7 +84,10 @@ struct Expr {
     struct { Expr* lhs; Op op; Expr* rhs; } apply;  // Application of a binary operator
     struct { Expr* ptr; } deref;                    // Dereference a pointer
   };
+
+	bool isSimple() const;
 };
+
 
 // Functions to construct expressions
 Expr* mkExpr();

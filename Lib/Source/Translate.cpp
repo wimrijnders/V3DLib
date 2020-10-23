@@ -61,18 +61,19 @@ ALUOp opcode(Op op)
 }
 
 
-// Translate the argument of an operator (either a variable or a small
-// literal) to a target operand.
-
-RegOrImm operand(Expr* e)
-{
+/**
+ * Translate the argument of an operator (either a variable or a small imm)
+ */
+RegOrImm operand(Expr* e) {
   RegOrImm x;
+
   if (e->tag == VAR) {
     x.tag = REG;
     x.reg = srcReg(e->var);
     return x;
   }
-  int enc = encodeSmallLit(e);
+
+  int enc = encodeSmallLit(*e);
   assert(enc >= 0);
   x.tag          = IMM;
   x.smallImm.tag = SMALL_IMM;
@@ -80,17 +81,6 @@ RegOrImm operand(Expr* e)
   return x;
 }
 
-// ============================================================================
-// 'Simple' expressions
-// ============================================================================
-
-// An expression is 'simple' if it is a small literal (see
-// Target/SmallLiteral.cpp) or a variable.
-
-bool isSimple(Expr* e)
-{
-  return (e->tag == VAR) || isSmallLit(e);
-}
 
 // ============================================================================
 // Variable assignments
@@ -100,8 +90,8 @@ bool isSimple(Expr* e)
  * Translate an expression to a simple expression, generating
  * instructions along the way.
  */
-Expr* simplify(Seq<Instr>* seq, Expr* e) {
-  if (isSimple(e)) {
+Expr *simplify(Seq<Instr>* seq, Expr* e) {
+  if (e->isSimple()) {
 		return e;
 	}
 
@@ -174,32 +164,10 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
 
 
 /**
- * Function to negate a branch condition.
+ * Return a value that will cause the specified flag bit to be set in
+ * the condition vector.
  */
-BranchCond negBranchCond(BranchCond cond) {
-  switch (cond.tag) {
-    case COND_NEVER:  cond.tag  = COND_ALWAYS; return cond;
-    case COND_ALWAYS: cond.tag  = COND_NEVER;  return cond;
-    case COND_ANY:    cond.tag  = COND_ALL;
-                      cond.flag = negFlag(cond.flag);
-                      return cond;
-    case COND_ALL:    cond.tag  = COND_ANY;
-                      cond.flag = negFlag(cond.flag);
-                      return cond;
-  }
-
-  // Not reachable
-  assert(false);
-	return cond;
-}
-
-
-
-// Return a value that will cause the specified flag bit to be set in
-// the condition vector.
-
-int setFlag(Flag f)
-{
+int setFlag(Flag f) {
   switch (f) {
     case ZS: return 0;
     case ZC: return 1;
@@ -234,10 +202,9 @@ Instr setCond(Var v) {
 // ============================================================================
 
 // Evaluating a vector boolean expression results in a condition
-// pair <condVar,condFlag> where
+// pair <condVar,condFlag> where:
 //
 //  * condVar is a variable containing a vector of values
-//
 //  * condFlag is a condition flag in set {ZS,ZC,NS,NC} (see above)
 //
 // If 'condVar' is assigned to a register and the 'setFlags' field of
@@ -359,14 +326,14 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   // -----------------------------------
   // Case: x op y, where x is not simple
   // -----------------------------------
-  if (b.tag == CMP && !isSimple(b.cmp.lhs)) {
+  if (b.tag == CMP && !b.cmp.lhs->isSimple()) {
     b.cmp.lhs = simplify(seq, b.cmp.lhs);
   }
 
   // -----------------------------------
   // Case: x op y, where y is not simple
   // -----------------------------------
-  if (b.tag == CMP && !isSimple(b.cmp.rhs)) {
+  if (b.tag == CMP && !b.cmp.rhs->isSimple()) {
     b.cmp.rhs = simplify(seq, b.cmp.rhs);
   }
 
@@ -463,8 +430,7 @@ BranchCond condExp(Seq<Instr>* seq, CExpr* c) {
   if (c->tag == ANY) {
     bcond.tag = COND_ANY;
     return bcond;
-  }
-  else if (c->tag == ALL) {
+  } else if (c->tag == ALL) {
     bcond.tag = COND_ALL;
     return bcond;
   }
@@ -657,19 +623,23 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
   if (s->tag == IF) {
 		using namespace Target::instr;
 
-    Label elseLabel  = freshLabel();
     Label endifLabel = freshLabel();
     BranchCond cond  = condExp(seq, s->ifElse.cond);  // Compile condition
     
-		*seq << branch(negBranchCond(cond), elseLabel);   // Branch to 'else' statement
-    stmt(seq, s->ifElse.thenStmt);                    // Compile 'then' statement
+    if (s->ifElse.elseStmt == NULL) {
+			*seq << branch(cond.negate(), endifLabel);   // Branch to 'else' statement
+    	stmt(seq, s->ifElse.thenStmt);                    // Compile 'then' statement
+		} else {
+    	Label elseLabel = freshLabel();
 
-    if (s->ifElse.elseStmt != NULL) {
+			*seq << branch(cond.negate(), elseLabel);   // Branch to 'else' statement
+	    stmt(seq, s->ifElse.thenStmt);                    // Compile 'then' statement
 			*seq << branch(endifLabel);                     // Branch to endif
-		}
 
-		*seq << label(elseLabel);                         // Label for 'else' statement
-    stmt(seq, s->ifElse.elseStmt);                    // Compile 'else' statement
+			*seq << label(elseLabel);                         // Label for 'else' statement
+	    stmt(seq, s->ifElse.elseStmt);                    // Compile 'else' statement
+		}
+	
 		*seq << label(endifLabel);                        // Label for endif
 
     return;
@@ -685,7 +655,7 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
     Label endLabel   = freshLabel();
     BranchCond cond  = condExp(seq, s->loop.cond);      // Compile condition
  
-		*seq << branch(negBranchCond(cond), endLabel)       // Branch over loop body
+		*seq << branch(cond.negate(), endLabel)       // Branch over loop body
 		     << label(startLabel);                          // Start label
 
     if (s->loop.body != NULL) stmt(seq, s->loop.body);  // Compile body
@@ -730,17 +700,6 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 
   // Not reachable
   assert(false);
-}
-
-
-/**
- * Insert 'end' instruction
- */
-void insertEndCode(Seq<Instr> &seq) {
-  Instr instr;
-  instr.tag = END;
-
-	seq << instr;
 }
 
 
@@ -826,7 +785,7 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // ----------------------------------------------
   // Case: v := x op y, where x or y are not simple
   // ----------------------------------------------
-  if (e.tag == APPLY && (!isSimple(e.apply.lhs) || !isSimple(e.apply.rhs))) {
+  if (e.tag == APPLY && (!e.apply.lhs->isSimple() || !e.apply.rhs->isSimple())) {
     e.apply.lhs = simplify(seq, e.apply.lhs);
     e.apply.rhs = simplify(seq, e.apply.rhs);
   }
@@ -911,7 +870,7 @@ void translateStmt(Seq<Instr>* seq, Stmt* s) {
 	insertInitBlock(*seq);
 
 	if (Platform::instance().compiling_for_vc4()) {
-	  insertEndCode(*seq);
+	  *seq << Instr(END);
 	};
 }
 
@@ -930,8 +889,7 @@ void loadStorePass(Seq<Instr> &instrs) {
 
     switch (instr.tag) {
       case RECV: {
-        instr.tag = TMU0_TO_ACC4;
-        newInstrs << instr
+        newInstrs << Instr(TMU0_TO_ACC4)
 				          << mov(instr.RECV.dest, ACC4);
         break;
       }
