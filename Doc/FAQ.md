@@ -95,33 +95,72 @@ So, calculation:
 
 ## Differences in execution between `vc4` and `v3d`
 
-### 'vc4': Float multiplication on the QPU always rounds downwards
+This section records differences in the QPU hardware and consequently in the instructions.
+The `vc4`-specific items can be found in the "VideoCore IV Architecture Reference Guide";
+the corresponding `v3d` have mostly been found due to empirical research and hard thinking.
 
-*NOTE: This issue is for `vc4` only; `v3d` does do rounding as expected.*
 
-Most CPU's make an effort to round up or down to the value nearest to the actual result of a multiplication. The `ARM` is one of those. The QPU's of `vc4`, however, do not make such an effort: *they always round downward*.
+### Setting of condition flags
 
-This means that there will be small differences in the outputs of the exact same calculation on the CPU and a QPU; at first only in the least significant bits, but if you continue calculating, the differences will accumulate.
+- `vc4` - all conditions are set together, on usage condition to test is specified
+- `v3d` - a specific condition to set is specified, on usage a generic condition flag is read
+
+To elaborate:
+
+**vc4**
+
+Each vector element has three associated condition flags:
+
+- `N` (Negative)
+- `Z` (Zero)
+- `C` (Complement? By the looks of it `>= 0`, but you tell me)
+
+These as set with a single bitfield in an ALU instruction.
+Each flag is explicitly tested in conditions
+
+See "VideoCore IV Architecture Reference Guide", "Condition Codes", p. 28.
+
+**v3d**
+
+- Each vector element has two associated condition flags: `a` and `b`
+
+To set, a specific condition is specified in an instruction and the result is stored in `a`.
+The previous value of `a` is put in `b`.
+
+See my brain after finally figuring this out.
+
+
+### Float multiplication
+
+- 'vc4': Float multiplication on the QPU always rounds downwards
+- 'v3d`: Float multiplication rounds to the nearest value of the result
+
+In other words, `v3d` will multiply as you would normally expect. The result will be identical to float multiplication on the `ARM` processor.
+With `vc` however, small differences will creep in, which can accumulate with continued computation.
 
 **Expect results to differ between CPU and QPU calculations for `vc4`.**
 
-Of special note, the results between the `QPULib` interpreter and emulator, which run on the CPU,
-and the  `vc4` hardware will likely be different.
+Of special note: the `QPULib` interpreter and emulator run on the ARM CPU, meaning that the outcome may be different from that from the `vc4` QPU's .
 
 
-### `vc4` integer multiplication with negative integers yields unexpected results
+### Integer multiplication
+
+- `vc4`: multiplication of negative integers will produce unexpected results
+- `v3d`: works as expected
 
 The following source code statements yield different results for `vc4` and `v3d`
 
+```
     a = 16
     b = -1 * a
+```
 
-  - For `v3d`, this yields the expected result `-16`
   - For `vc4`, the result is `268435440`
+  - For `v3d`, the result is `-16`, as expected
 
   This has to do with the integer multiply instruction working on 24 bit integers only. Thus, a negative value
   gets its ones-complement prefix chopped off, and whatever is left is treated as an integer.
-  `v3d` does a better job at this.
+
 
 -----
 # Function `compile()` is not Thread-Safe
@@ -133,7 +172,6 @@ As long a you run `compile()` on a single thread at a time, you're OK.
 
 
 **TODO:** examine further.
-
 
 
 -----
