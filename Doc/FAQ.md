@@ -6,8 +6,9 @@ This also serves as a central location for essential info.
 # Table of Contents
 
 - [What are the differences between VideoCore IV and VI?](#whatarethedifferencesbetweenvideocoreivandvi)
+- [Differences in execution](#differencesinexecution)
+- [Calculated theoretical max FLOPs per QPU](#calculatedtheoreticalmaxflopsperqpu)
 - [Function `compile()` is not Thread-Safe](#functioncompileisnotthreadsafe)
-- [Float multiplication on the QPU always rounds downwards](#floatmultiplicationontheqpualwaysroundsdownwards)
 - [Handling privileges](#handlingprivileges)
 - [Known limitations for old distributions](#knownlimitationsforolddistributions)
 
@@ -66,7 +67,78 @@ Further:
 - All the features needed for opengl es 3.2 and vulkan 1.1
 - With the threading improvements, the QPUs should spent much less time idle waiting for memory requests.
 
-### Calculated theoretical max FLOPs per QPU
+## Differences in execution
+
+This section records differences between the `vc4` and `v3d` QPU hardware and consequently in the instructions.
+
+The `vc4`-specific items can be found in the "VideoCore IV Architecture Reference Guide";
+the corresponding `v3d` stuff has mostly been found due to empirical research and hard thinking.
+
+
+### Setting of condition flags
+
+- `vc4` - all conditions are set together, on usage condition to test is specified
+- `v3d` - a specific condition to set is specified, on usage a generic condition flag is read
+
+To elaborate:
+
+**vc4**
+
+Each vector element has three associated condition flags:
+
+- `N` (Negative)
+- `Z` (Zero)
+- `C` (Complement? By the looks of it `>= 0`, but you tell me)
+
+These are set with a single bitfield in an ALU instruction.
+Each flag is explicitly tested in conditions.
+
+See "VideoCore IV Architecture Reference Guide", section "Condition Codes", p. 28.
+
+**v3d**
+
+- Each vector element has two associated condition flags: `a` and `b`
+
+To set, a specific condition is specified in an instruction and the result is stored in `a`.
+The previous value of `a` is put in `b`.
+
+See my brain after finally figuring this out.
+
+
+### Float multiplication
+
+- 'vc4': Float multiplication on the QPU always rounds downwards
+- 'v3d`: Float multiplication rounds to the nearest value of the result
+
+In other words, `v3d` will multiply as you would normally expect. The result will be identical to float multiplication on the `ARM` processor.
+With `vc` however, small differences can creep in, which can accumulate with continued computation.
+
+**Expect results to differ between CPU and QPU calculations for `vc4`.**
+
+Of special note: the `QPULib` interpreter and emulator run on the ARM CPU, meaning that the outcome may be different from that from the `vc4` QPU's .
+
+
+### Integer multiplication
+
+- `vc4`: multiplication of negative integers will produce unexpected results
+- `v3d`: works as expected
+
+The following source code statements yield different results for `vc4` and `v3d`
+
+```
+    a = 16
+    b = -1 * a
+```
+
+- For `vc4`, the result is `268435440`
+- For `v3d`, the result is `-16`
+
+This has to do with the integer multiply instruction working only on the lower 24 bits of integers.
+Thus, a negative value gets its ones-complement prefix chopped off, and whatever is left is treated as an integer.
+
+
+-----
+# Calculated theoretical max FLOPs per QPU
 
 From the [VideoCore® IV 3D Architecture Reference Guide](https://docs.broadcom.com/doc/12358545):
 
@@ -91,75 +163,6 @@ So, calculation:
 
 - The improved hardware in `v3d` may compensate for performance.
 - v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
-
-
-## Differences in execution between `vc4` and `v3d`
-
-This section records differences in the QPU hardware and consequently in the instructions.
-The `vc4`-specific items can be found in the "VideoCore IV Architecture Reference Guide";
-the corresponding `v3d` have mostly been found due to empirical research and hard thinking.
-
-
-### Setting of condition flags
-
-- `vc4` - all conditions are set together, on usage condition to test is specified
-- `v3d` - a specific condition to set is specified, on usage a generic condition flag is read
-
-To elaborate:
-
-**vc4**
-
-Each vector element has three associated condition flags:
-
-- `N` (Negative)
-- `Z` (Zero)
-- `C` (Complement? By the looks of it `>= 0`, but you tell me)
-
-These as set with a single bitfield in an ALU instruction.
-Each flag is explicitly tested in conditions
-
-See "VideoCore IV Architecture Reference Guide", "Condition Codes", p. 28.
-
-**v3d**
-
-- Each vector element has two associated condition flags: `a` and `b`
-
-To set, a specific condition is specified in an instruction and the result is stored in `a`.
-The previous value of `a` is put in `b`.
-
-See my brain after finally figuring this out.
-
-
-### Float multiplication
-
-- 'vc4': Float multiplication on the QPU always rounds downwards
-- 'v3d`: Float multiplication rounds to the nearest value of the result
-
-In other words, `v3d` will multiply as you would normally expect. The result will be identical to float multiplication on the `ARM` processor.
-With `vc` however, small differences will creep in, which can accumulate with continued computation.
-
-**Expect results to differ between CPU and QPU calculations for `vc4`.**
-
-Of special note: the `QPULib` interpreter and emulator run on the ARM CPU, meaning that the outcome may be different from that from the `vc4` QPU's .
-
-
-### Integer multiplication
-
-- `vc4`: multiplication of negative integers will produce unexpected results
-- `v3d`: works as expected
-
-The following source code statements yield different results for `vc4` and `v3d`
-
-```
-    a = 16
-    b = -1 * a
-```
-
-  - For `vc4`, the result is `268435440`
-  - For `v3d`, the result is `-16`, as expected
-
-  This has to do with the integer multiply instruction working on 24 bit integers only. Thus, a negative value
-  gets its ones-complement prefix chopped off, and whatever is left is treated as an integer.
 
 
 -----
