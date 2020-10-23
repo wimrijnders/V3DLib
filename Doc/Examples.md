@@ -409,10 +409,10 @@ as follows:
 <img src="Doc/heatmap_0.png" alt="HeatMap step 0" width=30%>
 
 After 100 iterations, this becomes:
-<img src="Doc/heatmap_100.png" alt="HeatMap step 0" width=30%>
+<img src="Doc/heatmap_100.png" alt="HeatMap step 100" width=30%>
 
 After 1500 iterations, this becomes:
-<img src="Doc/heatmap_1500.png" alt="HeatMap step 0" width=30%>
+<img src="Doc/heatmap_1500.png" alt="HeatMap step 1500" width=30%>
 
 
 ### <a name="scalar-version-2"></a> Scalar version
