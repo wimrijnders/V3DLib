@@ -1,7 +1,12 @@
 Frequently Asked Questions
 --------------------------
 
-This also serves as a central location for essential info.
+This serves as a central location for essential info.
+
+**NOTE:**
+VideoCore VI is mostly referred to as `v3d`, because this is how it is named in the linux kernel code and in the `Mesa` library.
+For the same reason, VideoCore IV is refered to as `vc4`.
+
 
 # Table of Contents
 
@@ -38,13 +43,13 @@ Here is an overview for the easily comparable stuff:
 |---------------------|-----------------|------------------|-|
 | **Clock speed :**   | 400MHz (Pi3+)   | 500MHz           | |
 | **Num QPU's:**      | 12              | 8                | |
-| **Threads per QPU** |                 |                  | *Shows  num registers from register file per thread* |
+| **Threads per QPU** |                 |                  | *Shows num available registers in register file per thread* |
 | 1 thread            | 64 registers    |  *not supported* | |
 | 2 threads           | 32 registers    | 64 registers     | |
 | 4 threads           | *not supported* | 32 registers     | |
 
 - vc5 added a four thread per QPU mode, with 16 registers per thread. vc5 was skipped in the Pi's.
-- v3d doubled the size of the register file (A and B combined, see note below).
+- v3d doubled the size of the register file (A and B combined).
 
 
 Further:
@@ -86,14 +91,14 @@ To elaborate:
 
 Each vector element has three associated condition flags:
 
-- `N` (Negative)
-- `Z` (Zero)
-- `C` (Complement? By the looks of it `>= 0`, but you tell me)
+- `N` - Negative
+- `Z` - Zero
+- `C` - Complement? By the looks of it `>= 0`, but you tell me
 
 These are set with a single bitfield in an ALU instruction.
 Each flag is explicitly tested in conditions.
 
-See "VideoCore IV Architecture Reference Guide", section "Condition Codes", p. 28.
+See: "VideoCore IV Architecture Reference Guide", section "Condition Codes", p. 28.
 
 **v3d**
 
@@ -102,13 +107,13 @@ See "VideoCore IV Architecture Reference Guide", section "Condition Codes", p. 2
 To set, a specific condition is specified in an instruction and the result is stored in `a`.
 The previous value of `a` is put in `b`.
 
-See my brain after finally figuring this out.
+See: My brain after finally figuring this out.
 
 
 ### Float multiplication
 
-- 'vc4': Float multiplication on the QPU always rounds downwards
-- 'v3d`: Float multiplication rounds to the nearest value of the result
+- `vc4`: Float multiplication on the QPU always rounds downwards
+- `v3d`: Float multiplication rounds to the nearest value of the result
 
 In other words, `v3d` will multiply as you would normally expect. The result will be identical to float multiplication on the `ARM` processor.
 With `vc` however, small differences can creep in, which can accumulate with continued computation.
