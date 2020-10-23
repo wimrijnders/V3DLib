@@ -283,20 +283,17 @@ const char *pretty_instr_tag(InstrTag tag) {
 	}
 }
 
+
 /**
  * Pretty printer for qpuLib Target instructions
  *
  * Returns a string representation of an instruction.
  */
-std::string pretty(Instr const &instr, int index, bool with_comments) {
+std::string pretty(Instr const &instr, bool with_comments) {
 	std::string buf;
 
 	if (with_comments && !instr.header().empty()) {
 		buf << "\n# " << instr.header() << "\n";
-	}
-
-	if (index >= 0) {
-		buf << index <<  ": ";
 	}
 
 	buf << pretty_instr(instr);

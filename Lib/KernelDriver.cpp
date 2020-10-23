@@ -5,7 +5,6 @@
 #include "Source/Pretty.h"
 #include "Source/Translate.h"
 #include "Source/Stmt.h"       // initStmt
-#include "Target/Pretty.h"
 #include "Target/Satisfy.h"
 #include "Target/RemoveLabels.h"
 #include "SourceTranslate.h"
@@ -174,8 +173,7 @@ void KernelDriver::emit_target_code(FILE *f) {
 
 	for (int i = 0; i < m_targetCode.size(); i++) {
 		auto &instr = m_targetCode[i];
-
-		fprintf(f, "%s", QPULib::pretty(instr, i, true).c_str());
+		fprintf(f, "%i: %s", i, instr.mnemonic(true).c_str());
 	}
 
 	fprintf(f, "\n");

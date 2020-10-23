@@ -107,7 +107,7 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
     RegId regId = LiveSets::choose_register(possible, false);
 
 		if (regId < 0) {
-			std::string buf = "v3d regAlloc(): register allocation failed for instruction ";
+			std::string buf = "v3d regAlloc(): register allocation failed for target instruction ";
 			buf << i << ": " << (*instrs)[i].mnemonic();
 			error(buf, true);
 		} else {

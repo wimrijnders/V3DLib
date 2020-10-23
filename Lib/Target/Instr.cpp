@@ -200,11 +200,6 @@ bool Instr::isZero() const {
 }
 
 
-std::string Instr::mnemonic() const {
-	return pretty(*this);
-}
-
-
 /**
  * Check if given tag is for the specified platform
  */
@@ -250,6 +245,14 @@ void check_zeroes(Seq<Instr> const &instrs) {
 	if (!success) {
 		error("zeroes encountered in instruction sequence", true);
 	}
+}
+
+
+/**
+ * Returns a string representation of an instruction.
+ */
+std::string Instr::mnemonic(bool with_comments) const {
+	return pretty(*this, with_comments);
 }
 
 }  // namespace QPULib

@@ -453,6 +453,7 @@ struct Instr {
 	Instr(InstrTag in_tag);
 
 
+
 	// ==================================================
 	// Helper methods
 	// ==================================================
@@ -465,7 +466,7 @@ struct Instr {
 	bool isZero() const;
 	bool isLast() const;
 
-	std::string mnemonic() const;
+	std::string mnemonic(bool with_comments = false) const;
 
 	static Instr nop();
 
