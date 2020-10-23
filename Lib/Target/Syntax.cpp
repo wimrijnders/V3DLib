@@ -6,9 +6,9 @@ namespace QPULib {
 
 namespace {
 
-Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB) {
+Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
   Instr instr(ALU);
-  instr.ALU.cond      = cond;
+  instr.ALU.cond      = always;
   instr.ALU.dest      = dst;
   instr.ALU.srcA.tag  = REG;
   instr.ALU.srcA.reg  = srcA;
@@ -17,12 +17,6 @@ Instr genInstr(ALUOp op, AssignCond cond, Reg dst, Reg srcA, Reg srcB) {
   instr.ALU.srcB.reg  = srcB;
 
   return instr;
-}
-
-
-
-Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
-	return genInstr(op, always, dst, srcA, srcB);
 }
 
 
@@ -191,39 +185,27 @@ std::string BranchTarget::to_string() const {
 ///////////////////////////////////////////////////////////////////////////////
 
 // =========================
-// Fresh variable generation
+// Label generation
 // =========================
 
-// Obtain a fresh variable
-Reg freshReg() {
-  Var v = freshVar();
-  Reg r;
-  r.tag = REG_A;
-  r.regId = v.id;
-  return r;
-}
-
 // Obtain a fresh label
-Label freshLabel()
-{
+Label freshLabel() {
   return globalLabelId++;
 }
 
+
 // Number of fresh labels
-int getFreshLabelCount()
-{
+int getFreshLabelCount() {
   return globalLabelId;
 }
 
 // Reset fresh label generator
-void resetFreshLabelGen()
-{
+void resetFreshLabelGen() {
   globalLabelId = 0;
 }
 
 // Reset fresh label generator to specified value
-void resetFreshLabelGen(int val)
-{
+void resetFreshLabelGen(int val) {
   globalLabelId = val;
 }
 
@@ -256,13 +238,13 @@ Reg rf(uint8_t index) {
 }
 
 
-Instr mov(Reg dst, int n) {
-	return genInstr(A_BOR, dst, n, n);
+Instr mov(Var dst, Var src) {
+  return mov(dstReg(dst), srcReg(src));
 }
 
 
-Instr mov(Reg dst, Reg src, AssignCond cond) {
-	return genInstr(A_BOR, cond, dst, src, src);
+Instr mov(Reg dst, int n) {
+	return genInstr(A_BOR, dst, n, n);
 }
 
 
@@ -323,22 +305,14 @@ Instr band(Reg dst, Reg srcA, int n) {
 /**
  * Generate load-immediate instruction.
  */
-Instr li(AssignCond cond, Reg dst, int i) {
+Instr li(Reg dst, int i) {
   Instr instr(LI);
-  instr.LI.cond       = cond;
+  instr.LI.cond       = always;
   instr.LI.dest       = dst;
   instr.LI.imm.tag    = IMM_INT32;
   instr.LI.imm.intVal = i;
  
   return instr;
-}
-
-
-/**
- * Generate load-immediate instruction.
- */
-Instr li(Reg dst, int i) {
-	return li(always, dst, i);
 }
 
 
@@ -356,6 +330,7 @@ Instr branch(Label label) {
 	return instr;
 }
 
+
 /**
  * Create label instruction.
  *
@@ -368,7 +343,6 @@ Instr label(Label in_label) {
 
 	return instr;
 }
-
 
 
 /**

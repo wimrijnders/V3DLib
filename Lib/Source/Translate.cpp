@@ -92,13 +92,6 @@ bool isSimple(Expr* e)
   return (e->tag == VAR) || isSmallLit(e);
 }
 
-// Translate an expression to a simple expressions, generating
-// instructions along the way.  (Prototype here, implementation below,
-// since this and 'varAssign' are mutually recursive.)
-
-Expr* simplify(Seq<Instr>* seq, Expr* e);
-
-
 // ============================================================================
 // Variable assignments
 // ============================================================================
@@ -225,24 +218,13 @@ int setFlag(Flag f)
  */
 Instr setCond(Var v) {
   Instr instr(ALU);
-	instr. ALU.setFlags         = true;
-  instr.ALU.dest              = Target::instr::None;
-  instr.ALU.srcA.tag          = REG;
-  instr.ALU.srcA.reg          = srcReg(v);
-  instr.ALU.op                = A_BOR;
-  instr.ALU.srcB.tag          = REG;
-  instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
-  return instr;
-}
-
-
-/**
- * A shorthand 'move' instruction is handy later.
- */
-Instr move(Var dst, Var src, bool setFlags) {
-  Instr instr = Target::instr::mov(dstReg(dst), srcReg(src));
-  instr.ALU.setFlags          = setFlags;
-
+	instr.ALU.setFlags = true;
+  instr.ALU.dest     = Target::instr::None;
+  instr.ALU.srcA.tag = REG;
+  instr.ALU.srcA.reg = srcReg(v);
+  instr.ALU.op       = A_BOR;
+  instr.ALU.srcB.tag = REG;
+  instr.ALU.srcB.reg = instr.ALU.srcA.reg;
   return instr;
 }
 
@@ -425,8 +407,8 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
     instr.ALU.srcA     = operand(b.cmp.lhs);
     instr.ALU.op       = opcode(op);
     instr.ALU.srcB     = operand(b.cmp.rhs);
-    seq->append(instr);
 
+    *seq << instr;
     return cond;
   }
 
@@ -533,6 +515,8 @@ void whereStmt(
   //                        s0 and s1 are statements.
   // ----------------------------------------------------------
   if (s->tag == WHERE) {
+		using Target::instr::mov;
+
     if (cond.is_always()) {
       // This case has a cheaper implementation
 
@@ -547,12 +531,11 @@ void whereStmt(
       // Compile 'else' statement
       if (s->where.elseStmt != NULL)
         whereStmt(seq, s->where.elseStmt, condVar, newCond.negate(), false);
-    }
-    else {
+    } else {
       // Save condVar
       Var savedCondVar = freshVar();
       if (saveRestore || s->where.elseStmt != NULL)
-        seq->append(move(savedCondVar, condVar, false));
+        *seq << mov(savedCondVar, condVar);
 
       // Compile new boolean expression
       Var newCondVar = freshVar();
@@ -567,7 +550,7 @@ void whereStmt(
       }
 
       if (saveRestore || s->where.elseStmt != NULL)
-        seq->append(move(condVar, savedCondVar, true));
+        *seq << mov(condVar, savedCondVar).SetFlags();
 
       if (s->where.elseStmt != NULL) {
         // AND negation of new boolean expression with original condition
@@ -578,7 +561,7 @@ void whereStmt(
   
         // Restore condVar and implicit condition vector
         if (saveRestore)
-          seq->append(move(condVar, savedCondVar, true));
+          *seq << mov(condVar, savedCondVar).SetFlags();
       }
     }
 
@@ -793,79 +776,6 @@ void insertInitBlock(Seq<Instr> &code) {
 // ============================================================================
 
 /**
- * Translate variable to source register.
- */
-Reg srcReg(Var v) {
-  Reg r;
-	r.isUniformPtr = false;
-
-  switch (v.tag) {
-    case UNIFORM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_UNIFORM;
-			r.isUniformPtr = v.isUniformPtr;
-			break;
-    case QPU_NUM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_QPU_NUM;
-			break;
-    case ELEM_NUM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_ELEM_NUM;
-			break;
-    case VPM_READ:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_VPM_READ;
-			break;
-    case STANDARD:
-      r.tag   = REG_A;
-      r.regId = v.id;
-			break;
-    case VPM_WRITE:
-    case TMU0_ADDR:
-      printf("QPULib: Reading from write-only special register is forbidden\n");
-      assert(false);
-			break;
-    case DUMMY:
-      r.tag   = NONE;
-      r.regId = v.id;
-			break;
-		default:
-			assert(false);
-			break;
-  }
-
-	return r;
-}
-
-
-// Translate variable to target register.
-Reg dstReg(Var v) {
-	using namespace QPULib::Target::instr;
-
-  switch (v.tag) {
-    case UNIFORM:
-    case QPU_NUM:
-    case ELEM_NUM:
-    case VarTag::VPM_READ:
-      fatal("QPULib: writing to read-only special register is forbidden");
-			return Reg();  // Return anything
-
-    case STANDARD:
-			return Reg(REG_A, v.id);
-    case VarTag::VPM_WRITE:
-			return Target::instr::VPM_WRITE;
-    case TMU0_ADDR:
-			return TMU0_S;
-
-		default:
-			fatal("Unhandled case in dstReg()");
-			return Reg();  // Return anything
-  }
-}
-
-
-/**
  * Variable assignments
  *
  * Translate the conditional assignment of a variable to an expression.
@@ -885,7 +795,7 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // -----------------------------------------
   if (e.tag == VAR) {
     Var w   = e.var;
-		*seq << mov(dstReg(v), srcReg(w), cond);
+		*seq << mov(v, w).cond(cond);
     return;
   }
 
@@ -893,7 +803,7 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // Case: v := i, where i is an integer literal
   // -------------------------------------------
   if (e.tag == INT_LIT) {
-		*seq << li(cond, dstReg(v), e.intLit);
+		*seq << li(dstReg(v), e.intLit).cond(cond);
     return;
   }
 
@@ -908,16 +818,15 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
     instr.LI.dest         = dstReg(v);
     instr.LI.imm.tag      = IMM_FLOAT32;
     instr.LI.imm.floatVal = f;
-    seq->append(instr);
+
+    *seq << instr;
     return;
   }
 
   // ----------------------------------------------
   // Case: v := x op y, where x or y are not simple
   // ----------------------------------------------
-  if (e.tag == APPLY &&
-            (!isSimple(e.apply.lhs) ||
-             !isSimple(e.apply.rhs))) {
+  if (e.tag == APPLY && (!isSimple(e.apply.lhs) || !isSimple(e.apply.rhs))) {
     e.apply.lhs = simplify(seq, e.apply.lhs);
     e.apply.rhs = simplify(seq, e.apply.rhs);
   }
@@ -964,10 +873,7 @@ void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
   // trivial to lift these outside the 'where'.
   //
   if (e.tag == DEREF) {
-    if (!cond.is_always()) {
-      printf("QPULib: dereferencing not yet supported inside 'where'\n");
-      assert(false);
-    }
+    assertq(cond.is_always(), "QPULib: dereferencing not yet supported inside 'where'");
 		getSourceTranslate().varassign_deref_var(seq, v, e);
     return;
   }

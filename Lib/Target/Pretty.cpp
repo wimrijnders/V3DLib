@@ -169,16 +169,12 @@ std::string pretty_conditions(Instr const &instr) {
   switch (instr.tag) {
     case LI:
 			if (instr.LI.setFlags) {
-				ret += "{sf-";
-				ret += set_cond(instr.LI.setCond);
-				ret += "}";
+				ret << "{sf-" << set_cond(instr.LI.setCond) << "}";
 			}
 			break;
     case ALU:
 			if (instr.ALU.setFlags) {
-				ret += "{sf-";
-				ret += set_cond(instr.ALU.setCond);
-				ret += "}";
+				ret << "{sf-" << set_cond(instr.ALU.setCond) << "}";
 			}
 			break;
 	}

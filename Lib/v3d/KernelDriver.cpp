@@ -369,7 +369,7 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 	auto &cond = src_instr.ALU.cond;
 
 	// src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
-	assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);             // Not expecting it
+	assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
 	assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
 
 	if (src_instr.ALU.setFlags) {
@@ -380,7 +380,7 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 		// Any preceding instructions are assumed to be for calculating the condition
 		Instr &instr = ret.back();
 
-		assert(src_instr.ALU.setCond == Z || src_instr.ALU.setCond == N); 
+		assertq(src_instr.ALU.setCond == Z || src_instr.ALU.setCond == N, "Unhandled setCond flag", true); 
 		if (src_instr.ALU.setCond == Z) {
 			instr.pushz();
 		} else {

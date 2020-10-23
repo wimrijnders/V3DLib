@@ -1,10 +1,12 @@
+//
 // This module defines the abstract syntax of the QPU language.
-
+//
+///////////////////////////////////////////////////////////////////////////////
 #ifndef _QPULIB_SOURCE_SYNTAX_H_
 #define _QPULIB_SOURCE_SYNTAX_H_
-
 #include "Common/Heap.h"
 #include "Common/Stack.h"
+#include "Var.h"
 
 namespace QPULib {
 
@@ -57,40 +59,6 @@ bool isCommutative(Op op);
 // Direction for VPM/DMA loads and stores
 enum Dir { HORIZ, VERT };
 
-// ============================================================================
-// Variables
-// ============================================================================
-
-// What kind of variable is it
-enum VarTag {
-    STANDARD     // A standard variable that can be stored
-                 // in a general-purpose register on a QPU
-  , UNIFORM      // (Read-only.)  Reading this variable will consume a value
-                 // (replicated 16 times) from the QPU's UNIFORM FIFO
-                 // (this is how parameters are passed to kernels).
-  , QPU_NUM      // (Read-only.) Reading this variable will yield the
-                 // QPU's unique id (replicated 16 times).
-  , ELEM_NUM     // (Read-only.) Reading this variable will yield a vector
-                 // containing the integers from 0 to 15.
-  , VPM_READ     // (Read-only.) Read a vector from the VPM.
-  , VPM_WRITE    // (Write-only.) Write a vector to the VPM.
-  , TMU0_ADDR    // (Write-only.) Initiate load via TMU
-
-	, DUMMY        // No variable. As a source variable, it indicates that given operation has no input
-	               // TODO: As a destination variable, it indicates that the result can be ignored
-};
-
-typedef int VarId;
-
-struct Var {
-  VarTag tag;
-
-  // A unique identifier for a standard variable
-  VarId id;
-
-	bool isUniformPtr = false;
-};
-
 // Reserved general-purpose vars
 enum ReservedVarId {
   RSV_QPU_ID   = 0,
@@ -109,20 +77,12 @@ struct Expr {
   ExprTag tag;
 
   union {
-    // Integer literal
-    int intLit;
+    int   intLit;                                   // Integer literal
+    float floatLit;                                 // Float literal
+    Var   var;                                      // Variable identifier
 
-    // Float literal
-    float floatLit;
-
-    // Variable identifier
-    Var var;
-
-    // Application of a binary operator
-    struct { Expr* lhs; Op op; Expr* rhs; } apply;
-
-    // Dereference a pointer
-    struct { Expr* ptr; } deref;
+    struct { Expr* lhs; Op op; Expr* rhs; } apply;  // Application of a binary operator
+    struct { Expr* ptr; } deref;                    // Dereference a pointer
   };
 };
 
@@ -323,18 +283,7 @@ Stmt* mkPrint(PrintTag t, Expr* e);
 // Global variables
 // ============================================================================
 
-// Obtain a fresh variable
-Var freshVar();
-
-// Number of fresh vars used
-int getFreshVarCount();
-
-// Reset fresh variable generator
-void resetFreshVarGen();
-void resetFreshVarGen(int val);
-
-// Used for constructing abstract syntax trees
-extern Heap astHeap;
+extern Heap astHeap;  // Used for constructing abstract syntax trees
 
 }  // namespace QPULib
 

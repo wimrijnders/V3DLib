@@ -59,6 +59,28 @@ Instr Instr::nop() {
 
 
 /**
+ * Initial capital to discern it from member var's `setFlags`.
+ */
+Instr &Instr::SetFlags() {
+	if (tag == InstrTag::LI) {
+		LI.setFlags = true;
+	} else if (tag == InstrTag::ALU) {
+		ALU.setFlags = true;
+	} else {
+		assert(false);
+	}
+
+	return *this;
+}
+
+
+Instr &Instr::cond(AssignCond in_cond) {
+  ALU.cond = in_cond;
+	return *this;
+}
+
+
+/**
  * Determine if instruction is a conditional assignment
  */
 bool Instr::isCondAssign() const {
@@ -82,19 +104,8 @@ bool Instr::isLast() const {
 }
 
 
-void Instr::setFlags() {
-	if (tag == InstrTag::LI) {
-		LI.setFlags = true;
-	} else if (tag == InstrTag::ALU) {
-		ALU.setFlags = true;
-	} else {
-		assert(false);
-	}
-}
-
-
 Instr &Instr::pushz() {
-	setFlags();
+	SetFlags();
 
 	if (tag == InstrTag::LI) {
 		LI.setCond = SetCond::Z;

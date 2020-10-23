@@ -5,47 +5,8 @@
 
 namespace QPULib {
 
-// ============================================================================
-// Globals
-// ============================================================================
+Heap astHeap("abstract syntax tree", AST_HEAP_SIZE);  // Used for constructing abstract syntax trees
 
-// Used for fresh variable generation
-static int globalVarId = 0;
-
-// Used for constructing abstract syntax trees
-Heap        astHeap("abstract syntax tree", AST_HEAP_SIZE);
-
-// ============================================================================
-// Functions on global variables
-// ============================================================================
-
-// Obtain a fresh variable
-Var freshVar()
-{
-  // Return a fresh standard variable
-  Var v;
-  v.tag = STANDARD;
-  v.id  = globalVarId++;
-  return v;
-}
-
-// Number of fresh vars
-int getFreshVarCount()
-{
-  return globalVarId;
-}
-
-// Reset fresh variable generator
-void resetFreshVarGen()
-{
-  globalVarId = 0;
-}
-
-// Reset fresh variable generator to specified value
-void resetFreshVarGen(int val)
-{
-  globalVarId = val;
-}
 
 // ============================================================================
 // Functions on operators

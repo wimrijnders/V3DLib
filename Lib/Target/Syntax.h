@@ -3,7 +3,9 @@
 #include <stdint.h>
 #include <string>
 #include "Common/Seq.h"  // for check_zeroes()
-#include "../Support/debug.h"
+#include "Support/debug.h"
+#include "Source/Var.h"
+#include "Reg.h"
 
 namespace QPULib {
 
@@ -42,65 +44,6 @@ enum SubWord {
   , A16    // Bits 15..0
   , B16    // Bits 31..16
   , A32    // Bits 31..0
-};
-
-// ============================================================================
-// Registers
-// ============================================================================
-
-typedef int RegId;
-
-// Different kinds of registers
-enum RegTag {
-    REG_A           // In register file A (0..31)
-  , REG_B           // In register file B (0..31)
-  , ACC             // Accumulator register
-  , SPECIAL         // Special register
-  , NONE            // No read/write
-  , TMP_A           // Used in intermediate code
-  , TMP_B           // Used in intermediate code
-};
-
-inline bool isRegAorB(RegTag rt)
-  { return rt == REG_A || rt == REG_B; }
-
-// Special registers
-enum Special {
-    // Read-only
-    SPECIAL_UNIFORM
-  , SPECIAL_ELEM_NUM
-  , SPECIAL_QPU_NUM
-  , SPECIAL_VPM_READ
-  , SPECIAL_DMA_ST_WAIT
-  , SPECIAL_DMA_LD_WAIT
-
-    // Write-only
-  , SPECIAL_RD_SETUP
-  , SPECIAL_WR_SETUP
-  , SPECIAL_DMA_ST_ADDR
-  , SPECIAL_DMA_LD_ADDR
-  , SPECIAL_VPM_WRITE
-  , SPECIAL_HOST_INT
-  , SPECIAL_TMU0_S
-};
-
-
-struct Reg {
-  RegTag tag;   // What kind of register is it?
-  RegId regId;  // Register identifier
-
-	bool isUniformPtr;
-
-	Reg() = default;
-	Reg(RegTag in_tag, RegId in_regId) : tag(in_tag), regId(in_regId) {}
-
-  bool operator==(Reg const &rhs) const {
-    return tag == rhs.tag && regId == rhs.regId;
-  }
-
-  bool operator!=(Reg const &rhs) const {
-  	return !(*this == rhs);
-	}
 };
 
 // ============================================================================
@@ -313,11 +256,6 @@ struct BranchTarget {
 typedef int Label;
 
 
-// =========================
-// Fresh variable generation
-// =========================
-
-Reg freshReg();
 
 // ======================
 // Fresh label generation
@@ -453,10 +391,11 @@ struct Instr {
 	Instr(InstrTag in_tag);
 
 
-
 	// ==================================================
 	// Helper methods
 	// ==================================================
+	Instr &SetFlags();
+	Instr &cond(AssignCond in_cond);
 	bool isCondAssign() const;
 	bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
 	bool isRot() const { return ALU.op == M_ROTATE; }
@@ -532,10 +471,8 @@ public:
 		BRL.cond.flag = Flag::ZC;
 		return *this;
 	}
-
-private:
-	void setFlags();
 };
+
 
 // Instruction id: also the index of an instruction
 // in the main instruction sequence
@@ -576,16 +513,15 @@ extern Reg const TMUA;
 Reg rf(uint8_t index);
 
 Instr bor(Reg dst, Reg srcA, Reg srcB);
+Instr mov(Var dst, Var src);
 Instr mov(Reg dst, int n);
 Instr mov(Reg dst, Reg src);
-Instr mov(Reg dst, Reg src, AssignCond cond);
 Instr shl(Reg dst, Reg srcA, int val);
 Instr add(Reg dst, Reg srcA, Reg srcB);
 Instr add(Reg dst, Reg srcA, int n);
 Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
 Instr band(Reg dst, Reg srcA, int n);
-Instr li(AssignCond cond, Reg dst, int i);
 Instr li(Reg dst, int i);
 Instr branch(Label label);
 Instr branch(BranchCond cond, Label label);

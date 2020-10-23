@@ -7,21 +7,21 @@
 
 namespace QPULib {
 
-void genSetupVPMLoad(Seq<Instr>* instrs, int n, int addr, int hor, int stride);
-void genSetupVPMLoad(Seq<Instr>* instrs, int n, Reg addr, int hor, int stride);
+Seq<Instr> genSetupVPMLoad(int n, int addr, int hor, int stride);
+Seq<Instr> genSetupVPMLoad(int n, Reg addr, int hor, int stride);
 
-Instr  genSetupVPMStore(int addr, int hor, int stride);
-void genSetupVPMStore(Seq<Instr>* instrs, Reg addr, int hor, int stride);
+Instr genSetupVPMStore(int addr, int hor, int stride);
+Seq<Instr>  genSetupVPMStore(Reg addr, int hor, int stride);
 
 Instr genSetupDMALoad(int numRows, int rowLen, int hor, int vpitch, int vpmAddr);
-void genSetupDMALoad(Seq<Instr>* instrs, int numRows, int rowLen, int hor, int vpitch, Reg vpmAddr);
-void genStartDMALoad(Seq<Instr>* instrs, Reg memAddr);
+Seq<Instr>  genSetupDMALoad(int numRows, int rowLen, int hor, int vpitch, Reg vpmAddr);
+Instr genStartDMALoad(Reg memAddr);
 Instr genWaitDMALoad(bool might_be_end = true);
 
 void genSetupDMAStore(Seq<Instr>* instrs, int numRows, int rowLen, int hor, int vpmAddr);
 void genSetupDMAStore(Seq<Instr>* instrs, int numRows, int rowLen, int hor, Reg vpmAddr);
 Instr genStartDMAStore(Reg memAddr);
-void genWaitDMAStore(Seq<Instr>* instrs);
+Instr genWaitDMAStore();
 
 Instr genSetReadPitch(int pitch);
 void genSetReadPitch(Seq<Instr>* instrs, Reg pitch);
