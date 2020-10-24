@@ -14,8 +14,7 @@ namespace {
 // ============================================================================
 
 // Translate source operator to target opcode
-ALUOp opcode(Op op)
-{
+ALUOp opcode(Op op) {
   if (op.type == FLOAT) {
     switch (op.op) {
       case ADD:    return A_FADD;
@@ -544,33 +543,40 @@ void whereStmt(
 // Print statements
 // ============================================================================
 
-void printStmt(Seq<Instr>* seq, PrintStmt s) {
-  Instr instr(PRI);
+void printStmt(Seq<Instr> &seq, PrintStmt s) {
+  Instr instr;
+
+	auto expr_to_reg = [&seq] (PrintStmt const &s) -> Reg {
+		if (s.expr->tag == VAR) {
+   	  return srcReg(s.expr->var);
+		} else {
+      Var tmpVar = freshVar();
+ 	    varAssign(&seq, tmpVar, s.expr);
+   	  return srcReg(tmpVar);
+		}
+	};
+
+	//breakpoint
 
   switch (s.tag) {
     case PRINT_INT:
-    case PRINT_FLOAT: {
-      Var tmpVar = freshVar();
-      varAssign(seq, tmpVar, s.expr);
-
-      if (s.tag == PRINT_INT) {
-        instr.PRI = srcReg(tmpVar);
-      }
-      else {
-        instr.PRF = srcReg(tmpVar);
-      }
-
-      *seq << instr;
-      return;
-    }
+      instr.tag = PRI;
+   	  instr.PRI = expr_to_reg(s);
+    	break;
+    case PRINT_FLOAT:
+      instr.tag = PRF;
+   	  instr.PRI = expr_to_reg(s);
+    	break;
     case PRINT_STR:
       instr.tag = PRS;
       instr.PRS = s.str;
-      *seq << instr;
-      return;
+    break;
+		default:
+			assert(false);
+			break;
   }
 
-  assert(false);
+	seq << instr;
 }
 
 
@@ -579,11 +585,59 @@ void printStmt(Seq<Instr>* seq, PrintStmt s) {
 // ============================================================================
 
 void loadReceive(Seq<Instr>* seq, Expr* dest) {
-  assert(dest->tag == VAR);
+	assert(dest->tag == VAR);
   Instr instr(RECV);
 
   instr.RECV.dest = dstReg(dest->var);
   *seq << instr;
+}
+
+
+void stmt(Seq<Instr>* seq, Stmt* s);  // Forward declaration
+
+/**
+ * Translate if-then-else statement to target code
+ */
+void translateIf(Seq<Instr> &seq, Stmt &s) {
+	using namespace Target::instr;
+
+	Label endifLabel = freshLabel();
+	BranchCond cond  = condExp(&seq, s.ifElse.cond);  // Compile condition
+    
+	if (s.ifElse.elseStmt == NULL) {
+		seq << branch(cond.negate(), endifLabel);       // Branch over 'then' statement
+		stmt(&seq, s.ifElse.thenStmt);                  // Compile 'then' statement
+	} else {
+		Label elseLabel = freshLabel();
+
+		seq << branch(cond.negate(), elseLabel);        // Branch to 'else' statement
+		stmt(&seq, s.ifElse.thenStmt);                  // Compile 'then' statement
+		seq << branch(endifLabel);                      // Branch to endif
+
+		seq << label(elseLabel);                        // Label for 'else' statement
+		stmt(&seq, s.ifElse.elseStmt);                  // Compile 'else' statement
+	}
+	
+	seq << label(endifLabel);                         // Label for endif
+}
+
+
+void translateWhile(Seq<Instr> &seq, Stmt &s) {
+	using namespace Target::instr;
+
+	Label startLabel = freshLabel();
+	Label endLabel   = freshLabel();
+	BranchCond cond  = condExp(&seq, s.loop.cond);     // Compile condition
+ 
+	seq << branch(cond.negate(), endLabel)             // Branch over loop body
+	    << label(startLabel);                          // Start label
+
+	if (s.loop.body != NULL) stmt(&seq, s.loop.body);  // Compile body
+	condExp(&seq, s.loop.cond);                        // Compute condition again
+		                                                 // TODO why is this necessary?
+
+	seq << branch(cond, startLabel)                    // Branch to start
+	    << label(endLabel);                            // End label
 }
 
 
@@ -592,114 +646,42 @@ void loadReceive(Seq<Instr>* seq, Expr* dest) {
 // ============================================================================
 
 void stmt(Seq<Instr>* seq, Stmt* s) {
-  if (s == NULL) return;
+  if (s == nullptr) return;
 
-  // ----------
-  // Case: skip
-  // ----------
-  if (s->tag == SKIP) return;
-
-  // --------------------------------------------------
-  // Case: lhs = rhs, where lhs and rhs are expressions
-  // --------------------------------------------------
-  if (s->tag == ASSIGN) {
-    assign(seq, s->assign.lhs, s->assign.rhs);
-    return;
-  }
-
-  // ---------------------------------------------
-  // Case: s0 ; s1, where s1 and s2 are statements
-  // ---------------------------------------------
-
-  if (s->tag == SEQ) {
-    stmt(seq, s->seq.s0);
-    stmt(seq, s->seq.s1);
-    return;
-  }
-
-  // -------------------------------------------------------------------
-  // Case: if (c) s0 s1, where c is a condition, and lhs,rhs expressions
-  // -------------------------------------------------------------------
-  if (s->tag == IF) {
-		using namespace Target::instr;
-
-    Label endifLabel = freshLabel();
-    BranchCond cond  = condExp(seq, s->ifElse.cond);  // Compile condition
-    
-    if (s->ifElse.elseStmt == NULL) {
-			*seq << branch(cond.negate(), endifLabel);   // Branch to 'else' statement
-    	stmt(seq, s->ifElse.thenStmt);                    // Compile 'then' statement
-		} else {
-    	Label elseLabel = freshLabel();
-
-			*seq << branch(cond.negate(), elseLabel);   // Branch to 'else' statement
-	    stmt(seq, s->ifElse.thenStmt);                    // Compile 'then' statement
-			*seq << branch(endifLabel);                     // Branch to endif
-
-			*seq << label(elseLabel);                         // Label for 'else' statement
-	    stmt(seq, s->ifElse.elseStmt);                    // Compile 'else' statement
-		}
-	
-		*seq << label(endifLabel);                        // Label for endif
-
-    return;
-  }
-
-  // -----------------------------------------------------------
-  // Case: while (c) s where c is a condition, and s a statement
-  // -----------------------------------------------------------
-  if (s->tag == WHILE) {
-		using namespace Target::instr;
-
-    Label startLabel = freshLabel();
-    Label endLabel   = freshLabel();
-    BranchCond cond  = condExp(seq, s->loop.cond);      // Compile condition
- 
-		*seq << branch(cond.negate(), endLabel)       // Branch over loop body
-		     << label(startLabel);                          // Start label
-
-    if (s->loop.body != NULL) stmt(seq, s->loop.body);  // Compile body
-    condExp(seq, s->loop.cond);                         // Compute condition again
-		                                                    // TODO why is this necessary?
-
-		*seq << branch(cond, startLabel)                    // Branch to start
-		     << label(endLabel);                            // End label
-
-    return;
-  }
-
-  // ----------------------------------------------------------------------
-  // Case: where (b) s0 s1 where c is a boolean expr, and s0, s1 statements
-  // ----------------------------------------------------------------------
-  if (s->tag == WHERE) {
-    Var condVar = freshVar();
-    whereStmt(seq, s, condVar, always, false);
-    return;
-  }
-
-  // ---------------------------------------------
-  // Case: print(e) where e is an expr or a string
-  // ---------------------------------------------
-  if (s->tag == PRINT) {
-    printStmt(seq, s->print);
-    return;
-  }
-
-  // -----------------------------------
-  // Case: receive(e) where e is an expr
-  // -----------------------------------
-  if (s->tag == LOAD_RECEIVE) {
-    loadReceive(seq, s->loadDest);
-    return;
-  }
-
-	// Handle platform-specific instructions
-	if (getSourceTranslate().stmt(seq, s)) {
-		return;
+  switch (s->tag) {
+		case SKIP:
+			break;
+		case ASSIGN:             // 'lhs = rhs', where lhs and rhs are expressions
+      assign(seq, s->assign.lhs, s->assign.rhs);
+			break;
+    case SEQ:                // 's0 ; s1', where s1 and s2 are statements
+      stmt(seq, s->seq.s0);
+      stmt(seq, s->seq.s1);
+			break;
+  	case IF:                 // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
+			translateIf(*seq, *s);
+			break;
+  	case WHILE:              // 'while (c) s', where c is a condition, and s a statement
+			translateWhile(*seq, *s);
+			break;
+  	case WHERE: {            // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
+	    	Var condVar = freshVar();
+	    	whereStmt(seq, s, condVar, always, false);
+			}
+			break;
+  	case PRINT:              // 'print(e)', where e is an expr or a string
+	    printStmt(*seq, s->print);
+			break;
+  	case LOAD_RECEIVE:       // 'receive(e)', where e is an expr
+	    loadReceive(seq, s->loadDest);
+			break;
+		default:
+			// Handle platform-specific instructions
+			if (!getSourceTranslate().stmt(seq, s)) {
+		  	assert(false); // Not reachable
+			}
+			break;
 	}
-
-  // Not reachable
-  assert(false);
 }
 
 

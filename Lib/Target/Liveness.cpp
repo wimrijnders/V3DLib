@@ -242,6 +242,17 @@ void liveness(Seq<Instr> &instrs, Liveness &live) {
 }  // anon namespace
 
 
+LiveSets::LiveSets(int size) : m_size(size) {
+	assert(size > 0);
+	m_sets = new LiveSet [size];  // confirmed: default ctor LiveSet called here (notably ctor SmallSeq)
+}
+
+
+LiveSets::~LiveSets() {
+	delete [] m_sets;
+}
+
+
 void LiveSets::init(Seq<Instr> &instrs, Liveness &live) {
   LiveSet liveOut;
 
@@ -254,18 +265,24 @@ void LiveSets::init(Seq<Instr> &instrs, Liveness &live) {
 
       for (int k = 0; k < liveOut.size(); k++) {
         RegId ry = liveOut[k];
-        if (rx != ry) m_sets[rx].insert(ry);
+        if (rx != ry) (*this)[rx].insert(ry);
       }
 
       for (int k = 0; k < useDefSet.def.size(); k++) {
         RegId rd = useDefSet.def[k];
         if (rd != rx) {
-          m_sets[rx].insert(rd);
-          m_sets[rd].insert(rx);
+          (*this)[rx].insert(rd);
+          (*this)[rd].insert(rx);
         }
       }
     }
   }
+}
+
+
+LiveSet &LiveSets::operator[](int index) {
+	assert(index >=0 && index < m_size);
+	return m_sets[index];
 }
 
 
@@ -281,7 +298,7 @@ std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &allo
 	for (int j = 0; j < NUM_REGS; j++)
 		possible[j] = true;
 
-    LiveSet &set = m_sets[index];
+    LiveSet &set = (*this)[index];
 
     // Eliminate impossible choices of register for this variable
     for (int j = 0; j < set.size(); j++) {

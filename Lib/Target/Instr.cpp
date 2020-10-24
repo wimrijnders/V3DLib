@@ -25,7 +25,9 @@ Instr::Instr(InstrTag in_tag) {
 		break;
 	case InstrTag::RECV:
 	case InstrTag::PRI:
-    tag          = in_tag;
+	case InstrTag::END:
+	case InstrTag::TMU0_TO_ACC4:
+    tag = in_tag;
 		break;
 	default:
 		assert(false);
@@ -142,7 +144,7 @@ void Instr::label_to_target(int offset) {
 
 
 bool Instr::isUniformLoad() const {
-	if (tag == TMU0_TO_ACC4 || tag == InstrTag::LI) {
+	if (tag != InstrTag::ALU) {
 		return false;
 	}
 
@@ -167,6 +169,7 @@ bool Instr::isTMUAWrite() const {
  	if (tag != InstrTag::ALU) {
 		return false;
 	}
+
 	Reg reg = ALU.dest;
 
 	bool ret = (reg.regId == SPECIAL_DMA_ST_ADDR)
@@ -265,5 +268,21 @@ void check_zeroes(Seq<Instr> const &instrs) {
 std::string Instr::mnemonic(bool with_comments) const {
 	return pretty(*this, with_comments);
 }
+
+
+/**
+ * Generates a string representation of the passed string of instructions.
+ */
+std::string mnemonics(Seq<Instr> const &code, bool with_comments) {
+	std::string ret;
+
+	for (int i = 0; i < code.size(); i++) {
+		auto const &instr = code[i];
+		ret << i << ": " << instr.mnemonic(with_comments).c_str();
+	}
+
+	return ret;
+}
+
 
 }  // namespace QPULib

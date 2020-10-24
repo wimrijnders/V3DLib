@@ -8,59 +8,64 @@
 #include <string>
 #include "Support/debug.h"
 
-#define INITIAL_MAX_ELEMS 1024
 
 namespace QPULib {
 
 template <class T> class Seq {
 public:
-    Seq() { init(INITIAL_MAX_ELEMS); }
-    Seq(int initialSize) { init(initialSize); }
-    Seq(Seq<T> const &seq) { *this = seq; }
+	int const INITIAL_MAX_ELEMS = 1024;
 
-		/**
-		 * Assignment operator - really needed! Default assignment does shallow copy
-		 */
-    Seq<T> & operator=(Seq<T> const &seq) {
-      init(seq.maxElems);
+	Seq() { setCapacity(INITIAL_MAX_ELEMS); }
+	Seq(int initialSize) { setCapacity(initialSize); }
+	Seq(Seq<T> const &seq) { *this = seq; }
 
-      numElems = seq.numElems;
-      for (int i = 0; i < seq.numElems; i++)
-        elems[i] = seq.elems[i];
 
-			return *this;
-    }
+	/**
+	 * Assignment operator - really needed! Default assignment does shallow copy
+	 */
+	Seq<T> & operator=(Seq<T> const &seq) {
+		setCapacity(seq.maxElems);
+
+		numElems = seq.numElems;
+		for (int i = 0; i < seq.numElems; i++)
+			elems[i] = seq.elems[i];
+
+		return *this;
+	}
 		
 
-    ~Seq() {
-			if (elems == nullptr) {  // WRI debug
-				breakpoint
-			}
-
-			delete [] elems;
-			elems = nullptr;
+	~Seq() {
+		if (elems == nullptr) {  // WRI debug
+			breakpoint
 		}
 
-		T *data() { return elems; }
+		delete [] elems;
+		elems = nullptr;
+	}
 
-		/**
-		 * Here's one for the Hall of Shame, previous definition:
-		 *
-		 *    bool size() const { return numElems; }
-		 *
-		 * How much of an idiot can I be?
-		 * I kept reading over it for ages, because how can size be wrong, right?
-		 * Hours of confusion have now been explained.
-		 */
-		int size() const { return numElems; }
 
-		void set_size(int new_size) {
-			assert(new_size > 0);
-  		setCapacity(new_size);
-		  numElems = new_size;
-		}
+	T *data() { return elems; }
 
-		bool empty() const { return size() ==0; }
+
+	/**
+	 * Here's one for the Hall of Shame, previous definition:
+	 *
+	 *    bool size() const { return numElems; }
+	 *
+	 * How much of an idiot can I be?
+	 * I kept reading over it for ages, because how can size be wrong, right?
+	 * Hours of confusion have now been explained.
+	 */
+	int size() const { return numElems; }
+
+
+	void set_size(int new_size) {
+		assert(new_size > 0);
+		setCapacity(new_size);
+		numElems = new_size;
+	}
+
+	bool empty() const { return size() == 0; }
 
 		T &get(int index) {
 			assertq(0 <= index && index < numElems, "Seq[] index out of range", true);
@@ -76,27 +81,40 @@ public:
 			return elems[index];
 		}
 
+		T const &back() const {
+			assert(!empty());
+			return get(size() - 1);
+		}
 
-		/**
-     * Set capacity of sequence, resizing if required.
-		 */
-    void setCapacity(int n) {
-			assert(n > 0);
-			if (n <= maxElems) {
-				assert(elems != nullptr);
-				return;  // Don't bother resizing if already big enough
+
+	/**
+	 * Ensure that there is enough capacity in the sequence to contain the
+	 * given number of elements
+	 *
+	 * Resize if required.
+	 *
+	 * @param n  requested size of sequence
+	 */
+	void setCapacity(int n) {
+		assert(n > 0);
+		if (n <= maxElems) {
+			assert(elems != nullptr);
+			return;  // Don't bother resizing if already big enough
+		}
+
+		maxElems = n;
+		T* newElems = new T[maxElems];
+
+		if (elems != nullptr) {
+			assert(maxElems > 0);
+			for (int i = 0; i < numElems; i++) {
+				newElems[i] = elems[i];
 			}
+		}
 
-      maxElems = n;
-      T* newElems = new T[maxElems];
-
-      for (int i = 0; i < numElems; i++) {
-        newElems[i] = elems[i];
-			}
-
-      delete [] elems;
-      elems = newElems;
-    }
+		delete [] elems;
+		elems = newElems;
+	}
 
 
     // Append
@@ -133,14 +151,14 @@ public:
     }
 
 
-		/**
-     * Insert element into sequence if not already present
-		 */
-    bool insert(T x) {
-      bool alreadyPresent = member(x);
-      if (!alreadyPresent) append(x);
-      return !alreadyPresent;
-    }
+	/**
+	 * Insert element into sequence if not already present
+	 */
+	bool insert(T x) {
+		bool alreadyPresent = member(x);
+		if (!alreadyPresent) append(x);
+		return !alreadyPresent;
+	}
 
 
 		/**
@@ -199,10 +217,6 @@ private:
 	int numElems = 0;
 	T* elems     = nullptr;
 
-	void init(int initialSize) {
-    setCapacity(initialSize);
-	}
-
 
 	/**
 	 * Shift tail of sequence n positions, starting from index
@@ -235,7 +249,13 @@ private:
 		assert(step > 0);
 
 		int newSize = maxElems;
-		while (numElems > newSize)
+		if (newSize == 0) {
+			assert(elems == nullptr);
+			newSize = INITIAL_MAX_ELEMS;
+			assert(newSize != 0);  // Actually happened during gdb debug sessions, prob due to skipping of ctor Set.
+		}
+
+		while (newSize < (numElems + step))
 			newSize *= 2;
 
 		setCapacity(newSize);
@@ -244,7 +264,9 @@ private:
 };
 
 
-// A small sequence is just a sequence with a small initial size
+/**
+ * A small sequence is a sequence with a small initial size
+ */
 template <class T> class SmallSeq : public Seq<T> {
   public:
     SmallSeq() : Seq<T>(8) {};

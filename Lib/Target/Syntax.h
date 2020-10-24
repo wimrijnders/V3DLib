@@ -473,6 +473,9 @@ public:
 };
 
 
+std::string mnemonics(Seq<Instr> const &code, bool with_comments = false);
+
+
 // Instruction id: also the index of an instruction
 // in the main instruction sequence
 typedef int InstrId;

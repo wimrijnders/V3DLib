@@ -12,6 +12,32 @@
 
 namespace QPULib {
 
+namespace {
+
+void print_source_code(FILE *f, Stmt *body) {
+	// Emit source code
+	fprintf(f, "Source code\n");
+	fprintf(f, "===========\n\n");
+	if (body == nullptr)
+		fprintf(stderr, "<No source code to print>");
+	else
+		QPULib::pretty(f, body);
+
+	fprintf(f, "\n");
+	fflush(f);
+}
+
+
+void print_target_code(FILE *f, Seq<Instr> const &code) {
+	fprintf(f, "Target code\n");
+	fprintf(f, "===========\n\n");
+	fprintf(f, mnemonics(code, true).c_str());
+	fprintf(f, "\n");
+	fflush(f);
+}
+
+}  // anon namespace
+
 // ============================================================================
 // Compile kernel
 // ============================================================================
@@ -136,8 +162,8 @@ void KernelDriver::pretty(int numQPUs, const char *filename) {
 		fprintf(f, "=== Encoding and displaying output as best as possible                                       ===\n\n\n");
 	}
 
-	print_source_code(f);
-	emit_target_code(f);
+	print_source_code(f, body);
+	print_target_code(f, m_targetCode);
 
 	if (!has_errors()) {
 		encode(numQPUs);  // generate opcodes if not already done
@@ -149,35 +175,6 @@ void KernelDriver::pretty(int numQPUs, const char *filename) {
 		assert(f != stdout);
 		fclose(f);
 	}
-}
-
-
-void KernelDriver::print_source_code(FILE *f) {
-	// Emit source code
-	fprintf(f, "Source code\n");
-	fprintf(f, "===========\n\n");
-	if (body == nullptr)
-		fprintf(stderr, "<No source code to print>");
-	else
-		QPULib::pretty(f, body);
-
-	fprintf(f, "\n");
-	fflush(f);
-}
-
-
-void KernelDriver::emit_target_code(FILE *f) {
-	// Emit target code
-	fprintf(f, "Target code\n");
-	fprintf(f, "===========\n\n");
-
-	for (int i = 0; i < m_targetCode.size(); i++) {
-		auto &instr = m_targetCode[i];
-		fprintf(f, "%i: %s", i, instr.mnemonic(true).c_str());
-	}
-
-	fprintf(f, "\n");
-	fflush(f);
 }
 
 
