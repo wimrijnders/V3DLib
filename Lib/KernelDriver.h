@@ -50,8 +50,6 @@ private:
 	virtual void invoke_intern(int numQPUs, Seq<int32_t>* params) = 0;
 	bool has_errors() const { return !errors.empty(); }
 	bool handle_errors();
-	void print_source_code(FILE *f);
-	void emit_target_code(FILE *f);
 };
 
 

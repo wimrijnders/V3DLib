@@ -65,16 +65,11 @@ class LiveSets {
 public:
   UseDef useDefSet;
 
-	LiveSets(int size) :m_size(size) {
-  	m_sets = new LiveSet [size];
-	}
-
-	~LiveSets() {
-		delete [] m_sets;
-	}
+	LiveSets(int size);
+	~LiveSets();
 
 	void init(Seq<Instr> &instrs, Liveness &live);
-	LiveSet &operator[](int index) { return m_sets[index]; }
+	LiveSet &operator[](int index);
 	std::vector<bool> possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag = REG_A);
 
 	static RegId choose_register(std::vector<bool> &possible, bool check_limit = true);	

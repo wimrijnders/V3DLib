@@ -12,6 +12,7 @@
 #include "Common/Seq.h"
 #include "support/Gen.h"
 #include "Source/Pretty.h"
+#include "Support/debug.h"
 
 using namespace QPULib;
 
@@ -19,25 +20,24 @@ using namespace QPULib;
 // Program-generator options
 // ============================================================================
 
-GenOptions basicGenOpts()
-{
-  GenOptions opts;
-  opts.depth           = 3;
-  opts.length          = 4;
-  opts.numIntArgs      = 4;
-  opts.numFloatArgs    = 0;
-  opts.numPtrArgs      = 0;
-  opts.numPtr2Args     = 0;
-  opts.numIntVars      = 4;
-  opts.numFloatVars    = 0;
-  opts.loopBound       = 5;
-  opts.genFloat        = false;
-  opts.genRotate       = false;
-  opts.genDeref        = false;
-  opts.genDeref2       = false;
-  opts.derefOffsetMask = 0;
-  opts.genStrided      = false;
-  return opts;
+GenOptions basicGenOpts() {
+	GenOptions opts;
+	opts.depth           = 3;
+	opts.length          = 4;
+	opts.numIntArgs      = 4;
+	opts.numFloatArgs    = 0;
+	opts.numPtrArgs      = 0;
+	opts.numPtr2Args     = 0;
+	opts.numIntVars      = 4;
+	opts.numFloatVars    = 0;
+	opts.loopBound       = 5;
+	opts.genFloat        = false;
+	opts.genRotate       = false;
+	opts.genDeref        = false;
+	opts.genDeref2       = false;
+	opts.derefOffsetMask = 0;
+	opts.genStrided      = false;
+	return opts;
 }
 
 
@@ -73,11 +73,11 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 
 	    int numVars, numEmuVars;
 	    Stmt* s = progGen(&opts, &numVars);
-	    //pretty(s);
-
+			
 	    Seq<Instr> targetCode;
 	    resetFreshVarGen(numVars);
 	    compileKernel(targetCode, s);
+
 	    numEmuVars = getFreshVarCount();
 	    Seq<int32_t> params;
 	    params.clear();
@@ -99,11 +99,16 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	
 	    if (differs) {
 	      printf("Failed test %i.\n", test);
+	      printf("Source Code: \n");
 	      pretty(s);
-	      printf("Params: ");
+	      printf("\nTarget Code: \n");
+				printf(mnemonics(targetCode).c_str());
+
+	      printf("\nParams: ");
 	      for (int i = 0; i < params.size(); i++) {
 	        printf("%i ", params[i]);
 	      }
+
 	      printf("\nTarget emulator says:\n");
 	      printCharSeq(emuOut);
 	      printf("\nSource interpreter says:\n");

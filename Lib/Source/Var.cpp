@@ -1,4 +1,5 @@
 #include "Var.h"
+#include "Support/debug.h"
 
 namespace QPULib {
 
@@ -29,7 +30,8 @@ int getFreshVarCount() {
  * Reset fresh variable generator
  */
 void resetFreshVarGen(int val) {
-	globalVarId = 0;
+	assert(val >= 0);
+	globalVarId = val;
 }
 
 }  // namespace QPULib
