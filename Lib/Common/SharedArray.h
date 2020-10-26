@@ -122,14 +122,7 @@ public:
   // Subscript
   inline T& operator[] (int i) {
 		assert(allocated());
-		if (i < 0) {
-			breakpoint
-		}
-		assert(i >= 0);
-		if (i >= m_size) {
-			breakpoint  // Check if this ever happens
-		}
-		assert(i < m_size);
+		assertq(i >= 0 && i < m_size, "SharedArray::[]: index outside of possible range", true);
 
     T* base = (T *) m_usraddr;
     return (T&) base[i];

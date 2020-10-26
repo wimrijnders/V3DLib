@@ -178,9 +178,12 @@ TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
 #include "QPULib.h"
 using namespace QPULib;
 
+namespace {
+const int VEC_SIZE = 16;
+
 void next(Ptr<Int> &result, Int &r) {
 	*result = r;
-	result += 16;
+	result += VEC_SIZE;
 	r = 0;
 }
 
@@ -193,48 +196,116 @@ void where_kernel(Ptr<Int> result) {
 	Where (a == 8) r = 1; End; next(result, r);
 	Where (a != 8) r = 1; End; next(result, r);
 	Where (a >  8) r = 1; End; next(result, r);
-	Where (a >=  8) r = 1; End
+	Where (a >=  8) r = 1; End; next(result, r);
 	*result = r;
 }
 
+
+void andor_kernel(Ptr<Int> result) {
+	Int a = index();
+	Int r = 0;
+
+	Where ( a >=  4 &&  a <= 8)             r = 1; End; next(result, r);
+	Where ( a <   4 ||  a >  8)             r = 1; End; next(result, r);
+	Where ( a >   4 &&  a <  8  || a > 12)  r = 1; End; next(result, r);
+	Where ( a >   4 && (a <  8  || a > 12)) r = 1; End; next(result, r); // BORING! Same result as previous
+	Where ((a >   4 &&  a <  8) || a > 12)  r = 1; End                   // TODO find better examples with differing res
+
+	*result = r;
+}
+
+
+void check(QPULib::SharedArray<int> &result, int block, uint32_t *expected) {
+	for (uint32_t n = 0; n < VEC_SIZE; ++n) {
+		INFO("block " << block <<  ", index " << n);
+		REQUIRE(result[block * VEC_SIZE + n] == expected[n]);
+	}
+}
+
+
+void check_where_result(QPULib::SharedArray<int> &result) {
+
+	uint32_t expected_smaller_than[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
+	uint32_t expected_smaller_equal[VEC_SIZE] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
+	uint32_t expected_equal[VEC_SIZE]         = {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
+	uint32_t expected_not_equal[VEC_SIZE]     = {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1};
+	uint32_t expected_larger_than[VEC_SIZE]   = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
+	uint32_t expected_larger_equal[VEC_SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1};
+
+	check(result, 0, expected_smaller_than);
+	check(result, 1, expected_smaller_equal);
+	check(result, 2, expected_equal);
+	check(result, 3, expected_not_equal);
+	check(result, 4, expected_larger_than);
+	check(result, 5, expected_larger_equal);
+}
+
+
+void check_andor_result(QPULib::SharedArray<int> &result) {
+
+	uint32_t expected_and[VEC_SIZE]           = {0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
+	uint32_t expected_or[VEC_SIZE]            = {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
+	uint32_t expected_combined[VEC_SIZE]      = {0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1};
+
+	check(result, 0, expected_and);
+	check(result, 1, expected_or);
+	check(result, 2, expected_combined);
+	check(result, 3, expected_combined);
+	check(result, 4, expected_combined);
+}
+
+}  // anon namespace
+
+
 TEST_CASE("Test Where blocks", "[where][cond]") {
-	const int SIZE      = 16;
 	const int NUM_TESTS = 6;
 
   auto k = compile(where_kernel);
 
-  QPULib::SharedArray<int> result(NUM_TESTS*SIZE);
+  QPULib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
 
 	k.load(&result);
 	//k.pretty(false);
 
+  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+	k.emu();
+	check_where_result(result);
+
+  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+	k.interpret();
+	check_where_result(result);
+
+  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
 	k.call();
-	//k.emu();
-	//k.interpret();
+	check_where_result(result);
 
   //for (int i = 0; i < result.size(); i++)
   //  printf("%i: %i\n", i, result[i]);
+}
 
-	auto check = [&result] (int block, uint32_t *expected) {
-		for (uint32_t n = 0; n < SIZE; ++n) {
-			INFO("block " << block <<  ", index " << n);
-			REQUIRE(result[block * SIZE + n] == expected[n]);
-		}
-	};
 
-	uint32_t expected_smaller_than[SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
-	uint32_t expected_smaller_equal[SIZE] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
-	uint32_t expected_equal[SIZE]         = {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
-	uint32_t expected_not_equal[SIZE]     = {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1};
-	uint32_t expected_larger_than[SIZE]   = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
-	uint32_t expected_larger_equal[SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1};
+TEST_CASE("Test Where blocks with and/or", "[andor][cond]") {
+	const int NUM_TESTS = 5;
 
-	check(0, expected_smaller_than);
-	check(1, expected_smaller_equal);
-	check(2, expected_equal);
-	check(3, expected_not_equal);
-	check(4, expected_larger_than);
-	check(5, expected_larger_equal);
+  auto k = compile(andor_kernel);
+
+  QPULib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
+
+	k.load(&result);
+
+  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+	k.emu();
+	check_andor_result(result);
+
+  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+	k.interpret();
+	check_andor_result(result);
+
+/*
+  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+	k.call();
+	check_andor_result(result);
+*/
 }
 
 #endif  // ifdef QPU_MODE

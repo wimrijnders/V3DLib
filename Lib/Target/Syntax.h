@@ -406,6 +406,13 @@ struct Instr {
 
 	std::string mnemonic(bool with_comments = false) const;
 
+	bool operator==(Instr const &rhs) const {
+		// Cheat by comparing the string representation,
+		// to avoid having to check the union members separately, and to skip unused fields
+		return this->mnemonic() == rhs.mnemonic();
+	}
+
+
 	static Instr nop();
 
 	/////////////////////////////////////
@@ -516,6 +523,7 @@ Reg rf(uint8_t index);
 
 Instr bor(Reg dst, Reg srcA, Reg srcB);
 Instr mov(Var dst, Var src);
+Instr mov(Reg dst, Var src);
 Instr mov(Reg dst, int n);
 Instr mov(Reg dst, Reg src);
 Instr shl(Reg dst, Reg srcA, int val);
@@ -525,6 +533,8 @@ Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
 Instr band(Reg dst, Reg srcA, int n);
 Instr li(Reg dst, int i);
+Instr li(Var v, int i);
+Instr li(Var v, float f);
 Instr branch(Label label);
 Instr branch(BranchCond cond, Label label);
 Instr label(Label in_label);

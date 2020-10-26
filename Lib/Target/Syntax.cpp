@@ -256,6 +256,11 @@ Instr mov(Var dst, Var src) {
 }
 
 
+Instr mov(Reg dst, Var src) {
+  return mov(dst, srcReg(src));
+}
+
+
 Instr mov(Reg dst, int n) {
 	return genInstr(A_BOR, dst, n, n);
 }
@@ -324,6 +329,22 @@ Instr li(Reg dst, int i) {
   instr.LI.dest       = dst;
   instr.LI.imm.tag    = IMM_INT32;
   instr.LI.imm.intVal = i;
+ 
+  return instr;
+}
+
+
+Instr li(Var v, int i) {
+	return li(dstReg(v), i);
+}
+
+
+Instr li(Var v, float f) {
+  Instr instr(LI);
+  instr.LI.cond         = always;
+  instr.LI.dest         = dstReg(v);
+  instr.LI.imm.tag      = IMM_FLOAT32;
+  instr.LI.imm.floatVal = f;
  
   return instr;
 }

@@ -161,45 +161,6 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
 // an ALU instruction is 'true'.  The condition vector can be read
 // from an assignment condition or in a branch condition.
 
-
-/**
- * Return a value that will cause the specified flag bit to be set in
- * the condition vector.
- */
-int setFlag(Flag f) {
-  switch (f) {
-    case ZS: return 0;
-    case ZC: return 1;
-    case NS: return -1;
-    case NC: return 0;
-  }
-
-  // Not reachable
-  assert(false);
-	return -1;
-}
-
-
-/**
- * Set the condition vector using given variable.
- */
-Instr setCond(Var v) {
-  Instr instr(ALU);
-	instr.ALU.setFlags = true;
-  instr.ALU.dest     = Target::instr::None;
-  instr.ALU.srcA.tag = REG;
-  instr.ALU.srcA.reg = srcReg(v);
-  instr.ALU.op       = A_BOR;
-  instr.ALU.srcB.tag = REG;
-  instr.ALU.srcB.reg = instr.ALU.srcA.reg;
-  return instr;
-}
-
-
-// ============================================================================
-// Boolean expressions
-// ============================================================================
-
 // Evaluating a vector boolean expression results in a condition
 // pair <condVar,condFlag> where:
 //
@@ -232,54 +193,85 @@ Instr setCond(Var v) {
 // disjunction, and the corresponding condFlag will be returned as a
 // result.
 
-AssignCond boolOr(
-	Seq<Instr>* seq,
-	AssignCond condA,
-	Var condVarA,
-	AssignCond condB,
-	bool modify
-) {
-  if (condA.is_always()) return condA;
-  else if (condB.is_always()) return condB;
-  else if (condB.is_never()) {
-    if (modify) *seq << setCond(condVarA);
+
+// ============================================================================
+// Boolean expressions
+// ============================================================================
+
+/**
+ * Pre:
+ * - Hypothesis: condVar set for condA
+ * - Implicit condition vector set for condB
+ *
+ * ## Truth Table
+ * ```
+ *        | B
+ * ------------------------------------
+ * A      | never    | always | flag
+ * ------------------------------------
+ * never  | never    | always | B
+ * always | always   | always | always
+ * flag   | A        | always |
+ * ------------------------------------
+ * ```
+ *
+ * ------
+ * ## NOTES
+ *
+ * 1. In the case of `cond = condB`, I would be expecting `condVar` to be completely reset,
+ *    i.e. first init `condVar = 0` for all vector values.
+ *
+ *    This would be OK if `condA == Never` and `condvar` still zeroes.
+ *
+ *    TODO investigate if possible
+ */
+AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond condB) {
+	using namespace Target::instr;
+
+	//breakpoint
+
+	// Determine a value that will cause the specified flag bit to be set in the condition vector.
+	auto determineCondVar = [] (AssignCond cond) -> int {
+		int val = 0;
+
+		switch (cond.flag) {
+			case ZS: val =  0; break;
+			case ZC: val =  1; break;
+			case NS: val = -1; break;
+			case NC: val =  0; break;  // TODO set to unique value (e.g. 2) -> need to research logic for correctness
+			default: assert(false); val = -1; break;
+		}
+
+		return val;
+	};
+
+
+  if (condA.is_always() || condB.is_always()) return always;
+  if (condA.is_never()  && condB.is_never() ) return never;
+
+  if (condB.is_never()) {                     // condA == FLAG
+    seq << mov(None, condVar).SetFlags();     // Set implicit condition vector to variable
     return condA;
-  }
-  else if (condA.is_never()) {
-    Instr instr(LI);
-    instr.LI.cond       = condB;
-    instr.LI.dest       = dstReg(condVarA);
-    instr.LI.imm.tag    = IMM_INT32;
-    instr.LI.imm.intVal = setFlag(condB.flag);
+  } else if (condA.is_never()) {              // condB == FLAG
+		int val = determineCondVar(condB);
 
-    *seq << instr;
+		seq << li(condVar, val).cond(condB);      // set condB values in condVar, See Note 1
     return condB;
-  }
-  else {
-    Instr instr(LI);
-    instr.LI.cond       = condB;
-    instr.LI.dest       = dstReg(condVarA);
-    instr.LI.imm.tag    = IMM_INT32;
-    instr.LI.imm.intVal = setFlag(condA.flag);
+  } else {                                    // condA == flag and condB == FLAG
+		int val = determineCondVar(condA);
 
-    *seq << instr;
-    if (modify) *seq << setCond(condVarA);
+		seq << li(condVar, val).cond(condB)       // Adjust condVar for condB
+        << mov(None, condVar).SetFlags();     // Set implicit condition vector for new value condVar
     return condA;
   }
 }
 
 
 /**
- * Conjunction is now easy thanks to De Morgan's law
+ * Define conjunction using De Morgan.
  */
-AssignCond boolAnd(
-	Seq<Instr>* seq,
-	AssignCond condA,
-	Var condVarA,
-	AssignCond condB,
-	bool modify
-) {
-  return boolOr(seq, condA.negate(), condVarA, condB.negate(), modify).negate();
+AssignCond boolAnd(Seq<Instr> *seq, AssignCond condA, Var condVarA, AssignCond condB) {
+  return boolOr(*seq, condA.negate(), condVarA, condB.negate()).negate();
 }
 
 
@@ -299,16 +291,16 @@ AssignCond boolAnd(
 //   * instructions to evaluate the expression are appended to the
 //     given instruction sequence.
 
-AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
+AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v, bool modify) {
   BExpr b = *bexpr;
 
   // -------------------------------
   // Case: x > y, replace with y < x
   // -------------------------------
   if (b.tag == CMP && b.cmp.op.op == GT) {
-    Expr* e     = b.cmp.lhs;
+    Expr *tmp   = b.cmp.lhs;
     b.cmp.lhs   = b.cmp.rhs;
-    b.cmp.rhs   = e;
+    b.cmp.rhs   = tmp;
     b.cmp.op.op = LT;
   }
 
@@ -316,9 +308,9 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
   // Case: x <= y, replace with y >= x
   // ---------------------------------
   if (b.tag == CMP && b.cmp.op.op == LE) {
-    Expr* e     = b.cmp.lhs;
+    Expr *tmp   = b.cmp.lhs;
     b.cmp.lhs   = b.cmp.rhs;
-    b.cmp.rhs   = e;
+    b.cmp.rhs   = tmp;
     b.cmp.op.op = GE;
   }
 
@@ -393,7 +385,7 @@ AssignCond boolExp( Seq<Instr>* seq , BExpr* bexpr , Var v , bool modify) {
     Var w = freshVar();
     AssignCond condA = boolExp(seq, b.disj.lhs, v, false);
     AssignCond condB = boolExp(seq, b.disj.rhs, w, true);
-    return boolOr(seq, condA, v, condB, true);
+    return boolOr(*seq, condA, v, condB);
   }
 
   // ------------------------------------------------
@@ -444,18 +436,8 @@ BranchCond condExp(Seq<Instr>* seq, CExpr* c) {
 // Where statements
 // ============================================================================
 
-void whereStmt(
-	Seq<Instr>* seq,
-	Stmt* s,
-	Var condVar,
-	AssignCond cond,
-	bool saveRestore
-) {
+void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
   if (s == NULL) return;
-
-  // ----------
-  // Case: skip
-  // ----------
   if (s->tag == SKIP) return;
 
   // ------------------------------------------------------
@@ -490,25 +472,25 @@ void whereStmt(
 
       // Compile 'then' statement
       if (s->where.thenStmt != NULL)
-        whereStmt(seq, s->where.thenStmt, condVar, newCond,
-          s->where.elseStmt != NULL);
+        whereStmt(seq, s->where.thenStmt, condVar, newCond, s->where.elseStmt != NULL);
 
       // Compile 'else' statement
       if (s->where.elseStmt != NULL)
         whereStmt(seq, s->where.elseStmt, condVar, newCond.negate(), false);
     } else {
-      // Save condVar
       Var savedCondVar = freshVar();
+      Var newCondVar   = freshVar();
+
+      // Save condVar
       if (saveRestore || s->where.elseStmt != NULL)
         *seq << mov(savedCondVar, condVar);
 
       // Compile new boolean expression
-      Var newCondVar = freshVar();
       AssignCond newCond = boolExp(seq, s->where.cond, newCondVar, true);
 
       if (s->where.thenStmt != NULL) {
         // AND new boolean expression with original condition
-        AssignCond andCond = boolAnd(seq, cond, condVar, newCond, true);
+        AssignCond andCond = boolAnd(seq, cond, condVar, newCond);
 
         // Compile 'then' statement
         whereStmt(seq, s->where.thenStmt, condVar, andCond, false);
@@ -519,7 +501,7 @@ void whereStmt(
 
       if (s->where.elseStmt != NULL) {
         // AND negation of new boolean expression with original condition
-        AssignCond andCond = boolAnd(seq, newCond.negate(), newCondVar, cond, true);
+        AssignCond andCond = boolAnd(seq, newCond.negate(), newCondVar, cond);
   
         // Compile 'else' statement
         whereStmt(seq, s->where.elseStmt, newCondVar, andCond, false);
@@ -533,9 +515,7 @@ void whereStmt(
     return;
   }
 
-  printf("QPULib: only assignments and nested 'where' \
-          statements can occur in a 'where' statement\n");
-  assert(false);
+  assertq(false, "QPULib: only assignments and nested 'where' statements can occur in a 'where' statement");
 }
 
 
@@ -612,9 +592,8 @@ void translateIf(Seq<Instr> &seq, Stmt &s) {
 
 		seq << branch(cond.negate(), elseLabel);        // Branch to 'else' statement
 		stmt(&seq, s.ifElse.thenStmt);                  // Compile 'then' statement
-		seq << branch(endifLabel);                      // Branch to endif
-
-		seq << label(elseLabel);                        // Label for 'else' statement
+		seq << branch(endifLabel)                       // Branch to endif
+		    << label(elseLabel);                        // Label for 'else' statement
 		stmt(&seq, s.ifElse.elseStmt);                  // Compile 'else' statement
 	}
 	
@@ -726,101 +705,60 @@ void insertInitBlock(Seq<Instr> &code) {
  * @param v     Variable on LHS
  * @param expr  Expression on RHS
  */
-void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr) {
+void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
 	using namespace QPULib::Target::instr;
-
   Expr e = *expr;
 
-  // -----------------------------------------
-  // Case: v := w, where v and w are variables
-  // -----------------------------------------
-  if (e.tag == VAR) {
-    Var w   = e.var;
-		*seq << mov(v, w).cond(cond);
-    return;
-  }
+	switch (e.tag) {
+		case VAR:                                                     // 'v := w', where v and w are variables
+			*seq << mov(v, e.var).cond(cond);
+    	break;
+		case INT_LIT:                                                 // 'v := i', where i is an integer literal
+			*seq << li(v, e.intLit).cond(cond);
+    	break;
+		case FLOAT_LIT:                                               // 'v := f', where f is a float literal
+    	*seq << li(v, e.floatLit).cond(cond);
+    	break;
+		case APPLY: {                                                 // 'v := x op y'
+			if (!e.apply.lhs->isSimple() || !e.apply.rhs->isSimple()) { // x or y are not simple
+				e.apply.lhs = simplify(seq, e.apply.lhs);
+				e.apply.rhs = simplify(seq, e.apply.rhs);
+			}
 
-  // -------------------------------------------
-  // Case: v := i, where i is an integer literal
-  // -------------------------------------------
-  if (e.tag == INT_LIT) {
-		*seq << li(dstReg(v), e.intLit).cond(cond);
-    return;
-  }
+			if (isLit(e.apply.lhs) && isLit(e.apply.rhs)) {             // x and y are both literals
+				Var tmpVar = freshVar();
+				varAssign(seq, cond, tmpVar, e.apply.lhs);
+				e.apply.lhs = mkVar(tmpVar);
+			}
+			                                                            // x and y are simple
+			Instr instr(ALU);
+			instr.ALU.cond       = cond;
+			instr.ALU.dest       = dstReg(v);
+			instr.ALU.srcA       = operand(e.apply.lhs);
+			instr.ALU.op         = opcode(e.apply.op);
+			instr.ALU.srcB       = operand(e.apply.rhs);
 
-  // ----------------------------------------
-  // Case: v := f, where f is a float literal
-  // ----------------------------------------
-  if (e.tag == FLOAT_LIT) {
-    float f = e.floatLit;
-
-    Instr instr(LI);
-    instr.LI.cond         = cond;
-    instr.LI.dest         = dstReg(v);
-    instr.LI.imm.tag      = IMM_FLOAT32;
-    instr.LI.imm.floatVal = f;
-
-    *seq << instr;
-    return;
-  }
-
-  // ----------------------------------------------
-  // Case: v := x op y, where x or y are not simple
-  // ----------------------------------------------
-  if (e.tag == APPLY && (!e.apply.lhs->isSimple() || !e.apply.rhs->isSimple())) {
-    e.apply.lhs = simplify(seq, e.apply.lhs);
-    e.apply.rhs = simplify(seq, e.apply.rhs);
-  }
-
-  // --------------------------------------------------
-  // Case: v := x op y, where x and y are both literals
-  // --------------------------------------------------
-  if (e.tag == APPLY && isLit(e.apply.lhs) && isLit(e.apply.rhs)) {
-    Var tmpVar = freshVar();
-    varAssign(seq, cond, tmpVar, e.apply.lhs);
-    e.apply.lhs = mkVar(tmpVar);
-  }
- 
-  // -------------------------------------------
-  // Case: v := x op y, where x and y are simple
-  // -------------------------------------------
-  if (e.tag == APPLY) {
-    Instr instr(ALU);
-    instr.ALU.cond       = cond;
-    instr.ALU.dest       = dstReg(v);
-    instr.ALU.srcA       = operand(e.apply.lhs);
-    instr.ALU.op         = opcode(e.apply.op);
-    instr.ALU.srcB       = operand(e.apply.rhs);
-
-    *seq << instr;
-    return;
-  }
-
-  // ---------------------------------------
-  // Case: v := *w where w is not a variable
-  // ---------------------------------------
-  if (e.tag == DEREF &&
-           e.deref.ptr->tag != VAR) {
-    assert(!isLit(e.deref.ptr));
-    e.deref.ptr = simplify(seq, e.deref.ptr);
-  }
-
-  // -----------------------------------
-  // Case: v := *w where w is a variable
-  // -----------------------------------
-  //
-  // Restriction: we disallow dereferencing in conditional ('where')
-  // assignments for simplicity.  In most (all?) cases it should be
-  // trivial to lift these outside the 'where'.
-  //
-  if (e.tag == DEREF) {
-    assertq(cond.is_always(), "QPULib: dereferencing not yet supported inside 'where'");
-		getSourceTranslate().varassign_deref_var(seq, v, e);
-    return;
-  }
-
-  // This case should not be reachable
-  assert(false);
+			*seq << instr;
+		}
+		break;
+		case DEREF:                                                    // 'v := *w'
+			if (e.deref.ptr->tag != VAR) {                               // w is not a variable
+				assert(!isLit(e.deref.ptr));
+				e.deref.ptr = simplify(seq, e.deref.ptr);
+			}
+  		                                                             // w is a variable
+			//
+			// Restriction: we disallow dereferencing in conditional ('where')
+			// assignments for simplicity.  In most (all?) cases it should be
+			// trivial to lift these outside the 'where'.
+			//
+			assertq(cond.is_always(), "QPULib: dereferencing not yet supported inside 'where'");
+			getSourceTranslate().varassign_deref_var(seq, v, e);
+			break;
+		default:
+			assertq(false, "This case should not be reachable");
+			break;
+	}
 }
 
 
