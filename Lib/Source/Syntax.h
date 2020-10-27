@@ -14,13 +14,8 @@ namespace QPULib {
 // Operators
 // ============================================================================
 
-/**
- * Operator id
- *
- * **Note:** Order of operators is important to the random generator, see `Gen.cpp`.
- *           This applies to the range ROTATE...ROR.
- *
- */
+	// Order of operators is important to the random generator, see `Gen.cpp`.
+// This applies to the range ROTATE...ROR.
 enum OpId {
 	// Int & Float operators:
 	ROTATE, ADD, SUB, MUL, MIN, MAX,
@@ -36,21 +31,23 @@ enum OpId {
 	EIDX
 };
 
+
 // Every operator has a type associated with it
 enum BaseType { UINT8, INT16, INT32, FLOAT };
 
 // Pair containing operator and base type
 struct Op {
+
+
 	OpId op;
 	BaseType type;
+
+	Op(OpId in_op, BaseType in_type) : op(in_op), type(in_type) {}
 
 	const char *to_string();
 	bool noParams();  // Yes, I know, doesn't make sense. Happens anyway
 	bool isUnary();
 };
-
-// Construct an 'Op'
-Op mkOp(OpId op, BaseType type);
 
 
 // Is operator commutative?

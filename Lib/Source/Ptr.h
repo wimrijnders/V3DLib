@@ -41,8 +41,8 @@ template <typename T> struct PtrExpr {
   // Array index
   T& operator[](IntExpr index) {
     T* p = astHeap.alloc<T>(1);
-    p->expr = mkDeref(mkApply(expr, mkOp(ADD, INT32),
-                mkApply(index.expr, mkOp(SHL, INT32), mkIntLit(2))));
+    p->expr = mkDeref(mkApply(expr, Op(ADD, INT32),
+                mkApply(index.expr, Op(SHL, INT32), mkIntLit(2))));
     return *p;
   }
 };
@@ -105,8 +105,8 @@ printf("Ptr const copy ctor called\n");
   // Array index
   T& operator[](IntExpr index) {
     T* p = astHeap.alloc<T>(1);
-    p->expr = mkDeref(mkApply(expr, mkOp(ADD, INT32),
-                mkApply(index.expr, mkOp(SHL, INT32), mkIntLit(2))));
+    p->expr = mkDeref(mkApply(expr, Op(ADD, INT32),
+                mkApply(index.expr, Op(SHL, INT32), mkIntLit(2))));
     return *p;
   }
 };
@@ -124,12 +124,12 @@ template <typename T> inline PtrExpr<T> getUniformPtr() {
 }
 
 template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, int b) {
-  Expr* e = mkApply(a.expr, mkOp(ADD, INT32), mkIntLit(4*b));
+  Expr* e = mkApply(a.expr, Op(ADD, INT32), mkIntLit(4*b));
   PtrExpr<T> x; x.expr = e; return x;
 }
 
 template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, int b) {
-  Expr* e = mkApply(a.expr, mkOp(ADD, INT32), mkIntLit(4*b));
+  Expr* e = mkApply(a.expr, Op(ADD, INT32), mkIntLit(4*b));
   PtrExpr<T> x; x.expr = e; return x;
 }
 
@@ -138,12 +138,12 @@ template <typename T> inline PtrExpr<T> operator+=(Ptr<T> &a, int b) {
 }
 
 template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, IntExpr b) {
-  Expr* e = mkApply(a.expr, mkOp(ADD, INT32), (b<<2).expr);
+  Expr* e = mkApply(a.expr, Op(ADD, INT32), (b<<2).expr);
   PtrExpr<T> x; x.expr = e; return x;
 }
 
 template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, IntExpr b) {
-  Expr* e = mkApply(a.expr, mkOp(ADD, INT32), (b<<2).expr);
+  Expr* e = mkApply(a.expr, Op(ADD, INT32), (b<<2).expr);
   PtrExpr<T> x; x.expr = e; return x;
 }
 

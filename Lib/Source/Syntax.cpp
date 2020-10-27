@@ -13,13 +13,6 @@ Heap astHeap("abstract syntax tree", AST_HEAP_SIZE);  // Used for constructing a
 // Functions on operators
 // ============================================================================
 
-Op mkOp(OpId op, BaseType type) {
-  Op o;
-  o.op   = op;
-  o.type = type;
-  return o;
-}
-
 CmpOp mkCmpOp(CmpOpId op, BaseType type) {
   CmpOp o;
   o.op   = op;

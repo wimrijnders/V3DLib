@@ -275,131 +275,109 @@ AssignCond boolAnd(Seq<Instr> *seq, AssignCond condA, Var condVarA, AssignCond c
 }
 
 
-// Now the translation scheme for general boolean expressions.
-// The interface is:
-// 
-//   * a boolean expression to evaluate;
-//
-//   * a condVar 'v' to which the evaluated expression will be written
-//     to; the return value will contain the corresponding condFlag.
-//
-//   * if the modify-bit is true, then the implicit condition vector
-//     will be set using with the result of the expression.  (This is a
-//     one-way 'if': you cannot rely on the condition vector not
-//     being mutated even if this bit is false.)
-//
-//   * instructions to evaluate the expression are appended to the
-//     given instruction sequence.
-
-AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v, bool modify) {
+AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
   BExpr b = *bexpr;
+  assert(b.tag == CMP);
 
-  // -------------------------------
-  // Case: x > y, replace with y < x
-  // -------------------------------
-  if (b.tag == CMP && b.cmp.op.op == GT) {
+	auto cmp_swap_leftright = [] (BExpr &b) {
     Expr *tmp   = b.cmp.lhs;
     b.cmp.lhs   = b.cmp.rhs;
     b.cmp.rhs   = tmp;
+	};
+
+
+ 	if (b.cmp.op.op == GT) {       // 'x > y', replace with y < x
+		cmp_swap_leftright(b);
     b.cmp.op.op = LT;
   }
 
-  // ---------------------------------
-  // Case: x <= y, replace with y >= x
-  // ---------------------------------
-  if (b.tag == CMP && b.cmp.op.op == LE) {
-    Expr *tmp   = b.cmp.lhs;
-    b.cmp.lhs   = b.cmp.rhs;
-    b.cmp.rhs   = tmp;
+ 	if (b.cmp.op.op == LE) {       // 'x <= y', replace with y >= x
+		cmp_swap_leftright(b);
     b.cmp.op.op = GE;
   }
 
-  // -----------------------------------
-  // Case: x op y, where x is not simple
-  // -----------------------------------
-  if (b.tag == CMP && !b.cmp.lhs->isSimple()) {
+ 	if (!b.cmp.lhs->isSimple()) {  // 'x op y', where x is not simple
     b.cmp.lhs = simplify(seq, b.cmp.lhs);
   }
 
-  // -----------------------------------
-  // Case: x op y, where y is not simple
-  // -----------------------------------
-  if (b.tag == CMP && !b.cmp.rhs->isSimple()) {
+ 	if (!b.cmp.rhs->isSimple()) {  // 'x op y', where y is not simple
     b.cmp.rhs = simplify(seq, b.cmp.rhs);
   }
 
-  // ---------------------------------------------
-  // Case: x op y, where x and y are both literals
-  // ---------------------------------------------
-  if (b.tag == CMP && isLit(b.cmp.lhs) && isLit(b.cmp.rhs)) {
+ 	if (isLit(b.cmp.lhs) && isLit(b.cmp.rhs)) {  // 'x op y', where x and y are both literals
     Var tmpVar = freshVar();
     varAssign(seq, tmpVar, b.cmp.lhs);
     b.cmp.lhs = mkVar(tmpVar);
   }
 
-  // --------------------------------------
-  // Case: x op y, where x and y are simple
-  // --------------------------------------
-  if (b.tag == CMP) {
-    // Compute condition flag
-		SetCond set_cond = NO_COND;  // For v3d
-    AssignCond cond(AssignCond::Tag::FLAG);
 
-    switch(b.cmp.op.op) {
-      case EQ:  cond.flag = ZS; set_cond = Z; break;
-      case NEQ: cond.flag = ZC; set_cond = Z; break;
-      case LT:  cond.flag = NS; set_cond = N; break;
-      case GE:  cond.flag = NC; set_cond = N; break;
-      default:  assert(false);
-    }
+	//
+ 	// At this point x and y are simple
+ 	// Compute condition flag
+	//
+	SetCond set_cond = NO_COND;  // For v3d
+	AssignCond cond(AssignCond::Tag::FLAG);
 
-    // Implement comparison using subtraction instruction
-    Op op;
-    op.type = b.cmp.op.type;
-    op.op   = SUB;
+	switch(b.cmp.op.op) {
+		case EQ:  cond.flag = ZS; set_cond = Z; break;
+		case NEQ: cond.flag = ZC; set_cond = Z; break;
+		case LT:  cond.flag = NS; set_cond = N; break;
+		case GE:  cond.flag = NC; set_cond = N; break;
+		default:  assert(false);
+	}
 
-    Instr instr(ALU);
-    instr.ALU.setFlags = true;
-    instr.ALU.setCond  = set_cond;
-    instr.ALU.dest     = dstReg(v);
-    instr.ALU.srcA     = operand(b.cmp.lhs);
-    instr.ALU.op       = opcode(op);
-    instr.ALU.srcB     = operand(b.cmp.rhs);
+	// Implement comparison using subtraction instruction
+	Op op(SUB, b.cmp.op.type);
 
-    *seq << instr;
-    return cond;
+	Instr instr(ALU);
+	instr.ALU.setFlags = true;
+	instr.ALU.setCond  = set_cond;
+	instr.ALU.dest     = dstReg(v);
+	instr.ALU.srcA     = operand(b.cmp.lhs);
+	instr.ALU.op       = opcode(op);
+	instr.ALU.srcB     = operand(b.cmp.rhs);
+
+	*seq << instr;
+	return cond;
+}
+
+
+/**
+ * Handle general boolean expressions.
+ * 
+ * @param seq    instruction sequence to which the instructions to evaluate the
+ *               expression are appended
+ * @param bexpr  the boolean expression to evaluate;
+ * @param v      condVar 'v' to which the evaluated expression will be written to
+ *
+ * @return  the condFlagi corresponding to `v`
+ *
+ */
+AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
+  BExpr b = *bexpr;
+
+	switch (b.tag) {
+		case CMP:
+			return cmpExp(seq, bexpr, v);
+		case NOT: {            // '!b', where b is a boolean expression
+    	AssignCond cond = boolExp(seq, b.neg, v);
+	    return cond.negate();
+		}
+		case OR: {             // 'a || b', where a, b are boolean expressions
+			Var w = freshVar();
+			AssignCond condA = boolExp(seq, b.disj.lhs, v);
+			AssignCond condB = boolExp(seq, b.disj.rhs, w);
+			return boolOr(*seq, condA, v, condB);
+	  }
+		case AND: {            // 'a && b', where a, b are boolean expressions
+    	// Use De Morgan's law
+	    BExpr* demorgan = mkNot(mkOr(mkNot(b.conj.lhs), mkNot(b.conj.rhs)));
+	    return boolExp(seq, demorgan, v);
+		}
+		default:
+  		assert(false);
+			return always;       // Return anything
   }
-
-  // -----------------------------------------
-  // Case: !b, where b is a boolean expression
-  // -----------------------------------------
-  if (b.tag == NOT) {
-    AssignCond cond = boolExp(seq, b.neg, v, modify);
-    return cond.negate();
-  }
-
-  // ------------------------------------------------
-  // Case: a || b, where a, b are boolean expressions
-  // ------------------------------------------------
-  if (b.tag == OR) {
-    Var w = freshVar();
-    AssignCond condA = boolExp(seq, b.disj.lhs, v, false);
-    AssignCond condB = boolExp(seq, b.disj.rhs, w, true);
-    return boolOr(*seq, condA, v, condB);
-  }
-
-  // ------------------------------------------------
-  // Case: a && b, where a, b are boolean expressions
-  // ------------------------------------------------
-  if (b.tag == AND) {
-    // Use De Morgan's law
-    BExpr* demorgan = mkNot(mkOr(mkNot(b.conj.lhs), mkNot(b.conj.rhs)));
-    return boolExp(seq, demorgan, v, modify);
-  }
-
-  // Not reachable
-  assert(false);
-	return always;
 }
 
 
@@ -409,7 +387,7 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v, bool modify) {
 
 BranchCond condExp(Seq<Instr>* seq, CExpr* c) {
   Var v = freshVar();
-  AssignCond cond = boolExp(seq, c->bexpr, v, true);
+  AssignCond cond = boolExp(seq, c->bexpr, v);
 
   BranchCond bcond;
   if (cond.is_always()) { bcond.tag = COND_ALWAYS; return bcond; }
@@ -468,7 +446,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
       // This case has a cheaper implementation
 
       // Compile new boolean expression
-      AssignCond newCond = boolExp(seq, s->where.cond, condVar, true);
+      AssignCond newCond = boolExp(seq, s->where.cond, condVar);
 
       // Compile 'then' statement
       if (s->where.thenStmt != NULL)
@@ -486,7 +464,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
         *seq << mov(savedCondVar, condVar);
 
       // Compile new boolean expression
-      AssignCond newCond = boolExp(seq, s->where.cond, newCondVar, true);
+      AssignCond newCond = boolExp(seq, s->where.cond, newCondVar);
 
       if (s->where.thenStmt != NULL) {
         // AND new boolean expression with original condition
@@ -536,8 +514,6 @@ void printStmt(Seq<Instr> &seq, PrintStmt s) {
 		}
 	};
 
-	//breakpoint
-
   switch (s.tag) {
     case PRINT_INT:
       instr.tag = PRI;
@@ -560,16 +536,12 @@ void printStmt(Seq<Instr> &seq, PrintStmt s) {
 }
 
 
-// ============================================================================
-// Load receive statements
-// ============================================================================
-
-void loadReceive(Seq<Instr>* seq, Expr* dest) {
+Instr loadReceive(Expr* dest) {
 	assert(dest->tag == VAR);
-  Instr instr(RECV);
 
+  Instr instr(RECV);
   instr.RECV.dest = dstReg(dest->var);
-  *seq << instr;
+	return instr;
 }
 
 
@@ -652,7 +624,7 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 	    printStmt(*seq, s->print);
 			break;
   	case LOAD_RECEIVE:       // 'receive(e)', where e is an expr
-	    loadReceive(seq, s->loadDest);
+	    *seq << loadReceive(s->loadDest);
 			break;
 		default:
 			// Handle platform-specific instructions
@@ -678,12 +650,7 @@ void insertInitBlock(Seq<Instr> &code) {
 	assertq(index >= 2, "Expecting at least two uniform loads.");
 
 	Seq<Instr> ret;
-
-  Instr instr;
-  instr.tag = INIT_BEGIN;
-	ret << instr;
-  instr.tag = INIT_END;
-	ret << instr;
+	ret << Instr(INIT_BEGIN) << Instr(INIT_END);
 
 	code.insert(index, ret);
 }

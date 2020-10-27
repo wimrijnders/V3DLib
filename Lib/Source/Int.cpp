@@ -84,8 +84,7 @@ inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 // ============================================================================
 
 // Read an Int from the UNIFORM FIFO.
-IntExpr getUniformInt()
-{
+IntExpr getUniformInt() {
   Expr* e    = mkExpr();
   e->tag     = VAR;
   e->var.tag = UNIFORM;
@@ -110,14 +109,13 @@ IntExpr index() {
 		dummy.id  = 0;
 
 		Expr *a = mkVar(dummy);
-  	Expr *e =  mkApply(a, mkOp(EIDX, INT32), a);
+  	Expr *e =  mkApply(a, Op(EIDX, INT32), a);
   	return mkIntExpr(e);
 	}
 }
 
 // A vector containing the QPU id
-IntExpr me()
-{
+IntExpr me() {
   // There is reserved var holding the QPU ID.
   Expr* e    = mkExpr();
   e->tag     = VAR;
@@ -126,9 +124,9 @@ IntExpr me()
   return mkIntExpr(e);
 }
 
+
 // A vector containing the QPU count
-IntExpr numQPUs()
-{
+IntExpr numQPUs() {
   // There is reserved var holding the QPU count.
   Expr* e    = mkExpr();
   e->tag     = VAR;
@@ -137,92 +135,51 @@ IntExpr numQPUs()
   return mkIntExpr(e);
 }
 
+
 // Read vector from VPM
-IntExpr vpmGetInt()
-{
+IntExpr vpmGetInt() {
   Expr* e    = mkExpr();
   e->tag     = VAR;
   e->var.tag = VPM_READ;
   return mkIntExpr(e);
 }
 
+
 // Vector rotation
 IntExpr rotate(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(ROTATE, INT32), b); }
+  { return mkIntApply(a, Op(ROTATE, INT32), b); }
 
-FloatExpr rotate(FloatExpr a, IntExpr b)
-{
-  Expr* e = mkApply(a.expr, mkOp(ROTATE, FLOAT), b.expr);
+
+FloatExpr rotate(FloatExpr a, IntExpr b) {
+  Expr* e = mkApply(a.expr, Op(ROTATE, FLOAT), b.expr);
   return mkFloatExpr(e);
 }
 
-// Add
-IntExpr operator+(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(ADD, INT32), b); }
+void Int::operator++(int) { *this = *this + 1; }
 
-// Increment
-void Int::operator++(int)
-  { *this = *this + 1; }
-
-// Subtract
-IntExpr operator-(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(SUB, INT32), b); }
-
-// Multiply
-IntExpr operator*(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(MUL, INT32), b); }
-
-// Min
-IntExpr min(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(MIN, INT32), b); }
-
-// Max
-IntExpr max(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(MAX, INT32), b); }
-
-// Shift left
-IntExpr operator<<(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(SHL, INT32), b); }
-
-// Shift Right
-IntExpr operator>>(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(SHR, INT32), b); }
-
-// Bitwise AND
-IntExpr operator&(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(BAND, INT32), b); }
-
-// Bitwise OR
-IntExpr operator|(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(BOR, INT32), b); }
-
-// Bitwise XOR
-IntExpr operator^(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(BXOR, INT32), b); }
-
-// Bitwise NOT
-IntExpr operator~(IntExpr a)
-  { return mkIntApply(a, mkOp(BNOT, INT32), a); }
-
-// Unsigned shift-right
-IntExpr shr(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(USHR, INT32), b); }
-
-// Bitwise rotate-right
-IntExpr ror(IntExpr a, IntExpr b)
-  { return mkIntApply(a, mkOp(ROR, INT32), b); }
+IntExpr operator+(IntExpr a, IntExpr b) { return mkIntApply(a, Op(ADD, INT32), b); }
+IntExpr operator-(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SUB, INT32), b); }
+IntExpr operator*(IntExpr a, IntExpr b) { return mkIntApply(a, Op(MUL, INT32), b); }
+IntExpr min(IntExpr a, IntExpr b) { return mkIntApply(a, Op(MIN, INT32), b); }
+IntExpr max(IntExpr a, IntExpr b) { return mkIntApply(a, Op(MAX, INT32), b); }
+IntExpr operator<<(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SHL, INT32), b); }
+IntExpr operator>>(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SHR, INT32), b); }
+IntExpr operator&(IntExpr a, IntExpr b) { return mkIntApply(a, Op(BAND, INT32), b); }
+IntExpr operator|(IntExpr a, IntExpr b) { return mkIntApply(a, Op(BOR, INT32), b); }
+IntExpr operator^(IntExpr a, IntExpr b) { return mkIntApply(a, Op(BXOR, INT32), b); }
+IntExpr operator~(IntExpr a) { return mkIntApply(a, Op(BNOT, INT32), a); }
+IntExpr shr(IntExpr a, IntExpr b) { return mkIntApply(a, Op(USHR, INT32), b); }
+IntExpr ror(IntExpr a, IntExpr b) { return mkIntApply(a, Op(ROR, INT32), b); }
 
 // Conversion to Int
-IntExpr toInt(FloatExpr a)
-{
-  Expr* e = mkApply(a.expr, mkOp(FtoI, INT32), mkIntLit(0));
+IntExpr toInt(FloatExpr a) {
+  Expr* e = mkApply(a.expr, Op(FtoI, INT32), mkIntLit(0));
   return mkIntExpr(e);
 }
 
 // Conversion to Float
-FloatExpr toFloat(IntExpr a)
-{
-  Expr* e = mkApply(a.expr, mkOp(ItoF, FLOAT), mkIntLit(0));
+FloatExpr toFloat(IntExpr a) {
+  Expr* e = mkApply(a.expr, Op(ItoF, FLOAT), mkIntLit(0));
   return mkFloatExpr(e);
 }
 
