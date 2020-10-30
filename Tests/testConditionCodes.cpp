@@ -338,7 +338,6 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
   QPULib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
 
 	k.load(&result);
-	//k.pretty(false);
 
 	reset(result);
 	k.emu();
@@ -388,73 +387,80 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
 	  QPULib::SharedArray<float> result(width*height);
 
+		auto check_output = [width, height, &result] (char const *label) {
+			std::string filename;
+			filename <<  "obj/test/andor_" << label << "_output.pgm";
+			output_pgm_file(result, width, height, 255, filename.c_str());
+			check_pgm(filename.c_str());
+		};
+
 		auto k1 = compile(andor_where_kernel);
 		k1.load(&result, width, height);
 
 		reset(result);
 		k1.emu();
-		char const *filename = "obj/test/andor_where_emu_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
+		check_output("where_emu");
 
 		reset(result);
 		k1.interpret();
-		filename = "obj/test/andor_where_int_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
-/*
-		reset(result);
-		k1.call();
-		filename = "obj/test/andor_where_qpu_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
-*/
+		check_output("where_int");
+
+
+		if (Platform::instance().has_vc4) {
+			std::cout << "Not running the 'where_qpu' test on vc4; this hangs the pi4 (TODO)" << std::endl;
+		} else {
+			// v3d: works fine
+			reset(result);
+			k1.call();
+			check_output("where_qpu");
+		}
+
+
+		k1.pretty(false,  "obj/test/andor_where_v3d.txt");	
+
 
 		auto k2 = compile(andor_if_kernel);
 		k2.load(&result, width, height);
 
-		k2.pretty(true,  "obj/test/andor_kernel_vc4.txt");	
-		k2.pretty(false, "obj/test/andor_kernel_v3d.txt");	
+		k2.pretty(true,  "obj/test/andor_if_vc4.txt");	
+		k2.pretty(false, "obj/test/andor_if_v3d.txt");	
 
 		reset(result);
 		k2.emu();
-		filename = "obj/test/andor_if_emu_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
+		check_output("if_emu");
 
 		reset(result);
 		k2.interpret();
-		filename = "obj/test/andor_if_int_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
+		check_output("if_int");
+
+		std::cout << "Not running the 'if_qpu' test; this hangs the pi4 and locks up the videocore on pi3 (TODO)" << std::endl;
 /*
+		// vc4: hangs the pi4
+		// v3d: fails, no output. Locks the videocore, needs reset
 		reset(result);
 		k2.call();
-		filename = "obj/test/andor_if_qpu_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
+		check_output("if_qpu");
 */
+
 
 		auto k3 = compile(andor_multi_if_kernel);
 		k3.load(&result, width, height);
 
 		reset(result);
 		k3.emu();
-		filename = "obj/test/andor_multi_if_emu_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
+		check_output("multi_if_emu");
 
 		reset(result);
 		k3.interpret();
-		filename = "obj/test/andor_multi_if_int_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
+		check_output("multi_if_int");
+
+		std::cout << "Not running the 'multi_if_qpu' test; this hangs the pi4 and locks up the videocore on pi3 (TODO)" << std::endl;
 /*
+		// vc4: hangs the pi4
+		// v3d: fails, no output. Locks the videocore, needs reset
 		reset(result);
 		k2.call();
-		filename = "obj/test/andor_if_qpu_output.pgm";
-		output_pgm_file(result, width, height, 255, filename);
-		check_pgm(filename);
+		check_output("multi_if_qpu");
 */
 	}
 }
