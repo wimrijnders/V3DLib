@@ -15,14 +15,8 @@
 #ifdef QPU_MODE
 //	#pragma message "QPU mode enabled"
 #define POSTFIX_QPU "qpu"
-const char *SUDO = (Platform::instance().has_vc4)? "sudo " : "";  // sudo needed for vc4
-bool const use_sudo = true;
-
 #else
 #define POSTFIX_QPU "emu"
-const char *SUDO = "";
-bool const use_sudo = false;
-
 #endif
 
 #define BIN_PATH "obj/" POSTFIX_QPU POSTFIX_DEBUG "/bin"
@@ -82,23 +76,6 @@ void check_output_example(std::string const &program, std::string const &extra_p
 	check_output_run(program, QPU, extra_params);
 	check_output_run(program, INTERPRETER, extra_params);
 	check_output_run(program, EMULATOR, extra_params);
-}
-
-
-void make_test_dir() {
-	std::string cmd = SUDO;
-	cmd += "mkdir -p obj/test";
-
-	REQUIRE(!system(cmd.c_str()));
-
-	cmd  = SUDO;
-	cmd += "chmod ugo+rw obj/test";
-	REQUIRE(!system(cmd.c_str()));
-
-	// Fails if no file present; doesn't appear to be necessary
-	//cmd  = SUDO;
-	//cmd += "chmod ugo+rw obj/test/*";
-	//REQUIRE(!system(cmd.c_str()));
 }
 
 }  // anon namespace

@@ -31,6 +31,7 @@
 #ifdef QPU_MODE
 #include <iostream>
 #include "support/support.h"
+#include "Support/pgm.h"
 
 namespace {
 
@@ -191,11 +192,11 @@ void where_kernel(Ptr<Int> result) {
 	Int a = index();
 	Int r = 0;
 
-	Where (a <  8) r = 1; End; next(result, r);
-	Where (a <= 8) r = 1; End; next(result, r);
-	Where (a == 8) r = 1; End; next(result, r);
-	Where (a != 8) r = 1; End; next(result, r);
-	Where (a >  8) r = 1; End; next(result, r);
+	Where (a <  8)  r = 1; End; next(result, r);
+	Where (a <= 8)  r = 1; End; next(result, r);
+	Where (a == 8)  r = 1; End; next(result, r);
+	Where (a != 8)  r = 1; End; next(result, r);
+	Where (a >  8)  r = 1; End; next(result, r);
 	Where (a >=  8) r = 1; End; next(result, r);
 	*result = r;
 }
@@ -215,6 +216,60 @@ void andor_kernel(Ptr<Int> result) {
 }
 
 
+void andor_where_kernel(Ptr<Float> result, Int width, Int height) {
+  For (Int y = 0, y < height, y = y + 1)
+    Ptr<Float> p = result + y*width;  // Point p to the output row
+
+    For (Int x = 0, x < width, x = x + VEC_SIZE)
+			Float tmp = toFloat(1024);
+			Where (y > 10 && y < 20 && x > 10 && x < 20)
+				tmp = 0.0;
+			End
+      store(tmp, p);
+      p = p + VEC_SIZE;
+    End
+  End
+}
+
+
+void andor_if_kernel(Ptr<Float> result, Int width, Int height) {
+  For (Int y = 0, y < height, y = y + 1)
+    Ptr<Float> p = result + y*width;  // Point p to the output row
+
+    For (Int x = 0, x < width, x = x + VEC_SIZE)
+			Float tmp = toFloat(1024);
+			If (y > 10 && y < 20 && x > 10 && x < 20)
+				tmp = 0.0;
+			End
+      store(tmp, p);
+      p = p + VEC_SIZE;
+    End
+  End
+}
+
+
+void andor_multi_if_kernel(Ptr<Float> result, Int width, Int height) {
+  For (Int y = 0, y < height, y = y + 1)
+    Ptr<Float> p = result + y*width;  // Point p to the output row
+
+    For (Int x = 0, x < width, x = x + VEC_SIZE)
+			Float tmp = toFloat(1024);
+			If (y > 10)
+			If (y < 20)
+			If (x > 10)
+			If (x < 20)
+				tmp = 0.0;
+			End
+			End
+			End
+			End
+      store(tmp, p);
+      p = p + VEC_SIZE;
+    End
+  End
+}
+
+
 void check(QPULib::SharedArray<int> &result, int block, uint32_t *expected) {
 	for (uint32_t n = 0; n < VEC_SIZE; ++n) {
 		INFO("block " << block <<  ", index " << n);
@@ -224,7 +279,6 @@ void check(QPULib::SharedArray<int> &result, int block, uint32_t *expected) {
 
 
 void check_where_result(QPULib::SharedArray<int> &result) {
-
 	uint32_t expected_smaller_than[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_smaller_equal[VEC_SIZE] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_equal[VEC_SIZE]         = {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
@@ -242,7 +296,6 @@ void check_where_result(QPULib::SharedArray<int> &result) {
 
 
 void check_andor_result(QPULib::SharedArray<int> &result) {
-
 	uint32_t expected_and[VEC_SIZE]           = {0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_or[VEC_SIZE]            = {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
 	uint32_t expected_combined[VEC_SIZE]      = {0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1};
@@ -253,6 +306,26 @@ void check_andor_result(QPULib::SharedArray<int> &result) {
 	check(result, 3, expected_combined);
 	check(result, 4, expected_combined);
 }
+
+
+void reset(QPULib::SharedArray<int> &result) {
+  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+}
+
+
+void reset(QPULib::SharedArray<float> &result) {
+  for (int i = 0; i < result.size(); i++) { result[i] = 0.0; }
+}
+
+
+void check_pgm(std::string const &filename) {
+	std::string expected_filename = "Tests/data/where_expected.pgm";
+
+	std::string diff_cmd = "diff " + filename + " " + expected_filename;
+	INFO("diff command: " << diff_cmd);
+	REQUIRE(!system(diff_cmd.c_str()));
+}
+
 
 }  // anon namespace
 
@@ -267,15 +340,15 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 	k.load(&result);
 	//k.pretty(false);
 
-  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+	reset(result);
 	k.emu();
 	check_where_result(result);
 
-  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+	reset(result);
 	k.interpret();
 	check_where_result(result);
 
-  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+	reset(result);
 	k.call();
 	check_where_result(result);
 
@@ -284,28 +357,108 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 }
 
 
-TEST_CASE("Test Where blocks with and/or", "[andor][cond]") {
-	const int NUM_TESTS = 5;
+TEST_CASE("Test multiple and/or", "[andor][cond]") {
+	SECTION("Test Where blocks with and/or") {
+		const int NUM_TESTS = 5;
 
-  auto k = compile(andor_kernel);
+	  auto k = compile(andor_kernel);
 
-  QPULib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
+	  QPULib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
 
-	k.load(&result);
+		k.load(&result);
 
-  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
-	k.emu();
-	check_andor_result(result);
+		reset(result);
+		k.emu();
+		check_andor_result(result);
 
-  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
-	k.interpret();
-	check_andor_result(result);
+		reset(result);
+		k.interpret();
+		check_andor_result(result);
 
+		reset(result);
+//		k.call();
+//		check_andor_result(result);
+	}
+
+
+	SECTION("Test Where blocks with multiple and/or") {
+		make_test_dir();
+		int const width  = 48;
+		int const height = 32;
+
+	  QPULib::SharedArray<float> result(width*height);
+
+		auto k1 = compile(andor_where_kernel);
+		k1.load(&result, width, height);
+
+		reset(result);
+		k1.emu();
+		char const *filename = "obj/test/andor_where_emu_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
+
+		reset(result);
+		k1.interpret();
+		filename = "obj/test/andor_where_int_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
 /*
-  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
-	k.call();
-	check_andor_result(result);
+		reset(result);
+		k1.call();
+		filename = "obj/test/andor_where_qpu_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
 */
+
+		auto k2 = compile(andor_if_kernel);
+		k2.load(&result, width, height);
+
+		k2.pretty(true,  "obj/test/andor_kernel_vc4.txt");	
+		k2.pretty(false, "obj/test/andor_kernel_v3d.txt");	
+
+		reset(result);
+		k2.emu();
+		filename = "obj/test/andor_if_emu_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
+
+		reset(result);
+		k2.interpret();
+		filename = "obj/test/andor_if_int_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
+/*
+		reset(result);
+		k2.call();
+		filename = "obj/test/andor_if_qpu_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
+*/
+
+		auto k3 = compile(andor_multi_if_kernel);
+		k3.load(&result, width, height);
+
+		reset(result);
+		k3.emu();
+		filename = "obj/test/andor_multi_if_emu_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
+
+		reset(result);
+		k3.interpret();
+		filename = "obj/test/andor_multi_if_int_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
+/*
+		reset(result);
+		k2.call();
+		filename = "obj/test/andor_if_qpu_output.pgm";
+		output_pgm_file(result, width, height, 255, filename);
+		check_pgm(filename);
+*/
+	}
 }
+
+
 
 #endif  // ifdef QPU_MODE

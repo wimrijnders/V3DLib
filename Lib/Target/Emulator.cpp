@@ -750,17 +750,14 @@ void emulate(
           // Load immediate
           case LI: {
             Vec imm = evalImm(instr.LI.imm);
-            writeReg(s, &state, instr.LI.setFlags,
-                       instr.LI.cond, instr.LI.dest, imm);
+            writeReg(s, &state, instr.LI.setCond.flags_set(), instr.LI.cond, instr.LI.dest, imm);
             break;
           }
           // ALU operation
           case ALU: {
-            Vec result = alu(s, &state, instr.ALU.srcA,
-                             instr.ALU.op, instr.ALU.srcB);
+            Vec result = alu(s, &state, instr.ALU.srcA, instr.ALU.op, instr.ALU.srcB);
             if (instr.ALU.op != NOP)
-              writeReg(s, &state, instr.ALU.setFlags, instr.ALU.cond,
-                       instr.ALU.dest, result);
+              writeReg(s, &state, instr.ALU.setCond.flags_set(), instr.ALU.cond, instr.ALU.dest, result);
             break;
           }
           // End program (halt)

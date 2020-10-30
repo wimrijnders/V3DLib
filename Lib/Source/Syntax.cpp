@@ -10,17 +10,6 @@ Heap astHeap("abstract syntax tree", AST_HEAP_SIZE);  // Used for constructing a
 
 
 // ============================================================================
-// Functions on operators
-// ============================================================================
-
-CmpOp mkCmpOp(CmpOpId op, BaseType type) {
-  CmpOp o;
-  o.op   = op;
-  o.type = type;
-  return o;
-}
-
-// ============================================================================
 // Class Op
 // ============================================================================
 
@@ -192,8 +181,8 @@ BExpr* mkOr(BExpr* lhs, BExpr* rhs)
   return b;
 }
 
-BExpr* mkCmp(Expr* lhs, CmpOp op, Expr*  rhs)
-{
+
+BExpr* mkCmp(Expr* lhs, CmpOp op, Expr*  rhs) {
   BExpr *b    = mkBExpr();
   b->tag      = CMP;
   b->cmp.lhs  = lhs;

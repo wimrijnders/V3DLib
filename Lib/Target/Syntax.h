@@ -75,14 +75,30 @@ struct BranchCond {
 	std::string to_string() const;
 };
 
+struct CmpOp;  // Forward declaration
 
 // v3d only
-enum SetCond {
-	NO_COND,
-	Z,
-	N,
-	C
+struct SetCond {
+	enum Tag {
+		NO_COND,
+		Z,
+		N,
+		C
+	};
+
+	SetCond() : m_tag(NO_COND) {}
+	SetCond(CmpOp const &cmp_op);
+
+	bool flags_set() const { return m_tag != NO_COND; }
+	void tag(Tag tag) { m_tag = tag; }
+	Tag tag() const { return m_tag; }
+	void clear() { tag(NO_COND); }
+	const char *to_string() const;
+
+private:
+	Tag m_tag = NO_COND;
 };
+
 
 
 /**
@@ -100,6 +116,7 @@ struct AssignCond {
   Flag flag;  // Condition flag
 
 	AssignCond() = default;
+	AssignCond(CmpOp const &cmp_op);
 	AssignCond(Tag in_tag) : tag(in_tag) {}
 
 	bool is_always() const { return tag == ALWAYS; }
@@ -107,6 +124,7 @@ struct AssignCond {
 	AssignCond negate() const;
 
 	std::string to_string() const;
+	BranchCond to_assign_cond(bool do_all) const;
 };
 
 extern AssignCond always;  // Is a global to reduce eyestrain in gdb
@@ -335,7 +353,6 @@ struct Instr {
   union {
     // Load immediate
 		struct {
-			bool       setFlags;
 			SetCond    setCond; // v3d only
 			AssignCond cond;
 			Reg        dest;
@@ -344,7 +361,6 @@ struct Instr {
 
     // ALU operation
 		struct {
-			bool       setFlags;
 			SetCond    setCond; // v3d only
 			AssignCond cond;
 			Reg        dest;
@@ -386,14 +402,15 @@ struct Instr {
   };
 
 
-	Instr() = default;
+	//Instr() = default;
+	Instr() : tag(NO_OP) {} 
 	Instr(InstrTag in_tag);
 
 
 	// ==================================================
 	// Helper methods
 	// ==================================================
-	Instr &SetFlags();
+	Instr &SetFlags(Flag flag);
 	Instr &cond(AssignCond in_cond);
 	bool isCondAssign() const;
 	bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }

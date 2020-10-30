@@ -186,9 +186,6 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
 // vector has been set using the value of condVarB, hence we don't
 // need the value of condVarB as an argument.
 //
-// The 'modify' flag defines whether or not to update the implicit
-// condition vector with the final result.
-//
 // The value of condVarA will be overwritten with the 'condVar' of the
 // disjunction, and the corresponding condFlag will be returned as a
 // result.
@@ -250,7 +247,7 @@ AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond con
   if (condA.is_never()  && condB.is_never() ) return never;
 
   if (condB.is_never()) {                     // condA == FLAG
-    seq << mov(None, condVar).SetFlags();     // Set implicit condition vector to variable
+    seq << mov(None, condVar).SetFlags(condA.flag);     // Set implicit condition vector to variable
     return condA;
   } else if (condA.is_never()) {              // condB == FLAG
 		int val = determineCondVar(condB);
@@ -261,7 +258,7 @@ AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond con
 		int val = determineCondVar(condA);
 
 		seq << li(condVar, val).cond(condB)       // Adjust condVar for condB
-        << mov(None, condVar).SetFlags();     // Set implicit condition vector for new value condVar
+        << mov(None, condVar).SetFlags(condB.flag);     // Set implicit condition vector for new value condVar
     return condA;
   }
 }
@@ -313,32 +310,20 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 
 	//
  	// At this point x and y are simple
- 	// Compute condition flag
 	//
-	SetCond set_cond = NO_COND;  // For v3d
-	AssignCond cond(AssignCond::Tag::FLAG);
-
-	switch(b.cmp.op.op) {
-		case EQ:  cond.flag = ZS; set_cond = Z; break;
-		case NEQ: cond.flag = ZC; set_cond = Z; break;
-		case LT:  cond.flag = NS; set_cond = N; break;
-		case GE:  cond.flag = NC; set_cond = N; break;
-		default:  assert(false);
-	}
 
 	// Implement comparison using subtraction instruction
 	Op op(SUB, b.cmp.op.type);
 
 	Instr instr(ALU);
-	instr.ALU.setFlags = true;
-	instr.ALU.setCond  = set_cond;
+	instr.ALU.setCond  = SetCond(b.cmp.op);  // For v3d
 	instr.ALU.dest     = dstReg(v);
 	instr.ALU.srcA     = operand(b.cmp.lhs);
 	instr.ALU.op       = opcode(op);
 	instr.ALU.srcB     = operand(b.cmp.rhs);
 
 	*seq << instr;
-	return cond;
+	return AssignCond(b.cmp.op);
 }
 
 
@@ -350,7 +335,7 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
  * @param bexpr  the boolean expression to evaluate;
  * @param v      condVar 'v' to which the evaluated expression will be written to
  *
- * @return  the condFlagi corresponding to `v`
+ * @return  the condFlag corresponding to `v`
  *
  */
 AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
@@ -385,28 +370,13 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 // Conditional expressions
 // ============================================================================
 
-BranchCond condExp(Seq<Instr>* seq, CExpr* c) {
+BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
+  assert(c.tag == ANY || c.tag == ALL);
+
   Var v = freshVar();
-  AssignCond cond = boolExp(seq, c->bexpr, v);
+  AssignCond cond = boolExp(&seq, c.bexpr, v);
 
-  BranchCond bcond;
-  if (cond.is_always()) { bcond.tag = COND_ALWAYS; return bcond; }
-  if (cond.is_never())  { bcond.tag = COND_NEVER; return bcond; }
-
-  assert(cond.tag == AssignCond::Tag::FLAG);
-
-  bcond.flag = cond.flag;
-  if (c->tag == ANY) {
-    bcond.tag = COND_ANY;
-    return bcond;
-  } else if (c->tag == ALL) {
-    bcond.tag = COND_ALL;
-    return bcond;
-  }
-
-  // Not reachable
-  assert(false);
-	return bcond;
+	return cond.to_assign_cond(c.tag == ALL);
 }
 
 
@@ -475,7 +445,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
       }
 
       if (saveRestore || s->where.elseStmt != NULL)
-        *seq << mov(condVar, savedCondVar).SetFlags();
+        *seq << mov(condVar, savedCondVar).SetFlags(ZC);
 
       if (s->where.elseStmt != NULL) {
         // AND negation of new boolean expression with original condition
@@ -486,7 +456,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   
         // Restore condVar and implicit condition vector
         if (saveRestore)
-          *seq << mov(condVar, savedCondVar).SetFlags();
+          *seq << mov(condVar, savedCondVar).SetFlags(ZC);
       }
     }
 
@@ -554,7 +524,7 @@ void translateIf(Seq<Instr> &seq, Stmt &s) {
 	using namespace Target::instr;
 
 	Label endifLabel = freshLabel();
-	BranchCond cond  = condExp(&seq, s.ifElse.cond);  // Compile condition
+	BranchCond cond  = condExp(seq, *s.ifElse.cond);  // Compile condition
     
 	if (s.ifElse.elseStmt == NULL) {
 		seq << branch(cond.negate(), endifLabel);       // Branch over 'then' statement
@@ -578,13 +548,13 @@ void translateWhile(Seq<Instr> &seq, Stmt &s) {
 
 	Label startLabel = freshLabel();
 	Label endLabel   = freshLabel();
-	BranchCond cond  = condExp(&seq, s.loop.cond);     // Compile condition
+	BranchCond cond  = condExp(seq, *s.loop.cond);     // Compile condition
  
 	seq << branch(cond.negate(), endLabel)             // Branch over loop body
 	    << label(startLabel);                          // Start label
 
 	if (s.loop.body != NULL) stmt(&seq, s.loop.body);  // Compile body
-	condExp(&seq, s.loop.cond);                        // Compute condition again
+	condExp(seq, *s.loop.cond);                        // Compute condition again
 		                                                 // TODO why is this necessary?
 
 	seq << branch(cond, startLabel)                    // Branch to start
@@ -602,28 +572,28 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
   switch (s->tag) {
 		case SKIP:
 			break;
-		case ASSIGN:             // 'lhs = rhs', where lhs and rhs are expressions
+		case ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
       assign(seq, s->assign.lhs, s->assign.rhs);
 			break;
-    case SEQ:                // 's0 ; s1', where s1 and s2 are statements
+    case SEQ:                      // 's0 ; s1', where s1 and s2 are statements
       stmt(seq, s->seq.s0);
       stmt(seq, s->seq.s1);
 			break;
-  	case IF:                 // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
+  	case IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
 			translateIf(*seq, *s);
 			break;
-  	case WHILE:              // 'while (c) s', where c is a condition, and s a statement
+  	case WHILE:                    // 'while (c) s', where c is a condition, and s a statement
 			translateWhile(*seq, *s);
 			break;
-  	case WHERE: {            // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
-	    	Var condVar = freshVar();
+  	case WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
+	    	Var condVar = freshVar();  // This is the top-level definition of condVar
 	    	whereStmt(seq, s, condVar, always, false);
 			}
 			break;
-  	case PRINT:              // 'print(e)', where e is an expr or a string
+  	case PRINT:                    // 'print(e)', where e is an expr or a string
 	    printStmt(*seq, s->print);
 			break;
-  	case LOAD_RECEIVE:       // 'receive(e)', where e is an expr
+  	case LOAD_RECEIVE:             // 'receive(e)', where e is an expr
 	    *seq << loadReceive(s->loadDest);
 			break;
 		default:

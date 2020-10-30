@@ -65,3 +65,25 @@ bool running_on_v3d() {
 
 	return true;
 }
+
+
+#ifdef QPU_MODE
+//	#pragma message "QPU mode enabled"
+const char *SUDO = (Platform::instance().has_vc4)? "sudo " : "";  // sudo needed for vc4
+#else
+const char *SUDO = "";
+#endif
+
+
+void make_test_dir() {
+	std::string cmd = SUDO;
+	cmd += "mkdir -p obj/test";
+
+	REQUIRE(!system(cmd.c_str()));
+
+	cmd  = SUDO;
+	cmd += "chmod ugo+rw obj/test";
+	REQUIRE(!system(cmd.c_str()));
+}
+
+

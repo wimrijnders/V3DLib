@@ -37,8 +37,6 @@ enum BaseType { UINT8, INT16, INT32, FLOAT };
 
 // Pair containing operator and base type
 struct Op {
-
-
 	OpId op;
 	BaseType type;
 
@@ -105,10 +103,13 @@ bool isLit(Expr* e);
 enum CmpOpId { EQ, NEQ, LT, GT, LE, GE };
 
 // Pair containing comparison operator and base type
-struct CmpOp { CmpOpId op; BaseType type; };
+struct CmpOp {
+	CmpOpId op;
+	BaseType type;
 
-// Construct an 'Op'
-CmpOp mkCmpOp(CmpOpId op, BaseType type);
+	CmpOp(CmpOpId in_op, BaseType in_type) : op(in_op), type(in_type) {}
+};
+
 
 // ============================================================================
 // Boolean expressions

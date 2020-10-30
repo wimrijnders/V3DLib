@@ -196,7 +196,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
   switch (instr.tag) {
     case IRQ:
       instr.tag           = LI;
-      instr.LI.setFlags   = false;
+      instr.LI.setCond.clear();
       instr.LI.cond.tag   = AssignCond::Tag::ALWAYS;
       instr.LI.dest.tag   = SPECIAL;
       instr.LI.dest.regId = SPECIAL_HOST_INT;
@@ -208,7 +208,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
       RegId src = instr.tag == DMA_LOAD_WAIT ? SPECIAL_DMA_LD_WAIT :
                   SPECIAL_DMA_ST_WAIT;
       instr.tag                   = ALU;
-      instr.ALU.setFlags          = false;
+      instr.ALU.setCond.clear();
       instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
       instr.ALU.op                = A_BOR;
       instr.ALU.dest.tag          = NONE;
@@ -230,7 +230,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
       uint32_t waddr_add = encodeDestReg(instr.LI.dest, &file) << 6;
       uint32_t waddr_mul = 39;
       uint32_t ws   = (file == REG_A ? 0 : 1) << 12;
-      uint32_t sf   = (instr.LI.setFlags ? 1 : 0) << 13;
+      uint32_t sf   = (instr.LI.setCond.flags_set()? 1 : 0) << 13;
       *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
       *low          = (uint32_t) instr.LI.imm.intVal;
       return;
@@ -267,15 +267,12 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
         waddr_mul = 39;
         ws        = (file == REG_A ? 0 : 1) << 12;
       }
-      uint32_t sf    = (instr.ALU.setFlags ? 1 : 0) << 13;
+      uint32_t sf    = (instr.ALU.setCond.flags_set()? 1 : 0) << 13;
       *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
 
       if (instr.ALU.op == M_ROTATE) {
-        assert(instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.tag == ACC &&
-               instr.ALU.srcA.reg.regId == 0);
-        assert(instr.ALU.srcB.tag == REG ?
-               instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5
-               : true);
+        assert(instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.tag == ACC && instr.ALU.srcA.reg.regId == 0);
+        assert(instr.ALU.srcB.tag == REG ?  instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5 : true);
         uint32_t mulOp = encodeMulOp(M_V8MIN) << 29;
         uint32_t raddrb;
         if (instr.ALU.srcB.tag == REG) {

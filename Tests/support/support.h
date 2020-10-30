@@ -68,4 +68,9 @@ void dump_data(T const &arr, bool do_all = false) {
 	printf("\n");
 }
 
+
+extern const char *SUDO;
+
+void make_test_dir();
+
 #endif  //  _TEST_SUPPORT_SUPPORT_H

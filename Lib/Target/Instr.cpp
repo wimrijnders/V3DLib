@@ -13,14 +13,12 @@ Instr::Instr(InstrTag in_tag) {
 	switch (in_tag) {
 	case InstrTag::ALU:
   	tag          = InstrTag::ALU;
-	  ALU.setFlags = false;
-	  ALU.setCond  = SetCond::NO_COND;
+	  ALU.setCond.clear();
 	  ALU.cond     = always;
 		break;
 	case InstrTag::LI:
     tag          = InstrTag::LI;
-    LI.setFlags  = false;
-	  LI.setCond   = SetCond::NO_COND;
+	  LI.setCond.clear();
 	  LI.cond      = always;
 		break;
 	case InstrTag::INIT_BEGIN:
@@ -65,11 +63,27 @@ Instr Instr::nop() {
 /**
  * Initial capital to discern it from member var's `setFlags`.
  */
-Instr &Instr::SetFlags() {
+Instr &Instr::SetFlags(Flag flag) {
+	SetCond::Tag set_tag = SetCond::NO_COND;
+
+	switch (flag) {
+		case ZS: 
+		case ZC: 
+			set_tag = SetCond::Z;
+			break;
+		case NS: 
+		case NC: 
+			set_tag = SetCond::N;
+			break;
+		default:
+			assert(false);  // Not expecting anything else right now
+			break;
+	}
+
 	if (tag == InstrTag::LI) {
-		LI.setFlags = true;
+		LI.setCond.tag(set_tag);
 	} else if (tag == InstrTag::ALU) {
-		ALU.setFlags = true;
+		ALU.setCond.tag(set_tag);
 	} else {
 		assert(false);
 	}
@@ -109,12 +123,10 @@ bool Instr::isLast() const {
 
 
 Instr &Instr::pushz() {
-	SetFlags();
-
 	if (tag == InstrTag::LI) {
-		LI.setCond = SetCond::Z;
+		LI.setCond.tag(SetCond::Z);
 	} else if (tag == InstrTag::ALU) {
-		ALU.setCond = SetCond::Z;
+		ALU.setCond.tag(SetCond::Z);
 	} else {
 		assert(false);
 	}
@@ -203,15 +215,14 @@ bool Instr::isTMUAWrite() const {
  */
 bool Instr::isZero() const {
 	return tag == InstrTag::LI
-		  && LI.setFlags   == false
-		  && LI.setCond    == NO_COND
-		  && LI.cond.tag   == AssignCond::NEVER
-		  && LI.cond.flag  == ZS
-		  && LI.dest.tag   == REG_A
-		  && LI.dest.regId == 0
+		  && !LI.setCond.flags_set()
+		  && LI.cond.tag      == AssignCond::NEVER
+		  && LI.cond.flag     == ZS
+		  && LI.dest.tag      == REG_A
+		  && LI.dest.regId    == 0
 		  && LI.dest.isUniformPtr == false 
-		  && LI.imm.tag    == IMM_INT32
-		  && LI.imm.intVal == 0
+		  && LI.imm.tag       == IMM_INT32
+		  && LI.imm.intVal    == 0
 	;
 }
 

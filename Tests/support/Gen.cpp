@@ -202,7 +202,7 @@ BExpr* genBExpr(GenOptions* opts, int depth) {
 
     // Comparison
     case CMP: {
-      CmpOp op = mkCmpOp((CmpOpId) randRange(EQ, GE), INT32);
+      CmpOp op((CmpOpId) randRange(EQ, GE), INT32);
       if (opts->genFloat && randRange(0, 2) == 0) {
         // Floating-point comparison
         op.type = FLOAT;
@@ -353,7 +353,7 @@ Stmt* genWhile(GenOptions* o, int depth) {
   Expr* v = mkVar(var);
 
   // Create random condition with loop bound
-  BExpr* b = mkAnd(genBExpr(o, depth), mkCmp(v, mkCmpOp(LT, INT32), mkIntLit(o->loopBound)));
+  BExpr* b = mkAnd(genBExpr(o, depth), mkCmp(v, CmpOp(LT, INT32), mkIntLit(o->loopBound)));
   CExpr* c = randRange(0, 1) == 0 ? mkAny(b) : mkAll(b);
 
   // Initialise loop variable

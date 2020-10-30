@@ -232,7 +232,7 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 			// So, for the time being, we will set a condition (how? Don't know for sure yet) if
 			// srcA and srcB are the same in this respect, and set target same as both src's.
 			is_none = true;
-			assert(src_instr.ALU.setFlags);
+			assert(src_instr.ALU.setCond.flags_set());
   		assert(src_instr.tag == ALU);
 
 			// srcA and srcB are the same rf-register
@@ -372,7 +372,9 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 	assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
 	assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
 
-	if (src_instr.ALU.setFlags) {
+	auto const &setCond = src_instr.ALU.setCond;
+
+	if (setCond.flags_set()) {
 		// Set a condition flag with current instruction
 		assertq(cond.is_always(), "Currently expecting only ALWAYS here", true);
 
@@ -380,8 +382,10 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 		// Any preceding instructions are assumed to be for calculating the condition
 		Instr &instr = ret.back();
 
-		assertq(src_instr.ALU.setCond == Z || src_instr.ALU.setCond == N, "Unhandled setCond flag", true); 
-		if (src_instr.ALU.setCond == Z) {
+		assertq(setCond.tag() == SetCond::Z || setCond.tag() == SetCond::N,
+			"Unhandled setCond flag", true);
+
+		if (setCond.tag() == SetCond::Z) {
 			instr.pushz();
 		} else {
 			instr.pushn();
@@ -618,7 +622,7 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 	}
 
 
-	if (instr.setFlags) {
+	if (instr.setCond.flags_set()) {
 		breakpoint;  // to check what flags need to be set - case not handled yet
 	}
 

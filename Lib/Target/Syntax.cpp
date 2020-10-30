@@ -126,6 +126,36 @@ std::string BranchCond::to_string() const {
 
 
 ///////////////////////////////////////////////////////////////////////////////
+// Class SetCond
+///////////////////////////////////////////////////////////////////////////////
+
+SetCond::SetCond(CmpOp const &cmp_op) {
+	m_tag = NO_COND;
+
+	switch (cmp_op.op) {
+		case EQ:  m_tag = Z; break;
+		case NEQ: m_tag = Z; break;
+		case LT:  m_tag = N; break;
+		case GE:  m_tag = N; break;
+		default:  assert(false);
+	}
+}
+
+
+const char *SetCond::to_string() const {
+	switch (m_tag) {
+		case NO_COND: return "None";
+		case Z:       return "Z";
+		case N:       return "N";
+		case C:       return "C";
+		default:
+			assert(false);
+			return "<UNKNOWN>";
+	}
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
 // Class AssignCond
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -147,6 +177,17 @@ std::string pretty(AssignCond cond) {
 
 AssignCond always(AssignCond::Tag::ALWAYS);  // Is a global to reduce eyestrain in gdb
 AssignCond never(AssignCond::Tag::NEVER);    // idem
+
+
+AssignCond::AssignCond(CmpOp const &cmp_op) : tag(FLAG) {
+	switch(cmp_op.op) {
+		case EQ:  flag = ZS; break;
+		case NEQ: flag = ZC; break;
+		case LT:  flag = NS; break;
+		case GE:  flag = NC; break;
+		default:  assert(false);
+	}
+}
 
 
 AssignCond AssignCond::negate() const {
@@ -175,6 +216,30 @@ std::string AssignCond::to_string() const {
 		ret << "where " << pretty(*this) << ": ";
 		return ret;
 	}
+}
+
+
+/**
+ * Translate an AssignCond instance to a BranchCond instance
+ *
+ * @param do_all  if true, set BranchCond tag to ALL, otherwise set to ANY
+ */
+BranchCond AssignCond::to_assign_cond(bool do_all) const {
+  BranchCond bcond;
+  if (is_always()) { bcond.tag = COND_ALWAYS; return bcond; }
+  if (is_never())  { bcond.tag = COND_NEVER; return bcond; }
+
+  assert(tag == AssignCond::Tag::FLAG);
+
+  bcond.flag = flag;
+
+  if (do_all) {
+    bcond.tag = COND_ALL;
+	} else {
+    bcond.tag = COND_ANY;
+  }
+
+	return bcond;
 }
 
 

@@ -154,27 +154,15 @@ const char *pretty_op(ALUOp op) {
 std::string pretty_conditions(Instr const &instr) {
 	std::string ret;
 
-	auto set_cond = [] (SetCond cond) -> const char * {
-		switch (cond) {
-			case NO_COND: return "None";
-			case Z:       return "Z";
-			case N:       return "N";
-			case C:       return "C";
-			default:
-				assert(false);
-				return "";
-		}
-	};
-
   switch (instr.tag) {
     case LI:
-			if (instr.LI.setFlags) {
-				ret << "{sf-" << set_cond(instr.LI.setCond) << "}";
+			if (instr.LI.setCond.flags_set()) {
+				ret << "{sf-" << instr.LI.setCond.to_string() << "}";
 			}
 			break;
     case ALU:
-			if (instr.ALU.setFlags) {
-				ret << "{sf-" << set_cond(instr.ALU.setCond) << "}";
+			if (instr.ALU.setCond.flags_set()) {
+				ret << "{sf-" << instr.ALU.setCond.to_string() << "}";
 			}
 			break;
 	}
