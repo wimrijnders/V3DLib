@@ -29,7 +29,7 @@ struct HeatMapSettings : public Settings {
   const int WIDTH  = 512;           // Should be a multiple of 16 for QPU
   const int HEIGHT = 506;           // Should be a multiple of num_qpus for QPU
   const int SIZE   = WIDTH*HEIGHT;  // Size of 2D heat map
-  const int NSPOTS = 10;
+  const int NSPOTS = 1000; //10;
   const int NSTEPS = 160; // 1500;
 
 	int    kernel;
@@ -160,19 +160,25 @@ struct Cursor {
   }
 
   void shiftLeft(Float& result) {
+/*
     result = rotate(current, 15);
     Float nextRot = rotate(next, 15);
     Where (index() == 15)
       result = nextRot;
     End
+*/
+		result = current;
   }
 
   void shiftRight(Float& result) {
+/*
     result = rotate(current, 1);
     Float prevRot = rotate(prev, 1);
     Where (index() == 0)
       result = prevRot;
     End
+*/
+		result = current;
   }
 };
 
@@ -183,16 +189,16 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int width, Int height) {
   //map = map + pitch*me(); //+ index(); // WRI DEBUG
 
   // Skip first row of output map
-  //mapOut = mapOut + pitch;
+  mapOut = mapOut + pitch;
 
-  For (Int y = 1, y < height - 1, y = y + 1)  // Doing 1 QPU for now
+  For (Int y = 1, y < height - 1, y = y + 1)  // WRI DEBUG Doing 1 QPU for now
   //For (Int y = me(), y < height, y = y + numQPUs())
     // Point p to the output row
-    //Ptr<Float> p = mapOut + y*pitch + 1;
-    Ptr<Float> p = mapOut + y*pitch;
+    Ptr<Float> p = mapOut + y*pitch + 1;
+    //Ptr<Float> p = mapOut + y*pitch;  // WRI DEBUG
 
     // Initialize three cursors for the three input rows
-    for (int i = 0; i < 3; i++) row[i].init(map + i*pitch);
+    for (int i = 0; i < 3; i++) row[i].init(map + (y - 1 + i )*pitch);
     for (int i = 0; i < 3; i++) row[i].prime();
 
     // Compute one output row
@@ -210,6 +216,7 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int width, Int height) {
                   left[2] + row[2].current + right[2];
 
       store(row[1].current - K * (row[1].current - sum * 0.125), p);
+      store(row[1].current, p);
       p = p + 16;
     End
 
@@ -220,6 +227,7 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int width, Int height) {
     map = map + pitch*numQPUs();
   End
 }
+
 
 /**
  * The edges always have zero values.
