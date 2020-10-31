@@ -1,10 +1,10 @@
 #ifndef _QPULIB_REMOVELABELS_H_
 #define _QPULIB_REMOVELABELS_H_
-
 #include "Target/Syntax.h"
 #include "Target/CFG.h"
 #include "Target/Liveness.h"
 #include "Common/Seq.h"
+#include "Support/basics.h"
 
 namespace QPULib {
 
@@ -32,28 +32,49 @@ void removeLabels(Instructions &instrs) {
 
   // First, remove labels, remembering the index of the instruction
   // pointed to by each label.
+	std::string last_comment;
   for (int i = 0, j = 0; i < instrs.size(); i++) {
     auto &instr = instrs[i];
 
     if (instr.is_label()) {
       labels[instr.label()] = j;
+
+			// Grumbl why doesnt 'cmt << work' here?
+			if (!last_comment.empty()) {
+				last_comment += "; ";
+			}
+
+			last_comment += "Label L";
+			last_comment += std::to_string(instr.label());
     } else {
       newInstrs << instr;
+
+     	newInstrs.back().comment(last_comment);
+			last_comment.clear();
+
       j++;
     }
   }
+	assert(last_comment.empty());
 
   // Second, convert branch-label instructions.
   for (int i = 0; i < newInstrs.size(); i++) {
     auto &instr = newInstrs[i];
 
     if (instr.is_branch_label()) {
+			Label label = instr.branch_label();
+      assert(0 <= label && label < numLabels);
+
 			// Convert branch-to-label to branch-to-target
-      assert(0 <= instr.branch_label() && instr.branch_label() < numLabels);
-      int dest = labels[instr.branch_label()];
+      int dest = labels[label];
       assert(dest >= 0);
 
 			instr.label_to_target(dest - i);  // pass in offset to label from current instruction
+
+			std::string cmt;
+			cmt += "Jump to label L";
+			cmt += std::to_string(label);
+			instr.comment(cmt);
     }
   }
 

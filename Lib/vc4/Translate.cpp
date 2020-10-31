@@ -15,13 +15,13 @@ void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e) {
     if (tag == SET_READ_STRIDE)
       *seq << genSetReadPitch(e->intLit);
     else
-      genSetWriteStride(seq, e->intLit);
+      *seq << genSetWriteStride(e->intLit);
   }
   else if (e->tag == VAR) {
     if (tag == SET_READ_STRIDE)
       genSetReadPitch(seq, srcReg(e->var));
     else
-      genSetWriteStride(seq, srcReg(e->var));
+      *seq << genSetWriteStride(srcReg(e->var));
   }
   else {
     Var v = freshVar();
@@ -29,7 +29,7 @@ void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e) {
     if (tag == SET_READ_STRIDE)
       genSetReadPitch(seq, srcReg(v));
     else
-      genSetWriteStride(seq, srcReg(v));
+      *seq << genSetWriteStride(srcReg(v));
   }
 }
 
@@ -67,13 +67,13 @@ void setupDMAReadStmt(Seq<Instr>* seq, int numRows, int rowLen, int hor, Expr* e
 
 void setupDMAWriteStmt(Seq<Instr>* seq, int numRows, int rowLen, int hor, Expr* e) {
   if (e->tag == INT_LIT)
-    genSetupDMAStore(seq, numRows, rowLen, hor, e->intLit);
+    *seq << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
   else if (e->tag == VAR)
-    genSetupDMAStore(seq, numRows, rowLen, hor, srcReg(e->var));
+    *seq << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var));
   else {
     Var v = freshVar();
     varAssign(seq, v, e);
-    genSetupDMAStore(seq, numRows, rowLen, hor, srcReg(v));
+    *seq << genSetupDMAStore(numRows, rowLen, hor, srcReg(v));
   }
 }
 
@@ -147,31 +147,32 @@ void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride) {
 // than after a write.  This enables other operations to happen in
 // parallel with the write.
 
-void storeRequestOperation(Seq<Instr>* seq, Expr* data, Expr* addr) {
+void storeRequestOperation(Seq<Instr> &seq, Expr *data, Expr *addr) {
 	using namespace QPULib::Target::instr;
 
   if (data->tag != VAR || addr->tag != VAR) {
-    data = putInVar(seq, data);
-    addr = putInVar(seq, addr);
+    data = putInVar(&seq, data);
+    addr = putInVar(&seq, addr);
   }
 
-	vc4::StoreRequest(*seq, addr->var, data->var, true);
+	seq << vc4::StoreRequest(addr->var, data->var, true);
 }
 
 }  // anon namespace
+
 
 namespace vc4 {
 
 /**
  * @return true if statement handled, false otherwise
  */
-bool stmt(Seq<Instr>* seq, Stmt* s) {
+bool stmt(Seq<Instr> *seq, Stmt *s) {
 
   // ---------------------------------------------
   // Case: store(e0, e1) where e1 and e2 are exprs
   // ---------------------------------------------
   if (s->tag == STORE_REQUEST) {
-		storeRequestOperation(seq, s->storeReq.data, s->storeReq.addr);
+		storeRequestOperation(*seq, s->storeReq.data, s->storeReq.addr);
     return true;
   }
 
@@ -289,28 +290,34 @@ bool stmt(Seq<Instr>* seq, Stmt* s) {
 // Store request
 // ============================================================================
 
-void StoreRequest(Seq<Instr> &seq, Var addr_var, Var data_var,  bool wait) {
+Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
 	using namespace QPULib::Target::instr;
 
 	Reg addr      = freshReg();
 	Reg storeAddr = freshReg();
 
-	seq << li(addr, 16).comment("Start DMA store request")  // Setup VPM
+	Seq<Instr> ret;
+
+	ret << li(addr, 16)                       // Setup VPM
 	    << add(addr, addr, QPU_ID)
 	    << genSetupVPMStore(addr, 0, 1)
-	    << li(storeAddr, 256)                               // Store address
+	    << li(storeAddr, 256)                 // Store address
 	    << add(storeAddr, storeAddr, QPU_ID);
 
 	if (wait) {
-		seq << genWaitDMAStore();                             // Wait for any outstanding store to complete
+		ret << genWaitDMAStore();                             // Wait for any outstanding store to complete
 	}
 
 	// Setup DMA
-	genSetWriteStride(&seq, 0);
-	genSetupDMAStore(&seq, 16, 1, 1, storeAddr);
+	ret << genSetWriteStride(0)
+	    << genSetupDMAStore(16, 1, 1, storeAddr)
+	    << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0)  // Put to VPM
+	    << genStartDMAStore(srcReg(addr_var));                 // Start DMA
 
-	seq << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0)                    // Put to VPM
-	    << genStartDMAStore(srcReg(addr_var)).comment("End DMA store request");  // Start DMA
+	ret.front().comment("Start DMA store request");
+	ret.back().comment("End DMA store request");
+
+	return ret;
 }
 
 }  // namespace vc4

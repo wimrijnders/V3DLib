@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "Support/InstructionComment.h"
 #include "SmallImm.h"
 #include "Register.h"
 #include "RFAddress.h"
@@ -15,7 +16,7 @@ using rf = RFAddress;
 using si = SmallImm;
 
 
-class Instr : public v3d_qpu_instr {
+class Instr : public v3d_qpu_instr, public InstructionComment {
 
 	// Label support
 private:
@@ -132,22 +133,6 @@ public:
 	void alu_mul_set(Location const &loc1, Location const &loc2, Location const &loc3); 
 	void alu_mul_set(Location const &loc1, Location const &loc2, SmallImm const &imm3); 
 	void alu_mul_set(Location const &dst, SmallImm const &imma, Location const &locb); 
-
-
-	// ==================================================
-	// Comments 
-	// ==================================================
-
-private:
-	std::string m_header;
-	std::string m_comment;
-
-public:
-	Instr &header(std::string const &msg);
-	Instr &comment(std::string const &msg);
-	std::string const &header() const { return m_header; }
-	std::string const &comment() const { return m_comment; }
-
 
 	// ==================================================
 	// Private State 

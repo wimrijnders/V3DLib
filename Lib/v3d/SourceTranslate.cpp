@@ -22,11 +22,13 @@ void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
 	Reg srcAddr = srcReg(addr->var);
 	Reg srcData = srcReg(data->var);
 
-  *seq << mov(TMUD, srcData).comment("Store request")
-       << mov(TMUA, srcAddr);
+  *seq << mov(TMUD, srcData);
+  seq->back().comment("Store request");
+  *seq  << mov(TMUA, srcAddr);
 }
 
 }  // anon namespace
+
 
 namespace v3d {
 

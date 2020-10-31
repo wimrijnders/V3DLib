@@ -14,25 +14,7 @@ bool is_power_of_2(int x) {
     return x > 0 && !(x & (x - 1));
 }
 
-
-/**
- * Source: https://thispointer.com/find-and-replace-all-occurrences-of-a-sub-string-in-c/
- */
-void findAndReplaceAll(std::string & data, std::string toSearch, std::string replaceStr) {
-    // Get the first occurrence
-    size_t pos = data.find(toSearch);
-    // Repeat till end is reached
-    while( pos != std::string::npos)
-    {
-        // Replace this occurrence of Sub String
-        data.replace(pos, toSearch.size(), replaceStr);
-        // Get the next occurrence from the current position
-        pos =data.find(toSearch, pos + replaceStr.size());
-    }
-}
-
-
-}
+}  // anon namespace
 
 
 namespace QPULib {
@@ -95,33 +77,6 @@ std::string Instr::mnemonic() const {
 
 	return ret;
 }
-
-
-/**
- * Assign header comment to current instance
- *
- * For display purposes only, when generating a dump of the opcodes.
- */
-Instr &Instr::header(std::string const &msg) {
-	assertq(m_header.empty(), "Header comment already has a value when setting it", true);
-	m_header = msg;
-	findAndReplaceAll(m_header, "\n", "\n# ");
-	return *this;
-}
-
-
-/**
- * Assign comment to current instance
- *
- * For display purposes only, when generating a dump of the opcodes.
- */
-Instr &Instr::comment(std::string const &msg) {
-	assertq(m_comment.empty(), "Comment already has a value when setting it", true);
-	m_comment = msg;
-	findAndReplaceAll(m_comment, "\n", "\n# ");
-	return *this;
-}
-
 
 uint64_t Instr::code() const {
 	init_ver();

@@ -521,13 +521,15 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 	auto reg_b = instr.ALU.srcB;                  // reg b is either r5 or small imm
 
 	if (src_a->to_mux() != V3D_QPU_MUX_R0) {
-		ret << mov(r0, *src_a).comment("moving param 2 of rotate to r0. WARNING: r0 might already be in use, check!");
+		ret << mov(r0, *src_a);
+		ret.back().comment("moving param 2 of rotate to r0. WARNING: r0 might already be in use, check!");
 	}
 
 
 	// TODO: the Target source step already adds a nop.
 	//       With the addition of previous mov to r0, the 'other' nop becomes useless, remove that one for v3d.
-	ret << nop().comment("NOP required for rotate");
+	ret << nop();
+	ret.back().comment("NOP required for rotate");
 
 	if (reg_b.tag == REG) {
 		breakpoint
@@ -557,7 +559,6 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 	auto dst = encodeDestReg(full_instr);
 
 	Instructions ret;
-	int rep_value;
 
 	std::string err_label;
 	std::string err_value;
@@ -566,6 +567,7 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 		// Allows for the legal int small imm values and powers of them
 		int value = instr.imm.intVal;
 		int left_shift = 0;
+		int rep_value;
 
 		while (value != 0 && (value & 1) == 0) {
 			left_shift++;
@@ -574,7 +576,14 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 
 		if (SmallImm::int_to_opcode_value(value, rep_value)) {
 			SmallImm imm(rep_value);
+
 			ret << mov(*dst, imm);
+
+			if (imm.val() != instr.imm.intVal) {
+				std::string comment;
+				comment << "Load immediate " << instr.imm.intVal;
+				ret.back().comment(comment);
+			}
 
 			if (left_shift > 0) {
 				ret << shl(*dst, *dst, SmallImm(left_shift));
@@ -589,6 +598,7 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 	} else if (instr.imm.tag == IMM_FLOAT32) {
 		// Allows for the legal int small imm values and their negatives
 		float value = instr.imm.floatVal;
+		int rep_value;
 
 		if (value == 0.0) {
 			ret << nop().fmov(*dst, 0.0);  // This only works because the floating point representation of zero is 0x0
@@ -618,7 +628,8 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 
 		breakpoint
 		local_errors << str;
-		ret << nop().comment(str);
+		ret << nop();
+		ret.back().comment(str);
 	}
 
 

@@ -68,6 +68,7 @@ public:
 	bool empty() const { return size() == 0; }
 
 		T &get(int index) {
+			assert(!empty());
 			assertq(0 <= index && index < numElems, "Seq[] index out of range", true);
 			return elems[index];
 		}
@@ -81,10 +82,9 @@ public:
 			return elems[index];
 		}
 
-		T const &back() const {
-			assert(!empty());
-			return get(size() - 1);
-		}
+		T &front()            { return get(0); }
+		T &back()             { return get(size() - 1); }
+		T const &back() const { return get(size() - 1); }
 
 
 	/**

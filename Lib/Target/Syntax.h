@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string>
 #include "Common/Seq.h"  // for check_zeroes()
+#include "Support/InstructionComment.h"
 #include "Support/debug.h"
 #include "Source/Var.h"
 #include "Reg.h"
@@ -346,7 +347,7 @@ enum InstrTag {
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4);
 
 // QPU instructions
-struct Instr {
+struct Instr : public InstructionComment {
   // What kind of instruction is it?
   InstrTag tag;
 
@@ -455,33 +456,6 @@ struct Instr {
 		assert(tag == InstrTag::LAB);
 		return m_label;
 	}
-
-
-	// ==================================================
-	// Comments 
-	// ==================================================
-
-private:
-	std::string m_header;
-	std::string m_comment;
-
-public:
-
-	Instr &header(std::string const &str) {
-		assertq(m_header.empty(), "Header already set");
-		m_header = str;
-		return *this;
-	}
-
-	Instr &comment(std::string const &str) {
-		assertq(m_comment.empty(), "Comment already set");
-		m_comment = str;
-		return *this;
-	}
-
-	std::string const &header() const { return m_header; }
-	std::string const &comment() const { return m_comment; }
-
 
 	// ==================================================
 	// v3d-specific  methods

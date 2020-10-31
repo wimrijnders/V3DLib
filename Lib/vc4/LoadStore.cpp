@@ -174,25 +174,28 @@ Instr genWaitDMALoad(bool might_be_end) {
 
 // Generate instructions to do DMA store.
 
-void genSetupDMAStore(Seq<Instr>* instrs, int numRows, int rowLen, int hor, int vpmAddr) {
+Instr genSetupDMAStore(int numRows, int rowLen, int hor, int vpmAddr) {
   assert(vpmAddr < 2048);
-
   int setup = dmaSetupStoreCode(numRows, rowLen, hor);
   setup |= vpmAddr << 3;
 
-  *instrs << li(WR_SETUP, setup);
+  return li(WR_SETUP, setup);
 }
 
 
-void genSetupDMAStore(Seq<Instr>* instrs, int numRows, int rowLen, int hor, Reg vpmAddr) {
+Seq<Instr> genSetupDMAStore(int numRows, int rowLen, int hor, Reg vpmAddr) {
   int setup = dmaSetupStoreCode(numRows, rowLen, hor);
 
   Reg tmp0 = freshReg();
   Reg tmp1 = freshReg();
 
-  *instrs << li(tmp0, setup)
-          << shl(tmp1, vpmAddr, 3)
-          << bor(WR_SETUP, tmp0, tmp1);
+	Seq<Instr> ret;
+
+  ret << li(tmp0, setup)
+      << shl(tmp1, vpmAddr, 3)
+      << bor(WR_SETUP, tmp0, tmp1);
+
+	return ret;
 }
 
 
@@ -230,19 +233,22 @@ void genSetReadPitch(Seq<Instr>* instrs, Reg pitch) {
 /**
  * Generate instructions to set the DMA write stride.
  */
-void genSetWriteStride(Seq<Instr>* instrs, int stride) {
+Instr genSetWriteStride(int stride) {
   assert(stride < 8192);
-
   int setup = 0xc0000000 | stride;
-  *instrs << li(WR_SETUP, setup);
+
+	return li(WR_SETUP, setup);
 }
 
 
-void genSetWriteStride(Seq<Instr>* instrs, Reg stride) {
+Seq<Instr> genSetWriteStride(Reg stride) {
   Reg tmp = freshReg();
 
-  *instrs << li(tmp, 0xc0000000)
-          << bor(WR_SETUP, tmp, stride);
+	Seq<Instr> ret;
+  ret << li(tmp, 0xc0000000)
+      << bor(WR_SETUP, tmp, stride);
+
+	return ret;
 }
 
 }  // namespace QPULib

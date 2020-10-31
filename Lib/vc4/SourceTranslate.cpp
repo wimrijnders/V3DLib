@@ -13,8 +13,8 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
 
-	StoreRequest(*seq, lhs.deref.ptr->var, rhs->var);
-	*seq << genWaitDMAStore();  // Wait for store to complete
+	*seq << StoreRequest(lhs.deref.ptr->var, rhs->var)
+	     << genWaitDMAStore();  // Wait for store to complete
 	return true;
 }
 
@@ -22,12 +22,19 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 	using namespace QPULib::Target::instr;
 
-	*seq << genSetReadPitch(4).comment("Start DMA load var")                         // Setup DMA
-	     << genSetupDMALoad(16, 1, 1, 1, QPU_ID)
-	     << genStartDMALoad(srcReg(e.deref.ptr->var))                                // Start DMA load
-	     << genWaitDMALoad(false)                                                    // Wait for DMA
-	     << genSetupVPMLoad(1, QPU_ID, 0, 1)                                         // Setup VPM
-	     << shl(dstReg(v), Target::instr::VPM_READ, 0).comment("End DMA load var");  // Get from VPM
+	Seq<Instr> ret;
+	
+	ret << genSetReadPitch(4)                           // Setup DMA
+	    << genSetupDMALoad(16, 1, 1, 1, QPU_ID)
+	    << genStartDMALoad(srcReg(e.deref.ptr->var))    // Start DMA load
+	    << genWaitDMALoad(false)                        // Wait for DMA
+	    << genSetupVPMLoad(1, QPU_ID, 0, 1)             // Setup VPM
+	    << shl(dstReg(v), Target::instr::VPM_READ, 0);  // Get from VPM
+
+	ret.front().comment("Start DMA load var");
+	ret.back().comment("End DMA load var");
+
+	*seq << ret;
 }
 
 
