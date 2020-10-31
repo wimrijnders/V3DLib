@@ -192,12 +192,13 @@ void where_kernel(Ptr<Int> result) {
 	Int a = index();
 	Int r = 0;
 
-	Where (a <  8)  r = 1; End; next(result, r);
-	Where (a <= 8)  r = 1; End; next(result, r);
-	Where (a == 8)  r = 1; End; next(result, r);
-	Where (a != 8)  r = 1; End; next(result, r);
-	Where (a >  8)  r = 1; End; next(result, r);
-	Where (a >=  8) r = 1; End; next(result, r);
+	Where (a <  8)   r = 1; End; next(result, r);
+	Where (a <= 8)   r = 1; End; next(result, r);
+	Where (a == 8)   r = 1; End; next(result, r);
+	Where (a != 8)   r = 1; End; next(result, r);
+	Where (a >  8)   r = 1; End; next(result, r);
+	Where (a >= 8)   r = 1; End; next(result, r);
+	Where (!(a > 3)) r = 1; End; next(result, r);
 	*result = r;
 }
 
@@ -213,7 +214,11 @@ void andor_kernel(Ptr<Int> result) {
 	Where ((a >   4 &&  a <  8) || a > 12)  r = 1; End; next(result, r); // TODO find better examples with differing res
 
 	Int b = index();
-	Where (a > 6 && a < 12 && b > 8 && b < 14) r =1; End;
+	Where ( a > 6 && a < 12  &&  b >  8 && b < 14)  r = 1; End; next(result, r);
+	Where ( a > 6 && b < 14  &&  a < 12 && b >  8)  r = 1; End; next(result, r);
+	Where ((a > 6 && a < 12) || (b >  8 && b < 14)) r = 1; End; next(result, r);
+
+	Where ((a > 6 && a < 12) || (b >  8 && b < 14)) r = 1; Else r = 2;  End;
 
 	*result = r;
 }
@@ -280,13 +285,13 @@ void check(QPULib::SharedArray<int> &result, int block, uint32_t *expected) {
 		std::string buf;
 
 		for (int i = 0; i < VEC_SIZE; ++i) {
-			buf << (result[block * VEC_SIZE + i]?"1":"0");
+			buf << result[block * VEC_SIZE + i];
 		}
 		INFO("result  : " << buf);
 
 		buf.clear();
 		for (int i = 0; i < VEC_SIZE; ++i) {
-			buf << (expected[i]?"1":"0");
+			buf << expected[i];
 		}
 		INFO("expected: " << buf);
 
@@ -302,6 +307,7 @@ void check_where_result(QPULib::SharedArray<int> &result) {
 	uint32_t expected_not_equal[VEC_SIZE]     = {1, 1, 1, 1, 1, 1, 1, 1, 0, 1, 1, 1, 1, 1, 1, 1};
 	uint32_t expected_larger_than[VEC_SIZE]   = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
 	uint32_t expected_larger_equal[VEC_SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1};
+	uint32_t expected_not[VEC_SIZE]           = {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
 	check(result, 0, expected_smaller_than);
 	check(result, 1, expected_smaller_equal);
@@ -309,6 +315,7 @@ void check_where_result(QPULib::SharedArray<int> &result) {
 	check(result, 3, expected_not_equal);
 	check(result, 4, expected_larger_than);
 	check(result, 5, expected_larger_equal);
+	check(result, 6, expected_not);
 }
 
 
@@ -316,14 +323,19 @@ void check_andor_result(QPULib::SharedArray<int> &result) {
 	uint32_t expected_and[VEC_SIZE]           = {0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_or[VEC_SIZE]            = {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
 	uint32_t expected_combined[VEC_SIZE]      = {0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1};
-	uint32_t expected_multiand[VEC_SIZE]      = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0};
+	uint32_t expected_multi_and[VEC_SIZE]     = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0};
+	uint32_t expected_multi_andor[VEC_SIZE]   = {0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0};
+	uint32_t expected_multi_else[VEC_SIZE]    = {2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2};
 
 	check(result, 0, expected_and);
 	check(result, 1, expected_or);
 	check(result, 2, expected_combined);
 	check(result, 3, expected_combined);
 	check(result, 4, expected_combined);
-	check(result, 5, expected_multiand);
+	check(result, 5, expected_multi_and);
+	check(result, 6, expected_multi_and);
+	check(result, 7, expected_multi_andor);
+	check(result, 8, expected_multi_else);
 }
 
 
@@ -350,7 +362,7 @@ void check_pgm(std::string const &filename) {
 
 
 TEST_CASE("Test Where blocks", "[where][cond]") {
-	const int NUM_TESTS = 6;
+	const int NUM_TESTS = 7;
 
   auto k = compile(where_kernel);
 
@@ -377,7 +389,7 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 
 TEST_CASE("Test multiple and/or", "[andor][cond]") {
 	SECTION("Test Where blocks with and/or") {
-		const int NUM_TESTS = 6;
+		const int NUM_TESTS = 9;
 
 	  auto k = compile(andor_kernel);
 
@@ -398,7 +410,6 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 		check_andor_result(result);
 	}
 
-#if 0
 	SECTION("Test Where blocks with multiple and/or") {
 		make_test_dir();
 		int const width  = 48;
@@ -473,6 +484,8 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 		k3.interpret();
 		check_output("multi_if_int");
 
+		k3.pretty(false, "obj/test/andor_multi_if_v3d.txt");	
+
 		std::cout << "Not running the 'multi_if_qpu' test; this hangs the pi4 and locks up the videocore on pi3 (TODO)" << std::endl;
 /*
 		// vc4: hangs the pi4
@@ -482,7 +495,6 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 		check_output("multi_if_qpu");
 */
 	}
-#endif  // 0
 }
 
 

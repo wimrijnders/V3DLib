@@ -74,6 +74,12 @@ inline std::string &operator<<(std::string &a, int val) {
 }
 
 
+inline std::string &operator<<(std::string &a, uint32_t val) {
+	a += std::to_string(val);
+	return a;
+}
+
+
 inline std::string &operator<<(std::string &a, float val) {
 	a += std::to_string(val);
 	return a;
