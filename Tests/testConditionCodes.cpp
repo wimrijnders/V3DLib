@@ -210,7 +210,10 @@ void andor_kernel(Ptr<Int> result) {
 	Where ( a <   4 ||  a >  8)             r = 1; End; next(result, r);
 	Where ( a >   4 &&  a <  8  || a > 12)  r = 1; End; next(result, r);
 	Where ( a >   4 && (a <  8  || a > 12)) r = 1; End; next(result, r); // BORING! Same result as previous
-	Where ((a >   4 &&  a <  8) || a > 12)  r = 1; End                   // TODO find better examples with differing res
+	Where ((a >   4 &&  a <  8) || a > 12)  r = 1; End; next(result, r); // TODO find better examples with differing res
+
+	Int b = index();
+	Where (a > 6 && a < 12 && b > 8 && b < 14) r =1; End;
 
 	*result = r;
 }
@@ -273,6 +276,20 @@ void andor_multi_if_kernel(Ptr<Float> result, Int width, Int height) {
 void check(QPULib::SharedArray<int> &result, int block, uint32_t *expected) {
 	for (uint32_t n = 0; n < VEC_SIZE; ++n) {
 		INFO("block " << block <<  ", index " << n);
+
+		std::string buf;
+
+		for (int i = 0; i < VEC_SIZE; ++i) {
+			buf << (result[block * VEC_SIZE + i]?"1":"0");
+		}
+		INFO("result  : " << buf);
+
+		buf.clear();
+		for (int i = 0; i < VEC_SIZE; ++i) {
+			buf << (expected[i]?"1":"0");
+		}
+		INFO("expected: " << buf);
+
 		REQUIRE(result[block * VEC_SIZE + n] == expected[n]);
 	}
 }
@@ -299,12 +316,14 @@ void check_andor_result(QPULib::SharedArray<int> &result) {
 	uint32_t expected_and[VEC_SIZE]           = {0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_or[VEC_SIZE]            = {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
 	uint32_t expected_combined[VEC_SIZE]      = {0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1};
+	uint32_t expected_multiand[VEC_SIZE]      = {0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0};
 
 	check(result, 0, expected_and);
 	check(result, 1, expected_or);
 	check(result, 2, expected_combined);
 	check(result, 3, expected_combined);
 	check(result, 4, expected_combined);
+	check(result, 5, expected_multiand);
 }
 
 
@@ -358,7 +377,7 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 
 TEST_CASE("Test multiple and/or", "[andor][cond]") {
 	SECTION("Test Where blocks with and/or") {
-		const int NUM_TESTS = 5;
+		const int NUM_TESTS = 6;
 
 	  auto k = compile(andor_kernel);
 
@@ -375,11 +394,11 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 		check_andor_result(result);
 
 		reset(result);
-//		k.call();
-//		check_andor_result(result);
+		k.call();
+		check_andor_result(result);
 	}
 
-
+#if 0
 	SECTION("Test Where blocks with multiple and/or") {
 		make_test_dir();
 		int const width  = 48;
@@ -463,6 +482,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 		check_output("multi_if_qpu");
 */
 	}
+#endif  // 0
 }
 
 
