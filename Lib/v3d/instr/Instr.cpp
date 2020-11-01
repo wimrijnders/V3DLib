@@ -43,7 +43,7 @@ std::string Instr::dump(bool to_stdout) const {
 }
 
 
-std::string Instr::mnemonic() const {
+std::string Instr::pretty_instr() const {
 	std::string ret = instr_mnemonic(this);
 
 	auto indent = [] (int size) -> std::string {
@@ -69,7 +69,7 @@ std::string Instr::mnemonic() const {
 		} else if (alu.mul.b == V3D_QPU_MUX_B) {
 			ret << ", " << raddr_b;
 		} else {
-			assertq(false, "mnemonic(): unexpected mux value for mul b for rotate", true);
+			assertq(false, "pretty_instr(): unexpected mux value for mul b for rotate", true);
 		}
 
 		ret << indent(ret.size()) << "; rot";
@@ -77,6 +77,25 @@ std::string Instr::mnemonic() const {
 
 	return ret;
 }
+
+
+std::string Instr::mnemonic(bool with_comments) const {
+	std::string ret;
+
+	if (with_comments && !header().empty()) {
+		ret << "\n# " << header() << "\n";
+	}
+
+	std::string out = pretty_instr();
+	ret << out;
+
+	if (with_comments && !comment().empty()) {
+		ret << emit_comment(out.size());
+	}
+
+	return ret;
+}
+
 
 uint64_t Instr::code() const {
 	init_ver();

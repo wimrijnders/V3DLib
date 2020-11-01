@@ -6,7 +6,7 @@
 namespace QPULib {
 
 const char *pretty_instr_tag(InstrTag tag);
-std::string pretty(Instr const &instr, bool with_comments = false);
+std::string pretty_instr(Instr const &instr);
 
 }  // namespace QPULib
 

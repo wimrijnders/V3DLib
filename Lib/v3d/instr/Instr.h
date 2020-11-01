@@ -39,7 +39,7 @@ public:
 	Instr(uint64_t in_code = NOP);
 
 	std::string dump(bool to_stdout = false) const; 
-	std::string mnemonic() const;
+	std::string mnemonic(bool with_comments = false) const;
 	uint64_t code() const;
 	static void show(uint64_t in_code);
 	static std::string mnemonic(uint64_t in_code);
@@ -150,6 +150,8 @@ private:
 	void set_pf(v3d_qpu_pf val);
 
 	bool raddr_a_is_safe(Location const &loc) const;
+
+	std::string pretty_instr() const;
 };
 
 

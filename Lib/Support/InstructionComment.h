@@ -15,6 +15,9 @@ public:
 	std::string const &header() const { return m_header; }
 	std::string const &comment() const { return m_comment; }
 
+protected:
+	std::string emit_comment(int instr_size) const;
+
 private:
 	std::string m_header;
 	std::string m_comment;

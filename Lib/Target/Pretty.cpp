@@ -170,7 +170,14 @@ std::string pretty_conditions(Instr const &instr) {
 	return ret;
 }
 
+}  // anon namespace
+
  
+/**
+ * Pretty printer for qpuLib Target instructions
+ *
+ * Returns a string representation of an instruction.
+ */
 std::string pretty_instr(Instr const &instr) {
 	std::string buf;
 
@@ -242,8 +249,6 @@ std::string pretty_instr(Instr const &instr) {
 	assert(!buf.empty());
 	return buf;
 }
-
-}  // anon namespace
 
 
 const char *pretty_instr_tag(InstrTag tag) {

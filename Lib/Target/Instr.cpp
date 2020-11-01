@@ -279,7 +279,20 @@ void check_zeroes(Seq<Instr> const &instrs) {
  * Returns a string representation of an instruction.
  */
 std::string Instr::mnemonic(bool with_comments) const {
-	return pretty(*this, with_comments);
+	std::string ret;
+
+	if (with_comments && !header().empty()) {
+		ret << "\n# " << header() << "\n";
+	}
+
+	std::string out = pretty_instr(*this);
+	ret << out;
+
+	if (with_comments && !comment().empty()) {
+		ret << emit_comment(out.size());
+	}
+
+	return ret;
 }
 
 
@@ -291,7 +304,7 @@ std::string mnemonics(Seq<Instr> const &code, bool with_comments) {
 
 	for (int i = 0; i < code.size(); i++) {
 		auto const &instr = code[i];
-		ret << i << ": " << instr.mnemonic(with_comments).c_str();
+		ret << i << ": " << instr.mnemonic(with_comments).c_str() << "\n";
 	}
 
 	return ret;

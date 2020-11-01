@@ -159,7 +159,8 @@ void KernelDriver::pretty(int numQPUs, const char *filename) {
 
 	if (has_errors()) {
 		fprintf(f, "=== There were errors during compilation, the output here is likely incorrect or incomplete  ===\n");
-		fprintf(f, "=== Encoding and displaying output as best as possible                                       ===\n\n\n");
+		fprintf(f, "=== Encoding and displaying output as best as possible                                       ===\n");
+		fprintf(f, "\n\n");
 	}
 
 	print_source_code(f, body);

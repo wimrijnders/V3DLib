@@ -55,4 +55,35 @@ void InstructionComment::comment(std::string msg) {
 }
 
 
+/**
+ * Return comment as string with leading spaces
+ *
+ * @param instr_size  size of the associated instruction in bytes
+ */
+std::string InstructionComment::emit_comment(int instr_size) const {
+	if (m_comment.empty()) return "";
+
+	const int COMMENT_INDENT = 57;
+	int spaces = COMMENT_INDENT - instr_size;
+	if (spaces < 2) spaces = 2;
+
+	// Output spaces till the position of the comment
+	// NOTE: this does not take into account multi-line comments (don't occur at time of writing)
+	auto emit_spaces = [] (int spaces) -> std::string {
+		std::string ret;
+
+		while (spaces > 0) {
+			ret += " ";
+			spaces--;
+		}
+
+		return ret;
+	};
+
+	std::string ret;
+	ret  << emit_spaces(spaces) << "# " << m_comment;
+	return ret;
+}
+
+
 }  // namespace QPULib

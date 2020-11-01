@@ -1008,16 +1008,7 @@ void KernelDriver::emit_opcodes(FILE *f) {
 		fprintf(f, "<No opcodes to print>\n");
 	} else {
 		for (auto const &instr : instructions) {
-
-			if (!instr.header().empty()) {
-				fprintf(f, "\n# %s\n", instr.header().c_str());
-			}
-
-			if (!instr.comment().empty()) {
-				fprintf(f, "%s  # %s\n", instr.mnemonic().c_str(), instr.comment().c_str());
-			} else {
-				fprintf(f, "%s\n", instr.mnemonic().c_str());
-			}
+			fprintf(f, "%s\n", instr.mnemonic(true).c_str());
 		}
 	}
 
