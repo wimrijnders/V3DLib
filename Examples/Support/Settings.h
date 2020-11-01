@@ -26,6 +26,8 @@ struct Settings {
 	void process(KernelBase &k);
 
 protected:
+	int output_count = 0;
+
 	void set_name(const char *in_name);
 
 private:

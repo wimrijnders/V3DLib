@@ -403,7 +403,6 @@ struct Instr : public InstructionComment {
   };
 
 
-	//Instr() = default;
 	Instr() : tag(NO_OP) {} 
 	Instr(InstrTag in_tag);
 

@@ -2,7 +2,7 @@
 #include "vc4.h"
 #include "Encode.h"
 #include "DMA.h"
-//#include "gallium/drivers/vc4/vc4_qpu.h"  // vc4_qpu_disasm()
+#include "dump_instr.h"
 
 namespace QPULib {
 namespace vc4 {
@@ -10,6 +10,11 @@ namespace vc4 {
 KernelDriver::KernelDriver() : QPULib::KernelDriver(Vc4Buffer) {}
 
 
+/**
+ * Add the postfixi code to the kernel.
+ *
+ * Note that this emits kernel code.
+ */
 void KernelDriver::kernelFinish() {
   // Ensure outstanding DMAs have completed
   dmaWaitRead();
@@ -40,8 +45,17 @@ void KernelDriver::encode(int numQPUs) {
 
 
 void KernelDriver::emit_opcodes(FILE *f) {
-	debug("vc4 emit_opcodes() called - TODO");
-	// vc4_qpu_disasm(m_targetCode.data(), m_targetCode.size());
+	fprintf(f, "Opcodes for vc4\n");
+	fprintf(f, "===============\n\n");
+	fflush(f);
+
+	Seq<uint64_t> instructions;
+
+	for (int i = 0; i < m_targetCode.size(); ++i ) {
+		instructions << vc4::encode(m_targetCode[i]);
+	}
+
+	dump_instr(f, instructions.data(), instructions.size());
 }
 
 

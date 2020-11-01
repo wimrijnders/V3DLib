@@ -190,8 +190,7 @@ uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux)
 // Instruction encoder
 // ===================
 
-void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
-{
+void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
   // Convert intermediate instruction into core instruction
   switch (instr.tag) {
     case IRQ:
@@ -221,7 +220,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
     }
   }
 
-  // Encode core instrcution
+  // Encode core instruction
   switch (instr.tag) {
     // Load immediate
     case LI: {
@@ -374,11 +373,13 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
       return;
     }
 
-    // No-op & print instructions (ignored)
+    // No-op & ignored instructions
     case NO_OP:
     case PRI:
     case PRS:
     case PRF:
+		case INIT_BEGIN:
+		case INIT_END:
       uint32_t waddr_add = 39 << 6;
       uint32_t waddr_mul = 39;
       *high  = 0xe0000000 | waddr_add | waddr_mul;
@@ -394,6 +395,18 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low)
 // =================
 // Top-level encoder
 // =================
+
+uint64_t encode(Instr instr) {
+	uint64_t ret;
+	uint32_t low;
+	uint32_t high;
+
+	encodeInstr(instr, &high, &low);
+
+	ret = (((uint64_t) high) << 32) + low;
+
+	return ret;
+}
 
 void encode(Seq<Instr>* instrs, Seq<uint32_t>* code) {
   uint32_t high, low;

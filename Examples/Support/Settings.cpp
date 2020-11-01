@@ -282,11 +282,17 @@ void Settings::process(KernelBase &k) {
 	// NOTE: For multiple calls here (entirely possible, HeatMap does this),
   //       this will dump the v3d code (mnemonics, actually) on every call.
 	if (output_code) {
-		assert(!name.empty());
-		std::string code_filename = name + "_code.txt";
+		if (output_count == 0) {
+			assert(!name.empty());
+			std::string code_filename = name + "_code.txt";
 
-		bool output_for_vc4 = Platform::instance().has_vc4 || (run_type != 0);
-		k.pretty(output_for_vc4, code_filename.c_str());
+			bool output_for_vc4 = Platform::instance().has_vc4 || (run_type != 0);
+			k.pretty(output_for_vc4, code_filename.c_str());
+		} else if (output_count == 1) {
+			warning("Not outputting code more than once");
+		}
+
+		output_count++;
 	}
 }
 

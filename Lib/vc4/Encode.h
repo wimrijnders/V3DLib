@@ -7,6 +7,7 @@
 namespace QPULib {
 namespace vc4 {
 
+uint64_t encode(Instr instr);
 void encode(Seq<Instr>* instrs, Seq<uint32_t>* code);
 
 }  // namespace vc4
