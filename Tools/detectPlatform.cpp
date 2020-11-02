@@ -20,8 +20,8 @@ CmdParameters params = {
 		"Reset Scheduler Registers",
 		"-r", // "--reset-scheduler",
 		ParamType::NONE,
-		"Clear the prohibition bits in the scheduler registers that determine what kind"
-		"of program can run."
+		"Clear the prohibition bits in the scheduler registers that determine what kind "
+		"of program can run"
 	}}
 };
 
@@ -46,8 +46,6 @@ struct Settings {
 	int init(int argc, const char *argv[]) {
 		auto platform = Platform::instance();
 
-		platform.output();
-		output();
 
 		if (!platform.is_pi_platform) {
 			return CmdParameters::EXIT_ERROR;
@@ -68,12 +66,14 @@ struct Settings {
 
 		reset_scheduler = params.parameters()[0]->get_bool_value();
 
+		platform.output();
+		output();
+
 		return CmdParameters::ALL_IS_WELL;
 	}
 
 
 	void output() {
-
 		printf("\nCmdline param's:\n");
 		printf("  Reset Scheduler  : %s\n", reset_scheduler?"true":"false");
 		printf("\n");
@@ -147,6 +147,10 @@ void showSchedulerRegisters() {
  *    Segmentation fault
  */
 void detect_v3d() {
+	if (settings.reset_scheduler) {
+		printf("WARNING: The reset scheduler flag doesn't do anything for v3d.\n\n");
+	}
+
 	v3d::RegisterMapping map_v3d;
 	map_v3d.init();
 	
@@ -193,28 +197,30 @@ void detect_v3d() {
 	printf("  FDBGR     : %x\n", stat_regs.fdbgr);
 	printf("  FDBGS     : %x\n", stat_regs.fdbgs);
 	printf("  STAT      : %x\n", stat_regs.stat);
-	printf("  MMU_CTL   : %x\n", stat_regs.mmu_ctl);
+	printf("MMUC_CONTROL: %x\n", stat_regs.mmuc_control);
+	printf("MMU_CTL     : %x\n", stat_regs.mmu_ctl);
 
-	printf("  fields:\n");
-	printf("    Cap exceeded   : %s\n" , stat_regs.mmu_ctl_fields.cap_exceeded?"true":"false");
-	printf("      ... abort    : %s\n", stat_regs.mmu_ctl_fields.cap_exceeded_abort?"true":"false");
-	printf("      ... int      : %s\n", stat_regs.mmu_ctl_fields.cap_exceeded_int?"true":"false");
-	printf("      ... exception: %s\n", stat_regs.mmu_ctl_fields.cap_exceeded_exception?"true":"false");
-	printf("    Pt invalid     : %s\n" , stat_regs.mmu_ctl_fields.pt_invalid?"true":"false");
-	printf("      ... abort    : %s\n", stat_regs.mmu_ctl_fields.pt_invalid_abort?"true":"false");
-	printf("      ... int      : %s\n", stat_regs.mmu_ctl_fields.pt_invalid_int?"true":"false");
-	printf("      ... exception: %s\n", stat_regs.mmu_ctl_fields.pt_invalid_exception?"true":"false");
-	printf("      ... enable   : %s\n", stat_regs.mmu_ctl_fields.pt_invalid_enable?"true":"false");
-	printf("    Write violation: %s\n" , stat_regs.mmu_ctl_fields.write_violation?"true":"false");
-	printf("      ... abort    : %s\n", stat_regs.mmu_ctl_fields.write_violation_abort?"true":"false");
-	printf("      ... int      : %s\n", stat_regs.mmu_ctl_fields.write_violation_int?"true":"false");
-	printf("      ... exception: %s\n", stat_regs.mmu_ctl_fields.write_violation_exception?"true":"false");
+	auto &r = stat_regs.mmu_ctl_fields;
+	printf("  Fields:\n");
+	printf("    Cap exceeded   : %s\n"   , r.cap_exceeded?"true":"false");
+	printf("      ... abort    : %s\n"   , r.cap_exceeded_abort?"true":"false");
+	printf("      ... int      : %s\n"   , r.cap_exceeded_int?"true":"false");
+	printf("      ... exception: %s\n"   , r.cap_exceeded_exception?"true":"false");
+	printf("    Pt invalid     : %s\n"   , r.pt_invalid?"true":"false");
+	printf("      ... abort    : %s\n"   , r.pt_invalid_abort?"true":"false");
+	printf("      ... int      : %s\n"   , r.pt_invalid_int?"true":"false");
+	printf("      ... exception: %s\n"   , r.pt_invalid_exception?"true":"false");
+	printf("      ... enable   : %s\n"   , r.pt_invalid_enable?"true":"false");
+	printf("    Write violation: %s\n"   , r.write_violation?"true":"false");
+	printf("      ... abort    : %s\n"   , r.write_violation_abort?"true":"false");
+	printf("      ... int      : %s\n"   , r.write_violation_int?"true":"false");
+	printf("      ... exception: %s\n"   , r.write_violation_exception?"true":"false");
 	printf("    TLB:\n");
-	printf("      ... clearing    : %s\n", stat_regs.mmu_ctl_fields.tlb_clearing?"true":"false");
-	printf("      ... stats clear : %s\n", stat_regs.mmu_ctl_fields.tlb_stats_clear?"true":"false");
-	printf("      ... clear       : %s\n", stat_regs.mmu_ctl_fields.tlb_clear?"true":"false");
-	printf("      ... stats enable: %s\n", stat_regs.mmu_ctl_fields.tlb_stats_enable?"true":"false");
-	printf("    Enable: %s\n", stat_regs.mmu_ctl_fields.enable?"true":"false");
+	printf("      ... clearing    : %s\n", r.tlb_clearing?"true":"false");
+	printf("      ... stats clear : %s\n", r.tlb_stats_clear?"true":"false");
+	printf("      ... clear       : %s\n", r.tlb_clear?"true":"false");
+	printf("      ... stats enable: %s\n", r.tlb_stats_enable?"true":"false");
+	printf("    Enable: %s\n"            , r.enable?"true":"false");
 }
 
 

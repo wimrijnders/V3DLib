@@ -31,12 +31,17 @@ enum: unsigned {  // NOTE: the pointers are to 4-bit words
 	V3D_ERR_FDBGS  = 0x00f10 >> 2,
 	V3D_ERR_STAT   = 0x00f20 >> 2,
 
-	V3D_MMU_CTL    = 0x01200 >> 2,
+	// Comment in the linux driver:  "Per-MMU registers"
+	// This implies that there could be more MMU registers, if there are more MMu's
 
-  CORE_BASE   = (0xfec04000 + 0x4000) >> 2,
-	CORE_IDENT0 = 0x00000,
-	CORE_IDENT1 = 0x00004 >> 2,
-	CORE_IDENT2 = 0x00008 >> 2,
+  V3D_MMUC_CONTROL = 0x01000 >> 2,
+	V3D_MMU_CTL      = 0x01200 >> 2,
+
+	// Other non-register-address constants
+  CORE_BASE       = (0xfec04000 + 0x4000) >> 2,
+	CORE_IDENT0     = 0x00000,
+	CORE_IDENT1     = 0x00004 >> 2,
+	CORE_IDENT2     = 0x00008 >> 2,
 	V3D_CTL_MISCCFG = 0x00018 >> 2
 };
 
@@ -133,14 +138,15 @@ RegisterMapping::Stats RegisterMapping::stats() {
 	}
 	assert((V3D_PCTR_0_PCTR0 + Stats::NUM_COUNTERS -1) ==  V3D_PCTR_0_PCTR31);
 
-	ret.gmp_status =  m_addr[V3D_GMP_STATUS];
-	ret.csd_status =  m_addr[V3D_CSD_STATUS];
-	ret.fdbg0      =  m_addr[V3D_ERR_FDBG0];
-	ret.fdbgb      =  m_addr[V3D_ERR_FDBGB];
-	ret.fdbgr      =  m_addr[V3D_ERR_FDBGR];
-	ret.fdbgs      =  m_addr[V3D_ERR_FDBGS];
-	ret.stat       =  m_addr[V3D_ERR_STAT];
-	ret.mmu_ctl    =  m_addr[V3D_MMU_CTL];
+	ret.gmp_status   =  m_addr[V3D_GMP_STATUS];
+	ret.csd_status   =  m_addr[V3D_CSD_STATUS];
+	ret.fdbg0        =  m_addr[V3D_ERR_FDBG0];
+	ret.fdbgb        =  m_addr[V3D_ERR_FDBGB];
+	ret.fdbgr        =  m_addr[V3D_ERR_FDBGR];
+	ret.fdbgs        =  m_addr[V3D_ERR_FDBGS];
+	ret.stat         =  m_addr[V3D_ERR_STAT];
+	ret.mmuc_control =  m_addr[V3D_MMUC_CONTROL];  // This might possibly be a write-only register
+	ret.mmu_ctl      =  m_addr[V3D_MMU_CTL];
 
 	int V3D_MMU_CTL_CAP_EXCEEDED              = 27;
 	int V3D_MMU_CTL_CAP_EXCEEDED_ABORT        = 26;

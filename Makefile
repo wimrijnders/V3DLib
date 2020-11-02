@@ -24,11 +24,16 @@ INCLUDE_EXTERN= \
 LIB_EXTERN= \
  -Lobj/mesa/bin -lmesa
 
+LIB_DEPEND=
+
 ifeq ($(DEBUG), 1)
 	LIB_EXTERN += -L ../CmdParameter/obj-debug -lCmdParameter
+	LIB_DEPEND += ../CmdParameter/obj-debug/libCmdParameter.a
 else
 	LIB_EXTERN += -L ../CmdParameter/obj -lCmdParameter
+	LIB_DEPEND += ../CmdParameter/obj/libCmdParameter.a
 endif
+
 
 
 # Root directory of QPULib repository
@@ -174,12 +179,12 @@ $(OBJ_DIR)/%.o: %.c
 	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(EXAMPLES_OBJ) $(QPULIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(EXAMPLES_OBJ) $(QPULIB) $(LIB_DEPEND)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPULIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPULIB) $(LIB_DEPEND)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
@@ -202,7 +207,7 @@ else
 endif
 
 
-$(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB)
+$(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB) $(LIB_DEPEND)
 	@echo Linking unit tests
 	@mkdir -p $(@D)
 	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@

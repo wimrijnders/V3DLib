@@ -49,14 +49,15 @@ public:
 
 		uint32_t counters[NUM_COUNTERS];
 
-		uint32_t gmp_status = 10;  // init intentionally to non-zero
-		uint32_t csd_status = 10;
-		uint32_t fdbg0      = 10;
-		uint32_t fdbgb      = 10;
-		uint32_t fdbgr      = 10;
-		uint32_t fdbgs      = 10;
-		uint32_t stat       = 10;
-		uint32_t mmu_ctl    = 10;
+		uint32_t gmp_status   = 10;  // init intentionally to non-zero
+		uint32_t csd_status   = 10;
+		uint32_t fdbg0        = 10;
+		uint32_t fdbgb        = 10;
+		uint32_t fdbgr        = 10;
+		uint32_t fdbgs        = 10;
+		uint32_t stat         = 10;
+		uint32_t mmuc_control = 10;
+		uint32_t mmu_ctl      = 10;
 
 		struct Mmu_Ctl {
 			bool cap_exceeded              = false;
