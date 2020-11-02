@@ -224,6 +224,39 @@ void andor_kernel(Ptr<Int> result) {
 }
 
 
+void noloop_where_kernel(Ptr<Int> result, Int x, Int y) {
+	Int tmp = 0;
+	Where (y > 10 && y < 20 && x > 10 && x < 20)
+		tmp = 1;
+	End
+	store(tmp, result);
+}
+
+
+void noloop_if_kernel(Ptr<Int> result, Int x, Int y) {
+	Int tmp = 0;
+	If (y > 10 && y < 20 && x > 10 && x < 20)
+		tmp = 1;
+	End
+	store(tmp, result);
+}
+
+
+void noloop_multif_kernel(Ptr<Int> result, Int x, Int y) {
+	Int tmp = 0;
+	If (y > 10)
+	If (y < 20)
+	If (x > 10)
+	If (x < 20)
+		tmp = 1;
+	End
+	End
+	End
+	End
+	store(tmp, result);
+}
+
+
 void andor_where_kernel(Ptr<Float> result, Int width, Int height) {
   For (Int y = 0, y < height, y = y + 1)
     Ptr<Float> p = result + y*width;  // Point p to the output row
@@ -339,13 +372,13 @@ void check_andor_result(QPULib::SharedArray<int> &result) {
 }
 
 
-void reset(QPULib::SharedArray<int> &result) {
-  for (int i = 0; i < result.size(); i++) { result[i] = 0; }
+void reset(QPULib::SharedArray<int> &result, int val = 0) {
+  for (int i = 0; i < result.size(); i++) { result[i] = val; }
 }
 
 
-void reset(QPULib::SharedArray<float> &result) {
-  for (int i = 0; i < result.size(); i++) { result[i] = 0.0; }
+void reset(QPULib::SharedArray<float> &result, float val = 0.0) {
+  for (int i = 0; i < result.size(); i++) { result[i] = val; }
 }
 
 
@@ -362,7 +395,7 @@ void check_pgm(std::string const &filename) {
 
 
 TEST_CASE("Test Where blocks", "[where][cond]") {
-	const int NUM_TESTS = 7;
+	int const NUM_TESTS = 7;
 
   auto k = compile(where_kernel);
 
@@ -384,6 +417,47 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 
   //for (int i = 0; i < result.size(); i++)
   //  printf("%i: %i\n", i, result[i]);
+}
+
+
+/**
+ * This is meant as a precursor for the following test,
+ * to ensure that the contents of the double loops work as expected
+ */
+TEST_CASE("Test if/where without loop", "[noloop][cond]") {
+	uint32_t expected_1[VEC_SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+	uint32_t expected_2[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
+
+  auto k1 = compile(noloop_where_kernel);
+	k1.pretty(false,  "obj/test/noloop_where_v3d.txt");	
+  auto k2 = compile(noloop_if_kernel);
+  auto k3 = compile(noloop_multif_kernel);
+
+  QPULib::SharedArray<int> result(VEC_SIZE);
+
+	auto run_all = [&result] (decltype(k1) &k, uint32_t *expected) {
+		reset(result, -1);
+		k.emu();
+		check(result, 0, expected);
+
+		reset(result, -1);
+		k.interpret();
+		check(result, 0, expected);
+
+		reset(result, -1);
+		k.call();
+		check(result, 0, expected);
+	};
+
+	k1.load(&result, 0, 0);   run_all(k1, expected_1);
+	k1.load(&result, 12, 15); run_all(k1, expected_2);
+//	k.load(&result, 21, 15); run_all(k, expected_1);  // !!! timer expired on v3d!
+
+	k2.load(&result, 0, 0);   run_all(k2, expected_1);
+	k2.load(&result, 12, 15); run_all(k2, expected_2);
+
+	k3.load(&result, 0, 0);   run_all(k3, expected_1);
+	k3.load(&result, 12, 15); run_all(k3, expected_2);
 }
 
 
