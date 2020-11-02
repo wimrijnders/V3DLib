@@ -44,8 +44,46 @@ public:
 		bool     override_tmu  = false;
 	};
 
+	struct Stats {
+		static int const NUM_COUNTERS = 32;
+
+		uint32_t counters[NUM_COUNTERS];
+
+		uint32_t gmp_status = 10;  // init intentionally to non-zero
+		uint32_t csd_status = 10;
+		uint32_t fdbg0      = 10;
+		uint32_t fdbgb      = 10;
+		uint32_t fdbgr      = 10;
+		uint32_t fdbgs      = 10;
+		uint32_t stat       = 10;
+		uint32_t mmu_ctl    = 10;
+
+		struct Mmu_Ctl {
+			bool cap_exceeded              = false;
+			bool cap_exceeded_abort        = false;
+			bool cap_exceeded_int          = false;
+			bool cap_exceeded_exception    = false;
+			bool pt_invalid                = false;
+			bool pt_invalid_abort          = false;
+			bool pt_invalid_int            = false;
+			bool pt_invalid_exception      = false;
+			bool pt_invalid_enable         = false;
+			bool write_violation           = false;
+			bool write_violation_abort     = false;
+			bool write_violation_int       = false;
+			bool write_violation_exception = false;
+			bool tlb_clearing              = false;
+			bool tlb_stats_clear           = false;
+			bool tlb_clear                 = false;
+			bool tlb_stats_enable          = false;
+			bool enable                    = false;
+		} mmu_ctl_fields;
+	};
+
 	Info info();
 	CoreInfo info_per_core(unsigned core_index);
+
+	Stats stats();
 
 private:
   uint32_t *m_addr = nullptr;

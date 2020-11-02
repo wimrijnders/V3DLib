@@ -6,6 +6,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include "RegisterMapping.h"
+#include "Support/debug.h"
 #include "../vc4/Mailbox.h"  // for mapmem()
 
 
@@ -18,6 +19,19 @@ enum: unsigned {  // NOTE: the pointers are to 4-bit words
 	V3D_HUB_IDENT1 = 0x0000c >> 2,
 	V3D_HUB_IDENT2 = 0x00010 >> 2,
 	V3D_HUB_IDENT3 = 0x00014 >> 2,
+
+	V3D_PCTR_0_PCTR0  = 0x00680 >> 2,
+	V3D_PCTR_0_PCTR31 = 0x006fc >> 2,
+
+	V3D_GMP_STATUS = 0x00800 >> 2,
+	V3D_CSD_STATUS = 0x00900 >> 2,
+	V3D_ERR_FDBG0  = 0x00f04 >> 2,
+	V3D_ERR_FDBGB  = 0x00f08 >> 2,
+	V3D_ERR_FDBGR  = 0x00f0c >> 2,
+	V3D_ERR_FDBGS  = 0x00f10 >> 2,
+	V3D_ERR_STAT   = 0x00f20 >> 2,
+
+	V3D_MMU_CTL    = 0x01200 >> 2,
 
   CORE_BASE   = (0xfec04000 + 0x4000) >> 2,
 	CORE_IDENT0 = 0x00000,
@@ -105,6 +119,67 @@ RegisterMapping::Info RegisterMapping::info() {
 	ret.mso	    = (ident1 & V3D_HUB_IDENT1_WITH_MSO) != 0;
 	ret.l3c     = (ident1 & V3D_HUB_IDENT1_WITH_L3C) != 0;
 	ret.l3c_nkb = HubField(ident2, 7, 0);
+
+	return ret;
+}
+
+
+RegisterMapping::Stats RegisterMapping::stats() {
+	Stats ret;
+
+
+	for (int i = 0; i < Stats::NUM_COUNTERS; ++i) {
+		ret.counters[i] = m_addr[V3D_PCTR_0_PCTR0];
+	}
+	assert((V3D_PCTR_0_PCTR0 + Stats::NUM_COUNTERS -1) ==  V3D_PCTR_0_PCTR31);
+
+	ret.gmp_status =  m_addr[V3D_GMP_STATUS];
+	ret.csd_status =  m_addr[V3D_CSD_STATUS];
+	ret.fdbg0      =  m_addr[V3D_ERR_FDBG0];
+	ret.fdbgb      =  m_addr[V3D_ERR_FDBGB];
+	ret.fdbgr      =  m_addr[V3D_ERR_FDBGR];
+	ret.fdbgs      =  m_addr[V3D_ERR_FDBGS];
+	ret.stat       =  m_addr[V3D_ERR_STAT];
+	ret.mmu_ctl    =  m_addr[V3D_MMU_CTL];
+
+	int V3D_MMU_CTL_CAP_EXCEEDED              = 27;
+	int V3D_MMU_CTL_CAP_EXCEEDED_ABORT        = 26;
+	int V3D_MMU_CTL_CAP_EXCEEDED_INT          = 25;
+	int V3D_MMU_CTL_CAP_EXCEEDED_EXCEPTION    = 24;
+	int V3D_MMU_CTL_PT_INVALID                = 20;
+	int V3D_MMU_CTL_PT_INVALID_ABORT          = 19;
+	int V3D_MMU_CTL_PT_INVALID_INT            = 18;
+	int V3D_MMU_CTL_PT_INVALID_EXCEPTION      = 17;
+	int V3D_MMU_CTL_PT_INVALID_ENABLE         = 16;
+	int V3D_MMU_CTL_WRITE_VIOLATION           = 12;
+	int V3D_MMU_CTL_WRITE_VIOLATION_ABORT     = 11;
+	int V3D_MMU_CTL_WRITE_VIOLATION_INT       = 10;
+	int V3D_MMU_CTL_WRITE_VIOLATION_EXCEPTION = 9;
+	int V3D_MMU_CTL_TLB_CLEARING              = 7;
+	int V3D_MMU_CTL_TLB_STATS_CLEAR           = 3;
+	int V3D_MMU_CTL_TLB_CLEAR                 = 2;
+	int V3D_MMU_CTL_TLB_STATS_ENABLE          = 1;
+	int V3D_MMU_CTL_ENABLE                    = 0;
+
+	auto &r = ret.mmu_ctl_fields;
+	r.cap_exceeded              = (ret.mmu_ctl & (1 << V3D_MMU_CTL_CAP_EXCEEDED)) != 0;
+	r.cap_exceeded_abort        = (ret.mmu_ctl & (1 << V3D_MMU_CTL_CAP_EXCEEDED_ABORT)) != 0;
+	r.cap_exceeded_int          = (ret.mmu_ctl & (1 << V3D_MMU_CTL_CAP_EXCEEDED_INT)) != 0;
+	r.cap_exceeded_exception    = (ret.mmu_ctl & (1 << V3D_MMU_CTL_CAP_EXCEEDED_EXCEPTION)) != 0;
+	r.pt_invalid                = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID)) != 0;
+	r.pt_invalid_abort          = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID_ABORT)) != 0;
+	r.pt_invalid_int            = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID_INT)) != 0;
+	r.pt_invalid_exception      = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID_EXCEPTION)) != 0;
+	r.pt_invalid_enable         = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID_ENABLE)) != 0;
+	r.write_violation           = (ret.mmu_ctl & (1 << V3D_MMU_CTL_WRITE_VIOLATION)) != 0;
+	r.write_violation_abort     = (ret.mmu_ctl & (1 << V3D_MMU_CTL_WRITE_VIOLATION_ABORT)) != 0;
+	r.write_violation_int       = (ret.mmu_ctl & (1 << V3D_MMU_CTL_WRITE_VIOLATION_INT)) != 0;
+	r.write_violation_exception = (ret.mmu_ctl & (1 << V3D_MMU_CTL_WRITE_VIOLATION_EXCEPTION)) != 0;
+	r.tlb_clearing              = (ret.mmu_ctl & (1 << V3D_MMU_CTL_TLB_CLEARING)) != 0;
+	r.tlb_stats_clear           = (ret.mmu_ctl & (1 << V3D_MMU_CTL_TLB_STATS_CLEAR)) != 0;
+	r.tlb_clear                 = (ret.mmu_ctl & (1 << V3D_MMU_CTL_TLB_CLEAR)) != 0;
+	r.tlb_stats_enable          = (ret.mmu_ctl & (1 << V3D_MMU_CTL_TLB_STATS_ENABLE)) != 0;
+	r.enable                    = (ret.mmu_ctl & (1 << V3D_MMU_CTL_ENABLE)) != 0;
 
 	return ret;
 }
