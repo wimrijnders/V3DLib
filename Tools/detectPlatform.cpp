@@ -172,6 +172,49 @@ void detect_v3d() {
 		printf("  BCG int       : %s\n", (info.bcg_int)?"yes":"no");
 		printf("  Override TMU  : %s\n", (info.override_tmu)?"yes":"no");
 	}
+
+
+	auto stat_regs = map_v3d.stats();
+
+/* Disabled only because output takes a lot of space (zeroes anyway)
+	printf("\nCounters:\n");
+	for (int i = 0; i < v3d::RegisterMapping::Stats::NUM_COUNTERS; ++i) {
+		printf("  %i: %x\n", i, stat_regs.counters[i]);
+	}
+*/
+
+	printf("\nStatus Registers:\n");
+	printf("  GMP_STATUS: %x\n", stat_regs.gmp_status);
+	printf("  CSD_STATUS: %x\n", stat_regs.csd_status);
+
+	printf("Error Registers:\n");
+	printf("  FDBG0     : %x\n", stat_regs.fdbg0);
+	printf("  FDBGB     : %x\n", stat_regs.fdbgb);
+	printf("  FDBGR     : %x\n", stat_regs.fdbgr);
+	printf("  FDBGS     : %x\n", stat_regs.fdbgs);
+	printf("  STAT      : %x\n", stat_regs.stat);
+	printf("  MMU_CTL   : %x\n", stat_regs.mmu_ctl);
+
+	printf("  fields:\n");
+	printf("    Cap exceeded   : %s\n" , stat_regs.mmu_ctl_fields.cap_exceeded?"true":"false");
+	printf("      ... abort    : %s\n", stat_regs.mmu_ctl_fields.cap_exceeded_abort?"true":"false");
+	printf("      ... int      : %s\n", stat_regs.mmu_ctl_fields.cap_exceeded_int?"true":"false");
+	printf("      ... exception: %s\n", stat_regs.mmu_ctl_fields.cap_exceeded_exception?"true":"false");
+	printf("    Pt invalid     : %s\n" , stat_regs.mmu_ctl_fields.pt_invalid?"true":"false");
+	printf("      ... abort    : %s\n", stat_regs.mmu_ctl_fields.pt_invalid_abort?"true":"false");
+	printf("      ... int      : %s\n", stat_regs.mmu_ctl_fields.pt_invalid_int?"true":"false");
+	printf("      ... exception: %s\n", stat_regs.mmu_ctl_fields.pt_invalid_exception?"true":"false");
+	printf("      ... enable   : %s\n", stat_regs.mmu_ctl_fields.pt_invalid_enable?"true":"false");
+	printf("    Write violation: %s\n" , stat_regs.mmu_ctl_fields.write_violation?"true":"false");
+	printf("      ... abort    : %s\n", stat_regs.mmu_ctl_fields.write_violation_abort?"true":"false");
+	printf("      ... int      : %s\n", stat_regs.mmu_ctl_fields.write_violation_int?"true":"false");
+	printf("      ... exception: %s\n", stat_regs.mmu_ctl_fields.write_violation_exception?"true":"false");
+	printf("    TLB:\n");
+	printf("      ... clearing    : %s\n", stat_regs.mmu_ctl_fields.tlb_clearing?"true":"false");
+	printf("      ... stats clear : %s\n", stat_regs.mmu_ctl_fields.tlb_stats_clear?"true":"false");
+	printf("      ... clear       : %s\n", stat_regs.mmu_ctl_fields.tlb_clear?"true":"false");
+	printf("      ... stats enable: %s\n", stat_regs.mmu_ctl_fields.tlb_stats_enable?"true":"false");
+	printf("    Enable: %s\n", stat_regs.mmu_ctl_fields.enable?"true":"false");
 }
 
 
