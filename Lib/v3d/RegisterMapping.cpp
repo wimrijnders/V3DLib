@@ -5,6 +5,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 #include <stdio.h>
+#include <unistd.h>  // usleep
 #include "RegisterMapping.h"
 #include "Support/debug.h"
 #include "../vc4/Mailbox.h"  // for mapmem()
@@ -101,7 +102,7 @@ enum: unsigned {  // NOTE: the pointers are to 4-bit words
 
 
 unsigned v3d_mask(unsigned high, unsigned low) {
-	assert(high > low);
+	assert(high >= low);
 	return ((1 << (high - low + 1)) - 1) << low;
 }
 
@@ -294,11 +295,133 @@ void RegisterMapping::v3d_core_write(int core, uint32_t offset, uint32_t val) {
 }
 
 
+uint32_t RegisterMapping::v3d_read(uint32_t offset) {
+	assert(false);  // TODO
+	return 0;
+}
+
+
 void RegisterMapping::v3d_write(uint32_t offset, uint32_t val) {
 	assert(false);  // TODO
 	// #define V3D_WRITE(offset, val) writel(val, v3d->hub_regs + offset)
 }
 
+
+///////////////////////////////////////////////////////////////////////////////
+// GPU reset - Taken from v3d kernel code
+//
+// What a tarpit this turned out to be.
+///////////////////////////////////////////////////////////////////////////////
+
+/* Nanosecond scalar representation for kernel time values */
+typedef uint64_t	ktime_t;
+
+//
+// Support stuff scavenged from kernel
+//
+
+/*
+ * Add a ktime_t variable and a scalar nanosecond value.
+ * res = kt + nsval:
+ */
+#define ktime_add_ns(kt, nsval)		((kt) + (nsval))
+
+
+/**
+ * ktime_compare - Compares two ktime_t variables for less, greater or equal
+ * @cmp1:	comparable1
+ * @cmp2:	comparable2
+ *
+ * Return: ...
+ *   cmp1  < cmp2: return <0
+ *   cmp1 == cmp2: return 0
+ *   cmp1  > cmp2: return >0
+ */
+static inline int ktime_compare(const ktime_t cmp1, const ktime_t cmp2)
+{
+	if (cmp1 < cmp2)
+		return -1;
+	if (cmp1 > cmp2)
+		return 1;
+	return 0;
+}
+
+
+/**
+ * ktime_after - Compare if a ktime_t value is bigger than another one.
+ * @cmp1:	comparable1
+ * @cmp2:	comparable2
+ *
+ * Return: true if cmp1 happened after cmp2.
+ */
+static inline bool ktime_after(const ktime_t cmp1, const ktime_t cmp2)
+{
+	return ktime_compare(cmp1, cmp2) > 0;
+}
+
+
+// Couldn't be bothered to figure out following from code
+inline void might_sleep() {}
+
+
+/* The "volatile" is due to gcc bugs */
+#define barrier() __asm__ __volatile__("": : :"memory")
+
+
+void usleep_range(unsigned min, unsigned max) {
+	// Just plain ignore 2nd param
+	usleep(min);
+}
+
+
+uint64_t ktime_get_raw() {
+	struct timespec t;
+
+	int ret = clock_gettime(CLOCK_REALTIME, &t);
+	assert(ret == 0);
+
+	return (int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
+}
+
+
+// Source: drivers/gpu/drm/v3d/v3d_drv.h
+/**
+ * __wait_for - magic wait macro
+ *
+ * Macro to help avoid open coding check/wait/timeout patterns. Note that it's
+ * important that we check the condition again after having timed out, since the
+ * timeout could be due to preemption or similar and we've never had a chance to
+ * check the condition before the timeout.
+ */
+#define __wait_for(OP, COND, US, Wmin, Wmax) ({ \
+  const ktime_t end__ = ktime_add_ns(ktime_get_raw(), 1000ll * (US)); \
+  long wait__ = (Wmin); /* recommended min for usleep is 10 us */ \
+  int ret__;              \
+  might_sleep();              \
+  for (;;) {              \
+    const bool expired__ = ktime_after(ktime_get_raw(), end__); \
+    OP;             \
+    /* Guarantee COND check prior to timeout */   \
+    barrier();            \
+    if (COND) {           \
+      ret__ = 0;          \
+      break;            \
+    }             \
+    if (expired__) {          \
+      ret__ = -ETIMEDOUT;       \
+      break;            \
+    }             \
+    usleep_range(wait__, wait__ * 2);     \
+    if (wait__ < (Wmax))          \
+      wait__ <<= 1;         \
+  }               \
+  ret__;                \
+})
+
+#define _wait_for(COND, US, Wmin, Wmax) __wait_for(, (COND), (US), (Wmin), \
+               (Wmax))
+
+#define wait_for(COND, MS)    _wait_for((COND), (MS) * 1000, 10, 1000)
 
 /**
  * Derived from: https://gitlab.freedesktop.org/lima/linux/-/blob/lima-5.0/drivers/gpu/drm/v3d/v3d_gem.c#L97
@@ -351,8 +474,8 @@ void RegisterMapping::reset_v3d() {
 	//
 	unsigned const V3D_MMU_PAGE_SHIFT = 12;
 
-	// v3d->pt_addr only appears to be used for DMA calls, which we don't use for v3d.
-	// Therefore, hesitantly commenting it out.
+	// `v3d->pt_addr` is only used for DMA calls, which this library doesn't use for v3d.
+	// Therefore, cautiously commenting it out.
 	//
 	//	v3d_write(V3D_MMU_PT_PA_BASE, v3d->pt_paddr >> V3D_MMU_PAGE_SHIFT);
 	//
@@ -364,7 +487,7 @@ void RegisterMapping::reset_v3d() {
 		        V3D_MMU_CTL_WRITE_VIOLATION_ABORT |
 		        V3D_MMU_CTL_CAP_EXCEEDED_ABORT);
 
-	// v3d->mmu_scratch_paddr only used for DMA
+	// `v3d->mmu_scratch_paddr` only used for DMA.
 	//
 	//	v3d_write(V3D_MMU_ILLEGAL_ADDR,
 	//		        (v3d->mmu_scratch_paddr >> V3D_MMU_PAGE_SHIFT) |
@@ -381,31 +504,22 @@ void RegisterMapping::reset_v3d() {
 		/* Make sure that another flush isn't already running when we
 		 * start this one.
 		 */
-		ret = wait_for(!(V3D_READ(V3D_MMU_CTL) &
-				           V3D_MMU_CTL_TLB_CLEARING), 100);
+		ret = wait_for(!(v3d_read(V3D_MMU_CTL) & V3D_MMU_CTL_TLB_CLEARING), 100);
 		if (ret)
-			dev_err(v3d->dev, "TLB clear wait idle pre-wait failed\n");
+			error("TLB clear wait idle pre-wait failed");
 
-		V3D_WRITE(V3D_MMU_CTL, V3D_READ(V3D_MMU_CTL) |
-			        V3D_MMU_CTL_TLB_CLEAR);
+		v3d_write(V3D_MMU_CTL, v3d_read(V3D_MMU_CTL) | V3D_MMU_CTL_TLB_CLEAR);
+		v3d_write(V3D_MMUC_CONTROL, V3D_MMUC_CONTROL_FLUSH | V3D_MMUC_CONTROL_ENABLE);
 
-		V3D_WRITE(V3D_MMUC_CONTROL,
-			        V3D_MMUC_CONTROL_FLUSH |
-			        V3D_MMUC_CONTROL_ENABLE);
-
-		ret = wait_for(!(V3D_READ(V3D_MMU_CTL) &
-				           V3D_MMU_CTL_TLB_CLEARING), 100);
+		ret = wait_for(!(v3d_read(V3D_MMU_CTL) & V3D_MMU_CTL_TLB_CLEARING), 100);
 		if (ret) {
-			dev_err(v3d->dev, "TLB clear wait idle failed\n");
-			return ret;
+			error("TLB clear wait idle failed");
+			return;  // ret;
 		}
 
-		ret = wait_for(!(V3D_READ(V3D_MMUC_CONTROL) &
-			             V3D_MMUC_CONTROL_FLUSHING), 100);
+		ret = wait_for(!(v3d_read(V3D_MMUC_CONTROL) & V3D_MMUC_CONTROL_FLUSHING), 100);
 		if (ret)
-			dev_err(v3d->dev, "MMUC flush wait idle failed\n");
-
-		//return ret;
+			error("MMUC flush wait idle failed");
 	}
 }
 

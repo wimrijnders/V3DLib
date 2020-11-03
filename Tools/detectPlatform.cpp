@@ -18,10 +18,15 @@ CmdParameters params = {
 	"There is limited possibility to manipulate these registers.",
 	{{
 		"Reset Scheduler Registers",
-		"-r", // "--reset-scheduler",
+		"-reset-scheduler",
 		ParamType::NONE,
-		"Clear the prohibition bits in the scheduler registers that determine what kind "
-		"of program can run"
+		"Clear the prohibition bits in the scheduler registers that determine what "
+		"kind of program can run (vc4 only)"
+	}, {
+		"Reset GPU",
+		"-reset",
+		ParamType::NONE,
+		"Reset the hardware GPU (v3d only)"
 	}}
 };
 
@@ -35,6 +40,7 @@ struct Settings {
 
 	// cmdline param's
 	bool reset_scheduler;
+	bool reset_gpu;
 
 
 	/**
@@ -65,6 +71,7 @@ struct Settings {
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 		reset_scheduler = params.parameters()[0]->get_bool_value();
+		reset_gpu       = params.parameters()[1]->get_bool_value();
 
 		platform.output();
 		output();
@@ -76,6 +83,7 @@ struct Settings {
 	void output() {
 		printf("\nCmdline param's:\n");
 		printf("  Reset Scheduler  : %s\n", reset_scheduler?"true":"false");
+		printf("  Reset GPU        : %s\n", reset_gpu?"true":"false");
 		printf("\n");
 	}
 	
@@ -153,6 +161,13 @@ void detect_v3d() {
 
 	v3d::RegisterMapping map_v3d;
 	map_v3d.init();
+
+	if (settings.reset_gpu) {
+		printf("Resetting the v3d GPU.\n");
+		map_v3d.reset_v3d();
+		printf("Reset the v3d GPU.\n");
+		return;		
+	}
 	
 	auto info = map_v3d.info();
 	printf("Revision        : %d.%d.%d.%d\n", info.tver, info.rev, info.iprev, info.ipidx);
