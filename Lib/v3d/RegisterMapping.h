@@ -85,13 +85,19 @@ public:
 	CoreInfo info_per_core(unsigned core_index);
 
 	Stats stats();
+	void reset_v3d();
 
 private:
   uint32_t *m_addr = nullptr;
 	unsigned  m_size = 0x4000;
 
 	unsigned  m_ncores     = 1;
-  uint32_t *map_cores[1] = { nullptr }; 
+  uint32_t *map_cores[1] = { nullptr };
+
+	uint32_t v3d_bridge_read(uint32_t offset);
+	void     v3d_bridge_write(uint32_t offset, uint32_t val);
+	void     v3d_core_write(int core, uint32_t offset, uint32_t val);
+	void     v3d_write(uint32_t offset, uint32_t val);
 };
 
 

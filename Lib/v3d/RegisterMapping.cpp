@@ -13,12 +13,30 @@
 namespace {
 
 enum: unsigned {  // NOTE: the pointers are to 4-bit words
-	HUB_IDENT1 = 0x0000c >> 2,
+	V3D_HUB_AXICFG = 0x00000,
+	//V3D_HUB_AXICFG_MAX_LEN_MASK                   V3D_MASK(3, 0)
+	//V3D_HUB_AXICFG_MAX_LEN_SHIFT                  0
+	V3D_HUB_UIFCFG = 0x00004 >> 2,
 
 	V3D_HUB_IDENT0 = 0x00008 >> 2,
 	V3D_HUB_IDENT1 = 0x0000c >> 2,
 	V3D_HUB_IDENT2 = 0x00010 >> 2,
 	V3D_HUB_IDENT3 = 0x00014 >> 2,
+
+	V3D_CTL_L2TFLSTA = 0x00034 >>2,
+	V3D_CTL_L2TFLEND = 0x00038 >> 2,
+
+
+	V3D_TOP_GR_BRIDGE_REVISION = 0x00000,
+	//V3D_TOP_GR_BRIDGE_MAJOR_MASK                  V3D_MASK(15, 8)
+	//V3D_TOP_GR_BRIDGE_MAJOR_SHIFT                 8
+	//V3D_TOP_GR_BRIDGE_MINOR_MASK                  V3D_MASK(7, 0)
+	//V3D_TOP_GR_BRIDGE_MINOR_SHIFT                 0
+
+	V3D_TOP_GR_BRIDGE_SW_INIT_0 = 0x00008,
+	V3D_TOP_GR_BRIDGE_SW_INIT_0_V3D_CLK_108_SW_INIT = 1, //  BIT(0)
+	V3D_TOP_GR_BRIDGE_SW_INIT_1 = 0x0000c,
+	V3D_TOP_GR_BRIDGE_SW_INIT_1_V3D_CLK_108_SW_INIT = 1, // BIT(0)
 
 	V3D_PCTR_0_PCTR0  = 0x00680 >> 2,
 	V3D_PCTR_0_PCTR31 = 0x006fc >> 2,
@@ -35,20 +53,61 @@ enum: unsigned {  // NOTE: the pointers are to 4-bit words
 	// This implies that there could be more MMU registers, if there are more MMu's
 
   V3D_MMUC_CONTROL = 0x01000 >> 2,
+	V3D_MMUC_CONTROL_CLEAR    = 1 << 3,  // BIT(3)
+	V3D_MMUC_CONTROL_FLUSHING = 1 << 2,  // BIT(2)
+	V3D_MMUC_CONTROL_FLUSH    = 1 << 1,  // BIT(1)
+	V3D_MMUC_CONTROL_ENABLE   = 1,       // BIT(0)
+
 	V3D_MMU_CTL      = 0x01200 >> 2,
+	V3D_MMU_CTL_CAP_EXCEEDED              = 1 << 27,
+	V3D_MMU_CTL_CAP_EXCEEDED_ABORT        = 1 << 26,
+	V3D_MMU_CTL_CAP_EXCEEDED_INT          = 1 << 25,
+	V3D_MMU_CTL_CAP_EXCEEDED_EXCEPTION    = 1 << 24,
+	V3D_MMU_CTL_PT_INVALID                = 1 << 20,
+	V3D_MMU_CTL_PT_INVALID_ABORT          = 1 << 19,
+	V3D_MMU_CTL_PT_INVALID_INT            = 1 << 18,
+	V3D_MMU_CTL_PT_INVALID_EXCEPTION      = 1 << 17,
+	V3D_MMU_CTL_PT_INVALID_ENABLE         = 1 << 16,
+	V3D_MMU_CTL_WRITE_VIOLATION           = 1 << 12,
+	V3D_MMU_CTL_WRITE_VIOLATION_ABORT     = 1 << 11,
+	V3D_MMU_CTL_WRITE_VIOLATION_INT       = 1 << 10,
+	V3D_MMU_CTL_WRITE_VIOLATION_EXCEPTION = 1 << 9,
+	V3D_MMU_CTL_TLB_CLEARING              = 1 << 7,
+	V3D_MMU_CTL_TLB_STATS_CLEAR           = 1 << 3,
+	V3D_MMU_CTL_TLB_CLEAR                 = 1 << 2,
+	V3D_MMU_CTL_TLB_STATS_ENABLE          = 1 << 1,
+	V3D_MMU_CTL_ENABLE                    = 1,
+
+	V3D_MMU_PT_PA_BASE = 0x01204 >> 2,
+	V3D_MMU_HIT        = 0x01208 >> 2,
+	V3D_MMU_MISSES     = 0x0120c >> 2,
+	V3D_MMU_STALLS     = 0x01210 >> 2,
+
+	/* Address for illegal PTEs to return */
+	V3D_MMU_ILLEGAL_ADDR = 0x01230 >> 2,
+	V3D_MMU_ILLEGAL_ADDR_ENABLE = 1u << 31,  // BIT(31)
 
 	// Other non-register-address constants
   CORE_BASE       = (0xfec04000 + 0x4000) >> 2,
 	CORE_IDENT0     = 0x00000,
 	CORE_IDENT1     = 0x00004 >> 2,
 	CORE_IDENT2     = 0x00008 >> 2,
-	V3D_CTL_MISCCFG = 0x00018 >> 2
+
+	V3D_CTL_MISCCFG = 0x00018 >> 2,
+	// V3D_CTL_MISCCFG_QRMAXCNT_MASK                 V3D_MASK(3, 1)
+	// V3D_CTL_MISCCFG_QRMAXCNT_SHIFT                1
+	V3D_MISCCFG_OVRTMUOUT = 1  // BIT(0)
 };
 
 
+unsigned v3d_mask(unsigned high, unsigned low) {
+	assert(high > low);
+	return ((1 << (high - low + 1)) - 1) << low;
+}
+
 uint32_t HubField(uint32_t reg, unsigned high, unsigned low) {
   //assert isinstance(register, HubRegister)
-  unsigned mask = ((1 << (high - low + 1)) - 1) << low;
+  unsigned mask = v3d_mask(high, low);
 
 	//printf("mask: %08x\n", mask);
 	return (reg & mask) >> low;
@@ -92,7 +151,7 @@ RegisterMapping::~RegisterMapping() {
 
 
 unsigned RegisterMapping::num_cores() {
-	unsigned const HUB_IDENT1_NCORES = HubField(m_addr[HUB_IDENT1], 11, 8);
+	unsigned const HUB_IDENT1_NCORES = HubField(m_addr[V3D_HUB_IDENT1], 11, 8);
 
 	return HUB_IDENT1_NCORES;
 }
@@ -148,44 +207,26 @@ RegisterMapping::Stats RegisterMapping::stats() {
 	ret.mmuc_control =  m_addr[V3D_MMUC_CONTROL];  // This might possibly be a write-only register
 	ret.mmu_ctl      =  m_addr[V3D_MMU_CTL];
 
-	int V3D_MMU_CTL_CAP_EXCEEDED              = 27;
-	int V3D_MMU_CTL_CAP_EXCEEDED_ABORT        = 26;
-	int V3D_MMU_CTL_CAP_EXCEEDED_INT          = 25;
-	int V3D_MMU_CTL_CAP_EXCEEDED_EXCEPTION    = 24;
-	int V3D_MMU_CTL_PT_INVALID                = 20;
-	int V3D_MMU_CTL_PT_INVALID_ABORT          = 19;
-	int V3D_MMU_CTL_PT_INVALID_INT            = 18;
-	int V3D_MMU_CTL_PT_INVALID_EXCEPTION      = 17;
-	int V3D_MMU_CTL_PT_INVALID_ENABLE         = 16;
-	int V3D_MMU_CTL_WRITE_VIOLATION           = 12;
-	int V3D_MMU_CTL_WRITE_VIOLATION_ABORT     = 11;
-	int V3D_MMU_CTL_WRITE_VIOLATION_INT       = 10;
-	int V3D_MMU_CTL_WRITE_VIOLATION_EXCEPTION = 9;
-	int V3D_MMU_CTL_TLB_CLEARING              = 7;
-	int V3D_MMU_CTL_TLB_STATS_CLEAR           = 3;
-	int V3D_MMU_CTL_TLB_CLEAR                 = 2;
-	int V3D_MMU_CTL_TLB_STATS_ENABLE          = 1;
-	int V3D_MMU_CTL_ENABLE                    = 0;
 
 	auto &r = ret.mmu_ctl_fields;
-	r.cap_exceeded              = (ret.mmu_ctl & (1 << V3D_MMU_CTL_CAP_EXCEEDED)) != 0;
-	r.cap_exceeded_abort        = (ret.mmu_ctl & (1 << V3D_MMU_CTL_CAP_EXCEEDED_ABORT)) != 0;
-	r.cap_exceeded_int          = (ret.mmu_ctl & (1 << V3D_MMU_CTL_CAP_EXCEEDED_INT)) != 0;
-	r.cap_exceeded_exception    = (ret.mmu_ctl & (1 << V3D_MMU_CTL_CAP_EXCEEDED_EXCEPTION)) != 0;
-	r.pt_invalid                = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID)) != 0;
-	r.pt_invalid_abort          = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID_ABORT)) != 0;
-	r.pt_invalid_int            = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID_INT)) != 0;
-	r.pt_invalid_exception      = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID_EXCEPTION)) != 0;
-	r.pt_invalid_enable         = (ret.mmu_ctl & (1 << V3D_MMU_CTL_PT_INVALID_ENABLE)) != 0;
-	r.write_violation           = (ret.mmu_ctl & (1 << V3D_MMU_CTL_WRITE_VIOLATION)) != 0;
-	r.write_violation_abort     = (ret.mmu_ctl & (1 << V3D_MMU_CTL_WRITE_VIOLATION_ABORT)) != 0;
-	r.write_violation_int       = (ret.mmu_ctl & (1 << V3D_MMU_CTL_WRITE_VIOLATION_INT)) != 0;
-	r.write_violation_exception = (ret.mmu_ctl & (1 << V3D_MMU_CTL_WRITE_VIOLATION_EXCEPTION)) != 0;
-	r.tlb_clearing              = (ret.mmu_ctl & (1 << V3D_MMU_CTL_TLB_CLEARING)) != 0;
-	r.tlb_stats_clear           = (ret.mmu_ctl & (1 << V3D_MMU_CTL_TLB_STATS_CLEAR)) != 0;
-	r.tlb_clear                 = (ret.mmu_ctl & (1 << V3D_MMU_CTL_TLB_CLEAR)) != 0;
-	r.tlb_stats_enable          = (ret.mmu_ctl & (1 << V3D_MMU_CTL_TLB_STATS_ENABLE)) != 0;
-	r.enable                    = (ret.mmu_ctl & (1 << V3D_MMU_CTL_ENABLE)) != 0;
+	r.cap_exceeded              = (ret.mmu_ctl & V3D_MMU_CTL_CAP_EXCEEDED) != 0;
+	r.cap_exceeded_abort        = (ret.mmu_ctl & V3D_MMU_CTL_CAP_EXCEEDED_ABORT) != 0;
+	r.cap_exceeded_int          = (ret.mmu_ctl & V3D_MMU_CTL_CAP_EXCEEDED_INT) != 0;
+	r.cap_exceeded_exception    = (ret.mmu_ctl & V3D_MMU_CTL_CAP_EXCEEDED_EXCEPTION) != 0;
+	r.pt_invalid                = (ret.mmu_ctl & V3D_MMU_CTL_PT_INVALID) != 0;
+	r.pt_invalid_abort          = (ret.mmu_ctl & V3D_MMU_CTL_PT_INVALID_ABORT) != 0;
+	r.pt_invalid_int            = (ret.mmu_ctl & V3D_MMU_CTL_PT_INVALID_INT) != 0;
+	r.pt_invalid_exception      = (ret.mmu_ctl & V3D_MMU_CTL_PT_INVALID_EXCEPTION) != 0;
+	r.pt_invalid_enable         = (ret.mmu_ctl & V3D_MMU_CTL_PT_INVALID_ENABLE) != 0;
+	r.write_violation           = (ret.mmu_ctl & V3D_MMU_CTL_WRITE_VIOLATION) != 0;
+	r.write_violation_abort     = (ret.mmu_ctl & V3D_MMU_CTL_WRITE_VIOLATION_ABORT) != 0;
+	r.write_violation_int       = (ret.mmu_ctl & V3D_MMU_CTL_WRITE_VIOLATION_INT) != 0;
+	r.write_violation_exception = (ret.mmu_ctl & V3D_MMU_CTL_WRITE_VIOLATION_EXCEPTION) != 0;
+	r.tlb_clearing              = (ret.mmu_ctl & V3D_MMU_CTL_TLB_CLEARING) != 0;
+	r.tlb_stats_clear           = (ret.mmu_ctl & V3D_MMU_CTL_TLB_STATS_CLEAR) != 0;
+	r.tlb_clear                 = (ret.mmu_ctl & V3D_MMU_CTL_TLB_CLEAR) != 0;
+	r.tlb_stats_enable          = (ret.mmu_ctl & V3D_MMU_CTL_TLB_STATS_ENABLE) != 0;
+	r.enable                    = (ret.mmu_ctl & V3D_MMU_CTL_ENABLE) != 0;
 
 	return ret;
 }
@@ -231,6 +272,141 @@ RegisterMapping::CoreInfo RegisterMapping::info_per_core(unsigned core_index) {
 	ret.override_tmu  = (CORE_MISCCFG_OVRTMUOUT != 0);
 
 	return ret;
+}
+
+
+uint32_t RegisterMapping::v3d_bridge_read(uint32_t offset) {
+	assert(false);  // TODO
+	// #define V3D_BRIDGE_READ(offset) readl(v3d->bridge_regs + offset)
+	return 0;
+}
+
+
+void RegisterMapping::v3d_bridge_write(uint32_t offset, uint32_t val) {
+	assert(false);  // TODO
+	// #define V3D_BRIDGE_WRITE(offset, val) writel(val, v3d->bridge_regs + offset)
+}
+
+
+void RegisterMapping::v3d_core_write(int core, uint32_t offset, uint32_t val) {
+	assert(false);  // TODO
+	// #define V3D_CORE_WRITE(core, offset, val) writel(val, v3d->core_regs[core] + offset)
+}
+
+
+void RegisterMapping::v3d_write(uint32_t offset, uint32_t val) {
+	assert(false);  // TODO
+	// #define V3D_WRITE(offset, val) writel(val, v3d->hub_regs + offset)
+}
+
+
+/**
+ * Derived from: https://gitlab.freedesktop.org/lima/linux/-/blob/lima-5.0/drivers/gpu/drm/v3d/v3d_gem.c#L97
+ */
+void RegisterMapping::reset_v3d() {
+	bool do_reset = true;
+
+	// v3d_idle_gca(v3d);  - In code, not called for v3d ver >= 4.1. Pi4 starts with v 4.2
+
+	//
+	//v3d_reset_v3d(v3d);
+	//
+	uint32_t version = v3d_bridge_read(V3D_TOP_GR_BRIDGE_REVISION);
+	uint32_t major   = HubField(version, 15, 8);
+
+ 	if (major == 2) {
+ 		v3d_bridge_write(V3D_TOP_GR_BRIDGE_SW_INIT_0, V3D_TOP_GR_BRIDGE_SW_INIT_0_V3D_CLK_108_SW_INIT);
+ 		v3d_bridge_write(V3D_TOP_GR_BRIDGE_SW_INIT_0, 0);
+
+ 		/* GFXH-1383: The SW_INIT may cause a stray write to address 0
+ 		 * of the unit, so reset it to its power-on value here.
+ 		 */
+ 		v3d_write(V3D_HUB_AXICFG, v3d_mask(3, 0));
+ 	} else {
+ 		//WARN_ON_ONCE(V3D_GET_FIELD(version, V3D_TOP_GR_BRIDGE_MAJOR) != 7);
+ 		v3d_bridge_write(V3D_TOP_GR_BRIDGE_SW_INIT_1, V3D_TOP_GR_BRIDGE_SW_INIT_1_V3D_CLK_108_SW_INIT);
+ 		v3d_bridge_write(V3D_TOP_GR_BRIDGE_SW_INIT_1, 0);
+ 	}
+
+	//
+ 	//v3d_init_hw_state(v3d); -> v3d_init_core(struct v3d_dev *v3d, int core)
+	//
+	int core = 0;
+
+	/* Set OVRTMUOUT, which means that the texture sampler uniform
+ 	 * configuration's tmu output type field is used, instead of
+ 	 * using the hardware default behavior based on the texture
+ 	 * type.  If you want the default behavior, you can still put
+ 	 * "2" in the indirect texture state's output_type field.
+ 	 */
+ 	v3d_core_write(core, V3D_CTL_MISCCFG, V3D_MISCCFG_OVRTMUOUT);
+ 	/* Whenever we flush the L2T cache, we always want to flush
+ 	 * the whole thing.
+ 	 */
+ 	v3d_core_write(core, V3D_CTL_L2TFLSTA, 0);
+ 	v3d_core_write(core, V3D_CTL_L2TFLEND, ~0);
+
+	//
+ 	//v3d_mmu_set_page_table(v3d);
+	//
+	unsigned const V3D_MMU_PAGE_SHIFT = 12;
+
+	// v3d->pt_addr only appears to be used for DMA calls, which we don't use for v3d.
+	// Therefore, hesitantly commenting it out.
+	//
+	//	v3d_write(V3D_MMU_PT_PA_BASE, v3d->pt_paddr >> V3D_MMU_PAGE_SHIFT);
+	//
+
+	v3d_write(V3D_MMU_CTL,
+		        V3D_MMU_CTL_ENABLE |
+		        V3D_MMU_CTL_PT_INVALID |
+		        V3D_MMU_CTL_PT_INVALID_ABORT |
+		        V3D_MMU_CTL_WRITE_VIOLATION_ABORT |
+		        V3D_MMU_CTL_CAP_EXCEEDED_ABORT);
+
+	// v3d->mmu_scratch_paddr only used for DMA
+	//
+	//	v3d_write(V3D_MMU_ILLEGAL_ADDR,
+	//		        (v3d->mmu_scratch_paddr >> V3D_MMU_PAGE_SHIFT) |
+	//		        V3D_MMU_ILLEGAL_ADDR_ENABLE);
+
+	v3d_write(V3D_MMUC_CONTROL, V3D_MMUC_CONTROL_ENABLE);
+
+	//
+	//v3d_mmu_flush_all(v3d);
+	//
+	{
+		int ret;
+
+		/* Make sure that another flush isn't already running when we
+		 * start this one.
+		 */
+		ret = wait_for(!(V3D_READ(V3D_MMU_CTL) &
+				           V3D_MMU_CTL_TLB_CLEARING), 100);
+		if (ret)
+			dev_err(v3d->dev, "TLB clear wait idle pre-wait failed\n");
+
+		V3D_WRITE(V3D_MMU_CTL, V3D_READ(V3D_MMU_CTL) |
+			        V3D_MMU_CTL_TLB_CLEAR);
+
+		V3D_WRITE(V3D_MMUC_CONTROL,
+			        V3D_MMUC_CONTROL_FLUSH |
+			        V3D_MMUC_CONTROL_ENABLE);
+
+		ret = wait_for(!(V3D_READ(V3D_MMU_CTL) &
+				           V3D_MMU_CTL_TLB_CLEARING), 100);
+		if (ret) {
+			dev_err(v3d->dev, "TLB clear wait idle failed\n");
+			return ret;
+		}
+
+		ret = wait_for(!(V3D_READ(V3D_MMUC_CONTROL) &
+			             V3D_MMUC_CONTROL_FLUSHING), 100);
+		if (ret)
+			dev_err(v3d->dev, "MMUC flush wait idle failed\n");
+
+		//return ret;
+	}
 }
 
 }  // v3d
