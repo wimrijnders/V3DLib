@@ -96,9 +96,10 @@ private:
 
 	uint32_t v3d_bridge_read(uint32_t offset);
 	void     v3d_bridge_write(uint32_t offset, uint32_t val);
-	void     v3d_core_write(int core, uint32_t offset, uint32_t val);
+	void     v3d_core_write(int core_index, uint32_t offset, uint32_t val);
 	uint32_t v3d_read(uint32_t offset);
 	void     v3d_write(uint32_t offset, uint32_t val);
+	void     v3d_reset_v3d();
 };
 
 

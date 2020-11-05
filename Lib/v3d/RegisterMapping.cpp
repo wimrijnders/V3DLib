@@ -289,21 +289,18 @@ void RegisterMapping::v3d_bridge_write(uint32_t offset, uint32_t val) {
 }
 
 
-void RegisterMapping::v3d_core_write(int core, uint32_t offset, uint32_t val) {
-	assert(false);  // TODO
-	// #define V3D_CORE_WRITE(core, offset, val) writel(val, v3d->core_regs[core] + offset)
+void RegisterMapping::v3d_core_write(int core_index, uint32_t offset, uint32_t val) {
+	map_cores[core_index][offset] = val;
 }
 
 
 uint32_t RegisterMapping::v3d_read(uint32_t offset) {
-	assert(false);  // TODO
-	return 0;
+	return m_addr[offset];
 }
 
 
 void RegisterMapping::v3d_write(uint32_t offset, uint32_t val) {
-	assert(false);  // TODO
-	// #define V3D_WRITE(offset, val) writel(val, v3d->hub_regs + offset)
+	m_addr[offset] = val;
 }
 
 
@@ -423,17 +420,14 @@ uint64_t ktime_get_raw() {
 
 #define wait_for(COND, MS)    _wait_for((COND), (MS) * 1000, 10, 1000)
 
-/**
- * Derived from: https://gitlab.freedesktop.org/lima/linux/-/blob/lima-5.0/drivers/gpu/drm/v3d/v3d_gem.c#L97
- */
-void RegisterMapping::reset_v3d() {
-	bool do_reset = true;
 
-	// v3d_idle_gca(v3d);  - In code, not called for v3d ver >= 4.1. Pi4 starts with v 4.2
+void RegisterMapping::v3d_reset_v3d() {
+	// This confuses me; there is no 'bridge' reg under the device-tree for `v3dbus`
+	//
+	// Perhaps I'm looking at the code of an unreleased kernel release here.
+	// Commenting it out and hoping for the best.
 
-	//
-	//v3d_reset_v3d(v3d);
-	//
+/*
 	uint32_t version = v3d_bridge_read(V3D_TOP_GR_BRIDGE_REVISION);
 	uint32_t major   = HubField(version, 15, 8);
 
@@ -441,15 +435,24 @@ void RegisterMapping::reset_v3d() {
  		v3d_bridge_write(V3D_TOP_GR_BRIDGE_SW_INIT_0, V3D_TOP_GR_BRIDGE_SW_INIT_0_V3D_CLK_108_SW_INIT);
  		v3d_bridge_write(V3D_TOP_GR_BRIDGE_SW_INIT_0, 0);
 
- 		/* GFXH-1383: The SW_INIT may cause a stray write to address 0
+ 		/ * GFXH-1383: The SW_INIT may cause a stray write to address 0
  		 * of the unit, so reset it to its power-on value here.
- 		 */
+ 		 * /
  		v3d_write(V3D_HUB_AXICFG, v3d_mask(3, 0));
  	} else {
  		//WARN_ON_ONCE(V3D_GET_FIELD(version, V3D_TOP_GR_BRIDGE_MAJOR) != 7);
  		v3d_bridge_write(V3D_TOP_GR_BRIDGE_SW_INIT_1, V3D_TOP_GR_BRIDGE_SW_INIT_1_V3D_CLK_108_SW_INIT);
  		v3d_bridge_write(V3D_TOP_GR_BRIDGE_SW_INIT_1, 0);
  	}
+
+
+
+// NOTE: Following might still be of use (copied from if):
+ 		/ * GFXH-1383: The SW_INIT may cause a stray write to address 0
+ 		 * of the unit, so reset it to its power-on value here.
+ 		 * /
+ 		v3d_write(V3D_HUB_AXICFG, v3d_mask(3, 0));
+*/
 
 	//
  	//v3d_init_hw_state(v3d); -> v3d_init_core(struct v3d_dev *v3d, int core)
@@ -468,6 +471,18 @@ void RegisterMapping::reset_v3d() {
  	 */
  	v3d_core_write(core, V3D_CTL_L2TFLSTA, 0);
  	v3d_core_write(core, V3D_CTL_L2TFLEND, ~0);
+}
+
+
+/**
+ * Derived from: https://gitlab.freedesktop.org/lima/linux/-/blob/lima-5.0/drivers/gpu/drm/v3d/v3d_gem.c#L97
+ */
+void RegisterMapping::reset_v3d() {
+	bool do_reset = true;
+
+	// v3d_idle_gca(v3d);  - In code, not called for v3d ver >= 4.1. Pi4 starts with v 4.2
+
+	v3d_reset_v3d();
 
 	//
  	//v3d_mmu_set_page_table(v3d);
