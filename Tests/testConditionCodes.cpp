@@ -431,11 +431,12 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   auto k1 = compile(noloop_where_kernel);
 	k1.pretty(false,  "obj/test/noloop_where_v3d.txt");	
   auto k2 = compile(noloop_if_kernel);
+	k2.pretty(false,  "obj/test/noloop_if_v3d.txt");	
   auto k3 = compile(noloop_multif_kernel);
 
   QPULib::SharedArray<int> result(VEC_SIZE);
 
-	auto run_all = [&result] (decltype(k1) &k, uint32_t *expected) {
+	auto run_cpu = [&result] (decltype(k1) &k, uint32_t *expected) {
 		reset(result, -1);
 		k.emu();
 		check(result, 0, expected);
@@ -443,21 +444,40 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 		reset(result, -1);
 		k.interpret();
 		check(result, 0, expected);
+	};
 
+	auto run_qpu = [&result] (decltype(k1) &k, uint32_t *expected) {
 		reset(result, -1);
 		k.call();
 		check(result, 0, expected);
 	};
 
-	k1.load(&result, 0, 0);   run_all(k1, expected_1);
-	k1.load(&result, 12, 15); run_all(k1, expected_2);
-//	k.load(&result, 21, 15); run_all(k, expected_1);  // !!! timer expired on v3d!
 
-	k2.load(&result, 0, 0);   run_all(k2, expected_1);
-	k2.load(&result, 12, 15); run_all(k2, expected_2);
+	k1.load(&result, 0, 0);   run_cpu(k1, expected_1);
+	k1.load(&result, 12, 15); run_cpu(k1, expected_2);
+	k1.load(&result, 21, 15); run_cpu(k1, expected_1);
 
-	k3.load(&result, 0, 0);   run_all(k3, expected_1);
-	k3.load(&result, 12, 15); run_all(k3, expected_2);
+	k2.load(&result, 0, 0);   run_cpu(k2, expected_1);
+	k2.load(&result, 12, 15); run_cpu(k2, expected_2);
+	k2.load(&result, 21, 15); run_cpu(k2, expected_1);
+
+	k3.load(&result, 0, 0);   run_cpu(k3, expected_1);
+	k3.load(&result, 12, 15); run_cpu(k3, expected_2);
+	k3.load(&result, 21, 15); run_cpu(k3, expected_1);
+
+//	k1.load(&result, 0, 0);   run_qpu(k1, expected_1);
+//	k1.load(&result, 12, 15); run_qpu(k1, expected_2);
+	k1.load(&result, 21, 15); run_qpu(k1, expected_1);  // timer expires on v3d, and keeps on expiring
+
+//	k2.load(&result, 0, 0);   run_qpu(k2, expected_1);
+//	k2.load(&result, 12, 15); run_qpu(k2, expected_2);
+//	k2.load(&result, 21, 15); run_all(k2, expected_1);  // Timer expires on v3d, and keeps on expiring
+
+/*
+	k3.load(&result, 0, 0);   run_qpu(k3, expected_1);
+	k3.load(&result, 12, 15); run_qpu(k3, expected_2);
+	k3.load(&result, 21, 15); run_qpu(k3, expected_1);
+*/
 }
 
 
