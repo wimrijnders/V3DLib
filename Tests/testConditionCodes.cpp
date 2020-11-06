@@ -30,6 +30,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #ifdef QPU_MODE
 #include <iostream>
+#include <unistd.h>  // sleep()
 #include "support/support.h"
 #include "Support/pgm.h"
 
@@ -229,7 +230,8 @@ void noloop_where_kernel(Ptr<Int> result, Int x, Int y) {
 	Where (y > 10 && y < 20 && x > 10 && x < 20)
 		tmp = 1;
 	End
-	store(tmp, result);
+	//store(tmp, result);
+	*result = tmp;
 }
 
 
@@ -238,7 +240,8 @@ void noloop_if_kernel(Ptr<Int> result, Int x, Int y) {
 	If (y > 10 && y < 20 && x > 10 && x < 20)
 		tmp = 1;
 	End
-	store(tmp, result);
+	//store(tmp, result);
+	*result = tmp;
 }
 
 
@@ -253,7 +256,8 @@ void noloop_multif_kernel(Ptr<Int> result, Int x, Int y) {
 	End
 	End
 	End
-	store(tmp, result);
+	//store(tmp, result);
+	*result = tmp;
 }
 
 
@@ -465,19 +469,33 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	k3.load(&result, 12, 15); run_cpu(k3, expected_2);
 	k3.load(&result, 21, 15); run_cpu(k3, expected_1);
 
-//	k1.load(&result, 0, 0);   run_qpu(k1, expected_1);
-//	k1.load(&result, 12, 15); run_qpu(k1, expected_2);
+	k1.load(&result, 0, 0);   run_qpu(k1, expected_1);
+	k1.load(&result, 12, 15); run_qpu(k1, expected_2);
+
+	//
+	// When run in combination with other qpu calls, can *usually* generate lingering timeouts
+	// (lingering as in all subsequent calls time out as well, also in other processes).
+	//
+	// This is a total mystery to me.
+	//
+	// - Running everything except this and related call with if, works fine
+	// - When run alone, works fine.
+	// - code is identical to previous calls, only param's are different
+	// - Library code surrounding the qpu call works identically (checked with debugging).
+	// - timeout occurs with or without generated `tmuwt` in store operation (i.e. write back to main memory)
+	// - `sleep()` before and after tends to make it better, but not perfect
+	//
 	k1.load(&result, 21, 15); run_qpu(k1, expected_1);  // timer expires on v3d, and keeps on expiring
 
-//	k2.load(&result, 0, 0);   run_qpu(k2, expected_1);
-//	k2.load(&result, 12, 15); run_qpu(k2, expected_2);
-//	k2.load(&result, 21, 15); run_all(k2, expected_1);  // Timer expires on v3d, and keeps on expiring
+	k2.load(&result, 0, 0);   run_qpu(k2, expected_1);
+	k2.load(&result, 12, 15); run_qpu(k2, expected_2);
+	// This also, see above
+//	k2.load(&result, 21, 15); run_qpu(k2, expected_1);  // Timer expires on v3d, and keeps on expiring
 
-/*
+	// multi-if's don't have the problem mentioned above, always work.
 	k3.load(&result, 0, 0);   run_qpu(k3, expected_1);
 	k3.load(&result, 12, 15); run_qpu(k3, expected_2);
 	k3.load(&result, 21, 15); run_qpu(k3, expected_1);
-*/
 }
 
 
