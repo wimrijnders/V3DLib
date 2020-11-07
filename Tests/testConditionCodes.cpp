@@ -485,12 +485,32 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	// - timeout occurs with or without generated `tmuwt` in store operation (i.e. write back to main memory)
 	// - `sleep()` before and after tends to make it better, but not perfect
 	//
-	k1.load(&result, 21, 15); run_qpu(k1, expected_1);  // timer expires on v3d, and keeps on expiring
+	// Output in `var/log/kern.log`:
+	// ```
+	// Nov  7 07:28:01 pi4-3 kernel: [87665.616719] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* Resetting GPU for hang.
+	// Nov  7 07:28:01 pi4-3 kernel: [87665.616757] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* V3D_ERR_STAT: 0x00001000
+	// ... ad infinitum
+
+	//
+	// ```
+	//
+	// **NOTE:**  This appears to be a know bug in the kerner driver! 
+	//            Issue: https://github.com/raspberrypi/linux/pull/3816
+	//            Fix pending: https://github.com/raspberrypi/linux/pull/3816/commits/803f25eb03d2698c79eea495be7dee47c3bb86c2
+	// So it appears we just need to wait.
+	//
+	if (!Platform::instance().has_vc4) {
+		std::cout << "Not running the 'where_qpu' test on v3d; this causes persistent timeouts (TODO)" << std::endl;
+		k1.load(&result, 21, 15); run_qpu(k1, expected_1);  // timer expires on v3d, and keeps on expiring
+	}
 
 	k2.load(&result, 0, 0);   run_qpu(k2, expected_1);
 	k2.load(&result, 12, 15); run_qpu(k2, expected_2);
 	// This also, see above
-//	k2.load(&result, 21, 15); run_qpu(k2, expected_1);  // Timer expires on v3d, and keeps on expiring
+	if (!Platform::instance().has_vc4) {
+		std::cout << "Not running the 'where_qpu' test on v3d; this causes persistent timeouts (TODO)" << std::endl;
+		k2.load(&result, 21, 15); run_qpu(k2, expected_1);  // Timer expires on v3d, and keeps on expiring
+	}
 
 	// multi-if's don't have the problem mentioned above, always work.
 	k3.load(&result, 0, 0);   run_qpu(k3, expected_1);

@@ -3,6 +3,16 @@
 // - https://github.com/Idein/py-videocore6/blob/master/videocore6/v3d.py
 // - https://github.com/torvalds/linux/blob/d15be546031cf65a0fc34879beca02fd90fe7ac7/drivers/gpu/drm/v3d/v3d_debugfs.c#L127
 //
+// --------------------------------
+// Kernel code:
+// ============
+//
+// **NOTE:** https://github.com/torvalds/linux is much faster than https://gitlab.freedesktop.org.
+//           However, it only contains branch 'master'.
+//
+// - Branch master, <= lima4.17-rc7: no 'drivers/GPU/v3d'
+// - Branch >= lima4.18-rc4:  'gca' in v3d_drv.c
+//
 ///////////////////////////////////////////////////////////////////////////////
 #include <stdio.h>
 #include <unistd.h>  // usleep
@@ -27,6 +37,18 @@ enum: unsigned {  // NOTE: the pointers are to 4-bit words
 	V3D_CTL_L2TFLSTA = 0x00034 >>2,
 	V3D_CTL_L2TFLEND = 0x00038 >> 2,
 
+	V3D_HUB_INT_STS     = 0x00050 >> 2,
+	V3D_HUB_INT_SET     = 0x00054 >> 2,
+	V3D_HUB_INT_CLR     = 0x00058 >> 2,
+	V3D_HUB_INT_MSK_STS = 0x0005c >> 2,
+	V3D_HUB_INT_MSK_SET = 0x00060 >> 2,
+	V3D_HUB_INT_MSK_CLR = 0x00064 >> 2,
+	V3D_HUB_INT_MMU_WRV = 1 << 5, // BIT(5)
+	V3D_HUB_INT_MMU_PTI = 1 << 4, // BIT(4)
+	V3D_HUB_INT_MMU_CAP = 1 << 3, // BIT(3)
+	V3D_HUB_INT_MSO     = 1 << 2, // BIT(2)
+	V3D_HUB_INT_TFUC    = 1 << 1, // BIT(1)
+	V3D_HUB_INT_TFUF    = 1,      // BIT(0)
 
 	V3D_TOP_GR_BRIDGE_REVISION = 0x00000,
 	//V3D_TOP_GR_BRIDGE_MAJOR_MASK                  V3D_MASK(15, 8)
@@ -38,6 +60,23 @@ enum: unsigned {  // NOTE: the pointers are to 4-bit words
 	V3D_TOP_GR_BRIDGE_SW_INIT_0_V3D_CLK_108_SW_INIT = 1, //  BIT(0)
 	V3D_TOP_GR_BRIDGE_SW_INIT_1 = 0x0000c,
 	V3D_TOP_GR_BRIDGE_SW_INIT_1_V3D_CLK_108_SW_INIT = 1, // BIT(0)
+
+	V3D_CTL_INT_STS     = 0x00050 >> 2,
+	V3D_CTL_INT_SET     = 0x00054 >> 2,
+	V3D_CTL_INT_CLR     = 0x00058 >> 2,
+	V3D_CTL_INT_MSK_STS = 0x0005c >> 2,
+	V3D_CTL_INT_MSK_SET = 0x00060 >> 2,
+	V3D_CTL_INT_MSK_CLR = 0x00064 >> 2,
+//	V3D_INT_QPU_MASK    = V3D_MASK(27, 16),
+	V3D_INT_QPU_SHIFT   = 16,
+	V3D_INT_CSDDONE     = 1 << 7, //BIT(7)
+	V3D_INT_PCTR        = 1 << 6, // BIT(6)
+	V3D_INT_GMPV        = 1 << 5, // BIT(5)
+	V3D_INT_TRFB        = 1 << 4, // BIT(4)
+	V3D_INT_SPILLUSE    = 1 << 3, // BIT(3)
+	V3D_INT_OUTOMEM     = 1 << 2, // BIT(2)
+	V3D_INT_FLDONE      = 1 << 1, // BIT(1)
+	V3D_INT_FRDONE      = 1,      // BIT(0)
 
 	V3D_PCTR_0_PCTR0  = 0x00680 >> 2,
 	V3D_PCTR_0_PCTR31 = 0x006fc >> 2,
@@ -459,6 +498,8 @@ void RegisterMapping::v3d_reset_v3d() {
 	//
 	int core = 0;
 
+	// For ver < 4.0 only 
+#if 0
 	/* Set OVRTMUOUT, which means that the texture sampler uniform
  	 * configuration's tmu output type field is used, instead of
  	 * using the hardware default behavior based on the texture
@@ -466,12 +507,44 @@ void RegisterMapping::v3d_reset_v3d() {
  	 * "2" in the indirect texture state's output_type field.
  	 */
  	v3d_core_write(core, V3D_CTL_MISCCFG, V3D_MISCCFG_OVRTMUOUT);
+#endif
+
+
  	/* Whenever we flush the L2T cache, we always want to flush
  	 * the whole thing.
  	 */
  	v3d_core_write(core, V3D_CTL_L2TFLSTA, 0);
  	v3d_core_write(core, V3D_CTL_L2TFLEND, ~0);
 }
+
+
+#define V3D_CORE_IRQS ((uint32_t)(V3D_INT_OUTOMEM |	\
+			     V3D_INT_FLDONE |	\
+			     V3D_INT_FRDONE |	\
+			     V3D_INT_CSDDONE |	\
+			     V3D_INT_GMPV))
+
+#define V3D_HUB_IRQS ((uint32_t)(V3D_HUB_INT_MMU_WRV |	\
+			    V3D_HUB_INT_MMU_PTI |	\
+			    V3D_HUB_INT_MMU_CAP |	\
+			    V3D_HUB_INT_TFUC))
+
+void RegisterMapping::v3d_irq_enable() {
+	int const num_cores = 1;
+	int core;
+
+	/* Enable our set of interrupts, masking out any others. */
+	for (core = 0; core < num_cores; core++) {
+		v3d_core_write(core, V3D_CTL_INT_MSK_SET, ~V3D_CORE_IRQS);
+		v3d_core_write(core, V3D_CTL_INT_MSK_CLR, V3D_CORE_IRQS);
+	}
+
+	v3d_write(V3D_HUB_INT_MSK_SET, ~V3D_HUB_IRQS);
+	v3d_write(V3D_HUB_INT_MSK_CLR, V3D_HUB_IRQS);
+}
+
+#undef V3D_HUB_IRQS
+#undef V3D_CORE_IRQS
 
 
 /**
@@ -481,6 +554,7 @@ void RegisterMapping::reset_v3d() {
 	bool do_reset = true;
 
 	// v3d_idle_gca(v3d);  - In code, not called for v3d ver >= 4.1. Pi4 starts with v 4.2
+	//                     - v < 4.1 uses device tree reg 'gca', not present in my system
 
 	v3d_reset_v3d();
 
@@ -536,6 +610,8 @@ void RegisterMapping::reset_v3d() {
 		if (ret)
 			error("MMUC flush wait idle failed");
 	}
+
+	v3d_irq_enable();
 }
 
 }  // v3d
