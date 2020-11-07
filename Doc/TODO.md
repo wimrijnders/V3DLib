@@ -3,6 +3,7 @@
 
 ## v3d
 
+- [ ] Has the timeout hang been fixed yet in the kernel driver? Check from time to time
 - [ ] Figure out when and how `sig_magic` and `sig_addr` are used.
       Clues: `mesa/src/compiler/vir_to_qpu.c`, `mesa/src/broadcom/qpu/qpu_disasm.c`
 - [ ] Add performance counters; examine python project for this.
