@@ -29,44 +29,42 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 	assert(size_in_bytes > 0);
 	assert(handle == 0);
 
-	void *tmp_addr = nullptr;
+	void    *tmp_addr = nullptr;
+	uint32_t phy_addr = 0;
 
-	if (!v3d_alloc(size_in_bytes, handle, phyaddr, &tmp_addr)) {
+	if (!v3d_alloc(size_in_bytes, handle, phy_addr, &tmp_addr)) {
 		assert(false);
 	}
 	arm_base = (uint8_t *) tmp_addr;
 
 	assert(handle != 0);
-	assert(phyaddr != 0);
 	assert(arm_base != nullptr);
+	assert(phy_addr != 0);
 
-	m_size = size_in_bytes;
+	set_phy_address(phy_addr);
+	set_size(size_in_bytes);
 }
 
 
 void BufferObject::dealloc_mem() {
 	if (arm_base != nullptr) {
-		assert(m_size > 0);
+		assert(size() > 0);
 		assert(handle > 0);
 
 		// Shouldn't allocs be handled in reverse order here???
 		// TODO: check
 
-		if (!v3d_unmap(m_size, handle, arm_base)) {
+		if (!v3d_unmap(size(), handle, arm_base)) {
 			assert(false);
 		}
 		//debug("v3d_unmap() called");
 
-		m_size = 0;
+		clear();
 		handle = 0;
 		arm_base = nullptr;
-		phyaddr = 0;
-		m_offset = 0;
 	} else {
-		assert(m_size == 0);
+		assert(is_cleared());
 		assert(handle == 0);
-		assert(phyaddr == 0);
-		assert(m_offset == 0);
 	}
 } 
 
@@ -141,11 +139,8 @@ BufferObject &getMainHeap() {
 // Subscript
 uint32_t &BufferObject::operator[] (int i) {
 	assert(i >= 0);
-	assert(m_size > 0);
-	//assert(sizeof(uint32_t) * i < m_size);
-	if (sizeof(uint32_t) * i >= m_size) {
-		breakpoint;
-	}
+	assert(size() > 0);
+	assertq(sizeof(uint32_t) * i >= size(), "Index out of range", true);
 
 	uint32_t *base = (uint32_t *) arm_base;
 	return (uint32_t&) base[i];

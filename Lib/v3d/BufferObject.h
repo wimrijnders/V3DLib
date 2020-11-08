@@ -20,7 +20,6 @@ public:
 	BufferObject() {} 
 	~BufferObject(); 
 
-  uint32_t getPhyAddr() const { return  (uint32_t) phyaddr; }
   uint32_t getHandle()  const override { return  (uint32_t) handle; }
 
   void alloc_mem(uint32_t size_in_bytes);
@@ -35,7 +34,7 @@ private:
 
 	void dealloc_mem();
 	uint32_t &operator[] (int i);
-	uint32_t size_word() const { return m_size/sizeof(uint32_t); }  // Returns size in words
+	uint32_t size_word() const { return size()/sizeof(uint32_t); }  // Returns size in words
 };
 
 

@@ -6,6 +6,8 @@ namespace QPULib {
 namespace emu {
 
 class BufferObject : public QPULib::BufferObject {
+	using Parent = QPULib::BufferObject;
+
 public:
 	BufferObject(uint32_t size) { alloc_heap(size); }
 	~BufferObject() { dealloc(); }
@@ -17,7 +19,6 @@ public:
 private:
 	void alloc_heap(uint32_t size);
 	void dealloc() { delete [] arm_base; arm_base = nullptr; }
-	void check_available(uint32_t n);
 };
 
 BufferObject &getHeap();
