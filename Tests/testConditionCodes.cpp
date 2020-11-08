@@ -230,8 +230,8 @@ void noloop_where_kernel(Ptr<Int> result, Int x, Int y) {
 	Where (y > 10 && y < 20 && x > 10 && x < 20)
 		tmp = 1;
 	End
-	//store(tmp, result);
-	*result = tmp;
+	store(tmp, result);
+	//*result = tmp;  // Adds tmuwt to output for v3d, no difference
 }
 
 
@@ -240,8 +240,8 @@ void noloop_if_kernel(Ptr<Int> result, Int x, Int y) {
 	If (y > 10 && y < 20 && x > 10 && x < 20)
 		tmp = 1;
 	End
-	//store(tmp, result);
-	*result = tmp;
+	store(tmp, result);
+	//*result = tmp;  // Adds tmuwt to output for v3d, no difference
 }
 
 
@@ -256,8 +256,8 @@ void noloop_multif_kernel(Ptr<Int> result, Int x, Int y) {
 	End
 	End
 	End
-	//store(tmp, result);
-	*result = tmp;
+	store(tmp, result);
+	//*result = tmp;  // Adds tmuwt to output for v3d, no difference
 }
 
 
@@ -441,6 +441,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   QPULib::SharedArray<int> result(VEC_SIZE);
 
 	auto run_cpu = [&result] (decltype(k1) &k, uint32_t *expected) {
+		INFO("Testing cpu run");
 		reset(result, -1);
 		k.emu();
 		check(result, 0, expected);
@@ -450,7 +451,8 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 		check(result, 0, expected);
 	};
 
-	auto run_qpu = [&result] (decltype(k1) &k, uint32_t *expected) {
+	auto run_qpu = [&result] (decltype(k1) &k, int index, uint32_t *expected) {
+		INFO("Testing qpu run index: " << index);
 		reset(result, -1);
 		k.call();
 		check(result, 0, expected);
@@ -469,8 +471,8 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	k3.load(&result, 12, 15); run_cpu(k3, expected_2);
 	k3.load(&result, 21, 15); run_cpu(k3, expected_1);
 
-	k1.load(&result, 0, 0);   run_qpu(k1, expected_1);
-	k1.load(&result, 12, 15); run_qpu(k1, expected_2);
+	k1.load(&result, 0, 0);   run_qpu(k1, 0, expected_1);
+	k1.load(&result, 12, 15); run_qpu(k1, 1, expected_2);
 
 	//
 	// When run in combination with other qpu calls, can *usually* generate lingering timeouts
@@ -501,21 +503,21 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	//
 	if (!Platform::instance().has_vc4) {
 		std::cout << "Not running the 'where_qpu' test on v3d; this causes persistent timeouts (TODO)" << std::endl;
-		k1.load(&result, 21, 15); run_qpu(k1, expected_1);  // timer expires on v3d, and keeps on expiring
+		k1.load(&result, 21, 15); run_qpu(k1, 2, expected_1);  // timer expires on v3d, and keeps on expiring
 	}
 
-	k2.load(&result, 0, 0);   run_qpu(k2, expected_1);
-	k2.load(&result, 12, 15); run_qpu(k2, expected_2);
+	k2.load(&result, 0, 0);   run_qpu(k2, 3, expected_1);
+	k2.load(&result, 12, 15); run_qpu(k2, 4, expected_2);
 	// This also, see above
 	if (!Platform::instance().has_vc4) {
 		std::cout << "Not running the 'where_qpu' test on v3d; this causes persistent timeouts (TODO)" << std::endl;
-		k2.load(&result, 21, 15); run_qpu(k2, expected_1);  // Timer expires on v3d, and keeps on expiring
+		k2.load(&result, 21, 15); run_qpu(k2, 5, expected_1);  // Timer expires on v3d, and keeps on expiring
 	}
 
 	// multi-if's don't have the problem mentioned above, always work.
-	k3.load(&result, 0, 0);   run_qpu(k3, expected_1);
-	k3.load(&result, 12, 15); run_qpu(k3, expected_2);
-	k3.load(&result, 21, 15); run_qpu(k3, expected_1);
+	k3.load(&result, 0, 0);   run_qpu(k3, 6, expected_1);
+	k3.load(&result, 12, 15); run_qpu(k3, 7, expected_2);
+	k3.load(&result, 21, 15); run_qpu(k3, 8, expected_1);
 }
 
 
