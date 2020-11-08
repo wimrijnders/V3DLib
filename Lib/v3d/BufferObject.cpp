@@ -140,7 +140,7 @@ BufferObject &getMainHeap() {
 uint32_t &BufferObject::operator[] (int i) {
 	assert(i >= 0);
 	assert(size() > 0);
-	assertq(sizeof(uint32_t) * i >= size(), "Index out of range", true);
+	assertq(sizeof(uint32_t) * i < size(), "Index out of range", true);
 
 	uint32_t *base = (uint32_t *) arm_base;
 	return (uint32_t&) base[i];
