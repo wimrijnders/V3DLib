@@ -503,6 +503,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	//
 	if (!Platform::instance().has_vc4) {
 		std::cout << "Not running the 'where_qpu' test on v3d; this causes persistent timeouts (TODO)" << std::endl;
+	} else {
 		k1.load(&result, 21, 15); run_qpu(k1, 2, expected_1);  // timer expires on v3d, and keeps on expiring
 	}
 
@@ -511,6 +512,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	// This also, see above
 	if (!Platform::instance().has_vc4) {
 		std::cout << "Not running the 'where_qpu' test on v3d; this causes persistent timeouts (TODO)" << std::endl;
+	} else {
 		k2.load(&result, 21, 15); run_qpu(k2, 5, expected_1);  // Timer expires on v3d, and keeps on expiring
 	}
 
