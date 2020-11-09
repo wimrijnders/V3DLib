@@ -11,27 +11,26 @@ int const INITIAL_FREE_RANGE_SIZE = 32;
 
 namespace QPULib {
 
+int HeapManager::FreeRange::size() const {
+	int ret = (int) right - (int) left + 1;
+	assert(ret >= 0);  // empty range will have left + 1 == right
+
+	return ret;
+}
+
+
 HeapManager::HeapManager() {
 	m_free_ranges.reserve(INITIAL_FREE_RANGE_SIZE);
 }
 
 
 /**
- * @param out_offset  offset of newly allocated address range
+ * @param size_in_bytes number of bytes to allocate
  *
  * @return Start offset into heap if allocated, -1 if could not allocate.
  */
 int HeapManager::alloc_array(uint32_t size_in_bytes) {
-	assert(m_size > 0);
-	assert(size_in_bytes % 4 == 0);
-
-	if (!check_available(size_in_bytes)) {
-		return -1;
-	}
-
-	uint32_t prev_offset = m_offset;
-	m_offset += size_in_bytes;
-	return (int) prev_offset;
+	return alloc_intern(size_in_bytes);
 }
 
 
@@ -46,7 +45,7 @@ bool HeapManager::check_available(uint32_t n) {
 	assert(n > 0);
 
 	if (m_offset + n >= m_size) {
-		fatal("QPULib: heap overflow (increase heap size)\n");  // NOTE: doesn't return
+		fatal("QPULib: heap overflow (increase heap size)");  // NOTE: doesn't return
 		return false;
 	}
 
@@ -57,15 +56,61 @@ bool HeapManager::check_available(uint32_t n) {
 void HeapManager::clear() {
 	m_size = 0;
 	m_offset = 0;
+	m_free_ranges.clear();
 }
 
 
 bool HeapManager::is_cleared() const {
 	if  (m_size == 0) {
 		assert(m_offset == 0);
+		assert(m_free_ranges.empty());
 	}
 
 	return (m_size == 0);
+}
+
+
+int HeapManager::alloc_intern(uint32_t size_in_bytes) {
+	assert(m_size > 0);
+	assert(size_in_bytes > 0);
+	assert(size_in_bytes % 4 == 0);
+
+	// Find the first available space that is large enough
+	int found_index = -1;
+	for (int i = 0; i < m_free_ranges.size(); ++i) {
+		auto &cur = m_free_ranges[i];
+
+		if (size_in_bytes <= cur.size()) {
+			found_index = i;
+			break;
+		}
+	}
+
+	if (found_index == -1) {
+		// Didn't find a freed location, reserve from the end
+		if (!check_available(size_in_bytes)) {
+			return -1;
+		}
+
+		uint32_t prev_offset = m_offset;
+		m_offset += size_in_bytes;
+		return (int) prev_offset;
+	}
+
+
+	int ret = -1;
+
+	auto &cur = m_free_ranges[found_index];
+	ret = cur.left;
+	cur.left += size_in_bytes;
+	if (cur.empty()) {
+		breakpoint
+
+		// remove from list
+		m_free_ranges.erase(m_free_ranges.begin() + found_index);
+	}
+
+	return ret;
 }
 
 

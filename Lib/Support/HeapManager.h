@@ -26,7 +26,6 @@ protected:
 	int alloc_array(uint32_t size_in_bytes);
 	void dealloc_array(uint32_t index, uint32_t size);
 	void set_size(uint32_t val);
-	bool check_available(uint32_t n);
 	void clear();
 	bool is_cleared() const;
 
@@ -39,13 +38,18 @@ private:
 	uint32_t m_offset = 0;
 
 	struct FreeRange {
-		FreeRange(uint32_t l, uint32_t r) : left(l), right(r) {}  // required by std::vector
-
 		uint32_t left  = 0;
 		uint32_t right = 0;
+
+		FreeRange(uint32_t l, uint32_t r) : left(l), right(r) {}  // required by std::vector
+		int size() const;
+		bool empty() const { return size() == 0; }
 	};
 
 	std::vector<FreeRange> m_free_ranges;
+
+	bool check_available(uint32_t n);
+	int alloc_intern(uint32_t size_in_bytes);
 };
 
 }  // namespace QPULib
