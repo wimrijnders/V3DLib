@@ -1,90 +1,52 @@
 #ifndef _QPULIB_HEAP_H_
 #define _QPULIB_HEAP_H_
-#include <stdio.h>
+//#include <stdio.h>
 #include <stdint.h>
 #include "Support/basics.h"  // fatal()
 
 namespace QPULib {
 
-class Heap
-{
-  public:
-    uint8_t *base;
-    unsigned long size, capacity;
-    const char* heapName;
+class Heap {
+public:
+	enum {
+		DEFAULT_SIZE = 131072
+	};
 
-    // Construct an empty heap
-    Heap()
-    {
-      base     = NULL;
-      capacity = 0;
-      size     = 0;
-      heapName = "unnamed";
-    }
+	Heap(const char *name = "", unsigned int heapCapacityInBytes = DEFAULT_SIZE) {
+		heapName = name;
+		capacity = heapCapacityInBytes;
+		size     = 0;
+		base     = new uint8_t[capacity];
+	}
 
-    // Create a heap of a given number of bytes
-    void create(unsigned int heapCapacityInBytes)
-    {
-      if (base != NULL) free(base);
-      capacity = heapCapacityInBytes;
-      base     = (uint8_t*) malloc(heapCapacityInBytes);
-      size     = 0;
-    }
+	~Heap() { delete [] base; }
 
-    Heap(unsigned int heapCapacityInBytes)
-    {
-      heapName = "";
-      create(heapCapacityInBytes);
-    }
+	/**
+	 * Allocate 'n' elements of type T on the heap
+	 */
+	template <class T> T* alloc(unsigned long n = 1) {
+		unsigned long nbytes = sizeof(T) * n;
+		return (T *) alloc_intern(nbytes);
+	}
 
-    Heap(const char* name, unsigned int heapCapacityInBytes)
-    {
-      heapName = name;
-      create(heapCapacityInBytes);
-    }
+private:
+	const char   *heapName = "unnamed";
+	unsigned long capacity = 0;
+	unsigned long size     = 0;
+	uint8_t      *base     = nullptr;
 
-    // Allocate 'n' elements of type T on the heap
-    template <class T> T* alloc(unsigned long n)
-    {
-      unsigned long nbytes = sizeof(T) * n;
-      if (size + nbytes >= capacity) {
-				char buf[64];
-        sprintf(buf, "QPULib error: heap '%s' is full.\n", heapName);
-        fatal(buf);
-        return (T*) NULL;
-      } else {
-        uint8_t* p = base + size;
-        size += nbytes;
-        return (T*) p;
-      }
-    }
+	uint8_t *alloc_intern(unsigned long nbytes = 1) {
+		if (size + nbytes >= capacity) {
+			char buf[64];
+			sprintf(buf, "QPULib error: heap '%s' is full.\n", heapName);
+			fatal(buf);
+			return nullptr;
+		} 
 
-    // Allocate one element of type T on the heap
-    template <class T> T* alloc()
-    {
-      return alloc<T>(1);
-    }
-
-    // Free all the structures allocated on the heap
-    void clear()
-    {
-      size = 0;
-    }
-
-    // Destroy the heap
-    void destroy()
-    {
-      free(base);
-      base     = NULL;
-      capacity = 0;
-      size     = 0;
-    }
-
-    // Destructor
-    ~Heap()
-    {
-      destroy();
-    }
+		uint8_t *p = base + size;
+		size += nbytes;
+		return p;
+	}
 };
 
 }  // namespace QPULib

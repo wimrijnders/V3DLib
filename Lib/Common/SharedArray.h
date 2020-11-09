@@ -44,7 +44,7 @@ public:
 	/**
 	 * Get starting address of the section in question
 	 *
-	 * Needed for vc4, and for v3d in emulator and interpreter mode.
+	 * Needed for vc4, emulator and interpreter mode.
 	 */
 	T *getPointer() {
 		if (Platform::instance().has_vc4) {
@@ -89,7 +89,6 @@ public:
 
 	/**
 	 * Forget the allocation and size and notify the underlying heap.
-	 *
 	 */
 	void dealloc() {
 		if (m_size > 0) {

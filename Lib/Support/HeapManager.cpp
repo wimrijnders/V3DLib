@@ -19,21 +19,19 @@ HeapManager::HeapManager() {
 /**
  * @param out_offset  offset of newly allocated address range
  *
- * @return physical address for array if allocated, 
- *         0 if could not allocate.
+ * @return Start offset into heap if allocated, -1 if could not allocate.
  */
-uint32_t HeapManager::alloc_array(uint32_t size_in_bytes, uint32_t &out_offset) {
+int HeapManager::alloc_array(uint32_t size_in_bytes) {
 	assert(m_size > 0);
 	assert(size_in_bytes % 4 == 0);
 
 	if (!check_available(size_in_bytes)) {
-		return 0;
+		return -1;
 	}
 
 	uint32_t prev_offset = m_offset;
-	out_offset = m_offset;
 	m_offset += size_in_bytes;
-	return phyaddr + prev_offset;
+	return (int) prev_offset;
 }
 
 
@@ -41,13 +39,6 @@ void HeapManager::set_size(uint32_t val) {
 	assert(val > 0);
 	assert(m_size == 0);  // Only allow initial size setting for now
 	m_size = val;
-}
-
-
-void HeapManager::set_phy_address(uint32_t val) {
-	assert(val > 0);
-	assert(phyaddr == 0);  // Only allow initial size setting for now
-	phyaddr = val;
 }
 
 
@@ -65,14 +56,12 @@ bool HeapManager::check_available(uint32_t n) {
 
 void HeapManager::clear() {
 	m_size = 0;
-	phyaddr = 0;
 	m_offset = 0;
 }
 
 
 bool HeapManager::is_cleared() const {
 	if  (m_size == 0) {
-		assert(phyaddr == 0);
 		assert(m_offset == 0);
 	}
 
@@ -91,14 +80,16 @@ bool HeapManager::is_cleared() const {
  *
  * Better would be to reuse empty spaces if possible; I'm pushing this ahead of me for now.
  * TODO Examine this
+ *
+ * @param index = index of memory range to deallocate
+ * @param size  = number of bytes to deallocate
  */
-void HeapManager::dealloc_array(uint32_t in_phyaddr, uint32_t size) {
-	assert(phyaddr <= in_phyaddr && in_phyaddr < (phyaddr + m_size));
+void HeapManager::dealloc_array(uint32_t index, uint32_t size) {
 	assert(m_size > 0);
+	assert(index < m_size);
 	assert(size > 0);
 
-
-	uint32_t left  = in_phyaddr - phyaddr;
+	uint32_t left  = index;
 	uint32_t right = left + size - 1;
 
 	// Find adjacent matches in current free range list

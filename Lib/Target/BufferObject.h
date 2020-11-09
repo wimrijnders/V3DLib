@@ -12,7 +12,7 @@ public:
 	BufferObject(uint32_t size) { alloc_heap(size); }
 	~BufferObject() { dealloc(); }
 
-	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) override;
+	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
 
 	const BufferType buftype = HeapBuffer;
 
