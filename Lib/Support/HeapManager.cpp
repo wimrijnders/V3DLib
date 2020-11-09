@@ -104,8 +104,6 @@ int HeapManager::alloc_intern(uint32_t size_in_bytes) {
 	ret = cur.left;
 	cur.left += size_in_bytes;
 	if (cur.empty()) {
-		breakpoint
-
 		// remove from list
 		m_free_ranges.erase(m_free_ranges.begin() + found_index);
 	}
