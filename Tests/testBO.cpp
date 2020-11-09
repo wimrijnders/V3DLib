@@ -62,7 +62,7 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
 	}
 
 
-	SECTION("BO should survive chaotic assignment of  SharedArray instances") {
+	SECTION("BO should survive chaotic assignment of SharedArray instances") {
 		const int NUM_PASSES = 200;  // Not too big, to prevent heap overflow
 		const int NUM_ARRAYS = 10;
 
