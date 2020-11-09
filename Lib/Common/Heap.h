@@ -9,7 +9,7 @@ namespace QPULib {
 class Heap {
 public:
 	enum {
-		DEFAULT_SIZE = 131072
+		DEFAULT_SIZE = 2*131072
 	};
 
 	Heap(const char *name = "", unsigned int heapCapacityInBytes = DEFAULT_SIZE) {
@@ -20,6 +20,8 @@ public:
 	}
 
 	~Heap() { delete [] base; }
+
+	void clear() { size = 0; }
 
 	/**
 	 * Allocate 'n' elements of type T on the heap
