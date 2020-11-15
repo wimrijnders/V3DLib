@@ -163,6 +163,25 @@ public:
 		}
 	}
 
+
+	/**
+	 * Debug method for showing a range in a shared array
+	 */
+	void dump(int first_offset, int last_offset) {
+		assert(first_offset >= 0);
+		assert(first_offset <= last_offset);
+		assert(last_offset < size());
+
+		char const *format = "%8d: 0x%x - %d\n";
+
+		for (int offset = first_offset; offset <= last_offset; ++offset) {
+			printf(format, offset, (*this)[offset], (*this)[offset]);
+		}
+
+		printf("\n");
+	}
+
+
 private:
 	BufferObject *m_heap = nullptr;  // Reference to used heap
 	uint8_t *m_usraddr   = nullptr;  // Start of the heap in main memory, as seen by the CPU

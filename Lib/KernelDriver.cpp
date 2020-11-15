@@ -47,13 +47,6 @@ void print_target_code(FILE *f, Seq<Instr> const &code) {
  * @param targetCode  output variable for the target code assembled from the AST and adjusted
  */
 void compileKernel(Seq<Instr> &targetCode, Stmt* body) {
-	assert(body != nullptr);
-
-  // Translate to target code
-  translateStmt(&targetCode, body);
-
-	getSourceTranslate().add_init(targetCode);
-
   // Load/store pass
   loadStorePass(targetCode);
 
@@ -87,24 +80,39 @@ void KernelDriver::init_compile() {
 
 	// Reserved general-purpose variables
 	Int qpuId, qpuCount;
-	qpuId = getUniformInt();
+	qpuId    = getUniformInt();
 	qpuCount = getUniformInt();
 }
 
 
-void KernelDriver::compile() {
-	kernelFinish();
+void KernelDriver::obtain_ast() {
 	finishStmt();
-
-	// Obtain the AST
-	body = m_stmtStack.top();
+	m_body = m_stmtStack.top();
 	m_stmtStack.pop();
+}
 
+
+void KernelDriver::_compile() {
+	kernelFinish();
+	obtain_ast();
+ 	translateStmt(m_targetCode, m_body);
+
+	if (Platform::instance().compiling_for_vc4()) {
+	  m_targetCode << Instr(END);
+	}
+
+	getSourceTranslate().add_init(m_targetCode);  // TODO init block only added for v3d, refactor
+
+	compileKernel(m_targetCode, m_body);
+}
+
+
+void KernelDriver::compile() {
 	try {
-		compileKernel(m_targetCode, body);
+		_compile();
 	} catch (QPULib::Exception const &e) {
 		std::string msg = "Exception occured during compilation: ";
-		msg += e.msg();  // WHY doesn't << work here???
+		msg += e.msg();  // TODO WHY doesn't << work here???
 		//std::cerr << msg << std::endl;
 
 		if (e.msg().compare(0, 5, "ERROR") == 0) {
@@ -163,7 +171,7 @@ void KernelDriver::pretty(int numQPUs, const char *filename) {
 		fprintf(f, "\n\n");
 	}
 
-	print_source_code(f, body);
+	print_source_code(f, sourceCode());
 	print_target_code(f, m_targetCode);
 
 	if (!has_errors()) {

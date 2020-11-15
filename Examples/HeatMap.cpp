@@ -29,8 +29,8 @@ struct HeatMapSettings : public Settings {
   const int WIDTH  = 512;           // Should be a multiple of 16 for QPU
   const int HEIGHT = 506;           // Should be a multiple of num_qpus for QPU
   const int SIZE   = WIDTH*HEIGHT;  // Size of 2D heat map
-  const int NSPOTS = 1000; //10;
-  const int NSTEPS = 160; // 1500;
+  const int NSPOTS = 10;
+  const int NSTEPS = 20; // 160; // 1500;
 
 	int    kernel;
 	string kernel_name;
@@ -160,51 +160,68 @@ struct Cursor {
   }
 
   void shiftLeft(Float& result) {
-/*
     result = rotate(current, 15);
     Float nextRot = rotate(next, 15);
     Where (index() == 15)
       result = nextRot;
     End
-*/
-		result = current;
   }
 
   void shiftRight(Float& result) {
-/*
     result = rotate(current, 1);
     Float prevRot = rotate(prev, 1);
     Where (index() == 0)
       result = prevRot;
     End
-*/
-		result = current;
   }
 };
 
 
-void step(Ptr<Float> map, Ptr<Float> mapOut, Int width, Int height) {
+void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
+	// Serves as calling example
+	//*debug = toFloat(a); /*store(toFloat(a), debug); */ debug += 16;
+ 
+#if 0 
+	For (Int y = 1, y < height - 1, y = y + 1)  // Doing 1 QPU for now
+		Ptr<Float> p_in  = map;    //+ y *width;
+		Ptr<Float> p_out = mapOut + 2 *y *width;
+
+	  For (Int x = 1, x < 6, x = x + 1)
+			Float tmp = 256*1000 - *p_in;
+			//*mapOut = tmp;
+			store(tmp, p_out /*mapOut*/);
+
+			p_in  += 32;
+			p_out += 32;
+			//map    += 32;
+			//mapOut += 32;
+		End
+	End
+#endif
+
+
 	Int pitch = width;
   Cursor row[3];
   //map = map + pitch*me(); //+ index(); // WRI DEBUG
 
-  // Skip first row of output map
-  mapOut = mapOut + pitch;
+//  // Skip first row of output map
+//  mapOut = mapOut + pitch;
 
-  For (Int y = 1, y < height - 1, y = y + 1)  // WRI DEBUG Doing 1 QPU for now
+  For (Int y = 1, y < height - 1, y = y + 1)  // Doing 1 QPU for now
   //For (Int y = me(), y < height, y = y + numQPUs())
     // Point p to the output row
-    Ptr<Float> p = mapOut + y*pitch + 1;
-    //Ptr<Float> p = mapOut + y*pitch;  // WRI DEBUG
+    //Ptr<Float> p = mapOut + y*pitch + 1;
+    Ptr<Float> p_in = map    + y*pitch;
+    Ptr<Float> p    = mapOut + y*pitch;
 
     // Initialize three cursors for the three input rows
-    for (int i = 0; i < 3; i++) row[i].init(map + (y - 1 + i )*pitch);
+    for (int i = 0; i < 3; i++) row[i].init(map + (y + i - 1)*pitch);
     for (int i = 0; i < 3; i++) row[i].prime();
 
     // Compute one output row
     For (Int x = 0, x < width, x = x + 16)
       for (int i = 0; i < 3; i++) row[i].advance();
-
+/*
       Float left[3], right[3];
       for (int i = 0; i < 3; i++) {
         row[i].shiftLeft(right[i]);
@@ -216,18 +233,26 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int width, Int height) {
                   left[2] + row[2].current + right[2];
 
       store(row[1].current - K * (row[1].current - sum * 0.125), p);
-      store(row[1].current, p);
+*/
+
+			Float sum = row[0].current + row[2].current;
+      Float tmp = row[1].current - K * (row[1].current - sum * 0.5);
+
+      store(tmp, p);
+//      store(row[1].current, p);
+//      store(*p_in, p);
+//			*p = *p_in;
       p = p + 16;
+      p_in = p_in + 16;
     End
 
     // Cursors are finished for this row
     for (int i = 0; i < 3; i++) row[i].finish();
 
     // Move to the next input rows
-    map = map + pitch*numQPUs();
+//    map = map + pitch*numQPUs();
   End
 }
-
 
 /**
  * The edges always have zero values.
@@ -251,16 +276,33 @@ void run_kernel() {
 
 	output_pgm_file(mapA, settings.WIDTH, settings.HEIGHT, 255, "heatmap_pre.pgm");
 
+	// WRI Debug
+	auto dump = [&mapB] (int count) {
+  	for (int i = 0; i < count*16; i++) {
+			if (i % 16 == 0) {
+				printf("\n");
+			}
+			printf("%8.1f, ", mapB[i]);
+		}
+		printf("\n");
+	};
+
+	mapA[0] = 666;
+
   for (int i = 0; i < settings.NSTEPS; i++) {
     if (i & 1)
-      k.load(&mapB, &mapA, settings.WIDTH, settings.HEIGHT);  // Load the uniforms
+      k.load(&mapB, &mapA, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
     else
-      k.load(&mapA, &mapB, settings.WIDTH, settings.HEIGHT);  // Load the uniforms
+      k.load(&mapA, &mapB, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
 
 		settings.process(k);  // Invoke the kernel
+
+		break;  // WRI DEBUG 1 kernel run only
   }
 
-  // Display results
+	dump(10);
+
+  // Output results
 	output_pgm_file(mapB, settings.WIDTH, settings.HEIGHT, 255, "heatmap.pgm");
 }
 

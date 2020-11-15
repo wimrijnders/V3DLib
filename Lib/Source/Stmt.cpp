@@ -195,10 +195,9 @@ void Print(IntExpr x)
   stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
-// ============================================================================
-// QPU code for clean exit
-// ============================================================================
-
+/**
+ * QPU code for clean exit
+ */
 void finishStmt() {
 	assert(p_stmtStack != nullptr);
 	p_stmtStack = nullptr;

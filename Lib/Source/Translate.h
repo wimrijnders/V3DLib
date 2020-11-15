@@ -6,7 +6,7 @@
 
 namespace QPULib {
 
-void translateStmt(Seq<Instr>* seq, Stmt* s);
+void translateStmt(Seq<Instr> &seq, Stmt *s);
 void loadStorePass(Seq<Instr> &instrs);
 
 //

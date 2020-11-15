@@ -11,7 +11,7 @@ KernelDriver::KernelDriver() : QPULib::KernelDriver(Vc4Buffer) {}
 
 
 /**
- * Add the postfixi code to the kernel.
+ * Add the postfix code to the kernel.
  *
  * Note that this emits kernel code.
  */

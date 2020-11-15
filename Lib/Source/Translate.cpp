@@ -607,22 +607,45 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 
 
 /**
+ * Get the instruction of the last uniform load
+ */
+int lastUniformOffset(Seq<Instr> &code) {
+	// Detmine the first offset that is not a uniform load
+	int index = 0;
+	for (; index < code.size(); ++index) {
+		if (!code[index].isUniformLoad()) break; 
+	}
+
+	assertq(index >= 2, "Expecting at least two uniform loads.");
+
+	return index - 1;
+}
+
+
+/**
  * Insert markers for initialization code
  *
  * Only used for `v3d`.
  */
 void insertInitBlock(Seq<Instr> &code) {
-	// Find first instruction after uniform loads
-	int index = 0;
-	for (; index < code.size(); ++index) {
-		if (!code[index].isUniformLoad()) break; 
-	}
-	assertq(index >= 2, "Expecting at least two uniform loads.");
+	using namespace QPULib::Target::instr;  // for mov()
+
+	int index = lastUniformOffset(code);
 
 	Seq<Instr> ret;
+
+	if (Platform::instance().compiling_for_vc4()) {
+		// Add final dummy uniform handling
+		// See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
+		Var unif;
+		unif.tag = UNIFORM;
+		ret << mov(freshVar(), unif);
+		ret.back().comment("Last uniform load is dummy value");
+	}
+
 	ret << Instr(INIT_BEGIN) << Instr(INIT_END);
 
-	code.insert(index, ret);
+	code.insert(index + 1, ret);
 }
 
 }  // anon namespace
@@ -720,15 +743,13 @@ Expr* putInVar(Seq<Instr>* seq, Expr* e) {
 
 
 /**
+ * Translate to target code
+ *
  * Top-level translation function for statements.
  */
-void translateStmt(Seq<Instr>* seq, Stmt* s) {
-  stmt(seq, s);
-	insertInitBlock(*seq);
-
-	if (Platform::instance().compiling_for_vc4()) {
-	  *seq << Instr(END);
-	};
+void translateStmt(Seq<Instr> &seq, Stmt *s) {
+  stmt(&seq, s);
+	insertInitBlock(seq);  // TODO init block not used for vc4, remove for that case
 }
 
 
