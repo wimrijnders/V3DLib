@@ -30,10 +30,16 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
 		arrays[0]->dealloc();
 		arrays[6]->dealloc();
 		arrays[1]->dealloc();
+
+		arrays[0]->alloc(1024); // Trigger reclaim of freed memory
+		arrays[6]->alloc(1024); // idem
+
 		arrays[5]->dealloc();
 		arrays[3]->dealloc();
 		arrays[2]->dealloc();
 		arrays[4]->dealloc();
+		arrays[0]->dealloc();
+		arrays[6]->dealloc();
 
 		REQUIRE(heap.empty());
 	}

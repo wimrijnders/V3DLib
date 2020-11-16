@@ -2,11 +2,10 @@
 #include "Common/Heap.h"
 #include "Common/Stack.h"
 #include "Target/SmallLiteral.h"
-#include "Params.h"
 
 namespace QPULib {
 
-Heap astHeap("abstract syntax tree", AST_HEAP_SIZE);  // Used for constructing abstract syntax trees
+Heap astHeap("abstract syntax tree");  // Used for constructing abstract syntax trees
 
 
 // ============================================================================

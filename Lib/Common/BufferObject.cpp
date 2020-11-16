@@ -7,17 +7,51 @@
 
 namespace QPULib {
 
+/**
+ * @param size_in_bytes        requested size of memory to allocate 
+ * @param array_start_address  out parameter; memory address of the newly allocated memory in the heap
+ *
+ * @return physical address of the newly allocated memory in the heap
+ */
 uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) {
-	uint32_t new_offset;
-	uint32_t ret = HeapManager::alloc_array(size_in_bytes, new_offset);
-	array_start_address = arm_base + new_offset;
-	return ret;
+	int new_offset = HeapManager::alloc_array(size_in_bytes);
+	assert(new_offset >= 0);
+	array_start_address = arm_base + (uint32_t) new_offset;
+	return phy_address() + (uint32_t) new_offset;
+}
+
+
+void BufferObject::dealloc_array(uint32_t in_phyaddr, uint32_t in_size) {
+	assert(phy_address() <= in_phyaddr && in_phyaddr < (phy_address() + size()));
+	HeapManager::dealloc_array(in_phyaddr - phy_address(), in_size);
 }
 
 
 uint32_t BufferObject::getHandle() const {
-	assert(false);  // Only use for v3d
+	assert(false);  // Only use the override for v3d
 	return 0;
+}
+
+
+void BufferObject::set_phy_address(uint32_t val) {
+	assert(val > 0);
+	assert(phyaddr == 0);  // Only allow initial size setting for now
+	phyaddr = val;
+}
+
+
+void BufferObject::clear() {
+	phyaddr = 0;
+	HeapManager::clear();
+}
+
+
+bool BufferObject::is_cleared() const {
+	if  (size() == 0) {
+		assert(phyaddr == 0);
+	}
+
+	return HeapManager::is_cleared();
 }
 
 

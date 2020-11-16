@@ -20,7 +20,7 @@ public:
 	BufferObject() {} 
 	~BufferObject(); 
 
-  uint32_t getHandle()  const override { return  (uint32_t) handle; }
+  uint32_t getHandle() const override { return  (uint32_t) handle; }
 
   void alloc_mem(uint32_t size_in_bytes);
 

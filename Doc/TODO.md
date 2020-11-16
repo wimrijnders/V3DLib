@@ -13,11 +13,12 @@
 ## vc4
 
 - [ ] Consider replacing DMA transfers (notably, write) with TMU.
+- [ ] Consider using device driver interface for vc4 - this will get rid of need for `sudo`
 
 
 ## Compile source code
 
-- [ ] `If (a != b)` appears to do the same as  `any(a1 != bi)`, verify
+- [ ] `If (a != b)` appears to do the same as  `any(a1 != b)`, verify
 - [ ] Following generation is wrong *(this is probably an old v3d issue and not relevant any more - CHECK!)*.
 
 Source code:
@@ -94,8 +95,8 @@ Source code:
 - [ ] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
 - [ ] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
   - Allocate `astHeap` for each kernel *- Nope, global heap required for language*
-  - Increase heap size dynamically when needed *- Can only be done, by creating a new heap and transferring data*
-  - Add freeing of memory to heap definitions. This will increase the complexity of the heap code hugely
+  - Increase heap size dynamically when needed *- Can only be done by creating a new heap and transferring data*
+  - Add freeing of memory to heap definitions. This will increase the complexity of the heap code hugely *(already done for BO's)*
 
 
 ## Library Code
@@ -240,7 +241,7 @@ void kernel(Ptr<Float> x) {
 ```
 
 
-**For uniform values, this happens automatically for pointer passed in as uniforms**. There is therefore no need
+**This happens automatically for pointer passed in as uniforms**. There is therefore no need
 to explicitly code this for uniform pointers.
 It is, however, useful to be aware of this pointer adjustment, and it is conceivable that you might need to use it
 in your own code.
@@ -279,12 +280,3 @@ E.g. compare between:
 ### The QPULib compiler does not do much in the way of optimisation.
 
 So the question is how far QPULib programs are off hand-written QPU assembly, and what we can do to get closer.
-
-
-### Set up Guidelines for the Project
-
-This blog contains great tips for setting up open source projects: 
-
-- [The Bitter Guide to Open Source](https://medium.com/@ken_wheeler/a-bitter-guide-to-open-source-a8e3b6a3c1c4) by Ken Wheeler.
-
-One day, I would like to convert the points mentioned here to a checklist and implement these for `QPULib`.

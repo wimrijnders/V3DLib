@@ -27,7 +27,7 @@ public:
 	/**
 	 * @return AST representing the source code
 	 */
-	Stmt *sourceCode() { return body; }
+	Stmt *sourceCode() { return m_body; }
 
 	Seq<Instr> &targetCode() { return m_targetCode; }
 
@@ -42,11 +42,13 @@ protected:
 	std::vector<std::string> errors;
 
 	virtual void emit_opcodes(FILE *f) {} 
+	void obtain_ast();
 
 private:
 	Stack<Stmt> m_stmtStack;
-  Stmt *body = nullptr;
+  Stmt       *m_body = nullptr;
 
+	void _compile();
 	virtual void invoke_intern(int numQPUs, Seq<int32_t>* params) = 0;
 	bool has_errors() const { return !errors.empty(); }
 	bool handle_errors();

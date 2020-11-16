@@ -174,7 +174,7 @@ protected:
  *
  * ----------------------------------------------------------------------------
  * NOTES
- * ====
+ * =====
  *
  * * A kernel is parameterised by a list of QPU types 'ts' representing
  *   the types of the parameters that the kernel takes.
@@ -207,9 +207,12 @@ public:
 			m_vc4_driver.init_compile();
 			Platform::compiling_for_vc4(true);
 
+
 	    auto args = std::make_tuple(mkArg<ts>()...);
 
+			//
 			// Add offsets to the uniform pointers
+			//
 			Int offset = me() << 4;
 
 			for (auto &expr : uniform_int_pointers) {

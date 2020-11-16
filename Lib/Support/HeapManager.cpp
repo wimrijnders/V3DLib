@@ -11,29 +11,26 @@ int const INITIAL_FREE_RANGE_SIZE = 32;
 
 namespace QPULib {
 
+int HeapManager::FreeRange::size() const {
+	int ret = (int) right - (int) left + 1;
+	assert(ret >= 0);  // empty range will have left + 1 == right
+
+	return ret;
+}
+
+
 HeapManager::HeapManager() {
 	m_free_ranges.reserve(INITIAL_FREE_RANGE_SIZE);
 }
 
 
 /**
- * @param out_offset  offset of newly allocated address range
+ * @param size_in_bytes number of bytes to allocate
  *
- * @return physical address for array if allocated, 
- *         0 if could not allocate.
+ * @return Start offset into heap if allocated, -1 if could not allocate.
  */
-uint32_t HeapManager::alloc_array(uint32_t size_in_bytes, uint32_t &out_offset) {
-	assert(m_size > 0);
-	assert(size_in_bytes % 4 == 0);
-
-	if (!check_available(size_in_bytes)) {
-		return 0;
-	}
-
-	uint32_t prev_offset = m_offset;
-	out_offset = m_offset;
-	m_offset += size_in_bytes;
-	return phyaddr + prev_offset;
+int HeapManager::alloc_array(uint32_t size_in_bytes) {
+	return alloc_intern(size_in_bytes);
 }
 
 
@@ -44,18 +41,11 @@ void HeapManager::set_size(uint32_t val) {
 }
 
 
-void HeapManager::set_phy_address(uint32_t val) {
-	assert(val > 0);
-	assert(phyaddr == 0);  // Only allow initial size setting for now
-	phyaddr = val;
-}
-
-
 bool HeapManager::check_available(uint32_t n) {
 	assert(n > 0);
 
 	if (m_offset + n >= m_size) {
-		fatal("QPULib: heap overflow (increase heap size)\n");  // NOTE: doesn't return
+		fatal("QPULib: heap overflow (increase heap size)");  // NOTE: doesn't return
 		return false;
 	}
 
@@ -65,18 +55,60 @@ bool HeapManager::check_available(uint32_t n) {
 
 void HeapManager::clear() {
 	m_size = 0;
-	phyaddr = 0;
 	m_offset = 0;
+	m_free_ranges.clear();
 }
 
 
 bool HeapManager::is_cleared() const {
 	if  (m_size == 0) {
-		assert(phyaddr == 0);
 		assert(m_offset == 0);
+		assert(m_free_ranges.empty());
 	}
 
 	return (m_size == 0);
+}
+
+
+int HeapManager::alloc_intern(uint32_t size_in_bytes) {
+	assert(m_size > 0);
+	assert(size_in_bytes > 0);
+	assert(size_in_bytes % 4 == 0);
+
+	// Find the first available space that is large enough
+	int found_index = -1;
+	for (int i = 0; i < m_free_ranges.size(); ++i) {
+		auto &cur = m_free_ranges[i];
+
+		if (size_in_bytes <= cur.size()) {
+			found_index = i;
+			break;
+		}
+	}
+
+	if (found_index == -1) {
+		// Didn't find a freed location, reserve from the end
+		if (!check_available(size_in_bytes)) {
+			return -1;
+		}
+
+		uint32_t prev_offset = m_offset;
+		m_offset += size_in_bytes;
+		return (int) prev_offset;
+	}
+
+
+	int ret = -1;
+
+	auto &cur = m_free_ranges[found_index];
+	ret = cur.left;
+	cur.left += size_in_bytes;
+	if (cur.empty()) {
+		// remove from list
+		m_free_ranges.erase(m_free_ranges.begin() + found_index);
+	}
+
+	return ret;
 }
 
 
@@ -91,14 +123,16 @@ bool HeapManager::is_cleared() const {
  *
  * Better would be to reuse empty spaces if possible; I'm pushing this ahead of me for now.
  * TODO Examine this
+ *
+ * @param index = index of memory range to deallocate
+ * @param size  = number of bytes to deallocate
  */
-void HeapManager::dealloc_array(uint32_t in_phyaddr, uint32_t size) {
-	assert(phyaddr <= in_phyaddr && in_phyaddr < (phyaddr + m_size));
+void HeapManager::dealloc_array(uint32_t index, uint32_t size) {
 	assert(m_size > 0);
+	assert(index < m_size);
 	assert(size > 0);
 
-
-	uint32_t left  = in_phyaddr - phyaddr;
+	uint32_t left  = index;
 	uint32_t right = left + size - 1;
 
 	// Find adjacent matches in current free range list

@@ -326,6 +326,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 
 
 TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
+
   SECTION("Test Complex composed type") {
 		// TODO: No assertion in this part, need any?
 

@@ -32,6 +32,7 @@ void output_pgm_file(Array &arr, int width, int height, int maxGray, const char 
 	}
 
 	auto scale = [factor, maxGray] (float value) -> int {
+		if (value < 0.0f) value = 0;
 		if (factor == -1.0f) return (int) value;
 		int ret = (int) (factor*((float) value));
 		if (ret > maxGray) ret = maxGray;

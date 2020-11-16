@@ -44,7 +44,7 @@ public:
 	/**
 	 * Get starting address of the section in question
 	 *
-	 * Needed for vc4, and for v3d in emulator and interpreter mode.
+	 * Needed for vc4, emulator and interpreter mode.
 	 */
 	T *getPointer() {
 		if (Platform::instance().has_vc4) {
@@ -89,7 +89,6 @@ public:
 
 	/**
 	 * Forget the allocation and size and notify the underlying heap.
-	 *
 	 */
 	void dealloc() {
 		if (m_size > 0) {
@@ -163,6 +162,25 @@ public:
 			(*this)[offset] = src[offset];
 		}
 	}
+
+
+	/**
+	 * Debug method for showing a range in a shared array
+	 */
+	void dump(int first_offset, int last_offset) {
+		assert(first_offset >= 0);
+		assert(first_offset <= last_offset);
+		assert(last_offset < size());
+
+		char const *format = "%8d: 0x%x - %d\n";
+
+		for (int offset = first_offset; offset <= last_offset; ++offset) {
+			printf(format, offset, (*this)[offset], (*this)[offset]);
+		}
+
+		printf("\n");
+	}
+
 
 private:
 	BufferObject *m_heap = nullptr;  // Reference to used heap
