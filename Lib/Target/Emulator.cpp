@@ -63,7 +63,7 @@ struct QPUState {
 // State of the VideoCore.
 struct State {
   QPUState qpu[MAX_QPUS];  // State of each QPU
-  Seq<int32_t>* uniforms;  // Kernel parameters
+  Seq<int32_t> uniforms;   // Kernel parameters
   Word vpm[VPM_SIZE];      // Shared VPM memory
   Seq<char>* output;       // Output for print statements
   int sema[16];            // Semaphores
@@ -102,14 +102,14 @@ Vec readReg(QPUState* s, State* g, Reg reg)
         return v;
       }
       else if (reg.regId == SPECIAL_UNIFORM) {
-        assert(s->nextUniform < g->uniforms->size());
+        assert(s->nextUniform < g->uniforms.size());
         for (int i = 0; i < NUM_LANES; i++)
           if (s->nextUniform == -2)
             v[i].intVal = s->id;
           else if (s->nextUniform == -1)
             v[i].intVal = s->numQPUs;
           else
-            v[i].intVal = g->uniforms->get(s->nextUniform);
+            v[i].intVal = g->uniforms[s->nextUniform];
         s->nextUniform++;
         return v;
       }
@@ -714,14 +714,19 @@ void emulate(
 	int numQPUs,
 	Seq<Instr>* instrs,
 	int maxReg,
-	Seq<int32_t>* uniforms,
+	Seq<int32_t> &uniforms,
 	BufferObject &heap,
 	Seq<char>* output
 ) {
 
   State state;
   state.output = output;
+
   state.uniforms = uniforms;
+	// Add final dummy uniform
+	// See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
+	state.uniforms << 0;
+
 	state.emuHeap.heap_view(heap);
 
   // Initialise state

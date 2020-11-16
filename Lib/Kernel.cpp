@@ -44,7 +44,7 @@ void KernelBase::pretty(bool output_for_vc4, const char *filename) {
  */
 void KernelBase::emu() {
 	assert(uniforms.size() != 0);
-	emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, &uniforms, getBufferObject());
+	emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, uniforms, getBufferObject());
 }
 
 
@@ -55,7 +55,7 @@ void KernelBase::emu() {
  */
 void KernelBase::interpret() {
 	assert(uniforms.size() != 0);
-	interpreter(numQPUs, m_vc4_driver.sourceCode(), numVars, &uniforms, getBufferObject());
+	interpreter(numQPUs, m_vc4_driver.sourceCode(), numVars, uniforms, getBufferObject());
 }
 
 

@@ -19,7 +19,7 @@ void interpreter(
 	int numCores,               // Number of cores active
 	Stmt* stmt,                 // Source code
 	int numVars,                // Max var id used in source
-	Seq<int32_t>* uniforms,     // Kernel parameters
+	Seq<int32_t> &uniforms,     // Kernel parameters
 	BufferObject &heap,
 	Seq<char>* output = nullptr // Output from print statements (if NULL, stdout is used)
 );
