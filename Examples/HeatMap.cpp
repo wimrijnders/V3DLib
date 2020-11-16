@@ -20,6 +20,12 @@ CmdParameters params = {
     "-k=",
 		kernels,
     "Select the kernel to use"
+	}, {
+    "Number of steps",
+    "-steps=",
+		POSITIVE_INTEGER,
+    "Set the number of steps to execute in the calculation",
+		1500
   }}
 };
 
@@ -30,10 +36,10 @@ struct HeatMapSettings : public Settings {
   const int HEIGHT = 506;           // Should be a multiple of num_qpus for QPU
   const int SIZE   = WIDTH*HEIGHT;  // Size of 2D heat map
   const int NSPOTS = 10;
-  const int NSTEPS = 20; // 160; // 1500;
 
 	int    kernel;
 	string kernel_name;
+	int    num_steps;
 
 	int init(int argc, const char *argv[]) {
 		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
@@ -52,6 +58,7 @@ struct HeatMapSettings : public Settings {
 
 		kernel      = params.parameters()["Kernel"]->get_int_value();
 		kernel_name = params.parameters()["Kernel"]->get_string_value();
+		num_steps   = params.parameters()["Number of steps"]->get_int_value();
 
 		return ret;
 	}
@@ -118,7 +125,7 @@ void run_scalar() {
 	output_pgm_file(map, settings.WIDTH, settings.HEIGHT, 255, "heatmap_pre.pgm");
 
   // Simulate
-  for (int i = 0; i < settings.NSTEPS; i++) {
+  for (int i = 0; i < settings.num_steps; i++) {
     scalar_step(map2D, mapOut2D, settings.WIDTH, settings.HEIGHT);
     float** tmp = map2D; map2D = mapOut2D; mapOut2D = tmp;
   }
@@ -289,15 +296,13 @@ void run_kernel() {
 
 	mapA[0] = 666;
 
-  for (int i = 0; i < settings.NSTEPS; i++) {
+  for (int i = 0; i < settings.num_steps; i++) {
     if (i & 1)
       k.load(&mapB, &mapA, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
     else
       k.load(&mapA, &mapB, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
 
 		settings.process(k);  // Invoke the kernel
-
-		break;  // WRI DEBUG 1 kernel run only
   }
 
 	dump(10);
