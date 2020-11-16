@@ -167,10 +167,16 @@ void indentBy(FILE *f, int indent) {
 void pretty(FILE *f, int indent, Stmt* s)
 {
   assert(f != nullptr);
-  if (s == NULL) return;
+  if (s == nullptr) return;
+
+	auto add_eol = [f, s] () {
+		if (!s->comment().empty()) {
+			fprintf(f, "                           # %s", s->comment().c_str());
+		}
+		fprintf(f, "\n");
+	};
 
   switch (s->tag) {
-    // Skip
     case SKIP: break;
 
     // Assignment
@@ -179,7 +185,8 @@ void pretty(FILE *f, int indent, Stmt* s)
       pretty(f, s->assign.lhs);
       fprintf(f, " = ");
       pretty(f, s->assign.rhs);
-      fprintf(f, ";\n");
+      fprintf(f, ";");
+			add_eol();
       break;
 
     // Sequential composition
@@ -265,7 +272,8 @@ void pretty(FILE *f, int indent, Stmt* s)
       indentBy(f, indent);
       fprintf(f, "receive(");
       pretty(f, s->loadDest);
-      fprintf(f, ")\n");
+      fprintf(f, ")");
+			add_eol();
       break;
 
     // Store request

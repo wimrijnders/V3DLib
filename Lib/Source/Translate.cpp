@@ -385,7 +385,7 @@ BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
 // ============================================================================
 
 void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
-  if (s == NULL) return;
+  if (s == nullptr) return;
   if (s->tag == SKIP) return;
 
   // ------------------------------------------------------
@@ -393,6 +393,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   // ------------------------------------------------------
   if (s->tag == ASSIGN && s->assign.lhs->tag == VAR) {
     varAssign(seq, cond, s->assign.lhs->var, s->assign.rhs);
+//		seq->back().comment(s->comment());
     return;
   }
 
@@ -603,6 +604,11 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 			}
 			break;
 	}
+
+	if (!s->comment().empty()) {
+		// breakpoint
+		seq->back().comment(s->comment());
+	}
 }
 
 
@@ -748,6 +754,7 @@ Expr* putInVar(Seq<Instr>* seq, Expr* e) {
  * Top-level translation function for statements.
  */
 void translateStmt(Seq<Instr> &seq, Stmt *s) {
+
   stmt(&seq, s);
 	insertInitBlock(seq);  // TODO init block not used for vc4, remove for that case
 }
@@ -767,8 +774,9 @@ void loadStorePass(Seq<Instr> &instrs) {
 
     switch (instr.tag) {
       case RECV: {
-        newInstrs << Instr(TMU0_TO_ACC4)
-				          << mov(instr.RECV.dest, ACC4);
+        newInstrs << Instr(TMU0_TO_ACC4);
+				newInstrs.back().comment(instr.comment());
+        newInstrs << mov(instr.RECV.dest, ACC4);
         break;
       }
       default:
@@ -776,6 +784,7 @@ void loadStorePass(Seq<Instr> &instrs) {
         break;
     }
   }
+
 
   // Update original instruction sequence
   instrs.clear();
