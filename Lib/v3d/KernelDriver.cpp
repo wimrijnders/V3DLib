@@ -478,6 +478,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 			case M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
 			case A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
 			case A_SUB:   ret << sub(*dst_reg, imm, *src_b);          break;
+			case A_ADD:   ret << add(*dst_reg, imm, *src_b);          break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
