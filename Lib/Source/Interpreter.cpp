@@ -11,17 +11,17 @@ namespace {
 
 // State of a single core.
 struct CoreState {
-  int id;                              // Core id
-  int numCores;                        // Core count
-  Seq<int32_t>* uniforms = nullptr;    // Arguments to kernel
-  int nextUniform = -2;                // Pointer to next uniform to read
-  int readStride = 0;                  // Read stride
-  int writeStride = 0;                 // Write stride
-  Vec* env = nullptr;                  // Environment mapping vars to values
-  int sizeEnv;                         // Size of the environment
-  Seq<char>* output = nullptr;         // Output from print statements
-  Seq<Stmt*> stack;                    // Control stack
-  Seq<Vec> loadBuffer;                 // Load buffer
+  int id;                        // Core id
+  int numCores;                  // Core count
+  Seq<int32_t> uniforms;         // Arguments to kernel
+  int nextUniform = -2;          // Pointer to next uniform to read
+  int readStride = 0;            // Read stride
+  int writeStride = 0;           // Write stride
+  Vec* env = nullptr;            // Environment mapping vars to values
+  int sizeEnv;                   // Size of the environment
+  Seq<char>* output = nullptr;   // Output from print statements
+  Seq<Stmt*> stack;              // Control stack
+  Seq<Vec> loadBuffer;           // Load buffer
 	SharedArray<uint32_t> emuHeap;
 
 
@@ -57,8 +57,7 @@ void storeToHeap(CoreState *s, Vec &index, Vec &val) {
 // Evaluate a variable
 // ============================================================================
 
-Vec evalVar(CoreState* s, Var v)
-{
+Vec evalVar(CoreState* s, Var v) {
   switch (v.tag) {
     // Normal variable
     case STANDARD:
@@ -67,7 +66,7 @@ Vec evalVar(CoreState* s, Var v)
 
     // Return next uniform
     case UNIFORM: {
-      assert(s->nextUniform < s->uniforms->size());
+      assert(s->nextUniform < s->uniforms.size());
       Vec x;
       for (int i = 0; i < NUM_LANES; i++)
         if (s->nextUniform == -2)
@@ -75,7 +74,7 @@ Vec evalVar(CoreState* s, Var v)
         else if (s->nextUniform == -1)
           x[i].intVal = s->numCores;
         else
-          x[i].intVal = s->uniforms->get(s->nextUniform);
+          x[i].intVal = s->uniforms[s->nextUniform];
       s->nextUniform++;
       return x;
     }
@@ -662,7 +661,7 @@ void interpreter(
 	int numCores,           // Number of cores active
 	Stmt* stmt,             // Source code
 	int numVars,            // Max var id used in source
-	Seq<int32_t>* uniforms, // Kernel parameters
+	Seq<int32_t> &uniforms, // Kernel parameters
 	BufferObject &heap,
 	Seq<char>* output       // Output from print statements (if NULL, stdout is used)
 ) {

@@ -179,7 +179,7 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
 int v3d_submit_csd(st_v3d_submit_csd &st) {
 	int ret = ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &st);
 
-	if(ret) {
+	if (ret) {
 		perror(NULL);
 		assert(false);
 	}

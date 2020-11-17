@@ -7,6 +7,7 @@
 #include "Common/Heap.h"
 #include "Common/Stack.h"
 #include "Var.h"
+#include "Support/InstructionComment.h"  // for Stmt
 
 namespace QPULib {
 
@@ -210,7 +211,8 @@ enum StmtTag {
 	 DMA_START_WRITE
 };
 
-struct Stmt {
+
+struct Stmt : public InstructionComment {
   // What kind of statement is it?
   StmtTag tag;
 

@@ -144,18 +144,18 @@ struct Cursor {
   Float prev, current, next;
 
   void init(Ptr<Float> p) {
-    gather(p);
+    gather(p);         comment("Cursor init");
     current = 0;
     addr = p + 16;
   }
 
   void prime() {
-    receive(next);
+    receive(next);     comment("Cursor prime");
     gather(addr);
   }
 
   void advance() {
-    addr = addr + 16;
+    addr = addr + 16;  comment("Cursor advance");
     prev = current;
     gather(addr);
     current = next;
@@ -163,7 +163,7 @@ struct Cursor {
   }
 
   void finish() {
-    receive(next);
+    receive(next);     comment("Cursor finish");
   }
 
   void shiftLeft(Float& result) {
@@ -193,7 +193,7 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
 //  mapOut = mapOut + pitch;
 
   For (Int y = 1 + me(), y < height - 1, y = y + numQPUs())
-    Ptr<Float> p = mapOut + y*pitch; // Point p to the output row
+    Ptr<Float> p = mapOut + y*pitch;  // Point p to the output row
 
     // Initialize three cursors for the three input rows
     for (int i = 0; i < 3; i++) row[i].init(map + (y + i - 1)*pitch);
@@ -257,8 +257,6 @@ void run_kernel() {
 		}
 		printf("\n");
 	};
-
-	mapA[0] = 666;
 
   for (int i = 0; i < settings.num_steps; i++) {
     if (i & 1)

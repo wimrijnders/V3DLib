@@ -448,24 +448,15 @@ Instr &Instr::fmul(Location const &loc1, Location const &loc2, Location const &l
 
 
 Instr &Instr::fmul(Location const &loc1, SmallImm imm2, Location const &loc3) {
-	m_doing_add = false;
-	alu_mul_set_dst(loc1);
-	alu_mul_set_imm_a(imm2);
-
-	// NOTE: raddr_a set for loc3 and b-fields used in mul
-	raddr_a = loc3.to_waddr();
-	alu.mul.b     = V3D_QPU_MUX_A;
-	alu.mul.b_unpack = loc3.input_unpack();
-
-	alu.mul.op    = V3D_QPU_M_FMUL;
+	alu_mul_set(loc1, imm2,  loc3);
+	alu.mul.op = V3D_QPU_M_FMUL;
 	return *this;
 }
 
 
 Instr &Instr::fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	alu_mul_set(loc1, loc2,  imm3);
-	alu.mul.op    = V3D_QPU_M_FMUL;
-
+	alu.mul.op = V3D_QPU_M_FMUL;
 	return *this;
 }
 
@@ -877,7 +868,14 @@ Instr add(Location const &loc1, Location const &loc2, Location const &loc3) {
 Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, imm3);
+	instr.alu.add.op    = V3D_QPU_A_ADD;
+	return instr;
+}
 
+
+Instr add(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
+	Instr instr;
+	instr.alu_add_set(loc1, imm2, loc3);
 	instr.alu.add.op    = V3D_QPU_A_ADD;
 	return instr;
 }

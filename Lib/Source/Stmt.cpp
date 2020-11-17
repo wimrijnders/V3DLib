@@ -195,6 +195,15 @@ void Print(IntExpr x)
   stmtStack().replace(mkSeq(stmtStack().top(), s));
 }
 
+
+void comment(char const *str) {
+ 	assert(stmtStack().top() != nullptr);
+ 	assert(stmtStack().top()->tag == SEQ);
+ 	assert(stmtStack().top()->seq.s1 != nullptr);
+ 	stmtStack().top()->seq.s1->comment(str);
+}
+
+
 /**
  * QPU code for clean exit
  */

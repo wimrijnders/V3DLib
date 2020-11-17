@@ -15,7 +15,7 @@ void emulate(
 	int numQPUs,                 // Number of QPUs active
 	Seq<Instr>* instrs,          // Instruction sequence
 	int maxReg,                  // Max reg id used
-	Seq<int32_t>* uniforms,      // Kernel parameters
+	Seq<int32_t> &uniforms,      // Kernel parameters
 	BufferObject &heap,
 	Seq<char>* output = nullptr  // Output from print statements (if NULL, stdout is used)
 );
