@@ -174,6 +174,7 @@ Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 
 Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3);
+Instr add(Location const &loc1, SmallImm const &imm2, Location const &loc3);
 Instr sub(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb);
