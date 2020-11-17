@@ -52,7 +52,7 @@ struct HeatMapSettings : public Settings {
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 		// Init the parameters in the parent
-		if (!process(&params)) {
+		if (!process(&params, true)) {
 			ret = FAIL;
 		}
 
@@ -144,18 +144,18 @@ struct Cursor {
   Float prev, current, next;
 
   void init(Ptr<Float> p) {
-    gather(p);
+    gather(p);         comment("Cursor init");
     current = 0;
     addr = p + 16;
   }
 
   void prime() {
-    receive(next);
+    receive(next);     comment("Cursor prime");
     gather(addr);
   }
 
   void advance() {
-    addr = addr + 16;
+    addr = addr + 16;  comment("Cursor advance");
     prev = current;
     gather(addr);
     current = next;
@@ -163,7 +163,7 @@ struct Cursor {
   }
 
   void finish() {
-    receive(next);
+    receive(next);     comment("Cursor finish");
   }
 
   void shiftLeft(Float& result) {
@@ -185,28 +185,6 @@ struct Cursor {
 
 
 void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
-	// Serves as calling example
-	//*debug = toFloat(a); /*store(toFloat(a), debug); */ debug += 16;
- 
-#if 0 
-	For (Int y = 1, y < height - 1, y = y + 1)  // Doing 1 QPU for now
-		Ptr<Float> p_in  = map;    //+ y *width;
-		Ptr<Float> p_out = mapOut + 2 *y *width;
-
-	  For (Int x = 1, x < 6, x = x + 1)
-			Float tmp = 256*1000 - *p_in;
-			//*mapOut = tmp;
-			store(tmp, p_out /*mapOut*/);
-
-			p_in  += 32;
-			p_out += 32;
-			//map    += 32;
-			//mapOut += 32;
-		End
-	End
-#endif
-
-
 	Int pitch = width;
   Cursor row[3];
   //map = map + pitch*me(); //+ index(); // WRI DEBUG
@@ -214,12 +192,8 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
 //  // Skip first row of output map
 //  mapOut = mapOut + pitch;
 
-  For (Int y = 1, y < height - 1, y = y + 1)  // Doing 1 QPU for now
-  //For (Int y = me(), y < height, y = y + numQPUs())
-    // Point p to the output row
-    //Ptr<Float> p = mapOut + y*pitch + 1;
-    Ptr<Float> p_in = map    + y*pitch;
-    Ptr<Float> p    = mapOut + y*pitch;
+  For (Int y = 1 + me(), y < height - 1, y = y + numQPUs())
+    Ptr<Float> p = mapOut + y*pitch;  // Point p to the output row
 
     // Initialize three cursors for the three input rows
     for (int i = 0; i < 3; i++) row[i].init(map + (y + i - 1)*pitch);
@@ -228,7 +202,7 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
     // Compute one output row
     For (Int x = 0, x < width, x = x + 16)
       for (int i = 0; i < 3; i++) row[i].advance();
-/*
+
       Float left[3], right[3];
       for (int i = 0; i < 3; i++) {
         row[i].shiftLeft(right[i]);
@@ -240,17 +214,7 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
                   left[2] + row[2].current + right[2];
 
       store(row[1].current - K * (row[1].current - sum * 0.125), p);
-*/
-
-			Float sum = row[0].current + row[2].current;
-      Float tmp = row[1].current - K * (row[1].current - sum * 0.5);
-
-      store(tmp, p);
-//      store(row[1].current, p);
-//      store(*p_in, p);
-//			*p = *p_in;
       p = p + 16;
-      p_in = p_in + 16;
     End
 
     // Cursors are finished for this row
@@ -279,7 +243,7 @@ void run_kernel() {
 
   // Compile kernel
   auto k = compile(step);
-  //k.setNumQPUs(settings.num_qpus);  // default is 1
+  k.setNumQPUs(settings.num_qpus);  // default is 1
 
 	output_pgm_file(mapA, settings.WIDTH, settings.HEIGHT, 255, "heatmap_pre.pgm");
 
@@ -293,8 +257,6 @@ void run_kernel() {
 		}
 		printf("\n");
 	};
-
-	mapA[0] = 666;
 
   for (int i = 0; i < settings.num_steps; i++) {
     if (i & 1)
