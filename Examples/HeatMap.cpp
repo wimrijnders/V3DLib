@@ -14,7 +14,10 @@ const float K = 0.25;   // Heat dissipation constant
 std::vector<const char *> const kernels = { "vector", "scalar" };  // Order important! First is default
 
 CmdParameters params = {
-  "Heatmap\n",
+  "HeatMap Example\n\n"
+	"This models the heat flow across a 2D surface.\n\n"
+	"The edges are set at zero temperature, and a number of hot points are placed randomly over the surface.\n"
+	"",
   {{
     "Kernel",
     "-k=",
@@ -144,18 +147,18 @@ struct Cursor {
   Float prev, current, next;
 
   void init(Ptr<Float> p) {
-    gather(p);         comment("Cursor init");
+    gather(p);
     current = 0;
     addr = p + 16;
   }
 
   void prime() {
-    receive(next);     comment("Cursor prime");
+    receive(next);
     gather(addr);
   }
 
   void advance() {
-    addr = addr + 16;  comment("Cursor advance");
+    addr = addr + 16;
     prev = current;
     gather(addr);
     current = next;
@@ -163,7 +166,7 @@ struct Cursor {
   }
 
   void finish() {
-    receive(next);     comment("Cursor finish");
+    receive(next);
   }
 
   void shiftLeft(Float& result) {
@@ -193,7 +196,7 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
 //  mapOut = mapOut + pitch;
 
   For (Int y = 1 + me(), y < height - 1, y = y + numQPUs())
-    Ptr<Float> p = mapOut + y*pitch;  // Point p to the output row
+    Ptr<Float> p = mapOut + y*pitch; // Point p to the output row
 
     // Initialize three cursors for the three input rows
     for (int i = 0; i < 3; i++) row[i].init(map + (y + i - 1)*pitch);
@@ -257,6 +260,8 @@ void run_kernel() {
 		}
 		printf("\n");
 	};
+
+	mapA[0] = 666;
 
   for (int i = 0; i < settings.num_steps; i++) {
     if (i & 1)
