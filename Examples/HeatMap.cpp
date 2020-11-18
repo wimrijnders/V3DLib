@@ -26,6 +26,12 @@ CmdParameters params = {
 		POSITIVE_INTEGER,
     "Set the number of steps to execute in the calculation",
 		1500
+	}, {
+    "Number of points",
+    "-points=",
+		POSITIVE_INTEGER,
+    "Set the number of randomly distributed hot points to start with",
+		10
   }}
 };
 
@@ -35,11 +41,11 @@ struct HeatMapSettings : public Settings {
   const int WIDTH  = 512;           // Should be a multiple of 16 for QPU
   const int HEIGHT = 506;           // Should be a multiple of num_qpus for QPU
   const int SIZE   = WIDTH*HEIGHT;  // Size of 2D heat map
-  const int NSPOTS = 10;
 
 	int    kernel;
 	string kernel_name;
 	int    num_steps;
+	int    num_points;
 
 	int init(int argc, const char *argv[]) {
 		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
@@ -59,6 +65,7 @@ struct HeatMapSettings : public Settings {
 		kernel      = params.parameters()["Kernel"]->get_int_value();
 		kernel_name = params.parameters()["Kernel"]->get_string_value();
 		num_steps   = params.parameters()["Number of steps"]->get_int_value();
+		num_points  = params.parameters()["Number of points"]->get_int_value();
 
 		return ret;
 	}
@@ -73,7 +80,7 @@ template<typename Arr>
 void inject_hotspots(Arr &arr) {
   srand(0);
 
-  for (int i = 0; i < settings.NSPOTS; i++) {
+  for (int i = 0; i < settings.num_points; i++) {
     int t = rand() % 256;
     int x = 1 + rand() % (settings.WIDTH  - 2);
     int y = 1 + rand() % (settings.HEIGHT - 2);
@@ -185,18 +192,16 @@ struct Cursor {
 
 
 void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
-	Int pitch = width;
   Cursor row[3];
-  //map = map + pitch*me(); //+ index(); // WRI DEBUG
 
-//  // Skip first row of output map
-//  mapOut = mapOut + pitch;
-
-  For (Int y = 1 + me(), y < height - 1, y = y + numQPUs())
-    Ptr<Float> p = mapOut + y*pitch;  // Point p to the output row
+  For (Int y = 1, y + numQPUs() < height - 1, y = y + numQPUs())
+		Int yy = y + me();
+		// Point p to the output row
+    Ptr<Float> p = mapOut + yy*width;
 
     // Initialize three cursors for the three input rows
-    for (int i = 0; i < 3; i++) row[i].init(map + (y + i - 1)*pitch);
+    Ptr<Float> p_in = map + yy*width;
+    for (int i = 0; i < 3; i++) row[i].init(p_in + (i - 1)*width);
     for (int i = 0; i < 3; i++) row[i].prime();
 
     // Compute one output row
@@ -213,17 +218,42 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
                   left[1] +                  right[1] +
                   left[2] + row[2].current + right[2];
 
-      store(row[1].current - K * (row[1].current - sum * 0.125), p);
+     	Float output = row[1].current - K * (row[1].current - sum * 0.125);
+
+/*
+			Int actual_x = x + index();
+			Where (actual_x == 0)
+				output = 0.0f;
+			End
+			Where (actual_x == width - 1)
+				output = 0.0f;
+			End
+*/
+
+     	store(output, p);
+			//*p = output;
+
       p = p + 16;
     End
 
     // Cursors are finished for this row
     for (int i = 0; i < 3; i++) row[i].finish();
-
-    // Move to the next input rows
-//    map = map + pitch*numQPUs();
   End
 }
+
+
+void reset_borders(SharedArray<float> &map) {
+  for (int x = 0; x < settings.WIDTH; x++) {
+		map[x] = 0.0f;
+		map[(settings.HEIGHT - 1)*settings.WIDTH + x] = 0.0f;
+	}
+
+  for (int y = 0; y < settings.HEIGHT; y++) {
+		map[settings.WIDTH*y] = 0.0f;
+		map[settings.WIDTH*y + settings.WIDTH - 1] = 0.0f;
+	}
+}
+
 
 /**
  * The edges always have zero values.
@@ -259,10 +289,13 @@ void run_kernel() {
 	};
 
   for (int i = 0; i < settings.num_steps; i++) {
-    if (i & 1)
+    if (i & 1) {
       k.load(&mapB, &mapA, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
-    else
+			//reset_borders(mapB);
+    } else {
       k.load(&mapA, &mapB, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
+			//reset_borders(mapA);
+		}
 
 		settings.process(k);  // Invoke the kernel
   }
