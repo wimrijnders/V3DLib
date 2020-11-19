@@ -1,3 +1,22 @@
+/**
+ * HeatMap Example
+ *
+ * NOTES
+ * =====
+ *
+ * 1. Uniform pointers passed into a kernel are always implicitly initialized with an offset for the QPU ID, i.e.:
+ *
+ *          p = p + 16*me() + index();  // Default initialization for all uniform pointers
+ *
+ *    This is based on the assumption that kernels will process the incoming data sequentially, and will also
+ *    output it as such. This is almost always true; the HeatMap example, however, is an exception.
+ *    Here, each QPU gets assigned an input row, which it handles by itself.
+ *
+ *    The kernel thus has to correct the default pointer initialization before executing.
+ *    This is an unfortunate consequence of a design decision that I thought was pretty nifty at the time,
+ *    and in the majority of cases, it's a good thing to do. Will leave this decision in until I (or you)
+ *    can think of something better.
+ */
 #include <QPULib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -11,17 +30,21 @@ using std::string;
 
 const float K = 0.25;   // Heat dissipation constant
 
-std::vector<const char *> const kernels = { "vector", "scalar" };  // Order important! First is default
 
 CmdParameters params = {
-  "HeatMap Example\n\n"
-	"This models the heat flow across a 2D surface.\n\n"
+  "HeatMap Example\n"
+	"\n"
+	"This example models the heat flow across a 2D surface.\n"
+	"The output is a pgm-bitmap with the final state of the surface.\n"
+	"\n"
 	"The edges are set at zero temperature, and a number of hot points are placed randomly over the surface.\n"
-	"",
+	"The lower border can be broader than 1 pixel, depending on the number of QPU's running. This is due to\n"
+  "preventing image overrun."
+	"\n",
   {{
     "Kernel",
     "-k=",
-		kernels,
+		{"vector", "scalar"},  // First is default
     "Select the kernel to use"
 	}, {
     "Number of steps",
@@ -51,7 +74,6 @@ struct HeatMapSettings : public Settings {
 	int    num_points;
 
 	int init(int argc, const char *argv[]) {
-		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
 		auto const FAIL    = CmdParameters::EXIT_ERROR;
 
 		set_name(argv[0]);
@@ -132,8 +154,6 @@ void run_scalar() {
   // Inject hot spots
 	inject_hotspots(map);
 
-	output_pgm_file(map, settings.WIDTH, settings.HEIGHT, 255, "heatmap_pre.pgm");
-
   // Simulate
   for (int i = 0; i < settings.num_steps; i++) {
     scalar_step(map2D, mapOut2D, settings.WIDTH, settings.HEIGHT);
@@ -195,15 +215,18 @@ struct Cursor {
 
 
 void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
+	// Correct for per-QPU offset; see Note 1 at top
+	map    -= 16*me();
+	mapOut -= 16*me();
+
   Cursor row[3];
 
   For (Int y = 1, y + numQPUs() < height - 1, y = y + numQPUs())
-		Int yy = y + me();
-		// Point p to the output row
-    Ptr<Float> p = mapOut + yy*width;
+		// Point p to the in- and output row
+    Ptr<Float> p_in = map    + (y + me())*width;
+    Ptr<Float> p    = mapOut + (y + me())*width;
 
     // Initialize three cursors for the three input rows
-    Ptr<Float> p_in = map + yy*width;
     for (int i = 0; i < 3; i++) row[i].init(p_in + (i - 1)*width);
     for (int i = 0; i < 3; i++) row[i].prime();
 
@@ -223,7 +246,7 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
 
      	Float output = row[1].current - K * (row[1].current - sum * 0.125);
 
-/*
+			// Ensure left and right borders are zero
 			Int actual_x = x + index();
 			Where (actual_x == 0)
 				output = 0.0f;
@@ -231,10 +254,8 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
 			Where (actual_x == width - 1)
 				output = 0.0f;
 			End
-*/
 
      	store(output, p);
-			//*p = output;
 
       p = p + 16;
     End
@@ -242,19 +263,6 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
     // Cursors are finished for this row
     for (int i = 0; i < 3; i++) row[i].finish();
   End
-}
-
-
-void reset_borders(SharedArray<float> &map) {
-  for (int x = 0; x < settings.WIDTH; x++) {
-		map[x] = 0.0f;
-		map[(settings.HEIGHT - 1)*settings.WIDTH + x] = 0.0f;
-	}
-
-  for (int y = 0; y < settings.HEIGHT; y++) {
-		map[settings.WIDTH*y] = 0.0f;
-		map[settings.WIDTH*y + settings.WIDTH - 1] = 0.0f;
-	}
 }
 
 
@@ -278,34 +286,16 @@ void run_kernel() {
   auto k = compile(step);
   k.setNumQPUs(settings.num_qpus);  // default is 1
 
-	output_pgm_file(mapA, settings.WIDTH, settings.HEIGHT, 255, "heatmap_pre.pgm");
-
-	// WRI Debug
-	auto dump = [&mapB] (int count) {
-  	for (int i = 0; i < count*16; i++) {
-			if (i % 16 == 0) {
-				printf("\n");
-			}
-			printf("%8.1f, ", mapB[i]);
-		}
-		printf("\n");
-	};
-
-	mapA[0] = 666;
-
   for (int i = 0; i < settings.num_steps; i++) {
     if (i & 1) {
       k.load(&mapB, &mapA, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
-			//reset_borders(mapB);
     } else {
       k.load(&mapA, &mapB, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
-			//reset_borders(mapA);
 		}
 
-		settings.process(k);  // Invoke the kernel
+		// Invoke the kernel
+		settings.process(k);
   }
-
-	dump(10);
 
   // Output results
 	output_pgm_file(mapB, settings.WIDTH, settings.HEIGHT, 255, "heatmap.pgm");
@@ -327,10 +317,8 @@ int main(int argc, const char *argv[]) {
 		case 1: run_scalar(); break;
 	}
 
-	auto name = kernels[settings.kernel];
-
 	if (!settings.silent) {
-		printf("Ran kernel '%s' with %d QPU's\n", name, settings.num_qpus);
+		printf("Ran kernel '%s' with %d QPU's\n", settings.kernel_name.c_str(), settings.num_qpus);
 	}
 	timer.end(!settings.silent);
 

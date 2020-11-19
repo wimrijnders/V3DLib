@@ -147,6 +147,15 @@ template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, IntExpr b) {
   PtrExpr<T> x; x.expr = e; return x;
 }
 
+template <typename T> inline PtrExpr<T> operator-(Ptr<T> &a, IntExpr b) {
+  Expr* e = mkApply(a.expr, Op(SUB, INT32), (b<<2).expr);
+  PtrExpr<T> x; x.expr = e; return x;
+}
+
+template <typename T> inline PtrExpr<T> operator-=(Ptr<T> &a, IntExpr b) {
+  return a = a - b;
+}
+
 }  // namespace QPULib
 
 #endif  // _QPULIB_SOURCE_PTR_H_
