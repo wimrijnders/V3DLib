@@ -197,6 +197,8 @@ void mandelbrot_multi(
   Int numIterations,
   Ptr<Int> result
 ) {
+	result -= me() << 4;
+
   Int inc = numQPUs();
 
   For (Int yStep = 0, yStep < numStepsHeight, yStep = yStep + inc)
