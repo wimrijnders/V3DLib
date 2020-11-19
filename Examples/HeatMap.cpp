@@ -174,7 +174,7 @@ struct Cursor {
   Float prev, current, next;
 
   void init(Ptr<Float> p) {
-    gather(p);
+    gather(p); comment("Cursor init");
     current = 0;
     addr = p + 16;
   }
@@ -216,12 +216,12 @@ struct Cursor {
 
 void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
 	// Correct for per-QPU offset; see Note 1 at top
-	map    -= 16*me();
-	mapOut -= 16*me();
+	map    -= me() << 4;
+	mapOut -= me() << 4;
 
   Cursor row[3];
 
-  For (Int y = 1, y + numQPUs() < height - 1, y = y + numQPUs())
+  For (Int y = 1, y < height - 1 - numQPUs(), y = y + numQPUs())
 		// Point p to the in- and output row
     Ptr<Float> p_in = map    + (y + me())*width;
     Ptr<Float> p    = mapOut + (y + me())*width;
@@ -284,7 +284,7 @@ void run_kernel() {
 
   // Compile kernel
   auto k = compile(step);
-  k.setNumQPUs(settings.num_qpus);  // default is 1
+  k.setNumQPUs(settings.num_qpus);
 
   for (int i = 0; i < settings.num_steps; i++) {
     if (i & 1) {
