@@ -23,7 +23,8 @@ std::vector<const char *> const kernels = { "multi", "single", "cpu", "all" };  
 
 
 CmdParameters params = {
-  "Mandelbrot Generator\n\n"
+  "Mandelbrot Generator\n"
+	"\n"
 	"Calculates Mandelbrot for a given region and outputs the result as a PGM bitmap file.\n"
 	"Because this calculation is purely hardware-bound, it is a good indication of overall speed.\n"
 	"It will therefore be used for performance comparisons of platforms and configurations.\n",
@@ -39,6 +40,12 @@ CmdParameters params = {
     "Output a PGM bitmap of the calculation results.\n"
     "If enabled, a PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
     "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled\n",
+	}, {
+		"Number of steps",
+		"-steps=",
+		ParamType::POSITIVE_INTEGER,
+		"Maximum number of iterations to perform per point",
+		1024
   }}
 };
 
@@ -49,17 +56,19 @@ struct MandSettings : public Settings {
 	int    kernel;
 	string kernel_name;
 	bool   output_pgm;
+	int    num_iterations;
 
   // Initialize constants for the kernels
   const int   numStepsWidth   = 1024;
   const int   numStepsHeight  = 1024;
-  const int   numIterations   = 1024;
   const float topLeftReal     = -2.5f;
   const float topLeftIm       = 2.0f;
   const float bottomRightReal = 1.5f;
   const float bottomRightIm   = -2.0f;
 
-  int num_items() { return numStepsWidth*numStepsHeight; }
+  int num_items() const { return numStepsWidth*numStepsHeight; }
+  float offsetX() const { return (bottomRightReal - topLeftReal  )/((float) numStepsWidth  - 1); }
+  float offsetY() const { return (topLeftIm       - bottomRightIm)/((float) numStepsHeight - 1); }
 
 	int init(int argc, const char *argv[]) {
 		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
@@ -77,9 +86,10 @@ struct MandSettings : public Settings {
 			ret = FAIL;
 		}
 
-		kernel      = params.parameters()["Kernel"]->get_int_value();
-		kernel_name = params.parameters()["Kernel"]->get_string_value();
-		output_pgm  = params.parameters()["Output PGM file"]->get_bool_value();
+		kernel         = params.parameters()["Kernel"]->get_int_value();
+		kernel_name    = params.parameters()["Kernel"]->get_string_value();
+		output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
+		num_iterations = params.parameters()["Number of steps"]->get_int_value();
 
 		return ret;
 	}
@@ -96,20 +106,17 @@ struct MandSettings : public Settings {
  * This runs on the CPU
  */
 void mandelbrot_cpu(int *result) {
-  float offsetX = (settings.bottomRightReal - settings.topLeftReal)/((float) settings.numStepsWidth - 1);
-  float offsetY = (settings.topLeftIm - settings.bottomRightIm)/((float) settings.numStepsHeight - 1);
-
   for (int xStep = 0; xStep < settings.numStepsWidth; xStep++) {
     for (int yStep = 0; yStep < settings.numStepsHeight; yStep++) {
-      float realC = settings.topLeftReal   + ((float) xStep)*offsetX;
-      float imC   = settings.bottomRightIm + ((float) yStep)*offsetY;
+      float realC = settings.topLeftReal   + ((float) xStep)*settings.offsetX();
+      float imC   = settings.bottomRightIm + ((float) yStep)*settings.offsetY();
 
       int count = 0;
       float real = realC;
       float im   = imC;
       float radius = (real*real + im*im);
 
-      while (radius < 4 && count < settings.numIterations) {
+      while (radius < 4 && count < settings.num_iterations) {
         float tmpReal = real*real - im*im;
         float tmpIm   = 2*real*im;
         real = tmpReal + realC;
@@ -149,8 +156,8 @@ void mandelbrotCore(
   While (any(checkvar > 0))
     Where (checkvar > 0)
       Float imTmp = 2*re*im;
-      re   = (reSquare - imSquare) + reC;
-      im   = imTmp  + imC;
+      re = (reSquare - imSquare) + reC;
+      im = imTmp  + imC;
 
       reSquare = re*re;
       imSquare = im*im;
@@ -172,7 +179,7 @@ void mandelbrot_single(
   Ptr<Int> result
 ) {
   For (Int yStep = 0, yStep < numStepsHeight, yStep++)
-    For (Int xStep = 0, xStep < numStepsWidth, xStep = xStep + 16)
+    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
       Int xIndex = index() + xStep;
       Int resultIndex = xIndex + yStep*numStepsWidth;
 
@@ -197,14 +204,12 @@ void mandelbrot_multi(
   Int numIterations,
   Ptr<Int> result
 ) {
-	result -= me() << 4;
+	result -= me() << 4;  // Correct for per-QPU offset
 
-  Int inc = numQPUs();
-
-  For (Int yStep = 0, yStep < numStepsHeight, yStep = yStep + inc)
+  For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep = yStep + numQPUs())
     Int yIndex = me() + yStep;
 
-    For (Int xStep = 0, xStep < numStepsWidth && yIndex < numStepsHeight, xStep = xStep + 16)
+    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
       Int xIndex = index() + xStep;
       Int resultIndex = xIndex + yIndex*numStepsWidth;
 
@@ -223,37 +228,36 @@ void mandelbrot_multi(
 // Local functions
 // ============================================================================
 
+using KernelType = decltype(mandelbrot_single);
+
 template<class Array>
 void output_pgm(Array &result) {
 	if (!settings.output_pgm) return;
 
-  int width  = settings.numStepsWidth;
-	int height = settings.numStepsHeight;
-	int numIterations = settings.numIterations;
+  int width         = settings.numStepsWidth;
+	int height        = settings.numStepsHeight;
+	int numIterations = settings.num_iterations;
 
 	output_pgm_file(result, width, height, numIterations, "mandelbrot.pgm");
 }
 
 
-void run_qpu_kernel( decltype(mandelbrot_single) &kernel) {
+void run_qpu_kernel(KernelType &kernel) {
+  assert(0 == settings.numStepsWidth % 16);       // width needs to be a multiple of 16
+
   auto k = compile(kernel);
+  k.setNumQPUs(settings.num_qpus);
 
 	SharedArray<int> result(settings.num_items());  // Allocate and initialise
 
-  assert(0 == settings.numStepsWidth % 16);    // width needs to be a multiple of 16
-	float offsetX = (settings.bottomRightReal - settings.topLeftReal)/((float) settings.numStepsWidth - 1);
-	float offsetY = (settings.topLeftIm - settings.bottomRightIm)/((float) settings.numStepsHeight - 1);
-
-  k.setNumQPUs(settings.num_qpus);
-
   k.load(
 		settings.topLeftReal, settings.topLeftIm,
-		offsetX, offsetY,
+		settings.offsetX(), settings.offsetY(),
 		settings.numStepsWidth, settings.numStepsHeight,
-		settings.numIterations,
+		settings.num_iterations,
 		&result);
-  settings.process(k);
 
+  settings.process(k);
 	output_pgm(result);
 }
 
