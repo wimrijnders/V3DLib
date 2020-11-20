@@ -209,7 +209,7 @@ void mandelbrot_multi(
 
     For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
       Int xIndex = xStep + index();
-			Ptr<Int> dst = result + xIndex + yIndex*numStepsWidth;
+			Ptr<Int> dst = result + xStep + yIndex*numStepsWidth;
 
       mandelbrotCore(
         (topLeftReal + offsetX*toFloat(xIndex)),
