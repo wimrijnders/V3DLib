@@ -137,9 +137,8 @@ void mandelbrot_cpu(int *result) {
  */
 void mandelbrotCore(
   Float reC, Float imC,
-  Int &resultIndex,
   Int &numIterations,
-  Ptr<Int> &result
+  Ptr<Int> &dst
 ) {
   Float re = reC;
   Float im = imC;
@@ -167,7 +166,7 @@ void mandelbrotCore(
     End
   End
 
-  store(count, result + resultIndex);
+  store(count, dst);
 }
 
 
@@ -180,15 +179,14 @@ void mandelbrot_single(
 ) {
   For (Int yStep = 0, yStep < numStepsHeight, yStep++)
     For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
-      Int xIndex = index() + xStep;
-      Int resultIndex = xIndex + yStep*numStepsWidth;
+      Int xIndex = xStep + index();
+			Ptr<Int> dst = result + xStep + yStep*numStepsWidth;
 
       mandelbrotCore(
         (topLeftReal + offsetX*toFloat(xIndex)),
         (topLeftIm   - offsetY*toFloat(yStep)),
-				resultIndex,
         numIterations,
-        result);
+        dst);
     End
   End
 }
@@ -207,18 +205,17 @@ void mandelbrot_multi(
 	result -= me() << 4;  // Correct for per-QPU offset
 
   For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep = yStep + numQPUs())
-    Int yIndex = me() + yStep;
+    Int yIndex = yStep + me();
 
     For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
-      Int xIndex = index() + xStep;
-      Int resultIndex = xIndex + yIndex*numStepsWidth;
+      Int xIndex = xStep + index();
+			Ptr<Int> dst = result + xIndex + yIndex*numStepsWidth;
 
       mandelbrotCore(
         (topLeftReal + offsetX*toFloat(xIndex)),
         (topLeftIm   - offsetY*toFloat(yIndex)),
-        resultIndex,
         numIterations,
-        result);
+        dst);
     End
   End
 }
