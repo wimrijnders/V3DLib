@@ -3,8 +3,8 @@
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
 
-namespace QPULib {
-	using namespace QPULib::Target::instr;
+namespace V3DLib {
+	using namespace V3DLib::Target::instr;
 
 // =============================================================================
 // VPM setup
@@ -251,4 +251,4 @@ Seq<Instr> genSetWriteStride(Reg stride) {
 	return ret;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

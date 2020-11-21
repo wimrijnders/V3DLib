@@ -1,12 +1,12 @@
-#ifndef _QPULIB_REMOVELABELS_H_
-#define _QPULIB_REMOVELABELS_H_
+#ifndef _V3DLIB_REMOVELABELS_H_
+#define _V3DLIB_REMOVELABELS_H_
 #include "Target/Syntax.h"
 #include "Target/CFG.h"
 #include "Target/Liveness.h"
 #include "Common/Seq.h"
 #include "Support/basics.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Remove labels
@@ -83,6 +83,6 @@ void removeLabels(Instructions &instrs) {
   delete [] labels;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_REMOVELABELS_H_
+#endif  // _V3DLIB_REMOVELABELS_H_

@@ -26,8 +26,8 @@ THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
 OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#ifndef _QPULIB_VC4_MAILBOX_H_
-#define _QPULIB_VC4_MAILBOX_H_
+#ifndef _V3DLIB_VC4_MAILBOX_H_
+#define _V3DLIB_VC4_MAILBOX_H_
 
 #include <linux/ioctl.h>
 
@@ -35,7 +35,7 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 #define IOCTL_MBOX_PROPERTY _IOWR(MAJOR_NUM, 0, char *)
 #define DEVICE_FILE_NAME "/dev/vcio"
 
-namespace QPULib {
+namespace V3DLib {
 
 int mbox_open();
 void mbox_close(int file_desc);
@@ -52,8 +52,8 @@ unsigned execute_code(int file_desc, unsigned code, unsigned r0, unsigned r1, un
 unsigned execute_qpu(int file_desc, unsigned num_qpus, unsigned control, unsigned noflush, unsigned timeout);
 unsigned qpu_enable(int file_desc, unsigned enable);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
 #define BUS_TO_PHYS(addr) (((addr)) & ~0xC0000000)
 
-#endif  // _QPULIB_VC4_H_
+#endif  // _V3DLIB_VC4_H_

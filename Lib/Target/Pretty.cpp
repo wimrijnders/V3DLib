@@ -4,7 +4,7 @@
 #include "Target/SmallLiteral.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace {
 
 const char* pretty(SubWord sw) {
@@ -174,7 +174,7 @@ std::string pretty_conditions(Instr const &instr) {
 
  
 /**
- * Pretty printer for qpuLib Target instructions
+ * Pretty printer for Target instructions
  *
  * Returns a string representation of an instruction.
  */
@@ -239,7 +239,7 @@ std::string pretty_instr(Instr const &instr) {
     case IRQ:
     case VPM_STALL:
     case TMUWT:
-      buf << QPULib::pretty_instr_tag(instr.tag);
+      buf << V3DLib::pretty_instr_tag(instr.tag);
       break;
     default:
       buf << "<<UNKNOWN: " << instr.tag << ">>";
@@ -274,7 +274,7 @@ const char *pretty_instr_tag(InstrTag tag) {
 
 
 /**
- * Pretty printer for qpuLib Target instructions
+ * Pretty printer for Target instructions
  *
  * Returns a string representation of an instruction.
  */
@@ -295,4 +295,4 @@ std::string pretty(Instr const &instr, bool with_comments) {
 	return buf;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

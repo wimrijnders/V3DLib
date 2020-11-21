@@ -1,11 +1,11 @@
-#ifndef _LIB_SUPPORT_BASICS_H
-#define _LIB_SUPPORT_BASICS_H
+#ifndef _V3DLIB_SUPPORT_BASICS_H
+#define _V3DLIB_SUPPORT_BASICS_H
 #include <string>
 #include <vector>
 #include "Exception.h"
 #include "debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Terminate the application ASAP
@@ -29,7 +29,7 @@ inline void fatal(std::string const &msg) {
 	fatal(msg.c_str());
 }
 
-}  // QPULib
+}  // V3DLib
 
 
 //
@@ -86,4 +86,4 @@ inline std::string &operator<<(std::string &a, float val) {
 }
 
 
-#endif  // _LIB_SUPPORT_BASICS_H
+#endif  // _V3DLIB_SUPPORT_BASICS_H

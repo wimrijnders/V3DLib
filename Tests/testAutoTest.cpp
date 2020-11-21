@@ -2,19 +2,20 @@
  *
  * # AutoTest: specification-based testing of the compiler
  *
-`* Generates random QPULib programs, runs them on the both
+`* Generates random V3DLib programs, runs them on the both
  * source language interpreter and the target language emulator, and
  * checks for equivalence.  Currently, it only works in emulation mode.
  *
  ******************************************************************************/
 #include "catch.hpp"
-#include "QPULib.h"
+#include "V3DLib.h"
 #include "Common/Seq.h"
 #include "support/Gen.h"
 #include "Source/Pretty.h"
 #include "Support/debug.h"
+#include "KernelDriver.h"  // compileKernel()
 
-using namespace QPULib;
+using namespace V3DLib;
 
 // ============================================================================
 // Program-generator options
@@ -86,8 +87,8 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	    }
 
 	    Seq<char> interpOut, emuOut;
-	    interpreter(1, s, numVars, &params, getBufferObject(), &interpOut);
-	    emulate(1, &targetCode, numEmuVars, &params, getBufferObject(), &emuOut);
+	    interpreter(1, s, numVars, params, getBufferObject(), &interpOut);
+	    emulate(1, &targetCode, numEmuVars, params, getBufferObject(), &emuOut);
 
 	    bool differs = false;
 	    if (interpOut.size() != emuOut.size())

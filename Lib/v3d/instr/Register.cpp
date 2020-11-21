@@ -2,7 +2,7 @@
 #include "../../Support/basics.h"  // Exception
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 namespace instr {
 
@@ -114,4 +114,4 @@ Register const a_unif("a_unif", V3D_QPU_WADDR_R0);
 
 }  // instr
 }  // v3d
-}  // QPULib
+}  // V3DLib

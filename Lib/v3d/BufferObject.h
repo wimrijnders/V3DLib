@@ -1,5 +1,5 @@
-#ifndef _QPULIB_V3D_BUFFEROBJECT_H_
-#define _QPULIB_V3D_BUFFEROBJECT_H_
+#ifndef _V3DLIB_V3D_BUFFEROBJECT_H_
+#define _V3DLIB_V3D_BUFFEROBJECT_H_
 #include <cassert>
 #include <vector>
 #include <stdint.h>
@@ -7,14 +7,14 @@
 #include "Common/BufferObject.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
 
 /**
  * This behaves like an array of uint32_t.
  */
-class BufferObject : public QPULib::BufferObject {
+class BufferObject : public V3DLib::BufferObject {
 public:
 	BufferObject(uint32_t size) { alloc_mem(size); }
 	BufferObject() {} 
@@ -41,6 +41,6 @@ private:
 BufferObject &getMainHeap();
 
 }  // namespace v3d
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_V3D_BUFFEROBJECT_H_
+#endif  // _V3DLIB_V3D_BUFFEROBJECT_H_

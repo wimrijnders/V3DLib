@@ -2,7 +2,7 @@
 #define _EXAMPLE_SUPPORT_TIMER_H
 #include <sys/time.h>
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Simple wrapper class for outputting run time for examples

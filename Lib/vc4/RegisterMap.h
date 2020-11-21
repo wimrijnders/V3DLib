@@ -1,11 +1,11 @@
 #ifdef QPU_MODE
 
-#ifndef _QPULIB_VC4_REGISTERMAP_H
-#define _QPULIB_VC4_REGISTERMAP_H
+#ifndef _V3DLIB_VC4_REGISTERMAP_H
+#define _V3DLIB_VC4_REGISTERMAP_H
 #include <memory>
 #include <stdint.h>
 
-namespace QPULib {
+namespace V3DLib {
 
 // Masks for scheduler registers
 enum SchedulerMasks : int {
@@ -145,7 +145,7 @@ private:
 	static unsigned size();
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_VC4_REGISTERMAP_H
+#endif  // _V3DLIB_VC4_REGISTERMAP_H
 #endif  // QPU_MODE

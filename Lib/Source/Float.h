@@ -1,12 +1,12 @@
 // This module defines type 'Float' for a vector of 16 x 32-bit floats.
 
-#ifndef _QPULIB_SOURCE_FLOAT_H_
-#define _QPULIB_SOURCE_FLOAT_H_
+#ifndef _V3DLIB_SOURCE_FLOAT_H_
+#define _V3DLIB_SOURCE_FLOAT_H_
 
 #include <assert.h>
 #include "Source/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Types                   
@@ -65,6 +65,6 @@ FloatExpr operator*(FloatExpr a, FloatExpr b);
 FloatExpr min(FloatExpr a, FloatExpr b);
 FloatExpr max(FloatExpr a, FloatExpr b);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_FLOAT_H_
+#endif  // _V3DLIB_SOURCE_FLOAT_H_

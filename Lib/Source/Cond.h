@@ -1,10 +1,10 @@
-#ifndef _QPULIB_SOURCE_COND_H_
-#define _QPULIB_SOURCE_COND_H_
+#ifndef _V3DLIB_SOURCE_COND_H_
+#define _V3DLIB_SOURCE_COND_H_
 
 #include "Source/Syntax.h"
 #include "Source/Int.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Types                   
@@ -105,6 +105,6 @@ inline Cond any(BoolExpr a)
 inline Cond all(BoolExpr a)
   { return Cond(mkAll(a.bexpr)); }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_COND_H_
+#endif  // _V3DLIB_SOURCE_COND_H_

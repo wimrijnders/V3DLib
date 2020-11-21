@@ -10,7 +10,7 @@
 #include "SourceTranslate.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -21,7 +21,7 @@ void print_source_code(FILE *f, Stmt *body) {
 	if (body == nullptr)
 		fprintf(stderr, "<No source code to print>");
 	else
-		QPULib::pretty(f, body);
+		V3DLib::pretty(f, body);
 
 	fprintf(f, "\n");
 	fflush(f);
@@ -110,7 +110,7 @@ void KernelDriver::_compile() {
 void KernelDriver::compile() {
 	try {
 		_compile();
-	} catch (QPULib::Exception const &e) {
+	} catch (V3DLib::Exception const &e) {
 		std::string msg = "Exception occured during compilation: ";
 		msg += e.msg();  // TODO WHY doesn't << work here???
 		//std::cerr << msg << std::endl;
@@ -200,4 +200,4 @@ void KernelDriver::invoke(int numQPUs, Seq<int32_t> &params) {
 	invoke_intern(numQPUs, &params);
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

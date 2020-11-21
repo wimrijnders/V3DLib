@@ -3,7 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Remap register A to accumulator
@@ -240,4 +240,4 @@ void satisfy(Seq<Instr>* instrs) {
   removeVPMStall(newInstrs1, *instrs);
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

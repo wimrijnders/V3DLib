@@ -94,9 +94,10 @@ Source code:
 
 - [ ] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
 - [ ] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
-  - Allocate `astHeap` for each kernel *- Nope, global heap required for language*
-  - Increase heap size dynamically when needed *- Can only be done by creating a new heap and transferring data*
-  - Add freeing of memory to heap definitions. This will increase the complexity of the heap code hugely *(already done for BO's)*
+  - **NO** Allocate `astHeap` for each kernel *- Nope, global heap required for language*
+  - **NO** Increase heap size dynamically when needed *- Can only be done by creating a new heap and transferring data*
+  - [x] Add freeing of memory to `SharedArray` heap. This will increase the complexity of the heap code hugely
+  - [ ] Add freeing of memory to AST heap BO definitions.
 
 
 ## Library Code
@@ -261,22 +262,12 @@ This is not necessarily fatal, but you can expect wild and unexpected results.
 
 -----
 
-# Principles
+# Stuff to Consider
 
-- QPU-mode should not compile on non-RPi platforms, default to emulator instead
-
-
-## Stuff to Consider
-
-### Measure performance in various ways
+## Measure performance in various ways
 
 E.g. compare between:
 
   - different iterations of a program
   - number of QPUs used
   - RPi versions
-  
-  
-### The QPULib compiler does not do much in the way of optimisation.
-
-So the question is how far QPULib programs are off hand-written QPU assembly, and what we can do to get closer.

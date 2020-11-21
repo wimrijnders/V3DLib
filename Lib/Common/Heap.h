@@ -1,10 +1,10 @@
-#ifndef _QPULIB_HEAP_H_
-#define _QPULIB_HEAP_H_
+#ifndef _V3DLIB_HEAP_H_
+#define _V3DLIB_HEAP_H_
 //#include <stdio.h>
 #include <stdint.h>
 #include "Support/basics.h"  // fatal()
 
-namespace QPULib {
+namespace V3DLib {
 
 class Heap {
 public:
@@ -40,7 +40,7 @@ private:
 	uint8_t *alloc_intern(unsigned long nbytes = 1) {
 		if (size + nbytes >= capacity) {
 			char buf[64];
-			sprintf(buf, "QPULib error: heap '%s' is full.\n", heapName);
+			sprintf(buf, "V3DLib error: heap '%s' is full.\n", heapName);
 			fatal(buf);
 			return nullptr;
 		} 
@@ -51,6 +51,6 @@ private:
 	}
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_HEAP_H_
+#endif  // _V3DLIB_HEAP_H_

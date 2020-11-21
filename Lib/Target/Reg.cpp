@@ -2,7 +2,7 @@
 #include "Syntax.h"
 #include "Support/basics.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Obtain a register for a fresh variable
@@ -48,7 +48,7 @@ Reg srcReg(Var v) {
 			break;
     case VPM_WRITE:
     case TMU0_ADDR:
-      printf("QPULib: Reading from write-only special register is forbidden\n");
+      printf("V3DLib: Reading from write-only special register is forbidden\n");
       assert(false);
 			break;
     case DUMMY:
@@ -68,14 +68,14 @@ Reg srcReg(Var v) {
  * Translate variable to target register.
  */
 Reg dstReg(Var v) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
   switch (v.tag) {
     case UNIFORM:
     case QPU_NUM:
     case ELEM_NUM:
     case VarTag::VPM_READ:
-      fatal("QPULib: writing to read-only special register is forbidden");
+      fatal("V3DLib: writing to read-only special register is forbidden");
 			return Reg();  // Return anything
 
     case STANDARD:
@@ -91,4 +91,4 @@ Reg dstReg(Var v) {
   }
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

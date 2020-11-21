@@ -2,7 +2,7 @@
 #include "Target/Pretty.h"  // pretty_instr_tag()
 #include "Support/basics.h" // fatal()
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Initialize the fields per selected instruction tag.
@@ -118,7 +118,7 @@ bool Instr::isCondAssign() const {
  * TODO Unused, do we need this?
  */
 bool Instr::isLast() const {
-  return tag == QPULib::BRL || tag == QPULib::BR || tag == QPULib::END;
+  return tag == V3DLib::BRL || tag == V3DLib::BR || tag == V3DLib::END;
 }
 
 
@@ -311,4 +311,4 @@ std::string mnemonics(Seq<Instr> const &code, bool with_comments) {
 }
 
 
-}  // namespace QPULib
+}  // namespace V3DLib

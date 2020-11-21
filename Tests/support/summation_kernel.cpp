@@ -731,7 +731,7 @@ std::vector<uint64_t> summation = {
 
 namespace {
 
-using namespace QPULib::v3d::instr;
+using namespace V3DLib::v3d::instr;
 
 
 Instructions adjust_length_for_unroll(
@@ -797,7 +797,7 @@ Instructions emit_unroll(int unroll, Instructions block) {
  * Source: https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L11
  */
 ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
-	using namespace QPULib::v3d::instr;
+	using namespace V3DLib::v3d::instr;
 
 	Instructions ret;
 	int unroll = 1 << unroll_shift;
@@ -892,7 +892,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 // example here.
 //
 void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int unroll_shift) {
-	using namespace QPULib::v3d;
+	using namespace V3DLib::v3d;
 
 	//printf("bytecode size: %u\n", bytecode.size());
 
@@ -961,7 +961,7 @@ void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int
 	//printf("Executing on QPU...\n");
 	double start = get_time();
 
-	QPULib::v3d::Driver drv;
+	V3DLib::v3d::Driver drv;
 	drv.add_bo(heap);
 	REQUIRE(drv.execute(code, &unif, num_qpus));
 

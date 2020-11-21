@@ -1,6 +1,8 @@
-#ifndef _SUPPORT_PLATFORM_H
-#define _SUPPORT_PLATFORM_H
+#ifndef _V3DLIB_SUPPORT_PLATFORM_H
+#define _V3DLIB_SUPPORT_PLATFORM_H
 #include <string>
+
+namespace V3DLib {
 
 struct PlatformInfo {
 	friend class Platform;
@@ -32,4 +34,7 @@ private:
 	static PlatformInfo &instance_local();
 };
 
-#endif  // _SUPPORT_PLATFORM_H
+}  // namespace V3DLib
+
+
+#endif  // _V3DLIB_SUPPORT_PLATFORM_H

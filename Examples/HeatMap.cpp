@@ -17,7 +17,7 @@
  *    and in the majority of cases, it's a good thing to do. Will leave this decision in until I (or you)
  *    can think of something better.
  */
-#include <QPULib.h>
+#include <V3DLib.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include "Support/Settings.h"
@@ -25,7 +25,7 @@
 #include "Support/pgm.h"
 #include <CmdParameters.h>
 
-using namespace QPULib;
+using namespace V3DLib;
 using std::string;
 
 const float K = 0.25;   // Heat dissipation constant

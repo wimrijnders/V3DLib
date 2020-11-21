@@ -1,7 +1,7 @@
 #ifndef _QUEUE_H_
 #define _QUEUE_H_
 
-namespace QPULib {
+namespace V3DLib {
 
   // Very simple queue containing N elements of type T
   template <int N, typename T> struct Queue {

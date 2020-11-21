@@ -85,13 +85,12 @@ prepares the way for the vector version which operates on
 
 ### Vector version 1
 
-Using QPULib, the algorithm looks as follows.
+Using `V3DLib`, the algorithm looks as follows.
 
 ```c++
-#include <QPULib.h>
+#include <V3DLib.h>
 
-void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r)
-{
+void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
   Int a = *p;
   Int b = *q;
   While (any(a != b))
@@ -127,10 +126,10 @@ Even this simple example introduces a number of concepts:
     only elements in vector `a` for which `a > b` holds will be
     modified.
 
-It's worth reiterating that QPULib is just standard C++ code: there
+It's worth reiterating that `V3dLib` is just standard C++ code: there
 are no pre-processors being used other than the standard C
-pre-processor.  All the QPULib language constructs are simply
-classes, functions, and macros exported by QPULib.  This kind of
+pre-processor.  All the `V3DLib` language constructs are simply
+classes, functions, and macros exported by `V3DLib`.  This kind of
 language is somtimes known as a [Domain Specific Embedded
 Language](http://cs.yale.edu/c2/images/uploads/dsl.pdf).
 
@@ -140,8 +139,7 @@ Now, to compute 16 GCDs on a single QPU, we write the following
 program.
 
 ```c++
-int main()
-{
+int main() {
   // Compile the gcd function to a QPU kernel k
   auto k = compile(gcd);
 
@@ -178,8 +176,8 @@ Unpacking this a bit:
     Ptr<Int>>`, capturing the types of `gcd`'s parameters,
     but we use the `auto` keyword to avoid clutter;
 
-  * when the kernel is invoked by writing `k(&a, &b, &r)`, QPULib knows
-    how to automatically convert CPU values of type
+  * when the kernel is invoked by writing `k(&a, &b, &r)`, `V3DLib`d$ knows
+    automatically converts CPU values of type
     `SharedArray<int>*` into QPU values of type `Ptr<Int>`;
 
   * the <tt>SharedArray&lt;&alpha;&gt;</tt> type is used to allocate
@@ -216,14 +214,13 @@ branch instructions executed.
 
 The QPU's branch instruction can indeed be costly: it requires three
 [delay slots](https://en.wikipedia.org/wiki/Delay_slot) (that's 12
-clock cycles), and QPULib currently makes no attempt to fill these
-slots with useful work.  Although QPULib doesn't do loop unrolling
+clock cycles), and `V3DLib` currently makes no attempt to fill these
+slots with useful work.  Although `V3DLib` doesn't do loop unrolling
 for you, it does make it easy to express: we can simply
 use a C++ loop to generate multiple QPU statements.
 
 ```c++
-void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r)
-{
+void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
   Int a = *p;
   Int b = *q;
   While (any(a != b))
@@ -242,15 +239,14 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r)
 ```
 
 Using C++ as a meta-language in this way is one of the attractions
-of QPULib.  We will see lots more examples of this later!
+of `V3DLib`.  We will see lots more examples of this later!
 
 ## Example 2: 3D Rotation
 
 Let's move to another simple example that helps to introduce
 ideas: a routine to rotate 3D objects.
 
-(Of course, [OpenGL
-ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md)
+(Of course, [OpenGL ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md)
 would be a much better path for doing efficient graphics; this is just
 for illustration purposes.)
 
@@ -270,10 +266,8 @@ void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
 }
 ```
 
-If we apply this to the vertices in [Newell's
-teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
-(rendered using [Richard Hull's
-wireframes](https://github.com/rm-hull/wireframes) tool)
+If we apply this to the vertices in [Newell's teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
+(rendered using [Richard Hull's wireframes](https://github.com/rm-hull/wireframes) tool)
 
 <img src="Doc/teapot.png" alt="Newell's teapot" width=30%>
 
@@ -301,12 +295,12 @@ void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
 This simple solution will spend a lot of time blocked on the memory subsystem, waiting for
 vector loads and stores to complete.
 To get good performance on a QPU, it is desirable to overlap memory access with computation, and
-the current QPULib compiler is not clever enough to do this automatically (TODO!).
+the current `V3DLib` compiler is not clever enough to do this automatically (TODO!).
 We can however solve the problem manually, using *non-blocking* load and store operations.
 
 ### Vector version 2: non-blocking loads and stores
 
-QPULib supports non-blocking loads through these functions:
+`V3DLib` supports non-blocking loads through these functions:
 
   * `gather(p)`   - Given a vector of addresses `p`, *request* the value at each address in `p`.
                     Will block if all corresponding `receive()` calls have not been completed.
@@ -325,7 +319,7 @@ to `receive` will dequeue it.  This means that a maximum of four
 `gather` calls may be issued before a `receive` must be called.
 
 For `vc4`, unlike the statement `*p = x`, the statement `store(p, x)` does not wait until `x` has been written.
-Future improvements to QPULib could allow several outstanding stores instead of just one.
+Future improvements to `V3DLib` could allow several outstanding stores instead of just one.
 
 A vectorised rotation routine that overlaps memory access with computation might be as follows:
 
@@ -462,7 +456,7 @@ and supports three main operations:
   3. **shift-right** the `current` vector by one element,
      using the value of the `prev` vector.
 
-Here is a QPULib implementation of a cursor, using a C++ class.
+Here is a `V3DLib` implementation of a cursor, using a C++ class.
 
 ```c++
 class Cursor {
@@ -520,7 +514,7 @@ class Cursor {
 };
 ```
 
-Given a vector `x`, the QPULib operation `rotate(x, n)` will rotate
+Given a vector `x`, the operation `rotate(x, n)` will rotate
 `x` right by `n` places where `n` is a integer in the range 0 to 15.
 Notice that rotating right by 15 is the same as rotating left by 1.
 
@@ -531,8 +525,7 @@ parameter that gives the increment needed to get from the start of one
 row to the start of the next.
 
 ```C++
-void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height)
-{
+void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height) {
   Cursor row[3];
   grid = grid + pitch*me() + index();
 

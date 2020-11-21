@@ -9,7 +9,7 @@ int const INITIAL_FREE_RANGE_SIZE = 32;
 }  // anon namespace
 
 
-namespace QPULib {
+namespace V3DLib {
 
 int HeapManager::FreeRange::size() const {
 	int ret = (int) right - (int) left + 1;
@@ -45,7 +45,7 @@ bool HeapManager::check_available(uint32_t n) {
 	assert(n > 0);
 
 	if (m_offset + n >= m_size) {
-		fatal("QPULib: heap overflow (increase heap size)");  // NOTE: doesn't return
+		fatal("V3DLib: heap overflow (increase heap size)");  // NOTE: doesn't return
 		return false;
 	}
 
@@ -201,4 +201,4 @@ void HeapManager::dealloc_array(uint32_t index, uint32_t size) {
 	}
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

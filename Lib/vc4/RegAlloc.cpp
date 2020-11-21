@@ -6,7 +6,7 @@
 #include "Target/Subst.h"
 #include "SourceTranslate.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -131,4 +131,4 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 }
 
 }  // namespace vc4; 
-}  // namespace QPULib
+}  // namespace V3DLib

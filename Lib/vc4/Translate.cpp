@@ -2,7 +2,7 @@
 #include "Source/Translate.h"
 #include "LoadStore.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -148,7 +148,7 @@ void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride) {
 // parallel with the write.
 
 void storeRequestOperation(Seq<Instr> &seq, Expr *data, Expr *addr) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
   if (data->tag != VAR || addr->tag != VAR) {
     data = putInVar(&seq, data);
@@ -291,7 +291,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
 // ============================================================================
 
 Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
 	Reg addr      = freshReg();
 	Reg storeAddr = freshReg();
@@ -321,4 +321,4 @@ Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
 }
 
 }  // namespace vc4
-}  // namespace QPULib
+}  // namespace V3DLib

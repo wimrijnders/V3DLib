@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "Source/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // Small literals are literals that fit in the small immediate field
 // of the VideoCore-IV instruction set.
@@ -93,4 +93,4 @@ std::string printSmallLit(int x) {
 	return ret;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

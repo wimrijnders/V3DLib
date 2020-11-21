@@ -6,7 +6,7 @@
 #include "Common/Seq.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace {
 
 // ============================================================================
@@ -464,7 +464,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
     return;
   }
 
-  assertq(false, "QPULib: only assignments and nested 'where' statements can occur in a 'where' statement");
+  assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement");
 }
 
 
@@ -634,7 +634,7 @@ int lastUniformOffset(Seq<Instr> &code) {
  * Only used for `v3d`.
  */
 void insertInitBlock(Seq<Instr> &code) {
-	using namespace QPULib::Target::instr;  // for mov()
+	using namespace V3DLib::Target::instr;  // for mov()
 
 	int index = lastUniformOffset(code);
 
@@ -672,7 +672,7 @@ void insertInitBlock(Seq<Instr> &code) {
  * @param expr  Expression on RHS
  */
 void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
   Expr e = *expr;
 
 	switch (e.tag) {
@@ -718,7 +718,7 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
 			// assignments for simplicity.  In most (all?) cases it should be
 			// trivial to lift these outside the 'where'.
 			//
-			assertq(cond.is_always(), "QPULib: dereferencing not yet supported inside 'where'");
+			assertq(cond.is_always(), "V3DLib: dereferencing not yet supported inside 'where'");
 			getSourceTranslate().varassign_deref_var(seq, v, e);
 			break;
 		default:
@@ -765,7 +765,7 @@ void translateStmt(Seq<Instr> &seq, Stmt *s) {
 // ============================================================================
 
 void loadStorePass(Seq<Instr> &instrs) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
   Seq<Instr> newInstrs(instrs.size()*2);
 
@@ -792,4 +792,4 @@ void loadStorePass(Seq<Instr> &instrs) {
 }
 
 
-}  // namespace QPULib
+}  // namespace V3DLib

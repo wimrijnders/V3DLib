@@ -1,6 +1,15 @@
-# Getting started
+# Build Instructions
 
-**TODO: Get rid of this page**
+**TODO**
+
+## Build flags
+
+The makefile takes two flags:
+
+- **DEBUG=1**  - enables debug information in the builds.
+                 Values 0 (default) or 1
+- **QPU=1**    - includes the code in the build for utilizing the GPU hardware
+                 Values 0 (default) or 1.
 
 The `QPU=1` flag to `make` indicates that the physical QPUs on the
 Raspberry Pi should be used to run the kernels.  Using

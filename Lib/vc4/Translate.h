@@ -4,13 +4,13 @@
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace vc4 {
 
 bool stmt(Seq<Instr>* seq, Stmt* s);
 Seq<Instr> StoreRequest(Var addr_var, Var data_var, bool wait = false);
 
 }  // namespace vc4
-}  // namespace QPULib
+}  // namespace V3DLib
 
 #endif  // _LIB_VC4_TRANSLATE_H

@@ -1,7 +1,7 @@
 #include "DMA.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 
 //=============================================================================
 // VPM Setup
@@ -133,4 +133,4 @@ void hostIRQ()
 }
 
 
-}  // namespace QPULib
+}  // namespace V3DLib

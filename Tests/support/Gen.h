@@ -1,12 +1,12 @@
 // A random source-program generator
 
-#ifndef _QPULIB_GEN_H_
-#define _QPULIB_GEN_H_
+#ifndef _V3DLIB_GEN_H_
+#define _V3DLIB_GEN_H_
 
 #include "Common/Seq.h"
 #include "Source/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // Options for the program generator
 struct GenOptions {
@@ -55,6 +55,6 @@ float genFloatLit();
 // Generate a random source program
 Stmt* progGen(GenOptions* opts, int* numVars);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_GEN_H_
+#endif  // _V3DLIB_GEN_H_

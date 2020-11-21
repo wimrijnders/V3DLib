@@ -4,7 +4,7 @@
 #include "Common/Stack.h"
 #include "Source/Int.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 	Stack<Stmt> *p_stmtStack = nullptr;
@@ -222,4 +222,4 @@ void initStmt(Stack<Stmt> &stmtStack) {
 	p_stmtStack = &stmtStack;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

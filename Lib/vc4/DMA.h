@@ -1,11 +1,11 @@
-#ifndef _QPULIB_SOURCE_DMA_H_
-#define _QPULIB_SOURCE_DMA_H_
+#ifndef _V3DLIB_SOURCE_DMA_H_
+#define _V3DLIB_SOURCE_DMA_H_
 #include "Source/Int.h"     // IntExpr
 #include "Source/Ptr.h"
 #include "Source/Syntax.h"  // Expr
 #include "Source/Stmt.h"    // stmtStack()
 
-namespace QPULib {
+namespace V3DLib {
 
 //=============================================================================
 // VPM operations
@@ -72,6 +72,6 @@ void semaInc(int semaId);
 void semaDec(int semaId);
 void hostIRQ();
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_DMA_H_
+#endif  // _V3DLIB_SOURCE_DMA_H_

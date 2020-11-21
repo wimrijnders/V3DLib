@@ -16,7 +16,7 @@ void match_kernel_outputs(
 	std::vector<uint64_t> const &expected,
 	std::vector<uint64_t> const &received,
 	bool skip_nops) {
-		using namespace QPULib::v3d::instr;
+		using namespace V3DLib::v3d::instr;
 		auto _nop = nop();
 
 		// Arrays should eventually match exactly, including length
@@ -55,7 +55,7 @@ void match_kernel_outputs(
 bool running_on_v3d() {
 	static bool did_first = false;
 
-	if (Platform::instance().has_vc4) {
+	if (V3DLib::Platform::instance().has_vc4) {
 		if (!did_first) {
 			printf("Skipping v3d tests with calls to driver\n");
 			did_first = true;
@@ -69,7 +69,7 @@ bool running_on_v3d() {
 
 #ifdef QPU_MODE
 //	#pragma message "QPU mode enabled"
-const char *SUDO = (Platform::instance().has_vc4)? "sudo " : "";  // sudo needed for vc4
+const char *SUDO = (V3DLib::Platform::instance().has_vc4)? "sudo " : "";  // sudo needed for vc4
 #else
 const char *SUDO = "";
 #endif

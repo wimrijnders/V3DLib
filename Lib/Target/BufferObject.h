@@ -1,12 +1,12 @@
-#ifndef _QPULIB_TARGET_EMU_BUFFEROBJECT_H_
-#define _QPULIB_TARGET_EMU_BUFFEROBJECT_H_
+#ifndef _V3DLIB_TARGET_EMU_BUFFEROBJECT_H_
+#define _V3DLIB_TARGET_EMU_BUFFEROBJECT_H_
 #include "Common/BufferObject.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace emu {
 
-class BufferObject : public QPULib::BufferObject {
-	using Parent = QPULib::BufferObject;
+class BufferObject : public V3DLib::BufferObject {
+	using Parent = V3DLib::BufferObject;
 
 public:
 	BufferObject(uint32_t size) { alloc_heap(size); }
@@ -24,6 +24,6 @@ private:
 BufferObject &getHeap();
 
 }  // namespace emu
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_TARGET_EMU_BUFFEROBJECT_H_
+#endif  // _V3DLIB_TARGET_EMU_BUFFEROBJECT_H_

@@ -17,7 +17,7 @@
 using ByteCode = std::vector<uint64_t>; 
 
 template<typename T>
-using SharedArray = QPULib::SharedArray<T>;
+using SharedArray = V3DLib::SharedArray<T>;
 
 double get_time();
 bool running_on_v3d();

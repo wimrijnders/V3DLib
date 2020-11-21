@@ -10,7 +10,7 @@
 #define GPU_MEM_FLG 0xC // cached=0xC; direct=0x4
 #define GPU_MEM_MAP 0x0 // cached=0x0; direct=0x20000000
 
-namespace QPULib {
+namespace V3DLib {
 namespace vc4 {
 
 namespace {
@@ -76,4 +76,4 @@ BufferObject &getHeap() {
 }
 
 }  // namespace vc4
-}  // namespace QPULib
+}  // namespace V3DLib

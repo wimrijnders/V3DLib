@@ -4,7 +4,7 @@
 #include "Target/Liveness.h"
 #include "Target/Subst.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -12,7 +12,7 @@ namespace {
  * @param seq  list of generated instructions up till now
  */
 void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
   if (addr->tag != VAR || data->tag != VAR) {
     addr = putInVar(seq, addr);
@@ -36,7 +36,7 @@ namespace v3d {
  * Case: *v := rhs where v is a var and rhs is a var
  */
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 	assert(seq != nullptr);
 	assert(rhs != nullptr);
 
@@ -63,7 +63,7 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
  * Case: v := *w where w is a variable
  */
 void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 	assert(seq != nullptr);
 
   Instr ldtmu_r4;
@@ -150,7 +150,7 @@ Instr label(Label in_label) {
  * Add extra initialization code after uniform loads
  */
 void SourceTranslate::add_init(Seq<Instr> &code) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
 	int insert_index = get_init_begin_marker(code);
 	Seq<Instr> ret;
@@ -206,4 +206,4 @@ bool SourceTranslate::stmt(Seq<Instr>* seq, Stmt* s) {
 }
 
 }  // namespace v3d
-}  // namespace QPULib
+}  // namespace V3DLib

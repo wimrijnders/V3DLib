@@ -1,11 +1,11 @@
-#ifndef _QPULIB_SOURCETRANSLATE_H_
-#define _QPULIB_SOURCETRANSLATE_H_
+#ifndef _V3DLIB_SOURCETRANSLATE_H_
+#define _V3DLIB_SOURCETRANSLATE_H_
 #include "Common/Seq.h"
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
 #include "Target/CFG.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 class ISourceTranslate {
 public:
@@ -31,6 +31,6 @@ protected:
 
 ISourceTranslate &getSourceTranslate();
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCETRANSLATE_H_
+#endif  // _V3DLIB_SOURCETRANSLATE_H_

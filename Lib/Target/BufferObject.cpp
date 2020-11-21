@@ -5,7 +5,7 @@
 #include "../Support/basics.h"
 #include "../Support/debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace emu {
 
 namespace {
@@ -44,4 +44,4 @@ BufferObject &getHeap() {
 
 
 }  // namespace emu
-}  // namespace QPULib
+}  // namespace V3DLib

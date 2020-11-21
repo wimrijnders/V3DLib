@@ -1,7 +1,7 @@
 #include "Snippets.h"
 #include "../../Lib/Support/basics.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 namespace instr {
 
@@ -181,5 +181,5 @@ Instructions end_program() {
 
 }  // instr
 }  // v3d
-}  // QPULib
+}  // V3DLib
 

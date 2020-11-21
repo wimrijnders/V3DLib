@@ -4,10 +4,10 @@
 #include "DMA.h"
 #include "dump_instr.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace vc4 {
 
-KernelDriver::KernelDriver() : QPULib::KernelDriver(Vc4Buffer) {}
+KernelDriver::KernelDriver() : V3DLib::KernelDriver(Vc4Buffer) {}
 
 
 /**
@@ -40,7 +40,7 @@ void KernelDriver::kernelFinish() {
 void KernelDriver::encode(int numQPUs) {
 	if (code.size() > 0) return;  // Don't bother if already encoded
 
-	QPULib::vc4::encode(&m_targetCode, &code);
+	V3DLib::vc4::encode(&m_targetCode, &code);
 }
 
 
@@ -84,10 +84,10 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
 	}
 
 	enableQPUs();
-	QPULib::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
+	V3DLib::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
 	disableQPUs();
 }
 
 }  // namespace vc4
-}  // namespace QPULib
+}  // namespace V3DLib
 

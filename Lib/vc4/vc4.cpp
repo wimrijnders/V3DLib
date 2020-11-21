@@ -6,7 +6,7 @@
 #include "Support/basics.h"  // fatal()
 #include "../Support/debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // Globals
 int mailbox = -1;
@@ -43,4 +43,4 @@ void disableQPUs()
   }
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

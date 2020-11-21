@@ -9,7 +9,7 @@
 #include "Target/SmallLiteral.h"
 #include "BufferObject.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -216,7 +216,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
         s->dmaStore.active = false;
         return v; // Return value unspecified
       }
-      fatal("QPULib: can't read special register");
+      fatal("V3DLib: can't read special register");
     case NONE:
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = 0;
@@ -449,7 +449,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           break;
       }
 
-      fatal("QPULib: can't write to special register");
+      fatal("V3DLib: can't write to special register");
       return;
   }
 
@@ -698,7 +698,7 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
     case M_V8SUBS:
     default: {
 			char buf[64];
-      sprintf(buf, "QPULib: unsupported operator %i", op);
+      sprintf(buf, "V3DLib: unsupported operator %i", op);
       fatal(buf);
 		}
   }
@@ -778,7 +778,7 @@ void emulate(
                 s->pc += 3+t.immOffset;
               }
               else {
-                fatal("QPULib: found unsupported form of branch target");
+                fatal("V3DLib: found unsupported form of branch target");
               }
             }
             break;
@@ -787,7 +787,7 @@ void emulate(
           case BRL:
           // Label
           case LAB:
-            fatal("QPULib: emulator does not support labels");
+            fatal("V3DLib: emulator does not support labels");
           // No-op
           case NO_OP:
             break;
@@ -859,5 +859,5 @@ void emulate(
   }
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 

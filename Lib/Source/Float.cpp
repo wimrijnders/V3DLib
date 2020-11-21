@@ -1,7 +1,7 @@
 #include "Source/Float.h"
 #include "Source/Stmt.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Type 'FloatExpr'
@@ -97,4 +97,4 @@ FloatExpr operator*(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(MUL, F
 FloatExpr min(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MIN, FLOAT), b); }
 FloatExpr max(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MAX, FLOAT), b); }
 
-}  // namespace QPULib
+}  // namespace V3DLib

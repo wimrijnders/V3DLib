@@ -4,7 +4,7 @@
 #include "Target/CFG.h"
 #include "Target/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Build control-flow graph
@@ -76,4 +76,4 @@ void buildCFG(Seq<Instr> &instrs, CFG &cfg) {
   delete [] labelMap;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

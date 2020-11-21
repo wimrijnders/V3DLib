@@ -8,7 +8,7 @@
  *
  ******************************************************************************/
 #include <string>
-#include <QPULib.h>
+#include <V3DLib.h>
 #include <CmdParameters.h>
 #include "Support/Timer.h"
 #include "Support/Settings.h"
@@ -16,7 +16,7 @@
 #include "vc4/RegisterMap.h"
 
 
-using namespace QPULib;
+using namespace V3DLib;
 using std::string;
 
 std::vector<const char *> const kernels = { "multi", "single", "cpu", "all" };  // Order important! First is default, 'all' must be last

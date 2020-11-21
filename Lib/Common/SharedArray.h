@@ -1,11 +1,11 @@
-#ifndef _QPULIB_COMMON_SHAREDARRAY_H_
-#define _QPULIB_COMMON_SHAREDARRAY_H_
+#ifndef _V3DLIB_COMMON_SHAREDARRAY_H_
+#define _V3DLIB_COMMON_SHAREDARRAY_H_
 #include <vector>
 #include "BufferObject.h"
 #include "../Support/debug.h"
 #include "../Support/Platform.h"  // has_vc4
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Reserve and access a memory range in the underlying buffer object.
@@ -190,6 +190,6 @@ private:
 	bool     m_is_heap_view = false;
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_COMMON_SHAREDARRAY_H_
+#endif  // _V3DLIB_COMMON_SHAREDARRAY_H_

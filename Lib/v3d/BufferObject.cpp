@@ -5,7 +5,7 @@
 #include "../Support/Platform.h"  // has_vc4() 
 #include "v3d.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
 BufferObject::~BufferObject() {
@@ -147,4 +147,4 @@ uint32_t &BufferObject::operator[] (int i) {
 }
 
 }  // namespace v3d
-}  // namespace QPULib
+}  // namespace V3DLib

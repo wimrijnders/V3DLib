@@ -2,7 +2,7 @@
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -468,4 +468,4 @@ Instr tmuwt() {
 
 }  // namespace instr
 }  // namespace Target
-}  // namespace QPULib
+}  // namespace V3DLib

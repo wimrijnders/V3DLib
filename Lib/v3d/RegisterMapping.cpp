@@ -156,7 +156,7 @@ uint32_t HubField(uint32_t reg, unsigned high, unsigned low) {
 }  // anon namespace
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
 
@@ -615,4 +615,4 @@ void RegisterMapping::reset_v3d() {
 }
 
 }  // v3d
-}  // QPULib
+}  // V3DLib

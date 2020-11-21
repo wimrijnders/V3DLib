@@ -1,5 +1,5 @@
-#ifndef _QPULIB_KERNEL_H_
-#define _QPULIB_KERNEL_H_
+#ifndef _V3DLIB_KERNEL_H_
+#define _V3DLIB_KERNEL_H_
 #include <tuple>
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
@@ -11,7 +11,7 @@
 #include  "vc4/KernelDriver.h"
 #include  "v3d/KernelDriver.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Modes of operation
@@ -266,6 +266,6 @@ Kernel<ts...> compile(void (*f)(ts... params)) {
   return k;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_KERNEL_H_
+#endif  // _V3DLIB_KERNEL_H_

@@ -5,7 +5,7 @@
 #include "Target/EmuSupport.h"
 #include "Support/basics.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -97,11 +97,11 @@ Vec evalVar(CoreState* s, Var v) {
 
     // VPM read
     case VPM_READ:
-      printf("QPULib: vpmGet() not supported by interpreter\n");
+      printf("V3DLib: vpmGet() not supported by interpreter\n");
       break;
 
     default:
-      printf("QPULib: reading from write-only variable\n");
+      printf("V3DLib: reading from write-only variable\n");
   }
 
   assert(false);
@@ -362,14 +362,14 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
 
     // VPM write
     case VPM_WRITE:
-      printf("QPULib: vpmPut() not supported by interpreter\n");
+      printf("V3DLib: vpmPut() not supported by interpreter\n");
       break;
 
     // Others are read-only
     case UNIFORM:
     case QPU_NUM:
     case ELEM_NUM:
-      printf("QPULib: writing to read-only variable\n");
+      printf("V3DLib: writing to read-only variable\n");
   }
 
   assert(false);
@@ -456,7 +456,7 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
     // Assignment
     case ASSIGN:
       if (stmt->assign.lhs->tag != VAR) {
-        printf("QPULib: only var assignments permitted in 'where'\n");
+        printf("V3DLib: only var assignments permitted in 'where'\n");
         assert(false);
       }
       execAssign(s, cond, stmt->assign.lhs, stmt->assign.rhs);
@@ -471,7 +471,7 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
     }
   }
 
-  printf("QPULib: only assignments and nested 'where' \
+  printf("V3DLib: only assignments and nested 'where' \
           statements can occur in a 'where' statement\n");
   assert(false);
 }
@@ -645,7 +645,7 @@ void exec(InterpreterState* state, CoreState* s)
 
     case DMA_START_READ:
     case DMA_START_WRITE:
-      fatal("QPULib: DMA access not supported by interpreter\n");
+      fatal("V3DLib: DMA access not supported by interpreter\n");
       break;
   }
 
@@ -697,4 +697,4 @@ void interpreter(
   }
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

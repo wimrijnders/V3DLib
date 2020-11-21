@@ -39,7 +39,7 @@ SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 #define PAGE_SIZE (4*1024)
 
-namespace QPULib {
+namespace V3DLib {
 
 void *mapmem(unsigned base, unsigned size)
 {
@@ -293,4 +293,4 @@ void mbox_close(int file_desc) {
   close(file_desc);
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

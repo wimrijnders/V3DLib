@@ -20,7 +20,7 @@ void findAndReplaceAll(std::string & data, std::string toSearch, std::string rep
 
 }  // anon namespace
 
-namespace QPULib {
+namespace V3DLib {
 
 
 /**
@@ -86,4 +86,4 @@ std::string InstructionComment::emit_comment(int instr_size) const {
 }
 
 
-}  // namespace QPULib
+}  // namespace V3DLib

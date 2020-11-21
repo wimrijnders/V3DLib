@@ -1,5 +1,5 @@
-#ifndef _QPULIB_TARGET_SYNTAX_H_
-#define _QPULIB_TARGET_SYNTAX_H_
+#ifndef _V3DLIB_TARGET_SYNTAX_H_
+#define _V3DLIB_TARGET_SYNTAX_H_
 #include <stdint.h>
 #include <string>
 #include "Common/Seq.h"  // for check_zeroes()
@@ -8,7 +8,7 @@
 #include "Source/Var.h"
 #include "Reg.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // Syntax of the QPU target language.
 
@@ -535,6 +535,6 @@ Instr tmuwt();
 }  // namespace instr
 }  // namespace Target
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_TARGET_SYNTAX_H_
+#endif  // _V3DLIB_TARGET_SYNTAX_H_
