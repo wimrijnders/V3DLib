@@ -114,9 +114,9 @@ public:
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
-	void alu_add_set_dst(Location const &loc1); 
+	void alu_add_set_dst(Location const &loc); 
 	void alu_mul_set_dst(Location const &loc1); 
-	void alu_add_set_reg_a(Location const &loc2);
+	void alu_add_set_reg_a(Location const &loc);
 	void alu_add_set_reg_b(Location const &loc3);
 	void alu_mul_set_reg_a(Location const &loc2);
 	void alu_mul_set_reg_b(Location const &loc3);
@@ -214,7 +214,7 @@ Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &reg3);
 Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr fdx(Location const &loc1, Location const &loc2);
-Instr vflb(Location const &loc1);
+Instr vflb(Location const &loc);
 Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3);
 Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);

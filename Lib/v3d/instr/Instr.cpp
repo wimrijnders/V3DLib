@@ -504,27 +504,27 @@ Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register con
 }
 
 
-void Instr::alu_add_set_dst(Location const &loc1) {
-	if (loc1.is_rf()) {
+void Instr::alu_add_set_dst(Location const &loc) {
+	if (loc.is_rf()) {
 		alu.add.magic_write = false;
 	} else {
 		alu.add.magic_write = true;
 	}
 
-	alu.add.waddr = loc1.to_waddr();
-	alu.add.output_pack = loc1.output_pack();
+	alu.add.waddr = loc.to_waddr();
+	alu.add.output_pack = loc.output_pack();
 }
 
 
-void Instr::alu_add_set_reg_a(Location const &loc2) {
-	if (loc2.is_rf()) {
-		raddr_a = loc2.to_waddr();
-		alu.add.a     = V3D_QPU_MUX_A;
+void Instr::alu_add_set_reg_a(Location const &loc) {
+	if (loc.is_rf()) {
+		raddr_a = loc.to_waddr();
+		alu.add.a = V3D_QPU_MUX_A;
 	} else {
-		alu.add.a     = loc2.to_mux();
+		alu.add.a = loc.to_mux();
 	}
 
-	alu.add.a_unpack = loc2.input_unpack();
+	alu.add.a_unpack = loc.input_unpack();
 }
 
 
@@ -1368,18 +1368,17 @@ Instr fdx(Location const &loc1, Location const &loc2) {
 }
 
 
-Instr vflb(Location const &loc1) {
+Instr vflb(Location const &loc) {
 	Instr instr;
+	instr.alu_add_set_dst(loc);
 
-	instr.alu.add.waddr = loc1.to_waddr();
-	instr.alu.add.magic_write = false;
+	instr.alu.add.a  = V3D_QPU_MUX_A;
 
-	instr.alu.add.a     = V3D_QPU_MUX_A;
+	instr.raddr_b    = loc.to_waddr();
 
-	instr.raddr_b       = loc1.to_waddr();
-	instr.alu.add.b     = V3D_QPU_MUX_R0;
+	instr.alu.add.b  = V3D_QPU_MUX_R0;
 
-	instr.alu.add.op    = V3D_QPU_A_VFLB;
+	instr.alu.add.op = V3D_QPU_A_VFLB;
 
 	return instr;
 }
