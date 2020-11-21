@@ -6,7 +6,7 @@
 #include "Target/Pretty.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace vc4 {
 
 namespace {
@@ -44,7 +44,7 @@ uint32_t encodeAddOp(ALUOp op)
     case A_V8SUBS:  return 31;
   }
 
-  fatal("QPULib: unknown add op");
+  fatal("V3DLib: unknown add op");
 	return 0;
 }
 
@@ -61,7 +61,7 @@ uint32_t encodeMulOp(ALUOp op)
     case M_V8SUBS: return 7;
   }
 
-  fatal("QPULib: unknown mul op");
+  fatal("V3DLib: unknown mul op");
 	return 0;
 }
 
@@ -83,7 +83,7 @@ uint32_t encodeAssignCond(AssignCond cond)
      }
   }
 
-  fatal("QPULib: missing case in encodeAssignCond");
+  fatal("V3DLib: missing case in encodeAssignCond");
 	return 0;
 }
 
@@ -95,7 +95,7 @@ uint32_t encodeBranchCond(BranchCond cond)
 {
   switch (cond.tag) {
     case COND_NEVER:
-      fatal("QPULib: 'never' condition not supported");
+      fatal("V3DLib: 'never' condition not supported");
     case COND_ALWAYS: return 15;
     case COND_ALL:
       switch (cond.flag) {
@@ -115,7 +115,7 @@ uint32_t encodeBranchCond(BranchCond cond)
       }
   }
 
-  fatal("QPULib: missing case in encodeBranchCond");
+  fatal("V3DLib: missing case in encodeBranchCond");
 	return 0;
 }
 
@@ -150,7 +150,7 @@ uint32_t encodeDestReg(Reg reg, RegTag* file)
     case NONE: *file = REG_A; return 39;
   }
 
-  fatal("QPULib: missing case in encodeDestReg");
+  fatal("V3DLib: missing case in encodeDestReg");
 	return 0;
 }
 
@@ -182,7 +182,7 @@ uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux)
       }
   }
 
-  fatal("QPULib: missing case in encodeSrcReg");
+  fatal("V3DLib: missing case in encodeSrcReg");
 	return 0;
 }
 
@@ -387,7 +387,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       return;
   }
 
-  fatal("QPULib: missing case in vc4 encodeInstr");
+  fatal("V3DLib: missing case in vc4 encodeInstr");
 }
 
 }  // anon namespace
@@ -424,4 +424,4 @@ void encode(Seq<Instr>* instrs, Seq<uint32_t>* code) {
 }
 
 }  // namespace vc4
-}  // namespace QPULib
+}  // namespace V3DLib

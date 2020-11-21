@@ -17,7 +17,7 @@ bool is_power_of_2(int x) {
 }  // anon namespace
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 namespace instr {
 
@@ -1478,7 +1478,7 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
  *
  * * Conclusions previous point:
  *
- *   Only 2. relevant for QPULib code, skip rest for now
+ *   Only 2. relevant for V3DLib code, skip rest for now
  *
  *   - nop required before rotate (but lines 82, 147 only done once before loop)
  *   - Only mul alu can do rotate (vc4 AND v3d)
@@ -1585,4 +1585,4 @@ Instr max(Location const &dst, Location const &srca, Location const &srcb) {
 
 }  // instr
 }  // v3d
-}  // QPULib
+}  // V3DLib

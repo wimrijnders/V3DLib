@@ -1,8 +1,8 @@
-#ifndef _QPULIB_SMALL_LITERAL_H_
-#define _QPULIB_SMALL_LITERAL_H_
+#ifndef _V3DLIB_SMALL_LITERAL_H_
+#define _V3DLIB_SMALL_LITERAL_H_
 #include "EmuSupport.h"  // Word
 
-namespace QPULib {
+namespace V3DLib {
 
 class Expr;
 
@@ -10,6 +10,6 @@ int encodeSmallLit(Expr const &e);
 std::string printSmallLit(int x);
 Word decodeSmallLit(int x);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SMALL_LITERAL_H_
+#endif  // _V3DLIB_SMALL_LITERAL_H_

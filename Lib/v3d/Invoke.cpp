@@ -3,7 +3,7 @@
 #include "Driver.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
 void invoke(
@@ -40,4 +40,4 @@ void invoke(
 }
 
 }  // v3d
-}  // QPULib
+}  // V3DLib

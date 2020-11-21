@@ -4,7 +4,7 @@
 #include <string>
 #include <CmdParameters.h>
 
-namespace QPULib {
+namespace V3DLib {
 
 class KernelBase;
 

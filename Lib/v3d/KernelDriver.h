@@ -6,11 +6,11 @@
 
 #ifdef QPU_MODE
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
-class KernelDriver : public QPULib::KernelDriver {
-	using Instruction  = QPULib::v3d::instr::Instr;
+class KernelDriver : public V3DLib::KernelDriver {
+	using Instruction  = V3DLib::v3d::instr::Instr;
 	using Instructions = std::vector<Instruction>;
 
 public:
@@ -29,7 +29,7 @@ private:
 };
 
 }  // namespace v3d
-}  // namespace QPULib
+}  // namespace V3DLib
 
 #endif  // QPU_MODE
 

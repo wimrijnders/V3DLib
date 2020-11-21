@@ -354,7 +354,7 @@ ByteCode const qpu_rotate_alias_code = {
  * **NOTE:* python code changed in the meantime! This works with the previous version.
  */
 ByteCode rotate_kernel() {
-	using namespace QPULib::v3d::instr;
+	using namespace V3DLib::v3d::instr;
 
 	Instructions ret;
 
@@ -418,7 +418,7 @@ ByteCode rotate_kernel() {
 
 
 void run_rotate_alias_kernel(ByteCode const &bytecode) {
-	using namespace QPULib::v3d;
+	using namespace V3DLib::v3d;
 	printf("==== rotate alias kernel ====\n");
 	REQUIRE(bytecode.size() > 0);
 
@@ -449,7 +449,7 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 
 	double start = get_time();
 
-	QPULib::v3d::Driver drv;
+	V3DLib::v3d::Driver drv;
 	drv.add_bo(heap);
 	printf("Executing on QPU...\n");
 	REQUIRE(drv.execute(code, &unif, 1));

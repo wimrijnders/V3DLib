@@ -1,9 +1,9 @@
-#ifndef _QPULIB_SUBST_H_
-#define _QPULIB_SUBST_H_
+#ifndef _V3DLIB_SUBST_H_
+#define _V3DLIB_SUBST_H_
 
 #include "Target/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // Rename a destination register in an instruction
 void renameDest(Instr* instr, RegTag vt, RegId v,
@@ -16,6 +16,6 @@ void renameUses(Instr* instr, RegTag vt, RegId v,
 // Globally change register tag vt to wt in given instruction
 void substRegTag(Instr* instr, RegTag vt, RegTag wt);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SUBST_H_
+#endif  // _V3DLIB_SUBST_H_

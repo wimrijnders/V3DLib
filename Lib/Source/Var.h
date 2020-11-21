@@ -1,7 +1,7 @@
-#ifndef _QPULIB_SOURCE_VAR_H_
-#define _QPULIB_SOURCE_VAR_H_
+#ifndef _V3DLIB_SOURCE_VAR_H_
+#define _V3DLIB_SOURCE_VAR_H_
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Variables
@@ -42,6 +42,6 @@ Var freshVar();
 int getFreshVarCount();
 void resetFreshVarGen(int val = 0);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_VAR_H_
+#endif  // _V3DLIB_SOURCE_VAR_H_

@@ -3,7 +3,7 @@
 #include "Common/Stack.h"
 #include "Target/SmallLiteral.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 Heap astHeap("abstract syntax tree");  // Used for constructing abstract syntax trees
 
@@ -301,4 +301,4 @@ Stmt* mkPrint(PrintTag t, Expr* e)
   return s;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

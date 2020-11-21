@@ -33,19 +33,6 @@ void warning(const char *str) {
 }
 
 
-void error(const char *str, bool do_throw) {
-	if (log_level <= ERROR) {
-		printf("ERROR: %s\n", str);
-	}
-
-	if (do_throw) {
-		std::string buf = "ERROR: ";
-		buf += str;
-		throw QPULib::Exception(buf);
-	}
-}
-
-
 void debug_break(const char *str) {
 	if (log_level <= LEVEL_DEBUG) {
 		printf("DEBUG: %s\n", str);
@@ -54,6 +41,19 @@ void debug_break(const char *str) {
 }
 
 #endif  // DEBUG
+
+
+void error(const char *str, bool do_throw) {
+	if (log_level <= ERROR) {
+		printf("ERROR: %s\n", str);
+	}
+
+	if (do_throw) {
+		std::string buf = "ERROR: ";
+		buf += str;
+		throw V3DLib::Exception(buf);
+	}
+}
 
 void disable_logging() {
 	log_level = NONE;
@@ -80,6 +80,6 @@ void assertq(bool cond, const char *msg, bool do_break) {
 	}
 #endif
 
-	throw QPULib::Exception(str);
+	throw V3DLib::Exception(str);
 }
 

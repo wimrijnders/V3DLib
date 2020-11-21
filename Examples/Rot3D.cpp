@@ -1,12 +1,12 @@
 #include <unistd.h>  // sleep()
 #include <math.h>
-#include <QPULib.h>
+#include <V3DLib.h>
 #include "Support/Settings.h"
 #include "Support/Timer.h"
 #include "Support/debug.h"
 #include "Rot3DLib/Rot3DKernels.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 using namespace Rot3DLib;
 using KernelType = decltype(rot3D_1);  // All kernel functions except scalar have same prototype
 

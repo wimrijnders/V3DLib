@@ -5,7 +5,7 @@
 #include "../vc4/BufferObject.h"
 #include "../v3d/BufferObject.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * @param size_in_bytes        requested size of memory to allocate 
@@ -65,4 +65,4 @@ BufferObject &getBufferObject() {
 	}
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

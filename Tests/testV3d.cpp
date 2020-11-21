@@ -28,10 +28,10 @@
 
 #define ARRAY_LENGTH(arr, type) (sizeof(arr)/sizeof(type))
 
-using BufferObject = QPULib::v3d::BufferObject;
+using BufferObject = V3DLib::v3d::BufferObject;
 
 template<typename T>
-using SharedArray = QPULib::SharedArray<T>;
+using SharedArray = V3DLib::SharedArray<T>;
 
 
 namespace {
@@ -79,7 +79,7 @@ bool v3d_init() {
  */
 TEST_CASE("Check v3d code is working properly", "[v3d]") {
 	SECTION("Direct v3d calls should work with SharedArray") {
-		using namespace QPULib::v3d;
+		using namespace V3DLib::v3d;
 
 		if (!v3d_init()) return;
 
@@ -177,7 +177,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 TEST_CASE("Check v3d rotate assembly/disassembly", "[v3d][asm]") {
-	using namespace QPULib::v3d::instr;
+	using namespace V3DLib::v3d::instr;
 
 	SECTION("rotate kernel generates correctly encoded output") {
 		std::vector<uint64_t> arr = rotate_kernel();
@@ -190,7 +190,7 @@ TEST_CASE("Check v3d rotate assembly/disassembly", "[v3d][asm]") {
 
 
 TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
-	using namespace QPULib::v3d::instr;
+	using namespace V3DLib::v3d::instr;
 
 	SECTION("Correct output of dump program") {
 		struct v3d_device_info devinfo;  // NOTE: uninitialized struct! For test OK
@@ -234,7 +234,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("Register without mux definition should throw on usage") {
-		using namespace QPULib::v3d::instr;
+		using namespace V3DLib::v3d::instr;
 
 		REQUIRE_NOTHROW(r0.to_waddr());
 		REQUIRE_NOTHROW(r0.to_mux());
@@ -276,7 +276,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("Opcode compare should work") {
-		using namespace QPULib::v3d::instr;
+		using namespace V3DLib::v3d::instr;
 
 		// Non-branch instructions: direct compare
 		REQUIRE(Instr::compare_codes(0x3d803186bb800000, 0x3d803186bb800000));  // nop-nop

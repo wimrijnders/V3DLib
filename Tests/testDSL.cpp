@@ -3,9 +3,9 @@
 #include <vector>
 #include <string>
 #include <sstream>
-#include <QPULib.h>
+#include <V3DLib.h>
 
-using namespace QPULib;
+using namespace V3DLib;
 using namespace std;
 
 
@@ -204,7 +204,7 @@ void check_conditionals(SharedArray<int> &result, int N) {
 
 class Complex;
 
-namespace QPULib {
+namespace V3DLib {
 
 struct ComplexExpr {
   // Abstract syntax tree

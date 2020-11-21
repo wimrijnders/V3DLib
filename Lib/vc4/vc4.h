@@ -1,7 +1,7 @@
-#ifndef _QPULIB_VC4_VC4_H_
-#define _QPULIB_VC4_VC4_H_
+#ifndef _V3DLIB_VC4_VC4_H_
+#define _V3DLIB_VC4_VC4_H_
 
-namespace QPULib {
+namespace V3DLib {
 
 // Globals
 extern int mailbox;
@@ -12,6 +12,6 @@ int getMailbox();
 void enableQPUs();
 void disableQPUs();
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_VC4_VC4_H_
+#endif  // _V3DLIB_VC4_VC4_H_

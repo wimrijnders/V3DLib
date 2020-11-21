@@ -1,15 +1,18 @@
-QPULib is released under the MIT License below.  This covers all files
-in the QPULib repository, except for:
+V3DLib is released under the MIT License below.  This covers all files
+in the V3DLib repository, except for:
 
   * Doc/teapot.png
   * Doc/teapot180.png
-  * Lib/VideoCore/Mailbox.cpp
-  * Lib/VideoCore/Mailbox.h
+  * Lib/vc4/Mailbox.h
+  * Lib/vc4/Mailbox.cpp
   * Tests/catch.hpp
+	* Everything under mesa/src
+	* Everything under mesa/include
 
 MIT License
 
-Copyright (c) 2016 Matthew Naylor
+Copyright (c) 2016 Matthew Naylor  (for code derived from QPULib)
+Copyright (c) 2020 Wim Rijnders
 
 Permission is hereby granted, free of charge, to any person obtaining
 a copy of this software and associated documentation files (the

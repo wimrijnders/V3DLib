@@ -4,7 +4,7 @@
 #include "Target/Liveness.h"
 #include "Target/Pretty.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 std::vector<Ptr<Int>>   uniform_int_pointers;
 std::vector<Ptr<Float>> uniform_float_pointers;
@@ -88,4 +88,4 @@ void KernelBase::call() {
 #endif
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib

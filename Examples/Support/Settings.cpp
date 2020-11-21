@@ -13,7 +13,7 @@
 #include "Support/Platform.h"
 #include "vc4/PerformanceCounters.h"
 
-using PC = QPULib::PerformanceCounters;
+using PC = V3DLib::PerformanceCounters;
 #endif  // QPU_MODE
 
 namespace {
@@ -167,7 +167,7 @@ CmdParameters &instance(bool use_numqpus = false) {
 }  // anon namespace
 
 
-namespace QPULib {
+namespace V3DLib {
 
 CmdParameters const &Settings::base_params(bool use_numqpus) {
 	return instance(use_numqpus);
@@ -296,4 +296,4 @@ void Settings::process(KernelBase &k) {
 	}
 }
 
-}  // namespace QPULib;
+}  // namespace V3DLib;

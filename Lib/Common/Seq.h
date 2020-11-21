@@ -2,14 +2,14 @@
 // Sequence data type
 //
 ///////////////////////////////////////////////////////////////////////////////
-#ifndef _QPULIB_SEQ_H_
-#define _QPULIB_SEQ_H_
+#ifndef _V3DLIB_SEQ_H_
+#define _V3DLIB_SEQ_H_
 #include <stdlib.h>
 #include <string>
 #include "Support/debug.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 
 template <class T> class Seq {
 public:
@@ -272,6 +272,6 @@ template <class T> class SmallSeq : public Seq<T> {
     SmallSeq() : Seq<T>(8) {};
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SEQ_H_
+#endif  // _V3DLIB_SEQ_H_

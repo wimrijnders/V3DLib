@@ -1,9 +1,9 @@
-#ifndef _QPULIB_SUPPORT_HEAPMANAGER_H_
-#define _QPULIB_SUPPORT_HEAPMANAGER_H_
+#ifndef _V3DLIB_SUPPORT_HEAPMANAGER_H_
+#define _V3DLIB_SUPPORT_HEAPMANAGER_H_
 #include <stdint.h>
 #include <vector>
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Memory manager for controlled heap objects.
@@ -18,9 +18,8 @@ public:
 	uint32_t size() const { return m_size; }
 	bool empty() const { return m_offset == 0; }
 
-#ifdef DEBUG
+	// Intended for unit tests
 	int num_free_ranges() const { return m_free_ranges.size(); }
-#endif
 
 protected:
 	int alloc_array(uint32_t size_in_bytes);
@@ -52,6 +51,6 @@ private:
 	int alloc_intern(uint32_t size_in_bytes);
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SUPPORT_HEAPMANAGER_H_
+#endif  // _V3DLIB_SUPPORT_HEAPMANAGER_H_

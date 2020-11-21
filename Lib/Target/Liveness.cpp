@@ -10,7 +10,7 @@
 #include "Target/Subst.h"
 #include "Target/Liveness.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -421,4 +421,4 @@ std::string Liveness::dump() {
 	return ret;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

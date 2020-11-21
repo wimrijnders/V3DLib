@@ -4,7 +4,7 @@
 
 #define QPU_TIMEOUT 10000
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * TODO rewrite to shared array holding the parameters
@@ -69,4 +69,4 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
   }
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

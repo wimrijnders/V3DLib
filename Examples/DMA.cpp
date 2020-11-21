@@ -1,10 +1,10 @@
-#include "QPULib.h"
+#include "V3DLib.h"
 #include "vc4/DMA.h"
 #include "Support/Settings.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
-QPULib::Settings settings;
+V3DLib::Settings settings;
 
 void dma(Ptr<Int> p)
 {

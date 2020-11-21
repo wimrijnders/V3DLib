@@ -3,7 +3,7 @@
 #include <string>
 #include "basics.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Mixin for instruction comments
@@ -23,6 +23,6 @@ private:
 	std::string m_comment;
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
 #endif  // _LIB_COMMON_INSTRUCTIONCOMMENT_H

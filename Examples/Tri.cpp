@@ -1,8 +1,8 @@
-#include "QPULib.h"
+#include "V3DLib.h"
 #include <CmdParameters.h>
 #include "Support/Settings.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
 std::vector<const char *> const kernels = { "integer", "float" };  // First is default
 

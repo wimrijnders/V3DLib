@@ -3,7 +3,7 @@
 #include <cstdio>   // printf
 
 
-namespace QPULib {
+namespace V3DLib {
 
 Timer::Timer() {
   gettimeofday(&tvStart, NULL);

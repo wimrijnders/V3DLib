@@ -4,7 +4,7 @@
 #include "SourceTranslate.h"
 #include "Support/Platform.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Type 'IntExpr'
@@ -183,4 +183,4 @@ FloatExpr toFloat(IntExpr a) {
   return mkFloatExpr(e);
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

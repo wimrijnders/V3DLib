@@ -4,7 +4,7 @@
 #include "v3d.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
 /**
@@ -34,6 +34,6 @@ private:
 };  // class Driver
 
 }  // v3d
-}  // QPULib
+}  // V3DLib
 
 #endif // _VC6_DRIVER_H_

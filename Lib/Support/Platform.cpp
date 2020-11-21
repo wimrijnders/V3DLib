@@ -2,8 +2,9 @@
 #include <fstream>
 #include <memory>
 #include <string.h>  // strstr()
-#include "debug.h"
+#include "basics.h"
 
+namespace V3DLib {
 namespace {
 
 /**
@@ -220,3 +221,5 @@ int PlatformInfo::size_regfile() const {
 		return 64;
 	}
 }
+
+}  // namespace V3DLib

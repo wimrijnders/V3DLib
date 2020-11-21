@@ -3,7 +3,7 @@
 #include <cstdio>
 
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Operators
@@ -397,4 +397,4 @@ void pretty(Stmt* s)
   pretty(stdout, s);
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

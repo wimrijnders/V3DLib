@@ -1,5 +1,5 @@
-#ifndef _LIB_SUPPORT_DEBUG_H
-#define _LIB_SUPPORT_DEBUG_H
+#ifndef _V3DLIB_SUPPORT_DEBUG_H
+#define _V3DLIB_SUPPORT_DEBUG_H
 #include <signal.h>  // raise(SIGTRAP)
 #include <string>
 
@@ -34,4 +34,4 @@ inline void error(std::string const &msg, bool do_throw = false) { error(msg.c_s
 void disable_logging();
 void assertq(bool cond, const char *msg, bool do_break = false);
 
-#endif  // _LIB_SUPPORT_DEBUG_H
+#endif  // _V3DLIB_SUPPORT_DEBUG_H

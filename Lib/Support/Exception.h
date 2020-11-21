@@ -2,7 +2,7 @@
 #define _LIB_SUPPORT_EXCEPTION_H
 #include <string>
 
-namespace QPULib {
+namespace V3DLib {
 
 struct Exception : public std::exception {
 	Exception(std::string ss) : s(ss) {}
@@ -15,6 +15,6 @@ private:
 	std::string s;
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
 #endif  // _LIB_SUPPORT_EXCEPTION_H

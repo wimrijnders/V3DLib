@@ -1,9 +1,9 @@
-#ifndef _QPULIB_STACK_H_
-#define _QPULIB_STACK_H_
+#ifndef _V3DLIB_STACK_H_
+#define _V3DLIB_STACK_H_
 #include <stdlib.h>
 #include <assert.h>
 
-namespace QPULib {
+namespace V3DLib {
 
 template <class T> class StackItem {
 public:
@@ -64,6 +64,6 @@ public:
     }
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_STACK_H_
+#endif  // _V3DLIB_STACK_H_

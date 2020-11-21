@@ -2,14 +2,14 @@
 // This module defines the abstract syntax of the QPU language.
 //
 ///////////////////////////////////////////////////////////////////////////////
-#ifndef _QPULIB_SOURCE_SYNTAX_H_
-#define _QPULIB_SOURCE_SYNTAX_H_
+#ifndef _V3DLIB_SOURCE_SYNTAX_H_
+#define _V3DLIB_SOURCE_SYNTAX_H_
 #include "Common/Heap.h"
 #include "Common/Stack.h"
 #include "Var.h"
 #include "Support/InstructionComment.h"  // for Stmt
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Operators
@@ -288,6 +288,6 @@ Stmt* mkPrint(PrintTag t, Expr* e);
 
 extern Heap astHeap;  // Used for constructing abstract syntax trees
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_SYNTAX_H_
+#endif  // _V3DLIB_SOURCE_SYNTAX_H_

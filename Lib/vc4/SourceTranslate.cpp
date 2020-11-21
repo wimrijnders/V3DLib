@@ -6,7 +6,7 @@
 #include "Translate.h"
 #include "RegAlloc.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace vc4 {
 
 bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
@@ -20,7 +20,7 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 
 
 void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
 	Seq<Instr> ret;
 	
@@ -45,7 +45,7 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 
 void SourceTranslate::add_init(Seq<Instr> &code) {
 /*
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
 	int insert_index = get_init_begin_marker(code);
 
@@ -70,4 +70,4 @@ bool SourceTranslate::stmt(Seq<Instr>* seq, Stmt* s) {
 }
 
 }  // namespace vc4
-}  // namespace QPULib
+}  // namespace V3DLib

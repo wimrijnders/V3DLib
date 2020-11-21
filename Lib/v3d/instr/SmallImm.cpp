@@ -2,7 +2,7 @@
 #include <stdio.h>
 #include "Support/debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 namespace instr {
 
@@ -84,4 +84,4 @@ SmallImm SmallImm::ff() const {
 
 }  // instr
 }  // v3d
-}  // QPULib
+}  // V3DLib

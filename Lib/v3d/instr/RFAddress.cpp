@@ -1,7 +1,7 @@
 #include "RFAddress.h"
 #include "../../Support/debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 namespace instr {
 
@@ -40,4 +40,4 @@ RFAddress RFAddress::abs() const {
 
 }  // instr
 }  // v3d
-}  // QPULib
+}  // V3DLib

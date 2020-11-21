@@ -1,8 +1,8 @@
-#ifndef _QPULIB_TARGET_REG_H_
-#define _QPULIB_TARGET_REG_H_
+#ifndef _V3DLIB_TARGET_REG_H_
+#define _V3DLIB_TARGET_REG_H_
 #include "Source/Var.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Registers
@@ -68,7 +68,7 @@ Reg freshReg();
 Reg srcReg(Var v);
 Reg dstReg(Var v);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
 
-#endif  // _QPULIB_TARGET_REG_H_
+#endif  // _V3DLIB_TARGET_REG_H_

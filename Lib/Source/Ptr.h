@@ -1,13 +1,13 @@
 // This module defines type 'Ptr<T>' type denoting a pointer to a
 // value of type 'T'.
 
-#ifndef _QPULIB_SOURCE_PTR_H_
-#define _QPULIB_SOURCE_PTR_H_
+#ifndef _V3DLIB_SOURCE_PTR_H_
+#define _V3DLIB_SOURCE_PTR_H_
 
 #include <assert.h>
 #include "Source/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
   //
   // Extra declaration to prevent error:
   //
@@ -156,6 +156,6 @@ template <typename T> inline PtrExpr<T> operator-=(Ptr<T> &a, IntExpr b) {
   return a = a - b;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_PTR_H_
+#endif  // _V3DLIB_SOURCE_PTR_H_

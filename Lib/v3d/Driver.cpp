@@ -38,7 +38,7 @@
 #include "Driver.h"
 #include "v3d.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
 /**
@@ -96,4 +96,4 @@ bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniform
 }
 
 }  // v3d
-}  // QPULib
+}  // V3DLib

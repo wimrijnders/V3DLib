@@ -6,13 +6,13 @@
 #include "v3d/SourceTranslate.h"
 
 namespace {
-	std::unique_ptr<QPULib::ISourceTranslate> _vc4_source_translate;
-	std::unique_ptr<QPULib::ISourceTranslate> _v3d_source_translate;
+	std::unique_ptr<V3DLib::ISourceTranslate> _vc4_source_translate;
+	std::unique_ptr<V3DLib::ISourceTranslate> _v3d_source_translate;
 
 }  // anon namespace
 
 
-namespace QPULib {
+namespace V3DLib {
 
 int ISourceTranslate::get_init_begin_marker(Seq<Instr> &code) {
 	// Find the init begin marker
@@ -33,7 +33,7 @@ int ISourceTranslate::get_init_begin_marker(Seq<Instr> &code) {
  * The calculated offset is assumed to be in ACC0
  */
 Seq<Instr> ISourceTranslate::add_uniform_pointer_offset(Seq<Instr> &code) {
-	using namespace QPULib::Target::instr;
+	using namespace V3DLib::Target::instr;
 
 	Seq<Instr> ret;
 
@@ -68,4 +68,4 @@ ISourceTranslate &getSourceTranslate() {
 	}
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

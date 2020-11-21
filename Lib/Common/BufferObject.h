@@ -1,5 +1,5 @@
-#ifndef _QPULIB_COMMON_BUFFEROBJECT_H_
-#define _QPULIB_COMMON_BUFFEROBJECT_H_
+#ifndef _V3DLIB_COMMON_BUFFEROBJECT_H_
+#define _V3DLIB_COMMON_BUFFEROBJECT_H_
 #include <stdint.h>
 //#include <vector>
 #include "Common/BufferType.h"
@@ -17,7 +17,7 @@
 #endif
 
 
-namespace QPULib {
+namespace V3DLib {
 
 class BufferObject : public HeapManager {
 public:
@@ -52,6 +52,6 @@ private:
 
 BufferObject &getBufferObject();
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_COMMON_BUFFEROBJECT_H_
+#endif  // _V3DLIB_COMMON_BUFFEROBJECT_H_

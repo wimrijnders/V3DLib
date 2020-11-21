@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <cstring>  // strlen()
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Rotate a vector
@@ -65,4 +65,4 @@ void printFloatVec(Seq<char>* out, Vec x) {
   emitChar(out, '>');
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

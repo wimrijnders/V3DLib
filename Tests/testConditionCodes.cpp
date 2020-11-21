@@ -36,7 +36,7 @@
 
 namespace {
 
-using namespace QPULib::v3d::instr;
+using namespace V3DLib::v3d::instr;
 using Instructions = std::vector<Instr>; 
 
 /**
@@ -126,7 +126,7 @@ void dump_code(ByteCode &code) {
 
 
 TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
-	using namespace QPULib::v3d;
+	using namespace V3DLib::v3d;
 
 	SECTION("Test condition push a") {
 		if (!running_on_v3d()) return;
@@ -147,7 +147,7 @@ TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
 		SharedArray<uint32_t> unif(1, heap);
 		unif[0] = data.getAddress();
 
-		QPULib::v3d::Driver drv;
+		V3DLib::v3d::Driver drv;
 		drv.add_bo(heap);
 		REQUIRE(drv.execute(code, &unif));
 
@@ -177,8 +177,8 @@ TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
 }
 
 
-#include "QPULib.h"
-using namespace QPULib;
+#include "V3DLib.h"
+using namespace V3DLib;
 
 namespace {
 const int VEC_SIZE = 16;
@@ -315,7 +315,7 @@ void andor_multi_if_kernel(Ptr<Float> result, Int width, Int height) {
 }
 
 
-void check(QPULib::SharedArray<int> &result, int block, uint32_t *expected) {
+void check(V3DLib::SharedArray<int> &result, int block, uint32_t *expected) {
 	for (uint32_t n = 0; n < VEC_SIZE; ++n) {
 		INFO("block " << block <<  ", index " << n);
 
@@ -337,7 +337,7 @@ void check(QPULib::SharedArray<int> &result, int block, uint32_t *expected) {
 }
 
 
-void check_where_result(QPULib::SharedArray<int> &result) {
+void check_where_result(V3DLib::SharedArray<int> &result) {
 	uint32_t expected_smaller_than[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_smaller_equal[VEC_SIZE] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_equal[VEC_SIZE]         = {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
@@ -356,7 +356,7 @@ void check_where_result(QPULib::SharedArray<int> &result) {
 }
 
 
-void check_andor_result(QPULib::SharedArray<int> &result) {
+void check_andor_result(V3DLib::SharedArray<int> &result) {
 	uint32_t expected_and[VEC_SIZE]           = {0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_or[VEC_SIZE]            = {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
 	uint32_t expected_combined[VEC_SIZE]      = {0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1};
@@ -376,12 +376,12 @@ void check_andor_result(QPULib::SharedArray<int> &result) {
 }
 
 
-void reset(QPULib::SharedArray<int> &result, int val = 0) {
+void reset(V3DLib::SharedArray<int> &result, int val = 0) {
   for (int i = 0; i < result.size(); i++) { result[i] = val; }
 }
 
 
-void reset(QPULib::SharedArray<float> &result, float val = 0.0) {
+void reset(V3DLib::SharedArray<float> &result, float val = 0.0) {
   for (int i = 0; i < result.size(); i++) { result[i] = val; }
 }
 
@@ -403,7 +403,7 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 
   auto k = compile(where_kernel);
 
-  QPULib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
+  V3DLib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
 
 	k.load(&result);
 
@@ -438,7 +438,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	k2.pretty(false,  "obj/test/noloop_if_v3d.txt");	
   auto k3 = compile(noloop_multif_kernel);
 
-  QPULib::SharedArray<int> result(VEC_SIZE);
+  V3DLib::SharedArray<int> result(VEC_SIZE);
 
 	auto run_cpu = [&result] (decltype(k1) &k, uint32_t *expected) {
 		INFO("Testing cpu run");
@@ -529,7 +529,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
 	  auto k = compile(andor_kernel);
 
-	  QPULib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
+	  V3DLib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
 
 		k.load(&result);
 
@@ -551,7 +551,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 		int const width  = 48;
 		int const height = 32;
 
-	  QPULib::SharedArray<float> result(width*height);
+	  V3DLib::SharedArray<float> result(width*height);
 
 		auto check_output = [width, height, &result] (char const *label) {
 			std::string filename;

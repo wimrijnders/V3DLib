@@ -1,5 +1,5 @@
-#ifndef _QPULIB_V3D_INSTR_INSTR_H
-#define _QPULIB_V3D_INSTR_INSTR_H
+#ifndef _V3DLIB_V3D_INSTR_INSTR_H
+#define _V3DLIB_V3D_INSTR_INSTR_H
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -8,7 +8,7 @@
 #include "Register.h"
 #include "RFAddress.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 namespace instr {
 
@@ -226,6 +226,6 @@ Instr max(Location const &dst, Location const &srca, Location const &srcb);
 
 }  // instr
 }  // v3d
-}  // QPULib
+}  // V3DLib
 
-#endif  // _QPULIB_V3D_INSTR_INSTR_H
+#endif  // _V3DLIB_V3D_INSTR_INSTR_H

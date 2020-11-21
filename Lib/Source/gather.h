@@ -1,8 +1,8 @@
-#ifndef _QPULIB_SOURCE_GATHER_H_
-#define _QPULIB_SOURCE_GATHER_H_
+#ifndef _V3DLIB_SOURCE_GATHER_H_
+#define _V3DLIB_SOURCE_GATHER_H_
 #include "Support/Platform.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 //=============================================================================
 // Receive, request, store operations
@@ -77,6 +77,6 @@ inline void store(FloatExpr data, Ptr<Float> &addr) {
 	storeExpr(data.expr, addr.expr);
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_GATHER_H_
+#endif  // _V3DLIB_SOURCE_GATHER_H_

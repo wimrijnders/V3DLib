@@ -4,10 +4,10 @@
 
 
 TEST_CASE("Test Buffer Objects", "[bo]") {
-	using SharedArray  = QPULib::SharedArray<uint32_t>;
+	using SharedArray  = V3DLib::SharedArray<uint32_t>;
 	using SharedArrays = std::vector<std::unique_ptr<SharedArray>>;
 
-	QPULib::emu::BufferObject heap(1024*1024);  // Using in-memory version to avoid having to use devices
+	V3DLib::emu::BufferObject heap(1024*1024);  // Using in-memory version to avoid having to use devices
 
 	auto init_arrays = [&heap] (SharedArrays &arrays, int size) {
 		for (int i = 0; i < size; ++i) {

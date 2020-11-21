@@ -1,11 +1,11 @@
-#ifndef _QPULIB_LOADSTORE_H_
-#define _QPULIB_LOADSTORE_H_
+#ifndef _V3DLIB_LOADSTORE_H_
+#define _V3DLIB_LOADSTORE_H_
 
 #include "Common/Seq.h"
 #include "Target/Syntax.h"
 #include "Source/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 Seq<Instr> genSetupVPMLoad(int n, int addr, int hor, int stride);
 Seq<Instr> genSetupVPMLoad(int n, Reg addr, int hor, int stride);
@@ -29,6 +29,6 @@ void genSetReadPitch(Seq<Instr>* instrs, Reg pitch);
 Instr genSetWriteStride(int stride);
 Seq<Instr> genSetWriteStride(Reg stride);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_LOADSTORE_H_
+#endif  // _V3DLIB_LOADSTORE_H_

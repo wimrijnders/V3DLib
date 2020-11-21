@@ -1,8 +1,8 @@
-#ifndef _QPULIB_INTERPRETER_H_
-#define _QPULIB_INTERPRETER_H_
+#ifndef _V3DLIB_INTERPRETER_H_
+#define _V3DLIB_INTERPRETER_H_
 #include <stdint.h>
 
-namespace QPULib {
+namespace V3DLib {
 
 class Stmt;
 class BufferObject;
@@ -24,6 +24,6 @@ void interpreter(
 	Seq<char>* output = nullptr // Output from print statements (if NULL, stdout is used)
 );
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_INTERPRETER_H_
+#endif  // _V3DLIB_INTERPRETER_H_

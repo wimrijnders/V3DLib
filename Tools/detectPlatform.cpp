@@ -3,14 +3,14 @@
 #include <fstream>
 #include <streambuf>
 #include <CmdParameters.h>
-#include "QPULib.h"
+#include "V3DLib.h"
 #include "Support/Platform.h"
 #include "vc4/vc4.h"
 #include "vc4/Mailbox.h"
 #include "vc4/RegisterMap.h"
 #include "v3d/RegisterMapping.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
 CmdParameters params = {
 	"Show info on the platform and the VideoCore.\n\n"
@@ -34,7 +34,7 @@ CmdParameters params = {
 /**
  * @brief Collect and make general information available on the current platform
  *
- * In time, this struct will be made generic for all QPULib programs
+ * In time, this struct will be made generic for all V3DLib programs
  */
 struct Settings {
 

@@ -11,7 +11,7 @@ std::vector<uint64_t> bytecode;
  * Check if there's nothing special with this particular code
  */
 void test_unpack_pack(uint64_t in_code) {
-	using namespace QPULib::v3d::instr;
+	using namespace V3DLib::v3d::instr;
 
 	Instr instr(in_code);  // will assert on unpack error
 	assert(in_code == instr.code());
@@ -39,7 +39,7 @@ std::vector<uint64_t> &qpu_disasm_bytecode() {
  * The calling unit test must take this into account.
  */
 std::vector<uint64_t> qpu_disasm_kernel() {
-	using namespace QPULib::v3d::instr;
+	using namespace V3DLib::v3d::instr;
 
 	std::vector<Instr> ret;
 

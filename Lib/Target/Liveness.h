@@ -2,15 +2,15 @@
 // Liveness analysis
 //
 ///////////////////////////////////////////////////////////////////////////////
-#ifndef _QPULIB_LIVENESS_H_
-#define _QPULIB_LIVENESS_H_
+#ifndef _V3DLIB_LIVENESS_H_
+#define _V3DLIB_LIVENESS_H_
 #include <string>
 #include <vector>
 #include "Common/Seq.h"
 #include "Target/Syntax.h"
 #include "Target/CFG.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // 'use' and 'def' sets:
 //   * 'use' set: the variables read by an instruction
@@ -80,6 +80,6 @@ private:
 	LiveSet *m_sets = nullptr;
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_LIVENESS_H_
+#endif  // _V3DLIB_LIVENESS_H_

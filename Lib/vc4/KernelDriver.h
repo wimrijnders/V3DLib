@@ -5,10 +5,10 @@
 #include "Source/Stmt.h"
 #include "Invoke.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace vc4 {
 
-class KernelDriver : public QPULib::KernelDriver {
+class KernelDriver : public V3DLib::KernelDriver {
 public:
 	KernelDriver();
 
@@ -26,7 +26,7 @@ private:
 };
 
 }  // namespace vc4
-}  // namespace QPULib
+}  // namespace V3DLib
 
 
 #endif  // _LIB_VC4_KERNELDRIVER_H

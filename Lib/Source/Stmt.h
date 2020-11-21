@@ -1,11 +1,11 @@
-#ifndef _QPULIB_SOURCE_STMT_H_
-#define _QPULIB_SOURCE_STMT_H_
+#ifndef _V3DLIB_SOURCE_STMT_H_
+#define _V3DLIB_SOURCE_STMT_H_
 
 #include "Source/Cond.h"
 #include "Source/Syntax.h"
 #include "Source/Ptr.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 //=============================================================================
 // Statement macros
@@ -45,6 +45,6 @@ void initStmt(Stack<Stmt> &stmtStack);
 void finishStmt();
 Stack<Stmt> &stmtStack();
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_STMT_H_
+#endif  // _V3DLIB_SOURCE_STMT_H_

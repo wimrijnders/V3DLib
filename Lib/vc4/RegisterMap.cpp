@@ -11,7 +11,7 @@
 #include "vc4.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 
 std::unique_ptr<RegisterMap> RegisterMap::m_instance;
 
@@ -322,6 +322,6 @@ bool RegisterMap::checkThreadErrors() {
 }
 
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
 #endif  // QPU_MODE

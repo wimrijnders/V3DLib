@@ -1,7 +1,7 @@
 #include "Var.h"
 #include "Support/debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 static int globalVarId = 0;  // Used for fresh variable generation
 
@@ -34,4 +34,4 @@ void resetFreshVarGen(int val) {
 	globalVarId = val;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

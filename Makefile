@@ -35,8 +35,6 @@ else
 endif
 
 
-
-# Root directory of QPULib repository
 ROOT= Lib
 
 # Compiler and default flags
@@ -115,7 +113,7 @@ DEPS := $(LIB:.o=.d)
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
 -include $(EXAMPLES_DEPS)
 
-QPULIB=$(OBJ_DIR)/libQPULib.a
+V3DLIB=$(OBJ_DIR)/libv3dlib.a
 MESA_LIB = obj/mesa/bin/libmesa.a
 
 
@@ -148,7 +146,7 @@ help:
 	@echo '    DEBUG=1       - If specified, the source code and target code is shown on stdout when running a test'
 	@echo
 
-all: $(QPULIB) $(EXAMPLES)
+all: $(V3DLIB) $(EXAMPLES)
 
 clean:
 	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug obj/test
@@ -158,7 +156,7 @@ clean:
 # Targets for static library
 #
 
-$(QPULIB): $(LIB) $(MESA_LIB)
+$(V3DLIB): $(LIB) $(MESA_LIB)
 	@echo Creating $@
 	@ar rcs $@ $^
 
@@ -179,12 +177,12 @@ $(OBJ_DIR)/%.o: %.c
 	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(EXAMPLES_OBJ) $(QPULIB) $(LIB_DEPEND)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(EXAMPLES_OBJ) $(V3DLIB) $(LIB_DEPEND)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPULIB) $(LIB_DEPEND)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(V3DLIB) $(LIB_DEPEND)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
@@ -207,10 +205,10 @@ else
 endif
 
 
-$(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB) $(LIB_DEPEND)
+$(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(V3DLIB) $(LIB_DEPEND)
 	@echo Linking unit tests
 	@mkdir -p $(@D)
-	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
+	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lv3dlib $(LIBS) -o $@
 
 runTests: $(UNIT_TESTS)
 

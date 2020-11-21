@@ -3,7 +3,7 @@
 #include <stdint.h>
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
 class RegisterMapping {
@@ -105,6 +105,6 @@ private:
 
 
 }  // v3d
-}  // QPULib
+}  // V3DLib
 
 #endif  // _VC6_REGISTERMAPPING_H

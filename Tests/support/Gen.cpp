@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include "Gen.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 namespace {
 
@@ -515,4 +515,4 @@ Stmt* progGen(GenOptions* opts, int* numVars) {
   return mkSeq(pre, mkSeq(s, post));
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

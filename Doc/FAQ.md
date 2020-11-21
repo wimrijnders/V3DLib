@@ -120,7 +120,7 @@ With `vc` however, small differences can creep in, which can accumulate with con
 
 **Expect results to differ between CPU and QPU calculations for `vc4`.**
 
-Of special note: the `QPULib` interpreter and emulator run on the ARM CPU, meaning that the outcome may be different from that from the `vc4` QPU's .
+Of special note: the interpreter and emulator run on the ARM CPU, meaning that the outcome may be different from that from the `vc4` QPU's .
 
 
 ### Integer multiplication

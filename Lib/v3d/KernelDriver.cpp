@@ -41,9 +41,9 @@
 using std::cout;
 using std::endl;
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
-using namespace QPULib::v3d::instr;
+using namespace V3DLib::v3d::instr;
 
 using Instructions = std::vector<instr::Instr>;
 
@@ -149,14 +149,14 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
 
 	if (ret.get() == nullptr && !is_none) {
 		breakpoint
-	  assertq(false, "QPULib: missing case in encodeSrcReg()");
+	  assertq(false, "V3DLib: missing case in encodeSrcReg()");
 	}
 
 	return ret;
 }
 
 
-std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
+std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
 	assert(!src_instr.isUniformLoad());
 
 	bool is_none = false;
@@ -225,7 +225,7 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
 			// As far as I can tell, there is no such thing as a NONE register on v3d;
 			// it may be one of the bits in `struct v3d_qpu_sig`.
 			//
-			// The first time I encountered this was in (QPULib target code):
+			// The first time I encountered this was in (V3DLib target code):
 			//       _ <-{sf} or(B6, B6)
 			//
 			// The idea seems to be to set the CNZ flags depending on the value of a given rf-register.
@@ -249,7 +249,7 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
   }
 
 	if (ret.get() == nullptr && !is_none) {
-	  fprintf(stderr, "QPULib: missing case in encodeDestReg\n");
+	  fprintf(stderr, "V3DLib: missing case in encodeDestReg\n");
 		assert(false);
 	}
 
@@ -277,7 +277,7 @@ std::unique_ptr<Location> encodeDestReg(QPULib::Instr const &src_instr) {
  * * Both these instructions use r0 here; this might produce conflicts with other instructions
  *   I haven't found a decent way yet to compensate for this.
  */
-void checkSpecialIndex(QPULib::Instr const &src_instr) {
+void checkSpecialIndex(V3DLib::Instr const &src_instr) {
   if (src_instr.tag != ALU) {
 		return;  // no problem here
 	}
@@ -310,7 +310,7 @@ void checkSpecialIndex(QPULib::Instr const &src_instr) {
 /**
  * Pre: `checkSpecialIndex()` has been called
  */
-bool is_special_index(QPULib::Instr const &src_instr, Special index ) {
+bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
 	assert(index == SPECIAL_ELEM_NUM || SPECIAL_QPU_NUM);
 
   if (src_instr.tag != ALU) {
@@ -365,7 +365,7 @@ void setCondTag(AssignCond cond, Instructions &ret) {
 }
 
 
-void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
+void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
 	auto &cond = src_instr.ALU.cond;
 
 	// src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
@@ -402,7 +402,7 @@ void handle_condition_tags(QPULib::Instr const &src_instr, Instructions &ret) {
 }
 
 
-bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
+bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 	bool did_something = true;
 
 	auto reg_a = src_instr.ALU.srcA;
@@ -507,7 +507,7 @@ bool translateOpcode(QPULib::Instr const &src_instr, Instructions &ret) {
 /**
  * @return true if rotate handled, false otherwise
  */
-bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
+bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
 	if (instr.ALU.op != M_ROTATE) {
 		return false;
 	}
@@ -554,7 +554,7 @@ bool translateRotate(QPULib::Instr const &instr, Instructions &ret) {
 }
 
 
-Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
+Instructions encodeLoadImmediate(V3DLib::Instr full_instr) {
 	assert(full_instr.tag == LI);
 	auto &instr = full_instr.LI;
 	auto dst = encodeDestReg(full_instr);
@@ -643,7 +643,7 @@ Instructions encodeLoadImmediate(QPULib::Instr full_instr) {
 }
 
 
-Instructions encodeALUOp(QPULib::Instr instr) {
+Instructions encodeALUOp(V3DLib::Instr instr) {
 	Instructions ret;
 
 	if (instr.isUniformLoad()) {
@@ -669,7 +669,7 @@ Instructions encodeALUOp(QPULib::Instr instr) {
  * Incoming conditions are vc4 only, the conditions don't exist on v3d.
  * They therefore need to be translated.
  */
-void encodeBranchCondition(v3d::instr::Instr &dst_instr, QPULib::BranchCond src_cond) {
+void encodeBranchCondition(v3d::instr::Instr &dst_instr, V3DLib::BranchCond src_cond) {
 	// TODO How to deal with:
 	//
 	//      dst_instr.na0();
@@ -713,7 +713,7 @@ void encodeBranchCondition(v3d::instr::Instr &dst_instr, QPULib::BranchCond src_
  * Create a branch instruction, including any branch conditions,
  * from Target source instruction.
  */
-v3d::instr::Instr encodeBranchLabel(QPULib::Instr src_instr) {
+v3d::instr::Instr encodeBranchLabel(V3DLib::Instr src_instr) {
 	assert(src_instr.tag == BRL);
 	auto &instr = src_instr.BRL;
 
@@ -731,7 +731,7 @@ v3d::instr::Instr encodeBranchLabel(QPULib::Instr src_instr) {
  *
  * **Pre:** All instructions not meant for v3d are detected beforehand and flagged as error.
  */
-Instructions encodeInstr(QPULib::Instr instr) {
+Instructions encodeInstr(V3DLib::Instr instr) {
 	Instructions ret;
 	bool no_output = false;
 
@@ -858,11 +858,11 @@ Instructions encode_init(uint8_t numQPUs) {
 /**
  * Check assumption: uniform loads are always at the top of the instruction list.
  */
-bool checkUniformAtTop(Seq<QPULib::Instr> &instrs) {
+bool checkUniformAtTop(Seq<V3DLib::Instr> &instrs) {
 	bool doing_top = true;
 
   for (int i = 0; i < instrs.size(); i++) {
-    QPULib::Instr instr = instrs[i];
+    V3DLib::Instr instr = instrs[i];
 		if (doing_top) {
 			if (instr.isUniformLoad()) {
 				continue;  // as expected
@@ -885,14 +885,14 @@ bool checkUniformAtTop(Seq<QPULib::Instr> &instrs) {
 /**
  * Translate instructions from target to v3d
  */
-void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instructions) {
+void _encode(uint8_t numQPUs, Seq<V3DLib::Instr> &instrs, Instructions &instructions) {
 	assert(checkUniformAtTop(instrs));
 	bool prev_was_init_begin = false;
 	bool prev_was_init_end    = false;
 
 	// Main loop
   for (int i = 0; i < instrs.size(); i++) {
-    QPULib::Instr instr = instrs[i];
+    V3DLib::Instr instr = instrs[i];
 		assertq(!instr.isZero(), "Zero instruction encountered", true);
 		check_instruction_tag_for_platform(instr.tag, false);
 
@@ -929,7 +929,7 @@ void _encode(uint8_t numQPUs, Seq<QPULib::Instr> &instrs, Instructions &instruct
 // Class KernelDriver
 ///////////////////////////////////////////////////////////////////////////////
 
-KernelDriver::KernelDriver() : QPULib::KernelDriver(V3dBuffer) {}
+KernelDriver::KernelDriver() : V3DLib::KernelDriver(V3dBuffer) {}
 
 
 void KernelDriver::encode(int numQPUs) {
@@ -1018,6 +1018,6 @@ void KernelDriver::emit_opcodes(FILE *f) {
 }
 
 }  // namespace v3d
-}  // namespace QPULib
+}  // namespace V3DLib
 
 #endif  // QPU_MODE

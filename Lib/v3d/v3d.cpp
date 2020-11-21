@@ -123,7 +123,7 @@ int open_card(char const *card) {
 	int fd = open(card , O_RDWR);
 
 	if (fd == 0) {
-		QPULib::fatal("FATAL: Can't open card device (sudo?)");
+		V3DLib::fatal("FATAL: Can't open card device (sudo?)");
 	}
 
 	//
@@ -208,7 +208,7 @@ bool v3d_open() {
 		assert(fd0 != 0);
 		fd = fd0;
 	} else {
-		QPULib::fatal("FATAL: could not open card device");
+		V3DLib::fatal("FATAL: could not open card device");
 	}
 
 	return (fd > 0);

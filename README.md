@@ -1,18 +1,24 @@
-# QPULib
+# V3DLib
 
 Version 0.1.0.
 
-QPULib is a programming language and compiler for the [Raspberry
-Pi](https://www.raspberrypi.org/)'s *Quad Processing Units* (QPUs).
-It is implemented as a C++ library that runs on the Pi's ARM CPU,
-generating and offloading programs to the QPUs at runtime.  This page
-introduces and documents QPULib.  For build instructions, see the
-[Getting Started Guide](Doc/GettingStarted.md).
+`V3DLib` is a C++ library for easing the creation of programs to run on the `VideoCore` GPU of the [Raspberry Pi's](https://www.raspberrypi.org/)'s.
+
+This project builds upon the [QPULib](https://github.com/mn416/QPULib) project, which is intended for the `VideoCore IV` GPU present in all RaspBerry Pi's prior to Pi 4.
+The Pi 4, however, includes the `VideoCore VI` GPU, which is significantly different from its predecessor. I therefore felt the urge to enable support for the new GPU.
+
+In conformance with the linux kernel, the `VideoCore IV` will be referred as `vc4`,
+and the `VideoCore VI` as `v3d`.
+
+`V3DLib` contains a high-level programming language and compilers for `vc4` and `v3d`.
+These compile dynamically, so that a given program can run unchanged on any version of the RaspBerry Pi.
+Kernel programs are generated inline offloaded programs to the GPU's at runtime.
 
 
-`QPULib` should work out-of-the-box for recent Raspbian distributions (`wheezy` and onward).
-It has been tested on the `Pi 1 Model B`, the `Pi 2` and the `Pi 3 Model B`.
-It will **NOT** work on Pi 4, due to changes in the GPU (but I'm working hard to fix that).
+**TODO**  *Quad Processing Units* (QPUs).
+
+`V3DLib` is supported for Raspbian distributions from  `wheezy` onwards.
+It has been tested on the `Pi 1 Model B`, the `Pi 2` and the `Pi 3 Model B`. **TODO** setup hardware testing.
 
 ## Local Links
 
@@ -20,7 +26,12 @@ It will **NOT** work on Pi 4, due to changes in the GPU (but I'm working hard to
 * [Examples](Doc/Examples.md).
 * [References](#references)
 
+## Credit where credit is due
+**TODO**
+
 ## Getting Started
+
+For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
 
 `QPULib` requires an external library to compile.
 Run the following to pull it in:

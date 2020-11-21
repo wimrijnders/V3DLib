@@ -7,7 +7,7 @@
 #include "Target/CFG.h"
 #include "Common/SharedArray.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 class Stmt;
 
@@ -55,13 +55,9 @@ private:
 };
 
 
-#ifdef DEBUG
-
-// Expose for unit test `AutoTest`
+// Exposed for unit test `AutoTest`
 void compileKernel(Seq<Instr> &targetCode, Stmt* body);
 
-#endif
-
-}  // namespace QPULib
+}  // namespace V3DLib
 
 #endif  // _LIB_vc4_KERNELDRIVER_H
