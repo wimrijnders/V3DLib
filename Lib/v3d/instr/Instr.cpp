@@ -1,3 +1,74 @@
+///////////////////////////////////////////////////////////////////////////////
+//
+// Complete contents of NOP (iactually nop; nop) instruction, which is default.
+// For reference, taken from `gdb` output. State of things at 2020-11-21.
+// 
+// {
+// <v3d_qpu_instr> = {
+// 	type = V3D_QPU_INSTR_TYPE_ALU,
+// 	sig = {
+// 		thrsw     = false, ldunif = false, ldunifa   = false, ldunifrf = false,
+// 		ldunifarf = false, ldtmu  = false, ldvary    = false, ldvpm    = false,
+// 		ldtlb     = false, ldtlbu = false, small_imm = false, ucb      = false,
+// 		rotate    = false, wrtmuc = false
+// 	},
+// 	sig_addr  = 0 '\000',
+// 	sig_magic = false,
+// 	raddr_a   = 0 '\000',
+// 	raddr_b   = 0 '\000',
+// 	flags = {
+// 		ac = V3D_QPU_COND_NONE,
+// 		mc = V3D_QPU_COND_NONE,
+// 		apf = V3D_QPU_PF_NONE,
+// 		mpf = V3D_QPU_PF_NONE,
+// 		auf = V3D_QPU_UF_NONE,
+// 		muf = V3D_QPU_UF_NONE
+// 	},
+// 	{
+// 		alu = {
+// 			add = {
+// 				op = V3D_QPU_A_NOP,
+// 				a  = V3D_QPU_MUX_R0,
+// 				b  = V3D_QPU_MUX_R0,
+// 				waddr       = 6 '\006',
+// 				magic_write = true,
+// 				output_pack = V3D_QPU_PACK_NONE, 
+//         a_unpack = V3D_QPU_UNPACK_NONE,
+// 				b_unpack = V3D_QPU_UNPACK_NONE
+// 			},
+// 			mul = {
+// 				op = V3D_QPU_M_NOP,
+// 				a  = V3D_QPU_MUX_R0,
+// 				b  = V3D_QPU_MUX_R4,
+// 				waddr       = 6 '\006',
+// 				magic_write = true,
+// 				output_pack = V3D_QPU_PACK_NONE, 
+// 	      a_unpack = V3D_QPU_UNPACK_NONE,
+// 				b_unpack = V3D_QPU_UNPACK_NONE
+// 			}
+// 		},
+// 		branch = {
+// 			cond    = 30,
+// 			msfign  = V3D_QPU_MSFIGN_NONE,
+// 			bdi     = V3D_QPU_BRANCH_DEST_ABS,
+// 			bdu     = 262,
+// 			ub      = false,
+// 			raddr_a = 0 '\000', 
+// 	    offset  = 0
+// 		}
+// 	}
+// },
+// <V3DLib::InstructionComment> = {
+// 	m_header  = "",
+// 	m_comment = ""
+// },
+// m_is_label = false,
+// m_label = -1,
+// static NOP = 4323510097016782848,
+// m_doing_add = true
+// }
+///////////////////////////////////////////////////////////////////////////////
+
 #include "Instr.h"
 #include <cstdio>
 #include <cstdlib>        // abs()
@@ -504,15 +575,15 @@ Instr &Instr::vfmul(Location const &rf_addr1, Register const &reg2, Register con
 }
 
 
-void Instr::alu_add_set_dst(Location const &loc) {
-	if (loc.is_rf()) {
-		alu.add.magic_write = false;
+void Instr::alu_add_set_dst(Location const &dst) {
+	if (dst.is_rf()) {
+		alu.add.magic_write = false; // selects address in register file
 	} else {
-		alu.add.magic_write = true;
+		alu.add.magic_write = true;  // selects register
 	}
 
-	alu.add.waddr = loc.to_waddr();
-	alu.add.output_pack = loc.output_pack();
+	alu.add.waddr = dst.to_waddr();
+	alu.add.output_pack = dst.output_pack();
 }
 
 
@@ -630,15 +701,15 @@ void Instr::alu_add_set(Location const &dst, SmallImm const &imma, SmallImm cons
 }
 
 
-void Instr::alu_mul_set_dst(Location const &loc1) {
-	if (loc1.is_rf()) {
-		alu.mul.magic_write = false;
+void Instr::alu_mul_set_dst(Location const &dst) {
+	if (dst.is_rf()) {
+		alu.mul.magic_write = false; // selects address in register file
 	} else {
-		alu.mul.magic_write = true;
+		alu.mul.magic_write = true;  // selects register
 	}
 
-	alu.mul.waddr = loc1.to_waddr();
-	alu.mul.output_pack = loc1.output_pack();
+	alu.mul.waddr = dst.to_waddr();
+	alu.mul.output_pack = dst.output_pack();
 }
 
 
@@ -914,10 +985,34 @@ Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3) {
 }
 
 
+Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3) {
+	Instr instr;
+	instr.alu_add_set(loc1, reg2, reg3);
+
+	instr.alu.add.op    = V3D_QPU_A_FADDNF;
+	return instr;
+}
+
+
+/**
+ * Same as faddf() with mux a and b reversed.
+ * The op values are different to distinguish them; in the actual instruction,
+ * The operation is actually the same.
+ *
+ * fmin/fmax have the same relation.
+ */
+Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
+	Instr instr;
+	instr.alu_add_set(loc1, imm2, loc3);
+
+	instr.alu.add.op    = V3D_QPU_A_FADDNF;
+	return instr;
+}
+
+
 Instr mov(Location const &loc1, SmallImm val) {
 	Instr instr;
 
-	// hypothesis: magic_write true selects register, false selects address in register file 
 	if (loc1.is_rf()) {
 		instr.alu.add.magic_write = false;
 	} else {
@@ -926,7 +1021,6 @@ Instr mov(Location const &loc1, SmallImm val) {
 
 	instr.sig.small_imm = true; 
 
-//	instr.raddr_a       = loc1.to_waddr(); 
 	instr.raddr_b       = val.to_raddr(); 
 	instr.alu.add.op    = V3D_QPU_A_OR;
 	instr.alu.add.a     = V3D_QPU_MUX_B; // loc2.to_mux();
@@ -1295,17 +1389,6 @@ Instr fmax(Location const &rf_addr1, Location const &reg2, Location const &reg3)
 	instr.alu_add_set(rf_addr1, reg2, reg3);
 
 	instr.alu.add.op    = V3D_QPU_A_FMAX;
-
-	return instr;
-}
-
-
-Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3) {
-	Instr instr;
-	instr.alu_add_set(loc1, reg2, reg3);
-
-	instr.alu.add.op    = V3D_QPU_A_FADDNF;
-
 	return instr;
 }
 
@@ -1315,7 +1398,6 @@ Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3) {
 	instr.alu_add_set(loc1, reg2, reg3);
 
 	instr.alu.add.op    = V3D_QPU_A_FCMP;
-
 	return instr;
 }
 
@@ -1338,60 +1420,39 @@ Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 }
 
 
-Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3) {
+Instr vfpack(Location const &dst, Location const &srca, Location const &srcb) {
 	Instr instr;
-	instr.alu_add_set_dst(loc1);
+	instr.alu_add_set(dst, srca, srcb);
 
-	instr.raddr_a       = loc2.to_waddr();
 	instr.alu.add.op    = V3D_QPU_A_VFPACK;
-	instr.alu.add.a     = loc2.to_mux();
-	instr.alu.add.b     = loc3.to_mux();
-	instr.alu.add.a_unpack = loc2.input_unpack();
-	instr.alu.add.b_unpack = loc3.input_unpack();
-
 	return instr;
 }
 
 
-Instr fdx(Location const &loc1, Location const &loc2) {
+Instr fdx(Location const &dst, Location const &srca) {
 	Instr instr;
+	instr.alu_add_set_dst(dst);
+	instr.alu_add_set_reg_a(srca);
 
-	instr.alu.add.op    = V3D_QPU_A_FDX;
-	instr.alu.add.a     = loc2.to_mux();
-	instr.alu.add.b     = V3D_QPU_MUX_R2;
-	instr.alu.add.waddr = loc1.to_waddr();
-	instr.alu.add.magic_write = false;
-	instr.alu.add.output_pack = loc1.output_pack();
-	instr.alu.add.a_unpack = loc2.input_unpack();
-
+	instr.alu.add.op = V3D_QPU_A_FDX;
 	return instr;
 }
 
 
-Instr vflb(Location const &loc) {
+Instr vflb(Location const &dst) {
 	Instr instr;
-	instr.alu_add_set_dst(loc);
-
-	instr.alu.add.a  = V3D_QPU_MUX_A;
-
-	instr.raddr_b    = loc.to_waddr();
-
-	instr.alu.add.b  = V3D_QPU_MUX_R0;
+	instr.alu_add_set_dst(dst);
 
 	instr.alu.add.op = V3D_QPU_A_VFLB;
-
 	return instr;
 }
 
 
-Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3) {
+Instr vfmin(Location const &dst, SmallImm imma, Location const &srcb) {
 	Instr instr;
-	instr.alu_add_set_dst(loc1);
-	instr.alu_add_set_imm_a(imm2);
-	instr.alu_add_set_reg_b(loc3);
+	instr.alu_add_set(dst, imma, srcb);
 
 	instr.alu.add.op    = V3D_QPU_A_VFMIN;
-
 	return instr;
 }
 
@@ -1399,25 +1460,8 @@ Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3) {
 Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, loc3);
+
 	instr.alu.add.op    = V3D_QPU_A_VFMIN;
-
-	return instr;
-}
-
-
-Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
-	Instr instr;
-
-	instr.sig.small_imm = true;
-	instr.raddr_b = imm2.to_raddr();
-	instr.alu.add.op    = V3D_QPU_A_FADDNF;
-	instr.alu.add.a     = V3D_QPU_MUX_B;
-	instr.alu.add.b     = loc3.to_mux();
-	instr.alu.add.magic_write = false;
-	instr.alu.add.waddr = loc1.to_waddr();
-	instr.alu.add.a_unpack = imm2.input_unpack();
-	instr.alu.add.b_unpack = loc3.input_unpack();
-
 	return instr;
 }
 
@@ -1560,7 +1604,6 @@ Instr &Instr::rotate(Location const &dst, Location const &loca, Location const &
 Instr tmuwt() {
 	Instr instr;
 	instr.alu.add.op = V3D_QPU_A_TMUWT;
-
 	return instr;
 }
 
@@ -1568,8 +1611,8 @@ Instr tmuwt() {
 Instr min(Location const &dst, Location const &srca, Location const &srcb) {
 	Instr instr;
 	instr.alu_add_set(dst, srca, srcb);
-	instr.alu.add.op = V3D_QPU_A_MIN;
 
+	instr.alu.add.op = V3D_QPU_A_MIN;
 	return instr;
 }
 
@@ -1577,8 +1620,8 @@ Instr min(Location const &dst, Location const &srca, Location const &srcb) {
 Instr max(Location const &dst, Location const &srca, Location const &srcb) {
 	Instr instr;
 	instr.alu_add_set(dst, srca, srcb);
-	instr.alu.add.op = V3D_QPU_A_MAX;
 
+	instr.alu.add.op = V3D_QPU_A_MAX;
 	return instr;
 }
 

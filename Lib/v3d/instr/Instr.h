@@ -114,8 +114,8 @@ public:
 
 	static bool compare_codes(uint64_t code1, uint64_t code2);
 
-	void alu_add_set_dst(Location const &loc); 
-	void alu_mul_set_dst(Location const &loc1); 
+	void alu_add_set_dst(Location const &dst); 
+	void alu_mul_set_dst(Location const &dst); 
 	void alu_add_set_reg_a(Location const &loc);
 	void alu_add_set_reg_b(Location const &loc3);
 	void alu_mul_set_reg_a(Location const &loc2);
@@ -180,6 +180,8 @@ Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb);
 
 Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
+Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
+Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 
 Instr mov(Location const &loc1, SmallImm val);
 Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
@@ -208,16 +210,14 @@ Instr vpmsetup(Register const &reg2);
 Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3);
 Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2);
 Instr fmax(Location const &rf_addr1, Location const &reg2, Location const &reg3);
-Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &reg3);
-Instr vfpack(Location const &loc1, Location const &loc2, Location const &loc3);
-Instr fdx(Location const &loc1, Location const &loc2);
-Instr vflb(Location const &loc);
-Instr vfmin(Location const &loc1, SmallImm imm2, Location const &loc3);
+Instr vfpack(Location const &dst, Location const &loca, Location const &locb);
+Instr fdx(Location const &dst, Location const &srca);
+Instr vflb(Location const &dst);
+Instr vfmin(Location const &dst, SmallImm imma, Location const &srcb);
 Instr vfmin(Location const &loc1, Location const &loc2, Location const &loc3);
-Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 Instr rotate(Location const &dst, Location const &loca, Location const &locb);
 Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb);
 Instr tmuwt();
