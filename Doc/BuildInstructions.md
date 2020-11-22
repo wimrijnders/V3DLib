@@ -2,6 +2,26 @@
 
 **TODO**
 
+## Run Modes
+
+There are three run modes for the example programs.
+These can be selected in the examples with flagi `-s=` on the command line.
+
+The run modes are:
+
+- `interpreter` - interprets the source level code
+- 'emulator'    - compiles to `vc4` code and runs this on a `vc4` emulator
+- ``qpu`        - compiles to either `vc4` or v3d`, depending on which hardware you're running on,
+                  and runs on the GPU.
+
+Note that `interpreter` and `emulator` deal with `vc4	 code only.
+The examples have a special run-mode `default`, which select the most suitable platform to run on,
+depending on the build flags below and the hardware.
+
+On a Pi-platform, `interpreter` and `emulator` are useful for asserting that the hardware output
+is as correct. You can expect, however, that these will run a *lot* slower than hardware.
+
+
 ## Build flags
 
 The makefile takes two flags:
@@ -11,13 +31,8 @@ The makefile takes two flags:
 - **QPU=1**    - includes the code in the build for utilizing the GPU hardware
                  Values 0 (default) or 1.
 
-The `QPU=1` flag to `make` indicates that the physical QPUs on the
-Raspberry Pi should be used to run the kernels.  Using
-`make` without `QPU=1`, or setting `QPU` to any value other than 1,
-will lead to **emulation mode** being used.  As the name suggests,
-this means that QPU code will be emulated in software.  This is useful
-for debugging, and also allows you to run `V3DLib` programs on other platforms
-than a Pi.
+Using `QPU=0` allows you to develop run code on non-Pi platforms.
+Run modes `emulator` and `interpreter` will then still be available.
 
 The output directory
 depends on the make flags passed.  For example, `make all` will output to directory

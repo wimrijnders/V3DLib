@@ -87,20 +87,20 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		REQUIRE(array_length == 8);
 
 		BufferObject heap(1024);
-		printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
+		//printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
 		SharedArray<uint64_t> codeMem(array_length, heap);
-		printf("codeMem phyaddr: %u, length: %u\n", codeMem.getAddress(), codeMem.size());
+		//printf("codeMem phyaddr: %u, length: %u\n", codeMem.getAddress(), codeMem.size());
 		codeMem.copyFrom(do_nothing, array_length);
-		dump_data(codeMem);
+		//dump_data(codeMem);
 
 		// See Note 1
-		double start = get_time();
+		//double start = get_time();
 		Driver driver;
 		driver.add_bo(heap);
 		REQUIRE(driver.execute(codeMem));
-		double end = get_time();
-		printf("[submit done: %.6lf sec]\n", end - start);
+		//double end = get_time();
+		//printf("[submit done: %.6lf sec]\n", end - start);
 	}
 
 
@@ -256,7 +256,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 	SECTION("Selected opcode should be encoded correctly") {
 		using std::cout;
 		using std::endl;
-		printf("Selected opcode should be encoded correctly\n");
+		//printf("Selected opcode should be encoded correctly\n");
 
 		std::vector<std::string> expected = {
 			"and  rf0, r0, 15     ; nop",
@@ -269,7 +269,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		       << band(r1, r0, 0b1111);
 
 		for (int n = 0; n < instrs.size(); ++n) {
-			cout << instrs[n].mnemonic() << endl;
+			//cout << instrs[n].mnemonic() << endl;
 			REQUIRE(instrs[n].mnemonic() == expected[n]);
 		}
 	}

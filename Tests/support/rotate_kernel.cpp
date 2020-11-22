@@ -419,7 +419,7 @@ ByteCode rotate_kernel() {
 
 void run_rotate_alias_kernel(ByteCode const &bytecode) {
 	using namespace V3DLib::v3d;
-	printf("==== rotate alias kernel ====\n");
+	//printf("==== rotate alias kernel ====\n");
 	REQUIRE(bytecode.size() > 0);
 
 	uint32_t code_area_size = 8*bytecode.size();  // size in bytes
@@ -434,7 +434,7 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 	for (uint32_t offset = 0; offset < X.size(); ++offset) {
 		X[offset] = offset;
 	}
-	dump_data(X); 
+	//dump_data(X); 
 
 	int y_length = 2*(16 - -15) *16;  // NB python range(-15, 16) does not include 2nd value; 'up to'
 	SharedArray<uint32_t> Y(y_length, heap);
@@ -451,10 +451,10 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 
 	V3DLib::v3d::Driver drv;
 	drv.add_bo(heap);
-	printf("Executing on QPU...\n");
+	//printf("Executing on QPU...\n");
 	REQUIRE(drv.execute(code, &unif, 1));
 
-	dump_data(Y); 
+	//dump_data(Y); 
 
 	for(int count = 0; count < 2; ++count) { // Output is double, first with small imm, then with r5
 		for(int rot = -15; rot < 16; ++rot) {
@@ -469,5 +469,5 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 	}
 
 	double end = get_time();
-	printf("Rotate alias done: %.6lf sec\n", (end - start));
+	//printf("Rotate alias done: %.6lf sec\n", (end - start));
 }

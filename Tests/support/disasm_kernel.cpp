@@ -72,7 +72,7 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< fdx(rf(7).h(), r1.l()).ifnb().fmul(rf(46), r3.l(), r2.abs()).pushn()
 
 		/* small immediates */
-		<< vflb(rf(24)).andnn().fmul(rf(14), -8, rf(8).h())  // small imm, how used?? Not internally
+		<< vflb(rf(24)).andnn().fmul(rf(14), -8, rf(8).h())  // small imm index value '-8' is 24! This and 'rf(24)' confused me.
 		<< vfmin(rf(24), si(15).ff(), r5).pushn().smul24(rf(15), r1, r3).ifnb()
 		<< faddnf(rf(55), si(-16).l(), r3.abs()).pushc().fmul(rf(55).l(), rf(38).l(), r1.h()).ifb()
 		<< fsub(rf(58).h(), si(0x3b800000).l(), r3.l()).nornc().fmul(rf(39), r0.h(), r0.h()).ifnb()
@@ -92,24 +92,24 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< add(rsqrt, r1, r1).pushn().fmul(rf(35).h(), r3.abs(), r1.abs()).ldunif()
 		<< vfmin(log, r4.hh(), r0).norn().fmul(rf(51), rf(20).abs(), r0.l()).ifnb()
 		<< shl(exp, r3, r2).andn().add(rf(35), r1, r2).ifb()
-		// rf(32) gets put in addr_b here, while the expected opcode has it in addr_a.
-		// Nothing wrong with that but it fails the unit test.
-		//<< fsub(rf(26), r2.l(), rf(32)).ifa().fmul(sin, r1.h(), r1.abs()).pushc().ldunif()
-		<< nop()
+		<< fsub(rf(26), r2.l(), rf(32)).ifa().fmul(sin, r1.h(), r1.abs()).pushc().ldunif()
 
 		/* v4.1 signals */
 		<< fcmp(rf(32), r2.h(), r1.h()).andz().vfmul(rf(20), r0.hh(), r3).ldunifa()
 		<< fcmp(rf(38), r2.abs(), r5).fmul(rf(23).l(), r3, r3.abs()).ldunifarf(rf(1))
+		<< fcmp(rf(52).h(), rf(23), r5.abs()).fmul(rf(16).h(), rf(23), r1).ldunifarf(rf(60))
+		<< fmax(rf(43).l(), r3.h(), rf(30)).fmul(rf(35).h(), r4, r2.l()).ldunifarf(r1)
+		<< faddnf(rf(7).l(), rf(28).h(), r1.l()).fmul(r1, r3.h(), r3.abs()).ldunifarf(rsqrt2)
 	;
 
 	// Useful little code snippet for debugging
 	nop().dump(true);
-	uint64_t op = 0x932045e6c16ea000ull; // "fcmp  rf38, r2.abs, r5; fmul  rf23.l, r3, r3.abs; ldunifarf.rf1" },
+	uint64_t op = 0x9c094adef634b000ull; //, "ffloor.ifb  rf30.l, r3; fmul.pushz  rf43.l, r5, r1.h" },
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-		fcmp(rf(38), r2.abs(), r5).fmul(rf(23).l(), r3, r3.abs()).ldunifarf(rf(1))
-		//fcmp(rf(32), r2.h(), r1.h()).andz().vfmul(rf(20), r0.hh(), r3).ldunifa()
+		// TODO ffloor(rf(30).l(), r3).ifb().fmul(rf(43).l(), r5, r1.h()).pushz()
+		fmax(rf(43).l(), r3.h(), rf(30)).fmul(rf(35).h(), r4, r2.l()).ldunifarf(r1)
 	;
 	tmp_op.dump(true);
 
@@ -118,10 +118,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 	;
 
 #if 0
-        { 41, 0xd72f0434e43ae5c0ull, "fcmp  rf52.h, rf23, r5.abs; fmul  rf16.h, rf23, r1; ldunifarf.rf60" },
-        { 41, 0xdb3048eb9d533780ull, "fmax  rf43.l, r3.h, rf30; fmul  rf35.h, r4, r2.l; ldunifarf.r1" },
-        { 41, 0x733620471e6ce700ull, "faddnf  rf7.l, rf28.h, r1.l; fmul  r1, r3.h, r3.abs; ldunifarf.rsqrt2" },
-        { 41, 0x9c094adef634b000ull, "ffloor.ifb  rf30.l, r3; fmul.pushz  rf43.l, r5, r1.h" },
 
         /* v4.1 opcodes */
         { 41, 0x3de020c7bdfd200dull, "ldvpmg_in  rf7, r2, r2; mov  r3, 13" },

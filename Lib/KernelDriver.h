@@ -55,7 +55,7 @@ private:
 };
 
 
-// Exposed for unit test `AutoTest`
+// Exposed for unit test `testAutoTest`
 void compileKernel(Seq<Instr> &targetCode, Stmt* body);
 
 }  // namespace V3DLib
