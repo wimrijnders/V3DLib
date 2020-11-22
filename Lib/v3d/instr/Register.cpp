@@ -98,9 +98,10 @@ Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
 Register const tlb("tlb", V3D_QPU_WADDR_TLB);
 Register const recip("recip", V3D_QPU_WADDR_RECIP);
 Register const rsqrt("rsqrt", V3D_QPU_WADDR_RSQRT);
-Register const log("log", V3D_QPU_WADDR_LOG);
 Register const exp("exp", V3D_QPU_WADDR_EXP);
+Register const log("log", V3D_QPU_WADDR_LOG);
 Register const sin("sin", V3D_QPU_WADDR_SIN);
+Register const rsqrt2("rsqrt2", V3D_QPU_WADDR_RSQRT2);
 
 
 // For branch

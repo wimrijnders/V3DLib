@@ -37,6 +37,8 @@ public:
 
 public:
 	Instr(uint64_t in_code = NOP);
+	Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, Location const &srcb);
+	Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
 
 	std::string dump(bool to_stdout = false) const; 
 	std::string mnemonic(bool with_comments = false) const;
@@ -54,7 +56,7 @@ public:
 	Instr &ldvary();
 	Instr &ldunif();
 	Instr &ldunifa();
-	Instr &ldunifarf(RFAddress const &addr);
+	Instr &ldunifarf(Location const &loc);
 	Instr &ldtmu(Register const &reg);
 	Instr &ldvpm();
 
@@ -93,7 +95,7 @@ public:
 	//
 	Instr &nop();
 
-	Instr &add(Location const &loc1, Location const &loc2, Location const &loc3);
+	Instr &add(Location const &dst, Location const &srca, Location const &srcb);
 	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 
 	Instr &mov(Location const &dst, SmallImm const &imm);
@@ -117,7 +119,7 @@ public:
 	void alu_add_set_dst(Location const &dst); 
 	void alu_mul_set_dst(Location const &dst); 
 	void alu_add_set_reg_a(Location const &loc);
-	void alu_add_set_reg_b(Location const &loc3);
+	void alu_add_set_reg_b(Location const &loc);
 	void alu_mul_set_reg_a(Location const &loc2);
 	void alu_mul_set_reg_b(Location const &loc3);
 	void alu_set_imm(SmallImm const &imm);
@@ -175,8 +177,8 @@ Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 Instr add(Location const &loc1, SmallImm const &imm2, Location const &loc3);
-Instr sub(Location const &loc1, Location const &loc2, Location const &loc3);
-Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3);
+Instr sub(Location const &dst, Location const &srca, Location const &srcb);
+Instr sub(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb);
 
 Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
@@ -209,7 +211,7 @@ Instr vpmsetup(Register const &reg2);
 
 Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3);
 Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2);
-Instr fmax(Location const &rf_addr1, Location const &reg2, Location const &reg3);
+Instr fmax(Location const &dst, Location const &srca, Location const &srcb);
 Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &reg3);

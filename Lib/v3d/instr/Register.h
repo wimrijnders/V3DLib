@@ -58,9 +58,10 @@ extern Register const tmud;
 extern Register const tlb;
 extern Register const recip;
 extern Register const rsqrt;
-extern Register const log;
 extern Register const exp;
+extern Register const log;
 extern Register const sin;
+extern Register const rsqrt2;
 
 // For branch
 extern BranchDest const lri;

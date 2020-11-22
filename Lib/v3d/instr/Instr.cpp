@@ -68,7 +68,6 @@
 // m_doing_add = true
 // }
 ///////////////////////////////////////////////////////////////////////////////
-
 #include "Instr.h"
 #include <cstdio>
 #include <cstdlib>        // abs()
@@ -98,6 +97,27 @@ uint64_t const Instr::NOP = 0x3c003186bb800000;  // This is actually 'nop nop'
 Instr::Instr(uint64_t in_code) {
 	init(in_code);
 }
+
+
+/**
+ * Initialize the add alu
+ */
+Instr::Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, Location const &srcb) {
+	init(NOP);
+	alu_add_set(dst, srca, srcb);
+	alu.add.op = op;
+}
+
+
+/**
+ * Initialize the add alu
+ */
+Instr::Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb) {
+	init(NOP);
+	alu_add_set(dst, srca, immb);
+	alu.add.op = op;
+}
+
 
 std::string Instr::dump(bool to_stdout) const {
 	std::string ret;
@@ -303,7 +323,7 @@ bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
         } else if (V3D_QPU_BRANCH_COND_A0 + (cond - 2) <= V3D_QPU_BRANCH_COND_ALLNA)
                 cond = V3D_QPU_BRANCH_COND_A0 + (cond - 2);
 
-	printf("cond: %u, msfign: %u\n", cond, msfign);
+	//printf("cond: %u, msfign: %u\n", cond, msfign);
 
 	if (cond == 2 && msfign == V3D_QPU_MSFIGN_NONE) {
 		// Zap out the bdu field and compare again
@@ -400,10 +420,11 @@ Instr &Instr::ldunif()  { sig.ldunif  = true; return *this; }
 Instr &Instr::ldunifa() { sig.ldunifa = true; return *this; }
 Instr &Instr::ldvpm()   { sig.ldvpm   = true; return *this; }
 
-Instr &Instr::ldunifarf(RFAddress const &addr) {
+Instr &Instr::ldunifarf(Location const &loc) {
 	sig.ldunifarf = true;
-	sig_addr = addr.to_waddr();
-	sig_magic = false;
+
+	sig_magic = !loc.is_rf();
+	sig_addr = loc.to_waddr();
 	return *this;
 }
 
@@ -513,7 +534,6 @@ Instr &Instr::fmul(Location const &loc1, Location const &loc2, Location const &l
 	alu_mul_set(loc1, loc2, loc3);
 
 	alu.mul.op    = V3D_QPU_M_FMUL;
-
 	return *this;
 }
 
@@ -599,26 +619,29 @@ void Instr::alu_add_set_reg_a(Location const &loc) {
 }
 
 
-void Instr::alu_add_set_reg_b(Location const &loc3) {
-	if (loc3.is_rf()) {
-		// Prefer raddr_b - strictly speaking not required
-	  // TODO: This might be why instructions (currently 1) fail in disasm kernel, examine
+void Instr::alu_add_set_reg_b(Location const &loc) {
+	if (loc.is_rf()) {
 		if (!sig.small_imm) {
-			// This should always be OK, add.a will never use raddr_b at this point
-			raddr_b          = loc3.to_waddr(); 
-			alu.add.b        = V3D_QPU_MUX_B;
+			if (alu.add.a == V3D_QPU_MUX_A) {
+				// raddr_a already taken, use b instead
+				raddr_b          = loc.to_waddr(); 
+				alu.add.b        = V3D_QPU_MUX_B;
+			} else {
+				raddr_a          = loc.to_waddr(); 
+				alu.add.b        = V3D_QPU_MUX_A;
+			}
 		} else {
 			// raddr_b contains a small imm, do raddr_a instead
 			assert(alu.add.a == V3D_QPU_MUX_B);
 
-			raddr_a          = loc3.to_waddr(); 
+			raddr_a          = loc.to_waddr(); 
 			alu.add.b        = V3D_QPU_MUX_A;
 		}
 	} else {
-		alu.add.b        = loc3.to_mux();
+		alu.add.b        = loc.to_mux();
 	}
 
-	alu.add.b_unpack = loc3.input_unpack();
+	alu.add.b_unpack = loc.input_unpack();
 }
 
 
@@ -887,7 +910,7 @@ Instr ftoi(Location const &dst, Location const &srca, SmallImm const &immb) {
 
 
 /**
- * 'and' is a keyword, hence prefix 'b'
+ * Prefix 'b' because 'and' is a keyword.
  */
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
 	Instr instr;
@@ -927,20 +950,13 @@ Instr tidx(Location const &reg) {
 }
 
 
-Instr add(Location const &loc1, Location const &loc2, Location const &loc3) {
-	Instr instr;
-	instr.alu_add_set(loc1, loc2, loc3);
-
-	instr.alu.add.op    = V3D_QPU_A_ADD;
-	return instr;
+Instr add(Location const &dst, Location const &srca, Location const &srcb) {
+	return Instr(V3D_QPU_A_ADD, dst, srca, srcb);
 }
 
 
-Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
-	Instr instr;
-	instr.alu_add_set(loc1, loc2, imm3);
-	instr.alu.add.op    = V3D_QPU_A_ADD;
-	return instr;
+Instr add(Location const &dst, Location const &srca, SmallImm const &immb) {
+	return Instr(V3D_QPU_A_ADD, dst, srca, immb);
 }
 
 
@@ -952,17 +968,20 @@ Instr add(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 }
 
 
-Instr sub(Location const &loc1, Location const &loc2, Location const &loc3) {
+Instr sub(Location const &dst, Location const &srca, Location const &srcb) {
+	return Instr(V3D_QPU_A_SUB, dst, srca, srcb);
+/*
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, loc3);
 	instr.alu.add.op = V3D_QPU_A_SUB;
 	return instr;
+*/
 }
 
 
-Instr sub(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+Instr sub(Location const &dst, Location const &srca, SmallImm const &immb) {
 	Instr instr;
-	instr.alu_add_set(loc1, loc2, imm3);
+	instr.alu_add_set(dst, srca, immb);
 	instr.alu.add.op = V3D_QPU_A_SUB;
 	return instr;
 }
@@ -1384,11 +1403,11 @@ Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2) {
 }
 
 
-Instr fmax(Location const &rf_addr1, Location const &reg2, Location const &reg3) {
+Instr fmax(Location const &dst, Location const &srca, Location const &srcb) {
 	Instr instr;
-	instr.alu_add_set(rf_addr1, reg2, reg3);
+	instr.alu_add_set(dst, srca, srcb);
 
-	instr.alu.add.op    = V3D_QPU_A_FMAX;
+	instr.alu.add.op = V3D_QPU_A_FMAX;
 	return instr;
 }
 
