@@ -10,12 +10,14 @@ namespace V3DLib {
 namespace v3d {
 
 class KernelDriver : public V3DLib::KernelDriver {
+	using Parent       = V3DLib::KernelDriver;
 	using Instruction  = V3DLib::v3d::instr::Instr;
 	using Instructions = std::vector<Instruction>;
 
 public:
 	KernelDriver();
 
+	void compile_init();
 	void encode(int numQPUs) override;
 
 private:

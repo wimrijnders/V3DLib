@@ -43,10 +43,11 @@ void print_target_code(FILE *f, Seq<Instr> const &code) {
 // ============================================================================
 
 /**
- * @param body        top of the AST
  * @param targetCode  output variable for the target code assembled from the AST and adjusted
  */
-void compileKernel(Seq<Instr> &targetCode, Stmt* body) {
+void compile_postprocess(Seq<Instr> &targetCode) {
+	assertq(!targetCode.empty(), "compile_postprocess(): passed target code is empty");
+
   // Load/store pass
   loadStorePass(targetCode);
 
@@ -72,16 +73,25 @@ void compileKernel(Seq<Instr> &targetCode, Stmt* body) {
  */
 KernelDriver::~KernelDriver() {}
 
-
-void KernelDriver::init_compile() {
+/**
+ * Reset the state for compilation
+ *
+ * The parameters are only here for autotest unit test.
+ *
+ * @param set_qpu_uniforms  if true, initialize the uniforms for QPU ID and number of QPU's
+ * @param numVars           number of variables already assigned prior to compilation
+ */
+void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
 	initStmt(m_stmtStack);
-	resetFreshVarGen();
+	resetFreshVarGen(numVars);
 	resetFreshLabelGen();
 
-	// Reserved general-purpose variables
-	Int qpuId, qpuCount;
-	qpuId    = getUniformInt();
-	qpuCount = getUniformInt();
+	if (set_qpu_uniforms) {
+		// Reserved general-purpose variables
+		Int qpuId, qpuCount;
+		qpuId    = getUniformInt();
+		qpuCount = getUniformInt();
+	}
 }
 
 
@@ -103,7 +113,7 @@ void KernelDriver::_compile() {
 
 	getSourceTranslate().add_init(m_targetCode);  // TODO init block only added for v3d, refactor
 
-	compileKernel(m_targetCode, m_body);
+	compile_postprocess(m_targetCode);
 }
 
 

@@ -213,6 +213,12 @@ enum StmtTag {
 
 
 struct Stmt : public InstructionComment {
+	~Stmt() {
+		// WRI DEBUG
+		breakpoint
+	}
+
+
   // What kind of statement is it?
   StmtTag tag;
 

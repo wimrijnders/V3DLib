@@ -10,6 +10,12 @@ namespace vc4 {
 KernelDriver::KernelDriver() : V3DLib::KernelDriver(Vc4Buffer) {}
 
 
+void KernelDriver::compile_init(bool set_qpu_uniforms, int numVars) {
+	Parent::init_compile(set_qpu_uniforms, numVars);
+	Platform::compiling_for_vc4(true);
+}
+
+
 /**
  * Add the postfix code to the kernel.
  *

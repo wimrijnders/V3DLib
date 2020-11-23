@@ -52,7 +52,7 @@ void If_(BoolExpr b)
 void Else_()
 {
   int ok = 0;
-  if (controlStack.size > 0) {
+  if (controlStack.size() > 0) {
     Stmt* s = controlStack.top();
     if (s->tag == IF && s->ifElse.thenStmt == NULL) {
       s->ifElse.thenStmt = stmtStack().top();
@@ -78,7 +78,7 @@ void Else_()
 void End_()
 {
   int ok = 0;
-  if (controlStack.size > 0) {
+  if (controlStack.size() > 0) {
     Stmt* s = controlStack.top();
     if (s->tag == IF && s->ifElse.thenStmt == NULL) {
       s->ifElse.thenStmt = stmtStack().top();

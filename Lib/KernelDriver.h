@@ -19,7 +19,6 @@ public:
 	virtual void kernelFinish() {} 
 	virtual void encode(int numQPUs) = 0;
 
-	void init_compile();
 	void compile();
 	void invoke(int numQPUs, Seq<int32_t> &params);
 	void pretty(int numQPUs, const char *filename = nullptr);
@@ -33,6 +32,16 @@ public:
 
 	BufferType const buffer_type;
 
+#ifdef DEBUG
+	// Only here for autotest
+	void add_stmt(Stmt *stmt) {
+		assert(stmt != nullptr);
+		assert(m_stmtStack.size() == 1);  // Only a skip statement present
+		m_stmtStack.pop();                // Replace skip statement
+		m_stmtStack.push(stmt);
+	}
+#endif
+
 protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
@@ -41,6 +50,7 @@ protected:
   int qpuCodeMemOffset = 0;
 	std::vector<std::string> errors;
 
+	void init_compile(bool set_qpu_uniforms = true, int numVars = 0);
 	virtual void emit_opcodes(FILE *f) {} 
 	void obtain_ast();
 
@@ -53,10 +63,6 @@ private:
 	bool has_errors() const { return !errors.empty(); }
 	bool handle_errors();
 };
-
-
-// Exposed for unit test `testAutoTest`
-void compileKernel(Seq<Instr> &targetCode, Stmt* body);
 
 }  // namespace V3DLib
 

@@ -60,7 +60,7 @@ public:
 
 
 	void set_size(int new_size) {
-		assert(new_size > 0);
+		assertq(new_size > 0, "Seq::set_size(): can not set size to zero");
 		setCapacity(new_size);
 		numElems = new_size;
 	}
@@ -68,8 +68,8 @@ public:
 	bool empty() const { return size() == 0; }
 
 		T &get(int index) {
-			assert(!empty());
-			assertq(0 <= index && index < numElems, "Seq[] index out of range", true);
+			assertq(!empty(), "seq[]: can not access elements, sequence is empty");
+			assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
 			return elems[index];
 		}
 
@@ -78,7 +78,8 @@ public:
 		}
 
 		T operator[](int index) const {
-			assert(0 <= index && index < numElems);
+			assertq(!empty(), "seq[]: can not access elements, sequence is empty");
+			assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
 			return elems[index];
 		}
 
@@ -96,9 +97,9 @@ public:
 	 * @param n  requested size of sequence
 	 */
 	void setCapacity(int n) {
-		assert(n > 0);
+		assertq(n > 0, "Seq::setCapacity(): can not set sequence capacity to zero", true);
 		if (n <= maxElems) {
-			assert(elems != nullptr);
+			assertq(elems != nullptr, "Seq::setCapacity(): internal storage not initialized");
 			return;  // Don't bother resizing if already big enough
 		}
 
@@ -106,7 +107,6 @@ public:
 		T* newElems = new T[maxElems];
 
 		if (elems != nullptr) {
-			assert(maxElems > 0);
 			for (int i = 0; i < numElems; i++) {
 				newElems[i] = elems[i];
 			}
@@ -132,7 +132,7 @@ public:
     void push(T x) { append(x); }
 
     T pop() {
-			assert(numElems > 0);
+			assertq(numElems > 0, "Seq::pop(): sequence is empty, nothing to return");
       numElems--;
       return elems[numElems];
     }
@@ -184,8 +184,8 @@ public:
 
     // Remove element at index
     T remove(int index) {
-			assert(numElems > 0);
-      assert(0 <= index && index < numElems);
+			assertq(numElems > 0, "Seq::remove(): sequence is empty, nothing to remove");
+      assertq(0 <= index && index < numElems, "Seq::remove(): index out of range");
       T x = elems[index];
 
       for (int j = index; j < numElems-1; j++) {
@@ -225,9 +225,8 @@ private:
 	 * positions in the sequence that still need to be filled in by caller.
 	 */
 	void shift_tail(int index, int n ) {
-		assert(index >= 0);
-		assert(n > 0);
-		assert(index <= size());  // index == size amounts to append
+		assertq(n > 0, "Seq::shift_tail(): can not shift zero length");
+		assertq(index >= 0 && index <= size(), "Seq::shift_tail(): index out of range");  // index == size allowed, amounts to append
 
 		int prevNum = numElems;
    	extend_by(n);
@@ -246,13 +245,15 @@ private:
 	 *
 	 */
  	void extend_by(int step = 1) {
-		assert(step > 0);
+		assertq(step > 0, "Seq::extend_by(): can not extend with zero length");
 
 		int newSize = maxElems;
 		if (newSize == 0) {
-			assert(elems == nullptr);
+			assertq(elems == nullptr, "Seq::extend_by(): sequence has no internal storage");
 			newSize = INITIAL_MAX_ELEMS;
-			assert(newSize != 0);  // Actually happened during gdb debug sessions, prob due to skipping of ctor Set.
+
+			// Following actually happened during gdb debug sessions, prob due to skipping of ctor Set.
+			assertq(newSize != 0, "Seq::extend_by(): Weirdness! newSize assigned but is zero anyway.");
 		}
 
 		while (newSize < (numElems + step))

@@ -14,54 +14,59 @@ public:
 
 template <class T> class Stack {
 public:
-    unsigned int size;
-    StackItem<T>* topItem;
-
     Stack() {
-      topItem = NULL;
-      size    = 0;
+      m_topItem = NULL;
+      m_size    = 0;
     }
 
     ~Stack() {
       clear();
     }
 
+		bool empty() const { return m_size == 0; }
+		unsigned  size() const { return m_size; }
+
     void push(T* x) {
-      StackItem<T>* oldTop = topItem;
-      topItem       = new StackItem<T>;
-      topItem->head = x;
-      topItem->tail = oldTop;
-      size++;
+      StackItem<T>* oldTop = m_topItem;
+      m_topItem       = new StackItem<T>;
+      m_topItem->head = x;
+      m_topItem->tail = oldTop;
+      m_size++;
     }
 
     void pop() {
-      assert(size > 0);
-      StackItem<T>* oldTop = topItem;
-      topItem = topItem->tail;
+      assert(m_size > 0);
+      StackItem<T>* oldTop = m_topItem;
+      m_topItem = m_topItem->tail;
       delete oldTop;
-      size--;
+      m_size--;
     }
 
     T* top() {
-      assert(size > 0);
-      return topItem->head;
+      assert(m_size > 0);
+      return m_topItem->head;
     }
 
     // Replace the top element
     void replace(T* x) {
-      topItem->head = x;
+      m_topItem->head = x;
     }
 
     // Clear the stack
     void clear() {
       StackItem<T>* p;
-      for (int i = 0; i < size; i++) {
-        p = topItem->tail;
-        delete topItem;
-        topItem = p;
+      for (int i = 0; i < m_size; i++) {
+        p = m_topItem->tail;
+        delete m_topItem;
+        m_topItem = p;
       }
-      size = 0;
+      m_size = 0;
     }
+
+private:
+	unsigned int m_size = 0;
+	StackItem<T> *m_topItem = nullptr;
+
 };
 
 }  // namespace V3DLib

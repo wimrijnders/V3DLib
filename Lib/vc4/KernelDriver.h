@@ -9,9 +9,12 @@ namespace V3DLib {
 namespace vc4 {
 
 class KernelDriver : public V3DLib::KernelDriver {
+	using Parent = V3DLib::KernelDriver;
+
 public:
 	KernelDriver();
 
+	void compile_init(bool set_qpu_uniforms = true, int numVars = 0);
 	void kernelFinish() override;
 	void encode(int numQPUs) override;
 

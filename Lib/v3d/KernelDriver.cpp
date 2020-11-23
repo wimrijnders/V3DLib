@@ -932,6 +932,12 @@ void _encode(uint8_t numQPUs, Seq<V3DLib::Instr> &instrs, Instructions &instruct
 KernelDriver::KernelDriver() : V3DLib::KernelDriver(V3dBuffer) {}
 
 
+void KernelDriver::compile_init() {
+	Parent::init_compile();
+	Platform::compiling_for_vc4(false);
+}
+
+
 void KernelDriver::encode(int numQPUs) {
 	if (instructions.size() > 0) return;  // Don't bother if already encoded
 

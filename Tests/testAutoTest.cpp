@@ -70,25 +70,24 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 
 	  for (int test = 0; test < numTests; test++) {
 	    astHeap.clear();
-	    resetFreshLabelGen();
+			vc4::KernelDriver driver;
 
-	    int numVars, numEmuVars;
-	    Stmt* s = progGen(&opts, &numVars);
+	    int numVars;
+	    Stmt *s = progGen(&opts, &numVars);
 			
-	    Seq<Instr> targetCode;
-	    resetFreshVarGen(numVars);
-	    compileKernel(targetCode, s);
+			driver.compile_init(false, numVars);
+			driver.add_stmt(s);
+	    driver.compile();
 
-	    numEmuVars = getFreshVarCount();
 	    Seq<int32_t> params;
-	    params.clear();
 	    for (int i = 0; i < opts.numIntArgs; i++) {
-  	    params.append(genIntLit());
+  	    params << genIntLit();
 	    }
 
+	    int numEmuVars = getFreshVarCount();
 	    Seq<char> interpOut, emuOut;
 	    interpreter(1, s, numVars, params, getBufferObject(), &interpOut);
-	    emulate(1, &targetCode, numEmuVars, params, getBufferObject(), &emuOut);
+	    emulate(1, &driver.targetCode(), numEmuVars, params, getBufferObject(), &emuOut);
 
 	    bool differs = false;
 	    if (interpOut.size() != emuOut.size())
@@ -103,7 +102,7 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	      printf("Source Code: \n");
 	      pretty(s);
 	      printf("\nTarget Code: \n");
-				printf(mnemonics(targetCode).c_str());
+				printf(mnemonics(driver.targetCode()).c_str());
 
 	      printf("\nParams: ");
 	      for (int i = 0; i < params.size(); i++) {

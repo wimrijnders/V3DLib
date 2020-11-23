@@ -204,9 +204,7 @@ public:
 	 */
   Kernel(KernelFunction f) {
 		{
-			m_vc4_driver.init_compile();
-			Platform::compiling_for_vc4(true);
-
+			m_vc4_driver.compile_init();
 
 	    auto args = std::make_tuple(mkArg<ts>()...);
 
@@ -223,6 +221,7 @@ public:
 			}
 
 	    // Construct the AST for vc4
+breakpoint
 	    apply(f, args);
 			m_vc4_driver.compile();
 
@@ -232,8 +231,7 @@ public:
 
 #ifdef QPU_MODE
 		{
-			m_v3d_driver.init_compile();
-			Platform::compiling_for_vc4(false);
+			m_v3d_driver.compile_init();
 
 	    // Construct the AST for v3d
 	    f(mkArg<ts>()...);

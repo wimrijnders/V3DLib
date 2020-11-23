@@ -222,7 +222,20 @@ CExpr* mkAny(BExpr* bexpr)
 // Functions to allocate a statement
 Stmt* mkStmt()
 {
-  return astHeap.alloc<Stmt>();
+  Stmt *ret = astHeap.alloc<Stmt>();
+
+	ret->comment("");
+	//ret->header("");
+
+	if (!ret->comment().empty()) {
+		breakpoint
+	}
+
+	if (!ret->header().empty()) {
+		breakpoint
+	}
+
+	return ret;
 }
 
 // Make a skip statement

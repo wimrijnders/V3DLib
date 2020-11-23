@@ -606,7 +606,7 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 	}
 
 	if (!s->comment().empty()) {
-		// breakpoint
+		breakpoint
 		seq->back().comment(s->comment());
 	}
 }
