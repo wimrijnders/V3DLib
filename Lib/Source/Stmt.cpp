@@ -35,7 +35,7 @@ void assign(Expr* lhs, Expr* rhs) {
 
 void If_(Cond c)
 {
-  Stmt* s = mkIf(c.cexpr, NULL, NULL);
+  Stmt* s = mkIf(c.cexpr, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -54,12 +54,12 @@ void Else_()
   int ok = 0;
   if (controlStack.size() > 0) {
     Stmt* s = controlStack.top();
-    if (s->tag == IF && s->ifElse.thenStmt == NULL) {
+    if (s->tag == IF && s->ifElse.thenStmt == nullptr) {
       s->ifElse.thenStmt = stmtStack().top();
       stmtStack().replace(mkSkip());
       ok = 1;
     }
-    if (s->tag == WHERE && s->where.thenStmt == NULL) {
+    if (s->tag == WHERE && s->where.thenStmt == nullptr) {
       s->where.thenStmt = stmtStack().top();
       stmtStack().replace(mkSkip());
       ok = 1;
@@ -80,27 +80,27 @@ void End_()
   int ok = 0;
   if (controlStack.size() > 0) {
     Stmt* s = controlStack.top();
-    if (s->tag == IF && s->ifElse.thenStmt == NULL) {
+    if (s->tag == IF && s->ifElse.thenStmt == nullptr) {
       s->ifElse.thenStmt = stmtStack().top();
       ok = 1;
     }
-    else if (s->tag == IF && s->ifElse.elseStmt == NULL) {
+    else if (s->tag == IF && s->ifElse.elseStmt == nullptr) {
       s->ifElse.elseStmt = stmtStack().top();
       ok = 1;
     }
-    if (s->tag == WHERE && s->where.thenStmt == NULL) {
+    if (s->tag == WHERE && s->where.thenStmt == nullptr) {
       s->where.thenStmt = stmtStack().top();
       ok = 1;
     }
-    else if (s->tag == WHERE && s->where.elseStmt == NULL) {
+    else if (s->tag == WHERE && s->where.elseStmt == nullptr) {
       s->where.elseStmt = stmtStack().top();
       ok = 1;
     }
-    if (s->tag == WHILE && s->loop.body == NULL) {
+    if (s->tag == WHILE && s->loop.body == nullptr) {
       s->loop.body = stmtStack().top();
       ok = 1;
     }
-    if (s->tag == FOR && s->forLoop.body == NULL) {
+    if (s->tag == FOR && s->forLoop.body == nullptr) {
       // Convert 'for' loop to 'while' loop
       CExpr* whileCond = s->forLoop.cond;
       Stmt* whileBody = mkSeq(stmtStack().top(), s->forLoop.inc);
@@ -128,7 +128,7 @@ void End_()
 
 void While_(Cond c)
 {
-  Stmt* s = mkWhile(c.cexpr, NULL);
+  Stmt* s = mkWhile(c.cexpr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -144,7 +144,7 @@ void While_(BoolExpr b)
 
 void Where__(BExpr* b)
 {
-  Stmt* s = mkWhere(b, NULL, NULL);
+  Stmt* s = mkWhere(b, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -155,7 +155,7 @@ void Where__(BExpr* b)
 
 void For_(Cond c)
 {
-  Stmt* s = mkFor(c.cexpr, NULL, NULL);
+  Stmt* s = mkFor(c.cexpr, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -177,22 +177,17 @@ void ForBody_()
 // 'Print' token
 //=============================================================================
 
-void Print(const char* str)
-{
-  Stmt* s = mkStmt();
-  s->tag = PRINT;
-  s->print.tag = PRINT_STR;
+void Print(const char *str) {
+breakpoint
+  Stmt* s = Stmt::create(PRINT);
   s->print.str = str;
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
+  stmtStack().append(s);
 }
 
-void Print(IntExpr x)
-{
-  Stmt* s = mkStmt();
-  s->tag = PRINT;
+void Print(IntExpr x) {
+  Stmt *s = Stmt::create(PRINT, x.expr, nullptr);
   s->print.tag = PRINT_INT;
-  s->print.expr = x.expr;
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
+  stmtStack().append(s);
 }
 
 

@@ -11,6 +11,11 @@ namespace V3DLib {
 class StmtStack : public SStack<Stmt> {
 public:
 	void append(Stmt *stmt);
+
+	StmtStack &operator<<(Stmt *stmt) {
+		append(stmt);
+		return *this;
+	}
 };
 
 }  // namespace V3DLib

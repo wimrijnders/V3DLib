@@ -214,12 +214,17 @@ enum StmtTag {
 	DMA_READ_WAIT,
 	DMA_WRITE_WAIT,
 	DMA_START_READ,
-	 DMA_START_WRITE
+	DMA_START_WRITE
 };
 
 
 struct Stmt : public InstructionComment {
+	void init(StmtTag in_tag);
 	~Stmt();
+
+	static Stmt *create(StmtTag in_tag);
+	static Stmt *create(StmtTag in_tag, Expr *e0, Expr *e1);
+	static Stmt *create(StmtTag in_tag, Stmt *s0, Stmt *s1);
 
   // What kind of statement is it?
   StmtTag tag;
@@ -280,7 +285,6 @@ struct Stmt : public InstructionComment {
 };
 
 // Functions to construct statements
-Stmt* mkStmt();
 Stmt* mkSkip();
 Stmt* mkAssign(Expr* lhs, Expr* rhs);
 Stmt* mkSeq(Stmt* s0, Stmt* s1);

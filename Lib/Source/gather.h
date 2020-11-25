@@ -38,10 +38,9 @@ inline void gather(Ptr<T>& addr) {
 
 inline void receiveExpr(Expr* e)
 {
-  Stmt* s = mkStmt();
-  s->tag = LOAD_RECEIVE;
+  Stmt* s = Stmt::create(LOAD_RECEIVE);
   s->loadDest = e;
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
+  stmtStack().append(s);
 }
 
 inline void receive(Int& dest)
@@ -53,13 +52,10 @@ inline void receive(Float& dest)
 template <typename T> inline void receive(Ptr<T>& dest)
   { receiveExpr(dest.expr); }
 
-inline void storeExpr(Expr* e0, Expr* e1)
-{
-  Stmt* s = mkStmt();
-  s->tag = STORE_REQUEST;
-  s->storeReq.data = e0;
-  s->storeReq.addr = e1;
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
+
+inline void storeExpr(Expr* e0, Expr* e1) {
+  Stmt* s = Stmt::create(STORE_REQUEST, e0, e1);
+  stmtStack().append(s);
 }
 
 inline void store(IntExpr data, PtrExpr<Int> addr) {

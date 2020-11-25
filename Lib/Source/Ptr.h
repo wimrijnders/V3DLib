@@ -1,11 +1,11 @@
 // This module defines type 'Ptr<T>' type denoting a pointer to a
 // value of type 'T'.
-
+//
+///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_PTR_H_
 #define _V3DLIB_SOURCE_PTR_H_
-
-//#include <assert.h>
 #include "Source/Syntax.h"
+#include "Support/debug.h"
 
 namespace V3DLib {
   //
@@ -34,6 +34,7 @@ template <typename T> struct PtrExpr {
     // This operation must return a reference to T, so we allocate the
     // AST node on the heap an return a reference to it.
     //T* p = astHeap.alloc<T>(1);
+breakpoint
     T *p = new T;
 		
     p->expr = mkDeref(expr);
@@ -43,6 +44,7 @@ template <typename T> struct PtrExpr {
   // Array index
   T& operator[](IntExpr index) {
     //T* p = astHeap.alloc<T>(1);
+breakpoint
 		T *p = new T;
     p->expr = mkDeref(mkApply(expr, Op(ADD, INT32),
                 mkApply(index.expr, Op(SHL, INT32), mkIntLit(2))));
@@ -101,6 +103,7 @@ printf("Ptr const copy ctor called\n");
     // This operation must return a reference to T, so we allocate the
     // AST node on the heap an return a reference to it.
     //T* p = astHeap.alloc<T>(1);
+breakpoint
     T *p = new T;
     p->expr = mkDeref(expr);
     return *p;
@@ -109,6 +112,7 @@ printf("Ptr const copy ctor called\n");
   // Array index
   T& operator[](IntExpr index) {
     //T* p = astHeap.alloc<T>(1);
+breakpoint
     T *p = new T;
     p->expr = mkDeref(mkApply(expr, Op(ADD, INT32),
                 mkApply(index.expr, Op(SHL, INT32), mkIntLit(2))));
