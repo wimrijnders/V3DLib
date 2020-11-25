@@ -12,6 +12,8 @@
 
 namespace V3DLib {
 
+using ::operator<<;  // C++ weirdness
+
 namespace {
 
 void print_source_code(FILE *f, Stmt *body) {
@@ -122,11 +124,10 @@ void KernelDriver::compile() {
 		_compile();
 	} catch (V3DLib::Exception const &e) {
 		std::string msg = "Exception occured during compilation: ";
-		msg += e.msg();  // TODO WHY doesn't << work here???
-		//std::cerr << msg << std::endl;
+		msg << e.msg();
 
 		if (e.msg().compare(0, 5, "ERROR") == 0) {
-			errors.push_back(msg); // WHY doesn't << work here???
+			errors << msg;
 		} else {
 			throw;  // Must be a fatal()
 		}
