@@ -69,6 +69,8 @@ enum ReservedVarId {
 enum ExprTag { INT_LIT, FLOAT_LIT, VAR, APPLY, DEREF };
 
 struct Expr {
+	Expr() {}
+
   // What kind of expression is it?
   ExprTag tag;
 
@@ -120,6 +122,8 @@ struct CmpOp {
 enum BExprTag { NOT, AND, OR, CMP };
 
 struct BExpr {
+	BExpr() {}
+
   // What kind of boolean expression is it?
   BExprTag tag;
 
@@ -153,6 +157,8 @@ BExpr* mkCmp(Expr*  lhs, CmpOp op, Expr*  rhs);
 enum CExprTag { ALL, ANY };
 
 struct CExpr {
+	CExpr() {}
+
   // What kind of boolean expression is it?
   CExprTag tag;
 
@@ -213,11 +219,7 @@ enum StmtTag {
 
 
 struct Stmt : public InstructionComment {
-	~Stmt() {
-		// WRI DEBUG
-		breakpoint
-	}
-
+	~Stmt();
 
   // What kind of statement is it?
   StmtTag tag;
@@ -292,7 +294,7 @@ Stmt* mkPrint(PrintTag t, Expr* e);
 // Global variables
 // ============================================================================
 
-extern Heap astHeap;  // Used for constructing abstract syntax trees
+//extern Heap astHeap;  // Used for constructing abstract syntax trees
 
 }  // namespace V3DLib
 

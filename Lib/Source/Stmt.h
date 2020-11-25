@@ -2,10 +2,11 @@
 #define _V3DLIB_SOURCE_STMT_H_
 
 #include "Source/Cond.h"
-#include "Source/Syntax.h"
 #include "Source/Ptr.h"
 
 namespace V3DLib {
+
+class StmtStack;  // Forward declaration
 
 //=============================================================================
 // Statement macros
@@ -41,9 +42,9 @@ void ForBody_();
 void Print(const char *);
 void Print(IntExpr x);
 void comment(char const *str);
-void initStmt(Stack<Stmt> &stmtStack);
+void initStmt(StmtStack &stmtStack);
 void finishStmt();
-Stack<Stmt> &stmtStack();
+StmtStack &stmtStack();
 
 }  // namespace V3DLib
 

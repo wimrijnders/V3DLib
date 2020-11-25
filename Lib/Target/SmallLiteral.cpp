@@ -1,5 +1,6 @@
 #include "SmallLiteral.h"
 #include <stdio.h>
+#include "Support/basics.h"
 #include "Source/Syntax.h"
 
 namespace V3DLib {

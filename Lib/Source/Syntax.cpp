@@ -1,11 +1,11 @@
-#include "Source/Syntax.h"
+#include "Syntax.h"
 #include "Common/Heap.h"
 #include "Common/Stack.h"
 #include "Target/SmallLiteral.h"
 
 namespace V3DLib {
 
-Heap astHeap("abstract syntax tree");  // Used for constructing abstract syntax trees
+//Heap astHeap("abstract syntax tree");  // Used for constructing abstract syntax trees
 
 
 // ============================================================================
@@ -88,7 +88,8 @@ bool isCommutative(Op op) {
 // Function to allocate an expression
 Expr* mkExpr()
 {
-  return astHeap.alloc<Expr>();
+//  return astHeap.alloc<Expr>();
+	return new Expr;
 }
 
 // Make an integer literal
@@ -151,7 +152,8 @@ bool isLit(Expr* e)
 // Allocate a boolean expression
 BExpr* mkBExpr()
 {
-  return astHeap.alloc<BExpr>();
+//  return astHeap.alloc<BExpr>();
+	return new BExpr;
 }
 
 BExpr* mkNot(BExpr* neg)
@@ -196,7 +198,8 @@ BExpr* mkCmp(Expr* lhs, CmpOp op, Expr*  rhs) {
 
 CExpr* mkCExpr()
 {
-  return astHeap.alloc<CExpr>();
+//  return astHeap.alloc<CExpr>();
+	return new CExpr;
 }
 
 CExpr* mkAll(BExpr* bexpr)
@@ -215,6 +218,17 @@ CExpr* mkAny(BExpr* bexpr)
   return c;
 }
 
+
+// ============================================================================
+// Class Stmt
+// ============================================================================
+
+Stmt::~Stmt() {
+	// WRI DEBUG
+	breakpoint
+}
+
+
 // ============================================================================
 // Functions on statements
 // ============================================================================
@@ -222,10 +236,9 @@ CExpr* mkAny(BExpr* bexpr)
 // Functions to allocate a statement
 Stmt* mkStmt()
 {
-  Stmt *ret = astHeap.alloc<Stmt>();
-
-	ret->comment("");
-	//ret->header("");
+  //Stmt *ret = reinterpret_cast<Stmt *>(astHeap.alloc<Stmt>());
+	Stmt *ret = new Stmt;
+	ret->clear_comments();
 
 	if (!ret->comment().empty()) {
 		breakpoint

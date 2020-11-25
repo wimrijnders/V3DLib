@@ -1,9 +1,9 @@
 #ifndef _LIB_KERNELDRIVER_H
 #define _LIB_KERNELDRIVER_H
-#include <stdio.h>
+//#include <stdio.h>
 #include <vector>
 #include <string>
-#include "Common/Stack.h"
+#include "Common/StmtStack.h"
 #include "Target/CFG.h"
 #include "Common/SharedArray.h"
 
@@ -34,13 +34,9 @@ public:
 
 #ifdef DEBUG
 	// Only here for autotest
-	void add_stmt(Stmt *stmt) {
-		assert(stmt != nullptr);
-		assert(m_stmtStack.size() == 1);  // Only a skip statement present
-		m_stmtStack.pop();                // Replace skip statement
-		m_stmtStack.push(stmt);
-	}
+	void add_stmt(Stmt *stmt);
 #endif
+
 
 protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
@@ -55,8 +51,8 @@ protected:
 	void obtain_ast();
 
 private:
-	Stack<Stmt> m_stmtStack;
-  Stmt       *m_body = nullptr;
+	StmtStack m_stmtStack;
+  Stmt     *m_body = nullptr;
 
 	void _compile();
 	virtual void invoke_intern(int numQPUs, Seq<int32_t>* params) = 0;

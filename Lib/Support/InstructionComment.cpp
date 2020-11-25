@@ -1,4 +1,5 @@
 #include "InstructionComment.h"
+#include "Support/basics.h"
 
 namespace {
 
@@ -21,6 +22,12 @@ void findAndReplaceAll(std::string & data, std::string toSearch, std::string rep
 }  // anon namespace
 
 namespace V3DLib {
+
+
+void InstructionComment::clear_comments() {
+	m_header.clear();
+	m_comment.clear();
+}
 
 
 /**
@@ -81,7 +88,7 @@ std::string InstructionComment::emit_comment(int instr_size) const {
 	};
 
 	std::string ret;
-	ret  << emit_spaces(spaces) << "# " << m_comment;
+	ret << emit_spaces(spaces) << "# " << m_comment;
 	return ret;
 }
 

@@ -3,6 +3,7 @@
 #include "Source/Int.h"     // IntExpr
 #include "Source/Ptr.h"
 #include "Source/Syntax.h"  // Expr
+#include "Common/StmtStack.h"
 #include "Source/Stmt.h"    // stmtStack()
 
 namespace V3DLib {

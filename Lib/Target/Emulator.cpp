@@ -718,7 +718,6 @@ void emulate(
 	BufferObject &heap,
 	Seq<char>* output
 ) {
-
   State state;
   state.output = output;
 
@@ -738,7 +737,12 @@ void emulate(
 		q.init(maxReg);
   }
 
+	// Protection against locks due to semaphore waiting
+	int const MAX_SEMAPHORE_WAIT = 1024;
+	int semaphore_wait_count = 0;
+
   bool anyRunning = true;
+
   while (anyRunning) {
 		auto ALWAYS = AssignCond::Tag::ALWAYS;
 
@@ -746,6 +750,7 @@ void emulate(
 
     // Execute an instruction in each active QPU
     for (int i = 0; i < numQPUs; i++) {
+
       QPUState* s = &state.qpu[i];
       if (s->running) {
         anyRunning = true;
@@ -835,15 +840,27 @@ void emulate(
           // Semaphore increment
           case SINC: {
             assert(instr.semaId >= 0 && instr.semaId <= 15);
-            if (state.sema[instr.semaId] == 15) s->pc--;
-            else state.sema[instr.semaId]++;
+            if (state.sema[instr.semaId] == 15) {
+							semaphore_wait_count++;
+							assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SINC appears to be stuck");
+							s->pc--;
+            } else {
+							semaphore_wait_count = 0;
+							state.sema[instr.semaId]++;
+						}
             break;
           }
           // Semaphore decrement
           case SDEC: {
             assert(instr.semaId >= 0 && instr.semaId <= 15);
-            if (state.sema[instr.semaId] == 0) s->pc--;
-            else state.sema[instr.semaId]--;
+            if (state.sema[instr.semaId] == 0) {
+							semaphore_wait_count++;
+							assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SDEC appears to be stuck");
+							s->pc--;
+            } else {
+							semaphore_wait_count = 0;
+							state.sema[instr.semaId]--;
+						}
             break;
           }
 

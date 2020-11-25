@@ -1,18 +1,18 @@
 #include "Source/Stmt.h"
 #include <stdio.h>
 #include "Support/basics.h"  // fatal()
-#include "Common/Stack.h"
 #include "Source/Int.h"
+#include "Common/StmtStack.h"
 
 namespace V3DLib {
 
 namespace {
-	Stack<Stmt> *p_stmtStack = nullptr;
-	Stack<Stmt> controlStack;
+	StmtStack *p_stmtStack = nullptr;
+	StmtStack controlStack;
 } // anon namespace
 
 
-Stack<Stmt> &stmtStack() {
+StmtStack &stmtStack() {
 	assert(p_stmtStack != nullptr);
 	return *p_stmtStack;
 }
@@ -213,7 +213,7 @@ void finishStmt() {
 }
 
 
-void initStmt(Stack<Stmt> &stmtStack) {
+void initStmt(StmtStack &stmtStack) {
 	controlStack.clear();
 	stmtStack.clear();
 	stmtStack.push(mkSkip());

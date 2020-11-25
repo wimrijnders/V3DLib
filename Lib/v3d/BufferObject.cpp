@@ -1,8 +1,7 @@
 #include "BufferObject.h"
 #include <memory>
-#include "../Support/basics.h"
-#include "../Support/debug.h"
-#include "../Support/Platform.h"  // has_vc4() 
+#include "Support/basics.h"
+#include "Support/Platform.h"  // has_vc4() 
 #include "v3d.h"
 
 namespace V3DLib {

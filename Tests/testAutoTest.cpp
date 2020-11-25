@@ -58,7 +58,8 @@ void printCharSeq(Seq<char> &s) {
 
 TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	SECTION("Should generate the same output") {
-		Platform::compiling_for_vc4(true);  // emulator is vc4 only
+		Platform::use_main_memory(true);
+		//Platform::compiling_for_vc4(true);  // emulator is vc4 only
 
 	  // Seed random generator
 	  srand(0);
@@ -69,25 +70,28 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	  const int numTests = 2000; // Originally 10000, was a bit steep
 
 	  for (int test = 0; test < numTests; test++) {
-	    astHeap.clear();
+	    //astHeap.clear();
 			vc4::KernelDriver driver;
 
 	    int numVars;
 	    Stmt *s = progGen(&opts, &numVars);
-			
+
 			driver.compile_init(false, numVars);
 			driver.add_stmt(s);
 	    driver.compile();
 
-	    Seq<int32_t> params;
+	    int numEmuVars = getFreshVarCount();
+	    Seq<char> interpOut, emuOut;
+
+    	Seq<int32_t> params;
+			params << 0;  // Add qpu id
+			params << 1;  // Add qpu num
 	    for (int i = 0; i < opts.numIntArgs; i++) {
   	    params << genIntLit();
 	    }
 
-	    int numEmuVars = getFreshVarCount();
-	    Seq<char> interpOut, emuOut;
-	    interpreter(1, s, numVars, params, getBufferObject(), &interpOut);
-	    emulate(1, &driver.targetCode(), numEmuVars, params, getBufferObject(), &emuOut);
+			interpreter(1, s, numVars, params, getBufferObject(), &interpOut);
+    	emulate(1, &driver.targetCode(), numEmuVars, params, getBufferObject(), &emuOut);
 
 	    bool differs = false;
 	    if (interpOut.size() != emuOut.size())
@@ -123,5 +127,7 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 
 		printf("AutoTest iteration: %i\n", numTests);
 	  //printf("OK, passed %i tests\n", numTests);
+
+		Platform::use_main_memory(false);  // TODO prob not sufficient if require fails
 	}
 }

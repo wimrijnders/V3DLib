@@ -1,7 +1,6 @@
 #ifndef _LIB_COMMON_INSTRUCTIONCOMMENT_H
 #define _LIB_COMMON_INSTRUCTIONCOMMENT_H
 #include <string>
-#include "basics.h"
 
 namespace V3DLib {
 
@@ -10,6 +9,7 @@ namespace V3DLib {
  */
 class InstructionComment {
 public:
+	void clear_comments();
 	void header(std::string const &msg);
 	void comment(std::string msg);
 	std::string const &header() const { return m_header; }

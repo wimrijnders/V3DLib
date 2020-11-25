@@ -621,6 +621,7 @@ void exec(InterpreterState* state, CoreState* s)
       return;
 
     // Increment semaphore
+		// NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
     case SEMA_INC:
       assert(stmt->semaId >= 0 && stmt->semaId < 16);
       if (state->sema[stmt->semaId] == 15) s->stack.push(stmt);
@@ -628,6 +629,7 @@ void exec(InterpreterState* state, CoreState* s)
       return;
  
     // Decrement semaphore
+		// Note at SEMA_INC also applies here
     case SEMA_DEC:
       assert(stmt->semaId >= 0 && stmt->semaId < 16);
       if (state->sema[stmt->semaId] == 0) s->stack.push(stmt);

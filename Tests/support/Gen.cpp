@@ -37,16 +37,18 @@ int randRange(int min, int max) {
 // ============================================================================
 
 Expr* pickVar(GenOptions* o, Type t) {
+	int const QPU_ID_NUM = 2;  // Shift for qpu id and num
+
   Var v;
   v.tag = STANDARD;
-  int intHigh   = o->numIntArgs + o->numIntVars;
+  int intHigh   = QPU_ID_NUM + o->numIntArgs + o->numIntVars;
   int floatLow  = intHigh   + o->depth;
   int floatHigh = floatLow  + o->numFloatArgs + o->numFloatVars;
   int ptrHigh   = floatHigh + o->numPtrArgs;
   int ptr2High  = ptrHigh   + o->numPtr2Args;
 
   switch (t.tag) {
-    case INT_TYPE:   v.id = randRange(0, intHigh-1); break;
+    case INT_TYPE:   v.id = randRange(QPU_ID_NUM, intHigh-1); break;
     case FLOAT_TYPE: v.id = randRange(floatLow, floatHigh-1); break;
     case PTR_TYPE:   v.id = randRange(floatHigh, ptrHigh-1); break;
     case PTR2_TYPE:  v.id = randRange(ptrHigh, ptr2High-1); break;
@@ -473,6 +475,12 @@ Stmt* progGen(GenOptions* opts, int* numVars) {
   VarId next = 0;
   Var v;
   v.tag = STANDARD;
+
+	// Read qpu id and num
+	v.id  = next++;
+	pre   = mkSeq(pre, mkAssign(mkVar(v), fifo));
+	v.id  = next++;
+	pre   = mkSeq(pre, mkAssign(mkVar(v), fifo));
 
   // Read int args
   for (int i = 0; i < opts->numIntArgs; i++) {

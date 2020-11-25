@@ -1,9 +1,9 @@
 #ifndef _V3DLIB_V3D_BUFFEROBJECT_H_
 #define _V3DLIB_V3D_BUFFEROBJECT_H_
-#include <cassert>
+//#include <cassert>
 #include <vector>
-#include <stdint.h>
-#include "../Support/debug.h"
+//#include <stdint.h>
+//#include "debug.h"
 #include "Common/BufferObject.h"
 
 

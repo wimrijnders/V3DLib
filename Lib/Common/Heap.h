@@ -1,5 +1,8 @@
 #ifndef _V3DLIB_HEAP_H_
 #define _V3DLIB_HEAP_H_
+
+#if 0  // TODO get rid of this file
+
 //#include <stdio.h>
 #include <stdint.h>
 #include "Support/basics.h"  // fatal()
@@ -52,5 +55,7 @@ private:
 };
 
 }  // namespace V3DLib
+
+#endif  // 0
 
 #endif  // _V3DLIB_HEAP_H_

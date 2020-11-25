@@ -1,7 +1,6 @@
 #ifndef _V3DLIB_SOURCE_COND_H_
 #define _V3DLIB_SOURCE_COND_H_
 
-#include "Source/Syntax.h"
 #include "Source/Int.h"
 
 namespace V3DLib {

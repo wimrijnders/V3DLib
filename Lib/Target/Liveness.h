@@ -29,7 +29,7 @@ struct UseDef {
 // Compute 'use' and 'def' sets for a given instruction
 
 void useDefReg(Instr instr, UseDefReg* out);
-void useDef(Instr instr, UseDef* out);
+void useDef(Instr const &instr, UseDef* out);
 bool getTwoUses(Instr instr, Reg* r1, Reg* r2);
 
 // A live set containts the variables

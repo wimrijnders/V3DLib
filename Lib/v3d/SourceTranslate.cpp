@@ -1,5 +1,5 @@
 #include "SourceTranslate.h"
-#include "Support/debug.h"
+#include "Support/basics.h"
 #include "Source/Translate.h"  // srcReg()
 #include "Target/Liveness.h"
 #include "Target/Subst.h"

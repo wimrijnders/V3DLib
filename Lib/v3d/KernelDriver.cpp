@@ -27,21 +27,27 @@
  *     vc4 `ns` - negative set,   ie.  < 0
  * 
  */
+#ifdef QPU_MODE
+
 #include "KernelDriver.h"
 #include <memory>
-#include <iostream>
-#include "../Support/basics.h"
 #include "Target/SmallLiteral.h"  // decodeSmallLit()
 #include "Target/RemoveLabels.h"
 #include "Invoke.h"
 #include "instr/Snippets.h"
+#include "Support/basics.h"
 
-#ifdef QPU_MODE
 
-using std::cout;
-using std::endl;
 
 namespace V3DLib {
+
+// WEIRDNESS, due to changes, this file did not compile because it suddenly couldn't find
+// the relevant overload of operator <<.
+// Adding this solved it. HUH??
+// Also: the << definitions in `basics.h` DID get picked up; the std::string versions did not.
+using ::operator<<;
+
+
 namespace v3d {
 using namespace V3DLib::v3d::instr;
 
@@ -581,9 +587,9 @@ Instructions encodeLoadImmediate(V3DLib::Instr full_instr) {
 			ret << mov(*dst, imm);
 
 			if (imm.val() != instr.imm.intVal) {
-				std::string comment;
-				comment << "Load immediate " << instr.imm.intVal;
-				ret.back().comment(comment);
+				std::string cmt;
+				cmt << "Load immediate " << instr.imm.intVal;
+				ret.back().comment(cmt);
 			}
 
 			if (left_shift > 0) {

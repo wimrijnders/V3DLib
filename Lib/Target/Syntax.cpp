@@ -1,6 +1,6 @@
-#include <assert.h>
+#include "Syntax.h"
+#include "Support/basics.h"
 #include "Source/Syntax.h"
-#include "Target/Syntax.h"
 
 namespace V3DLib {
 

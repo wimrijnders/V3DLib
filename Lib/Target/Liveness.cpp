@@ -140,7 +140,7 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
 /**
  * Same as `useDefReg()`, except only yields ids of registers in register file A.
  */
-void useDef(Instr instr, UseDef* out) {
+void useDef(Instr const &instr, UseDef* out) {
   UseDefReg set;
   useDefReg(instr, &set);
   out->use.clear();
