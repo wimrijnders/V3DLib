@@ -221,7 +221,6 @@ public:
 			}
 
 	    // Construct the AST for vc4
-breakpoint
 	    apply(f, args);
 			m_vc4_driver.compile();
 

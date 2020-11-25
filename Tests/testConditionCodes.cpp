@@ -433,9 +433,9 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	uint32_t expected_2[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   auto k1 = compile(noloop_where_kernel);
-	k1.pretty(false,  "obj/test/noloop_where_v3d.txt");	
+	//k1.pretty(false,  "obj/test/noloop_where_v3d.txt");	
   auto k2 = compile(noloop_if_kernel);
-	k2.pretty(false,  "obj/test/noloop_if_v3d.txt");	
+	//k2.pretty(false,  "obj/test/noloop_if_v3d.txt");	
   auto k3 = compile(noloop_multif_kernel);
 
   V3DLib::SharedArray<int> result(VEC_SIZE);
@@ -581,15 +581,13 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 			check_output("where_qpu");
 		}
 
-
-		k1.pretty(false,  "obj/test/andor_where_v3d.txt");	
-
+		//k1.pretty(false,  "obj/test/andor_where_v3d.txt");	
 
 		auto k2 = compile(andor_if_kernel);
 		k2.load(&result, width, height);
 
-		k2.pretty(true,  "obj/test/andor_if_vc4.txt");	
-		k2.pretty(false, "obj/test/andor_if_v3d.txt");	
+		//k2.pretty(true,  "obj/test/andor_if_vc4.txt");	
+		//k2.pretty(false, "obj/test/andor_if_v3d.txt");	
 
 		reset(result);
 		k2.emu();
@@ -620,7 +618,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 		k3.interpret();
 		check_output("multi_if_int");
 
-		k3.pretty(false, "obj/test/andor_multi_if_v3d.txt");	
+		//k3.pretty(false, "obj/test/andor_multi_if_v3d.txt");	
 
 		std::cout << "Not running the 'multi_if_qpu' test; this hangs the pi4 and locks up the videocore on pi3 (TODO)" << std::endl;
 /*
