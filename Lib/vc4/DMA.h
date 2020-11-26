@@ -16,7 +16,7 @@ inline void vpmPutExpr(Expr* e)
 {
   Var v; v.tag = VPM_WRITE;
   Stmt* s = mkAssign(mkVar(v), e);
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
+  stmtStack().append(s);
 }
 
 inline void vpmPut(IntExpr data)

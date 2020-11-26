@@ -66,7 +66,7 @@ ALUOp opcode(Op op) {
 RegOrImm operand(Expr* e) {
   RegOrImm x;
 
-  if (e->tag == VAR) {
+  if (e->tag() == VAR) {
     x.tag = REG;
     x.reg = srcReg(e->var);
     return x;
@@ -115,7 +115,7 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
   // -----------------------------------------------------------
   // Case: v := rhs, where v is a variable and rhs an expression
   // -----------------------------------------------------------
-  if (lhs.tag == VAR) {
+  if (lhs.tag() == VAR) {
     varAssign(seq, lhs.var, rhs);
     return;
   }
@@ -123,7 +123,7 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
   // ---------------------------------------------------------
   // Case: *lhs := rhs where lhs is not a var or rhs not a var
   // ---------------------------------------------------------
-  if (lhs.tag == DEREF && (lhs.deref.ptr->tag != VAR || rhs->tag != VAR)) {
+  if (lhs.tag() == DEREF && (lhs.deref.ptr->tag() != VAR || rhs->tag() != VAR)) {
     assert(!isLit(lhs.deref.ptr));
     lhs.deref.ptr = simplify(seq, lhs.deref.ptr);
     rhs = putInVar(seq, rhs);
@@ -135,7 +135,7 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
 
 	// Strictly speaking, the two VAR tests are not necessary; it is the only possible case
 	// (According to previous code, that is)
-  bool handle_case = (lhs.tag == DEREF && (lhs.deref.ptr->tag == VAR || rhs->tag == VAR));
+  bool handle_case = (lhs.tag() == DEREF && (lhs.deref.ptr->tag() == VAR || rhs->tag() == VAR));
 	if (handle_case) {
 		getSourceTranslate().deref_var_var(seq, lhs, rhs);
 		return;
@@ -391,9 +391,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign.lhs->tag == VAR) {
-    varAssign(seq, cond, s->assign.lhs->var, s->assign.rhs);
-//		seq->back().comment(s->comment());
+  if (s->tag == ASSIGN && s->assign.lhs->tag() == VAR) {
     return;
   }
 
@@ -476,7 +474,7 @@ void printStmt(Seq<Instr> &seq, PrintStmt s) {
   Instr instr;
 
 	auto expr_to_reg = [&seq] (PrintStmt const &s) -> Reg {
-		if (s.expr->tag == VAR) {
+		if (s.expr->tag() == VAR) {
    	  return srcReg(s.expr->var);
 		} else {
       Var tmpVar = freshVar();
@@ -508,7 +506,7 @@ void printStmt(Seq<Instr> &seq, PrintStmt s) {
 
 
 Instr loadReceive(Expr* dest) {
-	assert(dest->tag == VAR);
+	assert(dest->tag() == VAR);
 
   Instr instr(RECV);
   instr.RECV.dest = dstReg(dest->var);
@@ -643,9 +641,7 @@ void insertInitBlock(Seq<Instr> &code) {
 	if (Platform::instance().compiling_for_vc4()) {
 		// Add final dummy uniform handling
 		// See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
-		Var unif;
-		unif.tag = UNIFORM;
-		ret << mov(freshVar(), unif);
+		ret << mov(freshVar(), Var(UNIFORM));
 		ret.back().comment("Last uniform load is dummy value");
 	}
 
@@ -675,7 +671,7 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
 	using namespace V3DLib::Target::instr;
   Expr e = *expr;
 
-	switch (e.tag) {
+	switch (e.tag()) {
 		case VAR:                                                     // 'v := w', where v and w are variables
 			*seq << mov(v, e.var).cond(cond);
     	break;
@@ -708,7 +704,7 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
 		}
 		break;
 		case DEREF:                                                    // 'v := *w'
-			if (e.deref.ptr->tag != VAR) {                               // w is not a variable
+			if (e.deref.ptr->tag() != VAR) {                               // w is not a variable
 				assert(!isLit(e.deref.ptr));
 				e.deref.ptr = simplify(seq, e.deref.ptr);
 			}
@@ -738,7 +734,7 @@ void varAssign(Seq<Instr>* seq, Var v, Expr* expr) {
  * Similar to 'simplify' but ensure that the result is a variable.
  */
 Expr* putInVar(Seq<Instr>* seq, Expr* e) {
-	if (e->tag == VAR) {
+	if (e->tag() == VAR) {
 		return e;
 	}
 

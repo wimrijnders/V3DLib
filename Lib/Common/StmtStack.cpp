@@ -16,7 +16,7 @@ namespace V3DLib {
 void StmtStack::append(Stmt *stmt) {
 	assert(stmt != nullptr);
 	assert(!empty());
-	replace(mkSeq(top(), stmt));
+	push(mkSeq(apop(), stmt));
 }
 
 }  // namespace V3DLib

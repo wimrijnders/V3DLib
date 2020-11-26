@@ -58,11 +58,11 @@ void storeToHeap(CoreState *s, Vec &index, Vec &val) {
 // ============================================================================
 
 Vec evalVar(CoreState* s, Var v) {
-  switch (v.tag) {
+  switch (v.tag()) {
     // Normal variable
     case STANDARD:
-      assert(v.id < s->sizeEnv);
-      return s->env[v.id];
+      assert(v.id() < s->sizeEnv);
+      return s->env[v.id()];
 
     // Return next uniform
     case UNIFORM: {
@@ -125,7 +125,7 @@ inline int32_t rotRight(int32_t x, int32_t n) {
 
 Vec eval(CoreState* s, Expr* e) {
   Vec v;
-  switch (e->tag) {
+  switch (e->tag()) {
     // Integer literal
     case INT_LIT:
       for (int i = 0; i < NUM_LANES; i++)
@@ -339,12 +339,12 @@ bool evalCond(CoreState* s, CExpr* e)
 
 void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
 {
-  switch (v.tag) {
+  switch (v.tag()) {
     // Normal variable
     case STANDARD:
       for (int i = 0; i < NUM_LANES; i++)
         if (cond[i].intVal) {
-          s->env[v.id][i] = x[i];
+          s->env[v.id()][i] = x[i];
         }
       return;
 
@@ -384,7 +384,7 @@ void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
   // Evaluate RHS
   Vec val = eval(s, rhs);
 
-  switch (lhs->tag) {
+  switch (lhs->tag()) {
     // Variable
     case VAR:
       assignToVar(s, cond, lhs->var, val);
@@ -455,7 +455,7 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
 
     // Assignment
     case ASSIGN:
-      if (stmt->assign.lhs->tag != VAR) {
+      if (stmt->assign.lhs->tag() != VAR) {
         printf("V3DLib: only var assignments permitted in 'where'\n");
         assert(false);
       }
@@ -524,7 +524,7 @@ void execSetStride(CoreState* s, StmtTag tag, Expr* e)
 void execLoadReceive(CoreState* s, Expr* e)
 {
   assert(s->loadBuffer.size() > 0);
-  assert(e->tag == VAR);
+  assert(e->tag() == VAR);
   Vec val = s->loadBuffer.remove(0);
   assignToVar(s, vecAlways(), e->var, val);
 }

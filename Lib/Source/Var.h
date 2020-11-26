@@ -29,12 +29,20 @@ enum VarTag {
 typedef int VarId;
 
 struct Var {
-  VarTag tag;
+	Var(VarTag tag) : m_tag(tag) {
+		if (m_tag == UNIFORM) {
+			m_isUniformPtr = true;
+		}
+	}
 
-  // A unique identifier for a standard variable
-  VarId id;
+	VarTag tag() const { return m_tag; }
+	VarId id() const { return m_id; }
+	bool isUniformPtr () const { return m_isUniformPtr; }
 
-	bool isUniformPtr = false;
+private:
+  VarTag m_tag;
+  VarId  m_id = 0; // A unique identifier for a standard variable
+	bool   m_isUniformPtr = false;
 };
 
 

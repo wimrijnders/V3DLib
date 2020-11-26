@@ -10,15 +10,10 @@ namespace V3DLib {
 // Type 'IntExpr'
 // ============================================================================
 
-// Constructors
-
-IntExpr::IntExpr() { this->expr = NULL; }
-
-IntExpr::IntExpr(int x) { this->expr = mkIntLit(x); }
+IntExpr::IntExpr(int x) { m_expr = mkIntLit(x); }
 
 // Helper constructor
-
-inline IntExpr mkIntExpr(Expr* e) { IntExpr x; x.expr = e; return x; }
+inline IntExpr mkIntExpr(Expr* e) { IntExpr x; x.m_expr = e; return x; }
 
 // ============================================================================
 // Type 'Int'
@@ -51,11 +46,13 @@ Int::Int(Int& x) {
   assign(this->expr, x.expr);
 }
 
+
 Int::Int(const Int& x) {
   Var v    = freshVar();
   this->expr = mkVar(v);
   assign(this->expr, x.expr);
 }
+
 
 // Cast to an IntExpr
 
@@ -85,7 +82,7 @@ inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 
 // Read an Int from the UNIFORM FIFO.
 IntExpr getUniformInt() {
-  Expr* e    = mkExpr();
+  Expr* e    = new Expr;
   e->tag     = VAR;
   e->var.tag = UNIFORM;
   return mkIntExpr(e);
@@ -99,7 +96,7 @@ IntExpr getUniformInt() {
  */
 IntExpr index() {
 	if (Platform::instance().compiling_for_vc4()) {
-	  Expr* e    = mkExpr();
+	  Expr* e    = new Expr;
 	  e->tag     = VAR;
 	  e->var.tag = ELEM_NUM;
 	  return mkIntExpr(e);
@@ -117,7 +114,7 @@ IntExpr index() {
 // A vector containing the QPU id
 IntExpr me() {
   // There is reserved var holding the QPU ID.
-  Expr* e    = mkExpr();
+  Expr* e    = new Expr;
   e->tag     = VAR;
   e->var.tag = STANDARD;
   e->var.id  = RSV_QPU_ID;
@@ -128,7 +125,7 @@ IntExpr me() {
 // A vector containing the QPU count
 IntExpr numQPUs() {
   // There is reserved var holding the QPU count.
-  Expr* e    = mkExpr();
+  Expr* e    = new Expr;
   e->tag     = VAR;
   e->var.tag = STANDARD;
   e->var.id  = RSV_NUM_QPUS;
@@ -138,7 +135,7 @@ IntExpr numQPUs() {
 
 // Read vector from VPM
 IntExpr vpmGetInt() {
-  Expr* e    = mkExpr();
+  Expr* e    = new Expr;
   e->tag     = VAR;
   e->var.tag = VPM_READ;
   return mkIntExpr(e);

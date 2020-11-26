@@ -17,14 +17,11 @@ struct Cond
   Cond(CExpr* c) { cexpr = c; }
 };
 
-struct BoolExpr
-{
+struct BoolExpr {
   // Abstract syntax tree
   BExpr* bexpr;
   // Constructor
   BoolExpr(BExpr* b) { bexpr = b; }
-  // Cast to Cond
-  //operator Cond();
 };
 
 // ============================================================================
@@ -32,7 +29,7 @@ struct BoolExpr
 // ============================================================================
 
 inline BoolExpr mkIntCmp(IntExpr a, CmpOp op, IntExpr b)
-  { return BoolExpr(mkCmp(a.expr, op, b.expr)); }
+  { return BoolExpr(mkCmp(a.expr(), op, b.expr())); }
 
 // ============================================================================
 // Specific 'Int' comparisons
@@ -61,7 +58,7 @@ inline BoolExpr operator>=(IntExpr a, IntExpr b)
 // ============================================================================
 
 inline BoolExpr mkFloatCmp(FloatExpr a, CmpOp op, FloatExpr b)
-  { return BoolExpr(mkCmp(a.expr, op, b.expr)); }
+  { return BoolExpr(mkCmp(a.expr(), op, b.expr())); }
 
 // ============================================================================
 // Specific 'Float' comparisons

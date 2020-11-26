@@ -15,22 +15,16 @@ namespace V3DLib {
 // An 'FloatExpr' defines an float vector expression which can
 // only be used on the RHS of assignment statements.
 
-struct FloatExpr {
-  // Abstract syntax tree
-  Expr* expr;
-  // Constructors
-  FloatExpr();
+struct FloatExpr :public BaseExpr {
   FloatExpr(float x);
+	FloatExpr(Expr *e) : BaseExpr(e) {}
 };
+
 
 // An 'Float' defines a float vector variable which can be used in
 // both the LHS and RHS of an assignment.
 
-struct Float {
-  // Abstract syntax tree
-  Expr* expr;
-
-  // Constructors
+struct Float : public BaseExpr {
   Float();
   Float(float x);
   Float(FloatExpr e);
@@ -50,7 +44,8 @@ struct Float {
 
 // Helper constructor
 
-inline FloatExpr mkFloatExpr(Expr* e) { FloatExpr x; x.expr = e; return x; }
+// TODO get rid of this
+inline FloatExpr mkFloatExpr(Expr* e) { return FloatExpr(e); }
 
 // ============================================================================
 // Operations

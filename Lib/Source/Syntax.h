@@ -69,10 +69,11 @@ enum ReservedVarId {
 enum ExprTag { INT_LIT, FLOAT_LIT, VAR, APPLY, DEREF };
 
 struct Expr {
-	Expr() {}
+	Expr();
+	Expr(Var in_var);
+	~Expr();
 
-  // What kind of expression is it?
-  ExprTag tag;
+	ExprTag tag() const { return m_tag; }
 
   union {
     int   intLit;                                   // Integer literal
@@ -84,11 +85,26 @@ struct Expr {
   };
 
 	bool isSimple() const;
+
+private:
+  ExprTag m_tag;  // What kind of expression is it?
+};
+
+
+class BaseExpr {
+public:
+	BaseExpr() {}
+	BaseExpr(Expr *e);
+	~BaseExpr();
+
+	Expr *expr() { return m_expr; }
+
+protected:
+  Expr *m_expr = nullptr;  // Abstract syntax tree
 };
 
 
 // Functions to construct expressions
-Expr* mkExpr();
 Expr* mkIntLit(int lit);
 Expr* mkFloatLit(float lit);
 Expr* mkVar(Var var);
@@ -219,7 +235,6 @@ enum StmtTag {
 
 
 struct Stmt : public InstructionComment {
-	void init(StmtTag in_tag);
 	~Stmt();
 
 	static Stmt *create(StmtTag in_tag);
@@ -282,6 +297,9 @@ struct Stmt : public InstructionComment {
     // DMA start write
     Expr* startDMAWrite;
   };
+
+private:
+	void init(StmtTag in_tag);
 };
 
 // Functions to construct statements

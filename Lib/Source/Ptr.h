@@ -23,11 +23,9 @@ namespace V3DLib {
 
 // A 'PtrExpr<T>' defines a pointer expression which can only be used on the
 // RHS of assignment statements.
-template <typename T> struct PtrExpr {
-  // Abstract syntax tree
-  Expr* expr;
-
-  PtrExpr<T>() { this->expr = NULL; }
+template <typename T>
+struct PtrExpr : public BaseExpr {
+	PtrExpr(Expr *e) : BaseExpr(e) {}
 
   // Dereference
   T& operator*() {
@@ -36,7 +34,6 @@ template <typename T> struct PtrExpr {
     //T* p = astHeap.alloc<T>(1);
 breakpoint
     T *p = new T;
-		
     p->expr = mkDeref(expr);
     return *p;
   }
@@ -47,45 +44,23 @@ breakpoint
 breakpoint
 		T *p = new T;
     p->expr = mkDeref(mkApply(expr, Op(ADD, INT32),
-                mkApply(index.expr, Op(SHL, INT32), mkIntLit(2))));
+                mkApply(index.expr(), Op(SHL, INT32), mkIntLit(2))));
     return *p;
   }
 };
 
+
 // A 'Ptr<T>' defines a pointer variable which can be used in both the LHS and
 // RHS of an assignment.
 
-template <typename T> struct Ptr {
-  // Abstract syntax tree
-  Expr* expr;
-
+template <typename T>
+struct Ptr : public BaseExpr {
   // Constructors
-  Ptr<T>() {
-    Var v    = freshVar();
-    this->expr = mkVar(v);
-  }
+  Ptr<T>() : BaseExpr(mkVar(freshVar())) {}
 
-  Ptr<T>(PtrExpr<T> rhs) {
-    Var v    = freshVar();
-    this->expr = mkVar(v);
-    assign(this->expr, rhs.expr);
+  Ptr<T>(PtrExpr<T> rhs) : Ptr<T>() {
+    assign(expr(), rhs.expr());
   }
-
-/*
-  // Copy constructors
-  Ptr<T>(Ptr<T>& x) {
-printf("Ptr copy ctor called\n");
-    Var v    = freshVar();
-    this->expr = mkVar(v);
-    assign(this->expr, x.expr);
-  }
-  Ptr<T>(const Ptr<T>& x) {
-printf("Ptr const copy ctor called\n");
-    Var v    = freshVar();
-    this->expr = mkVar(v);
-    assign(this->expr, x.expr);
-  }
-*/
 
   // Assignment
   Ptr<T>& operator=(Ptr<T>& rhs) {
@@ -94,7 +69,7 @@ printf("Ptr const copy ctor called\n");
   }
 
   PtrExpr<T> operator=(PtrExpr<T> rhs) {
-    assign(this->expr, rhs.expr);
+    assign(this->expr(), rhs.expr());
     return rhs;
   }
 
@@ -110,27 +85,25 @@ breakpoint
   }
 
   // Array index
-  T& operator[](IntExpr index) {
+  T operator[](IntExpr index) {
     //T* p = astHeap.alloc<T>(1);
 breakpoint
-    T *p = new T;
-    p->expr = mkDeref(mkApply(expr, Op(ADD, INT32),
-                mkApply(index.expr, Op(SHL, INT32), mkIntLit(2))));
-    return *p;
+    Expr *e = mkDeref(mkApply(expr(), Op(ADD, INT32),
+                mkApply(index.expr(), Op(SHL, INT32), mkIntLit(2))));
+    return T(e);
   }
 };
+
 
 // ============================================================================
 // Specific operations
 // ============================================================================
 
 template <typename T> inline PtrExpr<T> getUniformPtr() {
-  Expr* e    = mkExpr();
-  e->tag     = VAR;
-  e->var.tag = UNIFORM;
-  e->var.isUniformPtr = true;
-  PtrExpr<T> x; x.expr = e; return x;
+  Expr *e = new Expr(Var(UNIFORM));
+  return PtrExpr<T>(e);
 }
+
 
 template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, int b) {
   Expr* e = mkApply(a.expr, Op(ADD, INT32), mkIntLit(4*b));
@@ -147,18 +120,18 @@ template <typename T> inline PtrExpr<T> operator+=(Ptr<T> &a, int b) {
 }
 
 template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, IntExpr b) {
-  Expr* e = mkApply(a.expr, Op(ADD, INT32), (b<<2).expr);
-  PtrExpr<T> x; x.expr = e; return x;
+  Expr* e = mkApply(a.expr(), Op(ADD, INT32), (b<<2).expr());
+  return PtrExpr<T>(e);
 }
 
 template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, IntExpr b) {
-  Expr* e = mkApply(a.expr, Op(ADD, INT32), (b<<2).expr);
-  PtrExpr<T> x; x.expr = e; return x;
+  Expr* e = mkApply(a.expr(), Op(ADD, INT32), (b<<2).expr());
+  return PtrExpr<T>(e);
 }
 
 template <typename T> inline PtrExpr<T> operator-(Ptr<T> &a, IntExpr b) {
-  Expr* e = mkApply(a.expr, Op(SUB, INT32), (b<<2).expr);
-  PtrExpr<T> x; x.expr = e; return x;
+  Expr* e = mkApply(a.expr(), Op(SUB, INT32), (b<<2).expr());
+  return PtrExpr<T>(e);
 }
 
 template <typename T> inline PtrExpr<T> operator-=(Ptr<T> &a, IntExpr b) {

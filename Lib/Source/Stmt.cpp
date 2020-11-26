@@ -26,7 +26,7 @@ StmtStack &stmtStack() {
 
 void assign(Expr* lhs, Expr* rhs) {
   Stmt* s = mkAssign(lhs, rhs);
-  stmtStack().replace(mkSeq(stmtStack().top(), s));
+  stmtStack().append(s);
 }
 
 //=============================================================================
@@ -53,15 +53,16 @@ void Else_()
 {
   int ok = 0;
   if (controlStack.size() > 0) {
-    Stmt* s = controlStack.top();
+    Stmt* s = controlStack.ttop();
+
     if (s->tag == IF && s->ifElse.thenStmt == nullptr) {
-      s->ifElse.thenStmt = stmtStack().top();
-      stmtStack().replace(mkSkip());
+      s->ifElse.thenStmt = stmtStack().apop();
+      stmtStack().push(mkSkip());
       ok = 1;
     }
     if (s->tag == WHERE && s->where.thenStmt == nullptr) {
-      s->where.thenStmt = stmtStack().top();
-      stmtStack().replace(mkSkip());
+      s->where.thenStmt = stmtStack().apop();
+      stmtStack().push(mkSkip());
       ok = 1;
     }
   }
@@ -79,31 +80,32 @@ void End_()
 {
   int ok = 0;
   if (controlStack.size() > 0) {
-    Stmt* s = controlStack.top();
+    Stmt* s = controlStack.ttop();
+
     if (s->tag == IF && s->ifElse.thenStmt == nullptr) {
-      s->ifElse.thenStmt = stmtStack().top();
+      s->ifElse.thenStmt = stmtStack().apop();
       ok = 1;
     }
     else if (s->tag == IF && s->ifElse.elseStmt == nullptr) {
-      s->ifElse.elseStmt = stmtStack().top();
+      s->ifElse.elseStmt = stmtStack().apop();
       ok = 1;
     }
     if (s->tag == WHERE && s->where.thenStmt == nullptr) {
-      s->where.thenStmt = stmtStack().top();
+      s->where.thenStmt = stmtStack().apop();
       ok = 1;
     }
     else if (s->tag == WHERE && s->where.elseStmt == nullptr) {
-      s->where.elseStmt = stmtStack().top();
+      s->where.elseStmt = stmtStack().apop();
       ok = 1;
     }
     if (s->tag == WHILE && s->loop.body == nullptr) {
-      s->loop.body = stmtStack().top();
+      s->loop.body = stmtStack().apop();
       ok = 1;
     }
     if (s->tag == FOR && s->forLoop.body == nullptr) {
       // Convert 'for' loop to 'while' loop
       CExpr* whileCond = s->forLoop.cond;
-      Stmt* whileBody = mkSeq(stmtStack().top(), s->forLoop.inc);
+      Stmt* whileBody = mkSeq(stmtStack().apop(), s->forLoop.inc);
       s->tag = WHILE;
       s->loop.body = whileBody;
       s->loop.cond = whileCond;
@@ -111,9 +113,7 @@ void End_()
     }
 
     if (ok) {
-      stmtStack().pop();
-      stmtStack().replace(mkSeq(stmtStack().top(), s));
-      controlStack.pop();
+      stmtStack().append(controlStack.apop());
     }
   }
 
@@ -160,16 +160,13 @@ void For_(Cond c)
   stmtStack().push(mkSkip());
 }
 
-void For_(BoolExpr b)
-{
+void For_(BoolExpr b) {
   For_(any(b));
 }
 
-void ForBody_()
-{
-  Stmt* s = controlStack.top();
-  s->forLoop.inc = stmtStack().top();
-  stmtStack().pop();
+void ForBody_() {
+  Stmt *s = controlStack.ttop();
+  s->forLoop.inc = stmtStack().apop();
   stmtStack().push(mkSkip());
 }
 
@@ -192,10 +189,10 @@ void Print(IntExpr x) {
 
 
 void comment(char const *str) {
- 	assert(stmtStack().top() != nullptr);
- 	assert(stmtStack().top()->tag == SEQ);
- 	assert(stmtStack().top()->seq.s1 != nullptr);
- 	stmtStack().top()->seq.s1->comment(str);
+ 	assert(stmtStack().ttop() != nullptr);
+ 	assert(stmtStack().ttop()->tag == SEQ);
+ 	assert(stmtStack().ttop()->seq.s1 != nullptr);
+ 	stmtStack().ttop()->seq.s1->comment(str);
 }
 
 

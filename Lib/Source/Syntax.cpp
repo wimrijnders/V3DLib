@@ -51,17 +51,46 @@ bool Op::isUnary() {
 // Class Expr
 // ============================================================================
 
+Expr::Expr() {
+	breakpoint
+}
+
+Expr::Expr(Var in_var) {
+	m_tag = VAR; 
+	var = in_var;
+}
+
+
+Expr::~Expr() {
+	breakpoint
+}
+
+
 /**
  * An expression is 'simple' if it is a small literal or a variable.
  */
 bool Expr::isSimple() const {
 	bool isSmallLit = encodeSmallLit(*this) >= 0;
+  return (m_tag == VAR) || isSmallLit;
+}
 
-  return (tag == VAR) || isSmallLit;
+
+// ============================================================================
+// Class BaseExpr
+// ============================================================================
+
+BaseExpr::BaseExpr(Expr *e) {
+	assert(e != nullptr);
+	expr = e;
+}
+
+
+BaseExpr::~BaseExpr() {
+	breakpoint
 }
 
 // ============================================================================
-// End Class Expr
+// End Class BaseExpr
 // ============================================================================
 
 
@@ -83,18 +112,10 @@ bool isCommutative(Op op) {
 // Functions on expressions
 // ============================================================================
 
-// Function to allocate an expression
-Expr* mkExpr()
-{
-//  return astHeap.alloc<Expr>();
-breakpoint
-	return new Expr;
-}
-
 // Make an integer literal
 Expr* mkIntLit(int lit)
 {
-  Expr* e   = mkExpr();
+  Expr* e   = new Expr;
   e->tag    = INT_LIT;
   e->intLit = lit;
   return e;
@@ -103,7 +124,7 @@ Expr* mkIntLit(int lit)
 // Make a float literal
 Expr* mkFloatLit(float lit)
 {
-  Expr* e     = mkExpr();
+  Expr* e     = new Expr;
   e->tag      = FLOAT_LIT;
   e->floatLit = lit;
   return e;
@@ -112,7 +133,7 @@ Expr* mkFloatLit(float lit)
 // Make a variable
 Expr* mkVar(Var var)
 {
-  Expr* e = mkExpr();
+  Expr* e = new Expr;
   e->tag  = VAR;
   e->var  = var;
   return e;
@@ -121,7 +142,7 @@ Expr* mkVar(Var var)
 // Make an operator application
 Expr* mkApply(Expr* lhs, Op op, Expr* rhs)
 {
-  Expr* e      = mkExpr();
+  Expr* e      = new Expr;
   e->tag       = APPLY;
   e->apply.lhs = lhs;
   e->apply.op  = op;
@@ -129,10 +150,11 @@ Expr* mkApply(Expr* lhs, Op op, Expr* rhs)
   return e;
 }
 
+
 // Make a pointer dereference
 Expr* mkDeref(Expr* ptr)
 {
-  Expr* e      = mkExpr();
+  Expr* e      = new Expr;
   e->tag       = DEREF;
   e->deref.ptr = ptr;
   return e;
@@ -232,6 +254,7 @@ void Stmt::init(StmtTag in_tag) {
 	clear_comments();  // TODO prob not necessary, check
 
 	assert(SKIP <= in_tag && in_tag <= DMA_START_WRITE);
+	assertq(tag == SKIP, "Stmt::init(): can't reassign tag once assigned");
 	tag = in_tag;
 }
 
@@ -243,8 +266,6 @@ Stmt::~Stmt() {
 
 
 Stmt *Stmt::create(StmtTag in_tag) {
-	breakpoint
-
 	Stmt *ret = new Stmt();
 	ret->init(in_tag);
 
@@ -254,6 +275,16 @@ Stmt *Stmt::create(StmtTag in_tag) {
   		ret->print.str = nullptr;  // NOTE: Needs to be set elsewhere
   		ret->print.expr = nullptr;
 		break;
+	}
+
+	// WRI debug
+	// break for the tags we haven't checked yet
+	switch (in_tag) {
+		case SKIP:
+			break;
+		default:
+			breakpoint;
+			break;
 	}
 
 	return ret;

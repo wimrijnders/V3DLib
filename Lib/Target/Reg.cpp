@@ -12,7 +12,7 @@ Reg freshReg() {
 	Reg r;
 
 	r.tag = REG_A;
-	r.regId = v.id;
+	r.regId = v.id();
 	return r;
 }
 
@@ -24,11 +24,11 @@ Reg srcReg(Var v) {
   Reg r;
 	r.isUniformPtr = false;
 
-  switch (v.tag) {
+  switch (v.tag()) {
     case UNIFORM:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_UNIFORM;
-			r.isUniformPtr = v.isUniformPtr;
+			r.isUniformPtr = v.isUniformPtr();
 			break;
     case QPU_NUM:
       r.tag     = SPECIAL;
@@ -44,7 +44,7 @@ Reg srcReg(Var v) {
 			break;
     case STANDARD:
       r.tag   = REG_A;
-      r.regId = v.id;
+      r.regId = v.id();
 			break;
     case VPM_WRITE:
     case TMU0_ADDR:
@@ -53,7 +53,7 @@ Reg srcReg(Var v) {
 			break;
     case DUMMY:
       r.tag   = NONE;
-      r.regId = v.id;
+      r.regId = v.id();
 			break;
 		default:
 			assert(false);
@@ -70,7 +70,7 @@ Reg srcReg(Var v) {
 Reg dstReg(Var v) {
 	using namespace V3DLib::Target::instr;
 
-  switch (v.tag) {
+  switch (v.tag()) {
     case UNIFORM:
     case QPU_NUM:
     case ELEM_NUM:
@@ -79,7 +79,7 @@ Reg dstReg(Var v) {
 			return Reg();  // Return anything
 
     case STANDARD:
-			return Reg(REG_A, v.id);
+			return Reg(REG_A, v.id());
     case VarTag::VPM_WRITE:
 			return Target::instr::VPM_WRITE;
     case TMU0_ADDR:

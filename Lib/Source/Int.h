@@ -16,22 +16,14 @@ namespace V3DLib {
 // An 'IntExpr' defines an integer vector expression which can
 // only be used on the RHS of assignment statements.
 
-struct IntExpr {
-  // Abstract syntax tree
-  Expr* expr;
-  // Constructors
-  IntExpr();
+struct IntExpr : public BaseExpr {
   IntExpr(int x);
 };
 
 // An 'Int' defines an integer vector variable which can be used in
 // both the LHS and RHS of an assignment.
 
-struct Int {
-  // Abstract syntax tree
-  Expr* expr;
-
-  // Constructors
+struct Int : public BaseExpr {
   Int();
   Int(int x);
   Int(IntExpr e);
@@ -43,13 +35,12 @@ struct Int {
   // Cast to an IntExpr
   operator IntExpr();
 
-  // Assignment
   Int& operator=(Int& rhs);
   IntExpr operator=(IntExpr rhs);
 
-  // Increment
   void operator++(int);
 };
+
 
 // ============================================================================
 // Operations

@@ -7,9 +7,9 @@ namespace V3DLib {
 // Type 'FloatExpr'
 // ============================================================================
 
-FloatExpr::FloatExpr() { this->expr = NULL; }
-
-FloatExpr::FloatExpr(float x) { this->expr = mkFloatLit(x); }
+FloatExpr::FloatExpr(float x) {
+	expr = mkFloatLit(x);
+}
 
 
 // ============================================================================
@@ -50,6 +50,7 @@ Float::Float(const Float& x) {
   assign(this->expr, x.expr);
 }
 
+
 // Cast to an FloatExpr
 
 Float::operator FloatExpr() { return mkFloatExpr(this->expr); }
@@ -77,7 +78,7 @@ inline FloatExpr mkFloatApply(FloatExpr a,Op op,FloatExpr b) {
 
 // Read an Float from the UNIFORM FIFO.
 FloatExpr getUniformFloat() {
-  Expr* e    = mkExpr();
+  Expr* e    = new Expr;
   e->tag     = VAR;
   e->var.tag = UNIFORM;
   return mkFloatExpr(e);
@@ -85,7 +86,7 @@ FloatExpr getUniformFloat() {
 
 // Read vector from VPM
 FloatExpr vpmGetFloat() {
-  Expr* e    = mkExpr();
+  Expr* e    = new Expr;
   e->tag     = VAR;
   e->var.tag = VPM_READ;
   return mkFloatExpr(e);
