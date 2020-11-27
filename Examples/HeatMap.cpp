@@ -175,7 +175,7 @@ struct Cursor {
 
   void init(Ptr<Float> p) {
     gather(p); comment("Cursor init");
-    current = 0;
+    current = 0.0f;
     addr = p + 16;
   }
 

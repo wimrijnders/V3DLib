@@ -31,22 +31,22 @@ inline void dmaStartReadExpr(Expr* e) {
   stmtStack().append(s);
 }
 
-template <typename T> inline void dmaStartRead(PtrExpr<T> memAddr)
-  { dmaStartReadExpr(memAddr.expr); }
+template <typename T>
+inline void dmaStartRead(PtrExpr<T> memAddr) { dmaStartReadExpr(memAddr.expr()); }
 
-template <typename T> inline void dmaStartRead(Ptr<T> &memAddr)
-  { dmaStartReadExpr(memAddr.expr); }
+template <typename T>
+inline void dmaStartRead(Ptr<T> &memAddr)    { dmaStartReadExpr(memAddr.expr()); }
 
 inline void dmaStartWriteExpr(Expr* e) {
   Stmt* s = Stmt::create(DMA_START_WRITE, e, nullptr);
   stmtStack().append(s);
 }
 
-template <typename T> inline void dmaStartWrite(PtrExpr<T> memAddr)
-  { dmaStartWriteExpr(memAddr.expr); }
+template <typename T>
+inline void dmaStartWrite(PtrExpr<T> memAddr) { dmaStartWriteExpr(memAddr.expr()); }
 
-template <typename T> inline void dmaStartWrite(Ptr<T> &memAddr)
-  { dmaStartWriteExpr(memAddr.expr); }
+template <typename T>
+inline void dmaStartWrite(Ptr<T> &memAddr)    { dmaStartWriteExpr(memAddr.expr()); }
 
 
 void vpmSetupRead(Dir dir, int n, IntExpr addr, int stride = 1);

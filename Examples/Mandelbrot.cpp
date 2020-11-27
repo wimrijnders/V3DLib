@@ -152,8 +152,8 @@ void mandelbrotCore(
   FloatExpr condition = (4.0f - (reSquare + imSquare))*toFloat(numIterations - count);
   Float checkvar = condition;
 
-  While (any(checkvar > 0))
-    Where (checkvar > 0)
+  While (any(checkvar > 0.0f))
+    Where (checkvar > 0.0f)
       Float imTmp = 2*re*im;
       re = (reSquare - imSquare) + reC;
       im = imTmp  + imC;

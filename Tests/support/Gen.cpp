@@ -39,22 +39,22 @@ int randRange(int min, int max) {
 Expr* pickVar(GenOptions* o, Type t) {
 	int const QPU_ID_NUM = 2;  // Shift for qpu id and num
 
-  Var v;
-  v.tag = STANDARD;
   int intHigh   = QPU_ID_NUM + o->numIntArgs + o->numIntVars;
   int floatLow  = intHigh   + o->depth;
   int floatHigh = floatLow  + o->numFloatArgs + o->numFloatVars;
   int ptrHigh   = floatHigh + o->numPtrArgs;
   int ptr2High  = ptrHigh   + o->numPtr2Args;
 
+	VarId val;
   switch (t.tag) {
-    case INT_TYPE:   v.id = randRange(QPU_ID_NUM, intHigh-1); break;
-    case FLOAT_TYPE: v.id = randRange(floatLow, floatHigh-1); break;
-    case PTR_TYPE:   v.id = randRange(floatHigh, ptrHigh-1); break;
-    case PTR2_TYPE:  v.id = randRange(ptrHigh, ptr2High-1); break;
+    case INT_TYPE:   val = randRange(QPU_ID_NUM, intHigh-1); break;
+    case FLOAT_TYPE: val = randRange(floatLow, floatHigh-1); break;
+    case PTR_TYPE:   val = randRange(floatHigh, ptrHigh-1); break;
+    case PTR2_TYPE:  val = randRange(ptrHigh, ptr2High-1); break;
     default:         assert(false);
   }
-  return mkVar(v);
+
+  return mkVar(Var(STANDARD, val));
 }
 
 
@@ -62,9 +62,7 @@ Expr* genVar(GenOptions* opts, Type t) {
   // Sometimes pick a QPU special variable (namely ELEM_NUM)
   if (t.tag == INT_TYPE) {
     if (randRange(0, 5) == 0) {
-      Var v;
-      v.tag = ELEM_NUM;
-      return mkVar(v);
+      return mkVar(Var(ELEM_NUM));
     }
   }
 
@@ -349,9 +347,7 @@ Stmt* genWhile(GenOptions* o, int depth) {
 
   // Obtain a loop variable
   int firstLoopVar = o->numIntArgs + o->numIntVars;
-  Var var;
-  var.tag = STANDARD;
-  var.id  = firstLoopVar + (depth-1);
+  Var var(STANDARD, firstLoopVar + (depth-1));
   Expr* v = mkVar(var);
 
   // Create random condition with loop bound
@@ -467,53 +463,51 @@ Stmt* progGen(GenOptions* opts, int* numVars) {
   Stmt* post = mkSkip();
 
   // Argument FIFO
-  Var uniform;
-  uniform.tag = UNIFORM;
-  Expr* fifo  = mkVar(uniform);
+  Expr *fifo = mkVar(Var(UNIFORM));
 
   // Next unused var id
   VarId next = 0;
-  Var v;
-  v.tag = STANDARD;
+
+	auto mkIntVar = [] (VarId val) -> Expr * {
+		return mkVar(Var(STANDARD, val));
+	};
 
 	// Read qpu id and num
-	v.id  = next++;
-	pre   = mkSeq(pre, mkAssign(mkVar(v), fifo));
-	v.id  = next++;
-	pre   = mkSeq(pre, mkAssign(mkVar(v), fifo));
+	pre   = mkSeq(pre, mkAssign(mkIntVar(next++), fifo));
+	pre   = mkSeq(pre, mkAssign(mkIntVar(next++), fifo));
 
   // Read int args
   for (int i = 0; i < opts->numIntArgs; i++) {
-    v.id  = next++;
-    pre   = mkSeq(pre, mkAssign(mkVar(v), fifo));
-    post  = mkSeq(post, mkPrint(PRINT_INT, mkVar(v)));
+		auto v = mkIntVar(next++);
+    pre   = mkSeq(pre, mkAssign(v, fifo));
+    post  = mkSeq(post, mkPrint(PRINT_INT, v));
   }
 
   // Initialise int vars and loop vars
   for (int i = 0; i < opts->numIntVars + opts->depth; i++) {
-    v.id  = next++;
-    pre   = mkSeq(pre, mkAssign(mkVar(v), mkIntLit(genIntLit())));
-    post  = mkSeq(post, mkPrint(PRINT_INT, mkVar(v)));
+		auto v = mkIntVar(next++);
+    pre   = mkSeq(pre, mkAssign(v, mkIntLit(genIntLit())));
+    post  = mkSeq(post, mkPrint(PRINT_INT, v));
   }
 
   // Read float args
   for (int i = 0; i < opts->numFloatArgs; i++) {
-    v.id  = next++;
-    pre   = mkSeq(pre, mkAssign(mkVar(v), fifo));
-    post  = mkSeq(post, mkPrint(PRINT_FLOAT, mkVar(v)));
+		auto v = mkIntVar(next++);
+    pre   = mkSeq(pre, mkAssign(v, fifo));
+    post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
   }
 
   // Initialise float vars
   for (int i = 0; i < opts->numFloatVars; i++) {
-    v.id  = next++;
-    pre   = mkSeq(pre, mkAssign(mkVar(v), mkFloatLit(genFloatLit())));
-    post  = mkSeq(post, mkPrint(PRINT_FLOAT, mkVar(v)));
+		auto v = mkIntVar(next++);
+    pre   = mkSeq(pre, mkAssign(v, mkFloatLit(genFloatLit())));
+    post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
   }
  
   // Read pointer args
   for (int i = 0; i < opts->numPtrArgs + opts->numPtr2Args; i++) {
-    v.id  = next++;
-    pre   = mkSeq(pre, mkAssign(mkVar(v), fifo));
+		auto v = mkIntVar(next++);
+    pre   = mkSeq(pre, mkAssign(v, fifo));
   }
 
   // Generate statement

@@ -27,16 +27,16 @@ template <typename T>
 struct PtrExpr : public BaseExpr {
 	PtrExpr(Expr *e) : BaseExpr(e) {}
 
-  // Dereference
-  T& operator*() {
-    // This operation must return a reference to T, so we allocate the
-    // AST node on the heap an return a reference to it.
-    //T* p = astHeap.alloc<T>(1);
-breakpoint
-    T *p = new T;
-    p->expr = mkDeref(expr);
-    return *p;
+
+	/**
+	 * Dereference
+	 */
+  T operator*() {
+		breakpoint  // TODO: originally returned a ref to a heap item (BAD!!). Check if this is ok
+    //return new T(mkDeref(expr()));
+    return T(mkDeref(expr()));
   }
+
 
   // Array index
   T& operator[](IntExpr index) {
@@ -76,8 +76,6 @@ struct Ptr : public BaseExpr {
 
 	/**
 	 * Dereference
-   * 
-	 * This operation must return a reference to T.
 	 */
   T operator*() {
 		breakpoint  // TODO: originally returned a ref to a heap item (BAD!!). Check if this is ok
@@ -107,31 +105,33 @@ template <typename T> inline PtrExpr<T> getUniformPtr() {
 
 
 template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, int b) {
-  Expr* e = mkApply(a.expr, Op(ADD, INT32), mkIntLit(4*b));
-  PtrExpr<T> x; x.expr = e; return x;
+  Expr* e = mkApply(a.expr(), Op(ADD, INT32), mkIntLit(4*b));
+  return PtrExpr<T>(e);
 }
 
+
 template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, int b) {
-  Expr* e = mkApply(a.expr, Op(ADD, INT32), mkIntLit(4*b));
-  PtrExpr<T> x; x.expr = e; return x;
+  Expr* e = mkApply(a.expr(), Op(ADD, INT32), mkIntLit(4*b));
+  return PtrExpr<T>(e);
 }
+
 
 template <typename T> inline PtrExpr<T> operator+=(Ptr<T> &a, int b) {
   return a = a + b;
 }
 
 template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, IntExpr b) {
-  Expr* e = mkApply(a.expr(), Op(ADD, INT32), (b<<2).expr());
+  Expr* e = mkApply(a.expr(), Op(ADD, INT32), (b << 2).expr());
   return PtrExpr<T>(e);
 }
 
 template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, IntExpr b) {
-  Expr* e = mkApply(a.expr(), Op(ADD, INT32), (b<<2).expr());
+  Expr* e = mkApply(a.expr(), Op(ADD, INT32), (b << 2).expr());
   return PtrExpr<T>(e);
 }
 
 template <typename T> inline PtrExpr<T> operator-(Ptr<T> &a, IntExpr b) {
-  Expr* e = mkApply(a.expr(), Op(SUB, INT32), (b<<2).expr());
+  Expr* e = mkApply(a.expr(), Op(SUB, INT32), (b << 2).expr());
   return PtrExpr<T>(e);
 }
 
