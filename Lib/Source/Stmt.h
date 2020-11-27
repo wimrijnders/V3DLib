@@ -27,7 +27,7 @@ class StmtStack;  // Forward declaration
 // Statement tokens
 //=============================================================================
 
-void assign(ExprPtr lhs, ExprPtr rhs);
+void assign(Expr::Ptr lhs, Expr::Ptr rhs);
 void If_(Cond c);
 void If_(BoolExpr c);
 void Else_();

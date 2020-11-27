@@ -69,7 +69,7 @@ IntExpr Int::operator=(IntExpr rhs)
 
 inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 {
-  ExprPtr e = mkApply(a.expr(), op, b.expr());
+  Expr::Ptr e = mkApply(a.expr(), op, b.expr());
   return IntExpr(e);
 }
 
@@ -79,7 +79,7 @@ inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 
 // Read an Int from the UNIFORM FIFO.
 IntExpr getUniformInt() {
- 	ExprPtr e = std::make_shared<Expr>(Var(UNIFORM));
+ 	Expr::Ptr e = std::make_shared<Expr>(Var(UNIFORM));
   return IntExpr(e);
 }
 
@@ -91,11 +91,11 @@ IntExpr getUniformInt() {
  */
 IntExpr index() {
 	if (Platform::instance().compiling_for_vc4()) {
-  	ExprPtr e = std::make_shared<Expr>(Var(ELEM_NUM));
+  	Expr::Ptr e = std::make_shared<Expr>(Var(ELEM_NUM));
 	  return IntExpr(e);
 	} else {
-		ExprPtr a = mkVar(Var(DUMMY));
-  	ExprPtr e = mkApply(a, Op(EIDX, INT32), a);
+		Expr::Ptr a = mkVar(Var(DUMMY));
+  	Expr::Ptr e = mkApply(a, Op(EIDX, INT32), a);
   	return IntExpr(e);
 	}
 }
@@ -103,7 +103,7 @@ IntExpr index() {
 // A vector containing the QPU id
 IntExpr me() {
   // There is reserved var holding the QPU ID.
-  ExprPtr e = std::make_shared<Expr>(Var(STANDARD, RSV_QPU_ID));
+  Expr::Ptr e = std::make_shared<Expr>(Var(STANDARD, RSV_QPU_ID));
   return IntExpr(e);
 }
 
@@ -111,14 +111,14 @@ IntExpr me() {
 // A vector containing the QPU count
 IntExpr numQPUs() {
   // There is reserved var holding the QPU count.
-  ExprPtr e = std::make_shared<Expr>(Var(STANDARD, RSV_NUM_QPUS));
+  Expr::Ptr e = std::make_shared<Expr>(Var(STANDARD, RSV_NUM_QPUS));
   return IntExpr(e);
 }
 
 
 // Read vector from VPM
 IntExpr vpmGetInt() {
-  ExprPtr e = std::make_shared<Expr>(Var(VPM_READ));
+  Expr::Ptr e = std::make_shared<Expr>(Var(VPM_READ));
   return IntExpr(e);
 }
 
@@ -129,8 +129,8 @@ IntExpr rotate(IntExpr a, IntExpr b)
 
 
 FloatExpr rotate(FloatExpr a, IntExpr b) {
-  ExprPtr e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
-  return mkFloatExpr(e);
+  Expr::Ptr e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
+  return FloatExpr(e);
 }
 
 void Int::operator++(int) { *this = *this + 1; }
@@ -152,14 +152,15 @@ IntExpr ror(IntExpr a, IntExpr b) { return mkIntApply(a, Op(ROR, INT32), b); }
 
 // Conversion to Int
 IntExpr toInt(FloatExpr a) {
-  ExprPtr e = mkApply(a.expr(), Op(FtoI, INT32), mkIntLit(0));
+  Expr::Ptr e = mkApply(a.expr(), Op(FtoI, INT32), mkIntLit(0));
   return IntExpr(e);
 }
 
+
 // Conversion to Float
 FloatExpr toFloat(IntExpr a) {
-  ExprPtr e = mkApply(a.expr(), Op(ItoF, FLOAT), mkIntLit(0));
-  return mkFloatExpr(e);
+  Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT), mkIntLit(0));
+  return FloatExpr(e);
 }
 
 }  // namespace V3DLib

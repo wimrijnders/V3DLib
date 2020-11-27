@@ -53,20 +53,12 @@ BoolExpr operator>=(FloatExpr a, FloatExpr b);
 // Boolean operators
 // ============================================================================
 
-inline BoolExpr operator!(BoolExpr a)
-  { return BoolExpr(mkNot(a.bexpr)); }
+inline BoolExpr operator!(BoolExpr a)              { return BoolExpr(a.bexpr->Not()); }
+inline BoolExpr operator&&(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr->And(b.bexpr)); }
+inline BoolExpr operator||(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr->Or(b.bexpr)); }
 
-inline BoolExpr operator&&(BoolExpr a, BoolExpr b)
-  { return BoolExpr(mkAnd(a.bexpr, b.bexpr)); }
-
-inline BoolExpr operator||(BoolExpr a, BoolExpr b)
-  { return BoolExpr(mkOr(a.bexpr, b.bexpr)); }
-
-inline Cond any(BoolExpr a)
-  { return Cond(mkAny(a.bexpr)); }
-
-inline Cond all(BoolExpr a)
-  { return Cond(mkAll(a.bexpr)); }
+inline Cond any(BoolExpr a) { return Cond(mkAny(a.bexpr)); }
+inline Cond all(BoolExpr a) { return Cond(mkAll(a.bexpr)); }
 
 }  // namespace V3DLib
 

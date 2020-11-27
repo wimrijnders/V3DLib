@@ -29,9 +29,9 @@ const char* cmpOpToString(CmpOp op)
 // Expressions
 // ============================================================================
 
-void pretty(FILE *f, ExprPtr e) {
+void pretty(FILE *f, Expr::Ptr e) {
   assert(f != nullptr);
-  if (e == NULL) return;
+  if (e == nullptr) return;
 
   switch (e->tag()) {
     // Integer literals
@@ -140,7 +140,7 @@ void pretty(FILE *f, BExpr* b) {
 void pretty(FILE *f, CExpr* c)
 {
   assert(f != nullptr);
-  if (c == NULL) return;
+  if (c == nullptr) return;
 
   switch (c->tag) {
     // Reduce using 'any'
@@ -200,7 +200,7 @@ void pretty(FILE *f, int indent, Stmt* s)
       pretty(f, s->where.cond);
       fprintf(f, ")\n");
       pretty(f, indent+2, s->where.thenStmt);
-      if (s->where.elseStmt != NULL) {
+      if (s->where.elseStmt != nullptr) {
         indentBy(f, indent);
         fprintf(f, "Else\n");
         pretty(f, indent+2, s->where.elseStmt);
@@ -216,7 +216,7 @@ void pretty(FILE *f, int indent, Stmt* s)
       pretty(f, s->ifElse.cond);
       fprintf(f, ")\n");
       pretty(f, indent+2, s->ifElse.thenStmt);
-      if (s->where.elseStmt != NULL) {
+      if (s->where.elseStmt != nullptr) {
         indentBy(f, indent);
         fprintf(f, "Else\n");
         pretty(f, indent+2, s->ifElse.elseStmt);

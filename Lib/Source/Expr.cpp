@@ -26,7 +26,8 @@ Expr::Expr(float in_lit) {
   floatLit = in_lit;
 }
 
-Expr::Expr(ExprPtr lhs, Op op, ExprPtr rhs) {
+
+Expr::Expr(Ptr lhs, Op op, Ptr rhs) {
   m_tag     = APPLY;
   apply_lhs(lhs);
   apply.op  = op;
@@ -34,7 +35,7 @@ Expr::Expr(ExprPtr lhs, Op op, ExprPtr rhs) {
 }
 
 
-Expr::Expr(ExprPtr ptr) {
+Expr::Expr(Ptr ptr) {
   m_tag     = DEREF;
   deref_ptr(ptr);
 }
@@ -45,37 +46,38 @@ Expr::~Expr() {
 }
 
 
-ExprPtr Expr::apply_lhs() {
+Expr::Ptr Expr::apply_lhs() {
 	assert(m_tag == APPLY && m_exp_a.get() != nullptr);
 	return m_exp_a;
 }
 
 
-ExprPtr Expr::apply_rhs() {
+Expr::Ptr Expr::apply_rhs() {
 	assert(m_tag == APPLY && m_exp_b.get() != nullptr);
 	return m_exp_b;
 }
 
 
-ExprPtr &Expr::deref_ptr() {
+Expr::Ptr &Expr::deref_ptr() {
 	breakpoint  // TODO returning ref prob wrong, check where used
 	assert(m_tag == DEREF && m_exp_a.get() != nullptr);
 	return m_exp_a;
 }
 
 
-void Expr::apply_lhs(ExprPtr p) {
+void Expr::apply_lhs(Ptr p) {
 	assert(m_tag == APPLY);
 	m_exp_a = p;
 }
 
 
-void Expr::apply_rhs(ExprPtr p) {
+void Expr::apply_rhs(Ptr p) {
 	assert(m_tag == APPLY);
 	m_exp_b = p;
 }
 
-void Expr::deref_ptr(ExprPtr p) {
+
+void Expr::deref_ptr(Ptr p) {
 	assert(m_tag == DEREF);
 	m_exp_a = p;
 }
@@ -94,7 +96,7 @@ bool Expr::isSimple() const {
 // Class BaseExpr
 // ============================================================================
 
-BaseExpr::BaseExpr(ExprPtr e) {
+BaseExpr::BaseExpr(Expr::Ptr e) {
 	assert(e != nullptr);
 	m_expr = e;
 }
@@ -104,31 +106,14 @@ BaseExpr::~BaseExpr() {
 	breakpoint
 }
 
+
 // ============================================================================
 // Functions on expressions
 // ============================================================================
 
-// Make an integer literal
-ExprPtr mkIntLit(int lit) {
-  return new Expr(lit);
-}
-
-
-// Make a variable
-ExprPtr mkVar(Var var) {
-  return new Expr(var);
-}
-
-// Make an operator application
-ExprPtr mkApply(ExprPtr lhs, Op op, ExprPtr rhs) {
-  return new Expr(lhs, op, rhs);
-}
-
-
-// Make a pointer dereference
-ExprPtr mkDeref(ExprPtr ptr) {
-  return new Expr(ptr);
-}
-
+Expr::Ptr mkIntLit(int lit) { return std::make_shared<Expr>(lit); }
+Expr::Ptr mkVar(Var var) { return std::make_shared<Expr>(var); }
+Expr::Ptr mkApply(Expr::Ptr lhs, Op op, Expr::Ptr rhs) { return std::make_shared<Expr>(lhs, op, rhs); }
+Expr::Ptr mkDeref(Expr::Ptr ptr) { return std::make_shared<Expr>(ptr); }
 
 }  // namespace V3DLib

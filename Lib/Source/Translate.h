@@ -12,9 +12,9 @@ void loadStorePass(Seq<Instr> &instrs);
 //
 // Following exposed for source translates.
 //
-void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, ExprPtr expr);
-void varAssign(Seq<Instr>* seq, Var v, ExprPtr expr);
-ExprPtr putInVar(Seq<Instr>* seq, ExprPtr e);
+void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr::Ptr expr);
+void varAssign(Seq<Instr>* seq, Var v, Expr::Ptr expr);
+Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e);
 
 }  // namespace V3DLib
 

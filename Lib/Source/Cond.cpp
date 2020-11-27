@@ -3,7 +3,7 @@
 namespace V3DLib {
 namespace {
 
-BExpr *mkCmp(ExprPtr lhs, CmpOp op, ExprPtr rhs) {
+BExpr *mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
   return new BExpr(lhs, op, rhs);
 }
 

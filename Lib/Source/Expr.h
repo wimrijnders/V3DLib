@@ -20,26 +20,26 @@ enum ExprTag {
 
 
 struct Expr {
-	using ExprPtr = std::shared_ptr<Expr>;
+	using Ptr = std::shared_ptr<Expr>;
 
 	Expr();
 	Expr(Var in_var);
 	Expr(int in_lit);
 	Expr(float in_lit);
-	Expr(ExprPtr lhs, Op op, ExprPtr rhs);
-	Expr(ExprPtr ptr);
+	Expr(Ptr lhs, Op op, Ptr rhs);
+	Expr(Ptr ptr);
 
 	~Expr();
 
 	ExprTag tag() const { return m_tag; }
 	bool isLit() const { return (tag() == INT_LIT) || (tag() == FLOAT_LIT); }
 
-  ExprPtr apply_lhs();
-  ExprPtr apply_rhs();
-  ExprPtr &deref_ptr();
-  void apply_lhs(ExprPtr p);
-  void apply_rhs(ExprPtr p);
-  void deref_ptr(ExprPtr p);
+  Ptr apply_lhs();
+  Ptr apply_rhs();
+  Ptr &deref_ptr();
+  void apply_lhs(Ptr p);
+  void apply_rhs(Ptr p);
+  void deref_ptr(Ptr p);
 
   union {
     int   intLit;                                   // Integer literal
@@ -54,32 +54,30 @@ struct Expr {
 private:
   ExprTag m_tag;  // What kind of expression is it?
 
-  ExprPtr m_exp_a;  // lhs for apply, ptr for deref
-	ExprPtr m_exp_b;  // rhs for apply
+  Ptr m_exp_a;  // lhs for apply, ptr for deref
+	Ptr m_exp_b;  // rhs for apply
 };
 
-
-using ExprPtr = std::shared_ptr<Expr>;
 
 
 class BaseExpr {
 public:
 	BaseExpr() {}
-	BaseExpr(ExprPtr e);
+	BaseExpr(Expr::Ptr e);
 	~BaseExpr();
 
-	ExprPtr expr() const { return m_expr; }
+	Expr::Ptr expr() const { return m_expr; }
 
 protected:
-  ExprPtr m_expr;  // Abstract syntax tree
+  Expr::Ptr m_expr;  // Abstract syntax tree
 };
 
 
 // Functions to construct expressions
-ExprPtr mkIntLit(int lit);
-ExprPtr mkVar(Var var);
-ExprPtr mkApply(ExprPtr lhs, Op op, ExprPtr rhs);
-ExprPtr mkDeref(ExprPtr ptr);
+Expr::Ptr mkIntLit(int lit);
+Expr::Ptr mkVar(Var var);
+Expr::Ptr mkApply(Expr::Ptr lhs, Op op, Expr::Ptr rhs);
+Expr::Ptr mkDeref(Expr::Ptr ptr);
 
 }  // namespace V3DLib
 
