@@ -123,7 +123,7 @@ inline int32_t rotRight(int32_t x, int32_t n) {
 // ============================================================================
 
 
-Vec eval(CoreState* s, ExprPtr e) {
+Vec eval(CoreState* s, Expr::Ptr e) {
   Vec v;
   switch (e->tag()) {
     // Integer literal
@@ -379,7 +379,7 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
 // Execute assignment
 // ============================================================================
 
-void execAssign(CoreState* s, Vec cond, ExprPtr lhs, ExprPtr rhs) {
+void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
   // Evaluate RHS
   Vec val = eval(s, rhs);
 
@@ -507,7 +507,7 @@ void execPrint(CoreState* s, PrintStmt p)
 // Execute set-stride statements
 // ============================================================================
 
-void execSetStride(CoreState* s, StmtTag tag, ExprPtr e) {
+void execSetStride(CoreState* s, StmtTag tag, Expr::Ptr e) {
   Vec v = eval(s, e);
   if (tag == SET_READ_STRIDE)
     s->readStride = v[0].intVal;
@@ -519,7 +519,7 @@ void execSetStride(CoreState* s, StmtTag tag, ExprPtr e) {
 // Execute load receive & store request statements
 // ============================================================================
 
-void execLoadReceive(CoreState* s, ExprPtr e) {
+void execLoadReceive(CoreState* s, Expr::Ptr e) {
   assert(s->loadBuffer.size() > 0);
   assert(e->tag() == VAR);
   Vec val = s->loadBuffer.remove(0);
@@ -527,7 +527,7 @@ void execLoadReceive(CoreState* s, ExprPtr e) {
 }
 
 
-void execStoreRequest(CoreState* s, ExprPtr data, ExprPtr addr) {
+void execStoreRequest(CoreState* s, Expr::Ptr data, Expr::Ptr addr) {
   Vec val = eval(s, data);
   Vec index = eval(s, addr);
 	storeToHeap(s, index, val);

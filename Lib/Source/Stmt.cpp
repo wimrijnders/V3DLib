@@ -24,7 +24,7 @@ StmtStack &stmtStack() {
 // Assignment token
 //=============================================================================
 
-void assign(ExprPtr lhs, ExprPtr rhs) {
+void assign(Expr::Ptr lhs, Expr::Ptr rhs) {
   Stmt *s = mkAssign(lhs, rhs);
   stmtStack() << s;
 }

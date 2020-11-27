@@ -9,7 +9,7 @@ namespace V3DLib {
 // Receive, request, store operations
 //=============================================================================
 
-inline void gatherExpr(ExprPtr e) {
+inline void gatherExpr(Expr::Ptr e) {
   Stmt* s = mkAssign(mkVar(Var(TMU0_ADDR)), e);
   stmtStack() << s;
 }
@@ -35,7 +35,7 @@ inline void gather(Ptr<T>& addr) {
 	}
 }
 
-void receiveExpr(ExprPtr e);
+void receiveExpr(Expr::Ptr e);
 void receive(Int &dest);
 void receive(Float &dest);
 

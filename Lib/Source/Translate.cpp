@@ -63,7 +63,7 @@ ALUOp opcode(Op op) {
 /**
  * Translate the argument of an operator (either a variable or a small imm)
  */
-RegOrImm operand(ExprPtr e) {
+RegOrImm operand(Expr::Ptr e) {
   RegOrImm x;
 
   if (e->tag() == VAR) {
@@ -89,7 +89,7 @@ RegOrImm operand(ExprPtr e) {
  * Translate an expression to a simple expression, generating
  * instructions along the way.
  */
-ExprPtr simplify(Seq<Instr>* seq, ExprPtr e) {
+Expr::Ptr simplify(Seq<Instr>* seq, Expr::Ptr e) {
   if (e->isSimple()) {
 		return e;
 	}
@@ -109,7 +109,7 @@ ExprPtr simplify(Seq<Instr>* seq, ExprPtr e) {
  * @param lhsExpr  Expression on left-hand side
  * @param rhs      Expression on right-hand side
  */
-void assign(Seq<Instr>* seq, ExprPtr lhsExpr, ExprPtr rhs) {
+void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   Expr lhs = *lhsExpr;
 
   // -----------------------------------------------------------
@@ -357,7 +357,7 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 	  }
 		case AND: {            // 'a && b', where a, b are boolean expressions
     	// Use De Morgan's law
-	    BExpr* demorgan = mkNot(mkOr(mkNot(b.conj.lhs), mkNot(b.conj.rhs)));
+	    BExpr* demorgan = b.conj.lhs->Not()->Or(b.conj.rhs->Not())->Not();
 	    return boolExp(seq, demorgan, v);
 		}
 		default:
@@ -506,7 +506,7 @@ void printStmt(Seq<Instr> &seq, PrintStmt s) {
 }
 
 
-Instr loadReceive(ExprPtr dest) {
+Instr loadReceive(Expr::Ptr dest) {
 	assert(dest->tag() == VAR);
 
   Instr instr(RECV);
@@ -668,7 +668,7 @@ void insertInitBlock(Seq<Instr> &code) {
  * @param v     Variable on LHS
  * @param expr  Expression on RHS
  */
-void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, ExprPtr expr) {
+void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr::Ptr expr) {
 	using namespace V3DLib::Target::instr;
   Expr e = *expr;
 
@@ -725,7 +725,7 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, ExprPtr expr) {
 }
 
 
-void varAssign(Seq<Instr>* seq, Var v, ExprPtr expr) {
+void varAssign(Seq<Instr>* seq, Var v, Expr::Ptr expr) {
 	varAssign(seq, always, v, expr);  // TODO: For some reason, `always` *must* be passed in.
 	                                  //       Overloaded call generates segfault
 }
@@ -734,7 +734,7 @@ void varAssign(Seq<Instr>* seq, Var v, ExprPtr expr) {
 /**
  * Similar to 'simplify' but ensure that the result is a variable.
  */
-ExprPtr putInVar(Seq<Instr>* seq, ExprPtr e) {
+Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
 	if (e->tag() == VAR) {
 		return e;
 	}

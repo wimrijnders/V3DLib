@@ -4,14 +4,14 @@
 namespace V3DLib {
 namespace {
 
-void storeExpr(ExprPtr e0, ExprPtr e1) {
+void storeExpr(Expr::Ptr e0, Expr::Ptr e1) {
   Stmt* s = Stmt::create(STORE_REQUEST, e0, e1);
   stmtStack() << s;
 }
 
 }  // anon namespace
 
-void receiveExpr(ExprPtr e) {
+void receiveExpr(Expr::Ptr e) {
   Stmt* s = Stmt::create(LOAD_RECEIVE);
   s->loadDest = e;
   stmtStack().append(s);

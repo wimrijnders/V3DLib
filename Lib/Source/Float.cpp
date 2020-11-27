@@ -54,7 +54,7 @@ Float::Float(Float const &x) {
 
 // Cast to an FloatExpr
 
-Float::operator FloatExpr() { return mkFloatExpr(m_expr); }
+Float::operator FloatExpr() { return FloatExpr(m_expr); }
 
 // Assignment
 
@@ -74,8 +74,8 @@ FloatExpr Float::operator=(FloatExpr rhs) {
 // ============================================================================
 
 inline FloatExpr mkFloatApply(FloatExpr a,Op op,FloatExpr b) {
-  Expr* e = mkApply(a.expr(), op, b.expr());
-  return mkFloatExpr(e);
+  Expr::Ptr e = mkApply(a.expr(), op, b.expr());
+  return FloatExpr(e);
 }
 
 // ============================================================================
@@ -84,15 +84,15 @@ inline FloatExpr mkFloatApply(FloatExpr a,Op op,FloatExpr b) {
 
 // Read an Float from the UNIFORM FIFO.
 FloatExpr getUniformFloat() {
-  ExprPtr e    = new Expr(Var(UNIFORM));
-  return mkFloatExpr(e);
+  Expr::Ptr e = mkVar(UNIFORM);
+  return FloatExpr(e);
 }
 
 
 // Read vector from VPM
 FloatExpr vpmGetFloat() {
-  ExprPtr e = new Expr(Var(VPM_READ));
-  return mkFloatExpr(e);
+  Expr::Ptr e = mkVar(VPM_READ);
+  return FloatExpr(e);
 }
 
 

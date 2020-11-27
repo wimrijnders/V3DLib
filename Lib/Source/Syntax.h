@@ -46,13 +46,17 @@ enum BExprTag { NOT, AND, OR, CMP };
 struct BExpr {
 	BExpr() {}
 	//BExpr(BExpr const &rhs); 
-	BExpr(ExprPtr lhs, CmpOp op, ExprPtr rhs);
+	BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs);
 
 	BExprTag tag() const { return m_tag; }
-  ExprPtr cmp_lhs();
-  ExprPtr cmp_rhs();
-  void cmp_lhs(ExprPtr p);
-  void cmp_rhs(ExprPtr p);
+  Expr::Ptr cmp_lhs();
+  Expr::Ptr cmp_rhs();
+  void cmp_lhs(Expr::Ptr p);
+  void cmp_rhs(Expr::Ptr p);
+
+	BExpr *Not() const;
+	BExpr *And(BExpr *rhs) const;
+	BExpr *Or(BExpr *rhs) const;
 
   union {
     // Negation
@@ -72,15 +76,10 @@ struct BExpr {
 
 private:
   BExprTag m_tag;
-  ExprPtr m_cmp_lhs;  // For comparison
-	ExprPtr m_cmp_rhs;  // idem
+  Expr::Ptr m_cmp_lhs;  // For comparison
+	Expr::Ptr m_cmp_rhs;  // idem
 };
 
-// Functions to construct boolean expressions
-BExpr* mkBExpr();
-BExpr* mkNot(BExpr* neg);
-BExpr* mkAnd(BExpr* lhs, BExpr* rhs);
-BExpr* mkOr (BExpr* lhs, BExpr* rhs);
 
 // ============================================================================
 // Conditional expressions
@@ -115,7 +114,7 @@ enum PrintTag { PRINT_INT, PRINT_FLOAT, PRINT_STR };
 struct PrintStmt {
 	PrintTag tag() const { return m_tag;}
 
-	ExprPtr expr() const {
+	Expr::Ptr expr() const {
 		assert((m_tag == PRINT_INT || m_tag == PRINT_FLOAT) && m_expr.get() != nullptr);
 		return m_expr;
 	}
@@ -125,7 +124,7 @@ struct PrintStmt {
 private:
   PrintTag    m_tag;
 	const char *m_str;
-	ExprPtr     m_expr;
+	Expr::Ptr     m_expr;
 };
 
 // ============================================================================
@@ -163,7 +162,7 @@ struct Stmt : public InstructionComment {
 	~Stmt();
 
 	static Stmt *create(StmtTag in_tag);
-	static Stmt *create(StmtTag in_tag, ExprPtr e0, ExprPtr e1);
+	static Stmt *create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);
 	static Stmt *create(StmtTag in_tag, Stmt *s0, Stmt *s1);
 
   // What kind of statement is it?
@@ -171,7 +170,7 @@ struct Stmt : public InstructionComment {
 
   union {
     // Assignment
-    struct { ExprPtr lhs; ExprPtr rhs; } assign;
+    struct { Expr::Ptr lhs; Expr::Ptr rhs; } assign;
 
     // Sequential composition
     struct { Stmt* s0; Stmt* s1; } seq;
@@ -192,26 +191,26 @@ struct Stmt : public InstructionComment {
     PrintStmt print;
 
     // Set stride
-    ExprPtr stride;
+    Expr::Ptr stride;
 
     // Load receive destination
-    ExprPtr loadDest;
+    Expr::Ptr loadDest;
 
     // Store request
-    struct { ExprPtr data; ExprPtr addr; } storeReq;
+    struct { Expr::Ptr data; Expr::Ptr addr; } storeReq;
 
     // Semaphore id for increment / decrement
     int semaId;
 
     // VPM read setup
-    struct { int numVecs; ExprPtr addr; int hor; int stride; } setupVPMRead;
+    struct { int numVecs; Expr::Ptr addr; int hor; int stride; } setupVPMRead;
 
     // VPM write setup
     struct { Expr* addr; int hor; int stride; } setupVPMWrite;
 
     // DMA read setup
     struct {
-			ExprPtr vpmAddr;
+			Expr::Ptr vpmAddr;
 			int numRows;
 			int rowLen;
 			int hor;
@@ -220,32 +219,33 @@ struct Stmt : public InstructionComment {
 
     // DMA write setup
     struct {
-			ExprPtr vpmAddr;
+			Expr::Ptr vpmAddr;
 			int numRows;
 			int rowLen;
 			int hor;
 		} setupDMAWrite;
 
     // DMA start read
-    ExprPtr startDMARead;
+    Expr::Ptr startDMARead;
 
     // DMA start write
-    ExprPtr startDMAWrite;
+    Expr::Ptr startDMAWrite;
   };
 
 private:
 	void init(StmtTag in_tag);
 };
 
+
 // Functions to construct statements
-Stmt* mkSkip();
-Stmt* mkAssign(ExprPtr lhs, ExprPtr rhs);
-Stmt* mkSeq(Stmt* s0, Stmt* s1);
-Stmt* mkWhere(BExpr* cond, Stmt* thenStmt, Stmt* elseStmt);
-Stmt* mkIf(CExpr* cond, Stmt* thenStmt, Stmt* elseStmt);
-Stmt* mkWhile(CExpr* cond, Stmt* body);
-Stmt* mkFor(CExpr* cond, Stmt* inc, Stmt* body);
-Stmt* mkPrint(PrintTag t, ExprPtr e);
+Stmt *mkSkip();
+Stmt *mkAssign(Expr::Ptr lhs, Expr::Ptr rhs);
+Stmt *mkSeq(Stmt *s0, Stmt *s1);
+Stmt *mkWhere(BExpr *cond, Stmt *thenStmt, Stmt *elseStmt);
+Stmt *mkIf(CExpr *cond, Stmt *thenStmt, Stmt *elseStmt);
+Stmt *mkWhile(CExpr *cond, Stmt *body);
+Stmt *mkFor(CExpr *cond, Stmt *inc, Stmt *body);
+Stmt *mkPrint(PrintTag t, Expr::Ptr e);
 
 }  // namespace V3DLib
 

@@ -22,7 +22,7 @@ BExpr::	BExpr(BExpr const &rhs) {
 */
 
 
-BExpr::BExpr(ExprPtr lhs, CmpOp op, ExprPtr rhs) {
+BExpr::BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
  	m_tag      = CMP;
   m_cmp_lhs  = lhs;
   cmp.op   = op;
@@ -30,38 +30,52 @@ BExpr::BExpr(ExprPtr lhs, CmpOp op, ExprPtr rhs) {
 }
 
 
-ExprPtr BExpr::cmp_lhs() { assert(m_tag == CMP && m_cmp_lhs.get() != nullptr); return  m_cmp_lhs; }
-ExprPtr BExpr::cmp_rhs() { assert(m_tag == CMP && m_cmp_rhs.get() != nullptr); return  m_cmp_rhs; }
+Expr::Ptr BExpr::cmp_lhs() { assert(m_tag == CMP && m_cmp_lhs.get() != nullptr); return  m_cmp_lhs; }
+Expr::Ptr BExpr::cmp_rhs() { assert(m_tag == CMP && m_cmp_rhs.get() != nullptr); return  m_cmp_rhs; }
 
-void BExpr::cmp_lhs(ExprPtr p) { assert(m_tag == CMP); m_cmp_lhs = p; }
-void BExpr::cmp_rhs(ExprPtr p) { assert(m_tag == CMP); m_cmp_rhs = p; }
+void BExpr::cmp_lhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_lhs = p; }
+void BExpr::cmp_rhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_rhs = p; }
 
 
-// ============================================================================
-// Functions on boolean expressions
-// ============================================================================
-
-BExpr *mkNot(BExpr* neg) {
-  BExpr *b    = new BExpr();
-  b->tag      = NOT;
-  b->neg      = neg;
+/**
+ * Create a new instance which encapsulates the current instance with
+ * a negation.
+ *
+ * `not` is a keyword, hence capital.
+ */
+BExpr *BExpr::Not() const {
+  BExpr *b = new BExpr();
+  b->m_tag = NOT;
+  b->neg   = const_cast<BExpr *>(this);
   return b;
 }
 
 
-BExpr *mkAnd(BExpr* lhs, BExpr* rhs) {
-  BExpr *b    = new BExpr();
-  b->tag      = AND;
-  b->conj.lhs = lhs;
+/**
+ * Create a new instance which combines the current instance with
+ * the passed instance to an and-operation.
+ *
+ * `and` is a keyword, hence capital.
+ */
+BExpr *BExpr::And(BExpr *rhs) const {
+  BExpr *b = new BExpr();
+  b->m_tag = AND;
+  b->conj.lhs = const_cast<BExpr *>(this);
   b->conj.rhs = rhs;
   return b;
 }
 
 
-BExpr *mkOr(BExpr* lhs, BExpr* rhs) {
+/**
+ * Create a new instance which combines the current instance with
+ * the passed instance to an or-operation.
+ *
+ * `or` is a keyword, hence capital.
+ */
+BExpr *BExpr::Or(BExpr *rhs) const {
   BExpr *b    = new BExpr();
-  b->tag      = OR;
-  b->disj.lhs = lhs;
+  b->m_tag     = OR;
+  b->disj.lhs = const_cast<BExpr *>(this);
   b->disj.rhs = rhs;
   return b;
 }
@@ -71,13 +85,12 @@ BExpr *mkOr(BExpr* lhs, BExpr* rhs) {
 // Functions on conditionals
 // ============================================================================
 
-CExpr* mkCExpr() {
+CExpr *mkCExpr() {
 	breakpoint
 	return new CExpr;
 }
 
-CExpr* mkAll(BExpr* bexpr)
-{
+CExpr* mkAll(BExpr* bexpr) {
   CExpr* c = mkCExpr();
   c->tag   = ALL;
   c->bexpr = bexpr;
@@ -142,7 +155,7 @@ Stmt *Stmt::create(StmtTag in_tag) {
 }
 
 
-Stmt *Stmt::create(StmtTag in_tag, ExprPtr e0, ExprPtr e1) {
+Stmt *Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 	// WRI debug
 	// break for the tags we haven't checked yet
 	switch (in_tag) {
@@ -238,48 +251,38 @@ Stmt *Stmt::create(StmtTag in_tag, Stmt* s0, Stmt* s1) {
 // Functions on statements
 // ============================================================================
 
-// Make a skip statement
-Stmt* mkSkip()
-{
-	return Stmt::create(SKIP);
-}
+Stmt *mkSkip() { return Stmt::create(SKIP); }
+Stmt *mkAssign(Expr::Ptr lhs, Expr::Ptr rhs) { return Stmt::create(ASSIGN, lhs, rhs); }
+Stmt *mkSeq(Stmt *s0, Stmt* s1) { return Stmt::create(SEQ, s0, s1); }
 
-// Make an assignment statement
-Stmt* mkAssign(ExprPtr lhs, ExprPtr rhs) {
-  return Stmt::create(ASSIGN, lhs, rhs);
-}
-
-// Make a sequential composition
-Stmt* mkSeq(Stmt *s0, Stmt* s1) {
-  return Stmt::create(SEQ, s0, s1);
-}
-
-Stmt* mkWhere(BExpr* cond, Stmt* thenStmt, Stmt* elseStmt) {
+Stmt *mkWhere(BExpr *cond, Stmt *thenStmt, Stmt *elseStmt) {
   Stmt* s           = Stmt::create(WHERE, thenStmt, elseStmt);
   s->where.cond     = cond;
   return s;
 }
 
-Stmt* mkIf(CExpr* cond, Stmt* thenStmt, Stmt* elseStmt) {
+
+Stmt *mkIf(CExpr *cond, Stmt *thenStmt, Stmt *elseStmt) {
   Stmt* s           = Stmt::create(IF, thenStmt, elseStmt);
   s->ifElse.cond    = cond;
   return s;
 }
 
-Stmt* mkWhile(CExpr* cond, Stmt* body) {
+
+Stmt *mkWhile(CExpr *cond, Stmt *body) {
   Stmt* s      = Stmt::create(WHILE, body, nullptr);
   s->loop.cond = cond;
   return s;
 }
 
-Stmt* mkFor(CExpr* cond, Stmt* inc, Stmt* body) {
-  Stmt* s      = Stmt::create(FOR, inc, body);
+Stmt *mkFor(CExpr *cond, Stmt *inc, Stmt *body) {
+  Stmt* s         = Stmt::create(FOR, inc, body);
   s->forLoop.cond = cond;
   return s;
 }
 
-Stmt* mkPrint(PrintTag t, ExprPtr e) {
-  Stmt* s      = Stmt::create(PRINT, e, nullptr);
+Stmt *mkPrint(PrintTag t, Expr::Ptr e) {
+  Stmt *s      = Stmt::create(PRINT, e, nullptr);
   s->print.tag = t;
   return s;
 }

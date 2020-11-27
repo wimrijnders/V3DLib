@@ -7,7 +7,7 @@ namespace vc4 {
 
 class SourceTranslate : public ISourceTranslate {
 public:
-	bool deref_var_var(Seq<Instr>* seq, Expr &lhs, ExprPtr rhs) override;
+	bool deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr::Ptr rhs) override;
 	void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) override;
 
 	void regAlloc(CFG* cfg, Seq<Instr>* instrs) override;
