@@ -124,7 +124,7 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
   // Case: *lhs := rhs where lhs is not a var or rhs not a var
   // ---------------------------------------------------------
   if (lhs.tag() == DEREF && (lhs.deref.ptr->tag() != VAR || rhs->tag() != VAR)) {
-    assert(!isLit(lhs.deref.ptr));
+    assert(!lhs.deref.ptr->isLit());
     lhs.deref.ptr = simplify(seq, lhs.deref.ptr);
     rhs = putInVar(seq, rhs);
   }
@@ -301,7 +301,7 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
     b.cmp.rhs = simplify(seq, b.cmp.rhs);
   }
 
- 	if (isLit(b.cmp.lhs) && isLit(b.cmp.rhs)) {  // 'x op y', where x and y are both literals
+ 	if (b.cmp.lhs->isLit() && b.cmp.rhs->isLit()) {  // 'x op y', where x and y are both literals
     Var tmpVar = freshVar();
     varAssign(seq, tmpVar, b.cmp.lhs);
     b.cmp.lhs = mkVar(tmpVar);
@@ -687,7 +687,7 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
 				e.apply.rhs = simplify(seq, e.apply.rhs);
 			}
 
-			if (isLit(e.apply.lhs) && isLit(e.apply.rhs)) {             // x and y are both literals
+			if (e.apply.lhs->isLit() && e.apply.rhs->isLit()) {             // x and y are both literals
 				Var tmpVar = freshVar();
 				varAssign(seq, cond, tmpVar, e.apply.lhs);
 				e.apply.lhs = mkVar(tmpVar);
@@ -705,7 +705,7 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
 		break;
 		case DEREF:                                                    // 'v := *w'
 			if (e.deref.ptr->tag() != VAR) {                               // w is not a variable
-				assert(!isLit(e.deref.ptr));
+				assert(!e.deref.ptr->isLit());
 				e.deref.ptr = simplify(seq, e.deref.ptr);
 			}
   		                                                             // w is a variable

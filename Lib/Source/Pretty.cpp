@@ -34,7 +34,7 @@ void pretty(FILE *f, Expr* e)
   assert(f != nullptr);
   if (e == NULL) return;
 
-  switch (e->tag) {
+  switch (e->tag()) {
     // Integer literals
     case INT_LIT:
       fprintf(f, "%i", e->intLit);
@@ -47,19 +47,19 @@ void pretty(FILE *f, Expr* e)
 
     // Variables
     case VAR:
-      if (e->var.tag == STANDARD)
-        fprintf(f, "v%i", e->var.id);
-      else if (e->var.tag == UNIFORM)
+      if (e->var.tag() == STANDARD)
+        fprintf(f, "v%i", e->var.id());
+      else if (e->var.tag() == UNIFORM)
         fprintf(f, "UNIFORM");
-      else if (e->var.tag == QPU_NUM)
+      else if (e->var.tag() == QPU_NUM)
         fprintf(f, "QPU_NUM");
-      else if (e->var.tag == ELEM_NUM)
+      else if (e->var.tag() == ELEM_NUM)
         fprintf(f, "ELEM_NUM");
-      else if (e->var.tag == VPM_READ)
+      else if (e->var.tag() == VPM_READ)
         fprintf(f, "VPM_READ");
-      else if (e->var.tag == VPM_WRITE)
+      else if (e->var.tag() == VPM_WRITE)
         fprintf(f, "VPM_WRITE");
-      else if (e->var.tag == TMU0_ADDR)
+      else if (e->var.tag() == TMU0_ADDR)
         fprintf(f, "TMU0_ADDR");
       break;
 
@@ -96,10 +96,9 @@ void pretty(FILE *f, Expr* e)
 // Boolean expressions
 // ============================================================================
 
-void pretty(FILE *f, BExpr* b)
-{
+void pretty(FILE *f, BExpr* b) {
   assert(f != nullptr);
-  if (b == NULL) return;
+  if (b == nullptr) return;
 
   switch (b->tag) {
     // Negation

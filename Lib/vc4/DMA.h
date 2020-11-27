@@ -12,24 +12,19 @@ namespace V3DLib {
 // VPM operations
 //=============================================================================
 
-inline void vpmPutExpr(Expr* e)
-{
-  Var v; v.tag = VPM_WRITE;
-  Stmt* s = mkAssign(mkVar(v), e);
+inline void vpmPutExpr(Expr* e) {
+  Stmt* s = mkAssign(mkVar(Var(VPM_WRITE)), e);
   stmtStack().append(s);
 }
 
-inline void vpmPut(IntExpr data)
-  { vpmPutExpr(data.expr); }
+inline void vpmPut(IntExpr data)   { vpmPutExpr(data.expr()); }
+inline void vpmPut(FloatExpr data) { vpmPutExpr(data.expr()); }
 
-inline void vpmPut(FloatExpr data)
-  { vpmPutExpr(data.expr); }
+template <typename T>
+inline void vpmPut(PtrExpr<T> data) { vpmPutExpr(data.expr()); }
 
-template <typename T> inline void vpmPut(PtrExpr<T> data)
-  { vpmPutExpr(data.expr); }
-
-template <typename T> inline void vpmPut(Ptr<T> &data)
-  { vpmPutExpr(data.expr); }
+template <typename T>
+inline void vpmPut(Ptr<T> &data)    { vpmPutExpr(data.expr()); }
 
 inline void dmaStartReadExpr(Expr* e) {
   Stmt* s = Stmt::create(DMA_START_READ, e, nullptr);

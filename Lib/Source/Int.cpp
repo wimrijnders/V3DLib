@@ -13,7 +13,8 @@ namespace V3DLib {
 IntExpr::IntExpr(int x) { m_expr = mkIntLit(x); }
 
 // Helper constructor
-inline IntExpr mkIntExpr(Expr* e) { IntExpr x; x.m_expr = e; return x; }
+// TODO remove
+inline IntExpr mkIntExpr(Expr* e) { return IntExpr(e); }
 
 // ============================================================================
 // Type 'Int'
@@ -23,48 +24,48 @@ inline IntExpr mkIntExpr(Expr* e) { IntExpr x; x.m_expr = e; return x; }
 
 Int::Int() {
   Var v    = freshVar();
-  this->expr = mkVar(v);
+  m_expr = mkVar(v);
 }
 
 Int::Int(int x) {
   Var v    = freshVar();
-  this->expr = mkVar(v);
-  assign(this->expr, mkIntLit(x));
+  m_expr = mkVar(v);
+  assign(m_expr, mkIntLit(x));
 }
 
 Int::Int(IntExpr e) {
   Var v    = freshVar();
-  this->expr = mkVar(v);
-  assign(this->expr, e.expr);
+  m_expr = mkVar(v);
+  assign(m_expr, e.expr());
 }
 
 // Copy constructors
 
-Int::Int(Int& x) {
+Int::Int(Int &x) {
   Var v    = freshVar();
-  this->expr = mkVar(v);
-  assign(this->expr, x.expr);
+  m_expr = mkVar(v);
+  assign(m_expr, x.expr());
 }
 
 
-Int::Int(const Int& x) {
+Int::Int(Int const &x) {
   Var v    = freshVar();
-  this->expr = mkVar(v);
-  assign(this->expr, x.expr);
+  m_expr = mkVar(v);
+  assign(m_expr, x.expr());
 }
 
 
 // Cast to an IntExpr
 
-Int::operator IntExpr() { return mkIntExpr(this->expr); }
+Int::operator IntExpr() { return mkIntExpr(m_expr); }
 
 // Assignment
 
-Int& Int::operator=(Int& rhs)
-  { assign(this->expr, rhs.expr); return rhs; }
+Int& Int::operator=(Int &rhs)
+  { assign(m_expr, rhs.expr()); return rhs; }
 
 IntExpr Int::operator=(IntExpr rhs)
-  { assign(this->expr, rhs.expr); return rhs; };
+  { assign(m_expr, rhs.expr()); return rhs; };
 
 // ============================================================================
 // Generic operations
@@ -72,7 +73,7 @@ IntExpr Int::operator=(IntExpr rhs)
 
 inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 {
-  Expr* e = mkApply(a.expr, op, b.expr);
+  Expr* e = mkApply(a.expr(), op, b.expr());
   return mkIntExpr(e);
 }
 
@@ -82,9 +83,7 @@ inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 
 // Read an Int from the UNIFORM FIFO.
 IntExpr getUniformInt() {
-  Expr* e    = new Expr;
-  e->tag     = VAR;
-  e->var.tag = UNIFORM;
+  Expr* e    = new Expr(Var(UNIFORM));
   return mkIntExpr(e);
 }
 
@@ -96,14 +95,10 @@ IntExpr getUniformInt() {
  */
 IntExpr index() {
 	if (Platform::instance().compiling_for_vc4()) {
-	  Expr* e    = new Expr;
-	  e->tag     = VAR;
-	  e->var.tag = ELEM_NUM;
+  	Expr* e    = new Expr(Var(ELEM_NUM));
 	  return mkIntExpr(e);
 	} else {
-		Var dummy;
-		dummy.tag = DUMMY;
-		dummy.id  = 0;
+		Var dummy(DUMMY);
 
 		Expr *a = mkVar(dummy);
   	Expr *e =  mkApply(a, Op(EIDX, INT32), a);
@@ -114,10 +109,7 @@ IntExpr index() {
 // A vector containing the QPU id
 IntExpr me() {
   // There is reserved var holding the QPU ID.
-  Expr* e    = new Expr;
-  e->tag     = VAR;
-  e->var.tag = STANDARD;
-  e->var.id  = RSV_QPU_ID;
+  Expr* e    = new Expr(Var(STANDARD, RSV_QPU_ID));
   return mkIntExpr(e);
 }
 
@@ -125,19 +117,14 @@ IntExpr me() {
 // A vector containing the QPU count
 IntExpr numQPUs() {
   // There is reserved var holding the QPU count.
-  Expr* e    = new Expr;
-  e->tag     = VAR;
-  e->var.tag = STANDARD;
-  e->var.id  = RSV_NUM_QPUS;
+  Expr* e    = new Expr(Var(STANDARD, RSV_NUM_QPUS));
   return mkIntExpr(e);
 }
 
 
 // Read vector from VPM
 IntExpr vpmGetInt() {
-  Expr* e    = new Expr;
-  e->tag     = VAR;
-  e->var.tag = VPM_READ;
+  Expr* e    = new Expr(Var(VPM_READ));
   return mkIntExpr(e);
 }
 
@@ -148,7 +135,7 @@ IntExpr rotate(IntExpr a, IntExpr b)
 
 
 FloatExpr rotate(FloatExpr a, IntExpr b) {
-  Expr* e = mkApply(a.expr, Op(ROTATE, FLOAT), b.expr);
+  Expr* e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
   return mkFloatExpr(e);
 }
 
@@ -170,13 +157,13 @@ IntExpr ror(IntExpr a, IntExpr b) { return mkIntApply(a, Op(ROR, INT32), b); }
 
 // Conversion to Int
 IntExpr toInt(FloatExpr a) {
-  Expr* e = mkApply(a.expr, Op(FtoI, INT32), mkIntLit(0));
+  Expr* e = mkApply(a.expr(), Op(FtoI, INT32), mkIntLit(0));
   return mkIntExpr(e);
 }
 
 // Conversion to Float
 FloatExpr toFloat(IntExpr a) {
-  Expr* e = mkApply(a.expr, Op(ItoF, FLOAT), mkIntLit(0));
+  Expr* e = mkApply(a.expr(), Op(ItoF, FLOAT), mkIntLit(0));
   return mkFloatExpr(e);
 }
 

@@ -182,7 +182,7 @@ breakpoint
 }
 
 void Print(IntExpr x) {
-  Stmt *s = Stmt::create(PRINT, x.expr, nullptr);
+  Stmt *s = Stmt::create(PRINT, x.expr(), nullptr);
   s->print.tag = PRINT_INT;
   stmtStack().append(s);
 }

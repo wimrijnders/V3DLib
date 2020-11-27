@@ -29,7 +29,7 @@ enum VarTag {
 typedef int VarId;
 
 struct Var {
-	Var(VarTag tag) : m_tag(tag) {
+	Var(VarTag tag, VarId id = 0) : m_tag(tag), m_id(id) {
 		if (m_tag == UNIFORM) {
 			m_isUniformPtr = true;
 		}

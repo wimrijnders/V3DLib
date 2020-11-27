@@ -2,38 +2,41 @@
 
 
 namespace V3DLib {
+namespace  {
 
 //=============================================================================
 // VPM Setup
 //=============================================================================
 
-static void vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride) {
+Stmt *vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride) {
   Stmt *s = Stmt::create(SETUP_VPM_READ);
   s->setupVPMRead.numVecs = n;
   s->setupVPMRead.stride = stride;
   s->setupVPMRead.hor = hor;
-  s->setupVPMRead.addr = addr.expr;
-  stmtStack() << s;
+  s->setupVPMRead.addr = addr.expr();
+
+	return s;
 }
 
-static void vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
+Stmt *vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
   Stmt *s = Stmt::create(SETUP_VPM_WRITE);
   s->setupVPMWrite.stride = stride;
   s->setupVPMWrite.hor = hor;
-  s->setupVPMWrite.addr = addr.expr;
-  stmtStack().append(s);
+  s->setupVPMWrite.addr = addr.expr();
+
+	return s;
+}
+
+}  // anon namespace
+
+
+void vpmSetupRead(Dir d, int n, IntExpr addr, int stride) {
+  stmtStack() << vpmSetupReadCore(n, addr, d == HORIZ ? 1 : 0, stride);
 }
 
 
-void vpmSetupRead(Dir d, int n, IntExpr addr, int stride)
-{
-  vpmSetupReadCore(n, addr, d == HORIZ ? 1 : 0, stride);
-}
-
-
-void vpmSetupWrite(Dir d, IntExpr addr, int stride)
-{
-  vpmSetupWriteCore(addr, d == HORIZ ? 1 : 0, stride);
+void vpmSetupWrite(Dir d, IntExpr addr, int stride) {
+  stmtStack() << vpmSetupWriteCore(addr, d == HORIZ ? 1 : 0, stride);
 }
 
 
@@ -43,15 +46,17 @@ void vpmSetupWrite(Dir d, IntExpr addr, int stride)
 
 void dmaSetReadPitch(IntExpr stride) {
   Stmt *s = Stmt::create(SET_READ_STRIDE);
-  s->stride = stride.expr;
-  stmtStack().append(s);
+  s->stride = stride.expr();
+  stmtStack() << s;
 }
 
 void dmaSetWriteStride(IntExpr stride) {
   Stmt *s = Stmt::create(SET_WRITE_STRIDE);
-  s->stride = stride.expr;
-  stmtStack().append(s);
+  s->stride = stride.expr();
+
+  stmtStack() << s;
 }
+
 
 void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr, int rowLen, int vpitch) {
   Stmt *s = Stmt::create(SETUP_DMA_READ);
@@ -59,8 +64,9 @@ void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr, int rowLen, int vpitch)
   s->setupDMARead.numRows = numRows;
   s->setupDMARead.rowLen = rowLen;
   s->setupDMARead.vpitch = vpitch;
-  s->setupDMARead.vpmAddr = vpmAddr.expr;
-  stmtStack().append(s);
+  s->setupDMARead.vpmAddr = vpmAddr.expr();
+
+  stmtStack() << s;
 }
 
 void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen) {
@@ -68,8 +74,9 @@ void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen) {
   s->setupDMAWrite.hor = dir == HORIZ ? 1 : 0;
   s->setupDMAWrite.numRows = numRows;
   s->setupDMAWrite.rowLen = rowLen;
-  s->setupDMAWrite.vpmAddr = vpmAddr.expr;
-  stmtStack().append(s);
+  s->setupDMAWrite.vpmAddr = vpmAddr.expr();
+
+  stmtStack() << s;
 }
 
 void dmaWaitRead() {

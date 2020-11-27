@@ -11,10 +11,7 @@ static int globalVarId = 0;  // Used for fresh variable generation
  * @return a fresh standard variable
  */
 Var freshVar() {
-	Var v;
-	v.tag = STANDARD;
-	v.id  = globalVarId++;
-	return v;
+	return Var(STANDARD, globalVarId++);
 }
 
 

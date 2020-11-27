@@ -14,7 +14,7 @@ namespace {
 void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
 	using namespace V3DLib::Target::instr;
 
-  if (addr->tag != VAR || data->tag != VAR) {
+  if (addr->tag() != VAR || data->tag() != VAR) {
     addr = putInVar(seq, addr);
     data = putInVar(seq, data);
   }
@@ -43,7 +43,7 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 	Reg srcAddr = srcReg(rhs->var);
 	Reg srcData = srcReg(lhs.deref.ptr->var);
 
-	if (rhs->var.tag == ELEM_NUM) {
+	if (rhs->var.tag() == ELEM_NUM) {
 		//TODO: is ACC0 safe here?
 		assert(srcAddr == ELEM_ID);
 		*seq << mov(ACC0, ELEM_ID)

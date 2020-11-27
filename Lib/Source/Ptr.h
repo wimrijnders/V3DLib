@@ -73,15 +73,16 @@ struct Ptr : public BaseExpr {
     return rhs;
   }
 
-  // Dereference
-  T& operator*() {
-    // This operation must return a reference to T, so we allocate the
-    // AST node on the heap an return a reference to it.
-    //T* p = astHeap.alloc<T>(1);
-breakpoint
-    T *p = new T;
-    p->expr = mkDeref(expr);
-    return *p;
+
+	/**
+	 * Dereference
+   * 
+	 * This operation must return a reference to T.
+	 */
+  T operator*() {
+		breakpoint  // TODO: originally returned a ref to a heap item (BAD!!). Check if this is ok
+    //return new T(mkDeref(expr()));
+    return T(mkDeref(expr()));
   }
 
   // Array index

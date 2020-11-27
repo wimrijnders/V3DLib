@@ -55,9 +55,35 @@ Expr::Expr() {
 	breakpoint
 }
 
+
 Expr::Expr(Var in_var) {
 	m_tag = VAR; 
-	var = in_var;
+	var   = in_var;
+}
+
+
+Expr::Expr(int in_lit) {
+	m_tag = INT_LIT; 
+  intLit = in_lit;
+}
+
+
+Expr::Expr(float in_lit) {
+	m_tag = FLOAT_LIT; 
+  floatLit = in_lit;
+}
+
+Expr::Expr(Expr* lhs, Op op, Expr* rhs) {
+  m_tag     = APPLY;
+  apply.lhs = lhs;
+  apply.op  = op;
+  apply.rhs = rhs;
+}
+
+
+Expr::Expr(Expr* ptr) {
+  m_tag     = DEREF;
+  deref.ptr = ptr;
 }
 
 
@@ -81,7 +107,7 @@ bool Expr::isSimple() const {
 
 BaseExpr::BaseExpr(Expr *e) {
 	assert(e != nullptr);
-	expr = e;
+	m_expr = e;
 }
 
 
@@ -113,58 +139,31 @@ bool isCommutative(Op op) {
 // ============================================================================
 
 // Make an integer literal
-Expr* mkIntLit(int lit)
-{
-  Expr* e   = new Expr;
-  e->tag    = INT_LIT;
-  e->intLit = lit;
-  return e;
+Expr* mkIntLit(int lit) {
+  return new Expr(lit);
 }
 
 // Make a float literal
-Expr* mkFloatLit(float lit)
-{
-  Expr* e     = new Expr;
-  e->tag      = FLOAT_LIT;
-  e->floatLit = lit;
-  return e;
+Expr* mkFloatLit(float lit) {
+  return new Expr(lit);
 }
 
 // Make a variable
-Expr* mkVar(Var var)
-{
-  Expr* e = new Expr;
-  e->tag  = VAR;
-  e->var  = var;
-  return e;
+Expr* mkVar(Var var) {
+  return new Expr(var);
 }
 
 // Make an operator application
-Expr* mkApply(Expr* lhs, Op op, Expr* rhs)
-{
-  Expr* e      = new Expr;
-  e->tag       = APPLY;
-  e->apply.lhs = lhs;
-  e->apply.op  = op;
-  e->apply.rhs = rhs;
-  return e;
+Expr* mkApply(Expr* lhs, Op op, Expr* rhs) {
+  return new Expr(lhs, op, rhs);
 }
 
 
 // Make a pointer dereference
-Expr* mkDeref(Expr* ptr)
-{
-  Expr* e      = new Expr;
-  e->tag       = DEREF;
-  e->deref.ptr = ptr;
-  return e;
+Expr* mkDeref(Expr* ptr) {
+  return new Expr(ptr);
 }
 
-// Is an expression a literal?
-bool isLit(Expr* e)
-{
-  return (e->tag == INT_LIT) || (e->tag == FLOAT_LIT);
-}
 
 // ============================================================================
 // Functions on boolean expressions
@@ -292,7 +291,15 @@ Stmt *Stmt::create(StmtTag in_tag) {
 
 
 Stmt *Stmt::create(StmtTag in_tag, Expr* e0, Expr* e1) {
-	breakpoint
+	// WRI debug
+	// break for the tags we haven't checked yet
+	switch (in_tag) {
+		case ASSIGN:
+			break;
+		default:
+			breakpoint;
+			break;
+	}
 
 	Stmt *ret = new Stmt();
 	ret->init(in_tag);

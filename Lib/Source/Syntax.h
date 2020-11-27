@@ -56,7 +56,7 @@ bool isCommutative(Op op);
 enum Dir { HORIZ, VERT };
 
 // Reserved general-purpose vars
-enum ReservedVarId {
+enum ReservedVarId : VarId {
   RSV_QPU_ID   = 0,
   RSV_NUM_QPUS = 1
 };
@@ -65,15 +65,27 @@ enum ReservedVarId {
 // Expressions    
 // ============================================================================
 
-// What kind of expression is it?
-enum ExprTag { INT_LIT, FLOAT_LIT, VAR, APPLY, DEREF };
+enum ExprTag {
+	INT_LIT,
+	FLOAT_LIT,
+	VAR,
+	APPLY,
+	DEREF
+};
+
 
 struct Expr {
 	Expr();
 	Expr(Var in_var);
+	Expr(int in_lit);
+	Expr(float in_lit);
+	Expr(Expr* lhs, Op op, Expr* rhs);
+	Expr(Expr* ptr);
+
 	~Expr();
 
 	ExprTag tag() const { return m_tag; }
+	bool isLit() const { return (tag() == INT_LIT) || (tag() == FLOAT_LIT); }
 
   union {
     int   intLit;                                   // Integer literal
@@ -97,7 +109,7 @@ public:
 	BaseExpr(Expr *e);
 	~BaseExpr();
 
-	Expr *expr() { return m_expr; }
+	Expr *expr() const { return m_expr; }
 
 protected:
   Expr *m_expr = nullptr;  // Abstract syntax tree
@@ -111,8 +123,6 @@ Expr* mkVar(Var var);
 Expr* mkApply(Expr* lhs, Op op, Expr* rhs);
 Expr* mkDeref(Expr* ptr);
 
-// Is an expression a literal?
-bool isLit(Expr* e);
 
 // ============================================================================
 // Comparison operators

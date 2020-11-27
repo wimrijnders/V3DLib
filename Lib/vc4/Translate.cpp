@@ -11,13 +11,13 @@ namespace {
 // ============================================================================
 
 void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e) {
-  if (e->tag == INT_LIT) {
+  if (e->tag() == INT_LIT) {
     if (tag == SET_READ_STRIDE)
       *seq << genSetReadPitch(e->intLit);
     else
       *seq << genSetWriteStride(e->intLit);
   }
-  else if (e->tag == VAR) {
+  else if (e->tag() == VAR) {
     if (tag == SET_READ_STRIDE)
       genSetReadPitch(seq, srcReg(e->var));
     else
@@ -38,9 +38,9 @@ void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e) {
 // ============================================================================
 
 void setupVPMReadStmt(Seq<Instr>* seq, int n, Expr* e, int hor, int stride) {
-  if (e->tag == INT_LIT)
+  if (e->tag() == INT_LIT)
     *seq << genSetupVPMLoad(n, e->intLit, hor, stride);
-  else if (e->tag == VAR)
+  else if (e->tag() == VAR)
     *seq << genSetupVPMLoad(n, srcReg(e->var), hor, stride);
   else {
     Var v = freshVar();
@@ -54,9 +54,9 @@ void setupVPMReadStmt(Seq<Instr>* seq, int n, Expr* e, int hor, int stride) {
 // ============================================================================
 
 void setupDMAReadStmt(Seq<Instr>* seq, int numRows, int rowLen, int hor, Expr* e, int vpitch) {
-  if (e->tag == INT_LIT)
+  if (e->tag() == INT_LIT)
     *seq << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->intLit);
-  else if (e->tag == VAR)
+  else if (e->tag() == VAR)
     *seq << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var));
   else {
     Var v = freshVar();
@@ -66,9 +66,9 @@ void setupDMAReadStmt(Seq<Instr>* seq, int numRows, int rowLen, int hor, Expr* e
 }
 
 void setupDMAWriteStmt(Seq<Instr>* seq, int numRows, int rowLen, int hor, Expr* e) {
-  if (e->tag == INT_LIT)
+  if (e->tag() == INT_LIT)
     *seq << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
-  else if (e->tag == VAR)
+  else if (e->tag() == VAR)
     *seq << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var));
   else {
     Var v = freshVar();
@@ -79,7 +79,7 @@ void setupDMAWriteStmt(Seq<Instr>* seq, int numRows, int rowLen, int hor, Expr* 
 
 
 void startDMAReadStmt(Seq<Instr>* seq, Expr* e) {
-  if (e->tag == VAR)
+  if (e->tag() == VAR)
     *seq << genStartDMALoad(srcReg(e->var));
   else {
     Var v = freshVar();
@@ -90,7 +90,7 @@ void startDMAReadStmt(Seq<Instr>* seq, Expr* e) {
 
 
 Instr startDMAWriteStmt(Seq<Instr>* seq, Expr* e) {
-  if (e->tag == VAR)
+  if (e->tag() == VAR)
     return genStartDMAStore(srcReg(e->var));
   else {
     Var v = freshVar();
@@ -125,9 +125,9 @@ Instr sendIRQToHost() {
 
 
 void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride) {
-  if (e->tag == INT_LIT)
+  if (e->tag() == INT_LIT)
     *seq << genSetupVPMStore(e->intLit, hor, stride);
-  else if (e->tag == VAR)
+  else if (e->tag() == VAR)
     *seq << genSetupVPMStore(srcReg(e->var), hor, stride);
   else {
     Var v = freshVar();
@@ -150,7 +150,7 @@ void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride) {
 void storeRequestOperation(Seq<Instr> &seq, Expr *data, Expr *addr) {
 	using namespace V3DLib::Target::instr;
 
-  if (data->tag != VAR || addr->tag != VAR) {
+  if (data->tag() != VAR || addr->tag() != VAR) {
     data = putInVar(&seq, data);
     addr = putInVar(&seq, addr);
   }
