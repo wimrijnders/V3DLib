@@ -40,7 +40,6 @@ struct PtrExpr : public BaseExpr {
 
   // Array index
   T& operator[](IntExpr index) {
-    //T* p = astHeap.alloc<T>(1);
 breakpoint
 		T *p = new T;
     p->expr = mkDeref(mkApply(expr, Op(ADD, INT32),
@@ -85,8 +84,7 @@ struct Ptr : public BaseExpr {
 
   // Array index
   T operator[](IntExpr index) {
-    //T* p = astHeap.alloc<T>(1);
-breakpoint
+		breakpoint
     Expr *e = mkDeref(mkApply(expr(), Op(ADD, INT32),
                 mkApply(index.expr(), Op(SHL, INT32), mkIntLit(2))));
     return T(e);

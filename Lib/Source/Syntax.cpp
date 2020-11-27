@@ -1,169 +1,8 @@
 #include "Syntax.h"
-#include "Common/Heap.h"
 #include "Common/Stack.h"
-#include "Target/SmallLiteral.h"
 #include "Support/basics.h"
 
 namespace V3DLib {
-
-// ============================================================================
-// Class Op
-// ============================================================================
-
-const char *Op::to_string() {
-	switch (op) {
-		case ADD:    return "+";
-		case SUB:    return "-";
-		case MUL:    return "*";
-		case MIN:    return " min ";
-		case MAX:    return " max ";
-		case ROTATE: return " rotate ";
-		case SHL:    return " << ";
-		case SHR:    return " >> ";
-		case USHR:   return " _>> ";
-		case ROR:    return " ror ";
-		case BOR:    return " | ";
-		case BAND:   return " & ";
-		case BXOR:   return " ^ ";
-		case BNOT:   return "~";
-		case ItoF:   return "(Float) ";
-		case FtoI:   return "(Int) ";
-		// v3d-specific
-		case TIDX:   return "tidx";
-		case EIDX:   return "eidx";
-	}
-
-	assertq(false, "opToString(): unknown opcode", true);
-	return nullptr;
-}
-
-bool Op::noParams() {
-  return (op == TIDX || op == EIDX);
-}
-
-
-bool Op::isUnary() {
-  return (op == BNOT || op == ItoF || op == FtoI);
-}
-
-
-// ============================================================================
-// Class Expr
-// ============================================================================
-
-Expr::Expr() {
-	breakpoint
-}
-
-
-Expr::Expr(Var in_var) {
-	m_tag = VAR; 
-	var   = in_var;
-}
-
-
-Expr::Expr(int in_lit) {
-	m_tag = INT_LIT; 
-  intLit = in_lit;
-}
-
-
-Expr::Expr(float in_lit) {
-	m_tag = FLOAT_LIT; 
-  floatLit = in_lit;
-}
-
-Expr::Expr(Expr* lhs, Op op, Expr* rhs) {
-  m_tag     = APPLY;
-  apply.lhs = lhs;
-  apply.op  = op;
-  apply.rhs = rhs;
-}
-
-
-Expr::Expr(Expr* ptr) {
-  m_tag     = DEREF;
-  deref.ptr = ptr;
-}
-
-
-Expr::~Expr() {
-	breakpoint
-}
-
-
-/**
- * An expression is 'simple' if it is a small literal or a variable.
- */
-bool Expr::isSimple() const {
-	bool isSmallLit = encodeSmallLit(*this) >= 0;
-  return (m_tag == VAR) || isSmallLit;
-}
-
-
-// ============================================================================
-// Class BaseExpr
-// ============================================================================
-
-BaseExpr::BaseExpr(Expr *e) {
-	assert(e != nullptr);
-	m_expr = e;
-}
-
-
-BaseExpr::~BaseExpr() {
-	breakpoint
-}
-
-// ============================================================================
-// End Class BaseExpr
-// ============================================================================
-
-
-// Is given operator commutative?
-bool isCommutative(Op op) {
-  if (op.type != FLOAT) {
-    return op.op == ADD
-        || op.op == MUL
-        || op.op == BOR
-        || op.op == BAND
-        || op.op == BXOR
-        || op.op == MIN
-        || op.op == MAX;
-  }
-  return false;
-}
-
-// ============================================================================
-// Functions on expressions
-// ============================================================================
-
-// Make an integer literal
-Expr* mkIntLit(int lit) {
-  return new Expr(lit);
-}
-
-// Make a float literal
-Expr* mkFloatLit(float lit) {
-  return new Expr(lit);
-}
-
-// Make a variable
-Expr* mkVar(Var var) {
-  return new Expr(var);
-}
-
-// Make an operator application
-Expr* mkApply(Expr* lhs, Op op, Expr* rhs) {
-  return new Expr(lhs, op, rhs);
-}
-
-
-// Make a pointer dereference
-Expr* mkDeref(Expr* ptr) {
-  return new Expr(ptr);
-}
-
 
 // ============================================================================
 // Functions on boolean expressions
@@ -172,7 +11,6 @@ Expr* mkDeref(Expr* ptr) {
 // Allocate a boolean expression
 BExpr* mkBExpr()
 {
-//  return astHeap.alloc<BExpr>();
 breakpoint
 	return new BExpr;
 }
@@ -217,10 +55,8 @@ BExpr* mkCmp(Expr* lhs, CmpOp op, Expr*  rhs) {
 // Functions on conditionals
 // ============================================================================
 
-CExpr* mkCExpr()
-{
-//  return astHeap.alloc<CExpr>();
-breakpoint
+CExpr* mkCExpr() {
+	breakpoint
 	return new CExpr;
 }
 
