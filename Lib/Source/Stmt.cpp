@@ -24,17 +24,16 @@ StmtStack &stmtStack() {
 // Assignment token
 //=============================================================================
 
-void assign(Expr* lhs, Expr* rhs) {
-  Stmt* s = mkAssign(lhs, rhs);
-  stmtStack().append(s);
+void assign(ExprPtr lhs, ExprPtr rhs) {
+  Stmt *s = mkAssign(lhs, rhs);
+  stmtStack() << s;
 }
 
 //=============================================================================
 // 'If' token
 //=============================================================================
 
-void If_(Cond c)
-{
+void If_(Cond c) {
   Stmt* s = mkIf(c.cexpr, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());

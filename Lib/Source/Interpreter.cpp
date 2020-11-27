@@ -123,7 +123,7 @@ inline int32_t rotRight(int32_t x, int32_t n) {
 // ============================================================================
 
 
-Vec eval(CoreState* s, Expr* e) {
+Vec eval(CoreState* s, ExprPtr e) {
   Vec v;
   switch (e->tag()) {
     // Integer literal
@@ -144,8 +144,8 @@ Vec eval(CoreState* s, Expr* e) {
 
     // Operator application
     case APPLY: {
-      Vec a = eval(s, e->apply.lhs);
-      Vec b = eval(s, e->apply.rhs);
+      Vec a = eval(s, e->apply_lhs());
+      Vec b = eval(s, e->apply_rhs());
       if (e->apply.op.op == ROTATE) {
         // Vector rotation
         v = rotate(a, b[0].intVal);
@@ -198,7 +198,7 @@ Vec eval(CoreState* s, Expr* e) {
 
     // Dereference pointer
     case DEREF:
-      Vec a = eval(s, e->deref.ptr);
+      Vec a = eval(s, e->deref_ptr());
       uint32_t hp = (uint32_t) a[0].intVal;
 
 			// NOTE: `hp` is the same for all lanes.
@@ -225,7 +225,7 @@ Vec eval(CoreState* s, Expr* e) {
 Vec evalBool(CoreState* s, BExpr* e) {
   Vec v;
 
-  switch (e->tag) {
+  switch (e->tag()) {
     // Negation
     case NOT:
       v = evalBool(s, e->neg);
@@ -253,8 +253,8 @@ Vec evalBool(CoreState* s, BExpr* e) {
 
     // Comparison
     case CMP: {
-      Vec a = eval(s, e->cmp.lhs);
-      Vec b = eval(s, e->cmp.rhs);
+      Vec a = eval(s, e->cmp_lhs());
+      Vec b = eval(s, e->cmp_rhs());
       if (e->cmp.op.type == FLOAT) {
         // Floating-point comparison
         for (int i = 0; i < NUM_LANES; i++) {
@@ -379,8 +379,7 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
 // Execute assignment
 // ============================================================================
 
-void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
-{
+void execAssign(CoreState* s, Vec cond, ExprPtr lhs, ExprPtr rhs) {
   // Evaluate RHS
   Vec val = eval(s, rhs);
 
@@ -393,7 +392,7 @@ void execAssign(CoreState* s, Vec cond, Expr* lhs, Expr* rhs)
     // Dereferenced pointer
 		// Comparable to execStoreRequest()
     case DEREF: {
-      Vec index = eval(s, lhs->deref.ptr);
+      Vec index = eval(s, lhs->deref_ptr());
 			storeToHeap(s, index, val);
       return;
     }
@@ -482,24 +481,24 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
 
 void execPrint(CoreState* s, PrintStmt p)
 {
-  switch (p.tag) {
+  switch (p.tag()) {
     // Integer
     case PRINT_INT: {
-      Vec x = eval(s, p.expr);
+      Vec x = eval(s, p.expr());
       printIntVec(s->output, x);
       return;
     }
 
     // Float
     case PRINT_FLOAT: {
-      Vec x = eval(s, p.expr);
+      Vec x = eval(s, p.expr());
       printFloatVec(s->output, x);
       return;
     }
 
     // String
     case PRINT_STR:
-      emitStr(s->output, p.str);
+      emitStr(s->output, p.str());
       return;
   }
 }
@@ -508,8 +507,7 @@ void execPrint(CoreState* s, PrintStmt p)
 // Execute set-stride statements
 // ============================================================================
 
-void execSetStride(CoreState* s, StmtTag tag, Expr* e)
-{
+void execSetStride(CoreState* s, StmtTag tag, ExprPtr e) {
   Vec v = eval(s, e);
   if (tag == SET_READ_STRIDE)
     s->readStride = v[0].intVal;
@@ -521,8 +519,7 @@ void execSetStride(CoreState* s, StmtTag tag, Expr* e)
 // Execute load receive & store request statements
 // ============================================================================
 
-void execLoadReceive(CoreState* s, Expr* e)
-{
+void execLoadReceive(CoreState* s, ExprPtr e) {
   assert(s->loadBuffer.size() > 0);
   assert(e->tag() == VAR);
   Vec val = s->loadBuffer.remove(0);
@@ -530,7 +527,7 @@ void execLoadReceive(CoreState* s, Expr* e)
 }
 
 
-void execStoreRequest(CoreState* s, Expr* data, Expr* addr) {
+void execStoreRequest(CoreState* s, ExprPtr data, ExprPtr addr) {
   Vec val = eval(s, data);
   Vec index = eval(s, addr);
 	storeToHeap(s, index, val);

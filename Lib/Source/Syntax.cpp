@@ -3,53 +3,69 @@
 #include "Support/basics.h"
 
 namespace V3DLib {
+/*
+BExpr::	BExpr(BExpr const &rhs) {
+	switch(rhs.tag() {
+	case NOT:
+		break;
+	case AND:
+		break;
+	case OR:
+		break;
+	case CMP:
+		break;
+	default:
+		assert(false);
+		break;
+	}
+}
+*/
+
+
+BExpr::BExpr(ExprPtr lhs, CmpOp op, ExprPtr rhs) {
+ 	m_tag      = CMP;
+  m_cmp_lhs  = lhs;
+  cmp.op   = op;
+  m_cmp_rhs  = rhs;
+}
+
+
+ExprPtr BExpr::cmp_lhs() { assert(m_tag == CMP && m_cmp_lhs.get() != nullptr); return  m_cmp_lhs; }
+ExprPtr BExpr::cmp_rhs() { assert(m_tag == CMP && m_cmp_rhs.get() != nullptr); return  m_cmp_rhs; }
+
+void BExpr::cmp_lhs(ExprPtr p) { assert(m_tag == CMP); m_cmp_lhs = p; }
+void BExpr::cmp_rhs(ExprPtr p) { assert(m_tag == CMP); m_cmp_rhs = p; }
+
 
 // ============================================================================
 // Functions on boolean expressions
 // ============================================================================
 
-// Allocate a boolean expression
-BExpr* mkBExpr()
-{
-breakpoint
-	return new BExpr;
-}
-
-BExpr* mkNot(BExpr* neg)
-{
-  BExpr *b    = mkBExpr();
+BExpr *mkNot(BExpr* neg) {
+  BExpr *b    = new BExpr();
   b->tag      = NOT;
   b->neg      = neg;
   return b;
 }
 
-BExpr* mkAnd(BExpr* lhs, BExpr* rhs)
-{
-  BExpr *b    = mkBExpr();
+
+BExpr *mkAnd(BExpr* lhs, BExpr* rhs) {
+  BExpr *b    = new BExpr();
   b->tag      = AND;
   b->conj.lhs = lhs;
   b->conj.rhs = rhs;
   return b;
 }
 
-BExpr* mkOr(BExpr* lhs, BExpr* rhs)
-{
-  BExpr *b    = mkBExpr();
+
+BExpr *mkOr(BExpr* lhs, BExpr* rhs) {
+  BExpr *b    = new BExpr();
   b->tag      = OR;
   b->disj.lhs = lhs;
   b->disj.rhs = rhs;
   return b;
 }
 
-
-BExpr* mkCmp(Expr* lhs, CmpOp op, Expr*  rhs) {
-  BExpr *b    = mkBExpr();
-  b->tag      = CMP;
-  b->cmp.lhs  = lhs;
-  b->cmp.op   = op;
-  b->cmp.rhs  = rhs;
-  return b;
-}
 
 // ============================================================================
 // Functions on conditionals
@@ -126,7 +142,7 @@ Stmt *Stmt::create(StmtTag in_tag) {
 }
 
 
-Stmt *Stmt::create(StmtTag in_tag, Expr* e0, Expr* e1) {
+Stmt *Stmt::create(StmtTag in_tag, ExprPtr e0, ExprPtr e1) {
 	// WRI debug
 	// break for the tags we haven't checked yet
 	switch (in_tag) {
@@ -229,7 +245,7 @@ Stmt* mkSkip()
 }
 
 // Make an assignment statement
-Stmt* mkAssign(Expr* lhs, Expr* rhs) {
+Stmt* mkAssign(ExprPtr lhs, ExprPtr rhs) {
   return Stmt::create(ASSIGN, lhs, rhs);
 }
 
@@ -262,7 +278,7 @@ Stmt* mkFor(CExpr* cond, Stmt* inc, Stmt* body) {
   return s;
 }
 
-Stmt* mkPrint(PrintTag t, Expr* e) {
+Stmt* mkPrint(PrintTag t, ExprPtr e) {
   Stmt* s      = Stmt::create(PRINT, e, nullptr);
   s->print.tag = t;
   return s;

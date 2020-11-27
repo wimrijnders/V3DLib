@@ -45,9 +45,14 @@ enum BExprTag { NOT, AND, OR, CMP };
 
 struct BExpr {
 	BExpr() {}
+	//BExpr(BExpr const &rhs); 
+	BExpr(ExprPtr lhs, CmpOp op, ExprPtr rhs);
 
-  // What kind of boolean expression is it?
-  BExprTag tag;
+	BExprTag tag() const { return m_tag; }
+  ExprPtr cmp_lhs();
+  ExprPtr cmp_rhs();
+  void cmp_lhs(ExprPtr p);
+  void cmp_rhs(ExprPtr p);
 
   union {
     // Negation
@@ -60,8 +65,15 @@ struct BExpr {
     struct { BExpr* lhs; BExpr* rhs; } disj;
 
     // Comparison
-    struct { Expr* lhs; CmpOp op; Expr* rhs; } cmp;
+    struct {
+			CmpOp op;
+		} cmp;
   };
+
+private:
+  BExprTag m_tag;
+  ExprPtr m_cmp_lhs;  // For comparison
+	ExprPtr m_cmp_rhs;  // idem
 };
 
 // Functions to construct boolean expressions
@@ -69,7 +81,6 @@ BExpr* mkBExpr();
 BExpr* mkNot(BExpr* neg);
 BExpr* mkAnd(BExpr* lhs, BExpr* rhs);
 BExpr* mkOr (BExpr* lhs, BExpr* rhs);
-BExpr* mkCmp(Expr*  lhs, CmpOp op, Expr*  rhs);
 
 // ============================================================================
 // Conditional expressions
@@ -102,11 +113,19 @@ CExpr* mkAny(BExpr* bexpr);
 enum PrintTag { PRINT_INT, PRINT_FLOAT, PRINT_STR };
 
 struct PrintStmt {
-  PrintTag tag;
-  union {
-    const char* str;
-    Expr* expr;
-  };
+	PrintTag tag() const { return m_tag;}
+
+	ExprPtr expr() const {
+		assert((m_tag == PRINT_INT || m_tag == PRINT_FLOAT) && m_expr.get() != nullptr);
+		return m_expr;
+	}
+
+	char const *str() const { assert(m_tag == PRINT_STR && m_str != nullptr); return m_str; }
+
+private:
+  PrintTag    m_tag;
+	const char *m_str;
+	ExprPtr     m_expr;
 };
 
 // ============================================================================
@@ -144,7 +163,7 @@ struct Stmt : public InstructionComment {
 	~Stmt();
 
 	static Stmt *create(StmtTag in_tag);
-	static Stmt *create(StmtTag in_tag, Expr *e0, Expr *e1);
+	static Stmt *create(StmtTag in_tag, ExprPtr e0, ExprPtr e1);
 	static Stmt *create(StmtTag in_tag, Stmt *s0, Stmt *s1);
 
   // What kind of statement is it?
@@ -152,7 +171,7 @@ struct Stmt : public InstructionComment {
 
   union {
     // Assignment
-    struct { Expr* lhs; Expr* rhs; } assign;
+    struct { ExprPtr lhs; ExprPtr rhs; } assign;
 
     // Sequential composition
     struct { Stmt* s0; Stmt* s1; } seq;
@@ -173,35 +192,45 @@ struct Stmt : public InstructionComment {
     PrintStmt print;
 
     // Set stride
-    Expr* stride;
+    ExprPtr stride;
 
     // Load receive destination
-    Expr* loadDest;
+    ExprPtr loadDest;
 
     // Store request
-    struct { Expr* data; Expr* addr; } storeReq;
+    struct { ExprPtr data; ExprPtr addr; } storeReq;
 
     // Semaphore id for increment / decrement
     int semaId;
 
     // VPM read setup
-    struct { int numVecs; Expr* addr; int hor; int stride; } setupVPMRead;
+    struct { int numVecs; ExprPtr addr; int hor; int stride; } setupVPMRead;
 
     // VPM write setup
     struct { Expr* addr; int hor; int stride; } setupVPMWrite;
 
     // DMA read setup
-    struct { Expr* vpmAddr; int numRows; int rowLen;
-             int hor; int vpitch; } setupDMARead;
+    struct {
+			ExprPtr vpmAddr;
+			int numRows;
+			int rowLen;
+			int hor;
+			int vpitch;
+		} setupDMARead;
 
     // DMA write setup
-    struct { Expr* vpmAddr; int numRows; int rowLen; int hor; } setupDMAWrite;
+    struct {
+			ExprPtr vpmAddr;
+			int numRows;
+			int rowLen;
+			int hor;
+		} setupDMAWrite;
 
     // DMA start read
-    Expr* startDMARead;
+    ExprPtr startDMARead;
 
     // DMA start write
-    Expr* startDMAWrite;
+    ExprPtr startDMAWrite;
   };
 
 private:
@@ -210,13 +239,13 @@ private:
 
 // Functions to construct statements
 Stmt* mkSkip();
-Stmt* mkAssign(Expr* lhs, Expr* rhs);
+Stmt* mkAssign(ExprPtr lhs, ExprPtr rhs);
 Stmt* mkSeq(Stmt* s0, Stmt* s1);
 Stmt* mkWhere(BExpr* cond, Stmt* thenStmt, Stmt* elseStmt);
 Stmt* mkIf(CExpr* cond, Stmt* thenStmt, Stmt* elseStmt);
 Stmt* mkWhile(CExpr* cond, Stmt* body);
 Stmt* mkFor(CExpr* cond, Stmt* inc, Stmt* body);
-Stmt* mkPrint(PrintTag t, Expr* e);
+Stmt* mkPrint(PrintTag t, ExprPtr e);
 
 }  // namespace V3DLib
 

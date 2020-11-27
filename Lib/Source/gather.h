@@ -9,10 +9,9 @@ namespace V3DLib {
 // Receive, request, store operations
 //=============================================================================
 
-inline void gatherExpr(Expr* e) {
-  Var v(TMU0_ADDR);
-  Stmt* s = mkAssign(mkVar(v), e);
-  stmtStack().append(s);
+inline void gatherExpr(ExprPtr e) {
+  Stmt* s = mkAssign(mkVar(Var(TMU0_ADDR)), e);
+  stmtStack() << s;
 }
 
 
@@ -36,43 +35,17 @@ inline void gather(Ptr<T>& addr) {
 	}
 }
 
-inline void receiveExpr(Expr* e)
-{
-  Stmt* s = Stmt::create(LOAD_RECEIVE);
-  s->loadDest = e;
-  stmtStack().append(s);
-}
+void receiveExpr(ExprPtr e);
+void receive(Int &dest);
+void receive(Float &dest);
 
-inline void receive(Int& dest)
-  { receiveExpr(dest.expr()); }
+template <typename T>
+inline void receive(Ptr<T> &dest) { receiveExpr(dest.expr); }
 
-inline void receive(Float& dest)
-  { receiveExpr(dest.expr()); }
-
-template <typename T> inline void receive(Ptr<T>& dest)
-  { receiveExpr(dest.expr); }
-
-
-inline void storeExpr(Expr* e0, Expr* e1) {
-  Stmt* s = Stmt::create(STORE_REQUEST, e0, e1);
-  stmtStack().append(s);
-}
-
-inline void store(IntExpr data, PtrExpr<Int> addr) {
-	storeExpr(data.expr(), addr.expr());
-}
-
-inline void store(FloatExpr data, PtrExpr<Float> addr) {
-	storeExpr(data.expr(), addr.expr());
-}
-
-inline void store(IntExpr data, Ptr<Int> &addr) {
-	storeExpr(data.expr(), addr.expr());
-}
-
-inline void store(FloatExpr data, Ptr<Float> &addr) {
-	storeExpr(data.expr(), addr.expr());
-}
+void store(IntExpr data, PtrExpr<Int> addr);
+void store(FloatExpr data, PtrExpr<Float> addr);
+void store(IntExpr data, Ptr<Int> &addr);
+void store(FloatExpr data, Ptr<Float> &addr);
 
 }  // namespace V3DLib
 

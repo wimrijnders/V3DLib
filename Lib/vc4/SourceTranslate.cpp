@@ -19,7 +19,7 @@ bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
 }
 
 
-void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
+void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, ExprPtr e) {
 	using namespace V3DLib::Target::instr;
 
 	Seq<Instr> ret;

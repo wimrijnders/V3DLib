@@ -17,7 +17,7 @@ namespace V3DLib {
 
 struct FloatExpr :public BaseExpr {
   FloatExpr(float x);
-	FloatExpr(Expr *e) : BaseExpr(e) {}
+	FloatExpr(ExprPtr e) : BaseExpr(e) {}
 };
 
 
@@ -31,7 +31,7 @@ struct Float : public BaseExpr {
 
   // Copy constructors
   Float(Float& x);
-  Float(const Float& x);
+  Float(Float const &x);
 
   // Cast to an FloatExpr
   operator FloatExpr();
@@ -45,7 +45,7 @@ struct Float : public BaseExpr {
 // Helper constructor
 
 // TODO get rid of this
-inline FloatExpr mkFloatExpr(Expr* e) { return FloatExpr(e); }
+inline FloatExpr mkFloatExpr(ExprPtr e) { return FloatExpr(e); }
 
 // ============================================================================
 // Operations

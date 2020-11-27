@@ -18,7 +18,7 @@ namespace V3DLib {
 
 struct IntExpr : public BaseExpr {
   IntExpr(int x);
-  IntExpr(Expr *e) : BaseExpr(e) {}
+  IntExpr(ExprPtr e) : BaseExpr(e) {}
 };
 
 // An 'Int' defines an integer vector variable which can be used in

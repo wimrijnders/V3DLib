@@ -26,22 +26,58 @@ Expr::Expr(float in_lit) {
   floatLit = in_lit;
 }
 
-Expr::Expr(Expr* lhs, Op op, Expr* rhs) {
+Expr::Expr(ExprPtr lhs, Op op, ExprPtr rhs) {
   m_tag     = APPLY;
-  apply.lhs = lhs;
+  apply_lhs(lhs);
   apply.op  = op;
-  apply.rhs = rhs;
+  apply_rhs(rhs);
 }
 
 
-Expr::Expr(Expr* ptr) {
+Expr::Expr(ExprPtr ptr) {
   m_tag     = DEREF;
-  deref.ptr = ptr;
+  deref_ptr(ptr);
 }
 
 
 Expr::~Expr() {
 	breakpoint
+}
+
+
+ExprPtr Expr::apply_lhs() {
+	assert(m_tag == APPLY && m_exp_a.get() != nullptr);
+	return m_exp_a;
+}
+
+
+ExprPtr Expr::apply_rhs() {
+	assert(m_tag == APPLY && m_exp_b.get() != nullptr);
+	return m_exp_b;
+}
+
+
+ExprPtr &Expr::deref_ptr() {
+	breakpoint  // TODO returning ref prob wrong, check where used
+	assert(m_tag == DEREF && m_exp_a.get() != nullptr);
+	return m_exp_a;
+}
+
+
+void Expr::apply_lhs(ExprPtr p) {
+	assert(m_tag == APPLY);
+	m_exp_a = p;
+}
+
+
+void Expr::apply_rhs(ExprPtr p) {
+	assert(m_tag == APPLY);
+	m_exp_b = p;
+}
+
+void Expr::deref_ptr(ExprPtr p) {
+	assert(m_tag == DEREF);
+	m_exp_a = p;
 }
 
 
@@ -58,7 +94,7 @@ bool Expr::isSimple() const {
 // Class BaseExpr
 // ============================================================================
 
-BaseExpr::BaseExpr(Expr *e) {
+BaseExpr::BaseExpr(ExprPtr e) {
 	assert(e != nullptr);
 	m_expr = e;
 }
@@ -73,28 +109,24 @@ BaseExpr::~BaseExpr() {
 // ============================================================================
 
 // Make an integer literal
-Expr* mkIntLit(int lit) {
+ExprPtr mkIntLit(int lit) {
   return new Expr(lit);
 }
 
-// Make a float literal
-Expr* mkFloatLit(float lit) {
-  return new Expr(lit);
-}
 
 // Make a variable
-Expr* mkVar(Var var) {
+ExprPtr mkVar(Var var) {
   return new Expr(var);
 }
 
 // Make an operator application
-Expr* mkApply(Expr* lhs, Op op, Expr* rhs) {
+ExprPtr mkApply(ExprPtr lhs, Op op, ExprPtr rhs) {
   return new Expr(lhs, op, rhs);
 }
 
 
 // Make a pointer dereference
-Expr* mkDeref(Expr* ptr) {
+ExprPtr mkDeref(ExprPtr ptr) {
   return new Expr(ptr);
 }
 

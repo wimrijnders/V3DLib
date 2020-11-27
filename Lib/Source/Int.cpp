@@ -12,10 +12,6 @@ namespace V3DLib {
 
 IntExpr::IntExpr(int x) { m_expr = mkIntLit(x); }
 
-// Helper constructor
-// TODO remove
-inline IntExpr mkIntExpr(Expr* e) { return IntExpr(e); }
-
 // ============================================================================
 // Type 'Int'
 // ============================================================================
@@ -57,7 +53,7 @@ Int::Int(Int const &x) {
 
 // Cast to an IntExpr
 
-Int::operator IntExpr() { return mkIntExpr(m_expr); }
+Int::operator IntExpr() { return IntExpr(m_expr); }
 
 // Assignment
 
@@ -73,8 +69,8 @@ IntExpr Int::operator=(IntExpr rhs)
 
 inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 {
-  Expr* e = mkApply(a.expr(), op, b.expr());
-  return mkIntExpr(e);
+  ExprPtr e = mkApply(a.expr(), op, b.expr());
+  return IntExpr(e);
 }
 
 // ============================================================================
@@ -83,8 +79,8 @@ inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 
 // Read an Int from the UNIFORM FIFO.
 IntExpr getUniformInt() {
-  Expr* e    = new Expr(Var(UNIFORM));
-  return mkIntExpr(e);
+ 	ExprPtr e = std::make_shared<Expr>(Var(UNIFORM));
+  return IntExpr(e);
 }
 
 
@@ -95,37 +91,35 @@ IntExpr getUniformInt() {
  */
 IntExpr index() {
 	if (Platform::instance().compiling_for_vc4()) {
-  	Expr* e    = new Expr(Var(ELEM_NUM));
-	  return mkIntExpr(e);
+  	ExprPtr e = std::make_shared<Expr>(Var(ELEM_NUM));
+	  return IntExpr(e);
 	} else {
-		Var dummy(DUMMY);
-
-		Expr *a = mkVar(dummy);
-  	Expr *e =  mkApply(a, Op(EIDX, INT32), a);
-  	return mkIntExpr(e);
+		ExprPtr a = mkVar(Var(DUMMY));
+  	ExprPtr e = mkApply(a, Op(EIDX, INT32), a);
+  	return IntExpr(e);
 	}
 }
 
 // A vector containing the QPU id
 IntExpr me() {
   // There is reserved var holding the QPU ID.
-  Expr* e    = new Expr(Var(STANDARD, RSV_QPU_ID));
-  return mkIntExpr(e);
+  ExprPtr e = std::make_shared<Expr>(Var(STANDARD, RSV_QPU_ID));
+  return IntExpr(e);
 }
 
 
 // A vector containing the QPU count
 IntExpr numQPUs() {
   // There is reserved var holding the QPU count.
-  Expr* e    = new Expr(Var(STANDARD, RSV_NUM_QPUS));
-  return mkIntExpr(e);
+  ExprPtr e = std::make_shared<Expr>(Var(STANDARD, RSV_NUM_QPUS));
+  return IntExpr(e);
 }
 
 
 // Read vector from VPM
 IntExpr vpmGetInt() {
-  Expr* e    = new Expr(Var(VPM_READ));
-  return mkIntExpr(e);
+  ExprPtr e = std::make_shared<Expr>(Var(VPM_READ));
+  return IntExpr(e);
 }
 
 
@@ -135,7 +129,7 @@ IntExpr rotate(IntExpr a, IntExpr b)
 
 
 FloatExpr rotate(FloatExpr a, IntExpr b) {
-  Expr* e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
+  ExprPtr e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
   return mkFloatExpr(e);
 }
 
@@ -155,15 +149,16 @@ IntExpr operator~(IntExpr a) { return mkIntApply(a, Op(BNOT, INT32), a); }
 IntExpr shr(IntExpr a, IntExpr b) { return mkIntApply(a, Op(USHR, INT32), b); }
 IntExpr ror(IntExpr a, IntExpr b) { return mkIntApply(a, Op(ROR, INT32), b); }
 
+
 // Conversion to Int
 IntExpr toInt(FloatExpr a) {
-  Expr* e = mkApply(a.expr(), Op(FtoI, INT32), mkIntLit(0));
-  return mkIntExpr(e);
+  ExprPtr e = mkApply(a.expr(), Op(FtoI, INT32), mkIntLit(0));
+  return IntExpr(e);
 }
 
 // Conversion to Float
 FloatExpr toFloat(IntExpr a) {
-  Expr* e = mkApply(a.expr(), Op(ItoF, FLOAT), mkIntLit(0));
+  ExprPtr e = mkApply(a.expr(), Op(ItoF, FLOAT), mkIntLit(0));
   return mkFloatExpr(e);
 }
 

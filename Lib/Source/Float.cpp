@@ -8,7 +8,7 @@ namespace V3DLib {
 // ============================================================================
 
 FloatExpr::FloatExpr(float x) {
-	m_expr = mkFloatLit(x);
+	m_expr = std::make_shared<Expr>(x);
 }
 
 
@@ -25,7 +25,8 @@ Float::Float() {
 Float::Float(float x) {
   Var v  = freshVar();
   m_expr = mkVar(v);
-  assign(m_expr, mkFloatLit(x));
+	auto a = std::make_shared<Expr>(x);
+  assign(m_expr, a);
 }
 
 
@@ -38,13 +39,13 @@ Float::Float(FloatExpr e) {
 
 // Copy constructors
 
-Float::Float(Float& x) {
+Float::Float(Float &x) {
   Var v    = freshVar();
   m_expr = mkVar(v);
   assign(m_expr, x.expr());
 }
 
-Float::Float(const Float& x) {
+Float::Float(Float const &x) {
   Var v    = freshVar();
   m_expr = mkVar(v);
   assign(m_expr, x.expr());
@@ -57,7 +58,7 @@ Float::operator FloatExpr() { return mkFloatExpr(m_expr); }
 
 // Assignment
 
-Float& Float::operator=(Float& rhs) {
+Float& Float::operator=(Float &rhs) {
 	assign(m_expr, rhs.expr());
 	return rhs;
 }
@@ -83,14 +84,14 @@ inline FloatExpr mkFloatApply(FloatExpr a,Op op,FloatExpr b) {
 
 // Read an Float from the UNIFORM FIFO.
 FloatExpr getUniformFloat() {
-  Expr* e    = new Expr(Var(UNIFORM));
+  ExprPtr e    = new Expr(Var(UNIFORM));
   return mkFloatExpr(e);
 }
 
 
 // Read vector from VPM
 FloatExpr vpmGetFloat() {
-  Expr* e    = new Expr(Var(VPM_READ));
+  ExprPtr e = new Expr(Var(VPM_READ));
   return mkFloatExpr(e);
 }
 

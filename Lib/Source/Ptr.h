@@ -14,7 +14,7 @@ namespace V3DLib {
   //   error: there are no arguments to ‘assign’ that depend on a template parameter,
   //          so a declaration of ‘assign’ must be available [-fpermissive]
   //          
-  void assign(Expr* lhs, Expr* rhs);
+  void assign(ExprPtr lhs, ExprPtr rhs);
 
 
 // ============================================================================
@@ -25,7 +25,7 @@ namespace V3DLib {
 // RHS of assignment statements.
 template <typename T>
 struct PtrExpr : public BaseExpr {
-	PtrExpr(Expr *e) : BaseExpr(e) {}
+	PtrExpr(ExprPtr e) : BaseExpr(e) {}
 
 
 	/**
@@ -63,12 +63,12 @@ struct Ptr : public BaseExpr {
 
   // Assignment
   Ptr<T>& operator=(Ptr<T>& rhs) {
-    assign(this->expr, rhs.expr);
+    assign(expr, rhs.expr);
     return rhs;
   }
 
   PtrExpr<T> operator=(PtrExpr<T> rhs) {
-    assign(this->expr(), rhs.expr());
+    assign(expr(), rhs.expr());
     return rhs;
   }
 
@@ -85,7 +85,7 @@ struct Ptr : public BaseExpr {
   // Array index
   T operator[](IntExpr index) {
 		breakpoint
-    Expr *e = mkDeref(mkApply(expr(), Op(ADD, INT32),
+    ExprPtr e = mkDeref(mkApply(expr(), Op(ADD, INT32),
                 mkApply(index.expr(), Op(SHL, INT32), mkIntLit(2))));
     return T(e);
   }
@@ -96,20 +96,23 @@ struct Ptr : public BaseExpr {
 // Specific operations
 // ============================================================================
 
-template <typename T> inline PtrExpr<T> getUniformPtr() {
-  Expr *e = new Expr(Var(UNIFORM));
+template <typename T>
+inline PtrExpr<T> getUniformPtr() {
+  ExprPtr e = std::make_shared<Expr>(Var(UNIFORM));
   return PtrExpr<T>(e);
 }
 
 
-template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, int b) {
-  Expr* e = mkApply(a.expr(), Op(ADD, INT32), mkIntLit(4*b));
+template <typename T>
+inline PtrExpr<T> operator+(PtrExpr<T> a, int b) {
+  ExprPtr e = mkApply(a.expr(), Op(ADD, INT32), mkIntLit(4*b));
   return PtrExpr<T>(e);
 }
 
 
-template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, int b) {
-  Expr* e = mkApply(a.expr(), Op(ADD, INT32), mkIntLit(4*b));
+template <typename T>
+inline PtrExpr<T> operator+(Ptr<T> &a, int b) {
+  ExprPtr e = mkApply(a.expr(), Op(ADD, INT32), mkIntLit(4*b));
   return PtrExpr<T>(e);
 }
 
@@ -119,17 +122,17 @@ template <typename T> inline PtrExpr<T> operator+=(Ptr<T> &a, int b) {
 }
 
 template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, IntExpr b) {
-  Expr* e = mkApply(a.expr(), Op(ADD, INT32), (b << 2).expr());
+  ExprPtr e = mkApply(a.expr(), Op(ADD, INT32), (b << 2).expr());
   return PtrExpr<T>(e);
 }
 
 template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, IntExpr b) {
-  Expr* e = mkApply(a.expr(), Op(ADD, INT32), (b << 2).expr());
+  ExprPtr e = mkApply(a.expr(), Op(ADD, INT32), (b << 2).expr());
   return PtrExpr<T>(e);
 }
 
 template <typename T> inline PtrExpr<T> operator-(Ptr<T> &a, IntExpr b) {
-  Expr* e = mkApply(a.expr(), Op(SUB, INT32), (b << 2).expr());
+  ExprPtr e = mkApply(a.expr(), Op(SUB, INT32), (b << 2).expr());
   return PtrExpr<T>(e);
 }
 

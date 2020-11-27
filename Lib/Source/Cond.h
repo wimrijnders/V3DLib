@@ -24,63 +24,30 @@ struct BoolExpr {
   BoolExpr(BExpr* b) { bexpr = b; }
 };
 
-// ============================================================================
-// Generic 'Int' comparison
-// ============================================================================
-
-inline BoolExpr mkIntCmp(IntExpr a, CmpOp op, IntExpr b)
-  { return BoolExpr(mkCmp(a.expr(), op, b.expr())); }
 
 // ============================================================================
 // Specific 'Int' comparisons
 // ============================================================================
 
-inline BoolExpr operator==(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, CmpOp(EQ, INT32), b); }
+BoolExpr operator==(IntExpr a, IntExpr b);
+BoolExpr operator!=(IntExpr a, IntExpr b);
+BoolExpr operator<(IntExpr a, IntExpr b);
+BoolExpr operator<=(IntExpr a, IntExpr b);
+BoolExpr operator>(IntExpr a, IntExpr b);
+BoolExpr operator>=(IntExpr a, IntExpr b);
 
-inline BoolExpr operator!=(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, CmpOp(NEQ, INT32), b); }
-
-inline BoolExpr operator<(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, CmpOp(LT, INT32), b); }
-
-inline BoolExpr operator<=(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, CmpOp(LE, INT32), b); }
-
-inline BoolExpr operator>(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, CmpOp(GT, INT32), b); }
-
-inline BoolExpr operator>=(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, CmpOp(GE, INT32), b); }
-
-// ============================================================================
-// Generic 'Float' comparison
-// ============================================================================
-
-inline BoolExpr mkFloatCmp(FloatExpr a, CmpOp op, FloatExpr b)
-  { return BoolExpr(mkCmp(a.expr(), op, b.expr())); }
 
 // ============================================================================
 // Specific 'Float' comparisons
 // ============================================================================
 
-inline BoolExpr operator==(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, CmpOp(EQ, FLOAT), b); }
+BoolExpr operator==(FloatExpr a, FloatExpr b);
+BoolExpr operator!=(FloatExpr a, FloatExpr b);
+BoolExpr operator<(FloatExpr a, FloatExpr b);
+BoolExpr operator<=(FloatExpr a, FloatExpr b);
+BoolExpr operator>(FloatExpr a, FloatExpr b);
+BoolExpr operator>=(FloatExpr a, FloatExpr b);
 
-inline BoolExpr operator!=(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, CmpOp(NEQ, FLOAT), b); }
-
-inline BoolExpr operator<(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, CmpOp(LT, FLOAT), b); }
-
-inline BoolExpr operator<=(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, CmpOp(LE, FLOAT), b); }
-
-inline BoolExpr operator>(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, CmpOp(GT, FLOAT), b); }
-
-inline BoolExpr operator>=(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, CmpOp(GE, FLOAT), b); }
 
 // ============================================================================
 // Boolean operators

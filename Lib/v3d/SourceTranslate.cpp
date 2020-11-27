@@ -35,10 +35,10 @@ namespace v3d {
 /**
  * Case: *v := rhs where v is a var and rhs is a var
  */
-bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) {
+bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, ExprPtr rhs) {
 	using namespace V3DLib::Target::instr;
 	assert(seq != nullptr);
-	assert(rhs != nullptr);
+	assert(rhs.get() != nullptr);
 
 	Reg srcAddr = srcReg(rhs->var);
 	Reg srcData = srcReg(lhs.deref.ptr->var);

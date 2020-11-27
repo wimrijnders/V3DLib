@@ -29,8 +29,7 @@ const char* cmpOpToString(CmpOp op)
 // Expressions
 // ============================================================================
 
-void pretty(FILE *f, Expr* e)
-{
+void pretty(FILE *f, ExprPtr e) {
   assert(f != nullptr);
   if (e == NULL) return;
 
@@ -70,14 +69,14 @@ void pretty(FILE *f, Expr* e)
       } else if (e->apply.op.isUnary()) {
         fprintf(f, "(");
         fprintf(f, "%s", e->apply.op.to_string());
-        pretty(f, e->apply.lhs);
+        pretty(f, e->apply_lhs());
         fprintf(f, ")");
       }
       else {
         fprintf(f, "(");
-        pretty(f, e->apply.lhs);
+        pretty(f, e->apply_lhs());
         fprintf(f, "%s", e->apply.op.to_string());
-        pretty(f, e->apply.rhs);
+        pretty(f, e->apply_rhs());
         fprintf(f, ")");
       }
 		}
@@ -86,7 +85,7 @@ void pretty(FILE *f, Expr* e)
     // Dereference
     case DEREF:
       fprintf(f, "*");
-      pretty(f, e->deref.ptr);
+      pretty(f, e->deref_ptr());
       break;
 
   }
@@ -100,7 +99,7 @@ void pretty(FILE *f, BExpr* b) {
   assert(f != nullptr);
   if (b == nullptr) return;
 
-  switch (b->tag) {
+  switch (b->tag()) {
     // Negation
     case NOT:
       fprintf(f, "!");
@@ -127,9 +126,9 @@ void pretty(FILE *f, BExpr* b) {
 
     // Comparison
     case CMP:
-      pretty(f, b->cmp.lhs);
+      pretty(f, b->cmp_lhs());
       fprintf(f, "%s", cmpOpToString(b->cmp.op));
-      pretty(f, b->cmp.rhs);
+      pretty(f, b->cmp_rhs());
       break;
   }
 }
@@ -241,12 +240,12 @@ void pretty(FILE *f, int indent, Stmt* s)
     case PRINT:
       indentBy(f, indent);
       fprintf(f, "Print (");
-      if (s->print.tag == PRINT_STR) {
+      if (s->print.tag() == PRINT_STR) {
         // Ideally would print escaped string here
-        fprintf(f, "\"%s\"", s->print.str);
+        fprintf(f, "\"%s\"", s->print.str());
       }
       else
-        pretty(f, s->print.expr);
+        pretty(f, s->print.expr());
       fprintf(f, ")\n");
       break;
 

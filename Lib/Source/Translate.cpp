@@ -63,7 +63,7 @@ ALUOp opcode(Op op) {
 /**
  * Translate the argument of an operator (either a variable or a small imm)
  */
-RegOrImm operand(Expr* e) {
+RegOrImm operand(ExprPtr e) {
   RegOrImm x;
 
   if (e->tag() == VAR) {
@@ -89,7 +89,7 @@ RegOrImm operand(Expr* e) {
  * Translate an expression to a simple expression, generating
  * instructions along the way.
  */
-Expr *simplify(Seq<Instr>* seq, Expr* e) {
+ExprPtr simplify(Seq<Instr>* seq, ExprPtr e) {
   if (e->isSimple()) {
 		return e;
 	}
@@ -109,7 +109,7 @@ Expr *simplify(Seq<Instr>* seq, Expr* e) {
  * @param lhsExpr  Expression on left-hand side
  * @param rhs      Expression on right-hand side
  */
-void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
+void assign(Seq<Instr>* seq, ExprPtr lhsExpr, ExprPtr rhs) {
   Expr lhs = *lhsExpr;
 
   // -----------------------------------------------------------
@@ -123,9 +123,10 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
   // ---------------------------------------------------------
   // Case: *lhs := rhs where lhs is not a var or rhs not a var
   // ---------------------------------------------------------
-  if (lhs.tag() == DEREF && (lhs.deref.ptr->tag() != VAR || rhs->tag() != VAR)) {
-    assert(!lhs.deref.ptr->isLit());
-    lhs.deref.ptr = simplify(seq, lhs.deref.ptr);
+  if (lhs.tag() == DEREF && (lhs.deref_ptr()->tag() != VAR || rhs->tag() != VAR)) {
+    assert(!lhs.deref_ptr()->isLit());
+		breakpoint  // TODO check that following asignment works
+    lhs.deref_ptr() = simplify(seq, lhs.deref_ptr());
     rhs = putInVar(seq, rhs);
   }
 
@@ -135,7 +136,7 @@ void assign(Seq<Instr>* seq, Expr *lhsExpr, Expr *rhs) {
 
 	// Strictly speaking, the two VAR tests are not necessary; it is the only possible case
 	// (According to previous code, that is)
-  bool handle_case = (lhs.tag() == DEREF && (lhs.deref.ptr->tag() == VAR || rhs->tag() == VAR));
+  bool handle_case = (lhs.tag() == DEREF && (lhs.deref_ptr()->tag() == VAR || rhs->tag() == VAR));
 	if (handle_case) {
 		getSourceTranslate().deref_var_var(seq, lhs, rhs);
 		return;
@@ -274,12 +275,12 @@ AssignCond boolAnd(Seq<Instr> *seq, AssignCond condA, Var condVarA, AssignCond c
 
 AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
   BExpr b = *bexpr;
-  assert(b.tag == CMP);
+  assert(b.tag() == CMP);
 
 	auto cmp_swap_leftright = [] (BExpr &b) {
-    Expr *tmp   = b.cmp.lhs;
-    b.cmp.lhs   = b.cmp.rhs;
-    b.cmp.rhs   = tmp;
+    auto tmp   = b.cmp_lhs();
+    b.cmp_lhs(b.cmp_rhs());
+    b.cmp_rhs(tmp);
 	};
 
 
@@ -293,18 +294,18 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
     b.cmp.op.op = GE;
   }
 
- 	if (!b.cmp.lhs->isSimple()) {  // 'x op y', where x is not simple
-    b.cmp.lhs = simplify(seq, b.cmp.lhs);
+ 	if (!b.cmp_lhs()->isSimple()) {  // 'x op y', where x is not simple
+    b.cmp_lhs(simplify(seq, b.cmp_lhs()));
   }
 
- 	if (!b.cmp.rhs->isSimple()) {  // 'x op y', where y is not simple
-    b.cmp.rhs = simplify(seq, b.cmp.rhs);
+ 	if (!b.cmp_rhs()->isSimple()) {  // 'x op y', where y is not simple
+    b.cmp_rhs(simplify(seq, b.cmp_rhs()));
   }
 
- 	if (b.cmp.lhs->isLit() && b.cmp.rhs->isLit()) {  // 'x op y', where x and y are both literals
+ 	if (b.cmp_rhs()->isLit() && b.cmp_rhs()->isLit()) {  // 'x op y', where x and y are both literals
     Var tmpVar = freshVar();
-    varAssign(seq, tmpVar, b.cmp.lhs);
-    b.cmp.lhs = mkVar(tmpVar);
+    varAssign(seq, tmpVar, b.cmp_lhs());
+    b.cmp_lhs(mkVar(tmpVar));
   }
 
 
@@ -318,9 +319,9 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 	Instr instr(ALU);
 	instr.ALU.setCond  = SetCond(b.cmp.op);  // For v3d
 	instr.ALU.dest     = dstReg(v);
-	instr.ALU.srcA     = operand(b.cmp.lhs);
+	instr.ALU.srcA     = operand(b.cmp_lhs());
 	instr.ALU.op       = opcode(op);
-	instr.ALU.srcB     = operand(b.cmp.rhs);
+	instr.ALU.srcB     = operand(b.cmp_rhs());
 
 	*seq << instr;
 	return AssignCond(b.cmp.op);
@@ -341,7 +342,7 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
   BExpr b = *bexpr;
 
-	switch (b.tag) {
+	switch (b.tag()) {
 		case CMP:
 			return cmpExp(seq, bexpr, v);
 		case NOT: {            // '!b', where b is a boolean expression
@@ -474,16 +475,16 @@ void printStmt(Seq<Instr> &seq, PrintStmt s) {
   Instr instr;
 
 	auto expr_to_reg = [&seq] (PrintStmt const &s) -> Reg {
-		if (s.expr->tag() == VAR) {
-   	  return srcReg(s.expr->var);
+		if (s.expr()->tag() == VAR) {
+   	  return srcReg(s.expr()->var);
 		} else {
       Var tmpVar = freshVar();
- 	    varAssign(&seq, tmpVar, s.expr);
+ 	    varAssign(&seq, tmpVar, s.expr());
    	  return srcReg(tmpVar);
 		}
 	};
 
-  switch (s.tag) {
+  switch (s.tag()) {
     case PRINT_INT:
       instr.tag = PRI;
    	  instr.PRI = expr_to_reg(s);
@@ -494,7 +495,7 @@ void printStmt(Seq<Instr> &seq, PrintStmt s) {
     	break;
     case PRINT_STR:
       instr.tag = PRS;
-      instr.PRS = s.str;
+      instr.PRS = s.str();
     break;
 		default:
 			assert(false);
@@ -505,7 +506,7 @@ void printStmt(Seq<Instr> &seq, PrintStmt s) {
 }
 
 
-Instr loadReceive(Expr* dest) {
+Instr loadReceive(ExprPtr dest) {
 	assert(dest->tag() == VAR);
 
   Instr instr(RECV);
@@ -667,7 +668,7 @@ void insertInitBlock(Seq<Instr> &code) {
  * @param v     Variable on LHS
  * @param expr  Expression on RHS
  */
-void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
+void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, ExprPtr expr) {
 	using namespace V3DLib::Target::instr;
   Expr e = *expr;
 
@@ -682,31 +683,31 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
     	*seq << li(v, e.floatLit).cond(cond);
     	break;
 		case APPLY: {                                                 // 'v := x op y'
-			if (!e.apply.lhs->isSimple() || !e.apply.rhs->isSimple()) { // x or y are not simple
-				e.apply.lhs = simplify(seq, e.apply.lhs);
-				e.apply.rhs = simplify(seq, e.apply.rhs);
+			if (!e.apply_lhs()->isSimple() || !e.apply_rhs()->isSimple()) { // x or y are not simple
+				e.apply_lhs(simplify(seq, e.apply_lhs()));
+				e.apply_rhs(simplify(seq, e.apply_rhs()));
 			}
 
-			if (e.apply.lhs->isLit() && e.apply.rhs->isLit()) {             // x and y are both literals
+			if (e.apply_lhs()->isLit() && e.apply_rhs()->isLit()) {             // x and y are both literals
 				Var tmpVar = freshVar();
-				varAssign(seq, cond, tmpVar, e.apply.lhs);
-				e.apply.lhs = mkVar(tmpVar);
+				varAssign(seq, cond, tmpVar, e.apply_lhs());
+				e.apply_lhs(mkVar(tmpVar));
 			}
 			                                                            // x and y are simple
 			Instr instr(ALU);
 			instr.ALU.cond       = cond;
 			instr.ALU.dest       = dstReg(v);
-			instr.ALU.srcA       = operand(e.apply.lhs);
+			instr.ALU.srcA       = operand(e.apply_lhs());
 			instr.ALU.op         = opcode(e.apply.op);
-			instr.ALU.srcB       = operand(e.apply.rhs);
+			instr.ALU.srcB       = operand(e.apply_rhs());
 
 			*seq << instr;
 		}
 		break;
 		case DEREF:                                                    // 'v := *w'
-			if (e.deref.ptr->tag() != VAR) {                               // w is not a variable
-				assert(!e.deref.ptr->isLit());
-				e.deref.ptr = simplify(seq, e.deref.ptr);
+			if (e.deref_ptr()->tag() != VAR) {                               // w is not a variable
+				assert(!e.deref_ptr()->isLit());
+				e.deref_ptr(simplify(seq, e.deref_ptr()));
 			}
   		                                                             // w is a variable
 			//
@@ -724,8 +725,8 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr *expr) {
 }
 
 
-void varAssign(Seq<Instr>* seq, Var v, Expr* expr) {
-	varAssign(seq, always, v, expr);  // TODO: For some reason, always *must* be passed in.
+void varAssign(Seq<Instr>* seq, Var v, ExprPtr expr) {
+	varAssign(seq, always, v, expr);  // TODO: For some reason, `always` *must* be passed in.
 	                                  //       Overloaded call generates segfault
 }
 
@@ -733,7 +734,7 @@ void varAssign(Seq<Instr>* seq, Var v, Expr* expr) {
 /**
  * Similar to 'simplify' but ensure that the result is a variable.
  */
-Expr* putInVar(Seq<Instr>* seq, Expr* e) {
+ExprPtr putInVar(Seq<Instr>* seq, ExprPtr e) {
 	if (e->tag() == VAR) {
 		return e;
 	}
