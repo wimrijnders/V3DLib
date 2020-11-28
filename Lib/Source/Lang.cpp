@@ -32,8 +32,7 @@ void If_(Cond c) {
   stmtStack().push(mkSkip());
 }
 
-void If_(BoolExpr b)
-{
+void If_(BoolExpr b) {
   If_(any(b));
 }
 
@@ -41,8 +40,7 @@ void If_(BoolExpr b)
 // 'Else' token
 //=============================================================================
 
-void Else_()
-{
+void Else_() {
   int ok = 0;
   if (controlStack.size() > 0) {
     Stmt* s = controlStack.ttop();
@@ -68,8 +66,7 @@ void Else_()
 // 'End' token
 //=============================================================================
 
-void End_()
-{
+void End_() {
   int ok = 0;
   if (controlStack.size() > 0) {
     Stmt* s = controlStack.ttop();
@@ -118,15 +115,13 @@ void End_()
 // 'While' token
 //=============================================================================
 
-void While_(Cond c)
-{
+void While_(Cond c) {
   Stmt* s = mkWhile(c.cexpr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
 
-void While_(BoolExpr b)
-{
+void While_(BoolExpr b) {
   While_(any(b));
 }
 
@@ -134,8 +129,7 @@ void While_(BoolExpr b)
 // 'Where' token
 //=============================================================================
 
-void Where__(BExpr* b)
-{
+void Where__(BExpr* b) {
   Stmt* s = mkWhere(b, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
@@ -145,8 +139,7 @@ void Where__(BExpr* b)
 // 'For' token
 //=============================================================================
 
-void For_(Cond c)
-{
+void For_(Cond c) {
   Stmt* s = mkFor(c.cexpr, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
@@ -175,8 +168,7 @@ breakpoint
 
 
 void Print(IntExpr x) {
-  Stmt *s = Stmt::create(PRINT);
-  s->print.expr();
+  Stmt *s = Stmt::create(PRINT, x.expr(), nullptr);
   stmtStack().append(s);
 }
 

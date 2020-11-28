@@ -11,11 +11,12 @@ void storeExpr(Expr::Ptr e0, Expr::Ptr e1) {
 
 }  // anon namespace
 
+
 void receiveExpr(Expr::Ptr e) {
-  Stmt* s = Stmt::create(LOAD_RECEIVE);
-  s->loadDest = e;
-  stmtStack().append(s);
+  Stmt* s = Stmt::create(LOAD_RECEIVE, e, nullptr);
+  stmtStack() << s;
 }
+
 
 void receive(Int &dest)   { receiveExpr(dest.expr()); }
 void receive(Float &dest) { receiveExpr(dest.expr()); }

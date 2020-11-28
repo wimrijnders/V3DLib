@@ -334,12 +334,11 @@ bool evalCond(CoreState* s, CExpr* e)
 	return false;
 }
 
-// ============================================================================
-// Assign to a variable
-// ============================================================================
 
-void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
-{
+/**
+ * Assign to a variable
+ */
+void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
   switch (v.tag()) {
     // Normal variable
     case STANDARD:
@@ -376,10 +375,10 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x)
   assert(false);
 }
 
-// ============================================================================
-// Execute assignment
-// ============================================================================
 
+/**
+ * Execute assignment
+ */
 void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
   // Evaluate RHS
   Vec val = eval(s, rhs);
@@ -388,20 +387,22 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
     // Variable
     case VAR:
       assignToVar(s, cond, lhs->var, val);
-      return;
+      break;
 
     // Dereferenced pointer
 		// Comparable to execStoreRequest()
     case DEREF: {
       Vec index = eval(s, lhs->deref_ptr());
 			storeToHeap(s, index, val);
-      return;
     }
-  }
+    break;
 
-  // Unreachable
-  assert(false);
+		default:
+  		assert(false);
+			break;
+  }
 }
+
 
 // ============================================================================
 // Condition vector auxiliaries
@@ -455,11 +456,11 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
 
     // Assignment
     case ASSIGN:
-      if (stmt->assign.lhs->tag() != VAR) {
+      if (stmt->assign_lhs()->tag() != VAR) {
         printf("V3DLib: only var assignments permitted in 'where'\n");
         assert(false);
       }
-      execAssign(s, cond, stmt->assign.lhs, stmt->assign.rhs);
+      execAssign(s, cond, stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
     // Nested where
@@ -480,26 +481,25 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
 // Execute print statement
 // ============================================================================
 
-void execPrint(CoreState* s, PrintStmt p)
-{
-  switch (p.tag()) {
+void execPrint(CoreState* s, Stmt *stmt) {
+  switch (stmt->print.tag()) {
     // Integer
     case PRINT_INT: {
-      Vec x = eval(s, p.expr());
+      Vec x = eval(s, stmt->print_expr());
       printIntVec(s->output, x);
       return;
     }
 
     // Float
     case PRINT_FLOAT: {
-      Vec x = eval(s, p.expr());
+      Vec x = eval(s, stmt->print_expr());
       printFloatVec(s->output, x);
       return;
     }
 
     // String
     case PRINT_STR:
-      emitStr(s->output, p.str());
+      emitStr(s->output, stmt->print.str());
       return;
   }
 }
@@ -556,7 +556,7 @@ void exec(InterpreterState* state, CoreState* s)
 
     // Assignment
     case ASSIGN:
-      execAssign(s, vecAlways(), stmt->assign.lhs, stmt->assign.rhs);
+      execAssign(s, vecAlways(), stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
     // Sequential composition
@@ -591,27 +591,27 @@ void exec(InterpreterState* state, CoreState* s)
 
     // Print statement
     case PRINT:
-      execPrint(s, stmt->print);
+      execPrint(s, stmt);
       return;
 
     // Set read stride
     case SET_READ_STRIDE:
-      execSetStride(s, SET_READ_STRIDE, stmt->stride);
+      execSetStride(s, SET_READ_STRIDE, stmt->stride());
       return;
 
     // Set write stride
     case SET_WRITE_STRIDE:
-      execSetStride(s, SET_WRITE_STRIDE, stmt->stride);
+      execSetStride(s, SET_WRITE_STRIDE, stmt->stride());
       return;
 
     // Load receive
     case LOAD_RECEIVE:
-      execLoadReceive(s, stmt->loadDest);
+      execLoadReceive(s, stmt->loadDest());
       return;
 
     // Store request
     case STORE_REQUEST:
-      execStoreRequest(s, stmt->storeReq.data, stmt->storeReq.addr);
+      execStoreRequest(s, stmt->storeReq_data(), stmt->storeReq_addr());
       return;
 
     // Host IRQ

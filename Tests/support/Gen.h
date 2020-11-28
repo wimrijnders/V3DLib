@@ -4,11 +4,14 @@
 #define _V3DLIB_GEN_H_
 
 #include "Common/Seq.h"
-#include "Source/Syntax.h"
 
 namespace V3DLib {
 
-// Options for the program generator
+class Stmt;
+
+/**
+ *  Options for the program generator
+ */
 struct GenOptions {
   // Limit on depth of nesting of statements and expressions
   int depth;
@@ -50,7 +53,6 @@ struct GenOptions {
 
 // Generate random literals
 int genIntLit();
-float genFloatLit();
 
 // Generate a random source program
 Stmt* progGen(GenOptions* opts, int* numVars);

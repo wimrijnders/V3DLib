@@ -18,16 +18,14 @@ enum PrintTag { PRINT_INT, PRINT_FLOAT, PRINT_STR };
 
 struct PrintStmt {
 	PrintTag tag() const { return m_tag;}
+	void tag(PrintTag tag) { m_tag = tag;}
 
-	Expr::Ptr expr() const;
 	char const *str() const;
 	void str(char const *str);
-	void expr(IntExpr x);
 
 private:
   PrintTag    m_tag;
 	const char *m_str;
-	Expr::Ptr   m_expr;
 };
 
 
@@ -61,8 +59,23 @@ enum StmtTag {
 	DMA_START_WRITE
 };
 
+
 struct Stmt : public InstructionComment {
 	~Stmt();
+
+	Expr::Ptr assign_lhs();
+	Expr::Ptr assign_rhs();
+	Expr::Ptr stride();
+	Expr::Ptr loadDest();
+	Expr::Ptr storeReq_data();
+	Expr::Ptr storeReq_addr();
+	Expr::Ptr setupVPMRead_addr();
+	Expr::Ptr setupVPMWrite_addr();
+	Expr::Ptr setupDMARead_vpmAddr();
+	Expr::Ptr setupDMAWrite_vpmAddr();
+	Expr::Ptr startDMARead();
+	Expr::Ptr startDMAWrite();
+	Expr::Ptr print_expr();
 
 	static Stmt *create(StmtTag in_tag);
 	static Stmt *create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);
@@ -72,9 +85,6 @@ struct Stmt : public InstructionComment {
   StmtTag tag;
 
   union {
-    // Assignment
-    struct { Expr::Ptr lhs; Expr::Ptr rhs; } assign;
-
     // Sequential composition
     struct { Stmt* s0; Stmt* s1; } seq;
 
@@ -93,27 +103,17 @@ struct Stmt : public InstructionComment {
     // Print
     PrintStmt print;
 
-    // Set stride
-    Expr::Ptr stride;
-
-    // Load receive destination
-    Expr::Ptr loadDest;
-
-    // Store request
-    struct { Expr::Ptr data; Expr::Ptr addr; } storeReq;
-
     // Semaphore id for increment / decrement
     int semaId;
 
     // VPM read setup
-    struct { int numVecs; Expr::Ptr addr; int hor; int stride; } setupVPMRead;
+    struct { int numVecs; int hor; int stride; } setupVPMRead;
 
     // VPM write setup
-    struct { Expr* addr; int hor; int stride; } setupVPMWrite;
+    struct { int hor; int stride; } setupVPMWrite;
 
     // DMA read setup
     struct {
-			Expr::Ptr vpmAddr;
 			int numRows;
 			int rowLen;
 			int hor;
@@ -122,21 +122,17 @@ struct Stmt : public InstructionComment {
 
     // DMA write setup
     struct {
-			Expr::Ptr vpmAddr;
 			int numRows;
 			int rowLen;
 			int hor;
 		} setupDMAWrite;
-
-    // DMA start read
-    Expr::Ptr startDMARead;
-
-    // DMA start write
-    Expr::Ptr startDMAWrite;
   };
 
 private:
 	void init(StmtTag in_tag);
+
+	Expr::Ptr m_exp_a;
+	Expr::Ptr m_exp_b;
 };
 
 

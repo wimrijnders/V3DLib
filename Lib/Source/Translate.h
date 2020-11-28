@@ -1,5 +1,5 @@
-#ifndef _V3DLIB_TRANSLATE_H_
-#define _V3DLIB_TRANSLATE_H_
+#ifndef _V3DLIB_SOURCE_TRANSLATE_H_
+#define _V3DLIB_SOURCE_TRANSLATE_H_
 #include "Common/Seq.h"
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
@@ -14,10 +14,10 @@ void loadStorePass(Seq<Instr> &instrs);
 //
 // Following exposed for source translates.
 //
-void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr::Ptr expr);
-void varAssign(Seq<Instr>* seq, Var v, Expr::Ptr expr);
+Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr);
+Seq<Instr> varAssign(Var v, Expr::Ptr expr);
 Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e);
 
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_TRANSLATE_H_
+#endif  // _V3DLIB_SOURCE_TRANSLATE_H_

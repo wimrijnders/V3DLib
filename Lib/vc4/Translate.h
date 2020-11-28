@@ -5,7 +5,11 @@
 #include "Target/Syntax.h"
 
 namespace V3DLib {
+
+class Stmt;
+
 namespace vc4 {
+
 
 bool stmt(Seq<Instr>* seq, Stmt* s);
 Seq<Instr> StoreRequest(Var addr_var, Var data_var, bool wait = false);

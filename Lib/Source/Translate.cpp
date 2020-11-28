@@ -96,7 +96,7 @@ Expr::Ptr simplify(Seq<Instr>* seq, Expr::Ptr e) {
 	}
 
 	Var tmp = freshVar();
-	varAssign(seq, tmp, e);
+	*seq << varAssign(tmp, e);
 	return mkVar(tmp);
 }
 
@@ -117,7 +117,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   // Case: v := rhs, where v is a variable and rhs an expression
   // -----------------------------------------------------------
   if (lhs.tag() == VAR) {
-    varAssign(seq, lhs.var, rhs);
+    *seq << varAssign(lhs.var, rhs);
     return;
   }
 
@@ -305,7 +305,7 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 
  	if (b.cmp_rhs()->isLit() && b.cmp_rhs()->isLit()) {  // 'x op y', where x and y are both literals
     Var tmpVar = freshVar();
-    varAssign(seq, tmpVar, b.cmp_lhs());
+    *seq << varAssign(tmpVar, b.cmp_lhs());
     b.cmp_lhs(mkVar(tmpVar));
   }
 
@@ -393,7 +393,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign.lhs->tag() == VAR) {
+  if (s->tag == ASSIGN && s->assign_lhs()->tag() == VAR) {
     return;
   }
 
@@ -472,31 +472,31 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
 // Print statements
 // ============================================================================
 
-void printStmt(Seq<Instr> &seq, PrintStmt s) {
+void printStmt(Seq<Instr> &seq, Stmt *stmt) {
   Instr instr;
 
-	auto expr_to_reg = [&seq] (PrintStmt const &s) -> Reg {
-		if (s.expr()->tag() == VAR) {
-   	  return srcReg(s.expr()->var);
+	auto expr_to_reg = [&seq] (Expr::Ptr expr) -> Reg {
+		if (expr ->tag() == VAR) {
+   	  return srcReg(expr->var);
 		} else {
       Var tmpVar = freshVar();
- 	    varAssign(&seq, tmpVar, s.expr());
+ 	    seq << varAssign(tmpVar, expr);
    	  return srcReg(tmpVar);
 		}
 	};
 
-  switch (s.tag()) {
+  switch (stmt->print.tag()) {
     case PRINT_INT:
       instr.tag = PRI;
-   	  instr.PRI = expr_to_reg(s);
+   	  instr.PRI = expr_to_reg(stmt->print_expr());
     	break;
     case PRINT_FLOAT:
       instr.tag = PRF;
-   	  instr.PRI = expr_to_reg(s);
+   	  instr.PRI = expr_to_reg(stmt->print_expr());
     	break;
     case PRINT_STR:
       instr.tag = PRS;
-      instr.PRS = s.str();
+      instr.PRS = stmt->print.str();
     break;
 		default:
 			assert(false);
@@ -574,7 +574,7 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 		case SKIP:
 			break;
 		case ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
-      assign(seq, s->assign.lhs, s->assign.rhs);
+      assign(seq, s->assign_lhs(), s->assign_rhs());
 			break;
     case SEQ:                      // 's0 ; s1', where s1 and s2 are statements
       stmt(seq, s->seq.s0);
@@ -592,10 +592,10 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 			}
 			break;
   	case PRINT:                    // 'print(e)', where e is an expr or a string
-	    printStmt(*seq, s->print);
+	    printStmt(*seq, s);
 			break;
   	case LOAD_RECEIVE:             // 'receive(e)', where e is an expr
-	    *seq << loadReceive(s->loadDest);
+	    *seq << loadReceive(s->loadDest());
 			break;
 		default:
 			// Handle platform-specific instructions
@@ -664,34 +664,36 @@ void insertInitBlock(Seq<Instr> &code) {
  *
  * Translate the conditional assignment of a variable to an expression.
  *
- * @param seq   Target instruction sequence to extend
  * @param cond  Condition on assignment
  * @param v     Variable on LHS
  * @param expr  Expression on RHS
+ *
+ * @return  A sequence of instructions
  */
-void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr::Ptr expr) {
+Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
 	using namespace V3DLib::Target::instr;
+	Seq<Instr> ret;
   Expr e = *expr;
 
 	switch (e.tag()) {
 		case VAR:                                                     // 'v := w', where v and w are variables
-			*seq << mov(v, e.var).cond(cond);
+			ret << mov(v, e.var).cond(cond);
     	break;
 		case INT_LIT:                                                 // 'v := i', where i is an integer literal
-			*seq << li(v, e.intLit).cond(cond);
+			ret << li(v, e.intLit).cond(cond);
     	break;
 		case FLOAT_LIT:                                               // 'v := f', where f is a float literal
-    	*seq << li(v, e.floatLit).cond(cond);
+    	ret << li(v, e.floatLit).cond(cond);
     	break;
 		case APPLY: {                                                 // 'v := x op y'
 			if (!e.apply_lhs()->isSimple() || !e.apply_rhs()->isSimple()) { // x or y are not simple
-				e.apply_lhs(simplify(seq, e.apply_lhs()));
-				e.apply_rhs(simplify(seq, e.apply_rhs()));
+				e.apply_lhs(simplify(&ret, e.apply_lhs()));
+				e.apply_rhs(simplify(&ret, e.apply_rhs()));
 			}
 
 			if (e.apply_lhs()->isLit() && e.apply_rhs()->isLit()) {             // x and y are both literals
 				Var tmpVar = freshVar();
-				varAssign(seq, cond, tmpVar, e.apply_lhs());
+				ret << varAssign(cond, tmpVar, e.apply_lhs());
 				e.apply_lhs(mkVar(tmpVar));
 			}
 			                                                            // x and y are simple
@@ -702,13 +704,13 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr::Ptr expr) {
 			instr.ALU.op         = opcode(e.apply.op);
 			instr.ALU.srcB       = operand(e.apply_rhs());
 
-			*seq << instr;
+			ret << instr;
 		}
 		break;
 		case DEREF:                                                    // 'v := *w'
 			if (e.deref_ptr()->tag() != VAR) {                               // w is not a variable
 				assert(!e.deref_ptr()->isLit());
-				e.deref_ptr(simplify(seq, e.deref_ptr()));
+				e.deref_ptr(simplify(&ret, e.deref_ptr()));
 			}
   		                                                             // w is a variable
 			//
@@ -717,18 +719,20 @@ void varAssign(Seq<Instr> *seq, AssignCond cond, Var v, Expr::Ptr expr) {
 			// trivial to lift these outside the 'where'.
 			//
 			assertq(cond.is_always(), "V3DLib: dereferencing not yet supported inside 'where'");
-			getSourceTranslate().varassign_deref_var(seq, v, e);
+			getSourceTranslate().varassign_deref_var(&ret, v, e);
 			break;
 		default:
 			assertq(false, "This case should not be reachable");
 			break;
 	}
+
+	return ret;
 }
 
 
-void varAssign(Seq<Instr>* seq, Var v, Expr::Ptr expr) {
-	varAssign(seq, always, v, expr);  // TODO: For some reason, `always` *must* be passed in.
-	                                  //       Overloaded call generates segfault
+Seq<Instr> varAssign(Var v, Expr::Ptr expr) {
+	return varAssign(always, v, expr);  // TODO: For some reason, `always` *must* be passed in.
+	                                    //       Overloaded call generates segfault
 }
 
 
@@ -741,7 +745,7 @@ Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
 	}
 
 	Var tmp = freshVar();
-	varAssign(seq, tmp, e);
+	*seq << varAssign(tmp, e);
 	return mkVar(tmp);
 }
 

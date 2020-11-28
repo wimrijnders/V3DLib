@@ -1,7 +1,11 @@
 // A random source-program generator
-
-#include <stdlib.h>
+//
+///////////////////////////////////////////////////////////////////////////////
 #include "Gen.h"
+#include <stdlib.h>
+#include "Source/Syntax.h"
+#include "Source/Stmt.h"
+#include "Source/Cond.h"   // mkCmp()
 
 namespace V3DLib {
 
@@ -36,7 +40,7 @@ int randRange(int min, int max) {
 // Random variables
 // ============================================================================
 
-Expr* pickVar(GenOptions* o, Type t) {
+Expr::Ptr pickVar(GenOptions* o, Type t) {
 	int const QPU_ID_NUM = 2;  // Shift for qpu id and num
 
   int intHigh   = QPU_ID_NUM + o->numIntArgs + o->numIntVars;
@@ -58,7 +62,7 @@ Expr* pickVar(GenOptions* o, Type t) {
 }
 
 
-Expr* genVar(GenOptions* opts, Type t) {
+Expr::Ptr genVar(GenOptions* opts, Type t) {
   // Sometimes pick a QPU special variable (namely ELEM_NUM)
   if (t.tag == INT_TYPE) {
     if (randRange(0, 5) == 0) {
@@ -71,8 +75,18 @@ Expr* genVar(GenOptions* opts, Type t) {
 }
 
 
-Expr* genLVar(GenOptions* opts, Type t) {
+Expr::Ptr genLVar(GenOptions* opts, Type t) {
   return pickVar(opts, t);
+}
+
+
+/**
+ * Generate random float literal
+ */
+float genFloatLit() {
+  float num   = (float) randRange(0, 1000);
+  float denom = (float) randRange(1, 100);
+  return num/denom;
 }
 
 
@@ -81,7 +95,6 @@ Expr* genLVar(GenOptions* opts, Type t) {
 // ============================================================================
 
 Op genOp(GenOptions* opts, Type t) {
-
   switch (t.tag) {
     case INT_TYPE:
     case PTR_TYPE:
@@ -104,14 +117,14 @@ Op genOp(GenOptions* opts, Type t) {
 // Random arithmetic expressions
 // ============================================================================
 
-Expr* genExpr(GenOptions* opts, Type t, int depth) {
+Expr::Ptr genExpr(GenOptions* opts, Type t, int depth) {
   switch (randRange(0, 3)) { 
     // Literal
     case 0: {
       if (t.tag == FLOAT_TYPE)
-        return mkFloatLit(genFloatLit());
+        return Float(genFloatLit()).expr();
       else if (t.tag == INT_TYPE)
-        return mkIntLit(genIntLit());
+        return Int(genIntLit()).expr();
     }
 
     // Dereference
@@ -136,8 +149,8 @@ Expr* genExpr(GenOptions* opts, Type t, int depth) {
           // Generate: *(p+offset) where offset is a bounded expression
           Type intType;
           intType.tag = INT_TYPE;
-          Expr* offset = mkApply(genExpr(opts, intType, depth-1), Op(BAND, INT32), mkIntLit(opts->derefOffsetMask));
-          Expr* ptr    = mkApply(genVar(opts, newType), Op(ADD, INT32), offset);
+          Expr::Ptr offset = mkApply(genExpr(opts, intType, depth-1), Op(BAND, INT32), Int(opts->derefOffsetMask).expr());
+          Expr::Ptr ptr    = mkApply(genVar(opts, newType), Op(ADD, INT32), offset);
           return mkDeref(ptr);
         }
       }
@@ -151,21 +164,21 @@ Expr* genExpr(GenOptions* opts, Type t, int depth) {
             Op op = Op(FtoI, INT32);
             Type floatType;
             floatType.tag = FLOAT_TYPE;
-            Expr* e = genExpr(opts, floatType, depth-1);
+            Expr::Ptr e = genExpr(opts, floatType, depth-1);
             return mkApply(e, op, mkIntLit(0));
           }
           else if (t.tag == FLOAT_TYPE) {
             Op op = Op(ItoF, FLOAT);
             Type intType;
             intType.tag = INT_TYPE;
-            Expr* e = genExpr(opts, intType, depth-1);
+            Expr::Ptr e = genExpr(opts, intType, depth-1);
             return mkApply(e, op, mkIntLit(0));
           }
         }
 
         // Otherwise, generate random operator application
-        Expr* e1 = genExpr(opts, t, depth-1);
-        Expr* e2 = genExpr(opts, t, depth-1);
+        Expr::Ptr e1 = genExpr(opts, t, depth-1);
+        Expr::Ptr e2 = genExpr(opts, t, depth-1);
         return mkApply(e1, genOp(opts, t), e2);
       }
 
@@ -188,17 +201,17 @@ BExpr* genBExpr(GenOptions* opts, int depth) {
     // Negation
     case NOT:
       if (depth > 0)
-        return mkNot(genBExpr(opts, depth-1));
+        return genBExpr(opts, depth-1)->Not();
 
     // Conjunction
     case AND:
       if (depth > 0)
-        return mkAnd(genBExpr(opts, depth-1), genBExpr(opts, depth-1));
+        return genBExpr(opts, depth-1)->And(genBExpr(opts, depth-1));
 
     // Disjunction
     case OR:
       if (depth > 0)
-        return mkOr(genBExpr(opts, depth-1), genBExpr(opts, depth-1));
+        return genBExpr(opts, depth-1)->Or(genBExpr(opts, depth-1));
 
     // Comparison
     case CMP: {
@@ -208,8 +221,7 @@ BExpr* genBExpr(GenOptions* opts, int depth) {
         op.type = FLOAT;
         Type floatType; floatType.tag = FLOAT_TYPE;
         return mkCmp(genExpr(opts, floatType, depth-1), op, genExpr(opts, floatType, depth-1));
-      }
-      else {
+      } else {
         // Integer comparison
         Type intType; intType.tag = INT_TYPE;
         return mkCmp(genExpr(opts, intType, depth-1), op, genExpr(opts, intType, depth-1));
@@ -276,7 +288,7 @@ Type genType(GenOptions* opts, bool allowPointers) {
 // ============================================================================
 
 // Generate left-hand side of assignment statement
-Expr* genLValue(GenOptions* opts, Type t, int depth) {
+Expr::Ptr genLValue(GenOptions* opts, Type t, int depth) {
   // Disallow modification of pointers
   // (that would make automated testing rather tricky)
   assert(t.tag == INT_TYPE || t.tag == FLOAT_TYPE);
@@ -348,10 +360,10 @@ Stmt* genWhile(GenOptions* o, int depth) {
   // Obtain a loop variable
   int firstLoopVar = o->numIntArgs + o->numIntVars;
   Var var(STANDARD, firstLoopVar + (depth-1));
-  Expr* v = mkVar(var);
+  Expr::Ptr v = mkVar(var);
 
   // Create random condition with loop bound
-  BExpr* b = mkAnd(genBExpr(o, depth), mkCmp(v, CmpOp(LT, INT32), mkIntLit(o->loopBound)));
+  BExpr* b = genBExpr(o, depth)->And(mkCmp(v, CmpOp(LT, INT32), mkIntLit(o->loopBound)));
   CExpr* c = randRange(0, 1) == 0 ? mkAny(b) : mkAll(b);
 
   // Initialise loop variable
@@ -445,14 +457,6 @@ int genIntLit() {
 }
 
 
-// Generate random float literal
-float genFloatLit() {
-  float num   = (float) randRange(0, 1000);
-  float denom = (float) randRange(1, 100);
-  return num/denom;
-}
-
-
 // ============================================================================
 // Top-level program generator
 // ============================================================================
@@ -463,12 +467,12 @@ Stmt* progGen(GenOptions* opts, int* numVars) {
   Stmt* post = mkSkip();
 
   // Argument FIFO
-  Expr *fifo = mkVar(Var(UNIFORM));
+  Expr::Ptr fifo = mkVar(Var(UNIFORM));
 
   // Next unused var id
   VarId next = 0;
 
-	auto mkIntVar = [] (VarId val) -> Expr * {
+	auto mkIntVar = [] (VarId val) -> Expr::Ptr {
 		return mkVar(Var(STANDARD, val));
 	};
 
@@ -500,7 +504,7 @@ Stmt* progGen(GenOptions* opts, int* numVars) {
   // Initialise float vars
   for (int i = 0; i < opts->numFloatVars; i++) {
 		auto v = mkIntVar(next++);
-    pre   = mkSeq(pre, mkAssign(v, mkFloatLit(genFloatLit())));
+    pre   = mkSeq(pre, mkAssign(v, Float(genFloatLit()).expr()));
     post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
   }
  

@@ -1,5 +1,6 @@
 #include "KernelDriver.h"
 #include "vc4.h"
+#include "Source/Lang.h"
 #include "Encode.h"
 #include "DMA.h"
 #include "dump_instr.h"

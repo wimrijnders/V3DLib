@@ -1,10 +1,10 @@
 #include "KernelDriver.h"
 #include <iostream>            // cout
 #include "Support/basics.h"
-#include "Source/Syntax.h"     // stmtStack
+#include "Source/StmtStack.h"
 #include "Source/Pretty.h"
 #include "Source/Translate.h"
-#include "Source/Stmt.h"       // initStmt
+#include "Source/Lang.h"       // initStmt
 #include "Target/Satisfy.h"
 #include "Target/RemoveLabels.h"
 #include "SourceTranslate.h"

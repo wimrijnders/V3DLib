@@ -1,7 +1,6 @@
 #ifndef _V3DLIB_SOURCE_COND_H_
 #define _V3DLIB_SOURCE_COND_H_
-
-#include "Source/Int.h"
+#include "Syntax.h"
 
 namespace V3DLib {
 
@@ -24,6 +23,9 @@ struct BoolExpr {
 
   BoolExpr(BExpr* b) { bexpr = b; }
 };
+
+
+BExpr *mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs);
 
 
 // ============================================================================

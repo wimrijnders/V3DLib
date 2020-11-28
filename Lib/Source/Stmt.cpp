@@ -8,28 +8,16 @@ namespace V3DLib {
 // Class PrintStmt
 // ============================================================================
 
-Expr::Ptr PrintStmt::expr() const {
-	assert((m_tag == PRINT_INT || m_tag == PRINT_FLOAT) && m_expr.get() != nullptr);
-	return m_expr;
+char const *PrintStmt::str() const {
+	assert(m_tag == PRINT_STR && m_str != nullptr);
+	return m_str;
 }
-
-
-char const *PrintStmt::str() const { assert(m_tag == PRINT_STR && m_str != nullptr); return m_str; }
 
 
 void PrintStmt::str(char const *str) {
 	assert(m_str == nullptr);
-	assert(m_expr.get() == nullptr);
 	m_tag = PRINT_STR;
 	m_str = str;
-}
-
-
-void PrintStmt::expr(IntExpr x) {
-	assert(m_str == nullptr);
-	assert(m_expr.get() == nullptr);
-	m_tag = PRINT_INT;
-	m_expr = x.expr();
 }
 
 
@@ -47,6 +35,107 @@ void Stmt::init(StmtTag in_tag) {
 	assert(SKIP <= in_tag && in_tag <= DMA_START_WRITE);
 	assertq(tag == SKIP, "Stmt::init(): can't reassign tag once assigned");
 	tag = in_tag;
+}
+
+
+Expr::Ptr Stmt::assign_lhs() {
+	assert(tag == ASSIGN);
+	assert(m_exp_a.get() != nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::assign_rhs() {
+	assert(tag == ASSIGN);
+	assert(m_exp_b.get() != nullptr);
+	return m_exp_b;
+}
+
+
+Expr::Ptr Stmt::stride() {
+	assert(tag == SET_READ_STRIDE || tag == SET_WRITE_STRIDE);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::loadDest() {
+	assert(tag == LOAD_RECEIVE);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::storeReq_data() {
+	assert(tag == STORE_REQUEST);
+	assert(m_exp_a.get() != nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::storeReq_addr() {
+	assert(tag == STORE_REQUEST);
+	assert(m_exp_b.get() != nullptr);
+	return m_exp_b;
+}
+
+
+Expr::Ptr Stmt::setupVPMRead_addr() {
+	assert(tag == SETUP_VPM_READ);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::setupVPMWrite_addr() {
+	assert(tag == SETUP_VPM_WRITE);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::setupDMARead_vpmAddr() {
+	assert(tag == SETUP_DMA_READ);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::setupDMAWrite_vpmAddr() {
+	assert(tag == SETUP_DMA_WRITE);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::startDMARead() {
+	assert(tag == DMA_START_READ);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::startDMAWrite() {
+	assert(tag == DMA_START_WRITE);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
+}
+
+
+Expr::Ptr Stmt::print_expr() {
+	assert(tag == PRINT);
+	assert(print.tag() == PRINT_INT || print.tag() == PRINT_FLOAT);
+	assert(m_exp_a.get() != nullptr);
+	assert(m_exp_b.get() == nullptr);
+	return m_exp_a;
 }
 
 
@@ -90,22 +179,24 @@ Stmt *Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 
 	switch (in_tag) {
 		case ASSIGN:
-			assertq(e0 != nullptr && e1 != nullptr, "");
-			ret->assign.lhs = e0;
-			ret->assign.rhs = e1;
-		break;
 		case STORE_REQUEST:
 			assertq(e0 != nullptr && e1 != nullptr, "");
-  		ret->storeReq.data = e0;
-		  ret->storeReq.addr = e1;
+			ret->m_exp_a = e0;
+			ret->m_exp_b = e0;
 		break;
+
+		case PRINT:
+		case LOAD_RECEIVE:
+		case SET_READ_STRIDE:
+		case SET_WRITE_STRIDE:
+		case SETUP_VPM_READ:
+		case SETUP_VPM_WRITE:
+		case SETUP_DMA_READ:
+		case SETUP_DMA_WRITE:
 		case DMA_START_READ:
-			assertq(e0 != nullptr && e1 == nullptr, "");
-  		ret->startDMARead = e0;
-		break;
 		case DMA_START_WRITE:
 			assertq(e0 != nullptr && e1 == nullptr, "");
-  		ret->startDMAWrite = e0;
+  		ret->m_exp_a = e0;
 		break;
 		default:
 			fatal("This tag not handled yet in create(Expr,Expr)");
@@ -195,8 +286,8 @@ Stmt *mkFor(CExpr *cond, Stmt *inc, Stmt *body) {
 }
 
 Stmt *mkPrint(PrintTag t, Expr::Ptr e) {
-  Stmt *s      = Stmt::create(PRINT, e, nullptr);
-  s->print.tag = t;
+  Stmt *s = Stmt::create(PRINT, e, nullptr);
+  s->print.tag(t);
   return s;
 }
 

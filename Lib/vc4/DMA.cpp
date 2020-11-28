@@ -1,4 +1,5 @@
 #include "DMA.h"
+#include "Source/StmtStack.h"
 
 
 namespace V3DLib {
@@ -9,25 +10,41 @@ namespace  {
 //=============================================================================
 
 Stmt *vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride) {
-  Stmt *s = Stmt::create(SETUP_VPM_READ);
+  Stmt *s = Stmt::create(SETUP_VPM_READ, addr.expr(), nullptr);
   s->setupVPMRead.numVecs = n;
   s->setupVPMRead.stride = stride;
   s->setupVPMRead.hor = hor;
-  s->setupVPMRead.addr = addr.expr();
 
 	return s;
 }
 
 Stmt *vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
-  Stmt *s = Stmt::create(SETUP_VPM_WRITE);
+  Stmt *s = Stmt::create(SETUP_VPM_WRITE, addr.expr(), nullptr);
   s->setupVPMWrite.stride = stride;
   s->setupVPMWrite.hor = hor;
-  s->setupVPMWrite.addr = addr.expr();
 
 	return s;
 }
 
 }  // anon namespace
+
+
+void vpmPutExpr(Expr::Ptr e) {
+  Stmt* s = mkAssign(mkVar(Var(VPM_WRITE)), e);
+  stmtStack().append(s);
+}
+
+
+void dmaStartReadExpr(Expr::Ptr e) {
+  Stmt* s = Stmt::create(DMA_START_READ, e, nullptr);
+  stmtStack().append(s);
+}
+
+
+void dmaStartWriteExpr(Expr::Ptr e) {
+  Stmt* s = Stmt::create(DMA_START_WRITE, e, nullptr);
+  stmtStack().append(s);
+}
 
 
 void vpmSetupRead(Dir d, int n, IntExpr addr, int stride) {
@@ -45,36 +62,31 @@ void vpmSetupWrite(Dir d, IntExpr addr, int stride) {
 // ============================================================================
 
 void dmaSetReadPitch(IntExpr stride) {
-  Stmt *s = Stmt::create(SET_READ_STRIDE);
-  s->stride = stride.expr();
+  Stmt *s = Stmt::create(SET_READ_STRIDE, stride.expr(), nullptr);
   stmtStack() << s;
 }
 
 void dmaSetWriteStride(IntExpr stride) {
-  Stmt *s = Stmt::create(SET_WRITE_STRIDE);
-  s->stride = stride.expr();
-
+  Stmt *s = Stmt::create(SET_WRITE_STRIDE, stride.expr(), nullptr);
   stmtStack() << s;
 }
 
 
 void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr, int rowLen, int vpitch) {
-  Stmt *s = Stmt::create(SETUP_DMA_READ);
+  Stmt *s = Stmt::create(SETUP_DMA_READ, vpmAddr.expr(), nullptr);
   s->setupDMARead.hor = dir == HORIZ ? 1 : 0;
   s->setupDMARead.numRows = numRows;
   s->setupDMARead.rowLen = rowLen;
   s->setupDMARead.vpitch = vpitch;
-  s->setupDMARead.vpmAddr = vpmAddr.expr();
 
   stmtStack() << s;
 }
 
 void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen) {
-  Stmt *s = Stmt::create(SETUP_DMA_WRITE);
+  Stmt *s = Stmt::create(SETUP_DMA_WRITE, vpmAddr.expr(), nullptr);
   s->setupDMAWrite.hor = dir == HORIZ ? 1 : 0;
   s->setupDMAWrite.numRows = numRows;
   s->setupDMAWrite.rowLen = rowLen;
-  s->setupDMAWrite.vpmAddr = vpmAddr.expr();
 
   stmtStack() << s;
 }

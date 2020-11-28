@@ -1,17 +1,20 @@
 #include "SourceTranslate.h"
 #include "Support/basics.h"
 #include "Source/Translate.h"  // srcReg()
+#include "Source/Stmt.h"  // srcReg()
 #include "Target/Liveness.h"
 #include "Target/Subst.h"
 
 namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
 
 namespace {
 
 /**
  * @param seq  list of generated instructions up till now
  */
-void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) {
+void storeRequest(Seq<Instr>* seq, Expr::Ptr data, Expr::Ptr addr) {
 	using namespace V3DLib::Target::instr;
 
   if (addr->tag() != VAR || data->tag() != VAR) {
@@ -35,13 +38,13 @@ namespace v3d {
 /**
  * Case: *v := rhs where v is a var and rhs is a var
  */
-bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, ExprPtr rhs) {
+bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr::Ptr rhs) {
 	using namespace V3DLib::Target::instr;
 	assert(seq != nullptr);
 	assert(rhs.get() != nullptr);
 
 	Reg srcAddr = srcReg(rhs->var);
-	Reg srcData = srcReg(lhs.deref.ptr->var);
+	Reg srcData = srcReg(lhs.deref_ptr()->var);
 
 	if (rhs->var.tag() == ELEM_NUM) {
 		//TODO: is ACC0 safe here?
@@ -69,7 +72,7 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
   Instr ldtmu_r4;
 	ldtmu_r4.tag = TMU0_TO_ACC4;
 
-	Reg src = srcReg(e.deref.ptr->var);
+	Reg src = srcReg(e.deref_ptr()->var);
 	*seq << mov(TMU0_S, src)
 
 	     // TODO: Do we need NOP's here?
@@ -198,7 +201,7 @@ bool SourceTranslate::stmt(Seq<Instr>* seq, Stmt* s) {
   // Case: store(e0, e1) where e1 and e2 are exprs
   // ---------------------------------------------
   if (s->tag == STORE_REQUEST) {
-		storeRequest(seq, s->storeReq.data, s->storeReq.addr);
+		storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
     return true;
   }
 

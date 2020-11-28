@@ -1,13 +1,7 @@
 #include "Cond.h"
-#include "Syntax.h"
 
 namespace V3DLib {
 namespace {
-
-BExpr *mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
-  return new BExpr(lhs, op, rhs);
-}
-
 
 /**
  * Generic 'Float' comparison
@@ -25,6 +19,11 @@ BoolExpr mkIntCmp(IntExpr a, CmpOp op, IntExpr b) {
 }
 
 }  // anon namespace
+
+
+BExpr *mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
+  return new BExpr(lhs, op, rhs);
+}
 
 
 // ============================================================================
