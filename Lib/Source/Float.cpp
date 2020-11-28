@@ -1,5 +1,5 @@
 #include "Source/Float.h"
-#include "Source/Stmt.h"
+#include "Lang.h"  // only for assign()!
 
 namespace V3DLib {
 

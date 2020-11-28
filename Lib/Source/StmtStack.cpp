@@ -3,6 +3,11 @@
 
 namespace V3DLib {
 
+namespace {
+	StmtStack *p_stmtStack = nullptr;
+} // anon namespace
+
+
 /**
  * Add passed statement to the end of the current instructions
  *
@@ -17,6 +22,24 @@ void StmtStack::append(Stmt *stmt) {
 	assert(stmt != nullptr);
 	assert(!empty());
 	push(mkSeq(apop(), stmt));
+}
+
+
+StmtStack &stmtStack() {
+	assert(p_stmtStack != nullptr);
+	return *p_stmtStack;
+}
+
+
+void clearStack() {
+	assert(p_stmtStack != nullptr);
+	p_stmtStack = nullptr;
+}
+
+
+void setStack(StmtStack &stmtStack) {
+	assert(p_stmtStack == nullptr);
+	p_stmtStack = &stmtStack;
 }
 
 }  // namespace V3DLib

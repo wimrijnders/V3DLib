@@ -4,6 +4,8 @@
 
 namespace V3DLib {
 
+using ::operator<<;  // C++ weirdness
+
 namespace {
 
 int globalLabelId = 0;  // Used for fresh label generation

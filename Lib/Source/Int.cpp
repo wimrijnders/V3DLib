@@ -1,6 +1,5 @@
-#include "Source/Int.h"
-#include "Source/Stmt.h"
-#include "Source/Float.h"
+#include "Int.h"
+#include "Lang.h"  // only for assign()!
 #include "SourceTranslate.h"
 #include "Support/Platform.h"
 

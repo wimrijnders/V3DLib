@@ -1,6 +1,7 @@
-#include "Source/Pretty.h"
-//#include <cassert>
-#include <cstdio>
+#include "Pretty.h"
+#include "Stmt.h"
+#include "Syntax.h"
+#include "Support/debug.h"
 
 
 namespace V3DLib {
@@ -9,8 +10,7 @@ namespace V3DLib {
 // Operators
 // ============================================================================
 
-const char* cmpOpToString(CmpOp op)
-{
+const char* cmpOpToString(CmpOp op) {
   switch (op.op) {
     case EQ : return "==";
     case NEQ: return "!=";

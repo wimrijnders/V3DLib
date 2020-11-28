@@ -1,6 +1,7 @@
 #include "Translate.h"
 #include "Support/Platform.h"
-#include "../SourceTranslate.h"
+#include "SourceTranslate.h"
+#include "Source/Stmt.h"
 #include "Source/Syntax.h"
 #include "Target/SmallLiteral.h"
 #include "Common/Seq.h"

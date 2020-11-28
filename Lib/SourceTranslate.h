@@ -7,6 +7,8 @@
 
 namespace V3DLib {
 
+class Stmt;
+
 class ISourceTranslate {
 public:
 	virtual ~ISourceTranslate() {}

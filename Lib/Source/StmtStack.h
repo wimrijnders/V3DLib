@@ -1,7 +1,7 @@
-#ifndef _V3DLIB_COMMON_STMTSTACK_H_
-#define _V3DLIB_COMMON_STMTSTACK_H_
-#include "Stack.h"
-#include "Source/Stmt.h"
+#ifndef _V3DLIB_SOURCE_STMTSTACK_H_
+#define _V3DLIB_SOURCE_STMTSTACK_H_
+#include "Common/Stack.h"
+#include "Stmt.h"
 
 namespace V3DLib {
 
@@ -18,6 +18,11 @@ public:
 	}
 };
 
+
+StmtStack &stmtStack();
+void clearStack();
+void setStack(StmtStack &stmtStack);
+
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_COMMON_STMTSTACK_H_
+#endif  // _V3DLIB_SOURCE_STMTSTACK_H_

@@ -1,7 +1,8 @@
 #ifndef _V3DLIB_SOURCE_GATHER_H_
 #define _V3DLIB_SOURCE_GATHER_H_
 #include "Support/Platform.h"
-#include "Common/StmtStack.h"
+#include "StmtStack.h"
+#include "Ptr.h"
 
 namespace V3DLib {
 

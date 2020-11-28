@@ -5,6 +5,8 @@
 
 namespace V3DLib {
 
+using ::operator<<;  // C++ weirdness
+
 // Small literals are literals that fit in the small immediate field
 // of the VideoCore-IV instruction set.
 
@@ -79,15 +81,14 @@ Word decodeSmallLit(int x) {
 	return w;
 }
 
-// Display a small literal.
 
 std::string printSmallLit(int x) {
 	std::string ret;
 
   if (x >= 32)
-    ret << smallFloats[x-32];
+    ret << smallFloats[x - 32];
   else if (x >= 16)
-		ret << (x-32);
+		ret << (x - 32);
   else if (x >= 0)
 		ret << x;
 

@@ -1,4 +1,5 @@
 #include "Cond.h"
+#include "Syntax.h"
 
 namespace V3DLib {
 namespace {
@@ -49,6 +50,18 @@ BoolExpr operator<(FloatExpr a, FloatExpr b)  { return mkFloatCmp(a, CmpOp(LT, F
 BoolExpr operator<=(FloatExpr a, FloatExpr b) { return mkFloatCmp(a, CmpOp(LE, FLOAT), b); }
 BoolExpr operator>(FloatExpr a, FloatExpr b)  { return mkFloatCmp(a, CmpOp(GT, FLOAT), b); }
 BoolExpr operator>=(FloatExpr a, FloatExpr b) { return mkFloatCmp(a, CmpOp(GE, FLOAT), b); }
+
+
+// ============================================================================
+// Boolean operators
+// ============================================================================
+
+BoolExpr operator!(BoolExpr a)              { return BoolExpr(a.bexpr->Not()); }
+BoolExpr operator&&(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr->And(b.bexpr)); }
+BoolExpr operator||(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr->Or(b.bexpr)); }
+
+Cond any(BoolExpr a) { return Cond(mkAny(a.bexpr)); }
+Cond all(BoolExpr a) { return Cond(mkAll(a.bexpr)); }
 
 }  // namespace V3DLib
 

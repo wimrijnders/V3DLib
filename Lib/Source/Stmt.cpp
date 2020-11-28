@@ -1,216 +1,205 @@
-#include "Source/Stmt.h"
-#include <stdio.h>
-#include "Support/basics.h"  // fatal()
-#include "Source/Int.h"
-#include "Common/StmtStack.h"
+#include "Stmt.h"
+#include "Syntax.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
-namespace {
-	StmtStack *p_stmtStack = nullptr;
-	StmtStack controlStack;
-} // anon namespace
+// ============================================================================
+// Class PrintStmt
+// ============================================================================
 
-
-StmtStack &stmtStack() {
-	assert(p_stmtStack != nullptr);
-	return *p_stmtStack;
+Expr::Ptr PrintStmt::expr() const {
+	assert((m_tag == PRINT_INT || m_tag == PRINT_FLOAT) && m_expr.get() != nullptr);
+	return m_expr;
 }
 
 
-// Interface to the embedded language.
+char const *PrintStmt::str() const { assert(m_tag == PRINT_STR && m_str != nullptr); return m_str; }
 
-//=============================================================================
-// Assignment token
-//=============================================================================
 
-void assign(Expr::Ptr lhs, Expr::Ptr rhs) {
-  Stmt *s = mkAssign(lhs, rhs);
-  stmtStack() << s;
-}
-
-//=============================================================================
-// 'If' token
-//=============================================================================
-
-void If_(Cond c) {
-  Stmt* s = mkIf(c.cexpr, nullptr, nullptr);
-  controlStack.push(s);
-  stmtStack().push(mkSkip());
-}
-
-void If_(BoolExpr b)
-{
-  If_(any(b));
-}
-
-//=============================================================================
-// 'Else' token
-//=============================================================================
-
-void Else_()
-{
-  int ok = 0;
-  if (controlStack.size() > 0) {
-    Stmt* s = controlStack.ttop();
-
-    if (s->tag == IF && s->ifElse.thenStmt == nullptr) {
-      s->ifElse.thenStmt = stmtStack().apop();
-      stmtStack().push(mkSkip());
-      ok = 1;
-    }
-    if (s->tag == WHERE && s->where.thenStmt == nullptr) {
-      s->where.thenStmt = stmtStack().apop();
-      stmtStack().push(mkSkip());
-      ok = 1;
-    }
-  }
-
-  if (!ok) {
-    fatal("Syntax error: 'Else' without preceeding 'If' or 'Where'");
-  }
-}
-
-//=============================================================================
-// 'End' token
-//=============================================================================
-
-void End_()
-{
-  int ok = 0;
-  if (controlStack.size() > 0) {
-    Stmt* s = controlStack.ttop();
-
-    if (s->tag == IF && s->ifElse.thenStmt == nullptr) {
-      s->ifElse.thenStmt = stmtStack().apop();
-      ok = 1;
-    }
-    else if (s->tag == IF && s->ifElse.elseStmt == nullptr) {
-      s->ifElse.elseStmt = stmtStack().apop();
-      ok = 1;
-    }
-    if (s->tag == WHERE && s->where.thenStmt == nullptr) {
-      s->where.thenStmt = stmtStack().apop();
-      ok = 1;
-    }
-    else if (s->tag == WHERE && s->where.elseStmt == nullptr) {
-      s->where.elseStmt = stmtStack().apop();
-      ok = 1;
-    }
-    if (s->tag == WHILE && s->loop.body == nullptr) {
-      s->loop.body = stmtStack().apop();
-      ok = 1;
-    }
-    if (s->tag == FOR && s->forLoop.body == nullptr) {
-      // Convert 'for' loop to 'while' loop
-      CExpr* whileCond = s->forLoop.cond;
-      Stmt* whileBody = mkSeq(stmtStack().apop(), s->forLoop.inc);
-      s->tag = WHILE;
-      s->loop.body = whileBody;
-      s->loop.cond = whileCond;
-      ok = 1;
-    }
-
-    if (ok) {
-      stmtStack().append(controlStack.apop());
-    }
-  }
-
-  if (!ok) {
-    fatal("Syntax error: unexpected 'End'");
-  }
-}
-
-//=============================================================================
-// 'While' token
-//=============================================================================
-
-void While_(Cond c)
-{
-  Stmt* s = mkWhile(c.cexpr, nullptr);
-  controlStack.push(s);
-  stmtStack().push(mkSkip());
-}
-
-void While_(BoolExpr b)
-{
-  While_(any(b));
-}
-
-//=============================================================================
-// 'Where' token
-//=============================================================================
-
-void Where__(BExpr* b)
-{
-  Stmt* s = mkWhere(b, nullptr, nullptr);
-  controlStack.push(s);
-  stmtStack().push(mkSkip());
-}
-
-//=============================================================================
-// 'For' token
-//=============================================================================
-
-void For_(Cond c)
-{
-  Stmt* s = mkFor(c.cexpr, nullptr, nullptr);
-  controlStack.push(s);
-  stmtStack().push(mkSkip());
-}
-
-void For_(BoolExpr b) {
-  For_(any(b));
-}
-
-void ForBody_() {
-  Stmt *s = controlStack.ttop();
-  s->forLoop.inc = stmtStack().apop();
-  stmtStack().push(mkSkip());
-}
-
-//=============================================================================
-// 'Print' token
-//=============================================================================
-
-void Print(const char *str) {
-breakpoint
-  Stmt* s = Stmt::create(PRINT);
-  s->print.str = str;
-  stmtStack().append(s);
-}
-
-void Print(IntExpr x) {
-  Stmt *s = Stmt::create(PRINT, x.expr(), nullptr);
-  s->print.tag = PRINT_INT;
-  stmtStack().append(s);
+void PrintStmt::str(char const *str) {
+	assert(m_str == nullptr);
+	assert(m_expr.get() == nullptr);
+	m_tag = PRINT_STR;
+	m_str = str;
 }
 
 
-void comment(char const *str) {
- 	assert(stmtStack().ttop() != nullptr);
- 	assert(stmtStack().ttop()->tag == SEQ);
- 	assert(stmtStack().ttop()->seq.s1 != nullptr);
- 	stmtStack().ttop()->seq.s1->comment(str);
+void PrintStmt::expr(IntExpr x) {
+	assert(m_str == nullptr);
+	assert(m_expr.get() == nullptr);
+	m_tag = PRINT_INT;
+	m_expr = x.expr();
 }
 
+
+// ============================================================================
+// Class Stmt
+// ============================================================================
 
 /**
- * QPU code for clean exit
+ * Replacement initializer for this class,
+ * because a class with unions can not have a ctor.
  */
-void finishStmt() {
-	assert(p_stmtStack != nullptr);
-	p_stmtStack = nullptr;
+void Stmt::init(StmtTag in_tag) {
+	clear_comments();  // TODO prob not necessary, check
+
+	assert(SKIP <= in_tag && in_tag <= DMA_START_WRITE);
+	assertq(tag == SKIP, "Stmt::init(): can't reassign tag once assigned");
+	tag = in_tag;
 }
 
 
-void initStmt(StmtStack &stmtStack) {
-	controlStack.clear();
-	stmtStack.clear();
-	stmtStack.push(mkSkip());
-
-	assert(p_stmtStack == nullptr);
-	p_stmtStack = &stmtStack;
+Stmt::~Stmt() {
+	// WRI DEBUG
+	breakpoint
 }
+
+
+Stmt *Stmt::create(StmtTag in_tag) {
+	Stmt *ret = new Stmt();
+	ret->init(in_tag);
+
+	// WRI debug
+	// break for the tags we haven't checked yet
+	switch (in_tag) {
+		case SKIP:
+			break;
+		default:
+			breakpoint;
+			break;
+	}
+
+	return ret;
+}
+
+
+Stmt *Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
+	// WRI debug
+	// break for the tags we haven't checked yet
+	switch (in_tag) {
+		case ASSIGN:
+			break;
+		default:
+			breakpoint;
+			break;
+	}
+
+	Stmt *ret = new Stmt();
+	ret->init(in_tag);
+
+	switch (in_tag) {
+		case ASSIGN:
+			assertq(e0 != nullptr && e1 != nullptr, "");
+			ret->assign.lhs = e0;
+			ret->assign.rhs = e1;
+		break;
+		case STORE_REQUEST:
+			assertq(e0 != nullptr && e1 != nullptr, "");
+  		ret->storeReq.data = e0;
+		  ret->storeReq.addr = e1;
+		break;
+		case DMA_START_READ:
+			assertq(e0 != nullptr && e1 == nullptr, "");
+  		ret->startDMARead = e0;
+		break;
+		case DMA_START_WRITE:
+			assertq(e0 != nullptr && e1 == nullptr, "");
+  		ret->startDMAWrite = e0;
+		break;
+		default:
+			fatal("This tag not handled yet in create(Expr,Expr)");
+		break;
+	}
+
+	return ret;
+}
+
+
+Stmt *Stmt::create(StmtTag in_tag, Stmt* s0, Stmt* s1) {
+	breakpoint
+
+	Stmt *ret = new Stmt();
+	ret->init(in_tag);
+
+	switch (in_tag) {
+		case SEQ:
+			assertq(s0 != nullptr && s1 != nullptr, "");
+  		ret->seq.s0 = s0;
+		  ret->seq.s1 = s1;
+		break;
+		case WHERE:
+			assertq(s0 != nullptr && s1 != nullptr, "");
+			ret->where.cond     = nullptr;  // NOTE: needs to be set elsewhere
+			ret->where.thenStmt = s0;
+			ret->where.elseStmt = s1;
+		break;
+		case IF:
+			assertq(s0 != nullptr && s1 != nullptr, "");
+			ret->ifElse.cond     = nullptr;  // NOTE: needs to be set elsewhere
+			ret->ifElse.thenStmt = s0;
+			ret->ifElse.elseStmt = s1;
+		break;
+		case WHILE:
+			assertq(s0 != nullptr && s1 == nullptr, "");
+			ret->loop.cond = nullptr;  // NOTE: needs to be set elsewhere
+			ret->loop.body = s0;
+		break;
+		case FOR:
+			assertq(s0 != nullptr && s1 != nullptr, "");
+			ret->forLoop.cond     = nullptr;  // NOTE: needs to be set elsewhere
+			ret->forLoop.inc = s0;
+			ret->forLoop.body = s1;
+		break;
+		default:
+			fatal("This tag not handled yet in create(Stmt,Stmt)");
+		break;
+	}
+
+	return ret;
+}
+
+
+// ============================================================================
+// Functions on statements
+// ============================================================================
+
+Stmt *mkSkip() { return Stmt::create(SKIP); }
+Stmt *mkAssign(Expr::Ptr lhs, Expr::Ptr rhs) { return Stmt::create(ASSIGN, lhs, rhs); }
+Stmt *mkSeq(Stmt *s0, Stmt* s1) { return Stmt::create(SEQ, s0, s1); }
+
+Stmt *mkWhere(BExpr *cond, Stmt *thenStmt, Stmt *elseStmt) {
+  Stmt* s           = Stmt::create(WHERE, thenStmt, elseStmt);
+  s->where.cond     = cond;
+  return s;
+}
+
+
+Stmt *mkIf(CExpr *cond, Stmt *thenStmt, Stmt *elseStmt) {
+  Stmt* s           = Stmt::create(IF, thenStmt, elseStmt);
+  s->ifElse.cond    = cond;
+  return s;
+}
+
+
+Stmt *mkWhile(CExpr *cond, Stmt *body) {
+  Stmt* s      = Stmt::create(WHILE, body, nullptr);
+  s->loop.cond = cond;
+  return s;
+}
+
+Stmt *mkFor(CExpr *cond, Stmt *inc, Stmt *body) {
+  Stmt* s         = Stmt::create(FOR, inc, body);
+  s->forLoop.cond = cond;
+  return s;
+}
+
+Stmt *mkPrint(PrintTag t, Expr::Ptr e) {
+  Stmt *s      = Stmt::create(PRINT, e, nullptr);
+  s->print.tag = t;
+  return s;
+}
+
+
 
 }  // namespace V3DLib

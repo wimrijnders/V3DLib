@@ -6,6 +6,8 @@
 
 namespace V3DLib {
 
+class Stmt;
+
 void translateStmt(Seq<Instr> &seq, Stmt *s);
 void loadStorePass(Seq<Instr> &instrs);
 

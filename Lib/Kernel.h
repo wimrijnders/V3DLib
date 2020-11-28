@@ -1,6 +1,8 @@
 #ifndef _V3DLIB_KERNEL_H_
 #define _V3DLIB_KERNEL_H_
 #include <tuple>
+#include "Source/Int.h"
+#include "Source/Ptr.h"
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
 #include "Common/SharedArray.h"

@@ -1,5 +1,6 @@
 #include "Source/Interpreter.h"
 #include "Common/SharedArray.h"
+#include "Source/Stmt.h"
 #include "Source/Syntax.h"
 #include "Common/BufferObject.h"
 #include "Target/EmuSupport.h"

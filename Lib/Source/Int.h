@@ -2,9 +2,7 @@
 
 #ifndef _V3DLIB_SOURCE_INT_H_
 #define _V3DLIB_SOURCE_INT_H_
-
-#include <assert.h>
-#include "Source/Syntax.h"
+#include "Source/Expr.h"
 #include "Source/Float.h"
 
 namespace V3DLib {

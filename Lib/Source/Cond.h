@@ -9,18 +9,19 @@ namespace V3DLib {
 // Types                   
 // ============================================================================
 
-struct Cond
-{
-  // Abstract syntax tree
-  CExpr* cexpr;
-  // Constructor
+class CExpr;  //  forward declaration
+class BExpr;  //  forward declaration
+
+struct Cond {
+  CExpr* cexpr; // Abstract syntax tree
+
   Cond(CExpr* c) { cexpr = c; }
 };
 
+
 struct BoolExpr {
-  // Abstract syntax tree
-  BExpr* bexpr;
-  // Constructor
+  BExpr* bexpr;  // Abstract syntax tree
+
   BoolExpr(BExpr* b) { bexpr = b; }
 };
 
@@ -53,12 +54,12 @@ BoolExpr operator>=(FloatExpr a, FloatExpr b);
 // Boolean operators
 // ============================================================================
 
-inline BoolExpr operator!(BoolExpr a)              { return BoolExpr(a.bexpr->Not()); }
-inline BoolExpr operator&&(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr->And(b.bexpr)); }
-inline BoolExpr operator||(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr->Or(b.bexpr)); }
+BoolExpr operator!(BoolExpr a);
+BoolExpr operator&&(BoolExpr a, BoolExpr b);
+BoolExpr operator||(BoolExpr a, BoolExpr b);
 
-inline Cond any(BoolExpr a) { return Cond(mkAny(a.bexpr)); }
-inline Cond all(BoolExpr a) { return Cond(mkAll(a.bexpr)); }
+Cond any(BoolExpr a);
+Cond all(BoolExpr a);
 
 }  // namespace V3DLib
 

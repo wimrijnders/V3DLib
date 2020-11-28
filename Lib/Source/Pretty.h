@@ -1,9 +1,13 @@
 #ifndef _V3DLIB_SOURCE_PRETTY_H_
 #define _V3DLIB_SOURCE_PRETTY_H_
-
-#include "Source/Syntax.h"
+#include <cstdio>  // FILE
 
 namespace V3DLib {
+
+class Expr;
+class BExpr;
+class CExpr;
+class Stmt;
 
 // Pretty printer for the V3DLib source language
 void pretty(FILE *f, Expr* e);
