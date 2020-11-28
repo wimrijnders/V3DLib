@@ -8,7 +8,7 @@ namespace V3DLib {
 /**
  * Strictly speaking, this is a tree, not a stack
  */
-class StmtStack : public SStack<Stmt> {
+class StmtStack : public Stack<Stmt> {
 public:
 	void append(Stmt *stmt);
 

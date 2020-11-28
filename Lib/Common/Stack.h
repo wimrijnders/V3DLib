@@ -1,71 +1,74 @@
 #ifndef _V3DLIB_COMMON_STACK_H_
 #define _V3DLIB_COMMON_STACK_H_
 #include <memory>
-#include <assert.h>
+#include "Support/debug.h"
 
 namespace V3DLib {
 
-template <class T> class SStack {
+template <class T> class Stack {
 private:
 	class StackItem {
 	public:
+		~StackItem() {
+			breakpoint  // WRI DEBUG check if called
+		}
+
 		std::unique_ptr<T> head;
-		StackItem *tail = nullptr;
+		std::unique_ptr<StackItem> tail;
 	};
 
 public:
-    ~SStack() {
-      clear();
+/*
+    ~Stack() {
+      clear();  // NOTE shouldn't be necessary any more
     }
+*/
 
-		bool empty() const { return m_size == 0; }
-		unsigned  size() const { return m_size; }
+		bool     empty() const { return m_size == 0; }
+		unsigned size()  const { return m_size; }
 
     void push(T* x) {
-      StackItem *oldTop = m_topItem;
-      m_topItem       = new StackItem;
-      m_topItem->head.reset(x);
-      m_topItem->tail = oldTop;
+			std::unique_ptr<StackItem> nextTop;
+      nextTop.reset(new StackItem);
+      nextTop->head.reset(x);
+      nextTop->tail.swap(m_topItem);
+
+			m_topItem.swap(nextTop);
       m_size++;
     }
 
-    void ppop() {
+		T* pop() {
       assert(m_size > 0);
-      StackItem *oldTop = m_topItem;
-      m_topItem = m_topItem->tail;
-      delete oldTop;
-      m_size--;
-    }
-
-		T* apop() {
-      assert(m_size > 0);
-      StackItem *oldTop = m_topItem;
 			T *ret = m_topItem->head.release();
-      m_topItem = m_topItem->tail;
-      delete oldTop;
+			m_topItem.reset(m_topItem->tail.release());
       m_size--;
 			return ret;
 		}
 
-    T* ttop() {
+    T* top() const {
       assert(m_size > 0);
       return m_topItem->head.get();
     }
 
     // Clear the stack
     void clear() {
-      StackItem *p;
-
-			while (m_topItem != nullptr) {
+			while (m_topItem.get() != nullptr) {
 				ppop();
       }
 
       assert(m_size == 0);
     }
 
+
 private:
 	unsigned int m_size = 0;
-	StackItem *m_topItem = nullptr;
+	std::unique_ptr<StackItem> m_topItem;
+
+	void ppop() {
+		assert(m_size > 0);
+		m_topItem.reset(m_topItem->tail.release());
+		m_size--;
+	}
 };
 
 }  // namespace V3DLib

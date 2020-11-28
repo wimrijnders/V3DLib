@@ -21,7 +21,7 @@ namespace {
 void StmtStack::append(Stmt *stmt) {
 	assert(stmt != nullptr);
 	assert(!empty());
-	push(mkSeq(apop(), stmt));
+	push(mkSeq(pop(), stmt));
 }
 
 

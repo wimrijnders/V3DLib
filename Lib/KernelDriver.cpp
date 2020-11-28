@@ -99,7 +99,7 @@ void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
 
 void KernelDriver::obtain_ast() {
 	finishStmt();
-	m_body = m_stmtStack.apop();
+	m_body = m_stmtStack.pop();
 }
 
 
