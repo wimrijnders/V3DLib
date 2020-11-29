@@ -21,8 +21,7 @@ int main(int argc, const char *argv[]) {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(16);
-  for (int i = 0; i < array.size(); i++)
-    array[i] = 100;
+	array.fill(100);
 
   // Invoke the kernel
 	k.load(&array);

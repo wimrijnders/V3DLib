@@ -6,8 +6,7 @@ using namespace V3DLib;
 
 V3DLib::Settings settings;
 
-void dma(Ptr<Int> p)
-{
+void dma(Ptr<Int> p) {
   // Setup load of 16 vectors into VPM, starting at word address 0
   dmaSetReadPitch(64);
   dmaSetupRead(HORIZ, 16, 0);
@@ -33,6 +32,7 @@ void dma(Ptr<Int> p)
   dmaWaitWrite();
 }
 
+
 int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
@@ -51,8 +51,10 @@ int main(int argc, const char *argv[]) {
 
 	// Display the result
   for (int i = 0; i < 16; i++) {
-    for (int j = 0; j < 16; j++)
+    for (int j = 0; j < 16; j++) {
       printf("%i ", array[16*i + j]);
+		}
+
     printf("\n");
   }
   

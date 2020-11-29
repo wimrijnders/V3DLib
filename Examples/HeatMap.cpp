@@ -274,10 +274,8 @@ void run_kernel() {
   // Allocate and initialise input and output maps
   SharedArray<float> mapA(settings.SIZE);
   SharedArray<float> mapB(settings.SIZE);
-
-  for (int i = 0; i < settings.SIZE; i++) {
-		 mapA[i] = mapB[i] = 0.0;
-	}
+	mapA.fill(0.0f);
+	mapB.fill(0.0f);
 
   // Inject hot spots
 	inject_hotspots(mapA);

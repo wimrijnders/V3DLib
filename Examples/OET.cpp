@@ -45,7 +45,7 @@ int main(int argc, const char *argv[]) {
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> a(32);
   for (int i = 0; i < a.size(); i++)
-    a[i] = 100-i;
+    a[i] = 100 - i;
 
 	k.load(&a);           // Load the uniforms
 	settings.process(k);  // Invoke the kernel
