@@ -77,7 +77,7 @@ struct Ptr : public BaseExpr {
 	 * Dereference
 	 */
   T operator*() {
-		breakpoint  // TODO: originally returned a ref to a heap item (BAD!!). Check if this is ok
+		//breakpoint  // TODO: originally returned a ref to a heap item (BAD!!). Check if this is ok
     //return new T(mkDeref(expr()));
     return T(mkDeref(expr()));
   }

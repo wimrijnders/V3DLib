@@ -148,6 +148,7 @@ Stmt::~Stmt() {
 Stmt *Stmt::create(StmtTag in_tag) {
 	Stmt *ret = new Stmt();
 	ret->init(in_tag);
+/*
 
 	// WRI debug
 	// break for the tags we haven't checked yet
@@ -158,12 +159,14 @@ Stmt *Stmt::create(StmtTag in_tag) {
 			breakpoint;
 			break;
 	}
+*/
 
 	return ret;
 }
 
 
 Stmt *Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
+/*
 	// WRI debug
 	// break for the tags we haven't checked yet
 	switch (in_tag) {
@@ -173,6 +176,7 @@ Stmt *Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 			breakpoint;
 			break;
 	}
+*/
 
 	Stmt *ret = new Stmt();
 	ret->init(in_tag);
@@ -180,9 +184,9 @@ Stmt *Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 	switch (in_tag) {
 		case ASSIGN:
 		case STORE_REQUEST:
-			assertq(e0 != nullptr && e1 != nullptr, "");
+			assertq(e0 != nullptr && e1 != nullptr, "create 1");
 			ret->m_exp_a = e0;
-			ret->m_exp_b = e0;
+			ret->m_exp_b = e1;
 		break;
 
 		case PRINT:
@@ -195,7 +199,7 @@ Stmt *Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 		case SETUP_DMA_WRITE:
 		case DMA_START_READ:
 		case DMA_START_WRITE:
-			assertq(e0 != nullptr && e1 == nullptr, "");
+			assertq(e0 != nullptr && e1 == nullptr, "create 2");
   		ret->m_exp_a = e0;
 		break;
 		default:
@@ -208,36 +212,34 @@ Stmt *Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 
 
 Stmt *Stmt::create(StmtTag in_tag, Stmt* s0, Stmt* s1) {
-	breakpoint
-
 	Stmt *ret = new Stmt();
 	ret->init(in_tag);
 
 	switch (in_tag) {
 		case SEQ:
-			assertq(s0 != nullptr && s1 != nullptr, "");
+			assertq(s0 != nullptr && s1 != nullptr, "create 3");
   		ret->seq.s0 = s0;
 		  ret->seq.s1 = s1;
 		break;
 		case WHERE:
-			assertq(s0 != nullptr && s1 != nullptr, "");
+			assertq(s0 != nullptr && s1 != nullptr, "create 4");
 			ret->where.cond     = nullptr;  // NOTE: needs to be set elsewhere
 			ret->where.thenStmt = s0;
 			ret->where.elseStmt = s1;
 		break;
 		case IF:
-			assertq(s0 != nullptr && s1 != nullptr, "");
+			// s0, s1 can be nullptr's
 			ret->ifElse.cond     = nullptr;  // NOTE: needs to be set elsewhere
 			ret->ifElse.thenStmt = s0;
 			ret->ifElse.elseStmt = s1;
 		break;
 		case WHILE:
-			assertq(s0 != nullptr && s1 == nullptr, "");
+			assertq(s0 != nullptr && s1 == nullptr, "create 6");
 			ret->loop.cond = nullptr;  // NOTE: needs to be set elsewhere
 			ret->loop.body = s0;
 		break;
 		case FOR:
-			assertq(s0 != nullptr && s1 != nullptr, "");
+			// s0, s1 can be nullptr's
 			ret->forLoop.cond     = nullptr;  // NOTE: needs to be set elsewhere
 			ret->forLoop.inc = s0;
 			ret->forLoop.body = s1;

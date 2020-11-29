@@ -137,12 +137,11 @@ void pretty(FILE *f, BExpr* b) {
 // Conditional expressions
 // ============================================================================
 
-void pretty(FILE *f, CExpr* c)
-{
+void pretty(FILE *f, CExpr* c) {
   assert(f != nullptr);
   if (c == nullptr) return;
 
-  switch (c->tag) {
+  switch (c->tag()) {
     // Reduce using 'any'
     case ANY: fprintf(f, "any("); break;
 
@@ -150,7 +149,7 @@ void pretty(FILE *f, CExpr* c)
     case ALL: fprintf(f, "all("); break;
   }
 
-  pretty(f, c->bexpr);
+  pretty(f, c->bexpr());
   fprintf(f, ")");
 }
 

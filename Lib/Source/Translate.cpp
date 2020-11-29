@@ -373,12 +373,10 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 // ============================================================================
 
 BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
-  assert(c.tag == ANY || c.tag == ALL);
-
   Var v = freshVar();
-  AssignCond cond = boolExp(&seq, c.bexpr, v);
+  AssignCond cond = boolExp(&seq, c.bexpr(), v);
 
-	return cond.to_assign_cond(c.tag == ALL);
+	return cond.to_assign_cond(c.tag() == ALL);
 }
 
 
@@ -622,7 +620,7 @@ int lastUniformOffset(Seq<Instr> &code) {
 		if (!code[index].isUniformLoad()) break; 
 	}
 
-	assertq(index >= 2, "Expecting at least two uniform loads.");
+	assertq(index >= 2, "Expecting at least two uniform loads.", true);
 
 	return index - 1;
 }
@@ -637,7 +635,6 @@ void insertInitBlock(Seq<Instr> &code) {
 	using namespace V3DLib::Target::instr;  // for mov()
 
 	int index = lastUniformOffset(code);
-
 	Seq<Instr> ret;
 
 	if (Platform::instance().compiling_for_vc4()) {
@@ -648,7 +645,6 @@ void insertInitBlock(Seq<Instr> &code) {
 	}
 
 	ret << Instr(INIT_BEGIN) << Instr(INIT_END);
-
 	code.insert(index + 1, ret);
 }
 
@@ -756,7 +752,6 @@ Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
  * Top-level translation function for statements.
  */
 void translateStmt(Seq<Instr> &seq, Stmt *s) {
-
   stmt(&seq, s);
 	insertInitBlock(seq);  // TODO init block not used for vc4, remove for that case
 }

@@ -223,7 +223,7 @@ Vec eval(CoreState* s, Expr::Ptr e) {
 // Evaluate boolean expression
 // ============================================================================
 
-Vec evalBool(CoreState* s, BExpr* e) {
+Vec evalBool(CoreState* s, BExpr *e) {
   Vec v;
 
   switch (e->tag()) {
@@ -309,11 +309,10 @@ Vec evalBool(CoreState* s, BExpr* e) {
 // Evaulate condition
 // ============================================================================
 
-bool evalCond(CoreState* s, CExpr* e)
-{
-  Vec v = evalBool(s, e->bexpr);
+bool evalCond(CoreState* s, CExpr* e) {
+  Vec v = evalBool(s, e->bexpr());
 
-  switch (e->tag) {
+  switch (e->tag()) {
     case ALL: {
       bool b = true;
       for (int i = 0; i < NUM_LANES; i++)

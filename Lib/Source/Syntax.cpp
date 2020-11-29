@@ -86,23 +86,13 @@ BExpr *BExpr::Or(BExpr *rhs) const {
 // Functions on conditionals
 // ============================================================================
 
-CExpr *mkCExpr() {
-	breakpoint
-	return new CExpr;
-}
-
-CExpr* mkAll(BExpr* bexpr) {
-  CExpr* c = mkCExpr();
-  c->tag   = ALL;
-  c->bexpr = bexpr;
-  return c;
+CExpr *mkAll(BExpr* bexpr) {
+  return new CExpr(ALL, bexpr);
 }
 
 
-CExpr* mkAny(BExpr* bexpr) {
-  CExpr* c = mkCExpr();
-  c->tag   = ANY;
-  c->bexpr = bexpr;
-  return c;
+CExpr *mkAny(BExpr* bexpr) {
+  return new CExpr(ANY, bexpr);
 }
+
 }  // namespace V3DLib

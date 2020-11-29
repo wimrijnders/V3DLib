@@ -29,14 +29,12 @@ struct Expr {
 	Expr(Ptr lhs, Op op, Ptr rhs);
 	Expr(Ptr ptr);
 
-	~Expr();
-
 	ExprTag tag() const { return m_tag; }
 	bool isLit() const { return (tag() == INT_LIT) || (tag() == FLOAT_LIT); }
 
   Ptr apply_lhs();
   Ptr apply_rhs();
-  Ptr &deref_ptr();
+  Ptr deref_ptr();
   void apply_lhs(Ptr p);
   void apply_rhs(Ptr p);
   void deref_ptr(Ptr p);
@@ -64,7 +62,6 @@ class BaseExpr {
 public:
 	BaseExpr() {}
 	BaseExpr(Expr::Ptr e);
-	~BaseExpr();
 
 	Expr::Ptr expr() const { return m_expr; }
 

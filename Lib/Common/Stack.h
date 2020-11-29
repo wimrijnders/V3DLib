@@ -9,33 +9,25 @@ template <class T> class Stack {
 private:
 	class StackItem {
 	public:
-		~StackItem() {
-			breakpoint  // WRI DEBUG check if called
-		}
-
 		std::unique_ptr<T> head;
 		std::unique_ptr<StackItem> tail;
 	};
 
 public:
-/*
-    ~Stack() {
-      clear();  // NOTE shouldn't be necessary any more
-    }
-*/
+	Stack() {}
 
-		bool     empty() const { return m_size == 0; }
-		unsigned size()  const { return m_size; }
+	bool     empty() const { return m_size == 0; }
+	unsigned size()  const { return m_size; }
 
-    void push(T* x) {
-			std::unique_ptr<StackItem> nextTop;
-      nextTop.reset(new StackItem);
-      nextTop->head.reset(x);
-      nextTop->tail.swap(m_topItem);
+	void push(T* x) {
+		std::unique_ptr<StackItem> nextTop;
+		nextTop.reset(new StackItem);
+		nextTop->head.reset(x);
+		nextTop->tail.swap(m_topItem);
 
-			m_topItem.swap(nextTop);
-      m_size++;
-    }
+		m_topItem.swap(nextTop);
+		m_size++;
+	}
 
 		T* pop() {
       assert(m_size > 0);
@@ -53,6 +45,7 @@ public:
     // Clear the stack
     void clear() {
 			while (m_topItem.get() != nullptr) {
+				breakpoint
 				ppop();
       }
 

@@ -41,11 +41,6 @@ Expr::Expr(Ptr ptr) {
 }
 
 
-Expr::~Expr() {
-	breakpoint
-}
-
-
 Expr::Ptr Expr::apply_lhs() {
 	assert(m_tag == APPLY && m_exp_a.get() != nullptr);
 	return m_exp_a;
@@ -58,8 +53,7 @@ Expr::Ptr Expr::apply_rhs() {
 }
 
 
-Expr::Ptr &Expr::deref_ptr() {
-	breakpoint  // TODO returning ref prob wrong, check where used
+Expr::Ptr Expr::deref_ptr() {
 	assert(m_tag == DEREF && m_exp_a.get() != nullptr);
 	return m_exp_a;
 }
@@ -99,11 +93,6 @@ bool Expr::isSimple() const {
 BaseExpr::BaseExpr(Expr::Ptr e) {
 	assert(e != nullptr);
 	m_expr = e;
-}
-
-
-BaseExpr::~BaseExpr() {
-	breakpoint
 }
 
 

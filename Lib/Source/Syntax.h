@@ -87,18 +87,22 @@ private:
 enum CExprTag { ALL, ANY };
 
 struct CExpr {
-	CExpr() {}
+	CExpr(CExprTag tag, BExpr *bexpr) : m_tag(tag), m_bexpr(bexpr)  {}
+
+  BExpr *bexpr() const { return m_bexpr; }
+  CExprTag tag() const { return m_tag; }
+
+private:
 
   // What kind of boolean expression is it?
-  CExprTag tag;
+  CExprTag m_tag;
 
   // This is either a scalar boolean expression, or a reduction of a vector
   // boolean expressions using 'any' or 'all' operators.
-  BExpr* bexpr;
+  BExpr *m_bexpr = nullptr;
 };
 
 // Functions to construct conditional expressions
-CExpr* mkCExpr();
 CExpr* mkAll(BExpr* bexpr);
 CExpr* mkAny(BExpr* bexpr);
 

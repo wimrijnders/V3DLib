@@ -56,11 +56,15 @@ Int::operator IntExpr() { return IntExpr(m_expr); }
 
 // Assignment
 
-Int& Int::operator=(Int &rhs)
-  { assign(m_expr, rhs.expr()); return rhs; }
+Int &Int::operator=(Int &rhs) {
+	assign(m_expr, rhs.expr());
+	return rhs;
+}
 
-IntExpr Int::operator=(IntExpr rhs)
-  { assign(m_expr, rhs.expr()); return rhs; };
+IntExpr Int::operator=(IntExpr rhs) {
+	assign(m_expr, rhs.expr());
+	return rhs;
+};
 
 // ============================================================================
 // Generic operations

@@ -21,7 +21,7 @@ int ISourceTranslate::get_init_begin_marker(Seq<Instr> &code) {
 		if (code[index].tag == INIT_BEGIN) break; 
 	}
 	assertq(index < code.size(), "Expecting INIT_BEGIN marker.");
-	assertq(index >= 2, "Expecting at least two uniform loads.");
+	assertq(index >= 2, "Expecting at least two uniform loads.", true);
 
 	return index;
 }
