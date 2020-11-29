@@ -25,12 +25,10 @@ int main(int argc, const char *argv[]) {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> id_array(16*numQPUs);
-  for (int i = 0; i < id_array.size(); i++)
-    id_array[i] = 0;
+	id_array.fill(0);
 
   SharedArray<int> index_array(16*numQPUs);
-  for (int i = 0; i < index_array.size(); i++)
-    index_array[i] = 0;
+	index_array.fill(0);
 
 	k.load(&id_array, &index_array);  // Load the uniforms
 	settings.process(k);              // Invoke the kernel

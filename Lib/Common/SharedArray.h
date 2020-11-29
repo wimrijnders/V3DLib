@@ -40,6 +40,10 @@ public:
   uint32_t getAddress() { return m_phyaddr; }
 	uint32_t size() const { return m_size; }
 
+	void fill(T val) {
+  	for (int i = 0; i < size(); i++)
+	    (*this)[i] = val;
+	}
 
 	/**
 	 * Get starting address of the section in question
