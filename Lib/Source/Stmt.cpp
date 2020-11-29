@@ -222,7 +222,7 @@ Stmt *Stmt::create(StmtTag in_tag, Stmt* s0, Stmt* s1) {
 		  ret->seq.s1 = s1;
 		break;
 		case WHERE:
-			assertq(s0 != nullptr && s1 != nullptr, "create 4");
+			// s0, s1 can be nullptr's
 			ret->where.cond     = nullptr;  // NOTE: needs to be set elsewhere
 			ret->where.thenStmt = s0;
 			ret->where.elseStmt = s1;
@@ -234,7 +234,7 @@ Stmt *Stmt::create(StmtTag in_tag, Stmt* s0, Stmt* s1) {
 			ret->ifElse.elseStmt = s1;
 		break;
 		case WHILE:
-			assertq(s0 != nullptr && s1 == nullptr, "create 6");
+			// s0, s1 can be nullptr's
 			ret->loop.cond = nullptr;  // NOTE: needs to be set elsewhere
 			ret->loop.body = s0;
 		break;

@@ -26,6 +26,7 @@ struct Float : public BaseExpr {
   Float();
   Float(float x);
   Float(FloatExpr e);
+  Float(Expr::Ptr e, bool set_direct);
 
   // Copy constructors
   Float(Float& x);

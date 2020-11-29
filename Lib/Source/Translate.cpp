@@ -126,7 +126,6 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   // ---------------------------------------------------------
   if (lhs.tag() == DEREF && (lhs.deref_ptr()->tag() != VAR || rhs->tag() != VAR)) {
     assert(!lhs.deref_ptr()->isLit());
-		breakpoint  // TODO check that following asignment works
     lhs.deref_ptr() = simplify(seq, lhs.deref_ptr());
     rhs = putInVar(seq, rhs);
   }

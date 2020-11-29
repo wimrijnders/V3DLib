@@ -64,6 +64,7 @@ public:
 	BaseExpr(Expr::Ptr e);
 
 	Expr::Ptr expr() const { return m_expr; }
+	void set_with_index(Expr::Ptr base, Expr::Ptr index_expr);
 
 protected:
   Expr::Ptr m_expr;  // Abstract syntax tree

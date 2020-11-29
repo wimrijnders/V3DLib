@@ -32,9 +32,7 @@ struct PtrExpr : public BaseExpr {
 	 * Dereference
 	 */
   T operator*() {
-		breakpoint  // TODO: originally returned a ref to a heap item (BAD!!). Check if this is ok
-    //return new T(mkDeref(expr()));
-    return T(mkDeref(expr()));
+    return T(mkDeref(expr()), true);
   }
 
 
@@ -42,8 +40,7 @@ struct PtrExpr : public BaseExpr {
   T& operator[](IntExpr index) {
 breakpoint
 		T *p = new T;
-    p->expr = mkDeref(mkApply(expr, Op(ADD, INT32),
-                mkApply(index.expr(), Op(SHL, INT32), mkIntLit(2))));
+    p->set_with_index(expr(), index.expr());
     return *p;
   }
 };
@@ -77,17 +74,15 @@ struct Ptr : public BaseExpr {
 	 * Dereference
 	 */
   T operator*() {
-		//breakpoint  // TODO: originally returned a ref to a heap item (BAD!!). Check if this is ok
-    //return new T(mkDeref(expr()));
-    return T(mkDeref(expr()));
+    return T(mkDeref(expr()), true);
   }
 
   // Array index
   T operator[](IntExpr index) {
 		breakpoint
-    Expr::Ptr e = mkDeref(mkApply(expr(), Op(ADD, INT32),
-                mkApply(index.expr(), Op(SHL, INT32), mkIntLit(2))));
-    return T(e);
+		T ret;
+    ret.set_with_index(expr(), index.expr());
+    return ret;
   }
 };
 

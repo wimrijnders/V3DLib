@@ -26,6 +26,7 @@ struct Int : public BaseExpr {
   Int();
   Int(int x);
   Int(IntExpr e);
+  Int(Expr::Ptr e, bool set_direct);
 
   // Copy constructors
   Int(Int& x);

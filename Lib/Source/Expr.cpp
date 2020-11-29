@@ -96,6 +96,17 @@ BaseExpr::BaseExpr(Expr::Ptr e) {
 }
 
 
+/**
+ * Set instance expression to base with added index offset
+ *
+ * Meant for Ptr-types
+ */
+void BaseExpr::set_with_index(Expr::Ptr base, Expr::Ptr index_expr) {
+	Expr::Ptr e = mkDeref(mkApply(base, Op(ADD, INT32), mkApply(index_expr, Op(SHL, INT32), mkIntLit(2))));
+	m_expr = e;
+}
+
+
 // ============================================================================
 // Functions on expressions
 // ============================================================================

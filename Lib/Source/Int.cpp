@@ -34,6 +34,12 @@ Int::Int(IntExpr e) {
   assign(m_expr, e.expr());
 }
 
+
+Int::Int(Expr::Ptr e, bool set_direct) {
+	assert(set_direct == true);
+	m_expr = e;
+}
+
 // Copy constructors
 
 Int::Int(Int &x) {
