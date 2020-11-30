@@ -394,6 +394,13 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
     return;
   }
 
+  // ------------------------------------------------------
+  // Case: *v = e, where v is a pointer and e an expression
+  // ------------------------------------------------------
+  if (s->tag == ASSIGN && s->assign_lhs()->tag() == DEREF) {
+    return;
+  }
+
   // ---------------------------------------------
   // Case: s0 ; s1, where s0 and s1 are statements
   // ---------------------------------------------
@@ -461,7 +468,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
     return;
   }
 
-  assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement");
+  assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement", true);
 }
 
 
@@ -605,7 +612,6 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 	}
 
 	if (!s->comment().empty()) {
-		breakpoint
 		seq->back().comment(s->comment());
 	}
 }

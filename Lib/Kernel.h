@@ -231,7 +231,7 @@ public:
 		}
 
 #ifdef QPU_MODE
-		{
+		if (!Platform::instance().has_vc4) {
 			m_v3d_driver.compile_init();
 
 	    // Construct the AST for v3d
