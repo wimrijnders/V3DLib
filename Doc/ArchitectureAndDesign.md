@@ -8,31 +8,43 @@ This document explains the basics of the QPU architecture and documents some des
 
 **TODO:** Make this a coherent text.
 
-All registers within a QPU are actually a stack of 16 registers. This is referred to as a `vector` in the documentation.
-They may contains different values, but the exact same code is used in parallel to perform calculations with them.
+All registers within a QPU are actually a stack of 16 registers. This is referred to as a **vector** in the code and  documentation.
+The vector elements may contains different values, but the exact same code is used in parallel to perform calculations with them.
 
 
 ## Vector Offsets
 
-When uniform values are loaded, all elements of a vector receive the same value. If you run a program on these,
-all vector elements will have identical values at every step of the way; this makes for boring duplication.
+When uniform values are loaded, all elements of a vector receive the same value.
+If you then run a kernel, all vector elements will have identical values at every step of the way;
+this makes for boring duplication.
 
 In addition, when using multiple QPU's for a calculation, this would result in each QPU performing exactly the
 same calculation.
 
 The following functions at source code level are supplied to deal this:
 
-  - `index()`   - returns an index value unique to each vector element, in the range `0..15`.
-  - `me()`      - return an index value unique to each QPU participating an a calculation.
-                  A single running QPU would have `me() ==0`, any further QPU's are indexed sequentially.
-  - `numQPUs()` - The number of QPU's participating in a calculation
+### `index()`
+
+Returns an index value unique to each vector element, in the range `0..15`.
+
+
+### `me()`
+
+Returns an index value unique to each QPU participating an a calculation.
+A single running QPU would have `me() ==0`, any further QPU's are indexed sequentially.
+
+### `numQPUs()` 
+
+Returns  number of QPU's participating in a calculation.
 
 For `vc4`, the number of QPU's is selectable between 1 and 12, 12 being the maximum.
 The participating QPU's would then have `me() == 0, 1, 2...` up to the selected maximum.
 
-For `v3d`, you can use either 1 or 8 QPU's. In the latter case, `me()` would return 0, 1, 2, 3, 4, 5, 6 or 7 per QPU. 
+For `v3d`, you can use either 1 or 8 QPU's. In the latter case, `me()` would return 0, 1, 2, 3, 4, 5, 6 or 7 per QPU.
 
-These two functions are used to differentiate pointers to memory addresses, in the following way:
+### Vector offset calculation
+
+The functions are used to differentiate pointers to memory addresses, in the following way:
 
 ```c++
 void kernel(Ptr<Float> x) {
@@ -78,6 +90,14 @@ in your own code.
 This adjustment has been integrated in the pointer usage, because it is so frequently recurring that I consider it
 to be the standard way of dealing with pointers.
 
+Automatic uniform pointer initialization places restrictions on pointer usage:
+
+- All accessed memory blocks should have a number of elements which is a multiple of 16.
+- If multiple QPU's are used for a calculation, the number of elements should be (num QPU's) * 16.
+
+Not adhering to this will lead to reads and writes outside the memory blocks.
+This is not necessarily fatal, but you can expect wild and unexpected results.
+
 **Unfortunately:**
 
 It turns out that this default case is useful for only the basic usage. For more sophisticated use of pointers, this becomes a hindrance.
@@ -86,14 +106,6 @@ For example, the example programs `HeatMap` and `Mandelbrot` deal with uniform p
 need to unset the automatic uniform pointer adjustment to work.
 
 I'm not too happy about this. I'll keep the uniform pointer initialization in for now, until I think of a better way.
-
-Automatic uniform pointer initialization does place restrictions on pointer usage:
-
-- All accessed memory blocks should have a number of elements which is a multiple of 16.
-- If multiple QPU's are used for a calculation, the number of elements should be (num QPU's) * 16.
-
-Not adhering to this will lead to reads and writes outside the memory blocks.
-This is not necessarily fatal, but you can expect wild and unexpected results.
 
 ### Previous attempts
 
