@@ -152,7 +152,7 @@ Instr label(Label in_label) {
 /**
  * Add extra initialization code after uniform loads
  */
-void SourceTranslate::add_init(Seq<Instr> &code) {
+void add_init(Seq<Instr> &code) {
 	using namespace V3DLib::Target::instr;
 
 	int insert_index = get_init_begin_marker(code);

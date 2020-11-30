@@ -1,6 +1,7 @@
 #include "KernelDriver.h"
-#include "vc4.h"
+#include "Source/Translate.h"
 #include "Source/Lang.h"
+#include "vc4.h"
 #include "Encode.h"
 #include "DMA.h"
 #include "dump_instr.h"
@@ -63,6 +64,18 @@ void KernelDriver::emit_opcodes(FILE *f) {
 	}
 
 	dump_instr(f, instructions.data(), instructions.size());
+}
+
+
+void KernelDriver::compile_intern() {
+	kernelFinish();
+	obtain_ast();
+ 	translate_stmt(m_targetCode, m_body);
+	insertInitBlock(m_targetCode);  // TODO init block not used for vc4, remove
+
+  m_targetCode << Instr(END);
+
+	compile_postprocess(m_targetCode);
 }
 
 

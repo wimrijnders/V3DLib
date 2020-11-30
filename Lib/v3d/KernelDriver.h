@@ -25,7 +25,9 @@ private:
   SharedArray<uint32_t> paramMem;
 	Instructions          instructions;
 
+	void compile_intern() override;
 	void invoke_intern(int numQPUs, Seq<int32_t>* params) override;
+
 	std::vector<uint64_t> to_opcodes();
 	void emit_opcodes(FILE *f) override;
 };

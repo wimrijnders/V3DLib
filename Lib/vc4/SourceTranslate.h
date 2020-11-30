@@ -11,7 +11,6 @@ public:
 	void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) override;
 
 	void regAlloc(CFG* cfg, Seq<Instr>* instrs) override;
-	void add_init(Seq<Instr> &code) override; 
 	bool stmt(Seq<Instr>* seq, Stmt* s) override;
 };
 

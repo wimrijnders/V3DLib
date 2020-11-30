@@ -14,7 +14,7 @@ namespace {
 
 namespace V3DLib {
 
-int ISourceTranslate::get_init_begin_marker(Seq<Instr> &code) {
+int get_init_begin_marker(Seq<Instr> &code) {
 	// Find the init begin marker
 	int index = 0;
 	for (; index < code.size(); ++index) {
@@ -32,7 +32,7 @@ int ISourceTranslate::get_init_begin_marker(Seq<Instr> &code) {
  *
  * The calculated offset is assumed to be in ACC0
  */
-Seq<Instr> ISourceTranslate::add_uniform_pointer_offset(Seq<Instr> &code) {
+Seq<Instr> add_uniform_pointer_offset(Seq<Instr> &code) {
 	using namespace V3DLib::Target::instr;
 
 	Seq<Instr> ret;

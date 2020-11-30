@@ -1,4 +1,3 @@
-
 # TODO
 
 ## v3d
@@ -173,92 +172,6 @@ If it works, it works.
 
 I much prefer to focus on `v3d`, which uses only TMU for main memory access.
 Maybe one day I'll rewrite the `vc4` assembly to do the same *(hereby noted as TODO)*.
-
------
-
-# Snippets
-
-Stuff which is partially worked out and needs to be completed one day.
-
-
-## Documentation blurb for vector offsets
-
-**TODO:** Make this a coherent text and find a good place for it in the docs
-
-All registers within a QPU are actually a stack of 16 registers. This is referred to as a `vector` in
-the documentation.
-They may contains different values, but the exact same code is used in parallel to perform calculations with them.
-
-When uniform values are loaded, all elements of a vector receive the same value. If you run a program on these,
-all vector elements will have identical values at every step of the way; this makes for boring duplication.
-
-In addition, when using multiple QPU's for a calculation, this would result in each QPU performing exactly the
-same calculation.
-
-The following functions at source code level are supplied to deal this:
-
-  - `index()`   - returns an index value unique to each vector element, in the range `0..15`.
-  - `me()`      - return an index value unique to each QPU participating an a calculation.
-                  A single running QPU would have `me() ==0`, any further QPU's are indexed sequentially.
-  - `numQPUs()` - The number of QPU's participating in a calculation
-
-For `vc4`, the number of QPU's is selectable between 1 and 12, 12 being the maximum.
-The participating QPU's would then have `me() == 0, 1, 2...` up to the selected maximum.
-
-For `v3d`, you can use either 1 or 8 QPU's. In the latter case, `me()` would return 0, 1, 2, 3, 4, 5, 6 or 7 per QPU. 
-
-These two functions are used to differentiate pointers to memory addresses, in the following way:
-
-```c++
-void kernel(Ptr<Float> x) {
-  x = x + index() + (me() << 4);
-  ...
-}
-```
-
-Incoming value `x` is a pointer to an address in shared memory (i.e. accessible by both the CPU and the QPU's).
-It is assumed that this points to a memory block containing values which need to be processed by the QPU's.
-
-What happens here, is that each vector element gets assigned an offset into this memory block. Therefore,
-each vector element will access a different consecutive value.
-In addition, an offset is added in jumps of 16 items per QPU, according to the QPU ID.
-Each QPU will thus handle a distinct block of 16 consecutive values.
-
-For multiple QPU's, you need to take an offset per QPU into account (called 'stride' in the code).
-This can be done as follows:
-
-```c++
-void kernel(Ptr<Float> x) {
-  Int stride = numQPUs() << 4;
-  x = x + index() + (me() << 4);
-
-  ...
-	// Perform some calculation
-  ...
-
-	x = x + stride;   // Prepare for handling the next block 
-  ...
-}
-```
-
-
-**This happens automatically for pointer passed in as uniforms**. There is therefore no need
-to explicitly code this for uniform pointers.
-It is, however, useful to be aware of this pointer adjustment, and it is conceivable that you might need to use it
-in your own code.
-
-This adjustment has been integrated in the pointer usage, because it is so frequently recurring that I consider it
-to be the standard way of dealing with pointer. I have yet to encounter a case where a different approach is 
-required (if you do encounter one, please let me know!).
-
-This does place restrictions on pointer usage:
-
-- All accessed memory blocks should have a number of elements which is a multiple of 16.
-- If multiple QPU's are used for a calculation, the number of elements should be (num QPU's) * 16.
-
-Not adhering to this will lead to reads and writes outside the memory blocks.
-This is not necessarily fatal, but you can expect wild and unexpected results.
-
 
 -----
 

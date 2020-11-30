@@ -31,11 +31,13 @@
 
 #include "KernelDriver.h"
 #include <memory>
+#include "Source/Translate.h"
 #include "Target/SmallLiteral.h"  // decodeSmallLit()
 #include "Target/RemoveLabels.h"
 #include "Invoke.h"
 #include "instr/Snippets.h"
 #include "Support/basics.h"
+#include "SourceTranslate.h"
 
 
 
@@ -979,6 +981,18 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 	}
 
 	return code;
+}
+
+
+void KernelDriver::compile_intern() {
+	kernelFinish();
+	obtain_ast();
+ 	translate_stmt(m_targetCode, m_body);
+	insertInitBlock(m_targetCode);
+
+	add_init(m_targetCode);
+
+	compile_postprocess(m_targetCode);
 }
 
 

@@ -624,6 +624,8 @@ int lastUniformOffset(Seq<Instr> &code) {
 	return index - 1;
 }
 
+}  // anon namespace
+
 
 /**
  * Insert markers for initialization code
@@ -646,8 +648,6 @@ void insertInitBlock(Seq<Instr> &code) {
 	ret << Instr(INIT_BEGIN) << Instr(INIT_END);
 	code.insert(index + 1, ret);
 }
-
-}  // anon namespace
 
 
 // ============================================================================
@@ -748,11 +748,10 @@ Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
 /**
  * Translate to target code
  *
- * Top-level translation function for statements.
+ * Entry point for translation of statements.
  */
-void translateStmt(Seq<Instr> &seq, Stmt *s) {
+void translate_stmt(Seq<Instr> &seq, Stmt *s) {
   stmt(&seq, s);
-	insertInitBlock(seq);  // TODO init block not used for vc4, remove for that case
 }
 
 

@@ -41,6 +41,7 @@ protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
   Seq<Instr> m_targetCode;            // Target code generated from AST
+  Stmt *m_body = nullptr;
 
   int qpuCodeMemOffset = 0;
 	std::vector<std::string> errors;
@@ -49,15 +50,18 @@ protected:
 	virtual void emit_opcodes(FILE *f) {} 
 	void obtain_ast();
 
+
 private:
 	StmtStack m_stmtStack;
-  Stmt     *m_body = nullptr;
 
-	void _compile();
+	virtual void compile_intern() = 0;
 	virtual void invoke_intern(int numQPUs, Seq<int32_t>* params) = 0;
+
 	bool has_errors() const { return !errors.empty(); }
 	bool handle_errors();
 };
+
+void compile_postprocess(Seq<Instr> &targetCode);
 
 }  // namespace V3DLib
 

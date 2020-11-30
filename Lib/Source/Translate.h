@@ -8,7 +8,8 @@ namespace V3DLib {
 
 class Stmt;
 
-void translateStmt(Seq<Instr> &seq, Stmt *s);
+void translate_stmt(Seq<Instr> &seq, Stmt *s);
+void insertInitBlock(Seq<Instr> &code);
 void loadStorePass(Seq<Instr> &instrs);
 
 //

@@ -103,24 +103,14 @@ void KernelDriver::obtain_ast() {
 }
 
 
-void KernelDriver::_compile() {
-	kernelFinish();
-	obtain_ast();
- 	translateStmt(m_targetCode, m_body);
-
-	if (Platform::instance().compiling_for_vc4()) {
-	  m_targetCode << Instr(END);
-	}
-
-	getSourceTranslate().add_init(m_targetCode);  // TODO init block only added for v3d, refactor
-
-	compile_postprocess(m_targetCode);
-}
-
-
+/**
+ * Entry point for compilation of source code to target code.
+ *
+ * This method is here to just handle thrown exceptions.
+ */
 void KernelDriver::compile() {
 	try {
-		_compile();
+		compile_intern();
 	} catch (V3DLib::Exception const &e) {
 		std::string msg = "Exception occured during compilation: ";
 		msg << e.msg();
