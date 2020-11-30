@@ -15,7 +15,6 @@ public:
 	KernelDriver(BufferType in_buffer_type) : buffer_type(in_buffer_type) {}
 	virtual ~KernelDriver();
 
-	virtual void kernelFinish() {} 
 	virtual void encode(int numQPUs) = 0;
 
 	void compile();

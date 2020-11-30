@@ -23,17 +23,17 @@ same calculation.
 
 The following functions at source code level are supplied to deal this:
 
-### `index()`
+### Function `index()`
 
 Returns an index value unique to each vector element, in the range `0..15`.
 
 
-### `me()`
+### Function `me()`
 
 Returns an index value unique to each QPU participating an a calculation.
 A single running QPU would have `me() ==0`, any further QPU's are indexed sequentially.
 
-### `numQPUs()` 
+### Function `numQPUs()` 
 
 Returns  number of QPU's participating in a calculation.
 
@@ -107,12 +107,15 @@ need to unset the automatic uniform pointer adjustment to work.
 
 I'm not too happy about this. I'll keep the uniform pointer initialization in for now, until I think of a better way.
 
-### Previous attempts
+### Previous Attempts
+
+Code here has been preserved for sentimental and archaological reasons.
+I'm retaining it to preserve the insights encountered along the way, should I ever need to do something similar again.
 
 #### Initialization of stride for `vc4` at the level of the target language
 
 This places the initialization code in the INIT-block, after translation of source to target.
-The init-block therefore needs to be added first.
+The INIT-block therefore needs to be added first.
 
 This did not work for DMA, because DMA add the offset itself.
 
@@ -132,5 +135,28 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
 }
 ```
+-----
 
+# Setting of Branch Conditions
 
+**TODO:** Make this a coherent text.
+
+Source: qpu_instr.h, line 74, enum v3d_qpu_uf:
+
+How I interpret this:
+  - AND: if all bits set
+  - NOR: if no bits set
+  - N  : field not set
+  - Z  : Field zero
+  - N  : field negative set
+  - C  : Field negative cleared
+
+What the bits are is not clear at this point.
+These assumptions are probably wrong, but I need a starting point.
+
+**TODO:** make tests to verify these assumptions (how? No clue right now)
+
+So:
+  - vc4 `if all(nc)...` -> ANDC
+  - vc4 `nc` - negative clear, ie. >= 0
+  - vc4 `ns` - negative set,   ie.  < 0

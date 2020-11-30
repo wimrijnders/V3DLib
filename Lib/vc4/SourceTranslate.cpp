@@ -46,8 +46,8 @@ void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 /**
  * @return true if statement handled, false otherwise
  */
-bool SourceTranslate::stmt(Seq<Instr>* seq, Stmt* s) {
-	return vc4::stmt(seq, s);
+bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt* s) {
+	return vc4::translate_stmt(seq, s);
 }
 
 }  // namespace vc4

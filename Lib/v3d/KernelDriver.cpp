@@ -1,32 +1,3 @@
-/**
- *
- * ============================================================================
- * NOTES
- * =====
- *
- * * Setting of branch conditions
- *
- * * qpu_instr.h, line 74, enum v3d_qpu_uf:
- *
- *   How I interpret this:
- *   - AND: if all bits set
- *   - NOR: if no bits set
- *   - N  : field not set
- *   - Z  : Field zero
- *   - N  : field negative set
- *   - C  : Field negative cleared
- *
- *   What the bits are is not clear at this point.
- *   These assumptions are probably wrong, but I need a starting point.
- *
- *   TODO: make tests to verify these assumptions (how? No clue right now)
- *
- *   So:
- *   - vc4 `if all(nc)...` -> ANDC
- *     vc4 `nc` - negative clear, ie. >= 0
- *     vc4 `ns` - negative set,   ie.  < 0
- * 
- */
 #ifdef QPU_MODE
 
 #include "KernelDriver.h"
@@ -38,8 +9,6 @@
 #include "instr/Snippets.h"
 #include "Support/basics.h"
 #include "SourceTranslate.h"
-
-
 
 namespace V3DLib {
 
@@ -985,14 +954,17 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 
 
 void KernelDriver::compile_intern() {
-	kernelFinish();
 	obtain_ast();
- 	translate_stmt(m_targetCode, m_body);
+
+	translate_stmt(m_targetCode, m_body);
+
 	insertInitBlock(m_targetCode);
 
 	add_init(m_targetCode);
 
 	compile_postprocess(m_targetCode);
+
+	// The translation/removal op labels happens in `v3d::KernelDriver::to_opcodes()` 
 }
 
 

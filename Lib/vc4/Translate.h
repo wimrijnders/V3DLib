@@ -10,8 +10,7 @@ class Stmt;
 
 namespace vc4 {
 
-
-bool stmt(Seq<Instr>* seq, Stmt* s);
+bool translate_stmt(Seq<Instr> &seq, Stmt* s);
 Seq<Instr> StoreRequest(Var addr_var, Var data_var, bool wait = false);
 
 }  // namespace vc4

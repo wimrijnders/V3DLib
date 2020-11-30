@@ -187,13 +187,13 @@ namespace vc4 {
 /**
  * @return true if statement handled, false otherwise
  */
-bool stmt(Seq<Instr> *seq, Stmt *s) {
+bool translate_stmt(Seq<Instr> &seq, Stmt *s) {
 
   // ---------------------------------------------
   // Case: store(e0, e1) where e1 and e2 are exprs
   // ---------------------------------------------
   if (s->tag == STORE_REQUEST) {
-		storeRequestOperation(*seq, s->storeReq_data(), s->storeReq_addr());
+		storeRequestOperation(seq, s->storeReq_data(), s->storeReq_addr());
     return true;
   }
 
@@ -201,7 +201,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: setReadStride(e) or setWriteStride(e) where e is an expr
   // --------------------------------------------------------------
   if (s->tag == SET_READ_STRIDE || s->tag == SET_WRITE_STRIDE) {
-    setStrideStmt(seq, s->tag, s->stride());
+    setStrideStmt(&seq, s->tag, s->stride());
     return true;
   }
 
@@ -209,7 +209,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: semaInc(n) or semaDec(n) where n is an int (semaphore id)
   // ---------------------------------------------------------------
   if (s->tag == SEMA_INC || s->tag == SEMA_DEC) {
-    *seq << semaphore(s->tag, s->semaId);
+    seq << semaphore(s->tag, s->semaId);
     return true;
   }
 
@@ -217,7 +217,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: hostIRQ()
   // ---------------
   if (s->tag == SEND_IRQ_TO_HOST) {
-    *seq << sendIRQToHost();
+    seq << sendIRQToHost();
     return true;
   }
 
@@ -225,7 +225,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: vpmSetupRead(dir, n, addr, stride)
   // ----------------------------------------
   if (s->tag == SETUP_VPM_READ) {
-    *seq << setupVPMReadStmt(s);
+    seq << setupVPMReadStmt(s);
     return true;
   }
 
@@ -233,7 +233,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: vpmSetupWrite(dir, addr, stride)
   // --------------------------------------
   if (s->tag == SETUP_VPM_WRITE) {
-    setupVPMWriteStmt(seq,
+    setupVPMWriteStmt(&seq,
       s->setupVPMWrite_addr(),
       s->setupVPMWrite.hor,
       s->setupVPMWrite.stride);
@@ -244,7 +244,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: dmaSetupRead(dir, numRows, addr, rowLen, vpitch)
   // ------------------------------------------------------
   if (s->tag == SETUP_DMA_READ) {
-    *seq << setupDMAReadStmt(s);
+    seq << setupDMAReadStmt(s);
     return true;
   }
 
@@ -252,7 +252,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: dmaSetupWrite(dir, numRows, addr, rowLen)
   // -----------------------------------------------
   if (s->tag == SETUP_DMA_WRITE) {
-    setupDMAWriteStmt(seq,
+    setupDMAWriteStmt(&seq,
       s->setupDMAWrite.numRows,
       s->setupDMAWrite.rowLen,
       s->setupDMAWrite.hor,
@@ -264,7 +264,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: dmaReadWait()
   // -------------------
   if (s->tag == DMA_READ_WAIT) {
-    *seq << genWaitDMALoad();
+    seq << genWaitDMALoad();
     return true;
   }
 
@@ -272,7 +272,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: dmaWriteWait()
   // --------------------
   if (s->tag == DMA_WRITE_WAIT) {
-    *seq << genWaitDMAStore();
+    seq << genWaitDMAStore();
     return true;
   }
 
@@ -280,7 +280,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: dmaStartRead(addr)
   // ------------------------
   if (s->tag == DMA_START_READ) {
-    startDMAReadStmt(seq, s->startDMARead());
+    startDMAReadStmt(&seq, s->startDMARead());
     return true;
   }
 
@@ -288,7 +288,7 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
   // Case: dmaStartWrite(addr)
   // -------------------------
   if (s->tag == DMA_START_WRITE) {
-    startDMAWriteStmt(seq, s->startDMAWrite());
+    startDMAWriteStmt(&seq, s->startDMAWrite());
     return true;
   }
 
@@ -296,10 +296,6 @@ bool stmt(Seq<Instr> *seq, Stmt *s) {
 	return false;
 }
 
-
-// ============================================================================
-// Store request
-// ============================================================================
 
 Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
 	using namespace V3DLib::Target::instr;

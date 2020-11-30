@@ -1,6 +1,8 @@
 #include "KernelDriver.h"
-#include "Source/Translate.h"
 #include "Source/Lang.h"
+#include "Source/Translate.h"
+#include "Target/RemoveLabels.h"
+#include "Translate.h"
 #include "vc4.h"
 #include "Encode.h"
 #include "DMA.h"
@@ -70,12 +72,17 @@ void KernelDriver::emit_opcodes(FILE *f) {
 void KernelDriver::compile_intern() {
 	kernelFinish();
 	obtain_ast();
- 	translate_stmt(m_targetCode, m_body);
+
+	V3DLib::translate_stmt(m_targetCode, m_body);
+
 	insertInitBlock(m_targetCode);  // TODO init block not used for vc4, remove
 
   m_targetCode << Instr(END);
 
 	compile_postprocess(m_targetCode);
+
+  // Translate branch-to-labels to relative branches
+  removeLabels(m_targetCode);
 }
 
 

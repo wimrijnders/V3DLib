@@ -6,9 +6,7 @@
 #include "Source/Translate.h"
 #include "Source/Lang.h"       // initStmt
 #include "Target/Satisfy.h"
-#include "Target/RemoveLabels.h"
 #include "SourceTranslate.h"
-
 
 namespace V3DLib {
 
@@ -62,11 +60,6 @@ void compile_postprocess(Seq<Instr> &targetCode) {
 
   // Satisfy target code constraints
   satisfy(&targetCode);
-
-  // Translate branch-to-labels to relative branches
-	if (Platform::instance().compiling_for_vc4()) {  // For v3d, it happens in `v3d::KernelDriver::to_opcodes()` 
-	  removeLabels(targetCode);
-	}
 }
 
 

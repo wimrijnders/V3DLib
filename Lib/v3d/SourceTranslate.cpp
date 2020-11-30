@@ -14,20 +14,20 @@ namespace {
 /**
  * @param seq  list of generated instructions up till now
  */
-void storeRequest(Seq<Instr>* seq, Expr::Ptr data, Expr::Ptr addr) {
+void storeRequest(Seq<Instr> &seq, Expr::Ptr data, Expr::Ptr addr) {
 	using namespace V3DLib::Target::instr;
 
   if (addr->tag() != VAR || data->tag() != VAR) {
-    addr = putInVar(seq, addr);
-    data = putInVar(seq, data);
+    addr = putInVar(&seq, addr);
+    data = putInVar(&seq, data);
   }
 
 	Reg srcAddr = srcReg(addr->var);
 	Reg srcData = srcReg(data->var);
 
-  *seq << mov(TMUD, srcData);
-  seq->back().comment("Store request");
-  *seq  << mov(TMUA, srcAddr);
+  seq << mov(TMUD, srcData);
+  seq.back().comment("Store request");
+  seq << mov(TMUA, srcAddr);
 }
 
 }  // anon namespace
@@ -195,7 +195,7 @@ void add_init(Seq<Instr> &code) {
 /**
  * @return true if statement handled, false otherwise
  */
-bool SourceTranslate::stmt(Seq<Instr>* seq, Stmt* s) {
+bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt* s) {
 
   // ---------------------------------------------
   // Case: store(e0, e1) where e1 and e2 are exprs
@@ -204,7 +204,7 @@ bool SourceTranslate::stmt(Seq<Instr>* seq, Stmt* s) {
 		storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
     return true;
   }
-
+ 
 	return false;
 }
 

@@ -531,9 +531,12 @@ void translateIf(Seq<Instr> &seq, Stmt &s) {
 		Label elseLabel = freshLabel();
 
 		seq << branch(cond.negate(), elseLabel);        // Branch to 'else' statement
+
 		stmt(&seq, s.ifElse.thenStmt);                  // Compile 'then' statement
+
 		seq << branch(endifLabel)                       // Branch to endif
 		    << label(elseLabel);                        // Label for 'else' statement
+
 		stmt(&seq, s.ifElse.elseStmt);                  // Compile 'else' statement
 	}
 	
@@ -595,9 +598,8 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 	    *seq << loadReceive(s->loadDest());
 			break;
 		default:
-			// Handle platform-specific instructions
-			if (!getSourceTranslate().stmt(seq, s)) {
-		  	assert(false); // Not reachable
+			if (!getSourceTranslate().stmt(*seq, s)) {
+		  	assert(false); // Should not be reachable
 			}
 			break;
 	}
