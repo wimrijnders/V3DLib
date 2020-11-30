@@ -24,8 +24,6 @@ public:
 	virtual bool stmt(Seq<Instr>& seq, Stmt* s) = 0;
 };
 
-Seq<Instr> add_uniform_pointer_offset(Seq<Instr> &code);
-int get_init_begin_marker(Seq<Instr> &code);
 ISourceTranslate &getSourceTranslate();
 
 }  // namespace V3DLib

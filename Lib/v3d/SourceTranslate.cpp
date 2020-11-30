@@ -11,6 +11,47 @@ using ::operator<<;  // C++ weirdness
 
 namespace {
 
+
+/**
+ * Generate code to add an offset to the uniforms which are pointers.
+ *
+ * The calculated offset is assumed to be in ACC0
+ */
+Seq<Instr> add_uniform_pointer_offset(Seq<Instr> &code) {
+	using namespace V3DLib::Target::instr;
+
+	Seq<Instr> ret;
+
+	// add the offset to all the uniform pointers
+	for (int index = 0; index < code.size(); ++index) {
+		auto &instr = code[index];
+
+		if (!instr.isUniformLoad()) {  // Assumption: uniform loads always at top
+			break;
+		}
+
+		if (instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.isUniformPtr) {
+			ret << add(rf((uint8_t) index), rf((uint8_t) index), ACC0);
+		}
+	}
+
+	return ret;
+}
+
+
+int get_init_begin_marker(Seq<Instr> &code) {
+	// Find the init begin marker
+	int index = 0;
+	for (; index < code.size(); ++index) {
+		if (code[index].tag == INIT_BEGIN) break; 
+	}
+	assertq(index < code.size(), "Expecting INIT_BEGIN marker.");
+	assertq(index >= 2, "Expecting at least two uniform loads.", true);
+
+	return index;
+}
+
+
 /**
  * @param seq  list of generated instructions up till now
  */
