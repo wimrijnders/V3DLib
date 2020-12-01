@@ -1,5 +1,6 @@
 #ifndef _V3DLIB_SOURCE_VAR_H_
 #define _V3DLIB_SOURCE_VAR_H_
+#include <string>
 
 namespace V3DLib {
 
@@ -38,6 +39,8 @@ struct Var {
 	VarTag tag() const { return m_tag; }
 	VarId id() const { return m_id; }
 	bool isUniformPtr () const { return m_isUniformPtr; }
+
+	std::string disp() const;
 
 private:
   VarTag m_tag;

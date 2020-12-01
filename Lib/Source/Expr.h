@@ -32,12 +32,15 @@ struct Expr {
 	ExprTag tag() const { return m_tag; }
 	bool isLit() const { return (tag() == INT_LIT) || (tag() == FLOAT_LIT); }
 
-  Ptr apply_lhs();
-  Ptr apply_rhs();
-  Ptr deref_ptr();
+  Ptr apply_lhs() const;
+  Ptr apply_rhs() const;
+  Ptr deref_ptr() const;
   void apply_lhs(Ptr p);
   void apply_rhs(Ptr p);
   void deref_ptr(Ptr p);
+
+	std::string pretty() const;
+	std::string disp() const;
 
   union {
     int   intLit;                                   // Integer literal
@@ -54,6 +57,8 @@ private:
 
   Ptr m_exp_a;  // lhs for apply, ptr for deref
 	Ptr m_exp_b;  // rhs for apply
+
+	std::string disp_apply() const;
 };
 
 
@@ -61,13 +66,18 @@ private:
 class BaseExpr {
 public:
 	BaseExpr() {}
-	BaseExpr(Expr::Ptr e);
+	BaseExpr(Expr::Ptr e, char const *label = "");
 
 	Expr::Ptr expr() const { return m_expr; }
 	void set_with_index(Expr::Ptr base, Expr::Ptr index_expr);
 
+	std::string disp() const;
+
 protected:
   Expr::Ptr m_expr;  // Abstract syntax tree
+
+private:
+	char const *m_label = "";
 };
 
 

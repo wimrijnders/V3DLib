@@ -31,6 +31,8 @@ struct CmpOp {
 	BaseType type;
 
 	CmpOp(CmpOpId in_op, BaseType in_type) : op(in_op), type(in_type) {}
+
+	char const *to_string();
 };
 
 

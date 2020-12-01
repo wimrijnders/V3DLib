@@ -4,23 +4,20 @@
 
 namespace V3DLib {
 
-/*
-BExpr::	BExpr(BExpr const &rhs) {
-	switch(rhs.tag() {
-	case NOT:
-		break;
-	case AND:
-		break;
-	case OR:
-		break;
-	case CMP:
-		break;
-	default:
-		assert(false);
-		break;
-	}
+char const *CmpOp::to_string() {
+  switch (op) {
+    case EQ : return "==";
+    case NEQ: return "!=";
+    case LT : return "<";
+    case LE : return "<=";
+    case GT : return ">";
+    case GE : return ">=";
+  }
+
+  // Not reachable
+  assert(false);
+	return nullptr;
 }
-*/
 
 
 BExpr::BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {

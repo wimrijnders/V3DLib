@@ -1,6 +1,6 @@
 #include "Expr.h"
 #include "Target/SmallLiteral.h"
-#include "Support/debug.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
@@ -41,19 +41,19 @@ Expr::Expr(Ptr ptr) {
 }
 
 
-Expr::Ptr Expr::apply_lhs() {
+Expr::Ptr Expr::apply_lhs() const {
 	assert(m_tag == APPLY && m_exp_a.get() != nullptr);
 	return m_exp_a;
 }
 
 
-Expr::Ptr Expr::apply_rhs() {
+Expr::Ptr Expr::apply_rhs() const {
 	assert(m_tag == APPLY && m_exp_b.get() != nullptr);
 	return m_exp_b;
 }
 
 
-Expr::Ptr Expr::deref_ptr() {
+Expr::Ptr Expr::deref_ptr() const {
 	assert(m_tag == DEREF && m_exp_a.get() != nullptr);
 	return m_exp_a;
 }
@@ -77,6 +77,61 @@ void Expr::deref_ptr(Ptr p) {
 }
 
 
+std::string Expr::disp_apply() const {
+	assert(tag() == APPLY);
+	std::string ret;
+
+	if (apply.op.noParams()) {
+		ret << apply.op.to_string() << "()";
+	} else if (apply.op.isUnary()) {
+		ret << "(" << apply.op.to_string() << apply_lhs()->pretty() << ")";
+	} else {
+		ret << "(" << apply_lhs()->pretty() << apply.op.to_string() << apply_rhs()->pretty() <<  ")";
+	}
+
+	return ret;
+}
+
+
+std::string Expr::pretty() const {
+	std::string ret;
+
+  switch (tag()) {
+    case INT_LIT:   ret << intLit;                       break;
+    case FLOAT_LIT: ret << floatLit;                     break;
+    case VAR:       ret << var.disp();                   break;
+    case APPLY:     ret << disp_apply();                 break;
+    case DEREF:     ret << "*" << deref_ptr()->pretty(); break;
+		default:
+			assert(false);
+		break;
+	}
+
+	return ret;
+}
+
+
+std::string Expr::disp() const {
+	std::string ret;
+
+	switch(m_tag) {
+		case INT_LIT:   ret << "Int " << intLit;      break;
+		case FLOAT_LIT: ret << "Float " << floatLit;  break;
+		case VAR:       ret << "Var: " << var.disp(); break;
+		case APPLY:
+			breakpoint
+			ret << "Apply: " << disp_apply();
+		break;
+		case DEREF:     ret << "Deref: ";             break;
+		default:
+			assert(false);
+		break;
+	}
+
+	return ret;
+}
+
+
 /**
  * An expression is 'simple' if it is a small literal or a variable.
  */
@@ -90,7 +145,7 @@ bool Expr::isSimple() const {
 // Class BaseExpr
 // ============================================================================
 
-BaseExpr::BaseExpr(Expr::Ptr e) {
+BaseExpr::BaseExpr(Expr::Ptr e, char const *label) : m_label(label) {
 	assert(e != nullptr);
 	m_expr = e;
 }
@@ -104,6 +159,13 @@ BaseExpr::BaseExpr(Expr::Ptr e) {
 void BaseExpr::set_with_index(Expr::Ptr base, Expr::Ptr index_expr) {
 	Expr::Ptr e = mkDeref(mkApply(base, Op(ADD, INT32), mkApply(index_expr, Op(SHL, INT32), mkIntLit(2))));
 	m_expr = e;
+}
+
+
+std::string BaseExpr::disp() const {
+	std::string ret;
+	ret << m_label << " " << m_expr->disp(); 
+	return ret;
 }
 
 

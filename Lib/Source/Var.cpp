@@ -1,9 +1,49 @@
 #include "Var.h"
-#include "Support/debug.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
 static int globalVarId = 0;  // Used for fresh variable generation
+
+
+std::string Var::disp() const {
+	std::string ret;
+
+	switch(m_tag) {
+  	case STANDARD:
+			ret << "v" << m_id;
+		break;
+  	case UNIFORM:
+			ret << "Uniform";
+			if (m_isUniformPtr) {
+				ret << " Ptr";
+			}
+		break;
+  	case QPU_NUM:
+			ret << "QPU_NUM";
+		break;
+  	case ELEM_NUM:
+			ret << "ELEM_NUM";
+		break;
+  	case VPM_READ:
+			ret << "VPM_READ";
+		break;
+  	case VPM_WRITE:
+			ret << "VPM_WRITE";
+		break;
+  	case TMU0_ADDR:
+			ret << "TMU0_ADDR";
+		break;
+		case DUMMY:
+			ret << "Dummy";
+		break;
+		default:
+			assert(false);
+		break;
+	}
+
+	return ret;
+}
 
 
 /**

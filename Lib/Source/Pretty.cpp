@@ -1,95 +1,23 @@
 #include "Pretty.h"
 #include "Stmt.h"
 #include "Syntax.h"
-#include "Support/debug.h"
+#include "Support/basics.h"
 
 
 namespace V3DLib {
 
 // ============================================================================
-// Operators
-// ============================================================================
-
-const char* cmpOpToString(CmpOp op) {
-  switch (op.op) {
-    case EQ : return "==";
-    case NEQ: return "!=";
-    case LT : return "<";
-    case LE : return "<=";
-    case GT : return ">";
-    case GE : return ">=";
-  }
-
-  // Not reachable
-  assert(false);
-	return nullptr;
-}
-
-// ============================================================================
 // Expressions
 // ============================================================================
 
-void pretty(FILE *f, Expr::Ptr e) {
-  assert(f != nullptr);
-  if (e == nullptr) return;
-
-  switch (e->tag()) {
-    // Integer literals
-    case INT_LIT:
-      fprintf(f, "%i", e->intLit);
-      break;
-
-    // Float literals
-    case FLOAT_LIT:
-      fprintf(f, "%f", e->floatLit);
-      break;
-
-    // Variables
-    case VAR:
-      if (e->var.tag() == STANDARD)
-        fprintf(f, "v%i", e->var.id());
-      else if (e->var.tag() == UNIFORM)
-        fprintf(f, "UNIFORM");
-      else if (e->var.tag() == QPU_NUM)
-        fprintf(f, "QPU_NUM");
-      else if (e->var.tag() == ELEM_NUM)
-        fprintf(f, "ELEM_NUM");
-      else if (e->var.tag() == VPM_READ)
-        fprintf(f, "VPM_READ");
-      else if (e->var.tag() == VPM_WRITE)
-        fprintf(f, "VPM_WRITE");
-      else if (e->var.tag() == TMU0_ADDR)
-        fprintf(f, "TMU0_ADDR");
-      break;
-
-    // Applications
-    case APPLY: {
-      if (e->apply.op.noParams()) {
-        fprintf(f, "%s()", e->apply.op.to_string());
-      } else if (e->apply.op.isUnary()) {
-        fprintf(f, "(");
-        fprintf(f, "%s", e->apply.op.to_string());
-        pretty(f, e->apply_lhs());
-        fprintf(f, ")");
-      }
-      else {
-        fprintf(f, "(");
-        pretty(f, e->apply_lhs());
-        fprintf(f, "%s", e->apply.op.to_string());
-        pretty(f, e->apply_rhs());
-        fprintf(f, ")");
-      }
-		}
-		break;
-
-    // Dereference
-    case DEREF:
-      fprintf(f, "*");
-      pretty(f, e->deref_ptr());
-      break;
-
-  }
+std::string pretty(Expr::Ptr e) {
+  if (e == nullptr) {
+		assert(false);
+		return "";
+	}
+	return e->pretty();
 }
+
 
 // ============================================================================
 // Boolean expressions
@@ -126,9 +54,9 @@ void pretty(FILE *f, BExpr* b) {
 
     // Comparison
     case CMP:
-      pretty(f, b->cmp_lhs());
-      fprintf(f, "%s", cmpOpToString(b->cmp.op));
-      pretty(f, b->cmp_rhs());
+      fprintf(f, "%s",  pretty(b->cmp_lhs()).c_str());
+      fprintf(f, "%s ", b->cmp.op.to_string());
+      fprintf(f, "%s",  pretty(b->cmp_rhs()).c_str());
       break;
   }
 }
@@ -161,8 +89,8 @@ void indentBy(FILE *f, int indent) {
   for (int i = 0; i < indent; i++) fprintf(f, " ");
 }
 
-void pretty(FILE *f, int indent, Stmt* s)
-{
+
+void pretty(FILE *f, int indent, Stmt* s) {
   assert(f != nullptr);
   if (s == nullptr) return;
 
@@ -179,9 +107,9 @@ void pretty(FILE *f, int indent, Stmt* s)
     // Assignment
     case ASSIGN:
       indentBy(f, indent);
-      pretty(f, s->assign_lhs());
+      fprintf(f, "%s",  pretty(s->assign_lhs()).c_str());
       fprintf(f, " = ");
-      pretty(f, s->assign_rhs());
+      fprintf(f, "%s",  pretty(s->assign_rhs()).c_str());
       fprintf(f, ";");
 			add_eol();
       break;
@@ -244,7 +172,8 @@ void pretty(FILE *f, int indent, Stmt* s)
         fprintf(f, "\"%s\"", s->print.str());
       }
       else
-        pretty(f, s->print_expr());
+      	fprintf(f, "%s", pretty(s->print_expr()).c_str());
+
       fprintf(f, ")\n");
       break;
 
@@ -252,7 +181,7 @@ void pretty(FILE *f, int indent, Stmt* s)
     case SET_READ_STRIDE:
       indentBy(f, indent);
       fprintf(f, "dmaSetReadPitch(");
-      pretty(f, s->stride());
+     	fprintf(f, "%s", pretty(s->stride()).c_str());
       fprintf(f, ")\n");
       break;
 
@@ -260,7 +189,7 @@ void pretty(FILE *f, int indent, Stmt* s)
     case SET_WRITE_STRIDE:
       indentBy(f, indent);
       fprintf(f, "dmaSetWriteStride(");
-      pretty(f, s->stride());
+     	fprintf(f, "%s", pretty(s->stride()).c_str());
       fprintf(f, ")\n");
       break;
 
@@ -268,7 +197,7 @@ void pretty(FILE *f, int indent, Stmt* s)
     case LOAD_RECEIVE:
       indentBy(f, indent);
       fprintf(f, "receive(");
-      pretty(f, s->loadDest());
+     	fprintf(f, "%s", pretty(s->loadDest()).c_str());
       fprintf(f, ")");
 			add_eol();
       break;
@@ -277,9 +206,9 @@ void pretty(FILE *f, int indent, Stmt* s)
     case STORE_REQUEST:
       indentBy(f, indent);
       fprintf(f, "store(");
-      pretty(f, s->storeReq_data());
+     	fprintf(f, "%s", pretty(s->storeReq_data()).c_str());
       fprintf(f, ", ");
-      pretty(f, s->storeReq_addr());
+     	fprintf(f, "%s", pretty(s->storeReq_addr()).c_str());
       fprintf(f, ")\n");
       break;
 
@@ -308,7 +237,7 @@ void pretty(FILE *f, int indent, Stmt* s)
       fprintf(f, "numVecs=%i, ", s->setupVPMRead.numVecs);
       fprintf(f, "dir=%s,", s->setupVPMRead.hor ? "HOR" : "VIR");
       fprintf(f, "stride=%i,", s->setupVPMRead.stride);
-      pretty(f, s->setupVPMRead_addr());
+     	fprintf(f, "%s", pretty(s->setupVPMRead_addr()).c_str());
       fprintf(f, ");\n");
       break;
 
@@ -318,7 +247,7 @@ void pretty(FILE *f, int indent, Stmt* s)
       fprintf(f, "vpmSetupWrite(");
       fprintf(f, "dir=%s,", s->setupVPMWrite.hor ? "HOR" : "VIR");
       fprintf(f, "stride=%i,", s->setupVPMWrite.stride);
-      pretty(f, s->setupVPMWrite_addr());
+     	fprintf(f, "%s", pretty(s->setupVPMWrite_addr()).c_str());
       fprintf(f, ");\n");
       break;
 
@@ -338,7 +267,7 @@ void pretty(FILE *f, int indent, Stmt* s)
     case DMA_START_READ:
       indentBy(f, indent);
       fprintf(f, "dmaStartRead(");
-      pretty(f, s->startDMARead());
+     	fprintf(f, "%s", pretty(s->startDMARead()).c_str());
       fprintf(f, ");\n");
       break;
 
@@ -346,7 +275,7 @@ void pretty(FILE *f, int indent, Stmt* s)
     case DMA_START_WRITE:
       indentBy(f, indent);
       fprintf(f, "dmaStartWrite(");
-      pretty(f, s->startDMAWrite());
+     	fprintf(f, "%s", pretty(s->startDMAWrite()).c_str());
       fprintf(f, ");\n");
       break;
 
@@ -358,7 +287,7 @@ void pretty(FILE *f, int indent, Stmt* s)
       fprintf(f, "rowLen=%i,", s->setupDMARead.rowLen);
       fprintf(f, "dir=%s,", s->setupDMARead.hor ? "HORIZ" : "VERT");
       fprintf(f, "vpitch=%i,", s->setupDMARead.vpitch);
-      pretty(f, s->setupDMARead_vpmAddr());
+     	fprintf(f, "%s", pretty(s->setupDMARead_vpmAddr()).c_str());
       fprintf(f, ");\n");
       break;
 
@@ -369,7 +298,7 @@ void pretty(FILE *f, int indent, Stmt* s)
       fprintf(f, "numRows=%i,", s->setupDMAWrite.numRows);
       fprintf(f, "rowLen=%i,", s->setupDMAWrite.rowLen);
       fprintf(f, "dir=%s,", s->setupDMAWrite.hor ? "HORIZ" : "VERT");
-      pretty(f, s->setupDMAWrite_vpmAddr());
+     	fprintf(f, "%s", pretty(s->setupDMAWrite_vpmAddr()).c_str());
       fprintf(f, ");\n");
       break;
 

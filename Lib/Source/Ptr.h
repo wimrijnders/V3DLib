@@ -25,8 +25,7 @@ namespace V3DLib {
 // RHS of assignment statements.
 template <typename T>
 struct PtrExpr : public BaseExpr {
-	PtrExpr(Expr::Ptr e) : BaseExpr(e) {}
-
+	PtrExpr(Expr::Ptr e) : BaseExpr(e, "PtrExpr") {}
 
 	/**
 	 * Dereference
@@ -52,7 +51,7 @@ breakpoint
 template <typename T>
 struct Ptr : public BaseExpr {
   // Constructors
-  Ptr<T>() : BaseExpr(mkVar(freshVar())) {}
+  Ptr<T>() : BaseExpr(mkVar(freshVar()), "Ptr") {}
 
   Ptr<T>(PtrExpr<T> rhs) : Ptr<T>() {
     assign(expr(), rhs.expr());
@@ -60,11 +59,13 @@ struct Ptr : public BaseExpr {
 
   // Assignment
   Ptr<T>& operator=(Ptr<T>& rhs) {
+		breakpoint
     assign(expr, rhs.expr);
     return rhs;
   }
 
   PtrExpr<T> operator=(PtrExpr<T> rhs) {
+		breakpoint
     assign(expr(), rhs.expr());
     return rhs;
   }
