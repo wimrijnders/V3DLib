@@ -10,51 +10,49 @@ namespace V3DLib {
 // Expressions    
 // ============================================================================
 
-enum ExprTag {
-	INT_LIT,
-	FLOAT_LIT,
-	VAR,
-	APPLY,
-	DEREF       // Dereference a pointer
-};
-
 
 struct Expr {
 	using Ptr = std::shared_ptr<Expr>;
+
+	enum Tag {
+		INT_LIT,
+		FLOAT_LIT,
+		VAR,
+		APPLY,
+		DEREF       // Dereference a pointer
+	};
 
 	Expr();
 	Expr(Var in_var);
 	Expr(int in_lit);
 	Expr(float in_lit);
-	Expr(Ptr lhs, Op op, Ptr rhs);
+	Expr(Ptr in_lhs, Op op, Ptr in_rhs);
 	Expr(Ptr ptr);
 
-	ExprTag tag() const { return m_tag; }
+	Tag tag() const { return m_tag; }
 	bool isLit() const { return (tag() == INT_LIT) || (tag() == FLOAT_LIT); }
 
-  Ptr apply_lhs() const;
-  Ptr apply_rhs() const;
+  Ptr lhs() const;
+  Ptr rhs() const;
   Ptr deref_ptr() const;
-  void apply_lhs(Ptr p);
-  void apply_rhs(Ptr p);
+  void lhs(Ptr p);
+  void rhs(Ptr p);
   void deref_ptr(Ptr p);
 
 	std::string pretty() const;
 	std::string disp() const;
 
   union {
-    int   intLit;                                   // Integer literal
-    float floatLit;                                 // Float literal
-    Var   var;                                      // Variable identifier
-
-    struct { Op op; } apply;  // Application of a binary operator
+    int   intLit;   // Integer literal
+    float floatLit; // Float literal
+    Var   var;      // Variable identifier
+    Op apply_op;    // Application of a binary operator
   };
 
 	bool isSimple() const;
 
 private:
-  ExprTag m_tag;  // What kind of expression is it?
-
+  Tag m_tag;    // What kind of expression is it?
   Ptr m_exp_a;  // lhs for apply, ptr for deref
 	Ptr m_exp_b;  // rhs for apply
 

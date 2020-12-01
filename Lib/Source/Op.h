@@ -1,5 +1,6 @@
 #ifndef _V3DLIB_SOURCE_OP_H_
 #define _V3DLIB_SOURCE_OP_H_
+#include "Target/Syntax.h"  // ALUOp
 
 namespace V3DLib {
 
@@ -42,6 +43,7 @@ struct Op {
 	bool noParams() const;  // Yes, I know, doesn't make sense. Happens anyway
 	bool isUnary() const;
 	bool isCommutative() const;
+	ALUOp opcode() const;
 };
 
 }  // namespace V3DLib

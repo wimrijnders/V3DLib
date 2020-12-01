@@ -1,4 +1,5 @@
 #include "Op.h"
+#include "Support/Platform.h"
 #include "Support/debug.h"
 
 namespace V3DLib {
@@ -56,5 +57,53 @@ bool Op::isCommutative() const {
   return false;
 }
 
+
+/**
+ * Translate source operator to target opcode
+ */
+ALUOp Op::opcode() const {
+  if (type == FLOAT) {
+    switch (op) {
+      case ADD:    return A_FADD;
+      case SUB:    return A_FSUB;
+      case MUL:    return M_FMUL;
+      case MIN:    return A_FMIN;
+      case MAX:    return A_FMAX;
+      case ItoF:   return A_ItoF;
+      case ROTATE: return M_ROTATE;
+      default:     assert(false);
+    }
+  }
+  else {
+    switch (op) {
+      case ADD:    return A_ADD;
+      case SUB:    return A_SUB;
+      case MUL:    return M_MUL24;
+      case MIN:    return A_MIN;
+      case MAX:    return A_MAX;
+      case FtoI:   return A_FtoI;
+      case SHL:    return A_SHL;
+      case SHR:    return A_ASR;
+      case USHR:   return A_SHR;
+      case ROR:    return A_ROR;
+      case BAND:   return A_BAND;
+      case BOR:    return A_BOR;
+      case BXOR:   return A_BXOR;
+      case BNOT:   return A_BNOT;
+      case ROTATE: return M_ROTATE;
+      case TIDX: 
+				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
+				return A_TIDX;
+      case EIDX: 
+				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
+				return A_EIDX;
+      default:
+				assertq(false, "Not expecting this op for int in opcode()", true);
+				break;
+    }
+  }
+
+	return NOP;
+}
 
 }  // namespace V3DLib

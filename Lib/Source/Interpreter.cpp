@@ -128,35 +128,36 @@ Vec eval(CoreState* s, Expr::Ptr e) {
   Vec v;
   switch (e->tag()) {
     // Integer literal
-    case INT_LIT:
+    case Expr::INT_LIT:
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = e->intLit;
       return v;
 
     // Float literal
-    case FLOAT_LIT:
+    case Expr::FLOAT_LIT:
        for (int i = 0; i < NUM_LANES; i++)
         v[i].floatVal = e->floatLit;
       return v;
    
     // Variable
-    case VAR:
+    case Expr::VAR:
       return evalVar(s, e->var);
 
     // Operator application
-    case APPLY: {
-      Vec a = eval(s, e->apply_lhs());
-      Vec b = eval(s, e->apply_rhs());
-      if (e->apply.op.op == ROTATE) {
+    case Expr::APPLY: {
+      Vec a = eval(s, e->lhs());
+      Vec b = eval(s, e->rhs());
+
+      if (e->apply_op.op == ROTATE) {
         // Vector rotation
         v = rotate(a, b[0].intVal);
-      }
-      else if (e->apply.op.type == FLOAT) {
+      } else if (e->apply_op.type == FLOAT) {
         // Floating-point operation
         for (int i = 0; i < NUM_LANES; i++) {
           float x = a[i].floatVal;
           float y = b[i].floatVal;
-          switch (e->apply.op.op) {
+
+          switch (e->apply_op.op) {
             case ADD:  v[i].floatVal = x+y; break;
             case SUB:  v[i].floatVal = x-y; break;
             case MUL:  v[i].floatVal = x*y; break;
@@ -174,7 +175,8 @@ Vec eval(CoreState* s, Expr::Ptr e) {
           int32_t x   = a[i].intVal;
           int32_t y   = b[i].intVal;
           uint32_t ux = (uint32_t) x;
-          switch (e->apply.op.op) {
+
+          switch (e->apply_op.op) {
             case ADD:  v[i].intVal = x+y; break;
             case SUB:  v[i].intVal = x-y; break;
             case MUL:  v[i].intVal = (x&0xffffff)*(y&0xffffff); break;
@@ -198,7 +200,7 @@ Vec eval(CoreState* s, Expr::Ptr e) {
     }
 
     // Dereference pointer
-    case DEREF:
+    case Expr::DEREF:
       Vec a = eval(s, e->deref_ptr());
       uint32_t hp = (uint32_t) a[0].intVal;
 
@@ -384,13 +386,13 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
 
   switch (lhs->tag()) {
     // Variable
-    case VAR:
+    case Expr::VAR:
       assignToVar(s, cond, lhs->var, val);
       break;
 
     // Dereferenced pointer
 		// Comparable to execStoreRequest()
-    case DEREF: {
+    case Expr::DEREF: {
       Vec index = eval(s, lhs->deref_ptr());
 			storeToHeap(s, index, val);
     }
@@ -398,7 +400,7 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
 
 		default:
   		assert(false);
-			break;
+		break;
   }
 }
 
@@ -455,7 +457,7 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
 
     // Assignment
     case ASSIGN:
-      if (stmt->assign_lhs()->tag() != VAR) {
+      if (stmt->assign_lhs()->tag() != Expr::VAR) {
         printf("V3DLib: only var assignments permitted in 'where'\n");
         assert(false);
       }
@@ -521,7 +523,7 @@ void execSetStride(CoreState* s, StmtTag tag, Expr::Ptr e) {
 
 void execLoadReceive(CoreState* s, Expr::Ptr e) {
   assert(s->loadBuffer.size() > 0);
-  assert(e->tag() == VAR);
+  assert(e->tag() == Expr::VAR);
   Vec val = s->loadBuffer.remove(0);
   assignToVar(s, vecAlways(), e->var, val);
 }

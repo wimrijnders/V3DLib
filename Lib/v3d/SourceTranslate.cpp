@@ -58,7 +58,7 @@ int get_init_begin_marker(Seq<Instr> &code) {
 void storeRequest(Seq<Instr> &seq, Expr::Ptr data, Expr::Ptr addr) {
 	using namespace V3DLib::Target::instr;
 
-  if (addr->tag() != VAR || data->tag() != VAR) {
+  if (addr->tag() != Expr::VAR || data->tag() != Expr::VAR) {
     addr = putInVar(&seq, addr);
     data = putInVar(&seq, data);
   }

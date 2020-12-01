@@ -11,55 +11,8 @@ namespace V3DLib {
 namespace {
 
 // ============================================================================
-// Opcodes and operands
+// Operands
 // ============================================================================
-
-// Translate source operator to target opcode
-ALUOp opcode(Op op) {
-  if (op.type == FLOAT) {
-    switch (op.op) {
-      case ADD:    return A_FADD;
-      case SUB:    return A_FSUB;
-      case MUL:    return M_FMUL;
-      case MIN:    return A_FMIN;
-      case MAX:    return A_FMAX;
-      case ItoF:   return A_ItoF;
-      case ROTATE: return M_ROTATE;
-      default:     assert(false);
-    }
-  }
-  else {
-    switch (op.op) {
-      case ADD:    return A_ADD;
-      case SUB:    return A_SUB;
-      case MUL:    return M_MUL24;
-      case MIN:    return A_MIN;
-      case MAX:    return A_MAX;
-      case FtoI:   return A_FtoI;
-      case SHL:    return A_SHL;
-      case SHR:    return A_ASR;
-      case USHR:   return A_SHR;
-      case ROR:    return A_ROR;
-      case BAND:   return A_BAND;
-      case BOR:    return A_BOR;
-      case BXOR:   return A_BXOR;
-      case BNOT:   return A_BNOT;
-      case ROTATE: return M_ROTATE;
-      case TIDX: 
-				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
-				return A_TIDX;
-      case EIDX: 
-				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
-				return A_EIDX;
-      default:
-				assertq(false, "Not expecting this op for int in opcode()", true);
-				break;
-    }
-  }
-
-	return NOP;
-}
-
 
 /**
  * Translate the argument of an operator (either a variable or a small imm)
@@ -67,7 +20,7 @@ ALUOp opcode(Op op) {
 RegOrImm operand(Expr::Ptr e) {
   RegOrImm x;
 
-  if (e->tag() == VAR) {
+  if (e->tag() == Expr::VAR) {
     x.tag = REG;
     x.reg = srcReg(e->var);
     return x;
@@ -116,7 +69,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   // -----------------------------------------------------------
   // Case: v := rhs, where v is a variable and rhs an expression
   // -----------------------------------------------------------
-  if (lhs.tag() == VAR) {
+  if (lhs.tag() == Expr::VAR) {
     *seq << varAssign(lhs.var, rhs);
     return;
   }
@@ -124,7 +77,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   // ---------------------------------------------------------
   // Case: *lhs := rhs where lhs is not a var or rhs not a var
   // ---------------------------------------------------------
-  if (lhs.tag() == DEREF && (lhs.deref_ptr()->tag() != VAR || rhs->tag() != VAR)) {
+  if (lhs.tag() == Expr::DEREF && (lhs.deref_ptr()->tag() != Expr::VAR || rhs->tag() != Expr::VAR)) {
     assert(!lhs.deref_ptr()->isLit());
     lhs.deref_ptr() = simplify(seq, lhs.deref_ptr());
     rhs = putInVar(seq, rhs);
@@ -136,7 +89,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
 
 	// Strictly speaking, the two VAR tests are not necessary; it is the only possible case
 	// (According to previous code, that is)
-  bool handle_case = (lhs.tag() == DEREF && (lhs.deref_ptr()->tag() == VAR || rhs->tag() == VAR));
+  bool handle_case = (lhs.tag() == Expr::DEREF && (lhs.deref_ptr()->tag() == Expr::VAR || rhs->tag() == Expr::VAR));
 	if (handle_case) {
 		getSourceTranslate().deref_var_var(seq, lhs, rhs);
 		return;
@@ -320,7 +273,7 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 	instr.ALU.setCond  = SetCond(b.cmp.op);  // For v3d
 	instr.ALU.dest     = dstReg(v);
 	instr.ALU.srcA     = operand(b.cmp_lhs());
-	instr.ALU.op       = opcode(op);
+	instr.ALU.op       = op.opcode();
 	instr.ALU.srcB     = operand(b.cmp_rhs());
 
 	*seq << instr;
@@ -390,14 +343,14 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign_lhs()->tag() == VAR) {
+  if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::VAR) {
     return;
   }
 
   // ------------------------------------------------------
   // Case: *v = e, where v is a pointer and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign_lhs()->tag() == DEREF) {
+  if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
     return;
   }
 
@@ -480,7 +433,7 @@ void printStmt(Seq<Instr> &seq, Stmt *stmt) {
   Instr instr;
 
 	auto expr_to_reg = [&seq] (Expr::Ptr expr) -> Reg {
-		if (expr ->tag() == VAR) {
+		if (expr ->tag() == Expr::VAR) {
    	  return srcReg(expr->var);
 		} else {
       Var tmpVar = freshVar();
@@ -512,7 +465,7 @@ void printStmt(Seq<Instr> &seq, Stmt *stmt) {
 
 
 Instr loadReceive(Expr::Ptr dest) {
-	assert(dest->tag() == VAR);
+	assert(dest->tag() == Expr::VAR);
 
   Instr instr(RECV);
   instr.RECV.dest = dstReg(dest->var);
@@ -679,43 +632,43 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
   Expr e = *expr;
 
 	switch (e.tag()) {
-		case VAR:                                                     // 'v := w', where v and w are variables
+		case Expr::VAR:                                                   // 'v := w', where v and w are variables
 			ret << mov(v, e.var).cond(cond);
     	break;
-		case INT_LIT:                                                 // 'v := i', where i is an integer literal
+		case Expr::INT_LIT:                                               // 'v := i', where i is an integer literal
 			ret << li(v, e.intLit).cond(cond);
     	break;
-		case FLOAT_LIT:                                               // 'v := f', where f is a float literal
+		case Expr::FLOAT_LIT:                                             // 'v := f', where f is a float literal
     	ret << li(v, e.floatLit).cond(cond);
     	break;
-		case APPLY: {                                                 // 'v := x op y'
-			if (!e.apply_lhs()->isSimple() || !e.apply_rhs()->isSimple()) { // x or y are not simple
-				e.apply_lhs(simplify(&ret, e.apply_lhs()));
-				e.apply_rhs(simplify(&ret, e.apply_rhs()));
+		case Expr::APPLY: {                                               // 'v := x op y'
+			if (!e.lhs()->isSimple() || !e.rhs()->isSimple()) { // x or y are not simple
+				e.lhs(simplify(&ret, e.lhs()));
+				e.rhs(simplify(&ret, e.rhs()));
 			}
 
-			if (e.apply_lhs()->isLit() && e.apply_rhs()->isLit()) {             // x and y are both literals
+			if (e.lhs()->isLit() && e.rhs()->isLit()) {         // x and y are both literals
 				Var tmpVar = freshVar();
-				ret << varAssign(cond, tmpVar, e.apply_lhs());
-				e.apply_lhs(mkVar(tmpVar));
+				ret << varAssign(cond, tmpVar, e.lhs());
+				e.lhs(mkVar(tmpVar));
 			}
-			                                                            // x and y are simple
-			Instr instr(ALU);
+
+			Instr instr(ALU);                                               // x and y are simple
 			instr.ALU.cond       = cond;
 			instr.ALU.dest       = dstReg(v);
-			instr.ALU.srcA       = operand(e.apply_lhs());
-			instr.ALU.op         = opcode(e.apply.op);
-			instr.ALU.srcB       = operand(e.apply_rhs());
+			instr.ALU.srcA       = operand(e.lhs());
+			instr.ALU.op         = e.apply_op.opcode();
+			instr.ALU.srcB       = operand(e.rhs());
 
 			ret << instr;
 		}
 		break;
-		case DEREF:                                                    // 'v := *w'
-			if (e.deref_ptr()->tag() != VAR) {                               // w is not a variable
+		case Expr::DEREF:                                                // 'v := *w'
+			if (e.deref_ptr()->tag() != Expr::VAR) {                       // w is not a variable
 				assert(!e.deref_ptr()->isLit());
 				e.deref_ptr(simplify(&ret, e.deref_ptr()));
 			}
-  		                                                             // w is a variable
+  		                                                               // w is a variable
 			//
 			// Restriction: we disallow dereferencing in conditional ('where')
 			// assignments for simplicity.  In most (all?) cases it should be
@@ -743,7 +696,7 @@ Seq<Instr> varAssign(Var v, Expr::Ptr expr) {
  * Similar to 'simplify' but ensure that the result is a variable.
  */
 Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
-	if (e->tag() == VAR) {
+	if (e->tag() == Expr::VAR) {
 		return e;
 	}
 

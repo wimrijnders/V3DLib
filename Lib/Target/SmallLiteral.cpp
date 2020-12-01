@@ -35,12 +35,12 @@ const float smallFloats[NUM_SMALL_FLOATS] = {
 // literal.
 
 int encodeSmallLit(Expr const &e) {
-  if (e.tag() == INT_LIT) { 
+  if (e.tag() == Expr::INT_LIT) { 
     if (e.intLit >= 0 && e.intLit <= 15)
       return e.intLit;
     else if (e.intLit >= -16 && e.intLit <= -1)
       return 32 + e.intLit;
-  } else if (e.tag() == FLOAT_LIT) {
+  } else if (e.tag() == Expr::FLOAT_LIT) {
     if (e.floatLit == 0.0)
       return 0;
     else {

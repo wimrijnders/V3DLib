@@ -12,19 +12,17 @@ namespace {
 // ============================================================================
 
 void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr::Ptr e) {
-  if (e->tag() == INT_LIT) {
+  if (e->tag() == Expr::INT_LIT) {
     if (tag == SET_READ_STRIDE)
       *seq << genSetReadPitch(e->intLit);
     else
       *seq << genSetWriteStride(e->intLit);
-  }
-  else if (e->tag() == VAR) {
+  } else if (e->tag() == Expr::VAR) {
     if (tag == SET_READ_STRIDE)
       genSetReadPitch(seq, srcReg(e->var));
     else
       *seq << genSetWriteStride(srcReg(e->var));
-  }
-  else {
+  } else {
     Var v = freshVar();
     *seq << varAssign(v, e);
     if (tag == SET_READ_STRIDE)
@@ -46,14 +44,14 @@ Seq<Instr> setupVPMReadStmt(Stmt *s) {
   int hor     = s->setupVPMRead.hor;
   int stride  = s->setupVPMRead.stride;
 
-  if (e->tag() == INT_LIT)
+  if (e->tag() == Expr::INT_LIT)
     ret << genSetupVPMLoad(n, e->intLit, hor, stride);
-  else if (e->tag() == VAR)
+  else if (e->tag() == Expr::VAR)
     ret << genSetupVPMLoad(n, srcReg(e->var), hor, stride);
   else {
     Var v = freshVar();
-    ret << varAssign(v, e);
-    ret << genSetupVPMLoad(n, srcReg(v), hor, stride);
+    ret << varAssign(v, e)
+        << genSetupVPMLoad(n, srcReg(v), hor, stride);
   }
 
 	return ret;
@@ -73,51 +71,67 @@ Seq<Instr> setupDMAReadStmt(Stmt *s) {
 
 	Seq<Instr> ret;
 
-  if (e->tag() == INT_LIT)
+  if (e->tag() == Expr::INT_LIT)
     ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->intLit);
-  else if (e->tag() == VAR)
+  else if (e->tag() == Expr::VAR)
     ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var));
   else {
     Var v = freshVar();
-    ret << varAssign(v, e);
-    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(v));
+
+    ret << varAssign(v, e)
+        << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(v));
   }
 
 	return ret;
 }
 
-void setupDMAWriteStmt(Seq<Instr>* seq, int numRows, int rowLen, int hor, Expr::Ptr e) {
-  if (e->tag() == INT_LIT)
-    *seq << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
-  else if (e->tag() == VAR)
-    *seq << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var));
-  else {
+
+Seq<Instr> setupDMAWriteStmt(Stmt *s) {
+	int numRows = s->setupDMAWrite.numRows;
+	int rowLen  = s->setupDMAWrite.rowLen;
+	int hor     = s->setupDMAWrite.hor;
+  Expr::Ptr e = s->setupDMAWrite_vpmAddr();
+
+	Seq<Instr> ret;
+
+  if (e->tag() == Expr::INT_LIT) {
+    ret << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
+  } else if (e->tag() == Expr::VAR) {
+    ret << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var));
+  } else {
     Var v = freshVar();
-    *seq << varAssign(v, e);
-    *seq << genSetupDMAStore(numRows, rowLen, hor, srcReg(v));
+
+    ret << varAssign(v, e)
+        << genSetupDMAStore(numRows, rowLen, hor, srcReg(v));
   }
+
+	return ret;
 }
 
 
-void startDMAReadStmt(Seq<Instr>* seq, Expr::Ptr e) {
-  if (e->tag() == VAR)
-    *seq << genStartDMALoad(srcReg(e->var));
-  else {
+Seq<Instr> startDMAReadStmt(Expr::Ptr e) {
+	Seq<Instr> ret;
+
+  if (e->tag() != Expr::VAR) {
     Var v = freshVar();
-    *seq << varAssign(v, e);
-    *seq << genStartDMALoad(srcReg(e->var));
+    ret << varAssign(v, e);
   }
+
+	ret << genStartDMALoad(srcReg(e->var));
+	return ret;
 }
 
 
-Instr startDMAWriteStmt(Seq<Instr>* seq, Expr::Ptr e) {
-  if (e->tag() == VAR)
-    return genStartDMAStore(srcReg(e->var));
-  else {
+Seq<Instr> startDMAWriteStmt(Expr::Ptr e) {
+	Seq<Instr> ret;
+
+  if (e->tag() != Expr::VAR) {
     Var v = freshVar();
-    *seq << varAssign(v, e);
-    return genStartDMAStore(srcReg(e->var));
+    ret << varAssign(v, e);
   }
+
+	ret << genStartDMAStore(srcReg(e->var));
+	return ret;
 }
 
 
@@ -145,16 +159,24 @@ Instr sendIRQToHost() {
 }
 
 
-void setupVPMWriteStmt(Seq<Instr>* seq, Expr::Ptr e, int hor, int stride) {
-  if (e->tag() == INT_LIT)
-    *seq << genSetupVPMStore(e->intLit, hor, stride);
-  else if (e->tag() == VAR)
-    *seq << genSetupVPMStore(srcReg(e->var), hor, stride);
+Seq<Instr> setupVPMWriteStmt(Stmt *s) {
+	Seq<Instr> ret;
+
+  Expr::Ptr e = s->setupVPMWrite_addr();
+	int hor     = s->setupVPMWrite.hor;
+	int stride  = s->setupVPMWrite.stride;
+
+  if (e->tag() == Expr::INT_LIT)
+    ret << genSetupVPMStore(e->intLit, hor, stride);
+  else if (e->tag() == Expr::VAR)
+    ret << genSetupVPMStore(srcReg(e->var), hor, stride);
   else {
     Var v = freshVar();
-    *seq << varAssign(v, e);
-    *seq << genSetupVPMStore(srcReg(v), hor, stride);
+    ret << varAssign(v, e)
+        << genSetupVPMStore(srcReg(v), hor, stride);
   }
+
+	return ret;
 }
 
 
@@ -168,15 +190,19 @@ void setupVPMWriteStmt(Seq<Instr>* seq, Expr::Ptr e, int hor, int stride) {
 // than after a write.  This enables other operations to happen in
 // parallel with the write.
 
-void storeRequestOperation(Seq<Instr> &seq, Expr::Ptr data, Expr::Ptr addr) {
-	using namespace V3DLib::Target::instr;
+Seq<Instr> storeRequestOperation(Stmt *s) {
+	Expr::Ptr data = s->storeReq_data();
+	Expr::Ptr addr = s->storeReq_addr();
 
-  if (data->tag() != VAR || addr->tag() != VAR) {
-    data = putInVar(&seq, data);
-    addr = putInVar(&seq, addr);
+	Seq<Instr> ret;
+
+  if (data->tag() != Expr::VAR || addr->tag() != Expr::VAR) {
+    data = putInVar(&ret, data);
+    addr = putInVar(&ret, addr);
   }
 
-	seq << vc4::StoreRequest(addr->var, data->var, true);
+	ret << vc4::StoreRequest(addr->var, data->var, true);
+	return ret;
 }
 
 }  // anon namespace
@@ -189,109 +215,22 @@ namespace vc4 {
  */
 bool translate_stmt(Seq<Instr> &seq, Stmt *s) {
 
-  // ---------------------------------------------
-  // Case: store(e0, e1) where e1 and e2 are exprs
-  // ---------------------------------------------
-  if (s->tag == STORE_REQUEST) {
-		storeRequestOperation(seq, s->storeReq_data(), s->storeReq_addr());
-    return true;
-  }
-
-  // --------------------------------------------------------------
-  // Case: setReadStride(e) or setWriteStride(e) where e is an expr
-  // --------------------------------------------------------------
-  if (s->tag == SET_READ_STRIDE || s->tag == SET_WRITE_STRIDE) {
-    setStrideStmt(&seq, s->tag, s->stride());
-    return true;
-  }
-
-  // ---------------------------------------------------------------
-  // Case: semaInc(n) or semaDec(n) where n is an int (semaphore id)
-  // ---------------------------------------------------------------
-  if (s->tag == SEMA_INC || s->tag == SEMA_DEC) {
-    seq << semaphore(s->tag, s->semaId);
-    return true;
-  }
-
-  // ---------------
-  // Case: hostIRQ()
-  // ---------------
-  if (s->tag == SEND_IRQ_TO_HOST) {
-    seq << sendIRQToHost();
-    return true;
-  }
-
-  // ----------------------------------------
-  // Case: vpmSetupRead(dir, n, addr, stride)
-  // ----------------------------------------
-  if (s->tag == SETUP_VPM_READ) {
-    seq << setupVPMReadStmt(s);
-    return true;
-  }
-
-  // --------------------------------------
-  // Case: vpmSetupWrite(dir, addr, stride)
-  // --------------------------------------
-  if (s->tag == SETUP_VPM_WRITE) {
-    setupVPMWriteStmt(&seq,
-      s->setupVPMWrite_addr(),
-      s->setupVPMWrite.hor,
-      s->setupVPMWrite.stride);
-    return true;
-  }
-
-  // ------------------------------------------------------
-  // Case: dmaSetupRead(dir, numRows, addr, rowLen, vpitch)
-  // ------------------------------------------------------
-  if (s->tag == SETUP_DMA_READ) {
-    seq << setupDMAReadStmt(s);
-    return true;
-  }
-
-  // -----------------------------------------------
-  // Case: dmaSetupWrite(dir, numRows, addr, rowLen)
-  // -----------------------------------------------
-  if (s->tag == SETUP_DMA_WRITE) {
-    setupDMAWriteStmt(&seq,
-      s->setupDMAWrite.numRows,
-      s->setupDMAWrite.rowLen,
-      s->setupDMAWrite.hor,
-      s->setupDMAWrite_vpmAddr());
-    return true;
-  }
-
-  // -------------------
-  // Case: dmaReadWait()
-  // -------------------
-  if (s->tag == DMA_READ_WAIT) {
-    seq << genWaitDMALoad();
-    return true;
-  }
-
-  // --------------------
-  // Case: dmaWriteWait()
-  // --------------------
-  if (s->tag == DMA_WRITE_WAIT) {
-    seq << genWaitDMAStore();
-    return true;
-  }
-
-  // ------------------------
-  // Case: dmaStartRead(addr)
-  // ------------------------
-  if (s->tag == DMA_START_READ) {
-    startDMAReadStmt(&seq, s->startDMARead());
-    return true;
-  }
-
-  // -------------------------
-  // Case: dmaStartWrite(addr)
-  // -------------------------
-  if (s->tag == DMA_START_WRITE) {
-    startDMAWriteStmt(&seq, s->startDMAWrite());
-    return true;
-  }
-
+	switch (s->tag) {
+	  case STORE_REQUEST:    seq << storeRequestOperation(s);              return true;
+	  case SET_READ_STRIDE:
+		case SET_WRITE_STRIDE: setStrideStmt(&seq, s->tag, s->stride());     return true;
+		case SEMA_INC:
+		case SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          return true;
+	  case SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       return true;
+	  case SETUP_VPM_READ:   seq << setupVPMReadStmt(s);                   return true;
+	  case SETUP_VPM_WRITE:  seq << setupVPMWriteStmt(s);                  return true;
+	  case SETUP_DMA_READ:   seq << setupDMAReadStmt(s);                   return true;
+	  case SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  return true;
+	  case DMA_READ_WAIT:    seq << genWaitDMALoad();                      return true;
+	  case DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     return true;
+	  case DMA_START_READ:   seq<< startDMAReadStmt(s->startDMARead());    return true;
+	  case DMA_START_WRITE:  seq << startDMAWriteStmt(s->startDMAWrite()); return true;
+	}
 
 	return false;
 }

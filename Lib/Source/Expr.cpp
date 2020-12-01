@@ -27,27 +27,27 @@ Expr::Expr(float in_lit) {
 }
 
 
-Expr::Expr(Ptr lhs, Op op, Ptr rhs) {
-  m_tag     = APPLY;
-  apply_lhs(lhs);
-  apply.op  = op;
-  apply_rhs(rhs);
+Expr::Expr(Ptr in_lhs, Op op, Ptr in_rhs) {
+  m_tag = APPLY;
+  lhs(in_lhs);
+  apply_op = op;
+  rhs(in_rhs);
 }
 
 
 Expr::Expr(Ptr ptr) {
-  m_tag     = DEREF;
+  m_tag = DEREF;
   deref_ptr(ptr);
 }
 
 
-Expr::Ptr Expr::apply_lhs() const {
+Expr::Ptr Expr::lhs() const {
 	assert(m_tag == APPLY && m_exp_a.get() != nullptr);
 	return m_exp_a;
 }
 
 
-Expr::Ptr Expr::apply_rhs() const {
+Expr::Ptr Expr::rhs() const {
 	assert(m_tag == APPLY && m_exp_b.get() != nullptr);
 	return m_exp_b;
 }
@@ -59,13 +59,13 @@ Expr::Ptr Expr::deref_ptr() const {
 }
 
 
-void Expr::apply_lhs(Ptr p) {
+void Expr::lhs(Ptr p) {
 	assert(m_tag == APPLY);
 	m_exp_a = p;
 }
 
 
-void Expr::apply_rhs(Ptr p) {
+void Expr::rhs(Ptr p) {
 	assert(m_tag == APPLY);
 	m_exp_b = p;
 }
@@ -81,12 +81,12 @@ std::string Expr::disp_apply() const {
 	assert(tag() == APPLY);
 	std::string ret;
 
-	if (apply.op.noParams()) {
-		ret << apply.op.to_string() << "()";
-	} else if (apply.op.isUnary()) {
-		ret << "(" << apply.op.to_string() << apply_lhs()->pretty() << ")";
+	if (apply_op.noParams()) {
+		ret << apply_op.to_string() << "()";
+	} else if (apply_op.isUnary()) {
+		ret << "(" << apply_op.to_string() << lhs()->pretty() << ")";
 	} else {
-		ret << "(" << apply_lhs()->pretty() << apply.op.to_string() << apply_rhs()->pretty() <<  ")";
+		ret << "(" << lhs()->pretty() << apply_op.to_string() << rhs()->pretty() <<  ")";
 	}
 
 	return ret;
