@@ -4,7 +4,7 @@
 
 namespace V3DLib {
 
-char const *CmpOp::to_string() {
+char const *CmpOp::to_string() const {
   switch (op) {
     case EQ : return "==";
     case NEQ: return "!=";
@@ -28,8 +28,8 @@ BExpr::BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
 }
 
 
-Expr::Ptr BExpr::cmp_lhs() { assert(m_tag == CMP && m_cmp_lhs.get() != nullptr); return  m_cmp_lhs; }
-Expr::Ptr BExpr::cmp_rhs() { assert(m_tag == CMP && m_cmp_rhs.get() != nullptr); return  m_cmp_rhs; }
+Expr::Ptr BExpr::cmp_lhs() const { assert(m_tag == CMP && m_cmp_lhs.get() != nullptr); return  m_cmp_lhs; }
+Expr::Ptr BExpr::cmp_rhs() const { assert(m_tag == CMP && m_cmp_rhs.get() != nullptr); return  m_cmp_rhs; }
 
 void BExpr::cmp_lhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_lhs = p; }
 void BExpr::cmp_rhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_rhs = p; }
@@ -77,6 +77,43 @@ BExpr *BExpr::Or(BExpr *rhs) const {
   b->disj.rhs = rhs;
   return b;
 }
+
+
+std::string BExpr::pretty() const {
+	using ::operator<<;  // C++ weirdness
+
+	std::string ret;
+
+  switch (tag()) {
+    // Negation
+    case NOT:
+			assert(neg != nullptr);
+			ret << "!" << neg->pretty();
+      break;
+
+    // Conjunction
+    case AND:
+			assert(conj.lhs != nullptr);
+			assert(conj.rhs != nullptr);
+      ret << "(" << conj.lhs->pretty() << " && " << conj.rhs->pretty() << ")";
+      break;
+
+    // Disjunction
+    case OR:
+			assert(disj.lhs != nullptr);
+			assert(disj.rhs != nullptr);
+			ret << "(" << disj.lhs->pretty() << " || " << disj.rhs->pretty() << ")";
+      break;
+
+    // Comparison
+    case CMP:
+			ret << cmp_lhs()->pretty() << cmp.op.to_string() << cmp_rhs()->pretty();
+      break;
+  }
+
+	return ret;
+}
+
 
 
 // ============================================================================

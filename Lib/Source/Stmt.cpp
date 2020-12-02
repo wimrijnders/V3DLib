@@ -4,6 +4,8 @@
 
 namespace V3DLib {
 
+using ::operator<<;  // C++ weirdness
+
 // ============================================================================
 // Class PrintStmt
 // ============================================================================
@@ -38,14 +40,14 @@ void Stmt::init(StmtTag in_tag) {
 }
 
 
-Expr::Ptr Stmt::assign_lhs() {
+Expr::Ptr Stmt::assign_lhs() const {
 	assert(tag == ASSIGN);
 	assert(m_exp_a.get() != nullptr);
 	return m_exp_a;
 }
 
 
-Expr::Ptr Stmt::assign_rhs() {
+Expr::Ptr Stmt::assign_rhs() const {
 	assert(tag == ASSIGN);
 	assert(m_exp_b.get() != nullptr);
 	return m_exp_b;
@@ -136,6 +138,100 @@ Expr::Ptr Stmt::print_expr() {
 	assert(m_exp_a.get() != nullptr);
 	assert(m_exp_b.get() == nullptr);
 	return m_exp_a;
+}
+
+
+/**
+ * Debug routine for easier display of instance contents during debugging
+ *
+ * Not filled out completely yet, will do that as needed.
+ */
+std::string Stmt::disp() const {
+	std::string ret;
+
+	switch (tag) {
+		case SKIP:
+			ret << "SKIP";
+		break;
+		case ASSIGN:
+			ret << "ASSIGN " << assign_lhs()->disp() << " = " << assign_rhs()->disp();
+		break;
+		case SEQ:
+			assert(seq.s0 != nullptr);
+			assert(seq.s1 != nullptr);
+			ret << "SEQ {" << seq.s0->disp() << "; " << seq.s1->disp() << "}";
+		break;
+		case WHERE:
+			assert(where.cond != nullptr);
+			assert(where.thenStmt != nullptr);
+			ret << "WHERE (" << where.cond->disp() << ") THEN " << where.thenStmt->disp();
+			if (where.elseStmt != nullptr) {
+				ret << " ELSE " << where.elseStmt->disp();
+			}
+		break;
+		case IF:
+			ret << "IF";
+		break;
+		case WHILE:
+			ret << "WHILE";
+		break;
+		case PRINT:
+			ret << "PRINT";
+		break;
+		case FOR:
+			ret << "FOR";
+		break;
+		case SET_READ_STRIDE:
+			ret << "SET_READ_STRIDE";
+		break;
+		case SET_WRITE_STRIDE:
+			ret << "SET_WRITE_STRIDE";
+		break;
+		case LOAD_RECEIVE:
+			ret << "LOAD_RECEIVE";
+		break;
+		case STORE_REQUEST:
+			ret << "STORE_REQUEST";
+		break;
+		case SEND_IRQ_TO_HOST:
+			ret << "SEND_IRQ_TO_HOST";
+		break;
+		case SEMA_INC:
+			ret << "SEMA_INC";
+		break;
+		case SEMA_DEC:
+			ret << "SEMA_DEC";
+		break;
+		case SETUP_VPM_READ:
+			ret << "SETUP_VPM_READ";
+		break;
+		case SETUP_VPM_WRITE:
+			ret << "SETUP_VPM_WRITE";
+		break;
+		case SETUP_DMA_READ:
+			ret << "SETUP_DMA_READ";
+		break;
+		case SETUP_DMA_WRITE:
+			ret << "SETUP_DMA_WRITE";
+		break;
+		case DMA_READ_WAIT:
+			ret << "DMA_READ_WAIT";
+		break;
+		case DMA_WRITE_WAIT:
+			ret << "DMA_WRITE_WAIT";
+		break;
+		case DMA_START_READ:
+			ret << "DMA_START_READ";
+		break;
+		case DMA_START_WRITE:
+			ret << "DMA_START_WRITE";
+		break;
+		default:
+			assert(false);
+		break;
+	}
+
+	return ret;
 }
 
 

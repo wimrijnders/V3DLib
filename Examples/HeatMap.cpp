@@ -185,7 +185,7 @@ struct Cursor {
   }
 
   void advance() {
-    addr = addr + 16;
+    addr = addr + 16; comment("Cursor advance");
     prev = current;
     gather(addr);
     current = next;
@@ -197,7 +197,7 @@ struct Cursor {
   }
 
   void shiftLeft(Float& result) {
-    result = rotate(current, 15);
+    result = rotate(current, 15); comment("Cursor shiftLeft");
     Float nextRot = rotate(next, 15);
     Where (index() == 15)
       result = nextRot;
@@ -205,7 +205,7 @@ struct Cursor {
   }
 
   void shiftRight(Float& result) {
-    result = rotate(current, 1);
+    result = rotate(current, 1); comment("Cursor shiftRight");
     Float prevRot = rotate(prev, 1);
     Where (index() == 0)
       result = prevRot;

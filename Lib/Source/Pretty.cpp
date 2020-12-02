@@ -20,48 +20,6 @@ std::string pretty(Expr::Ptr e) {
 
 
 // ============================================================================
-// Boolean expressions
-// ============================================================================
-
-void pretty(FILE *f, BExpr* b) {
-  assert(f != nullptr);
-  if (b == nullptr) return;
-
-  switch (b->tag()) {
-    // Negation
-    case NOT:
-      fprintf(f, "!");
-      pretty(f, b->neg);
-      break;
-
-    // Conjunction
-    case AND:
-      fprintf(f, "(");
-      pretty(f, b->conj.lhs);
-      fprintf(f, " && ");
-      pretty(f, b->conj.rhs);
-      fprintf(f, ")");
-      break;
-
-    // Disjunction
-    case OR:
-      fprintf(f, "(");
-      pretty(f, b->disj.lhs);
-      fprintf(f, " || ");
-      pretty(f, b->disj.rhs);
-      fprintf(f, ")");
-      break;
-
-    // Comparison
-    case CMP:
-      fprintf(f, "%s",  pretty(b->cmp_lhs()).c_str());
-      fprintf(f, "%s ", b->cmp.op.to_string());
-      fprintf(f, "%s",  pretty(b->cmp_rhs()).c_str());
-      break;
-  }
-}
-
-// ============================================================================
 // Conditional expressions
 // ============================================================================
 
@@ -77,7 +35,7 @@ void pretty(FILE *f, CExpr* c) {
     case ALL: fprintf(f, "all("); break;
   }
 
-  pretty(f, c->bexpr());
+	fprintf(f, "%s", c->bexpr()->pretty().c_str());
   fprintf(f, ")");
 }
 
@@ -124,7 +82,7 @@ void pretty(FILE *f, int indent, Stmt* s) {
     case WHERE:
       indentBy(f, indent);
       fprintf(f, "Where (");
-      pretty(f, s->where.cond);
+			fprintf(f, "%s", s->where.cond->pretty().c_str());
       fprintf(f, ")\n");
       pretty(f, indent+2, s->where.thenStmt);
       if (s->where.elseStmt != nullptr) {

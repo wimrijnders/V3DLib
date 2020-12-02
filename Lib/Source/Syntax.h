@@ -32,7 +32,7 @@ struct CmpOp {
 
 	CmpOp(CmpOpId in_op, BaseType in_type) : op(in_op), type(in_type) {}
 
-	char const *to_string();
+	char const *to_string() const;
 };
 
 
@@ -49,14 +49,17 @@ struct BExpr {
 	BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs);
 
 	BExprTag tag() const { return m_tag; }
-  Expr::Ptr cmp_lhs();
-  Expr::Ptr cmp_rhs();
+  Expr::Ptr cmp_lhs() const;
+  Expr::Ptr cmp_rhs() const;
   void cmp_lhs(Expr::Ptr p);
   void cmp_rhs(Expr::Ptr p);
 
 	BExpr *Not() const;
 	BExpr *And(BExpr *rhs) const;
 	BExpr *Or(BExpr *rhs) const;
+
+	std::string pretty() const;
+	std::string disp() const { return pretty(); }
 
   union {
     // Negation

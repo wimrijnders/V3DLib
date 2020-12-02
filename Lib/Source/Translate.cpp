@@ -340,10 +340,13 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   if (s == nullptr) return;
   if (s->tag == SKIP) return;
 
+
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
   if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::VAR) {
+		assign(seq, s->assign_lhs(), s->assign_rhs());
+		seq->back().cond(cond).comment("Assign var in Where");
     return;
   }
 
@@ -351,6 +354,8 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   // Case: *v = e, where v is a pointer and e an expression
   // ------------------------------------------------------
   if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
+		assign(seq, s->assign_lhs(), s->assign_rhs());
+		seq->back().cond(cond).comment("Assign *var (deref) in Where");
     return;
   }
 
@@ -370,6 +375,8 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   if (s->tag == WHERE) {
 		using Target::instr::mov;
 
+//breakpoint
+
     if (cond.is_always()) {
       // This case has a cheaper implementation
 
@@ -384,6 +391,9 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
       if (s->where.elseStmt != NULL)
         whereStmt(seq, s->where.elseStmt, condVar, newCond.negate(), false);
     } else {
+
+//breakpoint
+
       Var savedCondVar = freshVar();
       Var newCondVar   = freshVar();
 

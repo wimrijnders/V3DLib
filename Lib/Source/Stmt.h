@@ -48,7 +48,8 @@ enum StmtTag {
 	LOAD_RECEIVE,
 	STORE_REQUEST,
 	SEND_IRQ_TO_HOST,
-	SEMA_INC, SEMA_DEC,
+	SEMA_INC,
+	SEMA_DEC,
 	SETUP_VPM_READ,
 	SETUP_VPM_WRITE,
 	SETUP_DMA_READ,
@@ -63,8 +64,8 @@ enum StmtTag {
 struct Stmt : public InstructionComment {
 	~Stmt();
 
-	Expr::Ptr assign_lhs();
-	Expr::Ptr assign_rhs();
+	Expr::Ptr assign_lhs() const;
+	Expr::Ptr assign_rhs() const;
 	Expr::Ptr stride();
 	Expr::Ptr loadDest();
 	Expr::Ptr storeReq_data();
@@ -76,6 +77,8 @@ struct Stmt : public InstructionComment {
 	Expr::Ptr startDMARead();
 	Expr::Ptr startDMAWrite();
 	Expr::Ptr print_expr();
+
+	std::string disp() const;
 
 	static Stmt *create(StmtTag in_tag);
 	static Stmt *create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);
