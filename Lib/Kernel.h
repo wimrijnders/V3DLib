@@ -204,7 +204,7 @@ public:
 	/**
    * Construct kernel out of C++ function
 	 */
-  Kernel(KernelFunction f) {
+  Kernel(KernelFunction f, bool vc4_only = false) {
 		{
 			m_vc4_driver.compile_init();
 
@@ -231,7 +231,7 @@ public:
 		}
 
 #ifdef QPU_MODE
-		if (!Platform::instance().has_vc4) {
+		if (!vc4_only && !Platform::instance().has_vc4) {
 			m_v3d_driver.compile_init();
 
 	    // Construct the AST for v3d
@@ -260,8 +260,8 @@ public:
 // Initialiser
 
 template <typename... ts>
-Kernel<ts...> compile(void (*f)(ts... params)) {
-  Kernel<ts...> k(f);
+Kernel<ts...> compile(void (*f)(ts... params), bool vc4_only = false) {
+  Kernel<ts...> k(f, vc4_only);
   return k;
 }
 

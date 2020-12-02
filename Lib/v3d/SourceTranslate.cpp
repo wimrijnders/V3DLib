@@ -238,13 +238,27 @@ void add_init(Seq<Instr> &code) {
  */
 bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt* s) {
 
-  // ---------------------------------------------
-  // Case: store(e0, e1) where e1 and e2 are exprs
-  // ---------------------------------------------
-  if (s->tag == STORE_REQUEST) {
-		storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
-    return true;
-  }
+	switch (s->tag) {
+	  case STORE_REQUEST:
+			storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
+			return true;
+
+	  case SET_READ_STRIDE:
+		case SET_WRITE_STRIDE:
+		case SEMA_INC:
+		case SEMA_DEC:
+	  case SEND_IRQ_TO_HOST:
+	  case SETUP_VPM_READ:
+	  case SETUP_VPM_WRITE:
+	  case SETUP_DMA_READ:
+	  case SETUP_DMA_WRITE:
+	  case DMA_READ_WAIT:
+	  case DMA_WRITE_WAIT:
+	  case DMA_START_READ:
+	  case DMA_START_WRITE:
+			fatal("VPM and DMA reads and writes can not be used for v3d");
+			return true;
+	}
  
 	return false;
 }

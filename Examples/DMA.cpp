@@ -37,8 +37,14 @@ int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
+	if (!Platform::instance().has_vc4 && settings.run_type == 0) {
+		printf("\nThe DMA example does not work on v3d, it is only meant for vc4.\n"
+					 "It will only work for the emulator on v3d.\n\n");
+		return 1;
+	}
+
   // Construct kernel
-  auto k = compile(dma);
+  auto k = compile(dma, true);  // true: only compile for vc4
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(256);
