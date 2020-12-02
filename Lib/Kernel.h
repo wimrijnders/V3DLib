@@ -235,7 +235,6 @@ public:
 			m_v3d_driver.compile_init();
 
 	    // Construct the AST for v3d
-breakpoint
 	    f(mkArg<ts>()...);
 
 			m_v3d_driver.compile();

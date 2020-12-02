@@ -318,8 +318,7 @@ void pretty(FILE *f, Stmt* s)
 /**
  * @brief Override using stdout as output
  */
-void pretty(Stmt* s)
-{
+void pretty(Stmt* s) {
   pretty(stdout, s);
 }
 

@@ -59,13 +59,11 @@ struct Ptr : public BaseExpr {
 
   // Assignment
   Ptr<T>& operator=(Ptr<T>& rhs) {
-		breakpoint
     assign(expr, rhs.expr);
     return rhs;
   }
 
   PtrExpr<T> operator=(PtrExpr<T> rhs) {
-		breakpoint
     assign(expr(), rhs.expr());
     return rhs;
   }
@@ -94,7 +92,9 @@ struct Ptr : public BaseExpr {
 
 template <typename T>
 inline PtrExpr<T> getUniformPtr() {
-  Expr::Ptr e = std::make_shared<Expr>(Var(UNIFORM));
+	Var v = Var(UNIFORM);
+	v.setUniformPtr();
+  Expr::Ptr e = std::make_shared<Expr>(v);
   return PtrExpr<T>(e);
 }
 

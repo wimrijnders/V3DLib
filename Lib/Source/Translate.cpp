@@ -328,7 +328,7 @@ BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
   Var v = freshVar();
   AssignCond cond = boolExp(&seq, c.bexpr(), v);
 
-	return cond.to_assign_cond(c.tag() == ALL);
+	return cond.to_branch_cond(c.tag() == ALL);
 }
 
 

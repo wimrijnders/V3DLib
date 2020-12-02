@@ -226,7 +226,7 @@ std::string AssignCond::to_string() const {
  *
  * @param do_all  if true, set BranchCond tag to ALL, otherwise set to ANY
  */
-BranchCond AssignCond::to_assign_cond(bool do_all) const {
+BranchCond AssignCond::to_branch_cond(bool do_all) const {
   BranchCond bcond;
   if (is_always()) { bcond.tag = COND_ALWAYS; return bcond; }
   if (is_never())  { bcond.tag = COND_NEVER; return bcond; }

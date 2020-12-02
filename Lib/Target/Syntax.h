@@ -125,7 +125,7 @@ struct AssignCond {
 	AssignCond negate() const;
 
 	std::string to_string() const;
-	BranchCond to_assign_cond(bool do_all) const;
+	BranchCond to_branch_cond(bool do_all) const;
 };
 
 extern AssignCond always;  // Is a global to reduce eyestrain in gdb

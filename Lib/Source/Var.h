@@ -30,15 +30,12 @@ enum VarTag {
 typedef int VarId;
 
 struct Var {
-	Var(VarTag tag, VarId id = 0) : m_tag(tag), m_id(id) {
-		if (m_tag == UNIFORM) {
-			m_isUniformPtr = true;
-		}
-	}
+	Var(VarTag tag, VarId id = 0) : m_tag(tag), m_id(id) {}
 
 	VarTag tag() const { return m_tag; }
 	VarId id() const { return m_id; }
-	bool isUniformPtr () const { return m_isUniformPtr; }
+	bool isUniformPtr () const;
+	void setUniformPtr();
 
 	std::string disp() const;
 
