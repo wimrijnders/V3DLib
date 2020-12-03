@@ -31,17 +31,33 @@ struct PtrExpr : public BaseExpr {
 	 * Dereference
 	 */
   T operator*() {
-    return T(mkDeref(expr()), true);
+    return T(mkDeref(expr()));
   }
 
 
   // Array index
   T& operator[](IntExpr index) {
-breakpoint
+		breakpoint  // TODO When is this ever called??
 		T *p = new T;
     p->set_with_index(expr(), index.expr());
     return *p;
   }
+};
+
+
+template <typename T>
+struct Deref : public BaseExpr {
+	explicit Deref(Expr::Ptr e) : BaseExpr(e) {}
+
+	T &operator=(T &rhs) {
+		assign(m_expr, rhs.expr());
+		return rhs;
+	}
+
+	T const &operator=(T const &rhs) {
+		assign(m_expr, rhs.expr());
+		return rhs;
+	}
 };
 
 
@@ -50,6 +66,7 @@ breakpoint
 
 template <typename T>
 struct Ptr : public BaseExpr {
+
   // Constructors
   Ptr<T>() : BaseExpr(mkVar(freshVar()), "Ptr") {}
 
@@ -71,14 +88,17 @@ struct Ptr : public BaseExpr {
 
 	/**
 	 * Dereference
+	 *
+	 * See `PtrExpr::operator*()` for previous implementation.
 	 */
-  T operator*() {
-    return T(mkDeref(expr()), true);
+  Deref<T> operator*() {
+    auto e = mkDeref(expr());
+		return Deref<T>(e);
   }
 
   // Array index
   T operator[](IntExpr index) {
-		breakpoint
+		breakpoint  // TODO When is this ever called??
 		T ret;
     ret.set_with_index(expr(), index.expr());
     return ret;

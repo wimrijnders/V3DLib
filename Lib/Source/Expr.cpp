@@ -115,14 +115,11 @@ std::string Expr::disp() const {
 	std::string ret;
 
 	switch(m_tag) {
-		case INT_LIT:   ret << "Int " << intLit;      break;
-		case FLOAT_LIT: ret << "Float " << floatLit;  break;
-		case VAR:       ret << "Var: " << var.disp(); break;
-		case APPLY:
-			breakpoint
-			ret << "Apply: " << disp_apply();
-		break;
-		case DEREF:     ret << "Deref: ";             break;
+		case INT_LIT:   ret << "Int "    << intLit;              break;
+		case FLOAT_LIT: ret << "Float "  << floatLit;            break;
+		case VAR:       ret << "Var: "   << var.disp();          break;
+		case APPLY:     ret << "Apply: " << disp_apply();        break;
+		case DEREF:     ret << "Deref: " << deref_ptr()->disp(); break;
 		default:
 			assert(false);
 		break;

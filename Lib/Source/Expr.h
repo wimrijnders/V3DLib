@@ -64,7 +64,6 @@ private:
 class BaseExpr {
 public:
 	BaseExpr() {}
-	BaseExpr(Expr::Ptr e, char const *label = "");
 
 	Expr::Ptr expr() const { return m_expr; }
 	void set_with_index(Expr::Ptr base, Expr::Ptr index_expr);
@@ -73,6 +72,8 @@ public:
 
 protected:
   Expr::Ptr m_expr;  // Abstract syntax tree
+
+	BaseExpr(Expr::Ptr e, char const *label = "");
 
 private:
 	char const *m_label = "";

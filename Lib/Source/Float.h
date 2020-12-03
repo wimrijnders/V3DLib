@@ -6,6 +6,9 @@
 
 namespace V3DLib {
 
+struct Float;
+template <typename T> struct Deref; // Forward declaration template class
+
 // ============================================================================
 // Types                   
 // ============================================================================
@@ -16,6 +19,7 @@ namespace V3DLib {
 struct FloatExpr :public BaseExpr {
   FloatExpr(float x);
 	FloatExpr(Expr::Ptr e) : BaseExpr(e) {}
+	FloatExpr(Deref<Float> d);
 };
 
 

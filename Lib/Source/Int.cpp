@@ -35,9 +35,10 @@ Int::Int(IntExpr e) {
 }
 
 
-Int::Int(Expr::Ptr e, bool set_direct) {
-	assert(set_direct == true);
-	m_expr = e;
+Int::Int(Deref<Int> d) {
+  Var v    = freshVar();
+  m_expr = mkVar(v);
+  assign(m_expr, d.expr());
 }
 
 // Copy constructors

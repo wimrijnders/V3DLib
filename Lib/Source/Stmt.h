@@ -22,6 +22,7 @@ struct PrintStmt {
 
 	char const *str() const;
 	void str(char const *str);
+	std::string disp() const;
 
 private:
   PrintTag    m_tag;
@@ -76,7 +77,7 @@ struct Stmt : public InstructionComment {
 	Expr::Ptr setupDMAWrite_vpmAddr();
 	Expr::Ptr startDMARead();
 	Expr::Ptr startDMAWrite();
-	Expr::Ptr print_expr();
+	Expr::Ptr print_expr() const;
 
 	std::string disp() const;
 

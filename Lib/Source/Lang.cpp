@@ -160,7 +160,6 @@ void ForBody_() {
 //=============================================================================
 
 void Print(const char *str) {
-breakpoint
   Stmt* s = Stmt::create(PRINT);
   s->print.str(str);
   stmtStack().append(s);

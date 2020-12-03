@@ -7,6 +7,9 @@
 
 namespace V3DLib {
 
+template <typename T> struct Deref; // Forward declaration template class
+
+
 // ============================================================================
 // Types                   
 // ============================================================================
@@ -26,7 +29,7 @@ struct Int : public BaseExpr {
   Int();
   Int(int x);
   Int(IntExpr e);
-  Int(Expr::Ptr e, bool set_direct);
+  Int(Deref<Int> d);
 
   // Copy constructors
   Int(Int& x);

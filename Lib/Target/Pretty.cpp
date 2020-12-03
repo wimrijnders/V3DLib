@@ -266,6 +266,7 @@ const char *pretty_instr_tag(InstrTag tag) {
 		case INIT_BEGIN:   return "INIT_BEGIN";
 		case INIT_END:     return "INIT_END";
 		case TMUWT:        return "TMUWT";
+		case PRI:          return "PRI";
 		default:
 			assert(false);  // Add other tags here as required
 			return "<UNKNOWN>";

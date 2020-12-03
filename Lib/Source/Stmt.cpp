@@ -23,6 +23,36 @@ void PrintStmt::str(char const *str) {
 }
 
 
+/**
+ * NOTE: The expr for int and float is stored external to this class, in `Stmt`
+ *       For a full representation, this needs to be added in stmt::dsp()`
+ */
+std::string PrintStmt::disp() const {
+	std::string ret;
+
+	switch (m_tag) {
+	case PRINT_INT:
+		ret << "Print Int";
+	break;
+	case PRINT_FLOAT:
+		ret << "Print Float";
+	break;
+	case PRINT_STR:
+		ret << "Print String";
+		if (m_str == nullptr) {
+			ret << " <nullptr>";
+		} else {
+			ret << " '" << m_str << "'";
+		}
+	break;
+	default:
+		assert(false);
+	}
+
+	return ret;
+}
+
+
 // ============================================================================
 // Class Stmt
 // ============================================================================
@@ -132,7 +162,7 @@ Expr::Ptr Stmt::startDMAWrite() {
 }
 
 
-Expr::Ptr Stmt::print_expr() {
+Expr::Ptr Stmt::print_expr() const {
 	assert(tag == PRINT);
 	assert(print.tag() == PRINT_INT || print.tag() == PRINT_FLOAT);
 	assert(m_exp_a.get() != nullptr);
@@ -176,7 +206,14 @@ std::string Stmt::disp() const {
 			ret << "WHILE";
 		break;
 		case PRINT:
-			ret << "PRINT";
+			ret << print.disp();
+			if (print.tag() != PRINT_STR) {
+				if (m_exp_a.get() == nullptr) {
+					ret << " <no expr>";
+				} else {
+					ret << m_exp_a->disp();
+				}
+			}
 		break;
 		case FOR:
 			ret << "FOR";
