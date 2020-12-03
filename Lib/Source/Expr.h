@@ -39,13 +39,15 @@ struct Expr {
   void rhs(Ptr p);
   void deref_ptr(Ptr p);
 
+	Var var();
+
 	std::string pretty() const;
 	std::string disp() const;
 
   union {
     int   intLit;   // Integer literal
     float floatLit; // Float literal
-    Var   var;      // Variable identifier
+    Var   m_var;      // Variable identifier
     Op apply_op;    // Application of a binary operator
   };
 
@@ -66,14 +68,13 @@ public:
 	BaseExpr() {}
 
 	Expr::Ptr expr() const { return m_expr; }
-	void set_with_index(Expr::Ptr base, Expr::Ptr index_expr);
-
 	std::string disp() const;
 
 protected:
   Expr::Ptr m_expr;  // Abstract syntax tree
 
 	BaseExpr(Expr::Ptr e, char const *label = "");
+	Expr::Ptr deref_with_index(Expr::Ptr base, Expr::Ptr index_expr);
 
 private:
 	char const *m_label = "";

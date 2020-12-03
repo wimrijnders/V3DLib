@@ -63,8 +63,8 @@ void storeRequest(Seq<Instr> &seq, Expr::Ptr data, Expr::Ptr addr) {
     data = putInVar(&seq, data);
   }
 
-	Reg srcAddr = srcReg(addr->var);
-	Reg srcData = srcReg(data->var);
+	Reg srcAddr = srcReg(addr->var());
+	Reg srcData = srcReg(data->var());
 
   seq << mov(TMUD, srcData);
   seq.back().comment("Store request");
@@ -79,27 +79,27 @@ namespace v3d {
 /**
  * Case: *v := rhs where v is a var and rhs is a var
  */
-bool SourceTranslate::deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr::Ptr rhs) {
+Seq<Instr> SourceTranslate::deref_var_var(Var lhs, Var rhs) {
 	using namespace V3DLib::Target::instr;
-	assert(seq != nullptr);
-	assert(rhs.get() != nullptr);
 
-	Reg srcAddr = srcReg(rhs->var);
-	Reg srcData = srcReg(lhs.deref_ptr()->var);
+	Seq<Instr> ret;
 
-	if (rhs->var.tag() == ELEM_NUM) {
+	Reg srcData = srcReg(lhs);
+	Reg srcAddr = srcReg(rhs);
+
+	if (rhs.tag() == ELEM_NUM) {
 		//TODO: is ACC0 safe here?
 		assert(srcAddr == ELEM_ID);
-		*seq << mov(ACC0, ELEM_ID)
-		     << mov(TMUD, ACC0);
+		ret << mov(ACC0, ELEM_ID)
+		    << mov(TMUD, ACC0);
 	} else {
-		*seq << mov(TMUD, srcAddr);
+		ret << mov(TMUD, srcAddr);
 	}
 
-	*seq << mov(TMUA, srcData)
-	     << tmuwt();
+	ret << mov(TMUA, srcData)
+	    << tmuwt();
 
-	return true;
+	return ret;
 }
 
 
@@ -113,7 +113,7 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
   Instr ldtmu_r4;
 	ldtmu_r4.tag = TMU0_TO_ACC4;
 
-	Reg src = srcReg(e.deref_ptr()->var);
+	Reg src = srcReg(e.deref_ptr()->var());
 	*seq << mov(TMU0_S, src)
 
 	     // TODO: Do we need NOP's here?

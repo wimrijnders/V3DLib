@@ -86,6 +86,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 		// Compare scalar with QPU output - will not be exact
 		{
 	  	auto k = compile(rot3D_1);
+			k.pretty(true, "rot3D_1.txt");
 			initArrays(x_1, y_1, N);
   		k.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
 			compareResults(x_scalar, y_scalar, x_1, y_1, N, "Rot3D 1", false);

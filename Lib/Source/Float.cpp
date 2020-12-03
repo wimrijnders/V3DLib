@@ -39,9 +39,10 @@ Float::Float(FloatExpr e) {
 }
 
 
-Float::Float(Expr::Ptr e, bool set_direct) {
-	assert(set_direct == true);
-	m_expr = e;
+Float::Float(Deref<Float> d) {
+  Var v    = freshVar();
+  m_expr = mkVar(v);
+  assign(m_expr, d.expr());
 }
 
 

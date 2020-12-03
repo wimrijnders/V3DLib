@@ -1,8 +1,11 @@
 #include "Expr.h"
 #include "Target/SmallLiteral.h"
 #include "Support/basics.h"
+#include "Source/Lang.h"  // assign()
 
 namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
 
 Expr::Expr() {
 	breakpoint
@@ -11,7 +14,7 @@ Expr::Expr() {
 
 Expr::Expr(Var in_var) {
 	m_tag = VAR; 
-	var   = in_var;
+	m_var   = in_var;
 }
 
 
@@ -32,6 +35,12 @@ Expr::Expr(Ptr in_lhs, Op op, Ptr in_rhs) {
   lhs(in_lhs);
   apply_op = op;
   rhs(in_rhs);
+}
+
+
+Var Expr::var() {
+  assertq(m_tag == VAR, "Expr is not a VAR, shouldn't access var member.", true);
+	return m_var;
 }
 
 
@@ -99,7 +108,7 @@ std::string Expr::pretty() const {
   switch (tag()) {
     case INT_LIT:   ret << intLit;                       break;
     case FLOAT_LIT: ret << floatLit;                     break;
-    case VAR:       ret << var.disp();                   break;
+    case VAR:       ret << m_var.disp();                 break;
     case APPLY:     ret << disp_apply();                 break;
     case DEREF:     ret << "*" << deref_ptr()->pretty(); break;
 		default:
@@ -117,7 +126,7 @@ std::string Expr::disp() const {
 	switch(m_tag) {
 		case INT_LIT:   ret << "Int "    << intLit;              break;
 		case FLOAT_LIT: ret << "Float "  << floatLit;            break;
-		case VAR:       ret << "Var: "   << var.disp();          break;
+		case VAR:       ret << "Var: "   << m_var.disp();        break;
 		case APPLY:     ret << "Apply: " << disp_apply();        break;
 		case DEREF:     ret << "Deref: " << deref_ptr()->disp(); break;
 		default:
@@ -149,13 +158,12 @@ BaseExpr::BaseExpr(Expr::Ptr e, char const *label) : m_label(label) {
 
 
 /**
- * Set instance expression to base with added index offset
+ * Create deref with added index offset to base
  *
  * Meant for Ptr-types
  */
-void BaseExpr::set_with_index(Expr::Ptr base, Expr::Ptr index_expr) {
-	Expr::Ptr e = mkDeref(mkApply(base, Op(ADD, INT32), mkApply(index_expr, Op(SHL, INT32), mkIntLit(2))));
-	m_expr = e;
+Expr::Ptr BaseExpr::deref_with_index(Expr::Ptr base, Expr::Ptr index_expr) {
+	return mkDeref(mkApply(base, Op(ADD, INT32), mkApply(index_expr, Op(SHL, INT32), mkIntLit(2))));
 }
 
 

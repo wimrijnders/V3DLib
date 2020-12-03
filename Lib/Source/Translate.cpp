@@ -22,7 +22,7 @@ RegOrImm operand(Expr::Ptr e) {
 
   if (e->tag() == Expr::VAR) {
     x.tag = REG;
-    x.reg = srcReg(e->var);
+    x.reg = srcReg(e->var());
     return x;
   }
 
@@ -70,7 +70,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   // Case: v := rhs, where v is a variable and rhs an expression
   // -----------------------------------------------------------
   if (lhs.tag() == Expr::VAR) {
-    *seq << varAssign(lhs.var, rhs);
+    *seq << varAssign(lhs.var(), rhs);
     return;
   }
 
@@ -79,7 +79,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   // ---------------------------------------------------------
   if (lhs.tag() == Expr::DEREF && (lhs.deref_ptr()->tag() != Expr::VAR || rhs->tag() != Expr::VAR)) {
     assert(!lhs.deref_ptr()->isLit());
-    lhs.deref_ptr() = simplify(seq, lhs.deref_ptr());
+    lhs.deref_ptr(simplify(seq, lhs.deref_ptr()));
     rhs = putInVar(seq, rhs);
   }
 
@@ -91,7 +91,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
 	// (According to previous code, that is)
   bool handle_case = (lhs.tag() == Expr::DEREF && (lhs.deref_ptr()->tag() == Expr::VAR || rhs->tag() == Expr::VAR));
 	if (handle_case) {
-		getSourceTranslate().deref_var_var(seq, lhs, rhs);
+		*seq << getSourceTranslate().deref_var_var(lhs.deref_ptr()->var(), rhs->var());
 		return;
 	}
 
@@ -444,7 +444,7 @@ void printStmt(Seq<Instr> &seq, Stmt *stmt) {
 
 	auto expr_to_reg = [&seq] (Expr::Ptr expr) -> Reg {
 		if (expr ->tag() == Expr::VAR) {
-   	  return srcReg(expr->var);
+   	  return srcReg(expr->var());
 		} else {
       Var tmpVar = freshVar();
  	    seq << varAssign(tmpVar, expr);
@@ -478,7 +478,7 @@ Instr loadReceive(Expr::Ptr dest) {
 	assert(dest->tag() == Expr::VAR);
 
   Instr instr(RECV);
-  instr.RECV.dest = dstReg(dest->var);
+  instr.RECV.dest = dstReg(dest->var());
 	return instr;
 }
 
@@ -643,7 +643,7 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
 
 	switch (e.tag()) {
 		case Expr::VAR:                                                   // 'v := w', where v and w are variables
-			ret << mov(v, e.var).cond(cond);
+			ret << mov(v, e.var()).cond(cond);
     	break;
 		case Expr::INT_LIT:                                               // 'v := i', where i is an integer literal
 			ret << li(v, e.intLit).cond(cond);

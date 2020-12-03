@@ -141,7 +141,7 @@ Vec eval(CoreState* s, Expr::Ptr e) {
    
     // Variable
     case Expr::VAR:
-      return evalVar(s, e->var);
+      return evalVar(s, e->var());
 
     // Operator application
     case Expr::APPLY: {
@@ -387,7 +387,7 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
   switch (lhs->tag()) {
     // Variable
     case Expr::VAR:
-      assignToVar(s, cond, lhs->var, val);
+      assignToVar(s, cond, lhs->var(), val);
       break;
 
     // Dereferenced pointer
@@ -525,7 +525,7 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
   assert(s->loadBuffer.size() > 0);
   assert(e->tag() == Expr::VAR);
   Vec val = s->loadBuffer.remove(0);
-  assignToVar(s, vecAlways(), e->var, val);
+  assignToVar(s, vecAlways(), e->var(), val);
 }
 
 

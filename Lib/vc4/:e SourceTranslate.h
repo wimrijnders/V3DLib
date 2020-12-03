@@ -12,6 +12,8 @@ namespace vc4 {
 Seq<Instr> SourceTranslate::deref_var_var(Var lhs, Var rhs) {
 	Seq<Instr> ret;
 	
+	breakpoint
+
 	ret << StoreRequest(lhs, rhs)
 	    << genWaitDMAStore();  // Wait for store to complete
 

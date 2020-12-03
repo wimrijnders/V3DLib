@@ -18,10 +18,12 @@ void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr::Ptr e) {
     else
       *seq << genSetWriteStride(e->intLit);
   } else if (e->tag() == Expr::VAR) {
+		Reg reg = srcReg(e->var());
+
     if (tag == SET_READ_STRIDE)
-      genSetReadPitch(seq, srcReg(e->var));
+      genSetReadPitch(seq, reg);
     else
-      *seq << genSetWriteStride(srcReg(e->var));
+      *seq << genSetWriteStride(reg);
   } else {
     Var v = freshVar();
     *seq << varAssign(v, e);
@@ -47,7 +49,7 @@ Seq<Instr> setupVPMReadStmt(Stmt *s) {
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupVPMLoad(n, e->intLit, hor, stride);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMLoad(n, srcReg(e->var), hor, stride);
+    ret << genSetupVPMLoad(n, srcReg(e->var()), hor, stride);
   else {
     Var v = freshVar();
     ret << varAssign(v, e)
@@ -74,7 +76,7 @@ Seq<Instr> setupDMAReadStmt(Stmt *s) {
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->intLit);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var));
+    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var()));
   else {
     Var v = freshVar();
 
@@ -97,7 +99,7 @@ Seq<Instr> setupDMAWriteStmt(Stmt *s) {
   if (e->tag() == Expr::INT_LIT) {
     ret << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
   } else if (e->tag() == Expr::VAR) {
-    ret << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var));
+    ret << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var()));
   } else {
     Var v = freshVar();
 
@@ -117,7 +119,7 @@ Seq<Instr> startDMAReadStmt(Expr::Ptr e) {
     ret << varAssign(v, e);
   }
 
-	ret << genStartDMALoad(srcReg(e->var));
+	ret << genStartDMALoad(srcReg(e->var()));
 	return ret;
 }
 
@@ -130,7 +132,7 @@ Seq<Instr> startDMAWriteStmt(Expr::Ptr e) {
     ret << varAssign(v, e);
   }
 
-	ret << genStartDMAStore(srcReg(e->var));
+	ret << genStartDMAStore(srcReg(e->var()));
 	return ret;
 }
 
@@ -169,7 +171,7 @@ Seq<Instr> setupVPMWriteStmt(Stmt *s) {
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupVPMStore(e->intLit, hor, stride);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMStore(srcReg(e->var), hor, stride);
+    ret << genSetupVPMStore(srcReg(e->var()), hor, stride);
   else {
     Var v = freshVar();
     ret << varAssign(v, e)
@@ -201,7 +203,7 @@ Seq<Instr> storeRequestOperation(Stmt *s) {
     addr = putInVar(&ret, addr);
   }
 
-	ret << vc4::StoreRequest(addr->var, data->var, true);
+	ret << vc4::StoreRequest(addr->var(), data->var(), true);
 	return ret;
 }
 

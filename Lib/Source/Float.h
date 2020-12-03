@@ -30,7 +30,7 @@ struct Float : public BaseExpr {
   Float();
   Float(float x);
   Float(FloatExpr e);
-  Float(Expr::Ptr e, bool set_direct);
+  Float(Deref<Float> d);
 
   // Copy constructors
   Float(Float& x);

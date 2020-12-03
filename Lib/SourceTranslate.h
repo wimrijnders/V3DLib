@@ -18,7 +18,7 @@ public:
 	 *
 	 * @return true if handled, false otherwise
 	 */
-	virtual bool deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr::Ptr rhs) = 0;
+	virtual Seq<Instr> deref_var_var(Var lhs, Var rhs) = 0;
 	virtual void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) = 0;
 	virtual void regAlloc(CFG* cfg, Seq<Instr>* instrs) = 0;
 	virtual bool stmt(Seq<Instr>& seq, Stmt* s) = 0;

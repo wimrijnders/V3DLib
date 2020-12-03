@@ -36,11 +36,10 @@ struct PtrExpr : public BaseExpr {
 
 
   // Array index
-  T& operator[](IntExpr index) {
-		breakpoint  // TODO When is this ever called??
-		T *p = new T;
-    p->set_with_index(expr(), index.expr());
-    return *p;
+  Deref<T> operator[](IntExpr index) {
+		//breakpoint  // TODO When is this ever called??
+    auto e = deref_with_index(expr(), index.expr());
+		return Deref<T>(e);
   }
 };
 
@@ -97,11 +96,10 @@ struct Ptr : public BaseExpr {
   }
 
   // Array index
-  T operator[](IntExpr index) {
-		breakpoint  // TODO When is this ever called??
-		T ret;
-    ret.set_with_index(expr(), index.expr());
-    return ret;
+  Deref<T> operator[](IntExpr index) {
+		//breakpoint  // TODO When is this ever called??
+    auto e = deref_with_index(expr(), index.expr());
+		return Deref<T>(e);
   }
 };
 
