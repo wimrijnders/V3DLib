@@ -11,6 +11,16 @@ namespace V3DLib {
 
 namespace {
 
+Expr::Ptr newVar() {
+	return mkVar(freshVar());
+};
+
+
+Expr::Ptr mkFloatLit(float lit) {
+	return std::make_shared<Expr>(lit);
+}
+
+
 // ============================================================================
 // Types of expressions
 // ============================================================================
@@ -121,10 +131,12 @@ Expr::Ptr genExpr(GenOptions* opts, Type t, int depth) {
   switch (randRange(0, 3)) { 
     // Literal
     case 0: {
-      if (t.tag == FLOAT_TYPE)
-        return Float(genFloatLit()).expr();
-      else if (t.tag == INT_TYPE)
-        return Int(genIntLit()).expr();
+			// Attempt to create Literals without using stmtStack
+      if (t.tag == FLOAT_TYPE) {
+				return mkFloatLit(genFloatLit());
+			} else if (t.tag == INT_TYPE) {
+				return mkIntLit(genIntLit());
+			}
     }
 
     // Dereference
@@ -360,7 +372,8 @@ Stmt* genWhile(GenOptions* o, int depth) {
   // Obtain a loop variable
   int firstLoopVar = o->numIntArgs + o->numIntVars;
   Var var(STANDARD, firstLoopVar + (depth-1));
-  Expr::Ptr v = mkVar(var);
+  //Expr::Ptr v = mkVar(var);
+  Expr::Ptr v = newVar();
 
   // Create random condition with loop bound
   BExpr* b = genBExpr(o, depth)->And(mkCmp(v, CmpOp(LT, INT32), mkIntLit(o->loopBound)));
@@ -461,7 +474,7 @@ int genIntLit() {
 // Top-level program generator
 // ============================================================================
 
-Stmt* progGen(GenOptions* opts, int* numVars) {
+Stmt *progGen(GenOptions* opts) {
   // Initialise variables
   Stmt* pre  = mkSkip();
   Stmt* post = mkSkip();
@@ -470,53 +483,48 @@ Stmt* progGen(GenOptions* opts, int* numVars) {
   Expr::Ptr fifo = mkVar(Var(UNIFORM));
 
   // Next unused var id
-  VarId next = 0;
-
-	auto mkIntVar = [] (VarId val) -> Expr::Ptr {
-		return mkVar(Var(STANDARD, val));
-	};
+  //VarId next = 0;
 
 	// Read qpu id and num
-	pre   = mkSeq(pre, mkAssign(mkIntVar(next++), fifo));
-	pre   = mkSeq(pre, mkAssign(mkIntVar(next++), fifo));
+	pre   = mkSeq(pre, mkAssign(newVar(), fifo));
+	pre   = mkSeq(pre, mkAssign(newVar(), fifo));
 
   // Read int args
   for (int i = 0; i < opts->numIntArgs; i++) {
-		auto v = mkIntVar(next++);
+		auto v = newVar();
     pre   = mkSeq(pre, mkAssign(v, fifo));
     post  = mkSeq(post, mkPrint(PRINT_INT, v));
   }
 
   // Initialise int vars and loop vars
   for (int i = 0; i < opts->numIntVars + opts->depth; i++) {
-		auto v = mkIntVar(next++);
+		auto v = newVar();
     pre   = mkSeq(pre, mkAssign(v, mkIntLit(genIntLit())));
     post  = mkSeq(post, mkPrint(PRINT_INT, v));
   }
 
   // Read float args
   for (int i = 0; i < opts->numFloatArgs; i++) {
-		auto v = mkIntVar(next++);
+		auto v = newVar();
     pre   = mkSeq(pre, mkAssign(v, fifo));
     post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
   }
 
   // Initialise float vars
   for (int i = 0; i < opts->numFloatVars; i++) {
-		auto v = mkIntVar(next++);
+		auto v = newVar();
     pre   = mkSeq(pre, mkAssign(v, Float(genFloatLit()).expr()));
     post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
   }
  
   // Read pointer args
   for (int i = 0; i < opts->numPtrArgs + opts->numPtr2Args; i++) {
-		auto v = mkIntVar(next++);
-    pre   = mkSeq(pre, mkAssign(v, fifo));
+		auto v = newVar();
+    pre    = mkSeq(pre, mkAssign(v, fifo));
   }
 
   // Generate statement
   Stmt* s = genStmt(opts, opts->depth, opts->length);
-  *numVars = next;
 
   return mkSeq(pre, mkSeq(s, post));
 }

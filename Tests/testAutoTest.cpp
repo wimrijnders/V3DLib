@@ -72,15 +72,15 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	  for (int test = 0; test < numTests; test++) {
 	    //astHeap.clear();
 			vc4::KernelDriver driver;
+			resetFreshVarGen();
 
-	    int numVars;
-	    Stmt *s = progGen(&opts, &numVars);
-
-			driver.compile_init(false, numVars);
+	    Stmt *s = progGen(&opts);
+	    int numVars = getFreshVarCount();     // For interpreter: max var id used in source
+			driver.compile_init(false, numVars);  // NOTE: 2nd param sets globalVarId to itself! 
 			driver.add_stmt(s);
 	    driver.compile();
 
-	    int numEmuVars = getFreshVarCount();
+	    int numEmuVars = getFreshVarCount();  // Max number of registers used in interpreter
 	    Seq<char> interpOut, emuOut;
 
     	Seq<int32_t> params;
