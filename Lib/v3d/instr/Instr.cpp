@@ -970,12 +970,6 @@ Instr add(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 
 Instr sub(Location const &dst, Location const &srca, Location const &srcb) {
 	return Instr(V3D_QPU_A_SUB, dst, srca, srcb);
-/*
-	Instr instr;
-	instr.alu_add_set(loc1, loc2, loc3);
-	instr.alu.add.op = V3D_QPU_A_SUB;
-	return instr;
-*/
 }
 
 
