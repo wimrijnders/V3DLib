@@ -30,12 +30,15 @@ struct PtrExpr : public BaseExpr {
 	/**
 	 * Dereference
 	 */
-  T operator*() {
-    return T(mkDeref(expr()));
+  Deref<T> operator*() {
+    auto e = mkDeref(expr());
+		return Deref<T>(e);
   }
 
 
-  // Array index
+	/**
+	 * Array index
+	 */
   Deref<T> operator[](IntExpr index) {
 		//breakpoint  // TODO When is this ever called??
     auto e = deref_with_index(expr(), index.expr());
@@ -87,15 +90,16 @@ struct Ptr : public BaseExpr {
 
 	/**
 	 * Dereference
-	 *
-	 * See `PtrExpr::operator*()` for previous implementation.
 	 */
   Deref<T> operator*() {
     auto e = mkDeref(expr());
 		return Deref<T>(e);
   }
 
-  // Array index
+
+	/**
+	 * Array index
+	 */
   Deref<T> operator[](IntExpr index) {
 		//breakpoint  // TODO When is this ever called??
     auto e = deref_with_index(expr(), index.expr());
