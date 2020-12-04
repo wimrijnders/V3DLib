@@ -57,6 +57,7 @@ public:
 	Instr &ldunif();
 	Instr &ldunifa();
 	Instr &ldunifarf(Location const &loc);
+	Instr &ldunifrf(Location const &loc);
 	Instr &ldtmu(Register const &reg);
 	Instr &ldvpm();
 
@@ -157,8 +158,7 @@ private:
 };
 
 
-const uint8_t vpm = 14;
-const uint32_t ifb = 3145728000;  // Value according to dump; No idea what this value is supposed to be and what it does!
+const uint8_t  vpm       = 14;
 const uint32_t zero_addr = 0;
 
 Instr nop();
@@ -209,7 +209,7 @@ v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;
 Instr barrierid(v3d_qpu_waddr waddr);
 Instr vpmsetup(Register const &reg2);
 
-Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3);
+Instr ffloor(Location const &dst, Location const &srca);
 Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2);
 Instr fmax(Location const &dst, Location const &srca, Location const &srcb);
 Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3);
@@ -225,6 +225,11 @@ Instr rotate(Location const &dst, Location const &loca, SmallImm const &immb);
 Instr tmuwt();
 Instr min(Location const &dst, Location const &srca, Location const &srcb);
 Instr max(Location const &dst, Location const &srca, Location const &srcb);
+
+Instr ldvpmg_in(Location const &dst, Location const &srca, Location const &srcb);
+Instr stvpmv(SmallImm const &imma, Location const &srca);
+Instr sampid(Location const &dst);
+Instr brecip(Location const &dst, Location const &srca);
 
 }  // instr
 }  // v3d

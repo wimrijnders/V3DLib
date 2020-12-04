@@ -428,6 +428,16 @@ Instr &Instr::ldunifarf(Location const &loc) {
 	return *this;
 }
 
+
+Instr &Instr::ldunifrf(Location const &loc) {
+	sig.ldunifrf = true;
+
+	sig_magic = !loc.is_rf();
+	sig_addr = loc.to_waddr();
+	return *this;
+}
+
+
 //
 // Conditions  branch instructions
 //
@@ -1362,22 +1372,14 @@ Instr vpmsetup(Register const &reg2) {
 }
 
 
-// First param ignored??
-Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3) {
+Instr ffloor(Location const &dst, Location const &srca) {
 	Instr instr;
+	instr.alu_add_set_dst(dst);
+	instr.alu_add_set_reg_a(srca);
+	instr.alu_add_set_reg_b(r1);  // apparently implicit
 
-	if (magic_value == ifb) {
-		instr.flags.ac = V3D_QPU_COND_IFB;
-	}
-
-
-	instr.alu.add.op    = V3D_QPU_A_FFLOOR;
-	instr.alu.add.a     = reg3.to_mux();
-	instr.alu.add.b     = V3D_QPU_MUX_R1;
-	instr.alu.add.waddr = rf_addr2.to_waddr();
-	instr.alu.add.magic_write = false;
-	instr.alu.add.output_pack = rf_addr2.output_pack();
-	instr.alu.add.b_unpack = (v3d_qpu_input_unpack) magic_value;
+	instr.alu.add.op = V3D_QPU_A_FFLOOR;
+	instr.alu.add.b_unpack = (v3d_qpu_input_unpack) V3D_QPU_A_FFLOOR; // ?? Looks wrong but matches the mesa disasm
 
 	return instr;
 }
@@ -1635,6 +1637,42 @@ Instr max(Location const &dst, Location const &srca, Location const &srcb) {
 	instr.alu_add_set(dst, srca, srcb);
 
 	instr.alu.add.op = V3D_QPU_A_MAX;
+	return instr;
+}
+
+
+Instr ldvpmg_in(Location const &dst, Location const &srca, Location const &srcb) {
+	return Instr(V3D_QPU_A_LDVPMG_IN, dst, srca, srcb);
+}
+
+
+Instr stvpmv(SmallImm const &imma, Location const &srca) {
+//	return Instr(V3D_QPU_A_STVPMV, r0, imma, srca);  //  TODO not implemented yet
+	Instr instr;
+	instr.alu_add_set(rf(0), imma, srca);  // rf(0) is dummy, to align with mesa disasm
+
+	instr.alu.add.op = V3D_QPU_A_STVPMV;
+	return instr;
+}
+
+
+Instr sampid(Location const &dst) {
+	Instr instr;
+	instr.alu_add_set(dst, r3, r3);  // Apparently r3 r2 are implicit
+
+	instr.alu.add.op = V3D_QPU_A_SAMPID;
+	return instr;
+}
+
+
+/**
+ * Prefix 'b' used to disambiguate, was a naming collision.
+ */
+Instr brecip(Location const &dst, Location const &srca) {
+	Instr instr;
+	instr.alu_add_set(dst, srca, r5);  // r5 implicit
+
+	instr.alu.add.op = V3D_QPU_A_RECIP;
 	return instr;
 }
 
