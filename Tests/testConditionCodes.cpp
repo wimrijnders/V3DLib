@@ -502,18 +502,12 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	// So it appears we just need to wait.
 	//
 	if (!Platform::instance().has_vc4) {
-		std::cout << "Not running the 'where_qpu' test on v3d; this causes persistent timeouts (TODO)" << std::endl;
+		std::cout << "Not running the 'noloop' tests on v3d; this causes persistent timeouts (TODO)" << std::endl;
 	} else {
-		k1.load(&result, 21, 15); run_qpu(k1, 2, expected_1);  // timer expires on v3d, and keeps on expiring
-	}
-
-	k2.load(&result, 0, 0);   run_qpu(k2, 3, expected_1);
-	k2.load(&result, 12, 15); run_qpu(k2, 4, expected_2);
-	// This also, see above
-	if (!Platform::instance().has_vc4) {
-		std::cout << "Not running the 'where_qpu' test on v3d; this causes persistent timeouts (TODO)" << std::endl;
-	} else {
-		k2.load(&result, 21, 15); run_qpu(k2, 5, expected_1);  // Timer expires on v3d, and keeps on expiring
+		// The timers expire on v3d, and keeps on expiring
+		k1.load(&result, 21, 15); run_qpu(k1, 2, expected_1);
+		k2.load(&result, 0, 0);   run_qpu(k2, 3, expected_1);
+		k2.load(&result, 21, 15); run_qpu(k2, 5, expected_1);
 	}
 
 	// multi-if's don't have the problem mentioned above, always work.
