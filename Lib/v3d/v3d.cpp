@@ -215,9 +215,16 @@ bool v3d_open() {
 }
 
 
-void v3d_close() {
+/**
+ * @return true if close executed, false if already closed
+ */
+bool v3d_close() {
+	if (fd == 0) { return false; }
+
 	fd_close(fd);
 	fd = 0;
+
+	return true;
 }
 
 

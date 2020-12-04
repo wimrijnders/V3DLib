@@ -64,6 +64,7 @@ bool v3d_init() {
 
 	REQUIRE(v3d_open());
 	return true;
+
 }
 
 }  // anon namespace
@@ -77,11 +78,12 @@ bool v3d_init() {
 /*
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
-TEST_CASE("Check v3d code is working properly", "[v3d]") {
+TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
+	if (!v3d_init()) return;
+
 	SECTION("Direct v3d calls should work with SharedArray") {
 		using namespace V3DLib::v3d;
 
-		if (!v3d_init()) return;
 
 		uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
 		REQUIRE(array_length == 8);
@@ -103,10 +105,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 		//printf("[submit done: %.6lf sec]\n", end - start);
 	}
 
-
 	SECTION("v3d SharedArray should work as expected") {
-		if (!v3d_init()) return;
-
 		const int SIZE = 16;
 
 		SharedArray<uint32_t> arr(SIZE);
@@ -135,8 +134,9 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
 
 TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
+	if (!v3d_init()) return;
+
 	SECTION("Summation example should work from bytecode") {
-		if (!v3d_init()) return;
 
 		uint8_t num_qpus = 8;  // Don't change these values! That's how the summation kernel bytecode
 		int unroll_shift = 5;  // was compiled.
@@ -146,8 +146,6 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 	SECTION("Summation example should work from kernel output") {
-		if (!v3d_init()) return;
-
 		uint8_t num_qpus = 8;
 		int unroll_shift = 5;
 
@@ -163,14 +161,11 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 	SECTION("Rotate example should work from bytecode") {
-		if (!v3d_init()) return;
 		run_rotate_alias_kernel(qpu_rotate_alias_code);
 	}
 
 
 	SECTION("Rotate example should work from kernel output") {
-		if (!v3d_init()) return;
-
 		run_rotate_alias_kernel(rotate_kernel());
 	}
 }

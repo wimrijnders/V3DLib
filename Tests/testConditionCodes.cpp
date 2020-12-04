@@ -471,9 +471,6 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	k3.load(&result, 12, 15); run_cpu(k3, expected_2);
 	k3.load(&result, 21, 15); run_cpu(k3, expected_1);
 
-	k1.load(&result, 0, 0);   run_qpu(k1, 0, expected_1);
-	k1.load(&result, 12, 15); run_qpu(k1, 1, expected_2);
-
 	//
 	// When run in combination with other qpu calls, can *usually* generate lingering timeouts
 	// (lingering as in all subsequent calls time out as well, also in other processes).
@@ -505,6 +502,9 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 		std::cout << "Not running the 'noloop' tests on v3d; this causes persistent timeouts (TODO)" << std::endl;
 	} else {
 		// The timers expire on v3d, and keeps on expiring
+		k1.load(&result, 0, 0);   run_qpu(k1, 0, expected_1);
+		k1.load(&result, 12, 15); run_qpu(k1, 1, expected_2);
+
 		k1.load(&result, 21, 15); run_qpu(k1, 2, expected_1);
 		k2.load(&result, 0, 0);   run_qpu(k2, 3, expected_1);
 		k2.load(&result, 21, 15); run_qpu(k2, 5, expected_1);

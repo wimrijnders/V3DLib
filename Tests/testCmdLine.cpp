@@ -30,6 +30,17 @@ enum RunType {
 };
 
 
+void init_msg() {
+	static bool showed_msg = false;
+	if (showed_msg) return;
+
+	printf("NOTE: test [cmdline] will only work with [v3d][code] and [v3d][driver] "
+	       "if `runTest` is run with `sudo`.\n");
+
+	showed_msg = true;
+}
+
+
 void check_output_run(std::string const &program, RunType run_type, std::string const &extra_params) {
 	std::string params = "";
 	std::string output_filename = "obj/test/";
@@ -88,6 +99,7 @@ void check_output_example(std::string const &program, std::string const &extra_p
 // Better would be to check if the first line is the same
 //
 TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline]") {
+	init_msg();
 	int ret1 = system(BIN_PATH "/detectPlatform > /dev/null");
 	bool success1 = (ret1 == 0);
 
@@ -100,6 +112,7 @@ TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline
 
 
 TEST_CASE("Check correct output example programs for all three run options", "[cmdline]") {
+	init_msg();
 	make_test_dir();
 
 	SECTION("Check output ReqRecv") { check_output_example("ReqRecv"); }
