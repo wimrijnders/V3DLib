@@ -55,7 +55,7 @@ struct GenOptions {
 int genIntLit();
 
 // Generate a random source program
-Stmt* progGen(GenOptions* opts, int* numVars);
+Stmt *progGen(GenOptions *opts);
 
 }  // namespace V3DLib
 
