@@ -1,27 +1,26 @@
-#ifndef _QPULIB_V3D_BUFFEROBJECT_H_
-#define _QPULIB_V3D_BUFFEROBJECT_H_
-#include <cassert>
+#ifndef _V3DLIB_V3D_BUFFEROBJECT_H_
+#define _V3DLIB_V3D_BUFFEROBJECT_H_
+//#include <cassert>
 #include <vector>
-#include <stdint.h>
-#include "../Support/debug.h"
+//#include <stdint.h>
+//#include "debug.h"
 #include "Common/BufferObject.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 
 
 /**
  * This behaves like an array of uint32_t.
  */
-class BufferObject : public QPULib::BufferObject {
+class BufferObject : public V3DLib::BufferObject {
 public:
 	BufferObject(uint32_t size) { alloc_mem(size); }
 	BufferObject() {} 
 	~BufferObject(); 
 
-  uint32_t getPhyAddr() const { return  (uint32_t) phyaddr; }
-  uint32_t getHandle()  const override { return  (uint32_t) handle; }
+  uint32_t getHandle() const override { return  (uint32_t) handle; }
 
   void alloc_mem(uint32_t size_in_bytes);
 
@@ -35,13 +34,13 @@ private:
 
 	void dealloc_mem();
 	uint32_t &operator[] (int i);
-	uint32_t size_word() const { return m_size/sizeof(uint32_t); }  // Returns size in words
+	uint32_t size_word() const { return size()/sizeof(uint32_t); }  // Returns size in words
 };
 
 
 BufferObject &getMainHeap();
 
 }  // namespace v3d
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_V3D_BUFFEROBJECT_H_
+#endif  // _V3DLIB_V3D_BUFFEROBJECT_H_

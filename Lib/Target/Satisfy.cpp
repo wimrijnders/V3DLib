@@ -1,67 +1,40 @@
 #include "Target/Satisfy.h"
 #include "Target/Liveness.h"
-#include "Target/RegAlloc.h"
 #include <assert.h>
 #include <stdio.h>
 
-namespace QPULib {
+namespace V3DLib {
 
-// =============================
-// Remap register to accumulator
-// =============================
-
-// Return an instruction to move the contents of a register to an
-// accumulator, and change the use of that register in the given
-// instruction to the given accumulator.
-
-Instr remapAToAccum(Instr* instr, RegId acc)
-{
+/**
+ * Remap register A to accumulator
+ *
+ * Return an instruction to move the contents of a register to an
+ * accumulator, and change the use of that register in the given
+ * instruction to the given accumulator.
+ */
+Instr remapAToAccum(Instr* instr, RegId acc) {
   assert(instr->ALU.srcA.tag == REG);
 
-  AssignCond always;
-  always.tag = ALWAYS;
-
-  Instr move;
-  move.tag                   = ALU;
-  move.ALU.setFlags          = false;
-  move.ALU.cond              = always;
-  move.ALU.dest.tag          = ACC;
-  move.ALU.dest.regId        = acc;
-  move.ALU.srcA.tag          = REG;
-  move.ALU.srcA.reg          = instr->ALU.srcA.reg;
-  move.ALU.op                = A_BOR;
-  move.ALU.srcB.tag          = REG;
-  move.ALU.srcB.reg          = instr->ALU.srcA.reg;
-
+	Reg src = instr->ALU.srcA.reg;
   instr->ALU.srcA.reg.tag    = ACC;
   instr->ALU.srcA.reg.regId  = acc;
 
-  return move;
+  return Target::instr::mov(Reg(ACC, acc), src);
 }
 
-Instr remapBToAccum(Instr* instr, RegId acc)
-{
+
+/**
+ * Remap register A to accumulator
+ *
+ */
+Instr remapBToAccum(Instr* instr, RegId acc) {
   assert(instr->ALU.srcB.tag == REG);
 
-  AssignCond always;
-  always.tag = ALWAYS;
-
-  Instr move;
-  move.tag                   = ALU;
-  move.ALU.setFlags          = false;
-  move.ALU.cond              = always;
-  move.ALU.dest.tag          = ACC;
-  move.ALU.dest.regId        = acc;
-  move.ALU.srcA.tag          = REG;
-  move.ALU.srcA.reg          = instr->ALU.srcB.reg;
-  move.ALU.op                = A_BOR;
-  move.ALU.srcB.tag          = REG;
-  move.ALU.srcB.reg          = instr->ALU.srcB.reg;
-
+	Reg src = instr->ALU.srcB.reg;
   instr->ALU.srcB.reg.tag   = ACC;
   instr->ALU.srcB.reg.regId = acc;
 
-  return move;
+  return Target::instr::mov(Reg(ACC, acc), src);
 }
 
 // ==============================
@@ -129,25 +102,26 @@ bool resolveRegFileConflict(Instr* instr, Instr* newInstr)
 
 // First pass: insert move-to-accumulator instructions.
 
-static void insertMoves(Seq<Instr>* instrs, Seq<Instr>* newInstrs)
-{
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
+static void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
     RegId r; RegTag rt;
 
     if (instr.tag == ALU && instr.ALU.op == M_ROTATE) {
       // Insert moves for horizontal rotate operations
-      newInstrs->append(remapAToAccum(&instr, 0));
+      *newInstrs << remapAToAccum(&instr, 0);
+
       if (instr.ALU.srcB.tag == REG)
-        newInstrs->append(remapBToAccum(&instr, 5));
-      newInstrs->append(nop());
+        *newInstrs << remapBToAccum(&instr, 5);
+
+      *newInstrs << Instr::nop();
     }
     else if (instr.tag == ALU && instr.ALU.srcA.tag == IMM &&
              instr.ALU.srcB.tag == REG &&
              regFileOf(instr.ALU.srcB.reg) == REG_B) {
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.
-      newInstrs->append(remapBToAccum(&instr, 0));
+      *newInstrs << remapBToAccum(&instr, 0);
     }
     else if (instr.tag == ALU && instr.ALU.srcB.tag == IMM &&
              instr.ALU.srcA.tag == REG &&
@@ -168,46 +142,48 @@ static void insertMoves(Seq<Instr>* instrs, Seq<Instr>* newInstrs)
   }
 }
 
+
 // Second pass: insert NOPs
-static void insertNops(Seq<Instr>* instrs, Seq<Instr>* newInstrs)
-{
+static void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
   // Use/def sets
   UseDefReg mySet, prevSet;
 
   // Previous instruction
-  Instr prev = nop();
+  Instr prev = Instr::nop();
 
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
     RegId r; RegTag rt;
 
     // Insert NOPs to avoid data hazards
     useDefReg(prev, &prevSet);
     useDefReg(instr, &mySet);
-    for (int j = 0; j < prevSet.def.numElems; j++) {
-      Reg defReg = prevSet.def.elems[j];
+    for (int j = 0; j < prevSet.def.size(); j++) {
+      Reg defReg = prevSet.def[j];
       bool needNop = defReg.tag == REG_A || defReg.tag == REG_B;
+
       if (needNop && mySet.use.member(defReg)) {
-        newInstrs->append(nop());
+        newInstrs << Instr::nop();
         break;
       }
     }
 
     // Put current instruction into the new sequence
-    newInstrs->append(instr);
+    newInstrs << instr;
 
     // Insert NOPs in branch delay slots
     if (instr.tag == BRL || instr.tag == END) {
       for (int j = 0; j < 3; j++)
-        newInstrs->append(nop());
-      prev = nop();
+        newInstrs << Instr::nop();
+
+      prev = Instr::nop();
     }
 
     // Update previous instruction
     if (instr.tag != LAB) prev = instr;
   }
-
 }
+
 
 // Return true for any instruction that doesn't read from the VPM
 bool notVPMGet(Instr instr)
@@ -216,8 +192,8 @@ bool notVPMGet(Instr instr)
   UseDefReg useDef;
 
   useDefReg(instr, &useDef);
-  for (int i = 0; i < useDef.use.numElems; i++) {
-    Reg useReg = useDef.use.elems[i];
+  for (int i = 0; i < useDef.use.size(); i++) {
+    Reg useReg = useDef.use[i];
     if (useReg.tag == SPECIAL && useReg.regId == SPECIAL_VPM_READ)
       return false;
   }
@@ -225,42 +201,43 @@ bool notVPMGet(Instr instr)
 }
 
 // Insert NOPs between VPM setup and VPM read, if needed
-static void removeVPMStall(Seq<Instr>* instrs, Seq<Instr>* newInstrs)
-{
+static void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
   // Use/def sets
   UseDefReg useDef;
 
-  for (int i = 0; i < instrs->numElems; i++) {
-    Instr instr = instrs->elems[i];
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
     if (instr.tag != VPM_STALL)
-      newInstrs->append(instr);
+      newInstrs << instr;
     else {
       int numNops = 3;  // Number of nops to insert
       for (int j = 1; j <= 3; j++) {
-        if ((i+j) >= instrs->numElems) break;
-        Instr next = instrs->elems[i+j];
+        if ((i+j) >= instrs.size()) break;
+        Instr next = instrs[i+j];
         if (next.tag == LAB) break;
         if (notVPMGet(next)) numNops--; else break;
       }
+
       for (int j = 0; j < numNops; j++)
-        newInstrs->append(nop());
+        newInstrs << Instr::nop();
     }
   }
 }
 
 // Combine passes
 
-void satisfy(Seq<Instr>* instrs)
-{
+void satisfy(Seq<Instr>* instrs) {
+	assert(instrs != nullptr);
+
   // New instruction sequence
-  Seq<Instr> newInstrs0(instrs->numElems * 2);
-  Seq<Instr> newInstrs1(instrs->numElems * 2);
+  Seq<Instr> newInstrs0(instrs->size() * 2);
+  Seq<Instr> newInstrs1(instrs->size() * 2);
 
   // Apply passes
-  insertMoves(instrs, &newInstrs0);
-  insertNops(&newInstrs0, &newInstrs1);
+  insertMoves(*instrs, &newInstrs0);
+  insertNops(newInstrs0, newInstrs1);
   instrs->clear();
-  removeVPMStall(&newInstrs1, instrs);
+  removeVPMStall(newInstrs1, *instrs);
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

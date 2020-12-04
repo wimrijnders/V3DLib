@@ -3,14 +3,14 @@
 #include <fstream>
 #include <streambuf>
 #include <CmdParameters.h>
-#include "QPULib.h"
+#include "V3DLib.h"
 #include "Support/Platform.h"
 #include "vc4/vc4.h"
 #include "vc4/Mailbox.h"
 #include "vc4/RegisterMap.h"
 #include "v3d/RegisterMapping.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
 CmdParameters params = {
 	"Show info on the platform and the VideoCore.\n\n"
@@ -18,10 +18,15 @@ CmdParameters params = {
 	"There is limited possibility to manipulate these registers.",
 	{{
 		"Reset Scheduler Registers",
-		"-r", // "--reset-scheduler",
+		"-reset-scheduler",
 		ParamType::NONE,
-		"Clear the prohibition bits in the scheduler registers that determine what kind"
-		"of program can run."
+		"Clear the prohibition bits in the scheduler registers that determine what "
+		"kind of program can run (vc4 only)"
+	}, {
+		"Reset GPU",
+		"-reset",
+		ParamType::NONE,
+		"Reset the hardware GPU (v3d only)"
 	}}
 };
 
@@ -29,12 +34,13 @@ CmdParameters params = {
 /**
  * @brief Collect and make general information available on the current platform
  *
- * In time, this struct will be made generic for all QPULib programs
+ * In time, this struct will be made generic for all V3DLib programs
  */
 struct Settings {
 
 	// cmdline param's
 	bool reset_scheduler;
+	bool reset_gpu;
 
 
 	/**
@@ -46,8 +52,6 @@ struct Settings {
 	int init(int argc, const char *argv[]) {
 		auto platform = Platform::instance();
 
-		platform.output();
-		output();
 
 		if (!platform.is_pi_platform) {
 			return CmdParameters::EXIT_ERROR;
@@ -67,15 +71,19 @@ struct Settings {
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 		reset_scheduler = params.parameters()[0]->get_bool_value();
+		reset_gpu       = params.parameters()[1]->get_bool_value();
+
+		platform.output();
+		output();
 
 		return CmdParameters::ALL_IS_WELL;
 	}
 
 
 	void output() {
-
 		printf("\nCmdline param's:\n");
 		printf("  Reset Scheduler  : %s\n", reset_scheduler?"true":"false");
+		printf("  Reset GPU        : %s\n", reset_gpu?"true":"false");
 		printf("\n");
 	}
 	
@@ -147,8 +155,19 @@ void showSchedulerRegisters() {
  *    Segmentation fault
  */
 void detect_v3d() {
+	if (settings.reset_scheduler) {
+		printf("WARNING: The reset scheduler flag doesn't do anything for v3d.\n\n");
+	}
+
 	v3d::RegisterMapping map_v3d;
 	map_v3d.init();
+
+	if (settings.reset_gpu) {
+		printf("Resetting the v3d GPU.\n");
+		map_v3d.reset_v3d();
+		printf("Reset the v3d GPU.\n");
+		return;		
+	}
 	
 	auto info = map_v3d.info();
 	printf("Revision        : %d.%d.%d.%d\n", info.tver, info.rev, info.iprev, info.ipidx);
@@ -172,6 +191,51 @@ void detect_v3d() {
 		printf("  BCG int       : %s\n", (info.bcg_int)?"yes":"no");
 		printf("  Override TMU  : %s\n", (info.override_tmu)?"yes":"no");
 	}
+
+
+	auto stat_regs = map_v3d.stats();
+
+/* Disabled only because output takes a lot of space (zeroes anyway)
+	printf("\nCounters:\n");
+	for (int i = 0; i < v3d::RegisterMapping::Stats::NUM_COUNTERS; ++i) {
+		printf("  %i: %x\n", i, stat_regs.counters[i]);
+	}
+*/
+
+	printf("\nStatus Registers:\n");
+	printf("  GMP_STATUS: %x\n", stat_regs.gmp_status);
+	printf("  CSD_STATUS: %x\n", stat_regs.csd_status);
+
+	printf("Error Registers:\n");
+	printf("  FDBG0     : %x\n", stat_regs.fdbg0);
+	printf("  FDBGB     : %x\n", stat_regs.fdbgb);
+	printf("  FDBGR     : %x\n", stat_regs.fdbgr);
+	printf("  FDBGS     : %x\n", stat_regs.fdbgs);
+	printf("  STAT      : %x\n", stat_regs.stat);
+	printf("MMUC_CONTROL: %x\n", stat_regs.mmuc_control);
+	printf("MMU_CTL     : %x\n", stat_regs.mmu_ctl);
+
+	auto &r = stat_regs.mmu_ctl_fields;
+	printf("  Fields:\n");
+	printf("    Cap exceeded   : %s\n"   , r.cap_exceeded?"true":"false");
+	printf("      ... abort    : %s\n"   , r.cap_exceeded_abort?"true":"false");
+	printf("      ... int      : %s\n"   , r.cap_exceeded_int?"true":"false");
+	printf("      ... exception: %s\n"   , r.cap_exceeded_exception?"true":"false");
+	printf("    Pt invalid     : %s\n"   , r.pt_invalid?"true":"false");
+	printf("      ... abort    : %s\n"   , r.pt_invalid_abort?"true":"false");
+	printf("      ... int      : %s\n"   , r.pt_invalid_int?"true":"false");
+	printf("      ... exception: %s\n"   , r.pt_invalid_exception?"true":"false");
+	printf("      ... enable   : %s\n"   , r.pt_invalid_enable?"true":"false");
+	printf("    Write violation: %s\n"   , r.write_violation?"true":"false");
+	printf("      ... abort    : %s\n"   , r.write_violation_abort?"true":"false");
+	printf("      ... int      : %s\n"   , r.write_violation_int?"true":"false");
+	printf("      ... exception: %s\n"   , r.write_violation_exception?"true":"false");
+	printf("    TLB:\n");
+	printf("      ... clearing    : %s\n", r.tlb_clearing?"true":"false");
+	printf("      ... stats clear : %s\n", r.tlb_stats_clear?"true":"false");
+	printf("      ... clear       : %s\n", r.tlb_clear?"true":"false");
+	printf("      ... stats enable: %s\n", r.tlb_stats_enable?"true":"false");
+	printf("    Enable: %s\n"            , r.enable?"true":"false");
 }
 
 

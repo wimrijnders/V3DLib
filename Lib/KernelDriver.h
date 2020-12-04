@@ -1,58 +1,67 @@
 #ifndef _LIB_KERNELDRIVER_H
 #define _LIB_KERNELDRIVER_H
-#include <stdio.h>
 #include <vector>
 #include <string>
+#include "Source/StmtStack.h"
 #include "Target/CFG.h"
 #include "Common/SharedArray.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 class Stmt;
 
 class KernelDriver {
 public:
 	KernelDriver(BufferType in_buffer_type) : buffer_type(in_buffer_type) {}
-	virtual ~KernelDriver() {
-		// TODO: shouldn't body be cleaned up?
-	}
+	virtual ~KernelDriver();
 
-	virtual void kernelFinish() {} 
-	virtual void invoke(int numQPUs, Seq<int32_t>* params) = 0;
 	virtual void encode(int numQPUs) = 0;
 
-	void pretty(const char *filename = nullptr);
 	void compile();
+	void invoke(int numQPUs, Seq<int32_t> &params);
+	void pretty(int numQPUs, const char *filename = nullptr);
 
 	/**
 	 * @return AST representing the source code
 	 */
-	Stmt *sourceCode() { return body; }
+	Stmt *sourceCode() { return m_body; }
 
 	Seq<Instr> &targetCode() { return m_targetCode; }
 
-	bool handle_errors();
-
 	BufferType const buffer_type;
+
+#ifdef DEBUG
+	// Only here for autotest
+	void add_stmt(Stmt *stmt);
+#endif
 
 
 protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
-  Seq<Instr> m_targetCode;  // AST representing the target code
+  Seq<Instr> m_targetCode;            // Target code generated from AST
+  Stmt *m_body = nullptr;
 
   int qpuCodeMemOffset = 0;
 	std::vector<std::string> errors;
 
+	void init_compile(bool set_qpu_uniforms = true, int numVars = 0);
 	virtual void emit_opcodes(FILE *f) {} 
+	void obtain_ast();
+
 
 private:
-  Stmt *body = nullptr;
+	StmtStack m_stmtStack;
 
-	void print_source_code(FILE *f);
-	void emit_target_code(FILE *f);
+	virtual void compile_intern() = 0;
+	virtual void invoke_intern(int numQPUs, Seq<int32_t>* params) = 0;
+
+	bool has_errors() const { return !errors.empty(); }
+	bool handle_errors();
 };
 
-}  // namespace QPULib
+void compile_postprocess(Seq<Instr> &targetCode);
+
+}  // namespace V3DLib
 
 #endif  // _LIB_vc4_KERNELDRIVER_H

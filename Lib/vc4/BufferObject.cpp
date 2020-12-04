@@ -10,7 +10,7 @@
 #define GPU_MEM_FLG 0xC // cached=0xC; direct=0x4
 #define GPU_MEM_MAP 0x0 // cached=0x0; direct=0x20000000
 
-namespace QPULib {
+namespace V3DLib {
 namespace vc4 {
 
 namespace {
@@ -31,10 +31,11 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 		fatal("Failed to allocate GPU memory.");
 	}
 
-	phyaddr = /* (void*) */ mem_lock(mb, handle);
+	uint32_t phyaddr = mem_lock(mb, handle);
 	arm_base =  (uint8_t *) mapmem(BUS_TO_PHYS(phyaddr + GPU_MEM_MAP), size_in_bytes);
 
-	m_size = size_in_bytes;
+	set_size(size_in_bytes);
+	set_phy_address(phyaddr);
 }
 
 
@@ -42,7 +43,7 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 void BufferObject::dealloc() {
 	if (arm_base == nullptr) {
 		assert(handle == 0);
-		assert(m_size == 0);
+		assert(empty());
 		return;
 	}
 
@@ -51,14 +52,14 @@ void BufferObject::dealloc() {
 	int mb = getMailbox();  // Mailbox, for talking to vc4
 
 	// Free memory
-	if (arm_base) unmapmem(arm_base, m_size);
+	if (arm_base) unmapmem(arm_base, size());
 	if (handle) {
 		mem_unlock(mb, handle);
 		mem_free(mb, handle);
 	}
 
 	handle = 0;
-	m_size = 0;
+	clear();
 	arm_base = nullptr;
 }
 
@@ -75,4 +76,4 @@ BufferObject &getHeap() {
 }
 
 }  // namespace vc4
-}  // namespace QPULib
+}  // namespace V3DLib

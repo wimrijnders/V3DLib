@@ -16,7 +16,7 @@ void match_kernel_outputs(
 	std::vector<uint64_t> const &expected,
 	std::vector<uint64_t> const &received,
 	bool skip_nops) {
-		using namespace QPULib::v3d::instr;
+		using namespace V3DLib::v3d::instr;
 		auto _nop = nop();
 
 		// Arrays should eventually match exactly, including length
@@ -43,3 +43,47 @@ void match_kernel_outputs(
 			REQUIRE(Instr::compare_codes(expected[n], received[n]));
 		}
 }
+
+
+/**
+ * Check if running on v4d
+ *
+ * Supplies a one-time warning if not.
+ *
+ * @param return true if running on v3d, false otherwise
+ */
+bool running_on_v3d() {
+	static bool did_first = false;
+
+	if (V3DLib::Platform::instance().has_vc4) {
+		if (!did_first) {
+			printf("Skipping v3d tests with calls to driver\n");
+			did_first = true;
+		}
+		return false;
+	}
+
+	return true;
+}
+
+
+#ifdef QPU_MODE
+//	#pragma message "QPU mode enabled"
+const char *SUDO = (V3DLib::Platform::instance().has_vc4)? "sudo " : "";  // sudo needed for vc4
+#else
+const char *SUDO = "";
+#endif
+
+
+void make_test_dir() {
+	std::string cmd = SUDO;
+	cmd += "mkdir -p obj/test";
+
+	REQUIRE(!system(cmd.c_str()));
+
+	cmd  = SUDO;
+	cmd += "chmod ugo+rw obj/test";
+	REQUIRE(!system(cmd.c_str()));
+}
+
+

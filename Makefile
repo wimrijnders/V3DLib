@@ -24,14 +24,17 @@ INCLUDE_EXTERN= \
 LIB_EXTERN= \
  -Lobj/mesa/bin -lmesa
 
+LIB_DEPEND=
+
 ifeq ($(DEBUG), 1)
 	LIB_EXTERN += -L ../CmdParameter/obj-debug -lCmdParameter
+	LIB_DEPEND += ../CmdParameter/obj-debug/libCmdParameter.a
 else
 	LIB_EXTERN += -L ../CmdParameter/obj -lCmdParameter
+	LIB_DEPEND += ../CmdParameter/obj/libCmdParameter.a
 endif
 
 
-# Root directory of QPULib repository
 ROOT= Lib
 
 # Compiler and default flags
@@ -98,11 +101,7 @@ TESTS_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(TESTS_FILES))
 
 
 # Example object files
-EXAMPLES_EXTRA = \
-	Rot3DLib/Rot3DKernels.o \
-	Support/Settings.o
-
-EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/Examples/%,$(EXAMPLES_EXTRA))
+EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(EXAMPLES_EXTRA))
 #$(info $(EXAMPLES_OBJ))
 
 # Dependencies from list of object files
@@ -114,7 +113,7 @@ DEPS := $(LIB:.o=.d)
 EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
 -include $(EXAMPLES_DEPS)
 
-QPULIB=$(OBJ_DIR)/libQPULib.a
+V3DLIB=$(OBJ_DIR)/libv3dlib.a
 MESA_LIB = obj/mesa/bin/libmesa.a
 
 
@@ -147,7 +146,7 @@ help:
 	@echo '    DEBUG=1       - If specified, the source code and target code is shown on stdout when running a test'
 	@echo
 
-all: $(QPULIB) $(EXAMPLES)
+all: $(V3DLIB) $(EXAMPLES)
 
 clean:
 	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug obj/test
@@ -157,7 +156,7 @@ clean:
 # Targets for static library
 #
 
-$(QPULIB): $(LIB) $(MESA_LIB)
+$(V3DLIB): $(LIB) $(MESA_LIB)
 	@echo Creating $@
 	@ar rcs $@ $^
 
@@ -178,12 +177,12 @@ $(OBJ_DIR)/%.o: %.c
 	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)
 
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(EXAMPLES_OBJ) $(QPULIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Examples/%.o $(EXAMPLES_OBJ) $(V3DLIB) $(LIB_DEPEND)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
 
-$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(QPULIB)
+$(OBJ_DIR)/bin/%: $(OBJ_DIR)/Tools/%.o $(V3DLIB) $(LIB_DEPEND)
 	@echo Linking $@...
 	@mkdir -p $(@D)
 	@$(LINK) $^ $(LIBS) -o $@
@@ -206,12 +205,15 @@ else
 endif
 
 
-$(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(QPULIB)
+$(UNIT_TESTS): $(TESTS_OBJ) $(EXAMPLES_OBJ) $(V3DLIB) $(LIB_DEPEND)
 	@echo Linking unit tests
 	@mkdir -p $(@D)
-	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lQPULib $(LIBS) -o $@
+	@$(CXX) $(CXX_FLAGS) $(TESTS_OBJ) $(EXAMPLES_OBJ) -L$(OBJ_DIR) -lv3dlib $(LIBS) -o $@
 
-make_test: $(UNIT_TESTS) Rot3D ReqRecv detectPlatform
+runTests: $(UNIT_TESTS)
+
+
+make_test: runTests ID Hello Rot3D ReqRecv GCD Tri detectPlatform OET
 
 test : make_test
 	@echo Running unit tests with \'$(SUDO) $(UNIT_TESTS)\'

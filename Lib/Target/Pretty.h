@@ -1,14 +1,13 @@
-#ifndef _QPULIB_TARGET_PRETTY_H_
-#define _QPULIB_TARGET_PRETTY_H_
-
-#include <stdio.h>
+#ifndef _V3DLIB_TARGET_PRETTY_H_
+#define _V3DLIB_TARGET_PRETTY_H_
+#include <string>
 #include "Target/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
-// Pretty printer for the QPULib target language
-void pretty(FILE *f, Instr instr);
+const char *pretty_instr_tag(InstrTag tag);
+std::string pretty_instr(Instr const &instr);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_TARGET_PRETTY_H_
+#endif  // _V3DLIB_TARGET_PRETTY_H_

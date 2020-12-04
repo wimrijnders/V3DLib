@@ -1,10 +1,13 @@
+#include "Pretty.h"
+#include "Support/basics.h"
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
 
-namespace QPULib {
 
-const char* pretty(SubWord sw)
-{
+namespace V3DLib {
+namespace {
+
+const char* pretty(SubWord sw) {
   switch (sw) {
     case A8:  return "[7:0]";
     case B8:  return "[15:8]";
@@ -37,234 +40,260 @@ const char* specialStr(RegId rid)
 
   // Unreachable
   assert(false);
-	return nullptr;
+	return "";
 }
 
-void pretty(FILE *f, Reg r)
-{
+std::string pretty(Reg r) {
+	std::string ret;
+
   switch (r.tag) {
-    case REG_A:
-      fprintf(f, "A%i", r.regId);
-      return;
-    case REG_B: fprintf(f, "B%i", r.regId); return;
-    case ACC: fprintf(f, "ACC%i", r.regId); return;
-    case SPECIAL: fprintf(f, "S[%s]", specialStr(r.regId)); return;
-    case NONE: fprintf(f, "_"); return;
+    case REG_A:   ret <<   "A" << r.regId; break;
+    case REG_B:   ret <<   "B" << r.regId; break;
+    case ACC:     ret << "ACC" << r.regId; break;
+    case SPECIAL: ret <<  "S[" << specialStr(r.regId) << "]"; break;
+    case NONE:    ret <<   "_"; break;
+		default: assert(false); break;
   }
+
+	return ret;
 }
 
-void pretty(FILE *f, Flag flag)
-{
-  switch (flag) {
-    case ZS: fprintf(f, "ZS"); return;
-    case ZC: fprintf(f, "ZC"); return;
-    case NS: fprintf(f, "NS"); return;
-    case NC: fprintf(f, "NC"); return;
-  }
-}
 
-void pretty(FILE *f, BranchCond cond)
-{
-  switch (cond.tag) {
-    case COND_ALL:
-      fprintf(f, "all(");
-      pretty(f, cond.flag);
-      fprintf(f, ")");
-      return;
-    case COND_ANY:
-      fprintf(f, "any(");
-      pretty(f, cond.flag);
-      fprintf(f, ")");
-      return;
-    case COND_ALWAYS:
-      fprintf(f, "always");
-      return;
-    case COND_NEVER:
-      fprintf(f, "never");
-      return;
-  }
-}
+std::string pretty(Imm imm) {
+	std::string ret;
 
-void pretty(FILE *f, AssignCond cond)
-{
-  switch (cond.tag) {
-    case ALWAYS: fprintf(f, "always"); return;
-    case NEVER: fprintf(f, "never"); return;
-    case FLAG: pretty(f, cond.flag); return;
-  }
-}
-
-void pretty(FILE *f, Imm imm) {
   switch (imm.tag) {
     case IMM_INT32:
-      fprintf(f, "%d", imm.intVal);
-      return;
+      ret << imm.intVal;
+		break;
     case IMM_FLOAT32:
-      fprintf(f, "%f", imm.floatVal);
-      return;
-    case IMM_MASK:
-      int b = imm.intVal;
-      for (int i = 0; i < 16; i++) {
-        fprintf(f, "%i", b&1 ? 1 : 0);
-        b >>= 1;
-      }
-      return;
+      ret << imm.floatVal;
+		break;
+    case IMM_MASK: {
+	      int b = imm.intVal;
+	      for (int i = 0; i < 16; i++) {
+	        ret << ((b & 1)? 1 : 0);
+	        b >>= 1;
+	      }
+		}
+		break;
+		default: assert(false); break;
   }
+
+	return ret;
 }
 
-void pretty(FILE *f, SmallImm imm)
-{
+
+std::string pretty(SmallImm imm) {
   switch (imm.tag) {
-    case SMALL_IMM: printSmallLit(f, imm.val); return;
-    case ROT_ACC: fprintf(f, "ROT(ACC5)"); return;
-    case ROT_IMM: fprintf(f, "ROT(%i)", imm.val); return;
+    case SMALL_IMM: return printSmallLit(imm.val);
+    case ROT_ACC:   return "ROT(ACC5)";
+    case ROT_IMM: {
+			std::string ret;
+			ret << "ROT(" << imm.val << ")";
+			return ret;
+		}
+		default: assert(false); return "";
   }
 }
 
-void pretty(FILE *f, RegOrImm r)
-{
+
+std::string pretty(RegOrImm r) {
   switch (r.tag) {
-    case REG: pretty(f, r.reg); return;
-    case IMM: pretty(f, r.smallImm); return;
+    case REG: return pretty(r.reg);
+    case IMM: return pretty(r.smallImm);
+		default: assert(false); return "";
   }
 }
 
-void pretty(FILE *f, ALUOp op)
-{
+
+const char *pretty_op(ALUOp op) {
   switch (op) {
-    case NOP:       fprintf(f, "nop"); return;
-    case A_FADD:    fprintf(f, "addf"); return;
-    case A_FSUB:    fprintf(f, "subf"); return;
-    case A_FMIN:    fprintf(f, "minf"); return;
-    case A_FMAX:    fprintf(f, "maxf"); return;
-    case A_FMINABS: fprintf(f, "minabsf"); return;
-    case A_FMAXABS: fprintf(f, "maxabsf"); return;
-    case A_FtoI:    fprintf(f, "ftoi"); return;
-    case A_ItoF:    fprintf(f, "itof"); return;
-    case A_ADD:     fprintf(f, "add"); return;
-    case A_SUB:     fprintf(f, "sub"); return;
-    case A_SHR:     fprintf(f, "shr"); return;
-    case A_ASR:     fprintf(f, "asr"); return;
-    case A_ROR:     fprintf(f, "ror"); return;
-    case A_SHL:     fprintf(f, "shl"); return;
-    case A_MIN:     fprintf(f, "min"); return;
-    case A_MAX:     fprintf(f, "max"); return;
-    case A_BAND:    fprintf(f, "and"); return;
-    case A_BOR:     fprintf(f, "or"); return;
-    case A_BXOR:    fprintf(f, "xor"); return;
-    case A_BNOT:    fprintf(f, "not"); return;
-    case A_CLZ:     fprintf(f, "clz"); return;
-    case A_V8ADDS:  fprintf(f, "addsatb"); return;
-    case A_V8SUBS:  fprintf(f, "subsatb"); return;
-    case M_FMUL:    fprintf(f, "mulf"); return;
-    case M_MUL24:   fprintf(f, "mul24"); return;
-    case M_V8MUL:   fprintf(f, "mulb"); return;
-    case M_V8MIN:   fprintf(f, "minb"); return;
-    case M_V8MAX:   fprintf(f, "maxb"); return;
-    case M_V8ADDS:  fprintf(f, "m_addsatb"); return;
-    case M_V8SUBS:  fprintf(f, "m_subsatb"); return;
-    case M_ROTATE:  fprintf(f, "rotate"); return;
+    case NOP:       return "nop";
+    case A_FADD:    return "addf";
+    case A_FSUB:    return "subf";
+    case A_FMIN:    return "minf";
+    case A_FMAX:    return "maxf";
+    case A_FMINABS: return "minabsf";
+    case A_FMAXABS: return "maxabsf";
+    case A_FtoI:    return "ftoi";
+    case A_ItoF:    return "itof";
+    case A_ADD:     return "add";
+    case A_SUB:     return "sub";
+    case A_SHR:     return "shr";
+    case A_ASR:     return "asr";
+    case A_ROR:     return "ror";
+    case A_SHL:     return "shl";
+    case A_MIN:     return "min";
+    case A_MAX:     return "max";
+    case A_BAND:    return "and";
+    case A_BOR:     return "or";
+    case A_BXOR:    return "xor";
+    case A_BNOT:    return "not";
+    case A_CLZ:     return "clz";
+    case A_V8ADDS:  return "addsatb";
+    case A_V8SUBS:  return "subsatb";
+    case M_FMUL:    return "mulf";
+    case M_MUL24:   return "mul24";
+    case M_V8MUL:   return "mulb";
+    case M_V8MIN:   return "minb";
+    case M_V8MAX:   return "maxb";
+    case M_V8ADDS:  return "m_addsatb";
+    case M_V8SUBS:  return "m_subsatb";
+    case M_ROTATE:  return "rotate";
+		// v3d-specific
+    case A_TIDX:    return "tidx";
+    case A_EIDX:    return "eidx";
+		default:
+			assertq(false, "pretty_op(): Unknown alu opcode", true);
+			return "";
   }
 }
 
-void pretty(FILE *f, BranchTarget target)
-{
-  if (target.relative)
-    fprintf(f, "PC+1+");
-  if (target.useRegOffset)
-    fprintf(f, "A%i+", target.regOffset);
-  fprintf(f, "%i", target.immOffset);
-}
 
-void pretty(FILE *f, Instr instr)
-{
-  assert(f != nullptr);
+std::string pretty_conditions(Instr const &instr) {
+	std::string ret;
 
   switch (instr.tag) {
     case LI:
-      if (instr.LI.cond.tag != ALWAYS) {
-        fprintf(f, "where ");
-        pretty(f, instr.LI.cond);
-        fprintf(f, ": ");
-      }
-      pretty(f, instr.LI.dest);
-      fprintf(f, " <-%s ", instr.LI.setFlags ? "{sf}" : "");
-      pretty(f, instr.LI.imm);
-      fprintf(f, "\n");
-      return;
+			if (instr.LI.setCond.flags_set()) {
+				ret << "{sf-" << instr.LI.setCond.to_string() << "}";
+			}
+			break;
     case ALU:
-      if (instr.ALU.cond.tag != ALWAYS) {
-        fprintf(f, "where ");
-        pretty(f, instr.ALU.cond);
-        fprintf(f, ": ");
-      }
-      pretty(f, instr.ALU.dest);
-      fprintf(f, " <-%s ", instr.ALU.setFlags ? "{sf}" : "");
-      pretty(f, instr.ALU.op);
-      fprintf(f, "(");
-      pretty(f, instr.ALU.srcA);
-      fprintf(f, ", ");
-      pretty(f, instr.ALU.srcB);
-      fprintf(f, ")\n");
-      return;
-    case END:
-      fprintf(f, "END\n");
-      return;
-    case BR:
-      fprintf(f, "if ");
-      pretty(f, instr.BR.cond);
-      fprintf(f, " goto ");
-      pretty(f, instr.BR.target);
-      fprintf(f, "\n");
-      return;
-    case BRL:
-      fprintf(f, "if ");
-      pretty(f, instr.BRL.cond);
-      fprintf(f, " goto L%i\n", instr.BRL.label);
-      return;
-    case LAB:
-      fprintf(f, "L%i:\n", instr.label);
-      return;
-    case NO_OP:
-      fprintf(f, "NOP\n");
-      return;
-    case PRS:
-      fprintf(f, "PRS(\"%s\")", instr.PRS);
-      return;
-    case PRI:
-      fprintf(f, "PRI(");
-      pretty(f, instr.PRI);
-      fprintf(f, ")\n");
-      return;
-    case PRF:
-      fprintf(f, "PRF(");
-      pretty(f, instr.PRF);
-      fprintf(f, ")\n");
-      return;
-    case RECV:
-      fprintf(f, "RECV(");
-      pretty(f, instr.RECV.dest);
-      fprintf(f, ")\n");
-      return;
-    case TMU0_TO_ACC4:
-      fprintf(f, "TMU0_TO_ACC4\n");
-      return;
-    case SINC:
-      fprintf(f, "SINC %i\n", instr.semaId);
-      return;
-    case SDEC:
-      fprintf(f, "SDEC %i\n", instr.semaId);
-      return;
-    case IRQ:
-      fprintf(f, "IRQ\n");
-      return;
-    case VPM_STALL:
-      fprintf(f, "VPM_STALL\n");
-      return;
-    default:
-      fprintf(f, "<<UNKNOWN:%d>>\n", instr.tag);
-      return;
-  }
+			if (instr.ALU.setCond.flags_set()) {
+				ret << "{sf-" << instr.ALU.setCond.to_string() << "}";
+			}
+			break;
+	}
+
+	return ret;
 }
 
-}  // namespace QPULib
+}  // anon namespace
+
+ 
+/**
+ * Pretty printer for Target instructions
+ *
+ * Returns a string representation of an instruction.
+ */
+std::string pretty_instr(Instr const &instr) {
+	std::string buf;
+
+  switch (instr.tag) {
+    case LI: {
+			buf << instr.LI.cond.to_string()
+			    << "LI " << pretty(instr.LI.dest)
+			    << " <-" << pretty_conditions(instr) << " "
+      		<< pretty(instr.LI.imm);
+		}
+		break;
+    case ALU: {
+			buf << instr.ALU.cond.to_string()
+          << pretty(instr.ALU.dest)
+			    << " <-" << pretty_conditions(instr) << " ";
+
+			if (instr.ALU.op == A_TIDX || instr.ALU.op == A_EIDX) {
+				// These have no source operands
+				buf << pretty_op(instr.ALU.op) << "()";
+			} else {
+				buf << pretty_op(instr.ALU.op) << "(" << pretty(instr.ALU.srcA) << ", " << pretty(instr.ALU.srcB) << ")";
+			}
+		}
+		break;
+    case BR: {
+      buf << "if " << instr.BR.cond.to_string() << " goto " << instr.BR.target.to_string();
+		}
+		break;
+    case BRL: {
+      buf << "if " << instr.BRL.cond.to_string() << " goto L" << instr.BRL.label;
+		}
+		break;
+    case LAB:
+      buf << "L" << instr.label();
+      break;
+    case PRS:
+			buf << "PRS(\"" << instr.PRS << "\")";
+      break;
+    case PRI:
+      buf << "PRI(" << pretty(instr.PRI) << ")";
+      break;
+    case PRF:
+      buf << "PRF(" << pretty(instr.PRF) << ")";
+      break;
+    case RECV:
+      buf << "RECV(" <<  pretty(instr.RECV.dest) << ")";
+      break;
+    case SINC:
+      buf << "SINC " << instr.semaId;
+      break;;
+    case SDEC:
+      buf << "SDEC " << instr.semaId;
+      break;
+    case INIT_BEGIN:
+    case INIT_END:
+    case END:         // vc4
+    case TMU0_TO_ACC4:
+    case NO_OP:
+    case IRQ:
+    case VPM_STALL:
+    case TMUWT:
+      buf << V3DLib::pretty_instr_tag(instr.tag);
+      break;
+    default:
+      buf << "<<UNKNOWN: " << instr.tag << ">>";
+      break;
+  }
+
+	assert(!buf.empty());
+	return buf;
+}
+
+
+const char *pretty_instr_tag(InstrTag tag) {
+	switch(tag) {
+		case LI:           return "LI";
+		case ALU:          return "ALU";
+		case BR:           return "BR";
+		case LAB:          return "LAB";
+		case NO_OP:        return "NOP";
+		case END:          return "END";
+		case RECV:         return "RECV";
+		case IRQ:          return "IRQ";
+		case VPM_STALL:    return "VPM_STALL";
+		case TMU0_TO_ACC4: return "TMU0_TO_ACC4";
+		case INIT_BEGIN:   return "INIT_BEGIN";
+		case INIT_END:     return "INIT_END";
+		case TMUWT:        return "TMUWT";
+		case PRI:          return "PRI";
+		default:
+			assert(false);  // Add other tags here as required
+			return "<UNKNOWN>";
+	}
+}
+
+
+/**
+ * Pretty printer for Target instructions
+ *
+ * Returns a string representation of an instruction.
+ */
+std::string pretty(Instr const &instr, bool with_comments) {
+	std::string buf;
+
+	if (with_comments && !instr.header().empty()) {
+		buf << "\n# " << instr.header() << "\n";
+	}
+
+	buf << pretty_instr(instr);
+
+	if (with_comments && !instr.comment().empty()) {
+		buf << "  # " << instr.comment();
+	}
+
+	buf << "\n";
+	return buf;
+}
+
+}  // namespace V3DLib

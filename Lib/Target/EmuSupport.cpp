@@ -2,7 +2,7 @@
 #include <cstdio>
 #include <cstring>  // strlen()
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Rotate a vector
@@ -12,7 +12,7 @@ Vec rotate(Vec v, int n)
 {
   Vec w;
   for (int i = 0; i < NUM_LANES; i++)
-    w.elems[(i+n) % NUM_LANES] = v.elems[i];
+    w[(i+n) % NUM_LANES] = v[i];
   return w;
 }
 
@@ -21,43 +21,48 @@ Vec rotate(Vec v, int n)
 // Printing routines
 // ============================================================================
 
-void emitChar(Seq<char>* out, char c)
-{
-  if (out == NULL) printf("%c", c);
-  else out->append(c);
+namespace {
+
+void emitChar(Seq<char>* out, char c) {
+  if (out == nullptr) printf("%c", c);
+  else *out << c;
 }
 
-void emitStr(Seq<char>* out, const char* s)
-{
-  if (out == NULL)
+}  // anon namespace
+
+
+void emitStr(Seq<char>* out, const char* s) {
+  if (out == nullptr)
     printf("%s", s);
   else
     for (int i = 0; i < strlen(s); i++)
-      out->append(s[i]);
+      *out << s[i];
 }
 
-void printIntVec(Seq<char>* out, Vec x)
-{
+
+void printIntVec(Seq<char>* out, Vec x) {
   char buffer[1024];
   emitChar(out, '<');
   for (int i = 0; i < NUM_LANES; i++) {
-    snprintf(buffer, sizeof(buffer), "%i", x.elems[i].intVal);
+    snprintf(buffer, sizeof(buffer), "%i", x[i].intVal);
+
     for (int j = 0; j < strlen(buffer); j++) emitChar(out, buffer[j]);
     if (i != NUM_LANES-1) emitChar(out, ',');
   }
   emitChar(out, '>');
 }
 
-void printFloatVec(Seq<char>* out, Vec x)
-{
+
+void printFloatVec(Seq<char>* out, Vec x) {
   char buffer[1024];
   emitChar(out, '<');
   for (int i = 0; i < NUM_LANES; i++) {
-    snprintf(buffer, sizeof(buffer), "%f", x.elems[i].floatVal);
+    snprintf(buffer, sizeof(buffer), "%f", x[i].floatVal);
+
     for (int j = 0; j < strlen(buffer); j++) emitChar(out, buffer[j]);
     if (i != NUM_LANES-1) emitChar(out, ',');
   }
   emitChar(out, '>');
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

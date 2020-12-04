@@ -1,10 +1,13 @@
-#ifndef _QPULIB_SOURCETRANSLATE_H_
-#define _QPULIB_SOURCETRANSLATE_H_
+#ifndef _V3DLIB_SOURCETRANSLATE_H_
+#define _V3DLIB_SOURCETRANSLATE_H_
 #include "Common/Seq.h"
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
+#include "Target/CFG.h"
 
-namespace QPULib {
+namespace V3DLib {
+
+class Stmt;
 
 class ISourceTranslate {
 public:
@@ -15,17 +18,14 @@ public:
 	 *
 	 * @return true if handled, false otherwise
 	 */
-	virtual bool deref_var_var(Seq<Instr>* seq, Expr &lhs, Expr *rhs) = 0;
-
-	virtual void setupVPMWriteStmt(Seq<Instr>* seq, Stmt *s) = 0;
-	virtual void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr) = 0;
+	virtual Seq<Instr> deref_var_var(Var lhs, Var rhs) = 0;
 	virtual void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) = 0;
+	virtual void regAlloc(CFG* cfg, Seq<Instr>* instrs) = 0;
+	virtual bool stmt(Seq<Instr>& seq, Stmt* s) = 0;
 };
 
 ISourceTranslate &getSourceTranslate();
-void set_compiling_for_vc4(bool val);
-bool compiling_for_vc4();
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCETRANSLATE_H_
+#endif  // _V3DLIB_SOURCETRANSLATE_H_

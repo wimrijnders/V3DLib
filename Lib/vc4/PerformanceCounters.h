@@ -1,12 +1,12 @@
 #ifdef QPU_MODE
 
-#ifndef _QPULIB_VC4_PERFORMANCECOUNTERS_H
-#define _QPULIB_VC4_PERFORMANCECOUNTERS_H
+#ifndef _V3DLIB_VC4_PERFORMANCECOUNTERS_H
+#define _V3DLIB_VC4_PERFORMANCECOUNTERS_H
 #include <string.h>
 #include "RegisterMap.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 
 class PerformanceCounters {
  public:
@@ -78,8 +78,8 @@ class PerformanceCounters {
 	static const char *Description[NUM_PERF_COUNTERS];
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_VC4_PERFORMANCECOUNTERS_H
+#endif  // _V3DLIB_VC4_PERFORMANCECOUNTERS_H
 
 #endif  // QPU_MODE

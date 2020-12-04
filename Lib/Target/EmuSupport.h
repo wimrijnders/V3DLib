@@ -1,5 +1,5 @@
-#ifndef _QPULIB_TARGET_EMUSUPPORT_H_
-#define _QPULIB_TARGET_EMUSUPPORT_H_
+#ifndef _V3DLIB_TARGET_EMUSUPPORT_H_
+#define _V3DLIB_TARGET_EMUSUPPORT_H_
 #include <stdint.h>
 #include "Common/Seq.h"
 
@@ -7,7 +7,7 @@
 /**
  * Definitions which are used in both the emulator and the interpreter.
  */
-namespace QPULib {
+namespace V3DLib {
 
 const int NUM_LANES =   16;
 const int MAX_QPUS  =   12;
@@ -21,7 +21,17 @@ union Word {
 
 // Vector values
 struct Vec {
-  Word elems[NUM_LANES];
+	Word &get(int index) {
+		assert(0 <= index && index < NUM_LANES);
+		return elems[index];
+	}
+
+	Word &operator[](int index) {
+		return get(index);
+	}
+
+private:
+ 	Word elems[NUM_LANES];
 };
 
 // In-flight DMA request
@@ -67,11 +77,10 @@ struct DMAStoreReq {
 Vec rotate(Vec v, int n);
 
 // Printing routines
-void emitChar(Seq<char>* out, char c);
 void emitStr(Seq<char>* out, const char* s);
 void printIntVec(Seq<char>* out, Vec x);
 void printFloatVec(Seq<char>* out, Vec x);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_TARGET_EMUSUPPORT_H_
+#endif  // _V3DLIB_TARGET_EMUSUPPORT_H_

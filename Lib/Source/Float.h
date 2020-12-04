@@ -1,12 +1,13 @@
 // This module defines type 'Float' for a vector of 16 x 32-bit floats.
 
-#ifndef _QPULIB_SOURCE_FLOAT_H_
-#define _QPULIB_SOURCE_FLOAT_H_
+#ifndef _V3DLIB_SOURCE_FLOAT_H_
+#define _V3DLIB_SOURCE_FLOAT_H_
+#include "Source/Expr.h"
 
-#include <assert.h>
-#include "Source/Syntax.h"
+namespace V3DLib {
 
-namespace QPULib {
+struct Float;
+template <typename T> struct Deref; // Forward declaration template class
 
 // ============================================================================
 // Types                   
@@ -15,29 +16,25 @@ namespace QPULib {
 // An 'FloatExpr' defines an float vector expression which can
 // only be used on the RHS of assignment statements.
 
-struct FloatExpr {
-  // Abstract syntax tree
-  Expr* expr;
-  // Constructors
-  FloatExpr();
+struct FloatExpr :public BaseExpr {
   FloatExpr(float x);
+	FloatExpr(Expr::Ptr e) : BaseExpr(e) {}
+	FloatExpr(Deref<Float> d);
 };
+
 
 // An 'Float' defines a float vector variable which can be used in
 // both the LHS and RHS of an assignment.
 
-struct Float {
-  // Abstract syntax tree
-  Expr* expr;
-
-  // Constructors
+struct Float : public BaseExpr {
   Float();
   Float(float x);
   Float(FloatExpr e);
+  Float(Deref<Float> d);
 
   // Copy constructors
   Float(Float& x);
-  Float(const Float& x);
+  Float(Float const &x);
 
   // Cast to an FloatExpr
   operator FloatExpr();
@@ -47,10 +44,6 @@ struct Float {
   FloatExpr operator=(FloatExpr rhs);
 };
 
-
-// Helper constructor
-
-inline FloatExpr mkFloatExpr(Expr* e) { FloatExpr x; x.expr = e; return x; }
 
 // ============================================================================
 // Operations
@@ -65,6 +58,6 @@ FloatExpr operator*(FloatExpr a, FloatExpr b);
 FloatExpr min(FloatExpr a, FloatExpr b);
 FloatExpr max(FloatExpr a, FloatExpr b);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_FLOAT_H_
+#endif  // _V3DLIB_SOURCE_FLOAT_H_

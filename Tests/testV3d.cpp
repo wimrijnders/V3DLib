@@ -28,10 +28,10 @@
 
 #define ARRAY_LENGTH(arr, type) (sizeof(arr)/sizeof(type))
 
-using BufferObject = QPULib::v3d::BufferObject;
+using BufferObject = V3DLib::v3d::BufferObject;
 
 template<typename T>
-using SharedArray = QPULib::SharedArray<T>;
+using SharedArray = V3DLib::SharedArray<T>;
 
 
 namespace {
@@ -57,64 +57,55 @@ uint64_t do_nothing[] = {
 // Test support routines
 //////////////////////////////////
 
-
-
-//////////////////////////////////
-// v3d routines
-//////////////////////////////////
-
 bool v3d_init() {
-	static bool did_first = false;
-
-	// Skip test if not on Pi4
-	if (Platform::instance().has_vc4) {
-		if (!did_first) {
-			printf("Skipping v3d tests with calls to driver\n");
-			did_first = true;
-		}
+	if (!running_on_v3d()) {
 		return false;
 	}
 
 	REQUIRE(v3d_open());
 	return true;
+
 }
 
-}  // anon 
+}  // anon namespace
 
+
+
+//////////////////////////////////
+// The actual tests
+//////////////////////////////////
 
 /*
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
-TEST_CASE("Check v3d code is working properly", "[v3d]") {
-	SECTION("Direct v3d calls should work with SharedArray") {
-		using namespace QPULib::v3d;
+TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
+	if (!v3d_init()) return;
 
-		if (!v3d_init()) return;
+	SECTION("Direct v3d calls should work with SharedArray") {
+		using namespace V3DLib::v3d;
+
 
 		uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
 		REQUIRE(array_length == 8);
 
 		BufferObject heap(1024);
-		printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
+		//printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
 		SharedArray<uint64_t> codeMem(array_length, heap);
-		printf("codeMem phyaddr: %u, length: %u\n", codeMem.getAddress(), codeMem.size());
+		//printf("codeMem phyaddr: %u, length: %u\n", codeMem.getAddress(), codeMem.size());
 		codeMem.copyFrom(do_nothing, array_length);
-		dump_data(codeMem);
+		//dump_data(codeMem);
 
 		// See Note 1
-		double start = get_time();
+		//double start = get_time();
 		Driver driver;
 		driver.add_bo(heap);
 		REQUIRE(driver.execute(codeMem));
-		double end = get_time();
-		printf("[submit done: %.6lf sec]\n", end - start);
+		//double end = get_time();
+		//printf("[submit done: %.6lf sec]\n", end - start);
 	}
 
-
 	SECTION("v3d SharedArray should work as expected") {
-		if (!v3d_init()) return;
-
 		const int SIZE = 16;
 
 		SharedArray<uint32_t> arr(SIZE);
@@ -143,8 +134,9 @@ TEST_CASE("Check v3d code is working properly", "[v3d]") {
 
 
 TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
+	if (!v3d_init()) return;
+
 	SECTION("Summation example should work from bytecode") {
-		if (!v3d_init()) return;
 
 		uint8_t num_qpus = 8;  // Don't change these values! That's how the summation kernel bytecode
 		int unroll_shift = 5;  // was compiled.
@@ -154,8 +146,6 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 	SECTION("Summation example should work from kernel output") {
-		if (!v3d_init()) return;
-
 		uint8_t num_qpus = 8;
 		int unroll_shift = 5;
 
@@ -171,35 +161,31 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 	SECTION("Rotate example should work from bytecode") {
-		if (!v3d_init()) return;
 		run_rotate_alias_kernel(qpu_rotate_alias_code);
 	}
 
 
 	SECTION("Rotate example should work from kernel output") {
-		if (!v3d_init()) return;
-
-		run_rotate_alias_kernel(rotate_kernel(false));  // test using mul alu rotate
-		//run_rotate_alias_kernel(rotate_kernel(true));  // NOT WORKING; test using add alu rotate
+		run_rotate_alias_kernel(rotate_kernel());
 	}
 }
 
 
 TEST_CASE("Check v3d rotate assembly/disassembly", "[v3d][asm]") {
-	using namespace QPULib::v3d::instr;
+	using namespace V3DLib::v3d::instr;
 
 	SECTION("rotate kernel generates correctly encoded output") {
-		std::vector<uint64_t> arr = rotate_kernel(false);
+		std::vector<uint64_t> arr = rotate_kernel();
 		REQUIRE(arr.size() > 0);
 
 		match_kernel_outputs(qpu_rotate_alias_code, arr, true);
-		REQUIRE(qpu_rotate_alias_code.size() == arr.size());  // TODO enable when complete
+		REQUIRE(qpu_rotate_alias_code.size() == arr.size());
 	}
 }
 
 
 TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
-	using namespace QPULib::v3d::instr;
+	using namespace V3DLib::v3d::instr;
 
 	SECTION("Correct output of dump program") {
 		struct v3d_device_info devinfo;  // NOTE: uninitialized struct! For test OK
@@ -243,7 +229,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("Register without mux definition should throw on usage") {
-		using namespace QPULib::v3d::instr;
+		using namespace V3DLib::v3d::instr;
 
 		REQUIRE_NOTHROW(r0.to_waddr());
 		REQUIRE_NOTHROW(r0.to_mux());
@@ -265,7 +251,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 	SECTION("Selected opcode should be encoded correctly") {
 		using std::cout;
 		using std::endl;
-		printf("Selected opcode should be encoded correctly\n");
+		//printf("Selected opcode should be encoded correctly\n");
 
 		std::vector<std::string> expected = {
 			"and  rf0, r0, 15     ; nop",
@@ -278,14 +264,14 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		       << band(r1, r0, 0b1111);
 
 		for (int n = 0; n < instrs.size(); ++n) {
-			cout << instrs[n].mnemonic() << endl;
+			//cout << instrs[n].mnemonic() << endl;
 			REQUIRE(instrs[n].mnemonic() == expected[n]);
 		}
 	}
 
 
 	SECTION("Opcode compare should work") {
-		using namespace QPULib::v3d::instr;
+		using namespace V3DLib::v3d::instr;
 
 		// Non-branch instructions: direct compare
 		REQUIRE(Instr::compare_codes(0x3d803186bb800000, 0x3d803186bb800000));  // nop-nop

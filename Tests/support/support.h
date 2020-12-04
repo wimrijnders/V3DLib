@@ -17,9 +17,10 @@
 using ByteCode = std::vector<uint64_t>; 
 
 template<typename T>
-using SharedArray = QPULib::SharedArray<T>;
+using SharedArray = V3DLib::SharedArray<T>;
 
 double get_time();
+bool running_on_v3d();
 
 void match_kernel_outputs(
 	std::vector<uint64_t> const &expected,
@@ -66,5 +67,10 @@ void dump_data(T const &arr, bool do_all = false) {
 
 	printf("\n");
 }
+
+
+extern const char *SUDO;
+
+void make_test_dir();
 
 #endif  //  _TEST_SUPPORT_SUPPORT_H

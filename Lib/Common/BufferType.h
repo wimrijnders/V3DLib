@@ -1,10 +1,10 @@
-#ifndef _QPULIB_BUFFERTYPE_H_
-#define _QPULIB_BUFFERTYPE_H_
+#ifndef _V3DLIB_BUFFERTYPE_H_
+#define _V3DLIB_BUFFERTYPE_H_
 
 // SharedArray's for v3d have not been fully tested yet
 #define USE_V3D_BUFFERS
 
-namespace QPULib {
+namespace V3DLib {
 
 enum BufferType : int {
 	HeapBuffer,
@@ -16,6 +16,6 @@ enum BufferType : int {
 #endif
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  //  _QPULIB_BUFFERTYPE_H_
+#endif  //  _V3DLIB_BUFFERTYPE_H_

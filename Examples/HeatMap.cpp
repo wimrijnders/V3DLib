@@ -1,38 +1,79 @@
-#include <QPULib.h>
+/**
+ * HeatMap Example
+ *
+ * NOTES
+ * =====
+ *
+ * 1. Uniform pointers passed into a kernel are always implicitly initialized with an offset for the QPU ID, i.e.:
+ *
+ *          p = p + 16*me() + index();  // Default initialization for all uniform pointers
+ *
+ *    This is based on the assumption that kernels will process the incoming data sequentially, and will also
+ *    output it as such. This is almost always true; the HeatMap example, however, is an exception.
+ *    Here, each QPU gets assigned an input row, which it handles by itself.
+ *
+ *    The kernel thus has to correct the default pointer initialization before executing.
+ *    This is an unfortunate consequence of a design decision that I thought was pretty nifty at the time,
+ *    and in the majority of cases, it's a good thing to do. Will leave this decision in until I (or you)
+ *    can think of something better.
+ */
+#include <V3DLib.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
-#include <CmdParameters.h>
 #include "Support/Settings.h"
+#include "Support/Timer.h"
+#include "Support/pgm.h"
+#include <CmdParameters.h>
 
-using namespace QPULib;
+using namespace V3DLib;
 using std::string;
 
-// Heat dissapation constant
-#define K 0.25
+const float K = 0.25;   // Heat dissipation constant
 
-
-std::vector<const char *> const kernels = { "vector", "scalar" };  // Order important! First is default
 
 CmdParameters params = {
-  "Heatmap\n",
+  "HeatMap Example\n"
+	"\n"
+	"This example models the heat flow across a 2D surface.\n"
+	"The output is a pgm-bitmap with the final state of the surface.\n"
+	"\n"
+	"The edges are set at zero temperature, and a number of hot points are placed randomly over the surface.\n"
+	"The lower border can be broader than 1 pixel, depending on the number of QPU's running. This is due to\n"
+  "preventing image overrun."
+	"\n",
   {{
     "Kernel",
     "-k=",
-		kernels,
+		{"vector", "scalar"},  // First is default
     "Select the kernel to use"
+	}, {
+    "Number of steps",
+    "-steps=",
+		POSITIVE_INTEGER,
+    "Set the number of steps to execute in the calculation",
+		1500
+	}, {
+    "Number of points",
+    "-points=",
+		POSITIVE_INTEGER,
+    "Set the number of randomly distributed hot points to start with",
+		10
   }}
 };
 
 
 struct HeatMapSettings : public Settings {
-	const int ALL = 3;
+	// Parameters
+  const int WIDTH  = 512;           // Should be a multiple of 16 for QPU
+  const int HEIGHT = 506;           // Should be a multiple of num_qpus for QPU
+  const int SIZE   = WIDTH*HEIGHT;  // Size of 2D heat map
 
 	int    kernel;
 	string kernel_name;
+	int    num_steps;
+	int    num_points;
 
 	int init(int argc, const char *argv[]) {
-		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
 		auto const FAIL    = CmdParameters::EXIT_ERROR;
 
 		set_name(argv[0]);
@@ -42,16 +83,35 @@ struct HeatMapSettings : public Settings {
 		if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 		// Init the parameters in the parent
-		if (!process(&params)) {
+		if (!process(&params, true)) {
 			ret = FAIL;
 		}
 
 		kernel      = params.parameters()["Kernel"]->get_int_value();
 		kernel_name = params.parameters()["Kernel"]->get_string_value();
+		num_steps   = params.parameters()["Number of steps"]->get_int_value();
+		num_points  = params.parameters()["Number of points"]->get_int_value();
 
 		return ret;
 	}
 } settings;
+
+
+// ============================================================================
+// Local Helper functions
+// ============================================================================
+
+template<typename Arr>
+void inject_hotspots(Arr &arr) {
+  srand(0);
+
+  for (int i = 0; i < settings.num_points; i++) {
+    int t = rand() % 256;
+    int x = 1 + rand() % (settings.WIDTH  - 2);
+    int y = 1 + rand() % (settings.HEIGHT - 2);
+    arr[y*settings.WIDTH + x] = (float) (1000*t);
+  }
+}
 
 
 // ============================================================================
@@ -75,51 +135,33 @@ void scalar_step(float** map, float** mapOut, int width, int height)
 
 
 void run_scalar() {
-  // Parameters
-  const int WIDTH  = 512;
-  const int HEIGHT = 506;
-  const int NSPOTS = 10;
-  const int NSTEPS = 1500;
-
   // Allocate
-  float* map       = new float [WIDTH*HEIGHT];
-  float* mapOut    = new float [WIDTH*HEIGHT];
-  float** map2D    = new float* [HEIGHT];
-  float** mapOut2D = new float* [HEIGHT];
+  float* map       = new float [settings.SIZE];
+  float* mapOut    = new float [settings.SIZE];
+  float** map2D    = new float* [settings.HEIGHT];
+  float** mapOut2D = new float* [settings.HEIGHT];
 
   // Initialise
-  for (int i = 0; i < WIDTH*HEIGHT; i++) map[i] = mapOut[i] = 0.0;
-  for (int i = 0; i < HEIGHT; i++) {
-    map2D[i]    = &map[i*WIDTH];
-    mapOut2D[i] = &mapOut[i*WIDTH];
+  for (int i = 0; i < settings.SIZE; i++) {
+		map[i] = mapOut[i] = 0.0;
+	}
+
+  for (int i = 0; i < settings.HEIGHT; i++) {
+    map2D[i]    = &map[i*settings.WIDTH];
+    mapOut2D[i] = &mapOut[i*settings.WIDTH];
   }
 
   // Inject hot spots
-  srand(0);
-  for (int i = 0; i < NSPOTS; i++) {
-    int t = rand() % 256;
-    int x = 1 + rand() % (WIDTH-2);
-    int y = 1 + rand() % (HEIGHT-2);
-    map2D[y][x] = 1000.0f*((float) t);
-  }
+	inject_hotspots(map);
 
   // Simulate
-  for (int i = 0; i < NSTEPS; i++) {
-    scalar_step(map2D, mapOut2D, WIDTH, HEIGHT);
+  for (int i = 0; i < settings.num_steps; i++) {
+    scalar_step(map2D, mapOut2D, settings.WIDTH, settings.HEIGHT);
     float** tmp = map2D; map2D = mapOut2D; mapOut2D = tmp;
   }
 
   // Display results
-  printf("P2\n%i %i\n255\n", WIDTH, HEIGHT);
-  for (int y = 0; y < HEIGHT; y++) {
-    for (int x = 0; x < WIDTH; x++) {
-      int t = (int) map2D[y][x];
-      t = t < 0   ? 0 : t;
-      t = t > 255 ? 255 : t;
-      printf("%d ", t);
-    }
-    printf("\n");
-	}
+	output_pgm_file(mapOut, settings.WIDTH, settings.HEIGHT, 255, "heatmap.pgm");
 }
 
 
@@ -132,9 +174,9 @@ struct Cursor {
   Float prev, current, next;
 
   void init(Ptr<Float> p) {
-    gather(p);
-    current = 0;
-    addr = p+16;
+    gather(p); comment("Cursor init");
+    current = 0.0f;
+    addr = p + 16;
   }
 
   void prime() {
@@ -143,7 +185,7 @@ struct Cursor {
   }
 
   void advance() {
-    addr = addr+16;
+    addr = addr + 16; comment("Cursor advance");
     prev = current;
     gather(addr);
     current = next;
@@ -155,7 +197,7 @@ struct Cursor {
   }
 
   void shiftLeft(Float& result) {
-    result = rotate(current, 15);
+    result = rotate(current, 15); comment("Cursor shiftLeft");
     Float nextRot = rotate(next, 15);
     Where (index() == 15)
       result = nextRot;
@@ -163,7 +205,7 @@ struct Cursor {
   }
 
   void shiftRight(Float& result) {
-    result = rotate(current, 1);
+    result = rotate(current, 1); comment("Cursor shiftRight");
     Float prevRot = rotate(prev, 1);
     Where (index() == 0)
       result = prevRot;
@@ -171,26 +213,25 @@ struct Cursor {
   }
 };
 
-void step(Ptr<Float> map, Ptr<Float> mapOut, Int pitch, Int width, Int height)
-{
+
+void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
+	// Correct for per-QPU offset; see Note 1 at top
+	map    -= me() << 4;
+	mapOut -= me() << 4;
+
   Cursor row[3];
-  map = map + pitch*me() + index();
 
-  // Skip first row of output map
-  mapOut = mapOut + pitch;
+  For (Int y = 1, y < height - 1 - numQPUs(), y = y + numQPUs())
+		// Point p to the in- and output row
+    Ptr<Float> p_in = map    + (y + me())*width;
+    Ptr<Float> p    = mapOut + (y + me())*width;
 
-  For (Int y = me(), y < height, y=y+numQPUs())
-
-    // Point p to the output row
-    Ptr<Float> p = mapOut + y*pitch;
-
-    // Initilaise three cursors for the three input rows
-    for (int i = 0; i < 3; i++) row[i].init(map + i*pitch);
+    // Initialize three cursors for the three input rows
+    for (int i = 0; i < 3; i++) row[i].init(p_in + (i - 1)*width);
     for (int i = 0; i < 3; i++) row[i].prime();
 
     // Compute one output row
-    For (Int x = 0, x < width, x=x+16)
-
+    For (Int x = 0, x < width, x = x + 16)
       for (int i = 0; i < 3; i++) row[i].advance();
 
       Float left[3], right[3];
@@ -203,88 +244,59 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int pitch, Int width, Int height)
                   left[1] +                  right[1] +
                   left[2] + row[2].current + right[2];
 
-      store(row[1].current - K * (row[1].current - sum * 0.125), p);
-      p = p + 16;
+     	Float output = row[1].current - K * (row[1].current - sum * 0.125);
 
+			// Ensure left and right borders are zero
+			Int actual_x = x + index();
+			Where (actual_x == 0)
+				output = 0.0f;
+			End
+			Where (actual_x == width - 1)
+				output = 0.0f;
+			End
+
+     	store(output, p);
+
+      p = p + 16;
     End
 
     // Cursors are finished for this row
     for (int i = 0; i < 3; i++) row[i].finish();
-
-    // Move to the next input rows
-    map = map + pitch*numQPUs();
-
   End
 }
 
+
+/**
+ * The edges always have zero values.
+ * i.e. there is constant cold at the edges.
+ */
 void run_kernel() {
-  // Size of 2D heat map is WIDTH*HEIGHT:
-  //   * with zero padding, it is NROWS*NCOLS
-  //   * i.e. there is constant cold at the edges
-  //   * NCOLs should be a multiple of 16
-  //   * HEIGHT should be a multiple of num_qpus
-  const int WIDTH  = 512-16;
-  const int NCOLS  = WIDTH+16;
-  const int HEIGHT = 504;
-  const int NROWS  = HEIGHT+2;
-  const int NSPOTS = 10;
-  const int NSTEPS = 1500;
-
   // Allocate and initialise input and output maps
-
-  SharedArray<float> mapA(NROWS*NCOLS), mapB(NROWS*NCOLS);
-  for (int y = 0; y < NROWS; y++)
-    for (int x = 0; x < NCOLS; x++) {
-      mapA[y*NCOLS+x] = 0;
-      mapB[y*NCOLS+x] = 0;
-    }
+  SharedArray<float> mapA(settings.SIZE);
+  SharedArray<float> mapB(settings.SIZE);
+	mapA.fill(0.0f);
+	mapB.fill(0.0f);
 
   // Inject hot spots
-  srand(0);
-  for (int i = 0; i < NSPOTS; i++) {
-    int t = rand() % 256;
-    int x = rand() % WIDTH;
-    int y = 1 + rand() % HEIGHT;
-    mapA[y*NCOLS+x] = (float) (1000*t);
-  }
+	inject_hotspots(mapA);
 
   // Compile kernel
   auto k = compile(step);
-  //k.setNumQPUs(settings.num_qpus);  // default is 1
+  k.setNumQPUs(settings.num_qpus);
 
-  for (int i = 0; i < NSTEPS; i++) {
-    if (i & 1)
-      k.load(&mapB, &mapA, NCOLS, WIDTH, HEIGHT);  // Load the uniforms
-    else
-      k.load(&mapA, &mapB, NCOLS, WIDTH, HEIGHT);  // Load the uniforms
+  for (int i = 0; i < settings.num_steps; i++) {
+    if (i & 1) {
+      k.load(&mapB, &mapA, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
+    } else {
+      k.load(&mapA, &mapB, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
+		}
 
-		settings.process(k);  // Invoke the kernel
+		// Invoke the kernel
+		settings.process(k);
   }
 
-  // Display results
-  printf("P2\n%i %i\n255\n", WIDTH, HEIGHT);
-  for (int y = 0; y < HEIGHT; y++) {
-    for (int x = 0; x < WIDTH; x++) {
-      int t = (int) mapB[(y+1)*NCOLS+x];
-      t = t < 0   ? 0 : t;
-      t = t > 255 ? 255 : t;
-      printf("%d ", t);
-    }
-    printf("\n");
-	}
-}
-
-
-// ============================================================================
-// Local functions
-// ============================================================================
-
-void end_timer(timeval tvStart) {
-  timeval tvEnd, tvDiff;
-  gettimeofday(&tvEnd, NULL);
-  timersub(&tvEnd, &tvStart, &tvDiff);
-
-  printf("%ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
+  // Output results
+	output_pgm_file(mapB, settings.WIDTH, settings.HEIGHT, 255, "heatmap.pgm");
 }
 
 
@@ -296,17 +308,17 @@ int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-  timeval tvStart;
-  gettimeofday(&tvStart, NULL);
+	Timer timer;
 
 	switch (settings.kernel) {
 		case 0: run_kernel();  break;	
 		case 1: run_scalar(); break;
 	}
 
-	auto name = kernels[settings.kernel];
-	printf("Ran kernel '%s' with %d QPU's in ", name, settings.num_qpus);
-	end_timer(tvStart);
+	if (!settings.silent) {
+		printf("Ran kernel '%s' with %d QPU's\n", settings.kernel_name.c_str(), settings.num_qpus);
+	}
+	timer.end(!settings.silent);
 
   return 0;
 }

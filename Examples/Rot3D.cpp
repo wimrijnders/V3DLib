@@ -1,17 +1,17 @@
-#include <sys/time.h>
 #include <unistd.h>  // sleep()
 #include <math.h>
-#include <QPULib.h>
+#include <V3DLib.h>
 #include "Support/Settings.h"
+#include "Support/Timer.h"
 #include "Support/debug.h"
 #include "Rot3DLib/Rot3DKernels.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 using namespace Rot3DLib;
 using KernelType = decltype(rot3D_1);  // All kernel functions except scalar have same prototype
 
 // Number of vertices and angle of rotation
-const int N = 192000; // 192000
+const int SIZE = 192000;
 const float THETA = (float) 3.14159;
 
 
@@ -19,7 +19,7 @@ const float THETA = (float) 3.14159;
 // Command line handling
 // ============================================================================
 
-std::vector<const char *> const kernels = { "3", "2", "1", "cpu" };  // First is default
+std::vector<const char *> const kernels = { "2", "1", "cpu" };  // First is default
 
 
 CmdParameters params = {
@@ -62,7 +62,6 @@ struct Rot3DSettings : public Settings {
 		//kernel_name       = params.parameters()["Kernel"]->get_string_value();
 		show_results        = params.parameters()["Display Results"]->get_bool_value();
 
-		//printf("Num QPU's in settings: %d\n", num_qpus);
 		return ret;
 	}
 } settings;
@@ -73,68 +72,58 @@ struct Rot3DSettings : public Settings {
 // Local functions
 // ============================================================================
 
+template<typename Arr>
+void init_arrays(Arr &x, Arr &y) {
+  for (int i = 0; i < SIZE; i++) {
+    x[i] = (float) i;
+    y[i] = (float) i;
+  }
+}
 
 
-/**
- * TODO: Consolidate with Mandelbrot
- */
-void end_timer(timeval tvStart) {
-  timeval tvEnd, tvDiff;
-  gettimeofday(&tvEnd, NULL);
-  timersub(&tvEnd, &tvStart, &tvDiff);
-
-  printf("Run time: %ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
+template<typename Arr>
+void disp_arrays(Arr &x, Arr &y) {
+	if (settings.show_results) {
+  	for (int i = 0; i < SIZE; i++)
+  		printf("%f %f\n", x[i], y[i]);
+	}
 }
 
 
 void run_qpu_kernel(KernelType &kernel) {
-  timeval tvStart;
-  gettimeofday(&tvStart, NULL);
+	Timer timer;
 
   auto k = compile(kernel);  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> x(N), y(N);
-  for (int i = 0; i < N; i++) {
-    x[i] = (float) i;
-    y[i] = (float) i;
-  }
+  SharedArray<float> x(SIZE), y(SIZE);
+	init_arrays(x, y);
 
-  k.load(N, cosf(THETA), sinf(THETA), &x, &y);
+  k.load(SIZE, cosf(THETA), sinf(THETA), &x, &y);
   settings.process(k);
 
-	end_timer(tvStart);
-
-	if (settings.show_results) {
-  	for (int i = 0; i < N; i++)
-  		printf("%f %f\n", x[i], y[i]);
-	}
+	disp_arrays(x, y);
+	timer.end(!settings.silent);
 }
 
 
 void run_scalar_kernel() {
-  timeval tvStart;
-  gettimeofday(&tvStart, NULL);
+	Timer timer;
 
   // Allocate and initialise
-  float* x = new float [N];
-  float* y = new float [N];
-  for (int i = 0; i < N; i++) {
-    x[i] = (float) i;
-    y[i] = (float) i;
-  }
+  float* x = new float[SIZE];
+  float* y = new float[SIZE];
+	init_arrays(x, y);
 
-	if (settings.compile_only) {
-	  rot3D(N, cosf(THETA), sinf(THETA), x, y);
+	if (!settings.compile_only) {
+	  rot3D(SIZE, cosf(THETA), sinf(THETA), x, y);
 	}
 
-	end_timer(tvStart);
-
-	if (settings.show_results) {
-  	for (int i = 0; i < N; i++)
-  		printf("%f %f\n", x[i], y[i]);
-	}
+	disp_arrays(x, y);
+	timer.end(!settings.silent);
+	delete [] x;
+	delete [] y;
 }
 
 
@@ -143,15 +132,16 @@ void run_scalar_kernel() {
  */
 void run_kernel(int kernel_index) {
 	switch (kernel_index) {
-		case 0: run_qpu_kernel(rot3D_3);  break;	
-		case 1: run_qpu_kernel(rot3D_2);  break;	
-		case 2: run_qpu_kernel(rot3D_1);  break;	
-		case 3: run_scalar_kernel(); break;
+		case 0: run_qpu_kernel(rot3D_2);  break;	
+		case 1: run_qpu_kernel(rot3D_1);  break;	
+		case 2: run_scalar_kernel(); break;
 	}
 
 	auto name = kernels[kernel_index];
 
-	printf("Ran kernel '%s' with %d QPU's.\n", name, settings.num_qpus);
+	if (!settings.silent) {
+		printf("Ran kernel '%s' with %d QPU's.\n", name, settings.num_qpus);
+	}
 }
 
 

@@ -1,6 +1,6 @@
 #include "Target/Subst.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // Rename a destination register in an instruction
 void renameDest(Instr* instr, RegTag vt, RegId v,
@@ -112,4 +112,4 @@ void substRegTag(Instr* instr, RegTag vt, RegTag wt)
   }
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

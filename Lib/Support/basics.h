@@ -1,11 +1,10 @@
-#ifndef _LIB_SUPPORT_BASICS_H
-#define _LIB_SUPPORT_BASICS_H
-#include <string>
+#ifndef _V3DLIB_SUPPORT_BASICS_H
+#define _V3DLIB_SUPPORT_BASICS_H
 #include <vector>
 #include "Exception.h"
 #include "debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Terminate the application ASAP
@@ -24,7 +23,12 @@ inline void fatal(const char *msg) {
 	throw Exception(str);
 }
 
-}  // QPULib
+
+inline void fatal(std::string const &msg) {
+	fatal(msg.c_str());
+}
+
+}  // V3DLib
 
 
 //
@@ -50,4 +54,35 @@ inline std::vector<std::string> &operator<<(std::vector<std::string> &a, char co
 	return a;
 }
 
-#endif  // _LIB_SUPPORT_BASICS_H
+
+inline std::string &operator<<(std::string &a, char const *str) {
+	a += str;
+	return a;
+}
+
+
+inline std::string &operator<<(std::string &a, std::string const &str) {
+	a += str;
+	return a;
+}
+
+
+inline std::string &operator<<(std::string &a, int val) {
+	a += std::to_string(val);
+	return a;
+}
+
+
+inline std::string &operator<<(std::string &a, uint32_t val) {
+	a += std::to_string(val);
+	return a;
+}
+
+
+inline std::string &operator<<(std::string &a, float val) {
+	a += std::to_string(val);
+	return a;
+}
+
+
+#endif  // _V3DLIB_SUPPORT_BASICS_H

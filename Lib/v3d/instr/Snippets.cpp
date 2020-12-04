@@ -1,16 +1,17 @@
 #include "Snippets.h"
-#include "../../Lib/Support/basics.h"
+#include "Support/basics.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 namespace instr {
 
 Instructions set_qpu_id(uint8_t reg_qpu_id) {
 	Instructions ret;
 
-	ret << tidx(r0).comment("Set QPU id")
+	ret << tidx(r0)
 			<< bor(rf(reg_qpu_id), r0, r0);  // Actually mov
 
+	ret.front().header("Set QPU id");
 	return ret;
 }
 
@@ -27,7 +28,30 @@ Instructions set_qpu_num(uint8_t num_qpus, uint8_t reg_qpu_num) {
 		assert(false);  // num_qpus must be 1 or 8
 	}
 
-	ret.front().comment("Set number of QPU's");
+	ret.front().header("Set number of QPU's");
+	return ret;
+}
+
+
+/**
+ * TODO Consolidate with calc_offset()
+ *
+ * source:  https://github.com/Idein/py-videocore6/blob/3c407a2c0a3a0d9d56a5d0953caa7b0a4e92fa89/examples/summation.py#L22
+ */
+Instructions get_num_qpus(Register const &reg, uint8_t num_qpus) {
+	assert(num_qpus == 1 || num_qpus == 8);
+	assert(reg.is_dest_acc());
+
+	Instructions ret;
+
+	if (num_qpus == 1) {
+		ret << mov(reg, 0);
+	} else { //  num_qpus == 8
+		breakpoint
+		ret << tidx(reg)
+		    << shr(reg, reg, 2)
+		    << band(reg, reg, 0b1111);
+	}
 
 	return ret;
 }
@@ -57,7 +81,6 @@ Instructions calc_offset(uint8_t num_qpus, uint8_t reg_qpu_num) {
 		"addr += 4 * (thread_num + 16 * qpu_num)";
 
 	ret.front().comment(text);
-
 	return ret;
 }
 
@@ -89,9 +112,10 @@ Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
 
 	const char *text = "stride = 4 * 16 * num_qpus";
 
-	ret << mov(rf(reg_stride), 1).comment(text)
+	ret << mov(rf(reg_stride), 1)
 	    << shl(rf(reg_stride), rf(reg_stride), 6 + num_qpus_shift);
 
+	ret.front().header(text);
 	return ret;
 }
 
@@ -108,7 +132,7 @@ Instructions enable_tmu_read(Instr const *last_slot) {
 		"This also enables TMU read requests without the thread switch signal, and\n"
 		"the eight-depth TMU read request queue.";
 
-	ret << nop().thrsw(true).comment(text)
+	ret << nop().thrsw()
 	    << nop();
 
 	if (last_slot != nullptr) {
@@ -117,6 +141,7 @@ Instructions enable_tmu_read(Instr const *last_slot) {
 		ret << nop();
 	}
 
+	ret.front().header(text);
 	return ret;
 }
 
@@ -128,10 +153,11 @@ Instructions sync_tmu() {
 		"This synchronization is needed between the last TMU operation and the\n"
 		"program end with the thread switch just before the main body above.";
 
-	ret << barrierid(syncb).thrsw(true).comment(text)
+	ret << barrierid(syncb).thrsw()
 	    << nop()
 	    << nop();
 
+	ret.front().header(text);
 	return ret;
 }
 
@@ -139,20 +165,21 @@ Instructions sync_tmu() {
 Instructions end_program() {
 	Instructions ret;
 
-	ret << nop().thrsw(true).comment("Program tail")
-	    << nop().thrsw(true)
+	ret << nop().thrsw()
+	    << nop().thrsw()
 	    << nop()
 	    << nop()
-	    << nop().thrsw(true)
+	    << nop().thrsw()
 	    << nop()
 	    << nop()
 	    << nop();
 
+	ret.front().header("Program tail");
 	return ret;
 }
 
 
 }  // instr
 }  // v3d
-}  // QPULib
+}  // V3DLib
 

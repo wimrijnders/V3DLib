@@ -1,92 +1,72 @@
-#ifndef _QPULIB_STACK_H_
-#define _QPULIB_STACK_H_
-#include <stdlib.h>
-#include <assert.h>
+#ifndef _V3DLIB_COMMON_STACK_H_
+#define _V3DLIB_COMMON_STACK_H_
+#include "Support/debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 
-template <class T> class StackItem
-{
-  public:
-    T* head;
-    StackItem<T>* tail;
+/**
+ * TODO: Perhaps replace this with `Seq` as underlying base class
+ */
+template <class T> class Stack {
+private:
+	class StackItem {
+	public:
+		T *head         = nullptr;;
+		StackItem *tail = nullptr;
+	};
+
+public:
+	~Stack() { clear(); }
+
+	bool     empty() const { return m_size == 0; }
+	unsigned size()  const { return m_size; }
+
+	void push(T* x) {
+		StackItem *nextTop = new StackItem;
+		nextTop->head = x;
+		nextTop->tail = m_topItem;
+		
+		m_topItem = nextTop;
+		m_size++;
+	}
+
+	T *pop() {
+		assert(m_size > 0);
+		assert(m_topItem != nullptr);
+		StackItem *oldTop = m_topItem;
+
+		m_topItem = oldTop->tail;
+		T *ret    = oldTop->head;
+
+		oldTop->head = nullptr;
+		oldTop->tail = nullptr;
+		delete oldTop;
+
+		m_size--;
+		return ret;
+	}
+
+	T *top() const {
+		assert(m_size > 0);
+		assert(m_topItem != nullptr);
+		assert(m_topItem->head != nullptr);
+		return m_topItem->head;
+	}
+
+	void clear() {
+		while (m_topItem != nullptr) {
+			T *p = pop();
+			delete p;
+		}
+
+		assert(m_size == 0);
+	}
+
+private:
+	unsigned int m_size  = 0;
+	StackItem *m_topItem = nullptr;
 };
 
-template <class T> class Stack
-{
-  public:
-    unsigned int size;
-    StackItem<T>* topItem;
+}  // namespace V3DLib
 
-    // Constructor
-    Stack()
-    {
-      topItem = NULL;
-      size    = 0;
-    }
-
-    // Push
-    void push(T* x)
-    {
-      StackItem<T>* oldTop = topItem;
-      topItem       = new StackItem<T>;
-      topItem->head = x;
-      topItem->tail = oldTop;
-      size++;
-    }
-
-    // Pop
-    void pop()
-    {
-      assert(size > 0);
-      StackItem<T>* oldTop = topItem;
-      topItem = topItem->tail;
-      delete oldTop;
-      size--;
-    }
-
-    // Top
-    T* top()
-    {
-      assert(size > 0);
-      return topItem->head;
-    }
-
-    // Replace the top element
-    void replace(T* x)
-    {
-      topItem->head = x;
-    }
-
-    // Clear the stack
-    void clear()
-    {
-      StackItem<T>* p;
-      for (int i = 0; i < size; i++) {
-        p = topItem->tail;
-        delete topItem;
-        topItem = p;
-      }
-      size = 0;
-    }
-
-    // Obtain Nth element from the top
-    T* index(unsigned int n)
-    {
-      assert(n < size);
-      StackItem<T>* p = topItem;
-      for (int i = 0; i < n; i++)
-        p = p->tail;
-      return p->head;
-    }
-
-    // Destructor
-    ~Stack()
-    {
-      clear();
-    }
-};
-
-}  // namespace QPULib
-
-#endif  // _QPULIB_STACK_H_
+#endif  // _V3DLIB_COMMON_STACK_H_

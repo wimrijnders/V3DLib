@@ -1,32 +1,37 @@
-#include "QPULib.h"
+#include "V3DLib.h"
 #include "Support/Settings.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
-QPULib::Settings settings;
+V3DLib::Settings settings;
 
 // Define function that runs on the GPU.
 
-void test(Ptr<Int> p)
-{
+void kernel(Ptr<Int> p) {
   Int x, y;
-  gather(p+index());
-  gather(p+16+index());
+
+  gather(p);
+  gather(p+16);
   receive(x);
   receive(y);
-  *p = x+y;
+
+  *p = x + y;
 }
+
 
 int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
+	int numQpus = 1;
+
   // Construct kernel
-  auto k = compile(test);
+  auto k = compile(kernel);
+  k.setNumQPUs(numQpus);
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(32);
-  for (int i = 0; i < 32; i++)
+  SharedArray<int> array(numQpus*16 + 16);
+  for (int i = 0; i < array.size(); i++)
     array[i] = i;
 
   // Invoke the kernel
@@ -34,7 +39,7 @@ int main(int argc, const char *argv[]) {
   settings.process(k);
 
 	// Display the result
-  for (int i = 0; i < 16; i++)
+  for (int i = 0; i < numQpus*16; i++)
     printf("%i: %i\n", i, array[i]);
   
   return 0;

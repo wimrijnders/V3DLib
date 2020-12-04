@@ -6,28 +6,16 @@
 #include "v3d/SourceTranslate.h"
 
 namespace {
-
-	bool _compiling_for_vc4 = true;
-	std::unique_ptr<QPULib::ISourceTranslate> _vc4_source_translate;
-	std::unique_ptr<QPULib::ISourceTranslate> _v3d_source_translate;
+	std::unique_ptr<V3DLib::ISourceTranslate> _vc4_source_translate;
+	std::unique_ptr<V3DLib::ISourceTranslate> _v3d_source_translate;
 
 }  // anon namespace
 
 
-namespace QPULib {
-
-void set_compiling_for_vc4(bool val) {
-	_compiling_for_vc4 = val;
-}
-
-
-bool compiling_for_vc4() {
-	return _compiling_for_vc4;
-}
-
+namespace V3DLib {
 
 ISourceTranslate &getSourceTranslate() {
-	if (_compiling_for_vc4) {
+	if (Platform::instance().compiling_for_vc4()) {
 		if (_vc4_source_translate.get() == nullptr) {
 			_vc4_source_translate.reset(new vc4::SourceTranslate());
 		}
@@ -40,4 +28,4 @@ ISourceTranslate &getSourceTranslate() {
 	}
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

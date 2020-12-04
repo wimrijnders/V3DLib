@@ -1,11 +1,11 @@
-#ifndef _QPULIB_COMMON_SHAREDARRAY_H_
-#define _QPULIB_COMMON_SHAREDARRAY_H_
+#ifndef _V3DLIB_COMMON_SHAREDARRAY_H_
+#define _V3DLIB_COMMON_SHAREDARRAY_H_
 #include <vector>
 #include "BufferObject.h"
 #include "../Support/debug.h"
 #include "../Support/Platform.h"  // has_vc4
 
-namespace QPULib {
+namespace V3DLib {
 
 /**
  * Reserve and access a memory range in the underlying buffer object.
@@ -40,11 +40,15 @@ public:
   uint32_t getAddress() { return m_phyaddr; }
 	uint32_t size() const { return m_size; }
 
+	void fill(T val) {
+  	for (int i = 0; i < size(); i++)
+	    (*this)[i] = val;
+	}
 
 	/**
 	 * Get starting address of the section in question
 	 *
-	 * Needed for vc4, and for v3d in emulator and interpreter mode.
+	 * Needed for vc4, emulator and interpreter mode.
 	 */
 	T *getPointer() {
 		if (Platform::instance().has_vc4) {
@@ -89,7 +93,6 @@ public:
 
 	/**
 	 * Forget the allocation and size and notify the underlying heap.
-	 *
 	 */
 	void dealloc() {
 		if (m_size > 0) {
@@ -122,14 +125,7 @@ public:
   // Subscript
   inline T& operator[] (int i) {
 		assert(allocated());
-		if (i < 0) {
-			breakpoint
-		}
-		assert(i >= 0);
-		if (i >= m_size) {
-			breakpoint  // Check if this ever happens
-		}
-		assert(i < m_size);
+		assertq(i >= 0 && i < m_size, "SharedArray::[]: index outside of possible range", true);
 
     T* base = (T *) m_usraddr;
     return (T&) base[i];
@@ -171,6 +167,25 @@ public:
 		}
 	}
 
+
+	/**
+	 * Debug method for showing a range in a shared array
+	 */
+	void dump(int first_offset, int last_offset) {
+		assert(first_offset >= 0);
+		assert(first_offset <= last_offset);
+		assert(last_offset < size());
+
+		char const *format = "%8d: 0x%x - %d\n";
+
+		for (int offset = first_offset; offset <= last_offset; ++offset) {
+			printf(format, offset, (*this)[offset], (*this)[offset]);
+		}
+
+		printf("\n");
+	}
+
+
 private:
 	BufferObject *m_heap = nullptr;  // Reference to used heap
 	uint8_t *m_usraddr   = nullptr;  // Start of the heap in main memory, as seen by the CPU
@@ -179,6 +194,6 @@ private:
 	bool     m_is_heap_view = false;
 };
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_COMMON_SHAREDARRAY_H_
+#endif  // _V3DLIB_COMMON_SHAREDARRAY_H_

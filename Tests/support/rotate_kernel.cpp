@@ -6,6 +6,11 @@
 #include "rotate_kernel.h"
 #include "v3d/instr/Snippets.h"
 
+//
+// Issue: disassembly code in MESA does not output rotate flag
+//
+// **NOTE:* python code changed in the meantime! This is the previous version.
+//
 ByteCode const qpu_rotate_alias_code = {
 	0x3c403180bb802000,  // eidx  r0             ; nop               ; ldunif
 	0x3c402180b682d000,  // or  rf0, r5, r5      ; nop               ; ldunif
@@ -346,13 +351,10 @@ ByteCode const qpu_rotate_alias_code = {
 
 /**
  * Derived from `def qpu_rotate_alias(asm)` in `py-videocore6/blob/master/tests/test_signals.py`
- *
- * **NOTE:** rotate with add alu not working!
- *           It is entriely possible that rotate only works via the mul alu.
- *           in that case, the rotate alu alias should refer to the mul alu rotate.
+ * **NOTE:* python code changed in the meantime! This works with the previous version.
  */
-ByteCode rotate_kernel(bool use_add_alu) {
-	using namespace QPULib::v3d::instr;
+ByteCode rotate_kernel() {
+	using namespace V3DLib::v3d::instr;
 
 	Instructions ret;
 
@@ -368,18 +370,15 @@ ByteCode rotate_kernel(bool use_add_alu) {
 		<< mov(tmua, rf(0)).add(rf(0), rf(0), r3).thrsw()
 		<< nop()
 		<< nop()
-		<< nop().ldtmu(r0)
-		<< nop().comment("required before rotate", true);
+		<< nop().ldtmu(r0);
 	;
 
-	for (int i = -15; i < 16; ++i) {
-		if (use_add_alu) {
-			ret << rotate(r1, r0, i);       // add alias
-		} else {
-			ret << nop().rotate(r1, r0, i); // mul alias
-		}
+	ret << nop();
+	ret.back().comment("required before rotate");
 
+	for (int i = -15; i < 16; ++i) {
 		ret
+			<< rotate(r1, r0, i)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, i)`
 		  << mov(tmud, r1)
 		  << mov(tmua, rf(1))
 		  << tmuwt().add(rf(1), rf(1), r3);
@@ -387,17 +386,13 @@ ByteCode rotate_kernel(bool use_add_alu) {
 
 
 	for (int i = -15; i < 16; ++i) {
-		ret
-		  << mov(r5, si(i))
-		  << nop().comment("required before rotate", true);
+		ret << mov(r5, si(i));
 
-		if (use_add_alu) {
-			ret << rotate(r1, r0, r5);       // add alias
-		} else {
-			ret << nop().rotate(r1, r0, r5); // mul alias
-		}
+		ret << nop();
+		ret.back().comment("required before rotate");
 
 		ret
+			<< rotate(r1, r0, r5)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, r5)`
 		  << mov(tmud, r1)
 		  << mov(tmua, rf(1))
 		  << tmuwt().add(rf(1), rf(1), r3);
@@ -423,8 +418,8 @@ ByteCode rotate_kernel(bool use_add_alu) {
 
 
 void run_rotate_alias_kernel(ByteCode const &bytecode) {
-	using namespace QPULib::v3d;
-	printf("==== rotate alias kernel ====\n");
+	using namespace V3DLib::v3d;
+	//printf("==== rotate alias kernel ====\n");
 	REQUIRE(bytecode.size() > 0);
 
 	uint32_t code_area_size = 8*bytecode.size();  // size in bytes
@@ -439,7 +434,7 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 	for (uint32_t offset = 0; offset < X.size(); ++offset) {
 		X[offset] = offset;
 	}
-	dump_data(X); 
+	//dump_data(X); 
 
 	int y_length = 2*(16 - -15) *16;  // NB python range(-15, 16) does not include 2nd value; 'up to'
 	SharedArray<uint32_t> Y(y_length, heap);
@@ -454,12 +449,12 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 
 	double start = get_time();
 
-	QPULib::v3d::Driver drv;
+	V3DLib::v3d::Driver drv;
 	drv.add_bo(heap);
-	printf("Executing on QPU...\n");
+	//printf("Executing on QPU...\n");
 	REQUIRE(drv.execute(code, &unif, 1));
 
-	dump_data(Y); 
+	//dump_data(Y); 
 
 	for(int count = 0; count < 2; ++count) { // Output is double, first with small imm, then with r5
 		for(int rot = -15; rot < 16; ++rot) {
@@ -474,5 +469,5 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 	}
 
 	double end = get_time();
-	printf("Rotate alias done: %.6lf sec\n", (end - start));
+	//printf("Rotate alias done: %.6lf sec\n", (end - start));
 }

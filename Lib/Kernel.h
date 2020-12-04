@@ -1,17 +1,19 @@
-#ifndef _QPULIB_KERNEL_H_
-#define _QPULIB_KERNEL_H_
+#ifndef _V3DLIB_KERNEL_H_
+#define _V3DLIB_KERNEL_H_
+#include <tuple>
+#include "Source/Int.h"
+#include "Source/Ptr.h"
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
 #include "Common/SharedArray.h"
 #include "v3d/Invoke.h"
 #include "vc4/vc4.h"
 #include "Support/Platform.h"
+#include "Support/assign.h"
 #include  "vc4/KernelDriver.h"
 #include  "v3d/KernelDriver.h"
-#include  "SourceTranslate.h"  // set_compiling_for_vc4()
 
-namespace QPULib {
-
+namespace V3DLib {
 
 // ============================================================================
 // Modes of operation
@@ -65,6 +67,8 @@ namespace QPULib {
 // ============================================================================
 
 // Construct an argument of QPU type 't'.
+extern std::vector<Ptr<Int>>   uniform_int_pointers;
+extern std::vector<Ptr<Float>> uniform_float_pointers;
 
 template <typename t> inline t mkArg();
 
@@ -83,12 +87,14 @@ template <> inline Float mkArg<Float>() {
 template <> inline Ptr<Int> mkArg< Ptr<Int> >() {
   Ptr<Int> x;
   x = getUniformPtr<Int>();
+	uniform_int_pointers.push_back(x);
   return x;
 }
 
 template <> inline Ptr<Float> mkArg< Ptr<Float> >() {
   Ptr<Float> x;
   x = getUniformPtr<Float>();
+	uniform_float_pointers.push_back(x);
   return x;
 }
 
@@ -104,35 +110,33 @@ template <typename t, typename u>
 inline bool passParam(Seq<int32_t>* uniforms, u x);
 
 // Pass an int
-template <> inline bool passParam<Int, int>
-  (Seq<int32_t>* uniforms, int x)
-{
+template <>
+inline bool passParam<Int, int> (Seq<int32_t>* uniforms, int x) {
   uniforms->append((int32_t) x);
   return true;
 }
 
+
 // Pass a float
-template <> inline bool passParam<Float, float>
-	(Seq<int32_t>* uniforms, float x)
-{
+template <>
+inline bool passParam<Float, float> (Seq<int32_t>* uniforms, float x) {
   int32_t* bits = (int32_t*) &x;
   uniforms->append(*bits);
   return true;
 }
 
+
 // Pass a SharedArray<int>*
-template <> inline bool passParam< Ptr<Int>, SharedArray<int>* >
-  (Seq<int32_t>* uniforms, SharedArray<int>* p)
-{
+template <>
+inline bool passParam< Ptr<Int>, SharedArray<int>* > (Seq<int32_t>* uniforms, SharedArray<int>* p) {
   uniforms->append(p->getAddress());
   return true;
 }
 
 
 // Pass a SharedArray<float>*
-template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
-  (Seq<int32_t>* uniforms, SharedArray<float>* p)
-{
+template <>
+inline bool passParam< Ptr<Float>, SharedArray<float>* > (Seq<int32_t>* uniforms, SharedArray<float>* p) {
   uniforms->append(p->getAddress());
   return true;
 }
@@ -144,7 +148,7 @@ template <> inline bool passParam< Ptr<Float>, SharedArray<float>* >
 
 class KernelBase {
 public:
-	void pretty(const char *filename = nullptr);
+	void pretty(bool output_for_vc4, const char *filename = nullptr);
 
   void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
 	static int maxQPUs();
@@ -165,9 +169,6 @@ protected:
 #ifdef QPU_MODE
 	v3d::KernelDriver m_v3d_driver;
 #endif
-
-	void init_compile();
-	void invoke_qpu(QPULib::KernelDriver &kernel_driver);
 };
 
 
@@ -175,7 +176,7 @@ protected:
  *
  * ----------------------------------------------------------------------------
  * NOTES
- * ====
+ * =====
  *
  * * A kernel is parameterised by a list of QPU types 'ts' representing
  *   the types of the parameters that the kernel takes.
@@ -190,7 +191,7 @@ protected:
  *   for the kernel.
  *
  *   At time of writing (20200818), for the source code it is notably the end
- *   program sequence (see `kernelFinish()`).
+ *   program sequence (see `KernelDriver::kernelFinish()`).
  *
  *   The interpreter and emulator, however, work with vc4 code. For this reason
  *   it is necessary to have the vc4 kernel driver in use in all build cases.
@@ -203,13 +204,26 @@ public:
 	/**
    * Construct kernel out of C++ function
 	 */
-  Kernel(KernelFunction f) {
+  Kernel(KernelFunction f, bool vc4_only = false) {
 		{
-			init_compile();
-			set_compiling_for_vc4(true);
+			m_vc4_driver.compile_init();
+
+	    auto args = std::make_tuple(mkArg<ts>()...);
+
+			//
+			// Add offsets to the uniform pointers
+			//
+			Int offset = me() << 4;
+
+			for (auto &expr : uniform_int_pointers) {
+				expr = expr + offset;
+			}
+			for (auto &expr : uniform_float_pointers) {
+				expr = expr + offset;
+			}
 
 	    // Construct the AST for vc4
-	    f(mkArg<ts>()...);
+	    apply(f, args);
 			m_vc4_driver.compile();
 
     	// Remember the number of variables used - for emulator/interpreter
@@ -217,12 +231,12 @@ public:
 		}
 
 #ifdef QPU_MODE
-		{
-			init_compile();
-			set_compiling_for_vc4(false);
+		if (!vc4_only && !Platform::instance().has_vc4) {
+			m_v3d_driver.compile_init();
 
 	    // Construct the AST for v3d
 	    f(mkArg<ts>()...);
+
 			m_v3d_driver.compile();
 		}
 #endif  // QPU_MODE
@@ -245,12 +259,12 @@ public:
 
 // Initialiser
 
-template <typename... ts> Kernel<ts...> compile(void (*f)(ts... params))
-{
-  Kernel<ts...> k(f);
+template <typename... ts>
+Kernel<ts...> compile(void (*f)(ts... params), bool vc4_only = false) {
+  Kernel<ts...> k(f, vc4_only);
   return k;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_KERNEL_H_
+#endif  // _V3DLIB_KERNEL_H_

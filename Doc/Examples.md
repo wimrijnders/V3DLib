@@ -17,7 +17,6 @@
     * [Scalar version](#scalar-version-1)
     * [Vector version 1](#vector-version-1-1)
     * [Vector version 2: non-blocking loads and stores](#vectorversion2nonblockingloadsandstores)
-    * [Vector version 3: multiple QPUs](#vectorversion3multipleqpus)
     * [Performance](#performance)
 * [Example 3: 2D Convolution (Heat Transfer)](#example32dconvolutionheattransfer)
     * [Scalar version](#scalar-version-2)
@@ -35,10 +34,9 @@ sudo obj-qpu/bin/<name>
 ```
 
 - **GCD**       - [Euclid's algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm), The GCD's of some random pairs of integers
-- **Tri**       - Computes [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number), using three kernels:
-  * single QPU with integers
-  * multiple QPU's with integers
-  * using floats instead of integers
+- **Tri**       - Computes [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number), using two kernels:
+  1. with integer in- and output
+  2. with float in- and output
 - **OET**       - [Odd-even transposition sorter](https://en.wikipedia.org/wiki/Odd%E2%80%93even_sort) for 32 integers
 - **HeatMap**   - Modelling heat flow across a 2D surface; outputs an image in [pgm](http://netpbm.sourceforge.net/doc/pgm.html) format, and notes the time taken
 - **Rot3D**     -  3D rotation of a random objecti; outputs the time taken
@@ -87,13 +85,12 @@ prepares the way for the vector version which operates on
 
 ### Vector version 1
 
-Using QPULib, the algorithm looks as follows.
+Using `V3DLib`, the algorithm looks as follows.
 
 ```c++
-#include <QPULib.h>
+#include <V3DLib.h>
 
-void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r)
-{
+void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
   Int a = *p;
   Int b = *q;
   While (any(a != b))
@@ -129,10 +126,10 @@ Even this simple example introduces a number of concepts:
     only elements in vector `a` for which `a > b` holds will be
     modified.
 
-It's worth reiterating that QPULib is just standard C++ code: there
+It's worth reiterating that `V3dLib` is just standard C++ code: there
 are no pre-processors being used other than the standard C
-pre-processor.  All the QPULib language constructs are simply
-classes, functions, and macros exported by QPULib.  This kind of
+pre-processor.  All the `V3DLib` language constructs are simply
+classes, functions, and macros exported by `V3DLib`.  This kind of
 language is somtimes known as a [Domain Specific Embedded
 Language](http://cs.yale.edu/c2/images/uploads/dsl.pdf).
 
@@ -142,8 +139,7 @@ Now, to compute 16 GCDs on a single QPU, we write the following
 program.
 
 ```c++
-int main()
-{
+int main() {
   // Compile the gcd function to a QPU kernel k
   auto k = compile(gcd);
 
@@ -180,8 +176,8 @@ Unpacking this a bit:
     Ptr<Int>>`, capturing the types of `gcd`'s parameters,
     but we use the `auto` keyword to avoid clutter;
 
-  * when the kernel is invoked by writing `k(&a, &b, &r)`, QPULib knows
-    how to automatically convert CPU values of type
+  * when the kernel is invoked by writing `k(&a, &b, &r)`, `V3DLib`d$ knows
+    automatically converts CPU values of type
     `SharedArray<int>*` into QPU values of type `Ptr<Int>`;
 
   * the <tt>SharedArray&lt;&alpha;&gt;</tt> type is used to allocate
@@ -218,14 +214,13 @@ branch instructions executed.
 
 The QPU's branch instruction can indeed be costly: it requires three
 [delay slots](https://en.wikipedia.org/wiki/Delay_slot) (that's 12
-clock cycles), and QPULib currently makes no attempt to fill these
-slots with useful work.  Although QPULib doesn't do loop unrolling
+clock cycles), and `V3DLib` currently makes no attempt to fill these
+slots with useful work.  Although `V3DLib` doesn't do loop unrolling
 for you, it does make it easy to express: we can simply
 use a C++ loop to generate multiple QPU statements.
 
 ```c++
-void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r)
-{
+void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
   Int a = *p;
   Int b = *q;
   While (any(a != b))
@@ -244,15 +239,14 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r)
 ```
 
 Using C++ as a meta-language in this way is one of the attractions
-of QPULib.  We will see lots more examples of this later!
+of `V3DLib`.  We will see lots more examples of this later!
 
 ## Example 2: 3D Rotation
 
 Let's move to another simple example that helps to introduce
 ideas: a routine to rotate 3D objects.
 
-(Of course, [OpenGL
-ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md)
+(Of course, [OpenGL ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md)
 would be a much better path for doing efficient graphics; this is just
 for illustration purposes.)
 
@@ -262,8 +256,7 @@ The following function will rotate `n` vertices about the Z axis by
 &theta; degrees.
 
 ```c++
-void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y)
-{
+void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
   for (int i = 0; i < n; i++) {
     float xOld = x[i];
     float yOld = y[i];
@@ -273,10 +266,8 @@ void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y)
 }
 ```
 
-If we apply this to the vertices in [Newell's
-teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
-(rendered using [Richard Hull's
-wireframes](https://github.com/rm-hull/wireframes) tool)
+If we apply this to the vertices in [Newell's teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
+(rendered using [Richard Hull's wireframes](https://github.com/rm-hull/wireframes) tool)
 
 <img src="Doc/teapot.png" alt="Newell's teapot" width=30%>
 
@@ -291,8 +282,7 @@ above: the only difference is that each loop iteration now processes
 16 vertices at a time rather than a single vertex.
 
 ```c++
-void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
+void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   For (Int i = 0, i < n, i = i+16)
     Float xOld = x[i];
     Float yOld = y[i];
@@ -302,127 +292,67 @@ void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
 }
 ```
 
-Unfortunately, this simple solution is not the most efficient: it will
-spend a lot of time blocked on the memory subsystem, waiting for
-vector loads and stores to complete.  To get good performance on a
-QPU, it is desirable to overlap memory access with computation, and
-the current QPULib compiler is not clever enough to do this
-automatically.  We can however solve the problem manually, using
-*non-blocking* load and store operations.
+This simple solution will spend a lot of time blocked on the memory subsystem, waiting for
+vector loads and stores to complete.
+To get good performance on a QPU, it is desirable to overlap memory access with computation, and
+the current `V3DLib` compiler is not clever enough to do this automatically (TODO!).
+We can however solve the problem manually, using *non-blocking* load and store operations.
 
 ### Vector version 2: non-blocking loads and stores
 
-QPULib supports non-blocking loads through two functions:
+`V3DLib` supports non-blocking loads through these functions:
 
-  * Given a vector of addresses `p`, the
-    statement `gather(p)` will *request* 
-    the value at each address in `p`.
+  * `gather(p)`   - Given a vector of addresses `p`, *request* the value at each address in `p`.
+                    Will block if all corresponding `receive()` calls have not been completed.
+  * `receive(x)`  - Loads values collected by `gather(p)` and stores these in `x`.
+                    Will block if the values are not yet available.
+  * `store(x, p)` - Given vector of addresses `p` and a vector `x`,
+                    write vector `x` to the memory beginning at the first address in `p`.
+                    Will block until a previous `store()` has completed, iotherwise does not block QPU execution.
 
-  * A subsequent a call to `receive(x)`, where `x` is vector,
-    will block until the value at each address in
-    `p` has been loaded into `x`.
-
-Unlike the statement `x = *p`, the statement `gather(p)` will request
-the value *at each address* in `p`, not the vector beginning at the
-first address in `p`.  In addition, `gather(p)` does not
-block until the loads have completed: between `gather(p)`
-and `receive(x)` the program is free to perform computation *in
-parallel* with the slow memory accesses.
+Between `gather(p)` and `receive(x)` the program is free to perform computation *in parallel*
+with the (slow) memory accesses.
 
 Inside the QPU, an 4-element FIFO is used to hold `gather`
 requests: each call to `gather` will enqueue the FIFO, and each call
 to `receive` will dequeue it.  This means that a maximum of four
 `gather` calls may be issued before a `receive` must be called.
 
-Non-blocking stores are not as powerfull, but they are
-still useful:
+For `vc4`, unlike the statement `*p = x`, the statement `store(p, x)` does not wait until `x` has been written.
+Future improvements to `V3DLib` could allow several outstanding stores instead of just one.
 
-  * Given vector of addresses `p` and a vector `x`,
-    the statement `store(x, p)` will write
-    vector `x` to memory beginning at the first address in `p`.
-
-Unlike the statement `*p = x`, the statement `store(p, x)` will not
-wait until `x` has been written.  However, any subsequent call to
-`store` will wait until the previous store has completed.  (Future
-improvements to QPULib could allow several outstanding stores instead of
-just one.)
-
-We are now ready to implement a vectorised rotation routine that
-overlaps memory access with computation:
+A vectorised rotation routine that overlaps memory access with computation might be as follows:
 
 ```c++
-void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
-  // Function index() returns vector <0 1 2 ... 14 15>
-  Ptr<Float> p = x + index();
-  Ptr<Float> q = y + index();
-  // Pre-fetch first two vectors
-  gather(p); gather(q);
-
-  Float xOld, yOld;
-  For (Int i = 0, i < n, i = i+16)
-    // Pre-fetch two vectors for the *next* iteration
-    gather(p+16); gather(q+16);
-    // Receive vectors for *this* iteration
-    receive(xOld); receive(yOld);
-    // Store results
-    store(xOld * cosTheta - yOld * sinTheta, p);
-    store(yOld * cosTheta + xOld * sinTheta, q);
-    p = p+16; q = q+16;
-  End
-
-  // Discard pre-fetched vectors from final iteration
-  receive(xOld); receive(yOld);
-}
-```
-
-While the outputs from one iteration are being computed and written to
-memory, the inputs for the *next* iteration are being loaded *in
-parallel*.
-
-### Vector version 3: multiple QPUs
-
-QPULib provides a simple mechanism to execute the same kernel on
-multiple QPUs in parallel: before invoking a kernel `k`, call
-`k.setNumQPUs(n)` to use `n` QPUs.
-For this to be useful the programmer needs a way to tell
-each QPU to compute a different part of the overall result.
-Accordingly,
-QPULib provides the `me()` function which returns the unique id of the
-QPU that called it.  More specifically, `me()` returns a vector of
-type `Int` with all elements holding the QPU id.  In addition, the
-`numQPUs()` function returns the number of QPUs that are executing the
-kernel.  A QPU id will always lie in the range `0` to `numQPUs()-1`.
-
-Now, to spread the `rot3D` computation accross multiple QPUs we will
-use a loop increment of `16*numQPUs()` instead of `16`, and offset the
-initial pointers `x` and `y` by `16*me()`.
-
-```c++
-void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
+void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   Int inc = numQPUs() << 4;
-  Ptr<Float> p = x + index() + (me() << 4);
-  Ptr<Float> q = y + index() + (me() << 4);
+  Ptr<Float> p = x;
+  Ptr<Float> q = y;
   gather(p); gather(q);
-
+ 
   Float xOld, yOld;
   For (Int i = 0, i < n, i = i+inc)
-    gather(p+inc); gather(q+inc);
+    gather(p+inc); gather(q+inc); 
     receive(xOld); receive(yOld);
     store(xOld * cosTheta - yOld * sinTheta, p);
     store(yOld * cosTheta + xOld * sinTheta, q);
     p = p+inc; q = q+inc;
   End
 
-  // Discard pre-fetched vectors from final iteration
   receive(xOld); receive(yOld);
 }
 ```
 
+While the outputs from one iteration are being computed and written to
+memory, the inputs for the *next* iteration are being loaded *in parallel*.
+
+Variable `inc` is there to take into account multiple QPU's running.
+Each QPU will handle a distinct block of 16 elements.
+
 ### Performance
 
 Times taken to rotate an object with 192,000 vertices:
+(**TODO** Make a test case using the actual Example program with supplied inputs)
 
 ```
   Version  | Number of QPUs | Run-time (s) |
@@ -437,19 +367,18 @@ Times taken to rotate an object with 192,000 vertices:
 Non-blocking loads and stores (vector version 2) give a
 significant performance boost: in this case a factor of 2.
 
-Unforunately, the program does not scale well to multiple QPUs.  I'm
-not entirely sure why, but my suspicion is that the compute-to-memory
-ratio is too low: we do only 2 arithmetic operations for every memory
-access, perhaps overwhelming the memory subsystem.  If there are
-possibilities for QPULib to generate better code here, hopefully they
-will be discovered in due course.  (Do let me know if you
-have any suggestions.)
+This program does not scale well to multiple QPUs.  
+This is likely becaue the compute-to-memory ratio is too low:
+only 2 arithmetic operations are done for every memory access, perhaps overwhelming the memory subsystem.
+
+Example `Mandelbrot` had a much better compute-to-memory ratio, and is therefore a better candidate for
+measuring performance with respect to scaling.
 
 ## Example 3: 2D Convolution (Heat Transfer)
 
 Let's move to a somewhat more substantial example: modelling the heat
-flow across a 2D surface.  [Newton's law of
-cooling](https://en.wikipedia.org/wiki/Newton%27s_law_of_cooling)
+flow across a 2D surface.
+[Newton's law of cooling](https://en.wikipedia.org/wiki/Newton%27s_law_of_cooling)
 states that an object cools at a rate proportional to the difference
 between its temperature `T` and the temperature of its environment (or
 ambient temperature) `A`:
@@ -458,10 +387,27 @@ ambient temperature) `A`:
 dT/dt = −k(T − A)
 ```
 
-When simulating this equation below, we will consider each point on
-our 2D surface to be a seperate object, and the ambient temperature of
-each object to be the average of the temperatures of the 8 surrounding
-objects.  This is very similar to 2D convolution using a mean filter.
+When simulating this equation, we will consider each point on our 2D surface
+to be a separate object, and the ambient temperature of each object to be the
+average of the temperatures of the 8 surrounding objects.
+This is very similar to 2D convolution using a mean filter.
+
+If we apply heat at the north and east edges of our 2D surface, and
+cold at the south and west edges, then ultimately the result is:
+
+<img src="Doc/heat.png" alt="Heat flow across 2D surface" width=30%>
+
+The `HeatMap` example program initializes a number of heat points and then
+iteratively calculates the diffusion. The default implementation starts out
+as follows:
+<img src="Doc/heatmap_0.png" alt="HeatMap step 0" width=30%>
+
+After 100 iterations, this becomes:
+<img src="Doc/heatmap_100.png" alt="HeatMap step 100" width=30%>
+
+After 1500 iterations, this becomes:
+<img src="Doc/heatmap_1500.png" alt="HeatMap step 1500" width=30%>
+
 
 ### <a name="scalar-version-2"></a> Scalar version
 
@@ -484,11 +430,6 @@ void step(float** grid, float** gridOut, int width, int height)
 }
 ```
 
-If we apply heat at the north and east edges of our 2D surface, and
-cold at the south and west edges, then after of several simulation
-steps we get:
-
-<img src="Doc/heat.png" alt="Heat flow across 2D surface" width=30%>
 
 ### Vector version
 
@@ -515,7 +456,7 @@ and supports three main operations:
   3. **shift-right** the `current` vector by one element,
      using the value of the `prev` vector.
 
-Here is a QPULib implementation of a cursor, using a C++ class.
+Here is a `V3DLib` implementation of a cursor, using a C++ class.
 
 ```c++
 class Cursor {
@@ -573,7 +514,7 @@ class Cursor {
 };
 ```
 
-Given a vector `x`, the QPULib operation `rotate(x, n)` will rotate
+Given a vector `x`, the operation `rotate(x, n)` will rotate
 `x` right by `n` places where `n` is a integer in the range 0 to 15.
 Notice that rotating right by 15 is the same as rotating left by 1.
 
@@ -584,8 +525,7 @@ parameter that gives the increment needed to get from the start of one
 row to the start of the next.
 
 ```C++
-void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height)
-{
+void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height) {
   Cursor row[3];
   grid = grid + pitch*me() + index();
 

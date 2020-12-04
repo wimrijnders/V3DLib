@@ -1,9 +1,7 @@
-#ifndef _LIB_DEBUG_H
-#define _LIB_DEBUG_H
+#ifndef _V3DLIB_SUPPORT_DEBUG_H
+#define _V3DLIB_SUPPORT_DEBUG_H
 #include <signal.h>  // raise(SIGTRAP)
-#include <cstdio>
-#include "Exception.h"
-
+#include <string>
 
 #if defined __cplusplus
 #include <cassert>
@@ -11,42 +9,14 @@
 #include <assert.h>
 #endif
 
-
-
-/**
- * Alternative for `assert` that throws passed string.
- *
- * Note that this is always enabled, ie. also when not building for DEBUG.
- * See header comment of `fatal()` in `basics.h`
- */
-inline void assertq(bool cond, const char *msg) {
-	if (!cond) {
-		std::string str = "Assertion failed: ";
-		str += msg;
-		throw QPULib::Exception(str);
-	}
-}
-
-
 #ifdef DEBUG
-#include <stdio.h>
+//#include <stdio.h>
 
 #define breakpoint raise(SIGTRAP);
 
-inline void debug(const char *str) {
-	printf("DEBUG: %s\n", str);
-}
-
-
-inline void warning(const char *str) {
-	printf("WARNING: %s\n", str);
-}
-
-
-inline void debug_break(const char *str) {
-	printf("DEBUG: %s\n", str);
-	breakpoint
-}
+void debug(const char *str);
+void warning(const char *str);
+void debug_break(const char *str);
 
 #else
 
@@ -58,4 +28,10 @@ inline void debug_break(const char *str) {}
 
 #endif  // DEBUG
 
-#endif  // _LIB_DEBUG_H
+void error(const char *str, bool do_throw = false);
+inline void error(std::string const &msg, bool do_throw = false) { error(msg.c_str(), do_throw); }
+
+void disable_logging();
+void assertq(bool cond, const char *msg, bool do_break = false);
+
+#endif  // _V3DLIB_SUPPORT_DEBUG_H

@@ -2,22 +2,31 @@
 #include <stdio.h>
 #include "Support/debug.h"
 
-namespace QPULib {
+namespace V3DLib {
 namespace v3d {
 namespace instr {
 
-bool SmallImm::to_opcode_value(float value, int &rep_value) {
-	bool converted  = true;
-
-	// The first small values pass through as is
-	// Note that this negates usage of next 4 if-s.
-	if (-16 <= value && value <= 15) {
+/**
+ * @return true if conversion succeeded, false otherwise
+ */
+bool SmallImm::int_to_opcode_value(int value, int &rep_value) {
+	if (-16 <= value && value <= 15) {  // This is the range of legal int values for small imm
 		rep_value = (int) value;
+		return true;
 	}
 
+	return false;
+}
+
+
+/**
+ * @return true if conversion succeeded, false otherwise
+ */
+bool SmallImm::float_to_opcode_value(float value, int &rep_value) {
+	bool converted  = true;
 	// NOTE: Apparently, these are the hex representations of the floats
   // TODO check this
-	else if (value ==   1) rep_value = 0x3f800000; /* 2.0^0 */
+	if      (value ==   1) rep_value = 0x3f800000; /* 2.0^0 */
 	else if (value ==   2) rep_value = 0x40000000; /* 2.0^1 */
 	else if (value ==   4) rep_value = 0x40800000; /* 2.0^2 */
 	else if (value ==   8) rep_value = 0x41000000; /* 2.0^3 */
@@ -75,4 +84,4 @@ SmallImm SmallImm::ff() const {
 
 }  // instr
 }  // v3d
-}  // QPULib
+}  // V3DLib

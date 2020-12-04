@@ -1,8 +1,9 @@
-#ifndef _QPULIB_COMMON_BUFFEROBJECT_H_
-#define _QPULIB_COMMON_BUFFEROBJECT_H_
+#ifndef _V3DLIB_COMMON_BUFFEROBJECT_H_
+#define _V3DLIB_COMMON_BUFFEROBJECT_H_
 #include <stdint.h>
-#include <vector>
+//#include <vector>
 #include "Common/BufferType.h"
+#include "Support/HeapManager.h"
 
 // NOTE: QPU_MODE and EMULATION_MODE exclude each other
 #if !defined(QPU_MODE) && !defined(EMULATION_MODE)
@@ -16,53 +17,41 @@
 #endif
 
 
-namespace QPULib {
+namespace V3DLib {
 
-class BufferObject {
+class BufferObject : public HeapManager {
 public:
-	BufferObject();
+	BufferObject() {}
 	BufferObject(BufferObject *buffer) = delete;
 	virtual ~BufferObject() {}
 
-	virtual uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
   virtual uint32_t getHandle() const;
+
+	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
+	void dealloc_array(uint32_t in_phyaddr, uint32_t in_size);
 
 	static const int DEFAULT_HEAP_SIZE = 5*1024*1024;
 
-	uint32_t size();
-	bool empty() const { return m_offset == 0; }
+	uint32_t phy_address() const { return phyaddr; }
 	uint8_t *usr_address() { return arm_base; }
-	uint32_t phy_address() { return phyaddr; }
-
-	void dealloc_array(uint32_t in_phyaddr, uint32_t size);
-
-#ifdef DEBUG
-	int num_free_ranges() const { return m_free_ranges.size(); }
-#endif
 
 protected:
-  uint32_t m_size   = 0;  // Total allocated size of BufferObject
 	uint8_t *arm_base = nullptr;
-	uint32_t phyaddr  = 0;
-	uint32_t m_offset = 0;
+
+	void set_phy_address(uint32_t val);
+	void clear();
+	bool is_cleared() const;
 
 private:
 	// Disallow assignment
 	void operator=(BufferObject a);
 	void operator=(BufferObject& a);
 
-	struct FreeRange {
-		FreeRange(uint32_t l, uint32_t r) : left(l), right(r) {}  // required by std::vector
-
-		uint32_t left  = 0;
-		uint32_t right = 0;
-	};
-
-	std::vector<FreeRange> m_free_ranges;
+	uint32_t phyaddr  = 0;
 };
 
 BufferObject &getBufferObject();
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_COMMON_BUFFEROBJECT_H_
+#endif  // _V3DLIB_COMMON_BUFFEROBJECT_H_

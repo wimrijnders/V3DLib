@@ -1,18 +1,13 @@
 #include "Kernel.h"
-#include "Source/Translate.h"
 #include "Target/Emulator.h"
-#include "Target/RemoveLabels.h"
 #include "Target/CFG.h"
 #include "Target/Liveness.h"
-#include "Target/ReachingDefs.h"
-#include "Target/LiveRangeSplit.h"
-#include "Target/RegAlloc.h"
-#include "Target/Satisfy.h"
-#include "Target/LoadStore.h"
-#include "Target/Encode.h"
 #include "Target/Pretty.h"
 
-namespace QPULib {
+namespace V3DLib {
+
+std::vector<Ptr<Int>>   uniform_int_pointers;
+std::vector<Ptr<Float>> uniform_float_pointers;
 
 
 // ============================================================================
@@ -29,61 +24,38 @@ int KernelBase::maxQPUs() {
 }
 
 
-void KernelBase::pretty(const char *filename) {
-#ifdef QPU_MODE
-	if (Platform::instance().has_vc4) {
-		m_vc4_driver.encode(numQPUs);
-		m_vc4_driver.pretty(filename);
+void KernelBase::pretty(bool output_for_vc4, const char *filename) {
+	if (output_for_vc4) {
+		m_vc4_driver.pretty(numQPUs, filename);
 	} else {
-		m_v3d_driver.encode(numQPUs);
-		m_v3d_driver.pretty(filename);
-	}
+#ifdef QPU_MODE
+		m_v3d_driver.pretty(numQPUs, filename);
 #else
-	m_vc4_driver.encode(numQPUs);
-	m_vc4_driver.pretty(filename);
+		fatal("KernelBase::pretty(): v3d code not generated for this platform.");
 #endif
-}
-
-
-void KernelBase::init_compile() {
-	controlStack.clear();
-	stmtStack.clear();         // Needs to be run before getUniformInt() below
-	stmtStack.push(mkSkip());  // idem
-	resetFreshVarGen();
-	resetFreshLabelGen();
-
-	// Reserved general-purpose variables
-	Int qpuId, qpuCount;
-	qpuId = getUniformInt();
-	qpuCount = getUniformInt();
-}
-
-
-void KernelBase::invoke_qpu(QPULib::KernelDriver &kernel_driver) {
-	kernel_driver.encode(numQPUs);
-	if (!kernel_driver.handle_errors()) {
-   	// Invoke kernel on QPUs
-		kernel_driver.invoke(numQPUs, &uniforms);
 	}
 }
 
 
+/**
+ * Invoke the emulator
+ *
+ * The emulator runs vc4 code.
+ */
 void KernelBase::emu() {
 	assert(uniforms.size() != 0);
-
-	// Emulator runs the vc4 code
-	emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, &uniforms, getBufferObject());
+	emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, uniforms, getBufferObject());
 }
 
 
 /**
  * Invoke the interpreter
+ *
+ * The interpreter parses the CFG ('source code') directly.
  */
 void KernelBase::interpret() {
 	assert(uniforms.size() != 0);
-
-	// Interpreter runs the vc4 code
-	interpreter(numQPUs, m_vc4_driver.sourceCode(), numVars, &uniforms, getBufferObject());
+	interpreter(numQPUs, m_vc4_driver.sourceCode(), numVars, uniforms, getBufferObject());
 }
 
 
@@ -95,9 +67,9 @@ void KernelBase::qpu() {
 	assert(uniforms.size() != 0);
 
 	if (Platform::instance().has_vc4) {
-		invoke_qpu(m_vc4_driver);
+		m_vc4_driver.invoke(numQPUs, uniforms);
 	} else {
-		invoke_qpu(m_v3d_driver);
+		m_v3d_driver.invoke(numQPUs, uniforms);
 	}
 }
 #endif  // QPU_MODE
@@ -116,34 +88,4 @@ void KernelBase::call() {
 #endif
 };
 
-
-// ============================================================================
-// Compile kernel
-// ============================================================================
-
-void compileKernel(Seq<Instr>* targetCode, Stmt* body)
-{
-  // Translate to target code
-  translateStmt(targetCode, body);
-
-  // Load/store pass
-  loadStorePass(targetCode);
-
-  // Construct control-flow graph
-  CFG cfg;
-  buildCFG(targetCode, &cfg);
-
-  // Apply live-range splitter
-  //liveRangeSplit(targetCode, &cfg);
-
-  // Perform register allocation
-  regAlloc(&cfg, targetCode);
-
-  // Satisfy target code constraints
-  satisfy(targetCode);
-
-  // Translate branch-to-labels to relative branches
-  removeLabels(targetCode);
-}
-
-}  // namespace QPULib
+}  // namespace V3DLib

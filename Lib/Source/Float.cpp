@@ -1,76 +1,90 @@
 #include "Source/Float.h"
-#include "Source/Stmt.h"
+#include "Lang.h"  // only for assign()!
 
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Type 'FloatExpr'
 // ============================================================================
 
-// Constructors
+FloatExpr::FloatExpr(float x) {
+	m_expr = std::make_shared<Expr>(x);
+}
 
-FloatExpr::FloatExpr() { this->expr = NULL; }
-
-FloatExpr::FloatExpr(float x) { this->expr = mkFloatLit(x); }
+FloatExpr::FloatExpr(Deref<Float> d) : BaseExpr(d.expr()) {}
 
 
 // ============================================================================
 // Type 'Float'
 // ============================================================================
 
-// Constructors
-
 Float::Float() {
-  Var v    = freshVar();
-  this->expr = mkVar(v);
+  Var v  = freshVar();
+  m_expr = mkVar(v);
 }
+
 
 Float::Float(float x) {
-  Var v    = freshVar();
-  this->expr = mkVar(v);
-  assign(this->expr, mkFloatLit(x));
+  Var v  = freshVar();
+  m_expr = mkVar(v);
+	auto a = std::make_shared<Expr>(x);
+  assign(m_expr, a);
 }
+
 
 Float::Float(FloatExpr e) {
   Var v    = freshVar();
-  this->expr = mkVar(v);
-  assign(this->expr, e.expr);
+  m_expr = mkVar(v);
+  assign(m_expr, e.expr());
 }
+
+
+Float::Float(Deref<Float> d) {
+  Var v    = freshVar();
+  m_expr = mkVar(v);
+  assign(m_expr, d.expr());
+}
+
 
 // Copy constructors
 
-Float::Float(Float& x) {
+Float::Float(Float &x) {
   Var v    = freshVar();
-  this->expr = mkVar(v);
-  assign(this->expr, x.expr);
+  m_expr = mkVar(v);
+  assign(m_expr, x.expr());
 }
 
-Float::Float(const Float& x) {
+Float::Float(Float const &x) {
   Var v    = freshVar();
-  this->expr = mkVar(v);
-  assign(this->expr, x.expr);
+  m_expr = mkVar(v);
+  assign(m_expr, x.expr());
 }
+
 
 // Cast to an FloatExpr
 
-Float::operator FloatExpr() { return mkFloatExpr(this->expr); }
+Float::operator FloatExpr() { return FloatExpr(m_expr); }
 
 // Assignment
 
-Float& Float::operator=(Float& rhs)
-  { assign(this->expr, rhs.expr); return rhs; }
+Float& Float::operator=(Float &rhs) {
+	assign(m_expr, rhs.expr());
+	return rhs;
+}
 
-FloatExpr Float::operator=(FloatExpr rhs)
-  { assign(this->expr, rhs.expr); return rhs; };
+
+FloatExpr Float::operator=(FloatExpr rhs) {
+	assign(m_expr, rhs.expr());
+	return rhs;
+}
 
 // ============================================================================
 // Generic operations
 // ============================================================================
 
-inline FloatExpr mkFloatApply(FloatExpr a,Op op,FloatExpr b)
-{
-  Expr* e = mkApply(a.expr, op, b.expr);
-  return mkFloatExpr(e);
+inline FloatExpr mkFloatApply(FloatExpr a,Op op,FloatExpr b) {
+  Expr::Ptr e = mkApply(a.expr(), op, b.expr());
+  return FloatExpr(e);
 }
 
 // ============================================================================
@@ -78,41 +92,23 @@ inline FloatExpr mkFloatApply(FloatExpr a,Op op,FloatExpr b)
 // ============================================================================
 
 // Read an Float from the UNIFORM FIFO.
-FloatExpr getUniformFloat()
-{
-  Expr* e    = mkExpr();
-  e->tag     = VAR;
-  e->var.tag = UNIFORM;
-  return mkFloatExpr(e);
+FloatExpr getUniformFloat() {
+  Expr::Ptr e = mkVar(UNIFORM);
+  return FloatExpr(e);
 }
+
 
 // Read vector from VPM
-FloatExpr vpmGetFloat()
-{
-  Expr* e    = mkExpr();
-  e->tag     = VAR;
-  e->var.tag = VPM_READ;
-  return mkFloatExpr(e);
+FloatExpr vpmGetFloat() {
+  Expr::Ptr e = mkVar(VPM_READ);
+  return FloatExpr(e);
 }
 
-// Add
-FloatExpr operator+(FloatExpr a, FloatExpr b)
-  { return mkFloatApply(a, mkOp(ADD, FLOAT), b); }
 
-// Subtract
-FloatExpr operator-(FloatExpr a, FloatExpr b)
-  { return mkFloatApply(a, mkOp(SUB, FLOAT), b); }
+FloatExpr operator+(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(ADD, FLOAT), b); }
+FloatExpr operator-(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(SUB, FLOAT), b); }
+FloatExpr operator*(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(MUL, FLOAT), b); }
+FloatExpr min(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MIN, FLOAT), b); }
+FloatExpr max(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MAX, FLOAT), b); }
 
-// Multiply
-FloatExpr operator*(FloatExpr a, FloatExpr b)
-  { return mkFloatApply(a, mkOp(MUL, FLOAT), b); }
-
-// Min
-FloatExpr min(FloatExpr a, FloatExpr b)
-  { return mkFloatApply(a, mkOp(MIN, FLOAT), b); }
-
-// Max
-FloatExpr max(FloatExpr a, FloatExpr b)
-  { return mkFloatApply(a, mkOp(MAX, FLOAT), b); }
-
-}  // namespace QPULib
+}  // namespace V3DLib

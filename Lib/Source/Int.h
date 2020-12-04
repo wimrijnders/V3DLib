@@ -1,13 +1,14 @@
 // This module defines type 'Int' for a vector of 16 x 32-bit integers.
 
-#ifndef _QPULIB_SOURCE_INT_H_
-#define _QPULIB_SOURCE_INT_H_
-
-#include <assert.h>
-#include "Source/Syntax.h"
+#ifndef _V3DLIB_SOURCE_INT_H_
+#define _V3DLIB_SOURCE_INT_H_
+#include "Source/Expr.h"
 #include "Source/Float.h"
 
-namespace QPULib {
+namespace V3DLib {
+
+template <typename T> struct Deref; // Forward declaration template class
+
 
 // ============================================================================
 // Types                   
@@ -16,25 +17,19 @@ namespace QPULib {
 // An 'IntExpr' defines an integer vector expression which can
 // only be used on the RHS of assignment statements.
 
-struct IntExpr {
-  // Abstract syntax tree
-  Expr* expr;
-  // Constructors
-  IntExpr();
+struct IntExpr : public BaseExpr {
   IntExpr(int x);
+  IntExpr(Expr::Ptr e) : BaseExpr(e) {}
 };
 
 // An 'Int' defines an integer vector variable which can be used in
 // both the LHS and RHS of an assignment.
 
-struct Int {
-  // Abstract syntax tree
-  Expr* expr;
-
-  // Constructors
+struct Int : public BaseExpr {
   Int();
   Int(int x);
   Int(IntExpr e);
+  Int(Deref<Int> d);
 
   // Copy constructors
   Int(Int& x);
@@ -43,13 +38,12 @@ struct Int {
   // Cast to an IntExpr
   operator IntExpr();
 
-  // Assignment
   Int& operator=(Int& rhs);
   IntExpr operator=(IntExpr rhs);
 
-  // Increment
   void operator++(int);
 };
+
 
 // ============================================================================
 // Operations
@@ -80,6 +74,6 @@ IntExpr ror(IntExpr a, IntExpr b);
 IntExpr toInt(FloatExpr a);
 FloatExpr toFloat(IntExpr a);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SOURCE_INT_H_
+#endif  // _V3DLIB_SOURCE_INT_H_

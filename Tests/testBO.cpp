@@ -4,10 +4,10 @@
 
 
 TEST_CASE("Test Buffer Objects", "[bo]") {
-	using SharedArray  = QPULib::SharedArray<uint32_t>;
+	using SharedArray  = V3DLib::SharedArray<uint32_t>;
 	using SharedArrays = std::vector<std::unique_ptr<SharedArray>>;
 
-	QPULib::emu::BufferObject heap(1024*1024);  // Using in-memory version to avoid having to use devices
+	V3DLib::emu::BufferObject heap(1024*1024);  // Using in-memory version to avoid having to use devices
 
 	auto init_arrays = [&heap] (SharedArrays &arrays, int size) {
 		for (int i = 0; i < size; ++i) {
@@ -30,10 +30,16 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
 		arrays[0]->dealloc();
 		arrays[6]->dealloc();
 		arrays[1]->dealloc();
+
+		arrays[0]->alloc(1024); // Trigger reclaim of freed memory
+		arrays[6]->alloc(1024); // idem
+
 		arrays[5]->dealloc();
 		arrays[3]->dealloc();
 		arrays[2]->dealloc();
 		arrays[4]->dealloc();
+		arrays[0]->dealloc();
+		arrays[6]->dealloc();
 
 		REQUIRE(heap.empty());
 	}
@@ -62,7 +68,7 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
 	}
 
 
-	SECTION("BO should survive chaotic assignment of  SharedArray instances") {
+	SECTION("BO should survive chaotic assignment of SharedArray instances") {
 		const int NUM_PASSES = 200;  // Not too big, to prevent heap overflow
 		const int NUM_ARRAYS = 10;
 

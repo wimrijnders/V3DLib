@@ -1,9 +1,9 @@
-#include "QPULib.h"
+#include "V3DLib.h"
 #include "Support/Settings.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
-QPULib::Settings settings;
+V3DLib::Settings settings;
 
 /**
  * Odd/even transposition sorter for a 32-element array
@@ -18,7 +18,6 @@ void oet(Ptr<Int> p) {
 
     Int evens3 = rotate(evens2, 15);
     Int odds3  = odds2;
-
     Where (index() != 15)
       odds2 = min(evens3, odds3);
     End
@@ -45,14 +44,14 @@ int main(int argc, const char *argv[]) {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> a(32);
-  for (int i = 0; i < 32; i++)
-    a[i] = 100-i;
+  for (int i = 0; i < a.size(); i++)
+    a[i] = 100 - i;
 
 	k.load(&a);           // Load the uniforms
 	settings.process(k);  // Invoke the kernel
 
 	// Display the result
-  for (int i = 0; i < 32; i++)
+  for (int i = 0; i < a.size(); i++)
     printf("%i: %i\n", i, (i & 1) ? a[16+(i>>1)] : a[i>>1]);
   
   return 0;

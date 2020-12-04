@@ -6,13 +6,14 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include "Settings.h"
 #include <memory>
+#include <iostream>
 #include "Kernel.h"
 
 #ifdef QPU_MODE
 #include "Support/Platform.h"
 #include "vc4/PerformanceCounters.h"
 
-using PC = QPULib::PerformanceCounters;
+using PC = V3DLib::PerformanceCounters;
 #endif  // QPU_MODE
 
 namespace {
@@ -116,7 +117,12 @@ CmdParameters base_params = {
 		"Select run type",
 		"-r=",
 		{"default", "emulator", "interpreter"},
-		"Run on the QPU emulator or run on the interpreter"
+		"Run the kernel on the QPU, emulator or on the interpreter"
+	}, {
+		"Disable logging",
+		"-s", "-silent",
+		ParamType::NONE,     // Prefix needed to dsambiguate
+		"Do not show the logging output on standard output"
 #ifdef QPU_MODE
 		}, {
     "Performance Counters",
@@ -161,8 +167,7 @@ CmdParameters &instance(bool use_numqpus = false) {
 }  // anon namespace
 
 
-namespace QPULib {
-
+namespace V3DLib {
 
 CmdParameters const &Settings::base_params(bool use_numqpus) {
 	return instance(use_numqpus);
@@ -172,8 +177,15 @@ CmdParameters const &Settings::base_params(bool use_numqpus) {
 int Settings::init(int argc, const char *argv[]) {
 	set_name(argv[0]);
 
+	if (instance().has_errors()) {
+		std::cout << instance().get_errors();
+		return CmdParameters::EXIT_ERROR;
+	}
+
 	auto ret = instance().handle_commandline(argc, argv, false);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+	if (ret != CmdParameters::ALL_IS_WELL) {
+		return ret;
+	}
 
 	process();
 
@@ -192,6 +204,7 @@ bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 
 	output_code  = params.parameters()["Output Generated Code"]->get_bool_value();
 	compile_only = params.parameters()["Compile Only"]->get_bool_value();
+	silent       = params.parameters()["Disable logging"]->get_bool_value();
 	run_type     = params.parameters()["Select run type"]->get_int_value();
 #ifdef QPU_MODE
 	show_perf_counters  = params.parameters()["Performance Counters"]->get_bool_value();
@@ -211,6 +224,14 @@ bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 				return false;
 			}
 		}
+	}
+
+	if (compile_only || run_type != 0) {
+		Platform::use_main_memory(true);
+	}
+
+	if (silent) {
+		disable_logging();
 	}
 
 	return true;
@@ -261,10 +282,18 @@ void Settings::process(KernelBase &k) {
 	// NOTE: For multiple calls here (entirely possible, HeatMap does this),
   //       this will dump the v3d code (mnemonics, actually) on every call.
 	if (output_code) {
-		assert(!name.empty());
-		std::string code_filename = name + "_code.txt";
-		k.pretty(code_filename.c_str());
+		if (output_count == 0) {
+			assert(!name.empty());
+			std::string code_filename = name + "_code.txt";
+
+			bool output_for_vc4 = Platform::instance().has_vc4 || (run_type != 0);
+			k.pretty(output_for_vc4, code_filename.c_str());
+		} else if (output_count == 1) {
+			warning("Not outputting code more than once");
+		}
+
+		output_count++;
 	}
 }
 
-}  // namespace QPULib;
+}  // namespace V3DLib;

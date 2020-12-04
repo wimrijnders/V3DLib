@@ -1,9 +1,14 @@
-#ifndef _QPULIB_TARGET_SYNTAX_H_
-#define _QPULIB_TARGET_SYNTAX_H_
+#ifndef _V3DLIB_TARGET_SYNTAX_H_
+#define _V3DLIB_TARGET_SYNTAX_H_
 #include <stdint.h>
-#include "../Support/debug.h"
+#include <string>
+#include "Common/Seq.h"  // for check_zeroes()
+#include "Support/InstructionComment.h"
+#include "Support/debug.h"
+#include "Source/Var.h"
+#include "Reg.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 // Syntax of the QPU target language.
 
@@ -43,66 +48,6 @@ enum SubWord {
 };
 
 // ============================================================================
-// Registers
-// ============================================================================
-
-typedef int RegId;
-
-// Different kinds of registers
-enum RegTag {
-    REG_A           // In register file A (0..31)
-  , REG_B           // In register file B (0..31)
-  , ACC             // Accumulator register
-  , SPECIAL         // Special register
-  , NONE            // No read/write
-  , TMP_A           // Used in intermediate code
-  , TMP_B           // Used in intermediate code
-};
-
-inline bool isRegAorB(RegTag rt)
-  { return rt == REG_A || rt == REG_B; }
-
-// Special registers
-enum Special {
-    // Read-only
-    SPECIAL_UNIFORM
-  , SPECIAL_ELEM_NUM
-  , SPECIAL_QPU_NUM
-  , SPECIAL_VPM_READ
-  , SPECIAL_DMA_ST_WAIT
-  , SPECIAL_DMA_LD_WAIT
-
-    // Write-only
-  , SPECIAL_RD_SETUP
-  , SPECIAL_WR_SETUP
-  , SPECIAL_DMA_ST_ADDR
-  , SPECIAL_DMA_LD_ADDR
-  , SPECIAL_VPM_WRITE
-  , SPECIAL_HOST_INT
-  , SPECIAL_TMU0_S
-  , SPECIAL_SFU_RECIP
-  , SPECIAL_SFU_RECIPSQRT
-  , SPECIAL_SFU_EXP
-  , SPECIAL_SFU_LOG
-};
-
-struct Reg {
-  // What kind of register is it?
-  RegTag tag;
-
-  // Register identifier
-  RegId regId;
-
-  bool operator==(Reg const &rhs) const {
-    return tag == rhs.tag && regId == rhs.regId;
-  }
-
-  bool operator!=(Reg const &rhs) const {
-  	return !(*this == rhs);
-	}
-};
-
-// ============================================================================
 // Conditions
 // ============================================================================
 
@@ -122,29 +67,69 @@ enum BranchCondTag {
   , COND_NEVER
 };
 
+
 struct BranchCond {
-  // ALL or ANY reduction?
-  BranchCondTag tag;
+  BranchCondTag tag;  // ALL or ANY reduction?
+  Flag flag;          // Condition flag
 
-  // Condition flag
-  Flag flag;
+	BranchCond negate() const;
+	std::string to_string() const;
 };
 
-// Assignment conditions
+struct CmpOp;  // Forward declaration
 
-enum AssignCondTag {
-    NEVER
-  , ALWAYS
-  , FLAG
+// v3d only
+struct SetCond {
+	enum Tag {
+		NO_COND,
+		Z,
+		N,
+		C
+	};
+
+	SetCond() : m_tag(NO_COND) {}
+	SetCond(CmpOp const &cmp_op);
+
+	bool flags_set() const { return m_tag != NO_COND; }
+	void tag(Tag tag) { m_tag = tag; }
+	Tag tag() const { return m_tag; }
+	void clear() { tag(NO_COND); }
+	const char *to_string() const;
+
+private:
+	Tag m_tag = NO_COND;
 };
 
+
+
+/**
+ * Assignment conditions
+ */
 struct AssignCond {
-  // Kind of assignment condition
-  AssignCondTag tag;
 
-  // Condition flag
-  Flag flag;
+	enum Tag {
+		NEVER,
+		ALWAYS,
+		FLAG
+	};
+
+  Tag tag;    // Kind of assignment condition
+  Flag flag;  // Condition flag
+
+	AssignCond() = default;
+	AssignCond(CmpOp const &cmp_op);
+	AssignCond(Tag in_tag) : tag(in_tag) {}
+
+	bool is_always() const { return tag == ALWAYS; }
+	bool is_never()  const { return tag == NEVER; }
+	AssignCond negate() const;
+
+	std::string to_string() const;
+	BranchCond to_branch_cond(bool do_all) const;
 };
+
+extern AssignCond always;  // Is a global to reduce eyestrain in gdb
+extern AssignCond never;   // idem
 
 // ============================================================================
 // Immediates
@@ -260,8 +245,11 @@ enum ALUOp {
   , M_V8MAX       // Max per 8-bit element
   , M_V8ADDS      // Add with saturation per 8-bit element
   , M_V8SUBS      // Subtract with saturation per 8-bit element
-  , M_ROTATE      // Rotation (intermediate op-code)
+  , M_ROTATE,     // Rotation (intermediate op-code)
 
+	// v3d only
+	A_TIDX,
+	A_EIDX
 };
 
 // ============================================================================
@@ -269,174 +257,23 @@ enum ALUOp {
 // ============================================================================
 
 struct BranchTarget {
-  // Branch is absolute or relative to PC+4
-  bool relative;
+  bool relative;      // Branch is absolute or relative to PC+4
 
-  // Plus value from register file A (optional)
-  bool useRegOffset;
+  bool useRegOffset;  // Plus value from register file A (optional)
   RegId regOffset;
 
-  // Plus 32-bit immediate value
-  int immOffset;
+  int immOffset;      // Plus 32-bit immediate value
+
+	std::string to_string() const;
 };
+
 
 // We allow labels for branching, represented by integer identifiers.  These
 // will be translated to actual branch targets in a linking phase.
 
 typedef int Label;
 
-// ============================================================================
-// Instructions
-// ============================================================================
 
-// QPU instruction tags
-enum InstrTag {
-    LI            // Load immediate
-  , ALU           // ALU operation
-  , BR            // Conditional branch to target
-  , END           // Program end (halt)
-
-  // ==================================================
-  // The remainder are intermediate-language constructs
-  // ==================================================
-
-  , BRL           // Conditional branch to label
-  , LAB           // Label
-  , NO_OP         // No-op
-
-  // DMA
-  // ---
-
-  , DMA_LOAD_WAIT    // Wait for DMA load to complete
-  , DMA_STORE_WAIT   // Wait for DMA store to complete
-
-  // Semaphores
-  // ----------
-
-  , SINC          // Increment semaphore
-  , SDEC          // Decrement semaphore
-
-  // Send IRQ to host
-  // ----------------
-
-  , IRQ
-
-  // Load receive via TMU
-  // --------------------
-
-  , RECV
-  , TMU0_TO_ACC4
-
-  // Print instructions
-  // ------------------
-
-  , PRS           // Print string
-  , PRI           // Print integer
-  , PRF           // Print float
-
-  // VPM stall
-  // ---------
-
-  , VPM_STALL     // Marker for VPM read setup
-};
-
-// QPU instructions
-struct Instr {
-  // What kind of instruction is it?
-  InstrTag tag;
-
-  union {
-    // Load immediate
-    struct { bool setFlags; AssignCond cond; Reg dest; Imm imm; } LI;
-
-    // ALU operation
-    struct { bool setFlags; AssignCond cond; Reg dest;
-             RegOrImm srcA; ALUOp op; RegOrImm srcB; } ALU;
-
-    // Conditional branch (to target)
-    struct { BranchCond cond; BranchTarget target; } BR;
-
-    // ==================================================
-    // The remainder are intermediate-language constructs
-    // ==================================================
-
-    // Conditional branch (to label)
-    struct { BranchCond cond; Label label; } BRL;
-
-    // Labels, denoting branch targets
-    Label label;
-
-    // Semaphores
-    // ----------
-
-    // Semaphore id (range 0..15)
-    int semaId;
-
-    // Load receive via TMU
-    // --------------------
-
-    // Destination register for load receive
-    struct { Reg dest; } RECV;
-
-    // Print instructions
-    // ------------------
-
-    // Print string
-    const char* PRS;
-
-    // Print integer
-    Reg PRI;
-
-    // Print float
-    Reg PRF;
-  };
-
-
-	bool hasImm() const {
-  	return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM;
-	}
-
-
-	bool isRot() const {
-		return ALU.op == M_ROTATE;
-	}
-
-	bool isMul() const;
-	bool isUniformLoad() const;
-	bool isTMUAWrite() const;
-};
-
-// Instruction id: also the index of an instruction
-// in the main instruction sequence
-typedef int InstrId;
-
-// ============================================================================
-// Handy functions
-// ============================================================================
-
-// Determine if instruction is a conditional assignment
-bool isCondAssign(Instr* instr);
-
-// Make a no-op
-inline Instr nop()
-  { Instr instr; instr.tag = NO_OP; return instr; }
-
-// Instruction constructors
-Instr genLI(Reg dst, int i);
-Instr genMove(Reg dst, Reg src);
-Instr genOR(Reg dst, Reg srcA, Reg srcB);
-Instr genADD(Reg dst, Reg srcA, Reg srcB);
-Instr genLShift(Reg dst, Reg srcA, int n);
-Instr genIncr(Reg dst, Reg srcA, int n);
-
-// Is last instruction in a basic block?
-bool isLast(Instr instr);
-
-// =========================
-// Fresh variable generation
-// =========================
-
-Reg freshReg();
 
 // ======================
 // Fresh label generation
@@ -452,6 +289,252 @@ int getFreshLabelCount();
 void resetFreshLabelGen();
 void resetFreshLabelGen(int val);
 
-}  // namespace QPULib
+// ============================================================================
+// Instructions
+// ============================================================================
 
-#endif  // _QPULIB_TARGET_SYNTAX_H_
+// QPU instruction tags
+enum InstrTag {
+	LI,             // Load immediate
+	ALU,            // ALU operation
+	BR,             // Conditional branch to target
+	END,            // Program end (halt)
+
+  // ==================================================
+  // Intermediate-language constructs
+  // ==================================================
+
+	BRL,            // Conditional branch to label
+	LAB,            // Label
+	NO_OP,          // No-op
+
+	VC4_ONLY,
+
+	DMA_LOAD_WAIT = VC4_ONLY, // Wait for DMA load to complete
+	DMA_STORE_WAIT, // Wait for DMA store to complete
+	SINC,           // Increment semaphore
+	SDEC,           // Decrement semaphore
+	IRQ,            // Send IRQ to host
+
+  // Print instructions
+	PRS,            // Print string
+	PRI,            // Print integer
+	PRF,            // Print float
+
+	VPM_STALL,      // Marker for VPM read setup
+
+	END_VC4_ONLY,
+
+  // Load receive via TMU
+	RECV = END_VC4_ONLY,
+	TMU0_TO_ACC4,
+
+	// Init program block (Currently filled only for v3d)
+	INIT_BEGIN,     // Marker for start of init block
+	INIT_END,       // Marker for end of init block
+
+  // ==================================================
+  // v3d-only instructions
+  // ==================================================
+	V3D_ONLY,
+
+	TMUWT = V3D_ONLY,
+	// TODO Add as required here
+
+	END_V3D_ONLY
+};
+
+void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4);
+
+// QPU instructions
+struct Instr : public InstructionComment {
+  // What kind of instruction is it?
+  InstrTag tag;
+
+  union {
+    // Load immediate
+		struct {
+			SetCond    setCond; // v3d only
+			AssignCond cond;
+			Reg        dest;
+			Imm        imm;
+		} LI;
+
+    // ALU operation
+		struct {
+			SetCond    setCond; // v3d only
+			AssignCond cond;
+			Reg        dest;
+			RegOrImm   srcA;
+			ALUOp      op;
+			RegOrImm   srcB;
+		} ALU;
+
+    // Conditional branch (to target)
+		struct {
+			BranchCond cond;
+			BranchTarget target;
+		} BR;
+
+    // ==================================================
+    // Intermediate-language constructs
+    // ==================================================
+
+    // Conditional branch (to label)
+		struct {
+			BranchCond cond;
+			Label label;
+		} BRL;
+
+    // Labels, denoting branch targets
+    Label m_label;  // Renamed during debugging
+		                // TODO perhaps revert
+
+    // Semaphores
+    int semaId;                 // Semaphore id (range 0..15)
+
+    // Load receive via TMU
+    struct { Reg dest; } RECV;  // Destination register for load receive
+
+    // Print instructions
+    const char* PRS;            // Print string
+    Reg PRI;                    // Print integer
+    Reg PRF;                    // Print float
+  };
+
+
+	Instr() : tag(NO_OP) {} 
+	Instr(InstrTag in_tag);
+
+
+	// ==================================================
+	// Helper methods
+	// ==================================================
+	Instr &SetFlags(Flag flag);
+	Instr &cond(AssignCond in_cond);
+	bool isCondAssign() const;
+	bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
+	bool isRot() const { return ALU.op == M_ROTATE; }
+	bool isMul() const;
+	bool isUniformLoad() const;
+	bool isTMUAWrite() const;
+	bool isZero() const;
+	bool isLast() const;
+
+	std::string mnemonic(bool with_comments = false) const;
+
+	bool operator==(Instr const &rhs) const {
+		// Cheat by comparing the string representation,
+		// to avoid having to check the union members separately, and to skip unused fields
+		return this->mnemonic() == rhs.mnemonic();
+	}
+
+
+	static Instr nop();
+
+	/////////////////////////////////////
+	// Label support
+	/////////////////////////////////////
+
+	bool is_label() const { return tag == InstrTag::LAB; }
+	bool is_branch_label() const { return tag == InstrTag::BRL; }
+
+	Label branch_label() const {
+		assert(tag == InstrTag::BRL);
+		return BRL.label;
+	}
+
+	void label_to_target(int offset);
+    
+	void label(Label val) {
+		assert(tag == InstrTag::LAB);
+		m_label = val;
+	}
+
+	Label label() const {
+		assert(tag == InstrTag::LAB);
+		return m_label;
+	}
+
+	// ==================================================
+	// v3d-specific  methods
+	// ==================================================
+	Instr &pushz();
+
+	Instr &allzc() {
+		assert(tag == InstrTag::BRL);
+		BRL.cond.tag  = COND_ALL;
+		BRL.cond.flag = Flag::ZC;
+		return *this;
+	}
+};
+
+
+std::string mnemonics(Seq<Instr> const &code, bool with_comments = false);
+
+
+// Instruction id: also the index of an instruction
+// in the main instruction sequence
+typedef int InstrId;
+
+
+// ============================================================================
+// Handy functions
+// ============================================================================
+
+void check_zeroes(Seq<Instr> const &instrs);
+
+namespace Target {
+namespace instr {
+
+extern Reg const None;
+extern Reg const ACC0;
+extern Reg const ACC1;
+extern Reg const ACC4;
+extern Reg const QPU_ID;
+extern Reg const ELEM_ID;
+extern Reg const TMU0_S;
+extern Reg const VPM_WRITE;
+extern Reg const VPM_READ;
+extern Reg const WR_SETUP;
+extern Reg const RD_SETUP;
+extern Reg const DMA_LD_WAIT;
+extern Reg const DMA_ST_WAIT;
+extern Reg const DMA_LD_ADDR;
+extern Reg const DMA_ST_ADDR;
+
+// Following registers are synonyms for v3d code generation,
+// to better indicate the intent. Definitions of vc4 concepts
+// are reused here, in order to prevent the code getting into a mess.
+extern Reg const TMUD;
+extern Reg const TMUA;
+
+Reg rf(uint8_t index);
+
+Instr bor(Reg dst, Reg srcA, Reg srcB);
+Instr mov(Var dst, Var src);
+Instr mov(Reg dst, Var src);
+Instr mov(Reg dst, int n);
+Instr mov(Reg dst, Reg src);
+Instr shl(Reg dst, Reg srcA, int val);
+Instr add(Reg dst, Reg srcA, Reg srcB);
+Instr add(Reg dst, Reg srcA, int n);
+Instr sub(Reg dst, Reg srcA, int n);
+Instr shr(Reg dst, Reg srcA, int n);
+Instr band(Reg dst, Reg srcA, int n);
+Instr li(Reg dst, int i);
+Instr li(Var v, int i);
+Instr li(Var v, float f);
+Instr branch(Label label);
+Instr branch(BranchCond cond, Label label);
+Instr label(Label in_label);
+
+// v3d only
+Instr tmuwt();
+
+}  // namespace instr
+}  // namespace Target
+
+}  // namespace V3DLib
+
+#endif  // _V3DLIB_TARGET_SYNTAX_H_

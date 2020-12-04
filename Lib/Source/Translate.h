@@ -1,25 +1,24 @@
-#ifndef _QPULIB_TRANSLATE_H_
-#define _QPULIB_TRANSLATE_H_
-
+#ifndef _V3DLIB_SOURCE_TRANSLATE_H_
+#define _V3DLIB_SOURCE_TRANSLATE_H_
 #include "Common/Seq.h"
 #include "Source/Syntax.h"
 #include "Target/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
-void insertEndCode(Seq<Instr>* seq);
-void translateStmt(Seq<Instr>* seq, Stmt* s);
+class Stmt;
+
+void translate_stmt(Seq<Instr> &seq, Stmt *s);
+void insertInitBlock(Seq<Instr> &code);
+void loadStorePass(Seq<Instr> &instrs);
 
 //
-// Following Exposed for Sourcetranslate()'s
+// Following exposed for source translates.
 //
-Reg srcReg(Var v);
-Reg dstReg(Var v);
-void varAssign(Seq<Instr>* seq, AssignCond cond, Var v, Expr* expr);
+Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr);
+Seq<Instr> varAssign(Var v, Expr::Ptr expr);
+Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e);
 
-// Similar to 'simplify' but ensure that the result is a variable.
-Expr* putInVar(Seq<Instr>* seq, Expr* e);
+}  // namespace V3DLib
 
-}  // namespace QPULib
-
-#endif  // _QPULIB_TRANSLATE_H_
+#endif  // _V3DLIB_SOURCE_TRANSLATE_H_

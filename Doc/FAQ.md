@@ -1,13 +1,19 @@
 Frequently Asked Questions
 --------------------------
 
-This also serves as a central location for essential info.
+This serves as a central location for essential info.
+
+**NOTE:**
+VideoCore VI is mostly referred to as `v3d`, because this is how it is named in the linux kernel code and in the `Mesa` library.
+For the same reason, VideoCore IV is refered to as `vc4`.
+
 
 # Table of Contents
 
 - [What are the differences between VideoCore IV and VI?](#whatarethedifferencesbetweenvideocoreivandvi)
+- [Differences in execution](#differencesinexecution)
+- [Calculated theoretical max FLOPs per QPU](#calculatedtheoreticalmaxflopsperqpu)
 - [Function `compile()` is not Thread-Safe](#functioncompileisnotthreadsafe)
-- [Float multiplication on the QPU always rounds downwards](#floatmultiplicationontheqpualwaysroundsdownwards)
 - [Handling privileges](#handlingprivileges)
 - [Known limitations for old distributions](#knownlimitationsforolddistributions)
 
@@ -17,7 +23,7 @@ This also serves as a central location for essential info.
 # What are the differences between VideoCore IV and VI?
 
 There is no architecture specification available yet for VC5 and/or VC6.
-The stuff below is cobbled from whatever others have found out.
+The stuff below is cobbled from whatever I and others have found out.
 The strategy appears to be to investigate the available open source drivers.
 
 [Source](https://www.raspberrypi.org/forums/viewtopic.php?t=244519)
@@ -33,17 +39,17 @@ The strategy appears to be to investigate the available open source drivers.
 
 Here is an overview for the easily comparable stuff:
 
-| Item                | vc4          | v3d | Comment |
-|---------------------|--------------|-----|-|
-| **Clock speed :**   | 400MHz (Pi3+)  | 500MHz | |
-| **Num QPU's:**      | 12  | 8 | |
-| **Threads per QPU** | | | *Shows  num registers from register file per thread* |
-| 1 thread | 64 registers |  *not supported* | 
-| 2 threads     | 32 registers | 64 registers | |
-| 4 threads | *not supported* | 32 registers | |
+| Item                | vc4             | v3d              | Comment |
+|---------------------|-----------------|------------------|-|
+| **Clock speed :**   | 400MHz (Pi3+)   | 500MHz           | |
+| **Num QPU's:**      | 12              | 8                | |
+| **Threads per QPU** |                 |                  | *Shows num available registers in register file per thread* |
+| 1 thread            | 64 registers    |  *not supported* | |
+| 2 threads           | 32 registers    | 64 registers     | |
+| 4 threads           | *not supported* | 32 registers     | |
 
 - vc5 added a four thread per QPU mode, with 16 registers per thread. vc5 was skipped in the Pi's.
-- v3d doubled the size of the register file (A and B combined, see note below).
+- v3d doubled the size of the register file (A and B combined).
 
 
 Further:
@@ -66,7 +72,78 @@ Further:
 - All the features needed for opengl es 3.2 and vulkan 1.1
 - With the threading improvements, the QPUs should spent much less time idle waiting for memory requests.
 
-### Calculated theoretical max FLOPs per QPU
+## Differences in execution
+
+This section records differences between the `vc4` and `v3d` QPU hardware and consequently in the instructions.
+
+The `vc4`-specific items can be found in the "VideoCore IV Architecture Reference Guide";
+the corresponding `v3d` stuff has mostly been found due to empirical research and hard thinking.
+
+
+### Setting of condition flags
+
+- `vc4` - all conditions are set together, on usage condition to test is specified
+- `v3d` - a specific condition to set is specified, on usage a generic condition flag is read
+
+To elaborate:
+
+**vc4**
+
+Each vector element has three associated condition flags:
+
+- `N` - Negative
+- `Z` - Zero
+- `C` - Complement? By the looks of it `>= 0`, but you tell me
+
+These are set with a single bitfield in an ALU instruction.
+Each flag is explicitly tested in conditions.
+
+See: "VideoCore IV Architecture Reference Guide", section "Condition Codes", p. 28.
+
+**v3d**
+
+- Each vector element has two associated condition flags: `a` and `b`
+
+To set, a specific condition is specified in an instruction and the result is stored in `a`.
+The previous value of `a` is put in `b`.
+
+See: My brain after finally figuring this out.
+
+
+### Float multiplication
+
+- `vc4`: Float multiplication on the QPU always rounds downwards
+- `v3d`: Float multiplication rounds to the nearest value of the result
+
+In other words, `v3d` will multiply as you would normally expect. The result will be identical to float multiplication on the `ARM` processor.
+With `vc` however, small differences can creep in, which can accumulate with continued computation.
+
+**Expect results to differ between CPU and QPU calculations for `vc4`.**
+
+Of special note: the interpreter and emulator run on the ARM CPU, meaning that the outcome may be different from that from the `vc4` QPU's .
+
+
+### Integer multiplication
+
+- `vc4`: multiplication of negative integers will produce unexpected results
+- `v3d`: works as expected
+
+The following source code statements yield different results for `vc4` and `v3d`
+
+```
+    a = 16
+    b = -1 * a
+```
+
+- For `vc4`, the result is `268435440`
+- For `v3d`, the result is `-16`
+
+This has to do with the integer multiply instruction working only on the lower 24 bits of integers.
+Thus, a negative value gets its ones-complement prefix chopped off, and whatever is left is treated as an integer.
+
+
+-----
+# Calculated theoretical max FLOPs per QPU
 
 From the [VideoCore® IV 3D Architecture Reference Guide](https://docs.broadcom.com/doc/12358545):
 
@@ -92,6 +169,7 @@ So, calculation:
 - The improved hardware in `v3d` may compensate for performance.
 - v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
 
+
 -----
 # Function `compile()` is not Thread-Safe
 Function `compile()` is used to compile a kernel from a class generator definition into a format that is runnable on a QPU. This uses *global* heaps internally for e.g. generating the AST and for storing the resulting statements.
@@ -102,18 +180,6 @@ As long a you run `compile()` on a single thread at a time, you're OK.
 
 
 **TODO:** examine further.
-
-
------
-# Float multiplication on the QPU always rounds downwards
-
-Most CPU's make an effort to round up or down to the value nearest to the actual result of a multiplication. The `ARM` is one of those. The QPU's of the `VideoCore`, however, do not make such an effort: *they always round downward*.
-
-This means that there will be small differences in the outputs of the exact same calculation on the CPU and a QPU; at first only in the least significant bits, but if you continue calculating, the differences will accumulate.
-
-**Expect results to differ between CPU and QPU calculations.**
-
-Of special note, the results between the `QPULib` interpreter and the actual hardware `VideoCore` will likely be different.
 
 
 -----

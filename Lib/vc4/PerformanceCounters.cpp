@@ -4,7 +4,7 @@
 #include "Support/debug.h"
 
 
-namespace QPULib {
+namespace V3DLib {
 
 using RM = RegisterMap;
 
@@ -193,7 +193,7 @@ std::string PerformanceCounters::showEnabled() {
 	return os.str();
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
 
 #endif  // QPU_MODE

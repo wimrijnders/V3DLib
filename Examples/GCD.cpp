@@ -1,15 +1,16 @@
 #include <stdlib.h>
-#include "QPULib.h"
+#include "V3DLib.h"
 #include "Support/Settings.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
-QPULib::Settings settings;
+V3DLib::Settings settings;
 
 void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
   Int a = *p;
   Int b = *q;
-  While (any(a != b))
+
+  While (all(a != b))
     Where (a > b)
       a = a-b;
     End
@@ -17,6 +18,7 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
       b = b-a;
     End
   End
+
   *r = a;
 }
 

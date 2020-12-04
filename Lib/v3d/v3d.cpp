@@ -5,12 +5,13 @@
 #include <cassert>
 #include <sys/ioctl.h>
 #include <cstddef>    // NULL
+#include <cstring>    // errno, strerror()
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdio.h>
 #include <unistd.h>   // close()
-#include "../Support/basics.h"
-#include "../Support/debug.h"
+#include "Support/basics.h"
+#include "Support/debug.h"
 
 namespace {
 
@@ -69,41 +70,44 @@ const unsigned V3D_PARAM_SUPPORTS_TFU = 7;
 const unsigned V3D_PARAM_SUPPORTS_CSD = 8;
 
 
+void log_error(int ret, char const *prefix = "") {
+	if (ret == 0) return;
+
+	char buf[256];
+	sprintf(buf, "%sioctl: %s\n", prefix, strerror(errno));
+	error(buf);
+}
+
+
 bool alloc_intern(
 	int fd, uint32_t size,
 	uint32_t &handle,
 	uint32_t &phyaddr,
 	void **usraddr,
 	bool show_perror = true) {
-		assert(fd != 0);
+	assert(fd != 0);
 
-    drm_v3d_create_bo create_bo;
-    create_bo.size = size;
-    create_bo.flags = 0;
-    {
-        int res = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
-				if (res != 0) {
-					if (show_perror) {
-						perror(NULL);
-					}
-					return false;
-				}
-    }
-    handle  = create_bo.handle;
-    phyaddr = create_bo.offset;
+  drm_v3d_create_bo create_bo;
+  create_bo.size = size;
+  create_bo.flags = 0;
+	{
+		int res = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
+		if (show_perror) log_error(res);  // NOTE: `show_perror` intentionally only used here
+		if (res != 0) return false;
+	}
+  handle  = create_bo.handle;
+  phyaddr = create_bo.offset;
 
-    drm_v3d_mmap_bo mmap_bo;
-    mmap_bo.handle = handle;
-    mmap_bo.flags = 0;
-    {
-        int res = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);
-				if (res != 0) {
-					perror(NULL);
-					return false;
-				}
-    }
-    *usraddr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (__off_t) mmap_bo.offset);
-    return (usraddr != MAP_FAILED);
+  drm_v3d_mmap_bo mmap_bo;
+  mmap_bo.handle = handle;
+  mmap_bo.flags = 0;
+  {
+    int res = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);
+		log_error(res);
+		if (res != 0) return false;
+  }
+  *usraddr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (__off_t) mmap_bo.offset);
+  return (usraddr != MAP_FAILED);
 }
 
 
@@ -119,7 +123,7 @@ int open_card(char const *card) {
 	int fd = open(card , O_RDWR);
 
 	if (fd == 0) {
-		QPULib::fatal("FATAL: Can't open card device (sudo?)");
+		V3DLib::fatal("FATAL: Can't open card device (sudo?)");
 	}
 
 	//
@@ -161,12 +165,7 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
 	};
 
 	int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
-	if (ret) {
-		printf("v3d_wait_bo() ioctl  error: ");
-		fflush(stdout);
-		perror(NULL);
-	}
-
+	log_error(ret, "v3d_wait_bo() ");
 	return (ret == 0);
 }
 
@@ -178,12 +177,8 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
  */
 int v3d_submit_csd(st_v3d_submit_csd &st) {
 	int ret = ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &st);
-
-	if(ret) {
-		perror(NULL);
-		assert(false);
-	}
-
+	log_error(ret);
+	assert(ret == 0);
 	return ret;
 }
 
@@ -198,8 +193,7 @@ int v3d_submit_csd(st_v3d_submit_csd &st) {
  */
 bool v3d_open() {
 	if (fd != 0) {
-		// Already open, all is well
-		return true;
+		return true;  // Already open, all is well
 	}
 
 	// It appears to be a random crap shoot which device card0 and card1 address
@@ -214,20 +208,23 @@ bool v3d_open() {
 		assert(fd0 != 0);
 		fd = fd0;
 	} else {
-		QPULib::fatal("FATAL: could not open card device");
+		V3DLib::fatal("FATAL: could not open card device");
 	}
-
-	//if (fd > 0) {
-	//	printf("v3d_open() succeeded\n");
-	//}
 
 	return (fd > 0);
 }
 
 
-void v3d_close() {
+/**
+ * @return true if close executed, false if already closed
+ */
+bool v3d_close() {
+	if (fd == 0) { return false; }
+
 	fd_close(fd);
 	fd = 0;
+
+	return true;
 }
 
 

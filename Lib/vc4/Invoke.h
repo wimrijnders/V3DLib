@@ -1,10 +1,10 @@
-#ifndef _QPULIB_VC4_INVOKE_H_
-#define _QPULIB_VC4_INVOKE_H_
+#ifndef _V3DLIB_VC4_INVOKE_H_
+#define _V3DLIB_VC4_INVOKE_H_
 #include <stdint.h>
 #include "Common/Seq.h"
 #include "Common/SharedArray.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 void invoke(
   int numQPUs,
@@ -12,6 +12,6 @@ void invoke(
   int qpuCodeMemOffset,
   Seq<int32_t>* params);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_VC4_INVOKE_H_
+#endif  // _V3DLIB_VC4_INVOKE_H_
