@@ -30,13 +30,14 @@ INCLUDES = \
 -I ./src/ \
 -I ./src/compiler/ \
 -I ./src/loader/ \
--I ./src/mesa/ \
 -I ./src/broadcom/ \
 -I ./src/util/ \
 -I ./src/gallium/winsys/ \
 -I ./src/gallium/drivers/ \
+-I ./src/gallium/drivers/v3d \
 -I ./src/gallium/include/ \
--I ./src/gallium/auxiliary/
+-I ./src/gallium/auxiliary/ \
+-I ./src/mesa/
 
 # expat is an XML parser library
 #/usr/lib/arm-linux-gnueabihf/libexpat.so
