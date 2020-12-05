@@ -119,6 +119,17 @@ Instr::Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, Small
 }
 
 
+/**
+ * This only works if imma == immb (test here internally)
+ * The syntax, however, allows this.
+ */
+Instr::Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, SmallImm const &immb) {
+	init(NOP);
+	alu_add_set(dst, imma, immb);
+	alu.add.op = op;
+}
+
+
 std::string Instr::dump(bool to_stdout) const {
 	std::string ret;
 	char buffer[10*1024];
@@ -920,18 +931,6 @@ Instr ftoi(Location const &dst, Location const &srca, SmallImm const &immb) {
 
 
 /**
- * Prefix 'b' because 'and' is a keyword.
- */
-Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
-	Instr instr;
-	instr.alu_add_set(dst, srca, immb);
-
-	instr.alu.add.op    = V3D_QPU_A_AND;
-	return instr;
-}
-
-
-/**
  * Returns index of current vector item on a given QPU.
  * This will be something in the range [0..15]
  */
@@ -1089,20 +1088,22 @@ Instr mov(Location const &loc1, Location const &loc2) {
 
 // or is reserved keyword
 Instr bor(Location const &dst, Location const &srca, Location const &srcb) {
-	Instr instr;
-	instr.alu_add_set(dst, srca, srcb);
-
-	instr.alu.add.op    = V3D_QPU_A_OR;
-	return instr;
+	return Instr(V3D_QPU_A_OR, dst, srca, srcb);
 }
 
-
 Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
-	Instr instr;
-	instr.alu_add_set(dst, imma, immb);
+	return Instr(V3D_QPU_A_OR, dst, imma, immb);
+}
 
-	instr.alu.add.op    = V3D_QPU_A_OR;
-	return instr;
+Instr band(Location const &dst, Location const &srca, Location const &srcb) {
+	return Instr(V3D_QPU_A_AND, dst, srca, srcb);
+}
+
+/**
+ * Prefix 'b' because 'and' is a keyword.
+ */
+Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
+	return Instr(V3D_QPU_A_AND, dst, srca, immb);
 }
 
 

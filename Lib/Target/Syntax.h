@@ -88,16 +88,20 @@ struct SetCond {
 	};
 
 	SetCond() : m_tag(NO_COND) {}
-	SetCond(CmpOp const &cmp_op);
 
 	bool flags_set() const { return m_tag != NO_COND; }
 	void tag(Tag tag) { m_tag = tag; }
 	Tag tag() const { return m_tag; }
 	void clear() { tag(NO_COND); }
-	const char *to_string() const;
+	std::string pretty() const;
+	void setFlag(Flag flag);
+	void setOp(CmpOp const &cmp_op);
 
 private:
 	Tag m_tag = NO_COND;
+
+	SetCond(CmpOp const &cmp_op);
+	const char *to_string() const;
 };
 
 
@@ -354,7 +358,7 @@ struct Instr : public InstructionComment {
   union {
     // Load immediate
 		struct {
-			SetCond    setCond; // v3d only
+			SetCond    m_setCond;
 			AssignCond cond;
 			Reg        dest;
 			Imm        imm;
@@ -362,7 +366,7 @@ struct Instr : public InstructionComment {
 
     // ALU operation
 		struct {
-			SetCond    setCond; // v3d only
+			SetCond    m_setCond;
 			AssignCond cond;
 			Reg        dest;
 			RegOrImm   srcA;
@@ -410,7 +414,8 @@ struct Instr : public InstructionComment {
 	// ==================================================
 	// Helper methods
 	// ==================================================
-	Instr &SetFlags(Flag flag);
+	Instr &setCondFlag(Flag flag);
+	Instr &setCondOp(CmpOp const &cmp_op);
 	Instr &cond(AssignCond in_cond);
 	bool isCondAssign() const;
 	bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
@@ -421,6 +426,7 @@ struct Instr : public InstructionComment {
 	bool isZero() const;
 	bool isLast() const;
 
+	SetCond const &setCond() const;
 	std::string mnemonic(bool with_comments = false) const;
 
 	bool operator==(Instr const &rhs) const {
@@ -467,6 +473,9 @@ struct Instr : public InstructionComment {
 		BRL.cond.flag = Flag::ZC;
 		return *this;
 	}
+
+private:
+	SetCond &setCond();
 };
 
 
@@ -512,7 +521,10 @@ extern Reg const TMUA;
 Reg rf(uint8_t index);
 
 Instr bor(Reg dst, Reg srcA, Reg srcB);
+Instr band(Reg dst, Reg srcA, Reg srcB);
+Instr band(Reg dst, Reg srcA, int n);
 Instr mov(Var dst, Var src);
+Instr mov(Var dst, int n);
 Instr mov(Reg dst, Var src);
 Instr mov(Reg dst, int n);
 Instr mov(Reg dst, Reg src);
@@ -521,7 +533,6 @@ Instr add(Reg dst, Reg srcA, Reg srcB);
 Instr add(Reg dst, Reg srcA, int n);
 Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
-Instr band(Reg dst, Reg srcA, int n);
 Instr li(Reg dst, int i);
 Instr li(Var v, int i);
 Instr li(Var v, float f);

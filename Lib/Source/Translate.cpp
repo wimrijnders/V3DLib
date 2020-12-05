@@ -201,7 +201,7 @@ AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond con
   if (condA.is_never()  && condB.is_never() ) return never;
 
   if (condB.is_never()) {                     // condA == FLAG
-    seq << mov(None, condVar).SetFlags(condA.flag);     // Set implicit condition vector to variable
+    seq << mov(None, condVar).setCondFlag(condA.flag);     // Set implicit condition vector to variable
     return condA;
   } else if (condA.is_never()) {              // condB == FLAG
 		int val = determineCondVar(condB);
@@ -212,7 +212,7 @@ AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond con
 		int val = determineCondVar(condA);
 
 		seq << li(condVar, val).cond(condB)       // Adjust condVar for condB
-        << mov(None, condVar).SetFlags(condB.flag);     // Set implicit condition vector for new value condVar
+        << mov(None, condVar).setCondFlag(condB.flag);     // Set implicit condition vector for new value condVar
     return condA;
   }
 }
@@ -226,6 +226,15 @@ AssignCond boolAnd(Seq<Instr> *seq, AssignCond condA, Var condVarA, AssignCond c
 }
 
 
+/**
+ * Creates the instructions for this comparison.
+ *
+ * The comparison is implemented as a subtract-operation.
+ * The condition flags are set as befits this comparison
+ * The result of the comparison (i.e. result of the `sub`), is put in var `v`.
+ *
+ * @return the condition to use when checking the flags for this comparison
+ */
 AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
   BExpr b = *bexpr;
   assert(b.tag() == CMP);
@@ -270,7 +279,7 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 	Op op(SUB, b.cmp.op.type);
 
 	Instr instr(ALU);
-	instr.ALU.setCond  = SetCond(b.cmp.op);  // For v3d
+	instr.setCondOp(b.cmp.op);
 	instr.ALU.dest     = dstReg(v);
 	instr.ALU.srcA     = operand(b.cmp_lhs());
 	instr.ALU.op       = op.opcode();
@@ -278,6 +287,83 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 
 	*seq << instr;
 	return AssignCond(b.cmp.op);
+}
+
+
+/**
+ * Pre: condition flags set as expected
+ */
+Seq<Instr> toBoolVar(Var v, AssignCond cond) {
+	using namespace V3DLib::Target::instr;
+
+	Seq<Instr> ret;
+
+	// Using a temp var here is supposed to avoid NOP's on v assignment, but doesn't
+	Var tmp = freshVar();
+	ret << li(tmp, 0)
+	    << mov(tmp, 1).cond(cond)
+	    << mov(v, tmp);
+
+	ret.front().comment("Convert to Bool var");
+
+	return ret;
+}
+
+
+/**
+ * Inputs should be Bool var's, i.e. only contain 0,1 for false,true.
+ *
+ * Ensures that flags and assign condition are in order.
+ *
+ * Result is put in v
+ */
+AssignCond boolVarOr(Seq<Instr> &seq, Var v, Var w) {
+	using namespace V3DLib::Target::instr;
+
+	seq << bor(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
+
+	seq.back().comment("Bool var OR");
+	return AssignCond(CmpOp(NEQ, INT32));  // Wonky syntax to get the flags right
+}
+
+
+AssignCond boolVarAnd(Seq<Instr> &seq, Var v, Var w) {
+	using namespace V3DLib::Target::instr;
+
+	seq << band(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
+
+	seq.back().comment("Bool var AND");
+	return AssignCond(CmpOp(NEQ, INT32));  // Wonky syntax to get the flags right
+}
+
+
+AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v);  // Forward declaration
+
+AssignCond boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
+/*
+	// Previous case for or
+
+	AssignCond condA = boolExp(seq, b.disj.lhs, v);
+
+	Var w = freshVar();
+	AssignCond condB = boolExp(seq, b.disj.rhs, w);
+
+	return boolOr(*seq, condA, v, condB);
+*/
+
+	AssignCond condA = boolExp(&seq, b.disj.lhs, v);
+	seq << toBoolVar(v, condA);
+
+	Var w = freshVar();
+	AssignCond condB = boolExp(&seq, b.disj.rhs, w);
+	seq << toBoolVar(w, condB);
+
+	if (b.tag() == OR)
+		return boolVarOr(seq, v, w);
+	else if (b.tag() == AND)
+		return boolVarAnd(seq, v, w);
+	else
+		assert(false);
 }
 
 
@@ -303,15 +389,15 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 	    return cond.negate();
 		}
 		case OR: {             // 'a || b', where a, b are boolean expressions
-			Var w = freshVar();
-			AssignCond condA = boolExp(seq, b.disj.lhs, v);
-			AssignCond condB = boolExp(seq, b.disj.rhs, w);
-			return boolOr(*seq, condA, v, condB);
+			return boolVarExp(*seq, b, v);
 	  }
 		case AND: {            // 'a && b', where a, b are boolean expressions
+/*
     	// Use De Morgan's law
 	    BExpr* demorgan = b.conj.lhs->Not()->Or(b.conj.rhs->Not())->Not();
 	    return boolExp(seq, demorgan, v);
+*/
+			return boolVarExp(*seq, b, v);
 		}
 		default:
   		assert(false);
@@ -413,7 +499,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
       }
 
       if (saveRestore || s->where.elseStmt != NULL)
-        *seq << mov(condVar, savedCondVar).SetFlags(ZC);
+        *seq << mov(condVar, savedCondVar).setCondFlag(ZC);
 
       if (s->where.elseStmt != NULL) {
         // AND negation of new boolean expression with original condition
@@ -424,7 +510,7 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   
         // Restore condVar and implicit condition vector
         if (saveRestore)
-          *seq << mov(condVar, savedCondVar).SetFlags(ZC);
+          *seq << mov(condVar, savedCondVar).setCondFlag(ZC);
       }
     }
 

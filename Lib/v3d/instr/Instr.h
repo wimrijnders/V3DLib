@@ -39,6 +39,7 @@ public:
 	Instr(uint64_t in_code = NOP);
 	Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, Location const &srcb);
 	Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
+	Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, SmallImm const &immb);
 
 	std::string dump(bool to_stdout = false) const; 
 	std::string mnemonic(bool with_comments = false) const;
@@ -172,8 +173,6 @@ Instr shl(Location const &dsta, SmallImm const &imma, SmallImm const &immb);
 Instr shl(Location const &dst, Location const &srca, Location const &srcb);
 Instr asr(Location const &reg1, Location const &reg2, SmallImm const &imm3);
 
-Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
-
 Instr add(Location const &loc1, Location const &loc2, Location const &loc3);
 Instr add(Location const &loc1, Location const &loc2, SmallImm const &imm3);
 Instr add(Location const &loc1, SmallImm const &imm2, Location const &loc3);
@@ -191,6 +190,8 @@ Instr mov(Location const &loc1, Location const &loc2);
 
 Instr bor(Location const &dst, Location const &srca, Location const &srcb);
 Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb);
+Instr band(Location const &dst, Location const &srca, Location const &srcb);
+Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);

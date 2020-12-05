@@ -235,13 +235,22 @@ void noloop_where_kernel(Ptr<Int> result, Int x, Int y) {
 }
 
 
-void noloop_if_kernel(Ptr<Int> result, Int x, Int y) {
+void noloop_if_and_kernel(Ptr<Int> result, Int x, Int y) {
 	Int tmp = 0;
 	If (y > 10 && y < 20 && x > 10 && x < 20)
 		tmp = 1;
 	End
 	store(tmp, result);
 	//*result = tmp;  // Adds tmuwt to output for v3d, no difference
+}
+
+
+void noloop_if_andor_kernel(Ptr<Int> result, Int x, Int y) {
+	Int tmp = 0;
+	If ((y > 10 && y < 20) || (x > 10 && x < 20))
+		tmp = 1;
+	End
+	store(tmp, result);
 }
 
 
@@ -316,24 +325,30 @@ void andor_multi_if_kernel(Ptr<Float> result, Int width, Int height) {
 
 
 void check(V3DLib::SharedArray<int> &result, int block, uint32_t *expected) {
-	for (uint32_t n = 0; n < VEC_SIZE; ++n) {
-		INFO("block " << block <<  ", index " << n);
+	bool success = true;
+	uint32_t n;
+	std::string buf1;
+	std::string buf2;
 
-		std::string buf;
-
+	for (n = 0; n < VEC_SIZE; ++n) {
+		buf1.clear();
 		for (int i = 0; i < VEC_SIZE; ++i) {
-			buf << result[block * VEC_SIZE + i];
+			buf1 << result[block * VEC_SIZE + i];
 		}
-		INFO("result  : " << buf);
 
-		buf.clear();
+		buf2.clear();
 		for (int i = 0; i < VEC_SIZE; ++i) {
-			buf << expected[i];
+			buf2 << expected[i];
 		}
-		INFO("expected: " << buf);
 
-		REQUIRE(result[block * VEC_SIZE + n] == expected[n]);
+		success = (result[block * VEC_SIZE + n] == expected[n]);
+		if (!success) break;
 	}
+
+	INFO("block " << block <<  ", index " << n);
+	INFO("result  : " << buf1);
+	INFO("expected: " << buf2);
+	REQUIRE(success);
 }
 
 
@@ -346,6 +361,7 @@ void check_where_result(V3DLib::SharedArray<int> &result) {
 	uint32_t expected_larger_equal[VEC_SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1};
 	uint32_t expected_not[VEC_SIZE]           = {1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 
+	INFO("check_where_result");
 	check(result, 0, expected_smaller_than);
 	check(result, 1, expected_smaller_equal);
 	check(result, 2, expected_equal);
@@ -364,6 +380,7 @@ void check_andor_result(V3DLib::SharedArray<int> &result) {
 	uint32_t expected_multi_andor[VEC_SIZE]   = {0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 0, 0};
 	uint32_t expected_multi_else[VEC_SIZE]    = {2, 2, 2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 1, 1, 2, 2};
 
+	INFO("check_andor_result");
 	check(result, 0, expected_and);
 	check(result, 1, expected_or);
 	check(result, 2, expected_combined);
@@ -418,9 +435,6 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 	reset(result);
 	k.call();
 	check_where_result(result);
-
-  //for (int i = 0; i < result.size(); i++)
-  //  printf("%i: %i\n", i, result[i]);
 }
 
 
@@ -433,15 +447,25 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	uint32_t expected_2[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   auto k1 = compile(noloop_where_kernel);
-	//k1.pretty(false,  "obj/test/noloop_where_v3d.txt");	
-  auto k2 = compile(noloop_if_kernel);
-	//k2.pretty(false,  "obj/test/noloop_if_v3d.txt");	
+	k1.pretty(false,  "obj/test/noloop_where_v3d.txt");	
+  auto k2 = compile(noloop_if_and_kernel);
+	k2.pretty(false,  "obj/test/noloop_if_and_v3d.txt");	
   auto k3 = compile(noloop_multif_kernel);
+	k3.pretty(false,  "obj/test/noloop_multif_v3d.txt");	
+  auto k4 = compile(noloop_if_andor_kernel);
+	k4.pretty(false,  "obj/test/noloop_if_andor_v3d.txt");	
 
   V3DLib::SharedArray<int> result(VEC_SIZE);
 
-	auto run_cpu = [&result] (decltype(k1) &k, uint32_t *expected) {
-		INFO("Testing cpu run");
+	auto run_cpu = [&result] (decltype(k1) &k, uint32_t *expected, int index = -1) {
+		// INFO NOT DISPLAYING
+		//printf("Testing cpu run %d\n", index);
+		if (index == -1 ) {
+			INFO("Testing cpu run");
+		} else {
+			INFO("Testing cpu run index " << index);
+		}
+
 		reset(result, -1);
 		k.emu();
 		check(result, 0, expected);
@@ -467,9 +491,19 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	k2.load(&result, 12, 15); run_cpu(k2, expected_2);
 	k2.load(&result, 21, 15); run_cpu(k2, expected_1);
 
-	k3.load(&result, 0, 0);   run_cpu(k3, expected_1);
+	k3.load(&result,  0,  0); run_cpu(k3, expected_1);
 	k3.load(&result, 12, 15); run_cpu(k3, expected_2);
 	k3.load(&result, 21, 15); run_cpu(k3, expected_1);
+
+	k4.load(&result,  0,  0); run_cpu(k4, expected_1, 41);
+	k4.load(&result,  0, 15); run_cpu(k4, expected_2, 42);
+	k4.load(&result,  0, 22); run_cpu(k4, expected_1, 43);
+	k4.load(&result, 12,  0); run_cpu(k4, expected_2, 44);
+	k4.load(&result, 12, 15); run_cpu(k4, expected_2, 45);
+	k4.load(&result, 12, 22); run_cpu(k4, expected_2, 46);
+	k4.load(&result, 21,  0); run_cpu(k4, expected_1, 47);
+	k4.load(&result, 21, 15); run_cpu(k4, expected_2, 48);
+	k4.load(&result, 21, 22); run_cpu(k4, expected_1, 49);
 
 	//
 	// When run in combination with other qpu calls, can *usually* generate lingering timeouts
@@ -511,7 +545,9 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	}
 
 	// multi-if's don't have the problem mentioned above, always work.
-	k3.load(&result, 0, 0);   run_qpu(k3, 6, expected_1);
+	k3.load(&result, 0, 0);   run_qpu(k3, 6, expected_1);  // Fickle! Sometimes asserts during label removal
+	                                                       // Works if k3.pretty(false...) called above
+	                                                       // TODO examine if it happens again 
 	k3.load(&result, 12, 15); run_qpu(k3, 7, expected_2);
 	k3.load(&result, 21, 15); run_qpu(k3, 8, expected_1);
 }
