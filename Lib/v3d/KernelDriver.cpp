@@ -441,6 +441,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 			case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;
 			case A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;
 			case A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
+			case A_BXOR:  ret << bxor(*dst_reg, *src_a, imm);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;

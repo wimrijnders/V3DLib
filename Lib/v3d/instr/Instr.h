@@ -192,6 +192,7 @@ Instr bor(Location const &dst, Location const &srca, Location const &srcb);
 Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb);
 Instr band(Location const &dst, Location const &srca, Location const &srcb);
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
+Instr bxor(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);

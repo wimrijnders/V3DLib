@@ -1099,11 +1099,20 @@ Instr band(Location const &dst, Location const &srca, Location const &srcb) {
 	return Instr(V3D_QPU_A_AND, dst, srca, srcb);
 }
 
+
 /**
  * Prefix 'b' because 'and' is a keyword.
  */
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
 	return Instr(V3D_QPU_A_AND, dst, srca, immb);
+}
+
+
+/**
+ * Prefix 'b' because 'xor' is a keyword.
+ */
+Instr bxor(Location const &dst, Location const &srca, SmallImm const &immb) {
+	return Instr(V3D_QPU_A_XOR, dst, srca, immb);
 }
 
 
