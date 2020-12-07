@@ -63,6 +63,15 @@ void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
         renameUses(&instr, REG_A, def, ACC, 1);
         instrs[i-1] = prev;
         instrs[i]   = instr;
+				
+/*
+				// WRI DEBUG
+				// Result: Happens a lot!
+				// Keeping this in for optimization (e.g. multiple passes)
+				std::string buf = "Liveness: used peephole for instructions ";
+				buf << (i-1) << " and " << i;
+				debug(buf.c_str());
+*/
       }
     }
   }

@@ -547,7 +547,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	// multi-if's don't have the problem mentioned above, always work.
 	k3.load(&result, 0, 0);   run_qpu(k3, 6, expected_1);  // Fickle! Sometimes asserts during label removal
 	                                                       // Works if k3.pretty(false...) called above
-	                                                       // TODO examine if it happens again 
+	                                                       // TODO examine this
 	k3.load(&result, 12, 15); run_qpu(k3, 7, expected_2);
 	k3.load(&result, 21, 15); run_qpu(k3, 8, expected_1);
 }

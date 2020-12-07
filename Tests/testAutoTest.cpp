@@ -104,9 +104,10 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	    if (differs) {
 	      printf("Failed test %i.\n", test);
 	      printf("Source Code: \n");
-	      pretty(s);
-	      printf("\nTarget Code: \n");
-				printf(mnemonics(driver.targetCode()).c_str());
+				driver.pretty(true);
+	      //pretty(s);
+	      //printf("\nTarget Code: \n");
+				//printf(mnemonics(driver.targetCode()).c_str());
 
 	      printf("\nParams: ");
 	      for (int i = 0; i < params.size(); i++) {

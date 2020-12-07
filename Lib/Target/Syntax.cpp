@@ -392,8 +392,18 @@ Instr band(Reg dst, Reg srcA, Reg srcB) {
 }
 
 
+Instr band(Var dst, Var srcA, Var srcB) {
+	return genInstr(A_BAND, dstReg(dst), srcReg(srcA), srcReg(srcB));
+}
+
+
 Instr band(Reg dst, Reg srcA, int n) {
 	return genInstr(A_BAND, dst, srcA, n);
+}
+
+
+Instr bxor(Var dst, Var srcA, int n) {
+	return genInstr(A_BXOR, dstReg(dst), srcReg(srcA), n);
 }
 
 

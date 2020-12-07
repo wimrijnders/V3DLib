@@ -306,8 +306,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
           RegTag bTag  = alu.srcB.reg.tag;
 
           // If operands are the same register
-          if (aTag != NONE && aTag == bTag &&
-                alu.srcA.reg.regId == alu.srcB.reg.regId) {
+          if (aTag != NONE && aTag == bTag && alu.srcA.reg.regId == alu.srcB.reg.regId) {
             if (aFile == REG_A) {
               raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
               muxb = muxa; raddrb = 39;
@@ -317,12 +316,11 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
             }
           } else {
             // Operands are different registers
-            assert(aFile == NONE || bFile == NONE || aFile != bFile);
+            assert(aFile == NONE || bFile == NONE || aFile != bFile);  // TODO examine why aFile == bFile is disallowed here
             if (aFile == REG_A || bFile == REG_B) {
               raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
               raddrb = encodeSrcReg(alu.srcB.reg, REG_B, &muxb);
-            }
-            else {
+            } else {
               raddrb = encodeSrcReg(alu.srcA.reg, REG_B, &muxa);
               raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
             }

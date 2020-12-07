@@ -522,7 +522,9 @@ Reg rf(uint8_t index);
 
 Instr bor(Reg dst, Reg srcA, Reg srcB);
 Instr band(Reg dst, Reg srcA, Reg srcB);
+Instr band(Var dst, Var srcA, Var srcB);
 Instr band(Reg dst, Reg srcA, int n);
+Instr bxor(Var dst, Var srcA, int n);
 Instr mov(Var dst, Var src);
 Instr mov(Var dst, int n);
 Instr mov(Reg dst, Var src);
