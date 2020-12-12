@@ -7,6 +7,7 @@
 
 
 namespace V3DLib {
+namespace vc4 {
 
 class PerformanceCounters {
  public:
@@ -78,6 +79,7 @@ class PerformanceCounters {
 	static const char *Description[NUM_PERF_COUNTERS];
 };
 
+}  // namespace vc4
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_VC4_PERFORMANCECOUNTERS_H

@@ -3,8 +3,8 @@
 #include <sstream>
 #include "Support/debug.h"
 
-
 namespace V3DLib {
+namespace vc4 {
 
 using RM = RegisterMap;
 
@@ -193,6 +193,7 @@ std::string PerformanceCounters::showEnabled() {
 	return os.str();
 }
 
+}  // namespace vc4
 }  // namespace V3DLib
 
 

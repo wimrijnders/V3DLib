@@ -12,8 +12,8 @@
 #ifdef QPU_MODE
 #include "Support/Platform.h"
 #include "vc4/PerformanceCounters.h"
+#include "v3d/PerformanceCounters.h"
 
-using PC = V3DLib::PerformanceCounters;
 #endif  // QPU_MODE
 
 namespace {
@@ -56,6 +56,8 @@ std::string stem(const char *input) {
  * @brief Enable the counters we are interested in
  */
 void initPerfCounters() {
+	using PC = V3DLib::vc4::PerformanceCounters;
+
 	PC::Init list[] = {
 		{ 0, PC::QPU_INSTRUCTIONS },
 		{ 1, PC::QPU_STALLED_TMU },
@@ -246,7 +248,10 @@ void Settings::startPerfCounters() {
 		if (Platform::instance().has_vc4) {  // vc4 only
 			initPerfCounters();
 		} else {
-			printf("NOTE: Performance counters enabled for VC4 only.\n");
+			//printf("NOTE: Performance counters enabled for VC4 only.\n");
+			using PC = V3DLib::v3d::PerformanceCounters;
+			PC pc;
+			pc.enter();
 		}
 	}
 #endif
@@ -255,13 +260,24 @@ void Settings::startPerfCounters() {
 
 void Settings::stopPerfCounters() {
 #ifdef QPU_MODE
-	if (show_perf_counters) {
-		if (Platform::instance().has_vc4) {  // vc4 only
-			// Show values current counters
-			std::string output = PC::showEnabled();
-			printf("%s\n", output.c_str());
-		}
+	if (!show_perf_counters) return;
+ 
+	std::string output;
+
+	if (Platform::instance().has_vc4) {
+		// Show values current counters
+		using PC = V3DLib::vc4::PerformanceCounters;
+
+		output = PC::showEnabled();
+	} else {
+		using PC = V3DLib::v3d::PerformanceCounters;
+		PC pc;
+		pc.exit();
+
+		output = pc.showEnabled();
 	}
+
+	printf("%s\n", output.c_str());
 #endif
 }
 
