@@ -209,7 +209,7 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
 			// So, for the time being, we will set a condition (how? Don't know for sure yet) if
 			// srcA and srcB are the same in this respect, and set target same as both src's.
 			is_none = true;
-			assert(src_instr.ALU.setCond.flags_set());
+			assert(src_instr.setCond().flags_set());
   		assert(src_instr.tag == ALU);
 
 			// srcA and srcB are the same rf-register
@@ -349,7 +349,7 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
 	assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
 	assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
 
-	auto const &setCond = src_instr.ALU.setCond;
+	auto const &setCond = src_instr.setCond();
 
 	if (setCond.flags_set()) {
 		// Set a condition flag with current instruction
@@ -412,6 +412,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 				case A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
 				case A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
 				case A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
+				case A_BAND:  ret << band(*dst_reg, *src_a, *src_b);         break;
 				case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
 				case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
 				case A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
@@ -440,6 +441,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 			case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;
 			case A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;
 			case A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
+			case A_BXOR:  ret << bxor(*dst_reg, *src_a, imm);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -531,7 +533,7 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
 }
 
 
-Instructions encodeLoadImmediate(V3DLib::Instr full_instr) {
+Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
 	assert(full_instr.tag == LI);
 	auto &instr = full_instr.LI;
 	auto dst = encodeDestReg(full_instr);
@@ -611,7 +613,7 @@ Instructions encodeLoadImmediate(V3DLib::Instr full_instr) {
 	}
 
 
-	if (instr.setCond.flags_set()) {
+	if (full_instr.setCond().flags_set()) {
 		breakpoint;  // to check what flags need to be set - case not handled yet
 	}
 

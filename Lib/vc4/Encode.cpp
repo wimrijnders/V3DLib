@@ -195,7 +195,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
   switch (instr.tag) {
     case IRQ:
       instr.tag           = LI;
-      instr.LI.setCond.clear();
+      instr.LI.m_setCond.clear();
       instr.LI.cond.tag   = AssignCond::Tag::ALWAYS;
       instr.LI.dest.tag   = SPECIAL;
       instr.LI.dest.regId = SPECIAL_HOST_INT;
@@ -207,7 +207,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       RegId src = instr.tag == DMA_LOAD_WAIT ? SPECIAL_DMA_LD_WAIT :
                   SPECIAL_DMA_ST_WAIT;
       instr.tag                   = ALU;
-      instr.ALU.setCond.clear();
+      instr.ALU.m_setCond.clear();
       instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
       instr.ALU.op                = A_BOR;
       instr.ALU.dest.tag          = NONE;
@@ -224,14 +224,16 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
   switch (instr.tag) {
     // Load immediate
     case LI: {
+			auto &li = instr.LI;
+
       RegTag file;
-      uint32_t cond = encodeAssignCond(instr.LI.cond) << 17;
-      uint32_t waddr_add = encodeDestReg(instr.LI.dest, &file) << 6;
+      uint32_t cond = encodeAssignCond(li.cond) << 17;
+      uint32_t waddr_add = encodeDestReg(li.dest, &file) << 6;
       uint32_t waddr_mul = 39;
       uint32_t ws   = (file == REG_A ? 0 : 1) << 12;
-      uint32_t sf   = (instr.LI.setCond.flags_set()? 1 : 0) << 13;
+      uint32_t sf   = (li.m_setCond.flags_set()? 1 : 0) << 13;
       *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
-      *low          = (uint32_t) instr.LI.imm.intVal;
+      *low          = (uint32_t) li.imm.intVal;
       return;
     }
 
@@ -251,96 +253,93 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 
     // ALU
     case ALU: {
+			auto &alu = instr.ALU;
+
       RegTag file;
       uint32_t sig   = ((instr.hasImm() || instr.isRot()) ? 13 : 1) << 28;
-      uint32_t cond  = encodeAssignCond(instr.ALU.cond) << (instr.isMul() ? 14 : 17);
-      uint32_t dest  = encodeDestReg(instr.ALU.dest, &file);
+      uint32_t cond  = encodeAssignCond(alu.cond) << (instr.isMul() ? 14 : 17);
+      uint32_t dest  = encodeDestReg(alu.dest, &file);
       uint32_t waddr_add, waddr_mul, ws;
+
       if (instr.isMul()) {
         waddr_add = 39 << 6;
         waddr_mul = dest;
         ws        = (file == REG_B ? 0 : 1) << 12;
-      }
-      else {
+      } else {
         waddr_add = dest << 6;
         waddr_mul = 39;
         ws        = (file == REG_A ? 0 : 1) << 12;
       }
-      uint32_t sf    = (instr.ALU.setCond.flags_set()? 1 : 0) << 13;
+
+      uint32_t sf    = (alu.m_setCond.flags_set()? 1 : 0) << 13;
       *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
 
-      if (instr.ALU.op == M_ROTATE) {
-        assert(instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.tag == ACC && instr.ALU.srcA.reg.regId == 0);
-        assert(instr.ALU.srcB.tag == REG ?  instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5 : true);
+      if (alu.op == M_ROTATE) {
+        assert(alu.srcA.tag == REG && alu.srcA.reg.tag == ACC && alu.srcA.reg.regId == 0);
+        assert(alu.srcB.tag == REG ?  alu.srcB.reg.tag == ACC && alu.srcB.reg.regId == 5 : true);
         uint32_t mulOp = encodeMulOp(M_V8MIN) << 29;
         uint32_t raddrb;
-        if (instr.ALU.srcB.tag == REG) {
+
+        if (alu.srcB.tag == REG) {
           raddrb = 48;
-        }
-        else {
-          uint32_t n = (uint32_t) instr.ALU.srcB.smallImm.val;
+        } else {
+          uint32_t n = (uint32_t) alu.srcB.smallImm.val;
           assert(n >= 1 || n <= 15);
           raddrb = 48 + n;
         }
+
         uint32_t raddra = 39;
         *low = mulOp | (raddrb << 12) | (raddra << 18);
         return;
-      }
-      else {
-        uint32_t mulOp = (instr.isMul() ? encodeMulOp(instr.ALU.op) : 0) << 29;
-        uint32_t addOp = (instr.isMul() ? 0 : encodeAddOp(instr.ALU.op)) << 24;
+      } else {
+        uint32_t mulOp = (instr.isMul() ? encodeMulOp(alu.op) : 0) << 29;
+        uint32_t addOp = (instr.isMul() ? 0 : encodeAddOp(alu.op)) << 24;
 
         uint32_t muxa, muxb;
         uint32_t raddra, raddrb;
 
         // Both operands are registers
-        if (instr.ALU.srcA.tag == REG && instr.ALU.srcB.tag == REG) {
-          RegTag aFile = regFileOf(instr.ALU.srcA.reg);
-          RegTag bFile = regFileOf(instr.ALU.srcB.reg);
-          RegTag aTag  = instr.ALU.srcA.reg.tag;
-          RegTag bTag  = instr.ALU.srcB.reg.tag;
+        if (alu.srcA.tag == REG && alu.srcB.tag == REG) {
+          RegTag aFile = regFileOf(alu.srcA.reg);
+          RegTag bFile = regFileOf(alu.srcB.reg);
+          RegTag aTag  = alu.srcA.reg.tag;
+          RegTag bTag  = alu.srcB.reg.tag;
 
           // If operands are the same register
-          if (aTag != NONE && aTag == bTag &&
-                instr.ALU.srcA.reg.regId == instr.ALU.srcB.reg.regId) {
+          if (aTag != NONE && aTag == bTag && alu.srcA.reg.regId == alu.srcB.reg.regId) {
             if (aFile == REG_A) {
-              raddra = encodeSrcReg(instr.ALU.srcA.reg, REG_A, &muxa);
+              raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
               muxb = muxa; raddrb = 39;
-            }
-            else {
-              raddrb = encodeSrcReg(instr.ALU.srcA.reg, REG_B, &muxa);
+            } else {
+              raddrb = encodeSrcReg(alu.srcA.reg, REG_B, &muxa);
               muxb = muxa; raddra = 39;
             }
-          }
-          else {
+          } else {
             // Operands are different registers
-            assert(aFile == NONE || bFile == NONE || aFile != bFile);
+            assert(aFile == NONE || bFile == NONE || aFile != bFile);  // TODO examine why aFile == bFile is disallowed here
             if (aFile == REG_A || bFile == REG_B) {
-              raddra = encodeSrcReg(instr.ALU.srcA.reg, REG_A, &muxa);
-              raddrb = encodeSrcReg(instr.ALU.srcB.reg, REG_B, &muxb);
-            }
-            else {
-              raddrb = encodeSrcReg(instr.ALU.srcA.reg, REG_B, &muxa);
-              raddra = encodeSrcReg(instr.ALU.srcB.reg, REG_A, &muxb);
+              raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
+              raddrb = encodeSrcReg(alu.srcB.reg, REG_B, &muxb);
+            } else {
+              raddrb = encodeSrcReg(alu.srcA.reg, REG_B, &muxa);
+              raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
             }
           }
-        }
-        else if (instr.ALU.srcB.tag == IMM) {
+        } else if (alu.srcB.tag == IMM) {
           // Second operand is a small immediate
-          raddra = encodeSrcReg(instr.ALU.srcA.reg, REG_A, &muxa);
-          raddrb = (uint32_t) instr.ALU.srcB.smallImm.val;
+          raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
+          raddrb = (uint32_t) alu.srcB.smallImm.val;
           muxb   = 7;
-        }
-        else if (instr.ALU.srcA.tag == IMM) {
+        } else if (alu.srcA.tag == IMM) {
           // First operand is a small immediate
-          raddra = encodeSrcReg(instr.ALU.srcB.reg, REG_A, &muxb);
-          raddrb = (uint32_t) instr.ALU.srcA.smallImm.val;
+          raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
+          raddrb = (uint32_t) alu.srcA.smallImm.val;
           muxa   = 7;
-        }
-        else {
+        } else {
           // Both operands are small immediates
           assert(false);
         }
+
         *low = mulOp | addOp | (raddra << 18) | (raddrb << 12)
                      | (muxa << 9) | (muxb << 6)
                      | (muxa << 3) | muxb;

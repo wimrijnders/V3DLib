@@ -81,6 +81,13 @@ void test(BoolExpr cond, Ptr<Int> &result) {
 }
 
 
+void kernel_specific_instructions(Ptr<Int> result) {
+  Int a = index();
+	Int b = a ^ 1;
+	out(b, result);
+}
+
+
 /**
  * @brief Kernel for testing If and When
  */
@@ -143,31 +150,32 @@ void kernelIfWhen(Ptr<Int> result) {
 }
 
 
+void check_vector(SharedArray<int> &result, int index, std::vector<int> const &expected) {
+	REQUIRE(expected.size() == 16);
+
+ 	bool passed = true;
+	int j = 0;
+	for (; j < 16; ++j) {
+		if (result[16*index + j] != expected[j]) {
+			passed = false;
+			break;
+		}
+	}
+
+	INFO("j: " << j);
+	INFO(showResult(result, index) << showExpected(expected));
+	REQUIRE(passed);
+}
+
+
 void check_conditionals(SharedArray<int> &result, int N) {
 	vector<int> allZeroes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
 	vector<int> allOnes   = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 
-  auto assertResult = [N] (
-    SharedArray<int> &result,
-    int index,
-    const std::vector<int> &expected) {
+  auto assertResult = [N] ( SharedArray<int> &result, int index, std::vector<int> const &expected) {
     INFO("index: " << index);
-
     REQUIRE(result.size() == N*16);
-    REQUIRE(expected.size() == 16);
-
-    bool passed = true;
-		int j = 0;
-    for (; j < 16; ++j) {
-      if (result[16*index + j] != expected[j]) {
-        passed = false;
-        break;
-      }
-    }
-
-		INFO("j: " << j);
-    INFO(showResult(result, index) << showExpected(expected));
-    REQUIRE(passed);
+		check_vector(result, index, expected);
   };
 
 	// any
@@ -289,6 +297,28 @@ void kernelComplex(Ptr<Float> input, Ptr<Float> result) {
 TEST_CASE("Test correct working DSL", "[dsl]") {
 	const int N = 25;  // Number of expected result vectors
 
+  SECTION("Test specific instructions") {
+		int const NUM = 1;
+		vector<int> expected = {1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14};
+
+    auto k = compile(kernel_specific_instructions);
+		//k.pretty(true);
+
+    SharedArray<int> result(16*NUM);
+
+		result.fill(-2);  // Initialize to unexpected value
+   	k.load(&result).emu();
+		check_vector(result, 0, expected);
+
+		result.fill(-2);
+   	k.load(&result).interpret();
+		check_vector(result, 0, expected);
+
+		result.fill(-2);
+   	k.load(&result).call();
+		check_vector(result, 0, expected);
+	}
+
 
   //
   // Test all variations of If and When
@@ -302,9 +332,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 
 		// Reset result array to unexpected values
 		auto reset = [&result] () {
-    	for (int i = 0; i < N; i++) {
-	      result[i] = -2;  // Initialize to unexpected value
-	    }
+			result.fill(-2);  // Initialize to unexpected value
 		};
 
 		//

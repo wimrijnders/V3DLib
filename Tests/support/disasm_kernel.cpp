@@ -54,7 +54,7 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		// { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
 		<< nop()
 
-		<< ffloor(ifb,  rf(30).l(), r3).fmul(rf(43).l(), r5, r1.h()).pushz()
+		<< ffloor(rf(30).l(), r3).ifb().fmul(rf(43).l(), r5, r1.h()).pushz()
 		<< flpop(rf(22), rf(33)).fmul(rf(49).l(), r4.h(), r1.abs()).pushz()
 
 		/* vfmul input packing */
@@ -100,16 +100,25 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< fcmp(rf(52).h(), rf(23), r5.abs()).fmul(rf(16).h(), rf(23), r1).ldunifarf(rf(60))
 		<< fmax(rf(43).l(), r3.h(), rf(30)).fmul(rf(35).h(), r4, r2.l()).ldunifarf(r1)
 		<< faddnf(rf(7).l(), rf(28).h(), r1.l()).fmul(r1, r3.h(), r3.abs()).ldunifarf(rsqrt2)
+		<< ffloor(rf(30).l(), r3).ifb().fmul(rf(43).l(), r5, r1.h()).pushz()
+
+		/* v4.1 opcodes */
+		<< ldvpmg_in(rf(7), r2, r2).mov(r3, 13)
+		<< stvpmv(1, rf(8)).mov(r1, 1)
+		<< sampid(rf(16)).fmul(rf(57).h(), r3, r1.l())
+		<< brecip(rf(1), rf(62)).fmul(r3.h(), r2.l(), r1.l()).ldunifrf(rf(53))
+
+		/* v4.1 SFU instructions. */
 	;
 
 	// Useful little code snippet for debugging
-	nop().dump(true);
-	uint64_t op = 0x9c094adef634b000ull; //, "ffloor.ifb  rf30.l, r3; fmul.pushz  rf43.l, r5, r1.h" },
+	//nop().dump(true);
+	uint64_t op = 0xe98d60c1ba2aef80ull; //, "recip  rf1, rf62     ; fmul  r3.h, r2.l, r1.l; ldunifrf.rf53" },
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-		// TODO ffloor(rf(30).l(), r3).ifb().fmul(rf(43).l(), r5, r1.h()).pushz()
-		fmax(rf(43).l(), r3.h(), rf(30)).fmul(rf(35).h(), r4, r2.l()).ldunifarf(r1)
+		brecip(rf(1), rf(62)).fmul(r3.h(), r2.l(), r1.l()).ldunifrf(rf(53))
+		//sampid(rf(16)).fmul(rf(57).h(), r3, r1.l())
 	;
 	tmp_op.dump(true);
 
@@ -118,14 +127,6 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 	;
 
 #if 0
-
-        /* v4.1 opcodes */
-        { 41, 0x3de020c7bdfd200dull, "ldvpmg_in  rf7, r2, r2; mov  r3, 13" },
-        { 41, 0x3de02040f8ff7201ull, "stvpmv  1, rf8       ; mov  r1, 1" },
-        { 41, 0xd8000e50bb2d3000ull, "sampid  rf16         ; fmul  rf57.h, r3, r1.l" },
-
-        /* v4.1 SFU instructions. */
-        { 41, 0xe98d60c1ba2aef80ull, "recip  rf1, rf62     ; fmul  r3.h, r2.l, r1.l; ldunifrf.rf53" },
         { 41, 0x7d87c2debc51c000ull, "rsqrt  rf30, r4      ; fmul  rf11, r4.h, r2.h; ldunifrf.rf31" },
         { 41, 0xb182475abc2bb000ull, "rsqrt2  rf26, r3     ; fmul  rf29.l, r2.h, r1.abs; ldunifrf.rf9" },
         { 41, 0x79880808bc0b6900ull, "sin  rf8, rf36       ; fmul  rf32, r2.h, r0.l; ldunifrf.rf32" },

@@ -150,26 +150,6 @@ const char *pretty_op(ALUOp op) {
   }
 }
 
-
-std::string pretty_conditions(Instr const &instr) {
-	std::string ret;
-
-  switch (instr.tag) {
-    case LI:
-			if (instr.LI.setCond.flags_set()) {
-				ret << "{sf-" << instr.LI.setCond.to_string() << "}";
-			}
-			break;
-    case ALU:
-			if (instr.ALU.setCond.flags_set()) {
-				ret << "{sf-" << instr.ALU.setCond.to_string() << "}";
-			}
-			break;
-	}
-
-	return ret;
-}
-
 }  // anon namespace
 
  
@@ -185,14 +165,14 @@ std::string pretty_instr(Instr const &instr) {
     case LI: {
 			buf << instr.LI.cond.to_string()
 			    << "LI " << pretty(instr.LI.dest)
-			    << " <-" << pretty_conditions(instr) << " "
+			    << " <-" << instr.setCond().pretty() << " "
       		<< pretty(instr.LI.imm);
 		}
 		break;
     case ALU: {
 			buf << instr.ALU.cond.to_string()
           << pretty(instr.ALU.dest)
-			    << " <-" << pretty_conditions(instr) << " ";
+			    << " <-" << instr.setCond().pretty() << " ";
 
 			if (instr.ALU.op == A_TIDX || instr.ALU.op == A_EIDX) {
 				// These have no source operands
