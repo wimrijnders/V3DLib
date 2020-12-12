@@ -1,6 +1,7 @@
 #ifdef QPU_MODE
 
 #include "PerformanceCounters.h"
+#include <iostream>
 #include <sstream>
 #include "RegisterMapping.h"
 #include "../Support/debug.h"
@@ -48,40 +49,46 @@ const char *PerformanceCounters::Description[PerformanceCounters::NUM_PERF_COUNT
 };
 
 
-PerformanceCounters::PerformanceCounters() {
-	m_srcs = {CORE_PCTR_CYCLE_COUNT};    // init value from py-videocore6 example, using as default for now
-	m_mask = (1 << m_srcs.size()) - 1;
-}
-
-
-void PerformanceCounters::enter() {
+void PerformanceCounters::enter(std::vector<int> srcs) {
 	auto &regmap = RegisterMapping::instance();
+	assert(regmap.info().num_cores == 1);
+	int core_id = 0;  // Assuming 1 core with id == 0 sufficient for now
+
+	uint32_t mask = (1 << srcs.size()) - 1;
 
 	regmap.core_write(core_id, RM::CORE_PCTR_0_EN, 0);
+	//std::cout << "EN mask before: " << regmap.core_read(core_id, RM::CORE_PCTR_0_EN) << std::endl;
 
-	for (int i = 0; i < m_srcs.size(); ++i) {
+	for (int i = 0; i < srcs.size(); ++i) {
 		assert(i < 1);  // TODO adjust for masks
 		uint32_t offset = 0;
 		uint32_t mask = 127 << offset;
 
 		uint32_t val    = regmap.core_read(core_id, RM::CORE_PCTR_0_SRC_0);
-		uint32_t newval = val & (mask ^ 1) + (m_srcs[i] << offset);
+		uint32_t newval = (val & ~mask) + (srcs[i] << offset);
+		//std::cout << "newval: " << newval << std::endl;
 
 		regmap.core_write(core_id, RM::CORE_PCTR_0_SRC_0, newval);
 	}
 
-	regmap.core_write(core_id, RM::CORE_PCTR_0_CLR     , m_mask);
-	regmap.core_write(core_id, RM::CORE_PCTR_0_OVERFLOW, m_mask);
-	regmap.core_write(core_id, RM::CORE_PCTR_0_EN      , m_mask);
+	regmap.core_write(core_id, RM::CORE_PCTR_0_CLR     , mask);
+	regmap.core_write(core_id, RM::CORE_PCTR_0_OVERFLOW, mask);
+	regmap.core_write(core_id, RM::CORE_PCTR_0_EN      , mask);
+
+	//std::cout << "EN mask after: " << regmap.core_read(core_id, RM::CORE_PCTR_0_EN) << std::endl;
 }
 
 
 void PerformanceCounters::exit() {
 	auto &regmap = RegisterMapping::instance();
+	assert(regmap.info().num_cores == 1);
+	int core_id = 0;  // Assuming 1 core with id == 0 sufficient for now
+
+	uint32_t bitMask = regmap.core_read(core_id, RM::CORE_PCTR_0_EN);
 
 	regmap.core_write(core_id, RM::CORE_PCTR_0_EN      , 0);
-	regmap.core_write(core_id, RM::CORE_PCTR_0_CLR     , m_mask);
-	regmap.core_write(core_id, RM::CORE_PCTR_0_OVERFLOW, m_mask);
+	regmap.core_write(core_id, RM::CORE_PCTR_0_CLR     , bitMask);
+	regmap.core_write(core_id, RM::CORE_PCTR_0_OVERFLOW, bitMask);
 }
 
 
@@ -90,11 +97,14 @@ void PerformanceCounters::exit() {
  */
 std::string PerformanceCounters::showEnabled() {
 	auto &regmap = RegisterMapping::instance();
+	assert(regmap.info().num_cores == 1);
+	int core_id = 0;  // Assuming 1 core with id == 0 sufficient for now
 
 	int const SLOT_COUNT = 32;
-	uint32_t bitMask = m_mask;
-	std::ostringstream os;
+	uint32_t bitMask = regmap.core_read(core_id, RM::CORE_PCTR_0_EN);
+	//std::cout << "EN mask before: " << bitMask << std::endl;
 
+	std::ostringstream os;
 	os << "Enabled counters:\n";
 
 	for (int i = 0; i < SLOT_COUNT; ++i) {
@@ -103,6 +113,7 @@ std::string PerformanceCounters::showEnabled() {
 			//os << "   Performance counter slot " << i << " not enabled\n";
 			continue;
 		}
+		//os << "   Performance counter slot " << i << " enabled\n";
 
 		assert(i < 1);  // TODO adjust for masks
 		uint32_t offset = 0;

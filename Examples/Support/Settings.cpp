@@ -250,8 +250,7 @@ void Settings::startPerfCounters() {
 		} else {
 			//printf("NOTE: Performance counters enabled for VC4 only.\n");
 			using PC = V3DLib::v3d::PerformanceCounters;
-			PC pc;
-			pc.enter();
+			PC::enter({PC::CORE_PCTR_CYCLE_COUNT});    // init value from py-videocore6 example, using as default for now
 		}
 	}
 #endif
@@ -271,10 +270,7 @@ void Settings::stopPerfCounters() {
 		output = PC::showEnabled();
 	} else {
 		using PC = V3DLib::v3d::PerformanceCounters;
-		PC pc;
-		pc.exit();
-
-		output = pc.showEnabled();
+		output = PC::showEnabled();
 	}
 
 	printf("%s\n", output.c_str());

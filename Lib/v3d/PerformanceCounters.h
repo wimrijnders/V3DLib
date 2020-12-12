@@ -17,7 +17,7 @@ namespace v3d {
  * TODO: align with vc4 perf counters
  */
 class PerformanceCounters {
-private:
+public:
 	enum {
 		NUM_SRC_REGS = 8,
 		CORE_PCTR_CYCLE_COUNT = 32,
@@ -25,19 +25,13 @@ private:
 		NUM_PERF_COUNTERS = CORE_PCTR_CYCLE_COUNT + 1  // No idea how many there are, this is an assumption
 	};
 
-public:
-	PerformanceCounters();
-
-	void enter();
-	void exit();
-	std::string showEnabled();
+	static void enter(std::vector<int> srcs);
+	static std::string showEnabled();
 
 private:
-	int core_id = 0;  // Assuming 1 core with id == 0 sufficient for now
-	std::vector<int> m_srcs;
-	uint32_t m_mask = 0;;
-
 	static const char *Description[NUM_PERF_COUNTERS];
+
+	static void exit();
 };
 
 
