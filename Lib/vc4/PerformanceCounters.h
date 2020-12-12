@@ -2,7 +2,7 @@
 
 #ifndef _V3DLIB_VC4_PERFORMANCECOUNTERS_H
 #define _V3DLIB_VC4_PERFORMANCECOUNTERS_H
-#include <string.h>
+#include <string>
 #include "RegisterMap.h"
 
 

@@ -8,11 +8,67 @@ namespace v3d {
 
 class RegisterMapping {
 public:
+	enum {
+		//
+		// Values made public for PerformanceCounters
+		//
+		CORE_PCTR_0_EN       = 0x00650 >> 2,
+		CORE_PCTR_0_CLR      = 0x00654 >> 2,
+		CORE_PCTR_0_OVERFLOW = 0x00658 >> 2,
+	
+		CORE_PCTR_0_SRC_0    = 0x00660 >> 2,
+		CORE_PCTR_0_SRC_1,
+		CORE_PCTR_0_SRC_2,
+		CORE_PCTR_0_SRC_3,
+		CORE_PCTR_0_SRC_4,
+		CORE_PCTR_0_SRC_5,
+		CORE_PCTR_0_SRC_6,
+		CORE_PCTR_0_SRC_7,
+
+		CORE_PCTR_0_PCTR0,
+		CORE_PCTR_0_PCTR1,
+		CORE_PCTR_0_PCTR2,
+		CORE_PCTR_0_PCTR3,
+		CORE_PCTR_0_PCTR4,
+		CORE_PCTR_0_PCTR5,
+		CORE_PCTR_0_PCTR6,
+		CORE_PCTR_0_PCTR7,
+		CORE_PCTR_0_PCTR8,
+		CORE_PCTR_0_PCTR9,
+		CORE_PCTR_0_PCTR10,
+		CORE_PCTR_0_PCTR11,
+		CORE_PCTR_0_PCTR12,
+		CORE_PCTR_0_PCTR13,
+		CORE_PCTR_0_PCTR14,
+		CORE_PCTR_0_PCTR15,
+		CORE_PCTR_0_PCTR16,
+		CORE_PCTR_0_PCTR17,
+		CORE_PCTR_0_PCTR18,
+		CORE_PCTR_0_PCTR19,
+		CORE_PCTR_0_PCTR20,
+		CORE_PCTR_0_PCTR21,
+		CORE_PCTR_0_PCTR22,
+		CORE_PCTR_0_PCTR23,
+		CORE_PCTR_0_PCTR24,
+		CORE_PCTR_0_PCTR25,
+		CORE_PCTR_0_PCTR26,
+		CORE_PCTR_0_PCTR27,
+		CORE_PCTR_0_PCTR28,
+		CORE_PCTR_0_PCTR29,
+		CORE_PCTR_0_PCTR30,
+		CORE_PCTR_0_PCTR31,
+
+		CORE_PCTR_COUNT = 32,  // number of PCTR registers 
+	};
+
+
 	~RegisterMapping();
 
 	void init();
 
 	unsigned num_cores(); 
+
+	static RegisterMapping &instance();
 
 	struct Info {
 		unsigned num_cores = 0; 
@@ -86,6 +142,9 @@ public:
 
 	Stats stats();
 	void reset_v3d();
+	void write(uint32_t offset, uint32_t val) { v3d_write(offset, val); }
+	uint32_t core_read(int core_index, uint32_t offset);
+	void core_write(int core_index, uint32_t offset, uint32_t val) { v3d_core_write(core_index, offset, val); }
 
 private:
   uint32_t *m_addr = nullptr;
