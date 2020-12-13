@@ -229,7 +229,8 @@ void Settings::startPerfCounters() {
 		using PC3 = V3DLib::v3d::PerformanceCounters;
 
 		PC3::enter({
-			// vc6 counters, check if same and working
+			// vc4 counters, check if same and working.
+			// They work, but overlap is hard to detect with vc4.
 			PC::QPU_INSTRUCTIONS,
 			PC::QPU_STALLED_TMU,
 			PC::L2C_CACHE_HITS,
@@ -240,7 +241,7 @@ void Settings::startPerfCounters() {
 			PC::QPU_CACHE_MISSES,
 			PC::QPU_IDLE,
 
-			PC3::CORE_PCTR_CYCLE_COUNT,
+			PC3::CORE_PCTR_CYCLE_COUNT,  // specific for v3d
 			// CHECKED for <= 40
 		});
 	}
