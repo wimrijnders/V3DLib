@@ -61,6 +61,7 @@ public:
 		//
 		CORE_PCTR_CYCLE_COUNT = 32,                    // Assumption: the number of clock cycles that a program ran.
 		                                               // The number is variable per run, but always in the same range.
+		                                               // getting value twice show monotonic increasing values
 
 		NUM_PERF_COUNTERS = CORE_PCTR_CYCLE_COUNT + 1  // No idea how many there are, this is an assumption
 	};

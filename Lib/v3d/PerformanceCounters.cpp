@@ -202,8 +202,10 @@ std::string PerformanceCounters::showEnabled() {
 		uint32_t val           = get_pctr_value(core_id, source_index);
 
 		if (counter_index < 0 || counter_index >= NUM_PERF_COUNTERS) {
-			os << "   WARNING: Performance counter index 0x" << std::hex << counter_index << std::dec
-			   << " out of bounds for slot index " << source_index << "\n";
+			os << "   WARNING: Performance counter 0x" << std::hex << counter_index << std::dec
+			   << "(" << counter_index << ") "
+			   << " out of bounds for slot index " << source_index;
+			os << ". val: " << val << "\n";
 		} else {
 			os << "  " <<  Description[counter_index] << ": " << val << "\n";
 		}

@@ -249,9 +249,44 @@ void Settings::startPerfCounters() {
 			initPerfCounters();
 		} else {
 			//printf("NOTE: Performance counters enabled for VC4 only.\n");
-			using PC = V3DLib::v3d::PerformanceCounters;
-			PC::enter({PC::CORE_PCTR_CYCLE_COUNT,
-				0,1,2,3,4,5
+			using PC = V3DLib::vc4::PerformanceCounters;
+			using PC3 = V3DLib::v3d::PerformanceCounters;
+
+			PC3::enter({
+				// vc6 counter, check if same and working
+				PC::QPU_INSTRUCTIONS,
+				PC::QPU_STALLED_TMU,
+				PC::L2C_CACHE_HITS,
+				PC::L2C_CACHE_MISSES,
+				PC::QPU_INSTRUCTION_CACHE_HITS,
+				PC::QPU_INSTRUCTION_CACHE_MISSES,
+				PC::QPU_CACHE_HITS,
+				PC::QPU_CACHE_MISSES,
+				PC::QPU_IDLE,
+
+				PC3::CORE_PCTR_CYCLE_COUNT,
+/*
+				// Has value:
+				13,             // Variable but close
+				16,             // "
+				20,             // Always same value
+				21,22,23,24,25, // "
+				30,31,          // "
+
+				// Fixed values, same for Hello and ReqRecv
+				// Might not be valid (after CORE_PCTR_CYCLE_COUNT)
+				36,37,38,39,40
+
+				// Returning zero (Hello and others)
+				//0,1,2,3,4,5
+				//6,7,8,9,10
+				//11,12,14,15
+				//17,18,19
+				//26,27,28,29,
+				//33,34,35,
+
+				// CHECKED for <= 40
+*/
 			});
 		}
 	}
