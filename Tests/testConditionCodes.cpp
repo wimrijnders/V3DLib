@@ -443,6 +443,7 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
  * to ensure that the contents of the double loops work as expected
  */
 TEST_CASE("Test if/where without loop", "[noloop][cond]") {
+	make_test_dir();
 	uint32_t expected_1[VEC_SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 	uint32_t expected_2[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
@@ -554,6 +555,8 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 
 
 TEST_CASE("Test multiple and/or", "[andor][cond]") {
+	make_test_dir();
+
 	SECTION("Test Where blocks with and/or") {
 		const int NUM_TESTS = 9;
 
@@ -660,7 +663,5 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 */
 	}
 }
-
-
 
 #endif  // ifdef QPU_MODE
