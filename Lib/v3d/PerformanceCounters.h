@@ -59,11 +59,11 @@ public:
 		// Only one is known at this time, its value indicates that there
 		// must be 32 preceding counters present.
 		//
-		CORE_PCTR_CYCLE_COUNT = 32,                    // Assumption: the number of clock cycles that a program ran.
-		                                               // The number is variable per run, but always in the same range.
-		                                               // getting value twice show monotonic increasing values
+		CORE_PCTR_CYCLE_COUNT = 32,  // Assumption: the number of clock cycles that a program ran.
+		                             // The number is variable per run, but always in the same range.
+		                             // getting value twice show monotonic increasing values
 
-		NUM_PERF_COUNTERS = CORE_PCTR_CYCLE_COUNT + 1  // No idea how many there are, this is an assumption
+		NUM_PERF_COUNTERS = 41       // No idea how many there are, this is an assumption
 	};
 
 	static void enter(std::vector<int> srcs);

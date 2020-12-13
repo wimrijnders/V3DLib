@@ -48,43 +48,6 @@ std::string stem(const char *input) {
 
 
 // ============================================================================
-// Performance Counters 
-// ============================================================================
-
-#ifdef QPU_MODE
-/**
- * @brief Enable the counters we are interested in
- */
-void initPerfCounters() {
-	using PC = V3DLib::vc4::PerformanceCounters;
-
-	PC::Init list[] = {
-		{ 0, PC::QPU_INSTRUCTIONS },
-		{ 1, PC::QPU_STALLED_TMU },
-		{ 2, PC::L2C_CACHE_HITS },
-		{ 3, PC::L2C_CACHE_MISSES },
-		{ 4, PC::QPU_INSTRUCTION_CACHE_HITS },
-		{ 5, PC::QPU_INSTRUCTION_CACHE_MISSES },
-		{ 6, PC::QPU_CACHE_HITS },
-		{ 7, PC::QPU_CACHE_MISSES },
-		{ 8, PC::QPU_IDLE },
-		{ PC::END_MARKER, PC::END_MARKER }
-	};
-
-	PC::enable(list);
-
-	//printf("Perf Count mask: %0X\n", PC::enabled());
-
-	// The following will show zeroes for all counters, *except*
-	// for QPU_IDLE, because this was running from the clear statement.
-	// Perhaps there are more counters like that.
-	//std::string output = PC::showEnabled();
-	//printf("%s\n", output.c_str());
-}
-#endif  // QPU_MODE
-
-
-// ============================================================================
 // Settings 
 // ============================================================================
 
@@ -239,68 +202,47 @@ bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 }
 
 
+/**
+ * @brief Performance Counters: Enable the counters we are interested in
+ */
 void Settings::startPerfCounters() {
 	//printf("Entered Settings::startPerfCounters()\n");
 
 #ifdef QPU_MODE
-	if (show_perf_counters) {
-		if (Platform::instance().has_vc4) {  // vc4 only
-			//initPerfCounters();
-			using PC = V3DLib::vc4::PerformanceCounters;
+	if (!show_perf_counters) return;
 
-			PC::enable({
-				PC::QPU_INSTRUCTIONS,
-				PC::QPU_STALLED_TMU,
-				PC::L2C_CACHE_HITS,
-				PC::L2C_CACHE_MISSES,
-				PC::QPU_INSTRUCTION_CACHE_HITS,
-				PC::QPU_INSTRUCTION_CACHE_MISSES,
-				PC::QPU_CACHE_HITS,
-				PC::QPU_CACHE_MISSES,
-				PC::QPU_IDLE,
-			});
-		} else {
-			//printf("NOTE: Performance counters enabled for VC4 only.\n");
-			using PC = V3DLib::vc4::PerformanceCounters;
-			using PC3 = V3DLib::v3d::PerformanceCounters;
+	using PC = V3DLib::vc4::PerformanceCounters;
+ 
+	if (Platform::instance().has_vc4) {
+		PC::enable({
+			PC::QPU_INSTRUCTIONS,
+			PC::QPU_STALLED_TMU,
+			PC::L2C_CACHE_HITS,
+			PC::L2C_CACHE_MISSES,
+			PC::QPU_INSTRUCTION_CACHE_HITS,
+			PC::QPU_INSTRUCTION_CACHE_MISSES,
+			PC::QPU_CACHE_HITS,
+			PC::QPU_CACHE_MISSES,
+			PC::QPU_IDLE,
+		});
+	} else {
+		using PC3 = V3DLib::v3d::PerformanceCounters;
 
-			PC3::enter({
-				// vc6 counter, check if same and working
-				PC::QPU_INSTRUCTIONS,
-				PC::QPU_STALLED_TMU,
-				PC::L2C_CACHE_HITS,
-				PC::L2C_CACHE_MISSES,
-				PC::QPU_INSTRUCTION_CACHE_HITS,
-				PC::QPU_INSTRUCTION_CACHE_MISSES,
-				PC::QPU_CACHE_HITS,
-				PC::QPU_CACHE_MISSES,
-				PC::QPU_IDLE,
+		PC3::enter({
+			// vc6 counters, check if same and working
+			PC::QPU_INSTRUCTIONS,
+			PC::QPU_STALLED_TMU,
+			PC::L2C_CACHE_HITS,
+			PC::L2C_CACHE_MISSES,
+			PC::QPU_INSTRUCTION_CACHE_HITS,
+			PC::QPU_INSTRUCTION_CACHE_MISSES,
+			PC::QPU_CACHE_HITS,
+			PC::QPU_CACHE_MISSES,
+			PC::QPU_IDLE,
 
-				PC3::CORE_PCTR_CYCLE_COUNT,
-/*
-				// Has value:
-				13,             // Variable but close
-				16,             // "
-				20,             // Always same value
-				21,22,23,24,25, // "
-				30,31,          // "
-
-				// Fixed values, same for Hello and ReqRecv
-				// Might not be valid (after CORE_PCTR_CYCLE_COUNT)
-				36,37,38,39,40
-
-				// Returning zero (Hello and others)
-				//0,1,2,3,4,5
-				//6,7,8,9,10
-				//11,12,14,15
-				//17,18,19
-				//26,27,28,29,
-				//33,34,35,
-
-				// CHECKED for <= 40
-*/
-			});
-		}
+			PC3::CORE_PCTR_CYCLE_COUNT,
+			// CHECKED for <= 40
+		});
 	}
 #endif
 }

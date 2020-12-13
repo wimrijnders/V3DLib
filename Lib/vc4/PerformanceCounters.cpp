@@ -164,7 +164,11 @@ void PerformanceCounters::enable(std::vector<Index> const &srcs) {
 	}
 
 	clear(enabled());  // reset the counters
-	printf("enable() post:\n%s", showEnabled().c_str());
+
+	// The following will show zeroes for all counters, *except*
+	// for QPU_IDLE, because this was running from the clear statement.
+	// Perhaps there are more counters like that.
+	//printf("enable() post:\n%s", showEnabled().c_str());
 }
 
 
