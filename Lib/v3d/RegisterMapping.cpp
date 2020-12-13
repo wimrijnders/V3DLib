@@ -140,22 +140,6 @@ enum: unsigned {  // NOTE: the pointers are to 4-bit words
 
 
 	//
-	// Every source offset has four associated masks:
-	//
-	// Mask is calculated as:  mask = ((1 << (high - low + 1)) - 1) << low
-	// With high,low:
-	//   (30, 24)
-	//   (22, 16)
-	//   (14, 8)
-	//   (6, 0)
-	//
-	// Result (mask, offset);
-	//
-	// S3 = [2130706432, 24]
-	// S2 = [8323072, 16]
-	// S1 = [32512, 8]
-	// S0 = [127, 0]
-	//
 	// NOTE: sequences CORE_PCTR_0_SRC_[0-7] and CORE_PCTR_0_PCTR[0-31] made public for perf counters
 
 
