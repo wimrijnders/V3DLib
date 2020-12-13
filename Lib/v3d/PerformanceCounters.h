@@ -39,7 +39,7 @@ namespace v3d {
  *   the class needs to be adjusted.
  *
  * * The setup is comparable to the way the performance counters work on `vc4`. Differences are:
- *   - `v3d` has source registers per core, `vc4` a set of global registers
+ *   - `v3d` has 32 source registers per core, `vc4` 16 global registers
  *   - in `v3d` bitfields are used to specify counter per source register, `vc4` has no bitfields
  *
  *

@@ -148,12 +148,14 @@ void PerformanceCounters::enter(std::vector<int> srcs) {
 	assert(regmap.info().num_cores == 1);
 	int core_id = 0;  // Assuming 1 core with id == 0 sufficient for now
 
+/*
 	// Reset the source registers before use.
 	// Not sure if this is necessary or possible, doesn't seem to do anything for `CORE_PCTR_CYCLE_COUNT`.
 	regmap.core_write(core_id, RM::CORE_PCTR_0_EN, 0);  // disable usage source registers
 	for (int i = 0; i < srcs.size(); ++i) {
 		reset_pctr_value(core_id, i);
 	}
+*/
 
 
 	// assign counters to use to source registers
@@ -162,7 +164,7 @@ void PerformanceCounters::enter(std::vector<int> srcs) {
 	}
 
 	uint32_t src_mask = (srcs.empty())?0:(1 << srcs.size()) - 1;
-	regmap.core_write(core_id, RM::CORE_PCTR_0_CLR     , src_mask);
+	regmap.core_write(core_id, RM::CORE_PCTR_0_CLR     , src_mask);  // Clear selected pctr registers
 	regmap.core_write(core_id, RM::CORE_PCTR_0_OVERFLOW, src_mask);
 	regmap.core_write(core_id, RM::CORE_PCTR_0_EN      , src_mask);
 

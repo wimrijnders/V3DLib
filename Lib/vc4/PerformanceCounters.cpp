@@ -97,6 +97,7 @@ uint32_t PerformanceCounters::enabled() {
  * ```c++
  *	Init list[] = {
  *		{ 0, PC::L2C_CACHE_HITS },
+ *    // ...
  *		{ PC::END_MARKER, PC::END_MARKER }  // End marker required
  *	};
  *
@@ -109,10 +110,11 @@ uint32_t PerformanceCounters::enabled() {
  * - The passed counter definitions overwrite anything that is already present.
  * - The slot indexes need not be consecutive. valid values are 0..15
  * - There is no problem with designating the same counter index multiple times.
+ *
+ * * TODO seriously considering deprecating this method, no need to explicitly state
+ *        source register in practise.
  */
 void PerformanceCounters::enable(Init list[]) {
-	//printf("Called PerformanceCounters::enable()\n");
-
 	// Set enabling bitmask 
 	uint32_t bitMask = 0;
 
@@ -134,7 +136,35 @@ void PerformanceCounters::enable(Init list[]) {
 		RM::writeRegister(targetIndex, list[i].counterIndex);
 	}
 
-	//printf("enable() post:\n%s", showEnabled().c_str());
+	clear(enabled());  // reset the counters
+}
+
+
+/**
+ * Alternative version without specifying source register
+ *
+ * Source registers are filled consecutively.
+ */
+void PerformanceCounters::enable(std::vector<Index> const &srcs) {
+	// Set enabling bitmask 
+	uint32_t bitMask = (srcs.empty())?0:(1 << srcs.size()) - 1;
+
+	bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
+
+	// Following is NOT documented in the Ref Doc; I got it from the errata.
+	// Top bit of mask must be set for timers to be enabled.
+	bitMask = bitMask | (1 << 31);
+
+	RM::writeRegister(RM::V3D_PCTRE, bitMask);
+
+	// Set the passed registers
+	for (int i = 0; i < srcs.size(); ++i) {
+		RM::Index targetIndex = (RM::Index) (RM::V3D_PCTRS0 + 2*i);
+		RM::writeRegister(targetIndex, srcs[i]);
+	}
+
+	clear(enabled());  // reset the counters
+	printf("enable() post:\n%s", showEnabled().c_str());
 }
 
 

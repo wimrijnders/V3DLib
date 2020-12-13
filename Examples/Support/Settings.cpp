@@ -72,7 +72,6 @@ void initPerfCounters() {
 	};
 
 	PC::enable(list);
-	PC::clear(PC::enabled());
 
 	//printf("Perf Count mask: %0X\n", PC::enabled());
 
@@ -246,7 +245,20 @@ void Settings::startPerfCounters() {
 #ifdef QPU_MODE
 	if (show_perf_counters) {
 		if (Platform::instance().has_vc4) {  // vc4 only
-			initPerfCounters();
+			//initPerfCounters();
+			using PC = V3DLib::vc4::PerformanceCounters;
+
+			PC::enable({
+				PC::QPU_INSTRUCTIONS,
+				PC::QPU_STALLED_TMU,
+				PC::L2C_CACHE_HITS,
+				PC::L2C_CACHE_MISSES,
+				PC::QPU_INSTRUCTION_CACHE_HITS,
+				PC::QPU_INSTRUCTION_CACHE_MISSES,
+				PC::QPU_CACHE_HITS,
+				PC::QPU_CACHE_MISSES,
+				PC::QPU_IDLE,
+			});
 		} else {
 			//printf("NOTE: Performance counters enabled for VC4 only.\n");
 			using PC = V3DLib::vc4::PerformanceCounters;
