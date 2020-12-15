@@ -1,3 +1,19 @@
+TODO: merge with what's on =pi4-3=
+
+
+On running =Mandelbrot= (600 steps) during timeout hang:
+
+- 2nd log shown again, after timeout occurs
+- Second runs hangs =pi4-3= 
+
+No logs at all on =rianne= (pi3+). Following and other calls work fine:
+
+: > sudo ./obj/qpu-debug/bin/Mandelbrot  -steps=5192 -n=12 -pgm
+
+
+=================================================================================
+
+
 15-12-2020
 
 Running:
