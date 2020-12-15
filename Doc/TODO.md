@@ -12,7 +12,8 @@
 - [ ] Has the timeout hang been fixed yet in the kernel driver? Check from time to time
 - [ ] Figure out when and how `sig_magic` and `sig_addr` are used.
       Clues: `mesa/src/compiler/vir_to_qpu.c`, `mesa/src/broadcom/qpu/qpu_disasm.c`
-- [ ] Add performance counters; examine python project for this.
+- [x] Add performance counters; examine python project for this.
+  * [ ] figure out what the counters signify on `v3d`
 - [ ] Fix unit test for Rot3D kernel 2 with >1 QPU
 
 
@@ -105,11 +106,21 @@ Source code:
 	- [ ] fix unfreed elements of `Stmt` (perhaps elsewhere). Made a start with using `std::shared_ptr` for `Expr`
 
 
-## Library Code
+## CmdParameter
+- [x] Allow for chained blocks of parameter definitions
+- [ ] For display, sort the parameters (except for `--help`, which should be at top)
+- Issue, when leaving out `=` for param `-n`:
 
-- [ ] CMDLine
-  - [x] Allow for chained blocks of parameter definitions
-  - [ ] For display, sort the parameters (except for `--help`, which should be at top)
+```
+> sudo ./obj/qpu-debug/bin/Mandelbrot  -n12
+Error(s) on command line:
+  Parameter 'Num QPU's' (-n) takes a value, none specified.
+
+  Use 'help' or '-h' to view options
+
+```
+
+## Library Code
 - [ ] Add check in emulator for too many `gather()` calls
 - [x] Determine num QPUs from hardware
 - [x] Add method to determine RPi hardware revision number via mailbox
