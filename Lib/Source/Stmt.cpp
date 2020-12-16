@@ -325,12 +325,6 @@ std::string Stmt::disp() const {
 }
 
 
-Stmt::~Stmt() {
-	// WRI DEBUG
-	breakpoint
-}
-
-
 Stmt::Ptr Stmt::create(StmtTag in_tag) {
 	Ptr ret(new Stmt());
 	ret->init(in_tag);
@@ -415,7 +409,6 @@ Stmt::Ptr Stmt::create(StmtTag in_tag, Ptr s0, Ptr s1) {
 		case FOR:
 			// s0, s1 can be nullptr's
  			// m_stmt_a is body, m_stmt_b is inc.
-			assertq(false, "create(): Not really expecting FOR-tag", true);
 			assertq(ret->m_stmt_a.get() == nullptr, "create() FOR: don't reassign stmt a ptr");
 			assertq(ret->m_stmt_b.get() == nullptr, "create() FOR: don't reassign stmt b ptr");
 
@@ -474,12 +467,8 @@ Stmt::Ptr mkWhere(BExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
 }
 
 
-Stmt::Ptr mkIf(CExpr *cond, Stmt *thenStmt, Stmt *elseStmt) {
-	if (thenStmt != nullptr || elseStmt != nullptr) {
-		breakpoint  // Deal with this case when it happens
-	}
-
-  Stmt::Ptr s    = Stmt::create(IF, Stmt::Ptr(thenStmt), Stmt::Ptr(elseStmt));
+Stmt::Ptr mkIf(CExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
+  Stmt::Ptr s    = Stmt::create(IF, thenStmt, elseStmt);
   s->ifElse.cond = cond;
   return s;
 }

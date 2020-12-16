@@ -76,7 +76,7 @@ enum StmtTag {
 struct Stmt : public InstructionComment {
 	using Ptr = std::shared_ptr<Stmt>;
 
-	~Stmt();
+	~Stmt() {}
 
 	std::string disp() const;
 
@@ -188,7 +188,7 @@ private:
 // Functions to construct statements
 Stmt::Ptr mkSkip();
 Stmt::Ptr mkWhere(BExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
-Stmt::Ptr mkIf(CExpr *cond, Stmt *thenStmt, Stmt *elseStmt);
+Stmt::Ptr mkIf(CExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
 Stmt::Ptr mkWhile(CExpr *cond, Stmt::Ptr body);
 Stmt::Ptr mkFor(CExpr *cond, Stmt::Ptr inc, Stmt::Ptr body);
 Stmt::Ptr mkPrint(PrintTag t, Expr::Ptr e);

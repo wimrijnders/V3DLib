@@ -4,7 +4,6 @@
 #include "Gen.h"
 #include <stdlib.h>
 #include "Source/Syntax.h"
-#include "Source/Stmt.h"
 #include "Source/Cond.h"   // mkCmp()
 
 namespace V3DLib {
@@ -476,59 +475,66 @@ int genIntLit() {
 // Top-level program generator
 // ============================================================================
 
-Stmt *progGen(GenOptions* opts) {
+Stmt::Ptr progGen(GenOptions* opts) {
   // Initialise variables
-  Stmt* pre  = mkSkip();
-  Stmt* post = mkSkip();
+  Stmt::Ptr pre  = mkSkip();
+  Stmt::Ptr post = mkSkip();
 
   // Argument FIFO
   Expr::Ptr fifo = mkVar(Var(UNIFORM));
 
-  // Next unused var id
-  //VarId next = 0;
+	auto assign_arg = [pre, fifo] (Stmt::Ptr &dst, Expr::Ptr v = nullptr, Expr::Ptr val = nullptr) {
+		if (v.get() == nullptr) {
+			v = newVar();
+		}
+		if (val.get() == nullptr) {
+			val = fifo;
+		}
+
+		dst = Stmt::create_sequence(dst, Stmt::create_assign(v, val));
+	};
 
 	// Read qpu id and num
-	pre   = mkSeq(pre, mkAssign(newVar(), fifo));
-	pre   = mkSeq(pre, mkAssign(newVar(), fifo));
+	assign_arg(pre);
+	assign_arg(pre);
 
   // Read int args
   for (int i = 0; i < opts->numIntArgs; i++) {
 		auto v = newVar();
-    pre   = mkSeq(pre, mkAssign(v, fifo));
-    post  = mkSeq(post, mkPrint(PRINT_INT, v));
+    assign_arg(pre, v);
+    post  = Stmt::create_sequence(post, mkPrint(PRINT_INT, v));
   }
 
   // Initialise int vars and loop vars
   for (int i = 0; i < opts->numIntVars + opts->depth; i++) {
 		auto v = newVar();
-    pre   = mkSeq(pre, mkAssign(v, mkIntLit(genIntLit())));
-    post  = mkSeq(post, mkPrint(PRINT_INT, v));
+    assign_arg(pre, v, mkIntLit(genIntLit()));
+    post  = Stmt::create_sequence(post, mkPrint(PRINT_INT, v));
   }
 
   // Read float args
   for (int i = 0; i < opts->numFloatArgs; i++) {
 		auto v = newVar();
-    pre   = mkSeq(pre, mkAssign(v, fifo));
-    post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
+    assign_arg(pre, v);
+    post  = Stmt::create_sequence(post, mkPrint(PRINT_FLOAT, v));
   }
 
   // Initialise float vars
   for (int i = 0; i < opts->numFloatVars; i++) {
 		auto v = newVar();
-    pre   = mkSeq(pre, mkAssign(v, Float(genFloatLit()).expr()));
-    post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
+    assign_arg(pre, v, Float(genFloatLit()).expr());
+    post  = Stmt::create_sequence(post, mkPrint(PRINT_FLOAT, v));
   }
  
   // Read pointer args
   for (int i = 0; i < opts->numPtrArgs + opts->numPtr2Args; i++) {
-		auto v = newVar();
-    pre    = mkSeq(pre, mkAssign(v, fifo));
+    assign_arg(pre);
   }
 
   // Generate statement
-  Stmt* s = genStmt(opts, opts->depth, opts->length);
+  Stmt::Ptr s = genStmt(opts, opts->depth, opts->length);
 
-  return mkSeq(pre, mkSeq(s, post));
+  return Stmt::create_sequence(pre, Stmt::create_sequence(s, post));
 }
 
 }  // namespace V3DLib
