@@ -18,10 +18,10 @@ namespace {
  * The net effect is that the passed instruction is added to the end of the sequence
  * of statements to be compiled.
  */
-void StmtStack::append(Stmt *stmt) {
-	assert(stmt != nullptr);
+void StmtStack::append(Stmt::Ptr stmt) {
+	assert(stmt.get() != nullptr);
 	assert(!empty());
-	push(mkSeq(pop(), stmt));
+	push(Stmt::create_sequence(pop(), stmt));
 }
 
 

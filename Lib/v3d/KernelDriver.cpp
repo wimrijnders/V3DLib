@@ -957,13 +957,9 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 
 void KernelDriver::compile_intern() {
 	obtain_ast();
-
 	translate_stmt(m_targetCode, m_body);
-
 	insertInitBlock(m_targetCode);
-
 	add_init(m_targetCode);
-
 	compile_postprocess(m_targetCode);
 
 	// The translation/removal op labels happens in `v3d::KernelDriver::to_opcodes()` 

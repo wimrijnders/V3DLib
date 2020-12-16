@@ -318,13 +318,12 @@ Expr::Ptr genLValue(GenOptions* opts, Type t, int depth) {
 }
 
 
-// Generate assignment statement
-Stmt* genAssign(GenOptions* opts, int depth) {
-  // Generate random type (disallowing pointer types)
-  Type t = genType(opts, false);
-
-  // Generate assignment statment
-  return mkAssign(genLValue(opts, t, depth), genExpr(opts, t, depth));
+/**
+ * Generate assignment statement
+ */
+Stmt::Ptr genAssign(GenOptions* opts, int depth) {
+  Type t = genType(opts, false);  // Generate random type (disallowing pointer types)
+  return Stmt::create_assign(genLValue(opts, t, depth), genExpr(opts, t, depth));
 }
 
 
@@ -332,12 +331,12 @@ Stmt* genAssign(GenOptions* opts, int depth) {
 // Random conditional assignments
 // ============================================================================
 
-Stmt* genWhere(GenOptions* opts, int depth, int length) {
+Stmt::Ptr genWhere(GenOptions* opts, int depth, int length) {
   switch (randRange(0, 3)) {
     // Sequential composition
     case 0:
       if (length > 0)
-        return mkSeq(genWhere(opts, depth, 0), genWhere(opts, depth, length-1));
+        return Stmt::create_sequence(genWhere(opts, depth, 0), genWhere(opts, depth, length-1));
 
     // Nested where
     case 1:
@@ -364,9 +363,9 @@ Stmt* genWhere(GenOptions* opts, int depth, int length) {
 // Random while loops
 // ============================================================================
 
-Stmt* genStmt(GenOptions* opts, int depth, int length);  // Forward declaration
+Stmt::Ptr genStmt(GenOptions* opts, int depth, int length);  // Forward declaration
 
-Stmt* genWhile(GenOptions* o, int depth) {
+Stmt::Ptr genWhile(GenOptions* o, int depth) {
   assert(depth > 0 && depth <= o->depth);
 
   // Obtain a loop variable
@@ -380,15 +379,15 @@ Stmt* genWhile(GenOptions* o, int depth) {
   CExpr* c = randRange(0, 1) == 0 ? mkAny(b) : mkAll(b);
 
   // Initialise loop variable
-  Stmt* init = mkAssign(v, mkIntLit(0));
+  Stmt::Ptr init = Stmt::create_assign(v, mkIntLit(0));
 
   // Create loop increment
-  Stmt* inc = mkAssign(v, mkApply(v, Op(ADD, INT32), mkIntLit(1)));
+  Stmt::Ptr inc = Stmt::create_assign(v, mkApply(v, Op(ADD, INT32), mkIntLit(1)));
 
   // Create random loop body with loop increment
-  Stmt* body = mkSeq(genStmt(o, depth-1, o->length), inc);
+  Stmt::Ptr body = Stmt::create_sequence(genStmt(o, depth-1, o->length), inc);
 
-  return mkSeq(init, mkWhile(c, body));
+  return Stmt::create_sequence(init, mkWhile(c, body));
 }
 
 
@@ -396,10 +395,11 @@ Stmt* genWhile(GenOptions* o, int depth) {
 // Random print statements
 // ============================================================================
 
-Stmt* genPrint(GenOptions* opts, int depth) {
-  // Generate random type (disallowing pointer types)
-  Type t = genType(opts, false);
-  // Generate random expression and print its value
+/**
+ * Generate random expression and print its value
+ */
+Stmt::Ptr genPrint(GenOptions* opts, int depth) {
+  Type t = genType(opts, false);  // Generate random type (disallowing pointer types)
   return mkPrint(t.tag == INT_TYPE ? PRINT_INT : PRINT_FLOAT, genExpr(opts, t, depth));
 }
 
@@ -408,13 +408,15 @@ Stmt* genPrint(GenOptions* opts, int depth) {
 // Random statements
 // ============================================================================
 
-// Generate statement
-Stmt* genStmt(GenOptions* opts, int depth, int length) {
+/**
+ * Generate statement
+ */
+Stmt::Ptr genStmt(GenOptions* opts, int depth, int length) {
   switch (randRange(SKIP, PRINT)) {
     // Sequential composition
     case SEQ:
       if (length > 0)
-        return mkSeq(genStmt(opts, depth, 0), genStmt(opts, depth, length-1));
+        return Stmt::create_sequence(genStmt(opts, depth, 0), genStmt(opts, depth, length-1));
 
     // Where statement
     case WHERE:

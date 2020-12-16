@@ -236,7 +236,7 @@ void add_init(Seq<Instr> &code) {
 /**
  * @return true if statement handled, false otherwise
  */
-bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt* s) {
+bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt::Ptr s) {
 
 	switch (s->tag) {
 	  case STORE_REQUEST:

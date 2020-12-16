@@ -48,9 +48,9 @@ void indentBy(FILE *f, int indent) {
 }
 
 
-void pretty(FILE *f, int indent, Stmt* s) {
+void pretty(FILE *f, int indent, Stmt::Ptr s) {
   assert(f != nullptr);
-  if (s == nullptr) return;
+  if (s.get() == nullptr) return;
 
 	auto add_eol = [f, s] () {
 		if (!s->comment().empty()) {
@@ -74,8 +74,8 @@ void pretty(FILE *f, int indent, Stmt* s) {
 
     // Sequential composition
     case SEQ:
-      pretty(f, indent, s->seq.s0);
-      pretty(f, indent, s->seq.s1);
+      pretty(f, indent, s->seq_s0());
+      pretty(f, indent, s->seq_s1());
       break;
 
     // Where statement
@@ -84,11 +84,11 @@ void pretty(FILE *f, int indent, Stmt* s) {
       fprintf(f, "Where (");
 			fprintf(f, "%s", s->where.cond->pretty().c_str());
       fprintf(f, ")\n");
-      pretty(f, indent+2, s->where.thenStmt);
-      if (s->where.elseStmt != nullptr) {
+      pretty(f, indent+2, s->thenStmt());
+      if (s->elseStmt().get() != nullptr) {
         indentBy(f, indent);
         fprintf(f, "Else\n");
-        pretty(f, indent+2, s->where.elseStmt);
+        pretty(f, indent+2, s->elseStmt());
       }
       indentBy(f, indent);
       fprintf(f, "End\n");
@@ -100,11 +100,11 @@ void pretty(FILE *f, int indent, Stmt* s) {
       fprintf(f, "If (");
       pretty(f, s->ifElse.cond);
       fprintf(f, ")\n");
-      pretty(f, indent+2, s->ifElse.thenStmt);
-      if (s->where.elseStmt != nullptr) {
+      pretty(f, indent+2, s->thenStmt());
+      if (s->elseStmt().get() != nullptr) {
         indentBy(f, indent);
         fprintf(f, "Else\n");
-        pretty(f, indent+2, s->ifElse.elseStmt);
+        pretty(f, indent+2, s->elseStmt());
       }
       indentBy(f, indent);
       fprintf(f, "End\n");
@@ -116,7 +116,7 @@ void pretty(FILE *f, int indent, Stmt* s) {
       fprintf(f, "While (");
       pretty(f, s->loop.cond);
       fprintf(f, ")\n");
-      pretty(f, indent+2, s->loop.body);
+      pretty(f, indent+2, s->body());
       indentBy(f, indent);
       fprintf(f, "End\n");
       break;
@@ -266,8 +266,8 @@ void pretty(FILE *f, int indent, Stmt* s) {
   }
 }
 
-void pretty(FILE *f, Stmt* s)
-{
+
+void pretty(FILE *f, Stmt::Ptr s) {
   assert(f != nullptr);
   pretty(f, 0, s);
 }
@@ -276,7 +276,7 @@ void pretty(FILE *f, Stmt* s)
 /**
  * @brief Override using stdout as output
  */
-void pretty(Stmt* s) {
+void pretty(Stmt::Ptr s) {
   pretty(stdout, s);
 }
 

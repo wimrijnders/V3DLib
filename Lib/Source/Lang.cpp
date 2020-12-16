@@ -18,16 +18,16 @@ namespace {
 //=============================================================================
 
 void assign(Expr::Ptr lhs, Expr::Ptr rhs) {
-  Stmt *s = mkAssign(lhs, rhs);
-  stmtStack() << s;
+  stmtStack() << Stmt::create_assign(lhs, rhs);
 }
+
 
 //=============================================================================
 // 'If' token
 //=============================================================================
 
 void If_(Cond c) {
-  Stmt* s = mkIf(c.cexpr, nullptr, nullptr);
+  Stmt::Ptr s = mkIf(c.cexpr, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -42,16 +42,12 @@ void If_(BoolExpr b) {
 
 void Else_() {
   int ok = 0;
-  if (controlStack.size() > 0) {
-    Stmt* s = controlStack.top();
 
-    if (s->tag == IF && s->ifElse.thenStmt == nullptr) {
-      s->ifElse.thenStmt = stmtStack().pop();
-      stmtStack().push(mkSkip());
-      ok = 1;
-    }
-    if (s->tag == WHERE && s->where.thenStmt == nullptr) {
-      s->where.thenStmt = stmtStack().pop();
+  if (controlStack.size() > 0) {
+    Stmt::Ptr s = controlStack.top();
+
+    if ((s->tag == IF || s->tag == WHERE ) && s->then_is_null()) {
+      s->thenStmt(stmtStack().pop());
       stmtStack().push(mkSkip());
       ok = 1;
     }
@@ -68,36 +64,27 @@ void Else_() {
 
 void End_() {
   int ok = 0;
-  if (controlStack.size() > 0) {
-    Stmt* s = controlStack.top();
 
-    if (s->tag == IF && s->ifElse.thenStmt == nullptr) {
-      s->ifElse.thenStmt = stmtStack().pop();
+  if (!controlStack.empty()) {
+    Stmt::Ptr s = controlStack.top();
+
+		if (s->tag == IF || s->tag == WHERE) {
+			if (s->then_is_null()) {
+				s->thenStmt(stmtStack().pop());
+				ok = 1;
+			} else if (s->else_is_null()) {
+				s->elseStmt(stmtStack().pop());
+				ok = 1;
+			}
+		}
+
+    if (s->tag == WHILE && s->body_is_null()) {
+      s->body(stmtStack().pop());
       ok = 1;
     }
-    else if (s->tag == IF && s->ifElse.elseStmt == nullptr) {
-      s->ifElse.elseStmt = stmtStack().pop();
-      ok = 1;
-    }
-    if (s->tag == WHERE && s->where.thenStmt == nullptr) {
-      s->where.thenStmt = stmtStack().pop();
-      ok = 1;
-    }
-    else if (s->tag == WHERE && s->where.elseStmt == nullptr) {
-      s->where.elseStmt = stmtStack().pop();
-      ok = 1;
-    }
-    if (s->tag == WHILE && s->loop.body == nullptr) {
-      s->loop.body = stmtStack().pop();
-      ok = 1;
-    }
-    if (s->tag == FOR && s->forLoop.body == nullptr) {
-      // Convert 'for' loop to 'while' loop
-      CExpr* whileCond = s->forLoop.cond;
-      Stmt* whileBody = mkSeq(stmtStack().pop(), s->forLoop.inc);
-      s->tag = WHILE;
-      s->loop.body = whileBody;
-      s->loop.cond = whileCond;
+
+    if (s->tag == FOR && s->body_is_null()) {
+			s->for_to_while(stmtStack().pop());
       ok = 1;
     }
 
@@ -116,7 +103,7 @@ void End_() {
 //=============================================================================
 
 void While_(Cond c) {
-  Stmt* s = mkWhile(c.cexpr, nullptr);
+  Stmt::Ptr s = mkWhile(c.cexpr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -130,7 +117,7 @@ void While_(BoolExpr b) {
 //=============================================================================
 
 void Where__(BExpr* b) {
-  Stmt* s = mkWhere(b, nullptr, nullptr);
+  Stmt::Ptr s = mkWhere(b, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -140,7 +127,7 @@ void Where__(BExpr* b) {
 //=============================================================================
 
 void For_(Cond c) {
-  Stmt* s = mkFor(c.cexpr, nullptr, nullptr);
+  Stmt::Ptr s = mkFor(c.cexpr, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -150,8 +137,8 @@ void For_(BoolExpr b) {
 }
 
 void ForBody_() {
-  Stmt *s = controlStack.top();
-  s->forLoop.inc = stmtStack().pop();
+  Stmt::Ptr s = controlStack.top();
+  s->inc(stmtStack().pop());
   stmtStack().push(mkSkip());
 }
 
@@ -160,24 +147,21 @@ void ForBody_() {
 //=============================================================================
 
 void Print(const char *str) {
-  Stmt* s = Stmt::create(PRINT);
+  Stmt::Ptr s = Stmt::create(PRINT);
   s->print.str(str);
   stmtStack().append(s);
 }
 
 
 void Print(IntExpr x) {
-  Stmt *s = Stmt::create(PRINT, x.expr(), nullptr);
+  Stmt::Ptr s = Stmt::create(PRINT, x.expr(), nullptr);
   stmtStack().append(s);
 }
 
 
 void comment(char const *str) {
  	assert(stmtStack().top() != nullptr);
- 	assert(stmtStack().top()->tag == SEQ);
- 	assert(stmtStack().top()->seq.s1 != nullptr);
-
- 	stmtStack().top()->seq.s1->comment(str);
+ 	stmtStack().top()->seq_s1()->comment(str);
 }
 
 

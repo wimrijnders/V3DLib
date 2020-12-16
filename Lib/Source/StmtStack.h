@@ -10,9 +10,9 @@ namespace V3DLib {
  */
 class StmtStack : public Stack<Stmt> {
 public:
-	void append(Stmt *stmt);
+	void append(Stmt::Ptr stmt);
 
-	StmtStack &operator<<(Stmt *stmt) {
+	StmtStack &operator<<(Stmt::Ptr stmt) {
 		append(stmt);
 		return *this;
 	}
