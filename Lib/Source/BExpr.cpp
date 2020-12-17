@@ -79,6 +79,12 @@ Expr::Ptr BExpr::cmp_rhs() const { assert(m_tag == CMP && m_cmp_rhs.get() != nul
 void BExpr::cmp_lhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_lhs = p; }
 void BExpr::cmp_rhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_rhs = p; }
 
+/**
+ * Return copy of current instance as a shared ptr.
+ */
+BExpr::Ptr BExpr::ptr() const {
+  return Ptr(new BExpr(*this));  // Verified correct (looked tricky)
+}
 
 /**
  * Create a new instance which encapsulates the current instance with
@@ -89,8 +95,7 @@ void BExpr::cmp_rhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_rhs = p; }
 BExpr::Ptr BExpr::Not() const {
   Ptr b(new BExpr());
   b->m_tag = NOT;
-  //b->neg   = const_cast<BExpr *>(this);
-  b->m_lhs   = Ptr(new BExpr(*this));  // Verified correct (looked tricky)
+  b->m_lhs = ptr();
   return b;
 }
 
@@ -104,8 +109,7 @@ BExpr::Ptr BExpr::Not() const {
 BExpr::Ptr BExpr::And(Ptr rhs) const {
   Ptr b(new BExpr());
   b->m_tag = AND;
-  //b->conj.lhs = const_cast<BExpr *>(this);
-  b->m_lhs = Ptr(new BExpr(*this));
+  b->m_lhs = ptr();
   b->m_rhs = rhs;
   return b;
 }
@@ -120,8 +124,7 @@ BExpr::Ptr BExpr::And(Ptr rhs) const {
 BExpr::Ptr BExpr::Or(Ptr rhs) const {
   Ptr b(new BExpr());
   b->m_tag     = OR;
-  //b->disj.lhs = const_cast<BExpr *>(this);
-  b->m_lhs = Ptr(new BExpr(*this));
+  b->m_lhs = ptr();
   b->m_rhs = rhs;
   return b;
 }

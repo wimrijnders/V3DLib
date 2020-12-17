@@ -60,15 +60,6 @@ struct BExpr {
 	std::string disp() const { return pretty(); }
 
   union {
-    // Negation
-    //BExpr* neg;
-
-    // Conjunction
-    //struct { BExpr* lhs; BExpr* rhs; } conj;
-
-    // Disjunction
-    //struct { BExpr* lhs; BExpr* rhs; } disj;
-
     // Comparison
     struct {
 			CmpOp op;
@@ -81,6 +72,8 @@ private:
 	Ptr m_rhs;
   Expr::Ptr m_cmp_lhs;  // For comparison
 	Expr::Ptr m_cmp_rhs;  // idem
+
+	Ptr ptr() const;
 };
 
 }  // namespace V3DLib

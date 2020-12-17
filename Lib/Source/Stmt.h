@@ -131,9 +131,6 @@ struct Stmt : public InstructionComment {
   StmtTag tag;  // What kind of statement is it?
 
   union {
-    // Where
-    //struct { BExpr* cond; } where;
-
     // If
     struct { CExpr* cond; } ifElse;
 
