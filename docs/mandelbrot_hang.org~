@@ -1,36 +1,5 @@
 15-12-2020
 
-- Use date for code version
-
-* Test other programs
-
-Backtrace logging (without timeout hang) also happens for:
-	- =ID=
-	- =Hello=
-	- and probably all other programs, list above confirmed
-
-All programs (expect Mandelbrot) appear to work after this.
-Ran =GCD= 20 times without problems
-
-After this, hang occurs again for =Mandelbrot=, with:
-
-: > obj/qpu-debug/bin/Mandelbrot -steps=512
-
-- This worked previously
-
-Following still worked:
-
-: > obj/qpu-debug/bin/Mandelbrot -steps=256
-: > obj/qpu-debug/bin/Mandelbrot -steps=400
-: > obj/qpu-debug/bin/Mandelbrot -steps=500
-
-Each tested 10x in succesion
-
-===================================
-
-* Document Logging
-** Steps
-
 Running:
 
 : > obj/qpu-debug/bin/Mandelbrot -steps=520
@@ -54,7 +23,7 @@ Dec 15 07:33:00 pi4-3 kernel: [80671.595582] v3d fec00000.v3d: [drm:v3d_reset [v
 All further runs on =v3d= now time out, also programs that ran previously with no problems.
 
 ====================
-** Trace Logs
+* Trace Logs
 
 Identical in =/var/log/kern.log= en =/var/log/syslog=:
 
@@ -90,25 +59,9 @@ Dec 15 07:31:56 pi4-3 kernel: [80607.985458] ---[ end trace 0258217de3fd5255 ]--
 
 Log after 2nd run identical except for time, =end trace= and:
 
-#+BEGIN_EXAMPLE
+#+END_EXAMPLE
 ...
 Dec 15 07:32:05 pi4-3 kernel: [80616.332010] CPU: 1 PID: 205 Comm: v3d_cache_clean Tainted: G        WC        5.4.51-v7l+ #1333
 ...
-#+END_EXAMPLE
-
-
-When shit goes wrong, following repeats ad infinitum:
-
-#+BEGIN_EXAMPLE
-Dec 15 08:37:25 pi4-3 kernel: [  791.280091] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* Resetting GPU for hang.
-Dec 15 08:37:25 pi4-3 kernel: [  791.280134] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* V3D_ERR_STAT: 0x00001000
-...
-#+END_EXAMPLE
-
-
-Got this once in repeating logs:
-
-#+BEGIN_EXAMPLE
-Dec 15 08:37:35 pi4-3 kernel: [  801.540211] v3d fec00000.v3d: MMU error from client L2T (0) at 0x159800, write violation, pte invalid
 #+END_EXAMPLE
 
