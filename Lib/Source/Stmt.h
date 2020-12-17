@@ -135,15 +135,6 @@ struct Stmt : public InstructionComment {
   StmtTag tag;  // What kind of statement is it?
 
   union {
-    // If
-    //struct { CExpr* cond; } ifElse;
-
-    // While
-    //struct { CExpr* cond; } loop;
-
-    // For (only used intermediately during AST construction)
-    //struct { CExpr* cond; } forLoop;
-
     // Print
     PrintStmt print;
 

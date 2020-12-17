@@ -1,23 +1,17 @@
 #include "CExpr.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
-
 std::string CExpr::pretty() const {
+	assert(m_tag == ALL || m_tag == ANY);
+	assert(m_bexpr.get() != nullptr);
+
 	std::string ret;
-
-  switch (m_tag) {
-    // Reduce using 'any'
-    case ANY: ret << "any("; break;
-
-    // Reduce using 'all'
-    case ALL: ret << "all("; break;
-  }
-
-	ret << bexpr()->pretty() << ")";
-
+	ret << ((m_tag == ALL)?"all":"any") << "(" << m_bexpr->pretty() << ")";
 	return ret;
 }
+
 
 // ============================================================================
 // Functions on conditionals

@@ -3,11 +3,8 @@
 #include <memory>
 #include <string>
 #include "BExpr.h"
-#include "Support/basics.h"
 
 namespace V3DLib {
-
-//using ::operator<<;  // C++ weirdness
 
 // ============================================================================
 // Conditional expressions
