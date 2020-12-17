@@ -1,6 +1,5 @@
 #include "Pretty.h"
 #include "Stmt.h"
-#include "Syntax.h"
 #include "Support/basics.h"
 
 
@@ -23,21 +22,16 @@ std::string pretty(Expr::Ptr e) {
 // Conditional expressions
 // ============================================================================
 
-void pretty(FILE *f, CExpr* c) {
+void pretty(FILE *f, CExpr::Ptr c) {
   assert(f != nullptr);
-  if (c == nullptr) return;
+  if (c.get() == nullptr) {
+		assert(false);  // Not wanting this
+		return;
+	}
 
-  switch (c->tag()) {
-    // Reduce using 'any'
-    case ANY: fprintf(f, "any("); break;
-
-    // Reduce using 'all'
-    case ALL: fprintf(f, "all("); break;
-  }
-
-	fprintf(f, "%s", c->bexpr()->pretty().c_str());
-  fprintf(f, ")");
+	fprintf(f, "%s", c->pretty().c_str());
 }
+
 
 // ============================================================================
 // Statements
@@ -98,7 +92,7 @@ void pretty(FILE *f, int indent, Stmt::Ptr s) {
     case IF:
       indentBy(f, indent);
       fprintf(f, "If (");
-      pretty(f, s->ifElse.cond);
+      pretty(f, s->if_cond());
       fprintf(f, ")\n");
       pretty(f, indent+2, s->thenStmt());
       if (s->elseStmt().get() != nullptr) {
@@ -114,7 +108,7 @@ void pretty(FILE *f, int indent, Stmt::Ptr s) {
     case WHILE:
       indentBy(f, indent);
       fprintf(f, "While (");
-      pretty(f, s->loop.cond);
+      pretty(f, s->loop_cond());
       fprintf(f, ")\n");
       pretty(f, indent+2, s->body());
       indentBy(f, indent);

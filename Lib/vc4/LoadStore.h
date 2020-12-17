@@ -1,9 +1,7 @@
 #ifndef _V3DLIB_LOADSTORE_H_
 #define _V3DLIB_LOADSTORE_H_
-
 #include "Common/Seq.h"
 #include "Target/Syntax.h"
-#include "Source/Syntax.h"
 
 namespace V3DLib {
 

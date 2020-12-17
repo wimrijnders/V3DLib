@@ -3,12 +3,9 @@
 #include "Support/InstructionComment.h"
 #include "Int.h"
 #include "Expr.h"
-#include "BExpr.h"
+#include "CExpr.h"
 
 namespace V3DLib {
-
-class BExpr;
-class CExpr;
 
 // ============================================================================
 // Class PrintStmt
@@ -119,6 +116,9 @@ struct Stmt : public InstructionComment {
 
 	void for_to_while(Ptr in_body);
 
+	CExpr::Ptr if_cond() const;
+	CExpr::Ptr loop_cond() const;
+
 	//
 	// Instantiation methods
 	//
@@ -128,17 +128,21 @@ struct Stmt : public InstructionComment {
 	static Ptr create_assign(Expr::Ptr lhs, Expr::Ptr rhs);
 	static Ptr create_sequence(Ptr s0, Ptr s1);
 
+	static Ptr mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt);
+	static Ptr mkWhile(CExpr::Ptr cond, Ptr body);
+	static Ptr mkFor(CExpr::Ptr cond, Ptr inc, Ptr body);
+
   StmtTag tag;  // What kind of statement is it?
 
   union {
     // If
-    struct { CExpr* cond; } ifElse;
+    //struct { CExpr* cond; } ifElse;
 
     // While
-    struct { CExpr* cond; } loop;
+    //struct { CExpr* cond; } loop;
 
     // For (only used intermediately during AST construction)
-    struct { CExpr* cond; } forLoop;
+    //struct { CExpr* cond; } forLoop;
 
     // Print
     PrintStmt print;
@@ -178,15 +182,14 @@ private:
 
 	Ptr m_stmt_a;
 	Ptr m_stmt_b;
+
+	CExpr::Ptr m_cond;
 };
 
 
 // Functions to construct statements
 Stmt::Ptr mkSkip();
 Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
-Stmt::Ptr mkIf(CExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
-Stmt::Ptr mkWhile(CExpr *cond, Stmt::Ptr body);
-Stmt::Ptr mkFor(CExpr *cond, Stmt::Ptr inc, Stmt::Ptr body);
 Stmt::Ptr mkPrint(PrintTag t, Expr::Ptr e);
 
 }  // namespace V3DLib

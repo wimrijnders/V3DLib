@@ -4,7 +4,8 @@
 ///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_PTR_H_
 #define _V3DLIB_SOURCE_PTR_H_
-#include "Source/Syntax.h"
+#include "Int.h"
+#include "CExpr.h"
 #include "Support/debug.h"
 
 namespace V3DLib {

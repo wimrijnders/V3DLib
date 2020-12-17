@@ -1,6 +1,5 @@
 #include "LoadStore.h"
 #include <assert.h>
-#include "Source/Syntax.h"
 #include "Target/Syntax.h"
 
 namespace V3DLib {

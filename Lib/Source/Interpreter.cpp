@@ -1,7 +1,6 @@
 #include "Source/Interpreter.h"
 #include "Common/SharedArray.h"
 #include "Source/Stmt.h"
-#include "Source/Syntax.h"
 #include "Common/BufferObject.h"
 #include "Target/EmuSupport.h"
 #include "Support/basics.h"
@@ -311,7 +310,7 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 // Evaulate condition
 // ============================================================================
 
-bool evalCond(CoreState* s, CExpr* e) {
+bool evalCond(CoreState* s, CExpr::Ptr e) {
   Vec v = evalBool(s, e->bexpr());
 
   switch (e->tag()) {
@@ -572,7 +571,7 @@ void exec(InterpreterState* state, CoreState* s) {
 
     // If statement
     case IF:
-      if (evalCond(s, stmt->ifElse.cond))
+      if (evalCond(s, stmt->if_cond()))
         s->stack.push(stmt->thenStmt());
       else
         s->stack.push(stmt->elseStmt());
@@ -580,7 +579,7 @@ void exec(InterpreterState* state, CoreState* s) {
 
     // While statement
     case WHILE:
-      if (evalCond(s, stmt->loop.cond)) {
+      if (evalCond(s, stmt->loop_cond())) {
         s->stack.push(stmt);
         s->stack.push(stmt->body());
       }

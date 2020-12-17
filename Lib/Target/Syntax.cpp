@@ -1,6 +1,6 @@
 #include "Syntax.h"
+#include "Source/BExpr.h"
 #include "Support/basics.h"
-#include "Source/Syntax.h"
 
 namespace V3DLib {
 

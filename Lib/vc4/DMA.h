@@ -2,10 +2,12 @@
 #define _V3DLIB_SOURCE_DMA_H_
 #include "Source/Int.h"     // IntExpr
 #include "Source/Ptr.h"
-#include "Source/Syntax.h"  // Expr
 #include "Source/Stmt.h"    // stmtStack()
 
 namespace V3DLib {
+
+// Direction for VPM/DMA loads and stores
+enum Dir { HORIZ, VERT };
 
 //=============================================================================
 // VPM operations

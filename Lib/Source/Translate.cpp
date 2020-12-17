@@ -2,7 +2,6 @@
 #include "Support/Platform.h"
 #include "SourceTranslate.h"
 #include "Source/Stmt.h"
-#include "Source/Syntax.h"
 #include "Target/SmallLiteral.h"
 #include "Common/Seq.h"
 
@@ -583,7 +582,7 @@ void translateIf(Seq<Instr> &seq, Stmt &s) {
 	using namespace Target::instr;
 
 	Label endifLabel = freshLabel();
-	BranchCond cond  = condExp(seq, *s.ifElse.cond);  // Compile condition
+	BranchCond cond  = condExp(seq, *s.if_cond());  // Compile condition
     
 	if (s.elseStmt().get() == nullptr) {
 		seq << branch(cond.negate(), endifLabel);  // Branch over 'then' statement
@@ -610,13 +609,13 @@ void translateWhile(Seq<Instr> &seq, Stmt &s) {
 
 	Label startLabel = freshLabel();
 	Label endLabel   = freshLabel();
-	BranchCond cond  = condExp(seq, *s.loop.cond);     // Compile condition
+	BranchCond cond  = condExp(seq, *s.loop_cond());     // Compile condition
  
 	seq << branch(cond.negate(), endLabel)             // Branch over loop body
 	    << label(startLabel);                          // Start label
 
 	if (!s.body_is_null()) stmt(&seq, s.body());       // Compile body
-	condExp(seq, *s.loop.cond);                        // Compute condition again
+	condExp(seq, *s.loop_cond());                        // Compute condition again
 		                                                 // TODO why is this necessary?
 
 	seq << branch(cond, startLabel)                    // Branch to start

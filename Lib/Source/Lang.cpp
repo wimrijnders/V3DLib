@@ -27,7 +27,7 @@ void assign(Expr::Ptr lhs, Expr::Ptr rhs) {
 //=============================================================================
 
 void If_(Cond c) {
-  Stmt::Ptr s = mkIf(c.cexpr, nullptr, nullptr);
+  Stmt::Ptr s = Stmt::mkIf(c.cexpr(), nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -103,7 +103,7 @@ void End_() {
 //=============================================================================
 
 void While_(Cond c) {
-  Stmt::Ptr s = mkWhile(c.cexpr, nullptr);
+  Stmt::Ptr s = Stmt::mkWhile(c.cexpr(), nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }
@@ -127,7 +127,7 @@ void Where__(BExpr::Ptr b) {
 //=============================================================================
 
 void For_(Cond c) {
-  Stmt::Ptr s = mkFor(c.cexpr, nullptr, nullptr);
+  Stmt::Ptr s = Stmt::mkFor(c.cexpr(), nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());
 }

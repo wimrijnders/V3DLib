@@ -1,7 +1,6 @@
 #ifndef _V3DLIB_SOURCE_TRANSLATE_H_
 #define _V3DLIB_SOURCE_TRANSLATE_H_
 #include "Common/Seq.h"
-#include "Source/Syntax.h"
 #include "Source/Stmt.h"
 #include "Target/Syntax.h"
 

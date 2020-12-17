@@ -250,7 +250,7 @@ BExpr::Ptr genBExpr(GenOptions* opts, int depth) {
 // Random conditional expressions
 // ============================================================================
 
-CExpr* genCExpr(GenOptions* opts, int depth) {
+CExpr::Ptr genCExpr(GenOptions* opts, int depth) {
   switch (randRange(ALL, ANY)) {
     case ALL: return mkAll(genBExpr(opts, depth));
     case ANY: return mkAny(genBExpr(opts, depth));
@@ -375,7 +375,7 @@ Stmt::Ptr genWhile(GenOptions* o, int depth) {
 
   // Create random condition with loop bound
   BExpr::Ptr b = genBExpr(o, depth)->And(mkCmp(v, CmpOp(LT, INT32), mkIntLit(o->loopBound)));
-  CExpr* c = randRange(0, 1) == 0 ? mkAny(b) : mkAll(b);
+  CExpr::Ptr c = randRange(0, 1) == 0 ? mkAny(b) : mkAll(b);
 
   // Initialise loop variable
   Stmt::Ptr init = Stmt::create_assign(v, mkIntLit(0));
@@ -386,7 +386,7 @@ Stmt::Ptr genWhile(GenOptions* o, int depth) {
   // Create random loop body with loop increment
   Stmt::Ptr body = Stmt::create_sequence(genStmt(o, depth-1, o->length), inc);
 
-  return Stmt::create_sequence(init, mkWhile(c, body));
+  return Stmt::create_sequence(init, Stmt::mkWhile(c, body));
 }
 
 
@@ -420,16 +420,18 @@ Stmt::Ptr genStmt(GenOptions* opts, int depth, int length) {
     // Where statement
     case WHERE:
       if (length > 0 && depth > 0)
-        return mkWhere(genBExpr(opts, depth),
-                       genWhere(opts, depth-1, opts->length),
-                       genWhere(opts, depth-1, opts->length));
+        return mkWhere(
+					genBExpr(opts, depth),
+          genWhere(opts, depth-1, opts->length),
+          genWhere(opts, depth-1, opts->length));
 
     // If statement
     case IF:
       if (length > 0 && depth > 0)
-        return mkIf(genCExpr(opts, depth),
-                    genStmt(opts, depth-1, opts->length),
-                    genStmt(opts, depth-1, opts->length));
+        return Stmt::mkIf(
+					genCExpr(opts, depth),
+					genStmt(opts, depth-1, opts->length),
+					genStmt(opts, depth-1, opts->length));
 
     // While statement
     case WHILE:

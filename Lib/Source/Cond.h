@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_SOURCE_COND_H_
 #define _V3DLIB_SOURCE_COND_H_
-#include "Syntax.h"
+#include "Int.h"
+#include "CExpr.h"
 
 namespace V3DLib {
 
@@ -8,13 +9,16 @@ namespace V3DLib {
 // Types                   
 // ============================================================================
 
-class CExpr;  //  forward declaration
-class BExpr;  //  forward declaration
+//class CExpr;  //  forward declaration
+//class BExpr;  //  forward declaration
 
 struct Cond {
-  CExpr* cexpr; // Abstract syntax tree
+  CExpr::Ptr cexpr() { return m_cexpr; } 
 
-  Cond(CExpr* c) { cexpr = c; }
+  Cond(CExpr::Ptr c) { m_cexpr = c; }
+
+private:
+  CExpr::Ptr m_cexpr; // Abstract syntax tree
 };
 
 

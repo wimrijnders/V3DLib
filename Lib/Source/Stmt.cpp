@@ -1,5 +1,4 @@
 #include "Stmt.h"
-#include "Syntax.h"
 #include "Support/basics.h"
 
 namespace V3DLib {
@@ -407,7 +406,7 @@ Stmt::Ptr Stmt::create(StmtTag in_tag, Ptr s0, Ptr s1) {
 			assertq(ret->m_stmt_a.get() == nullptr, "create() IF: don't reassign stmt a ptr");
 			assertq(ret->m_stmt_b.get() == nullptr, "create() IF: don't reassign stmt b ptr");
 
-			ret->ifElse.cond = nullptr;  // NOTE: needs to be set elsewhere
+			ret->m_cond.reset();  // NOTE: needs to be set elsewhere
   		ret->m_stmt_a = s0;
   		ret->m_stmt_b = s1;
 		break;
@@ -417,7 +416,7 @@ Stmt::Ptr Stmt::create(StmtTag in_tag, Ptr s0, Ptr s1) {
 			assertq(ret->m_stmt_b.get() == nullptr, "create() WHILE: don't reassign stmt b ptr");
 			assertq(s1.get() == nullptr, "create() WHILE: not expecting assignment stmt b ptr");
 
-			ret->loop.cond = nullptr;  // NOTE: needs to be set elsewhere
+			ret->m_cond.reset();  // NOTE: needs to be set elsewhere
   		ret->m_stmt_a = s0;
 		break;
 		case FOR:
@@ -426,7 +425,7 @@ Stmt::Ptr Stmt::create(StmtTag in_tag, Ptr s0, Ptr s1) {
 			assertq(ret->m_stmt_a.get() == nullptr, "create() FOR: don't reassign stmt a ptr");
 			assertq(ret->m_stmt_b.get() == nullptr, "create() FOR: don't reassign stmt b ptr");
 
-			ret->forLoop.cond = nullptr;  // NOTE: needs to be set elsewhere
+			ret->m_cond.reset();  // NOTE: needs to be set elsewhere
   		ret->m_stmt_a = s1;  // NOTE: s1, s0 reversed
   		ret->m_stmt_b = s0;
 		break;
@@ -458,13 +457,26 @@ void Stmt::for_to_while(Ptr in_body) {
 	assertq(tag == FOR, "Only FOR-statement can be converted to WHILE", true);
 	assert(m_stmt_a.get() == nullptr);  // Don't reassign body
 
-	auto inc = m_stmt_b;  // TODO Check should inc be reset to null here?
+	auto inc = m_stmt_b;  // TODO Check should m_stmt_b be reset to null here?
 
-	CExpr* whileCond = forLoop.cond;
-	Stmt::Ptr whileBody = Stmt::create_sequence(in_body, inc);
 	tag = WHILE;
+	Stmt::Ptr whileBody = Stmt::create_sequence(in_body, inc);
 	body(whileBody);
-	loop.cond = whileCond;
+	//m_cond retained as is;
+}
+
+
+CExpr::Ptr Stmt::if_cond() const {
+	assert(tag == IF);
+	assert(m_cond.get() != nullptr);
+	return m_cond;
+}
+
+
+CExpr::Ptr Stmt::loop_cond() const {
+	assert(tag == WHILE);
+	assert(m_cond.get() != nullptr);
+	return m_cond;
 }
 
 
@@ -481,23 +493,23 @@ Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
 }
 
 
-Stmt::Ptr mkIf(CExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
-  Stmt::Ptr s    = Stmt::create(IF, thenStmt, elseStmt);
-  s->ifElse.cond = cond;
+Stmt::Ptr Stmt::mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt) {
+  Stmt::Ptr s = Stmt::create(IF, thenStmt, elseStmt);
+  s->m_cond   = cond;
   return s;
 }
 
 
-Stmt::Ptr mkWhile(CExpr *cond, Stmt::Ptr body) {
-  Stmt::Ptr s  = Stmt::create(WHILE, body, Stmt::Ptr());
-  s->loop.cond = cond;
+Stmt::Ptr Stmt::mkWhile(CExpr::Ptr cond, Ptr body) {
+  Stmt::Ptr s = Stmt::create(WHILE, body, Stmt::Ptr());
+  s->m_cond   = cond;
   return s;
 }
 
 
-Stmt::Ptr mkFor(CExpr *cond, Stmt::Ptr inc, Stmt::Ptr body) {
-  Stmt::Ptr s     = Stmt::create(FOR, inc, body);
-  s->forLoop.cond = cond;
+Stmt::Ptr Stmt::mkFor(CExpr::Ptr cond, Ptr inc, Ptr body) {
+  Stmt::Ptr s = Stmt::create(FOR, inc, body);
+  s->m_cond   = cond;
   return s;
 }
 
