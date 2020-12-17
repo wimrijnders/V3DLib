@@ -10,7 +10,7 @@ public:
 	Seq<Instr> deref_var_var(Var lhs, Var rhs) override;
 	void varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) override;
 	void regAlloc(CFG* cfg, Seq<Instr>* instrs) override;
-	bool stmt(Seq<Instr> &seq, Stmt* s) override; 
+	bool stmt(Seq<Instr> &seq, Stmt::Ptr s) override; 
 };
 
 void add_init(Seq<Instr> &code);

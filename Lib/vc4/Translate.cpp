@@ -11,34 +11,38 @@ namespace {
 // Set-stride statements
 // ============================================================================
 
-void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr::Ptr e) {
+Seq<Instr> setStrideStmt(StmtTag tag, Expr::Ptr e) {
+	Seq<Instr> ret;
+
   if (e->tag() == Expr::INT_LIT) {
     if (tag == SET_READ_STRIDE)
-      *seq << genSetReadPitch(e->intLit);
+      ret << genSetReadPitch(e->intLit);
     else
-      *seq << genSetWriteStride(e->intLit);
+      ret << genSetWriteStride(e->intLit);
   } else if (e->tag() == Expr::VAR) {
 		Reg reg = srcReg(e->var());
 
     if (tag == SET_READ_STRIDE)
-      genSetReadPitch(seq, reg);
+      ret << genSetReadPitch(reg);
     else
-      *seq << genSetWriteStride(reg);
+      ret << genSetWriteStride(reg);
   } else {
     Var v = freshVar();
-    *seq << varAssign(v, e);
+    ret << varAssign(v, e);
     if (tag == SET_READ_STRIDE)
-      genSetReadPitch(seq, srcReg(v));
+      ret << genSetReadPitch(srcReg(v));
     else
-      *seq << genSetWriteStride(srcReg(v));
+      ret << genSetWriteStride(srcReg(v));
   }
+
+	return ret;
 }
 
 // ============================================================================
 // VPM setup statements
 // ============================================================================
 
-Seq<Instr> setupVPMReadStmt(Stmt *s) {
+Seq<Instr> setupVPMReadStmt(Stmt::Ptr s) {
 	Seq<Instr> ret;
 
 	int n       = s->setupVPMRead.numVecs;
@@ -64,7 +68,7 @@ Seq<Instr> setupVPMReadStmt(Stmt *s) {
 // DMA statements
 // ============================================================================
 
-Seq<Instr> setupDMAReadStmt(Stmt *s) {
+Seq<Instr> setupDMAReadStmt(Stmt::Ptr s) {
 	int numRows = s->setupDMARead.numRows;
 	int rowLen  = s->setupDMARead.rowLen;
 	int hor     = s->setupDMARead.hor;
@@ -88,7 +92,7 @@ Seq<Instr> setupDMAReadStmt(Stmt *s) {
 }
 
 
-Seq<Instr> setupDMAWriteStmt(Stmt *s) {
+Seq<Instr> setupDMAWriteStmt(Stmt::Ptr s) {
 	int numRows = s->setupDMAWrite.numRows;
 	int rowLen  = s->setupDMAWrite.rowLen;
 	int hor     = s->setupDMAWrite.hor;
@@ -161,7 +165,7 @@ Instr sendIRQToHost() {
 }
 
 
-Seq<Instr> setupVPMWriteStmt(Stmt *s) {
+Seq<Instr> setupVPMWriteStmt(Stmt::Ptr s) {
 	Seq<Instr> ret;
 
   Expr::Ptr e = s->setupVPMWrite_addr();
@@ -192,7 +196,7 @@ Seq<Instr> setupVPMWriteStmt(Stmt *s) {
 // than after a write.  This enables other operations to happen in
 // parallel with the write.
 
-Seq<Instr> storeRequestOperation(Stmt *s) {
+Seq<Instr> storeRequestOperation(Stmt::Ptr s) {
 	Expr::Ptr data = s->storeReq_data();
 	Expr::Ptr addr = s->storeReq_addr();
 
@@ -215,12 +219,12 @@ namespace vc4 {
 /**
  * @return true if statement handled, false otherwise
  */
-bool translate_stmt(Seq<Instr> &seq, Stmt *s) {
+bool translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
 
 	switch (s->tag) {
 	  case STORE_REQUEST:    seq << storeRequestOperation(s);              return true;
 	  case SET_READ_STRIDE:
-		case SET_WRITE_STRIDE: setStrideStmt(&seq, s->tag, s->stride());     return true;
+		case SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    return true;
 		case SEMA_INC:
 		case SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          return true;
 	  case SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       return true;

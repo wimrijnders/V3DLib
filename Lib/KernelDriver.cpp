@@ -14,11 +14,11 @@ using ::operator<<;  // C++ weirdness
 
 namespace {
 
-void print_source_code(FILE *f, Stmt *body) {
+void print_source_code(FILE *f, Stmt::Ptr body) {
 	// Emit source code
 	fprintf(f, "Source code\n");
 	fprintf(f, "===========\n\n");
-	if (body == nullptr)
+	if (body.get() == nullptr)
 		fprintf(stderr, "<No source code to print>");
 	else
 		V3DLib::pretty(f, body);
@@ -196,8 +196,8 @@ void KernelDriver::invoke(int numQPUs, Seq<int32_t> &params) {
 
 #ifdef DEBUG
 // Only here for autotest
-void KernelDriver::add_stmt(Stmt *stmt) {
-	m_stmtStack.append(stmt);
+void KernelDriver::add_stmt(Stmt::Ptr stmt) {
+	m_stmtStack << stmt;
 }
 #endif
 

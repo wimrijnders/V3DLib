@@ -2,13 +2,12 @@
 #define _V3DLIB_SOURCE_TRANSLATE_H_
 #include "Common/Seq.h"
 #include "Source/Syntax.h"
+#include "Source/Stmt.h"
 #include "Target/Syntax.h"
 
 namespace V3DLib {
 
-class Stmt;
-
-void translate_stmt(Seq<Instr> &seq, Stmt *s);
+void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s);
 void insertInitBlock(Seq<Instr> &code);
 void loadStorePass(Seq<Instr> &instrs);
 

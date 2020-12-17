@@ -9,8 +9,8 @@ namespace  {
 // VPM Setup
 //=============================================================================
 
-Stmt *vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride) {
-  Stmt *s = Stmt::create(SETUP_VPM_READ, addr.expr(), nullptr);
+Stmt::Ptr vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride) {
+  Stmt::Ptr s = Stmt::create(SETUP_VPM_READ, addr.expr(), nullptr);
   s->setupVPMRead.numVecs = n;
   s->setupVPMRead.stride = stride;
   s->setupVPMRead.hor = hor;
@@ -18,8 +18,8 @@ Stmt *vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride) {
 	return s;
 }
 
-Stmt *vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
-  Stmt *s = Stmt::create(SETUP_VPM_WRITE, addr.expr(), nullptr);
+Stmt::Ptr vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
+  Stmt::Ptr s = Stmt::create(SETUP_VPM_WRITE, addr.expr(), nullptr);
   s->setupVPMWrite.stride = stride;
   s->setupVPMWrite.hor = hor;
 
@@ -30,19 +30,18 @@ Stmt *vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
 
 
 void vpmPutExpr(Expr::Ptr e) {
-  Stmt* s = mkAssign(mkVar(Var(VPM_WRITE)), e);
-  stmtStack().append(s);
+  stmtStack() << Stmt::create_assign(mkVar(Var(VPM_WRITE)), e);
 }
 
 
 void dmaStartReadExpr(Expr::Ptr e) {
-  Stmt* s = Stmt::create(DMA_START_READ, e, nullptr);
+  Stmt::Ptr s = Stmt::create(DMA_START_READ, e, nullptr);
   stmtStack().append(s);
 }
 
 
 void dmaStartWriteExpr(Expr::Ptr e) {
-  Stmt* s = Stmt::create(DMA_START_WRITE, e, nullptr);
+  Stmt::Ptr s = Stmt::create(DMA_START_WRITE, e, nullptr);
   stmtStack().append(s);
 }
 
@@ -62,18 +61,17 @@ void vpmSetupWrite(Dir d, IntExpr addr, int stride) {
 // ============================================================================
 
 void dmaSetReadPitch(IntExpr stride) {
-  Stmt *s = Stmt::create(SET_READ_STRIDE, stride.expr(), nullptr);
-  stmtStack() << s;
+  stmtStack() << Stmt::create(SET_READ_STRIDE, stride.expr(), nullptr);
 }
 
+
 void dmaSetWriteStride(IntExpr stride) {
-  Stmt *s = Stmt::create(SET_WRITE_STRIDE, stride.expr(), nullptr);
-  stmtStack() << s;
+  stmtStack() << Stmt::create(SET_WRITE_STRIDE, stride.expr(), nullptr);
 }
 
 
 void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr, int rowLen, int vpitch) {
-  Stmt *s = Stmt::create(SETUP_DMA_READ, vpmAddr.expr(), nullptr);
+  Stmt::Ptr s = Stmt::create(SETUP_DMA_READ, vpmAddr.expr(), nullptr);
   s->setupDMARead.hor = dir == HORIZ ? 1 : 0;
   s->setupDMARead.numRows = numRows;
   s->setupDMARead.rowLen = rowLen;
@@ -82,8 +80,9 @@ void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr, int rowLen, int vpitch)
   stmtStack() << s;
 }
 
+
 void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen) {
-  Stmt *s = Stmt::create(SETUP_DMA_WRITE, vpmAddr.expr(), nullptr);
+  Stmt::Ptr s = Stmt::create(SETUP_DMA_WRITE, vpmAddr.expr(), nullptr);
   s->setupDMAWrite.hor = dir == HORIZ ? 1 : 0;
   s->setupDMAWrite.numRows = numRows;
   s->setupDMAWrite.rowLen = rowLen;
@@ -91,14 +90,14 @@ void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen) {
   stmtStack() << s;
 }
 
+
 void dmaWaitRead() {
-  Stmt *s = Stmt::create(DMA_READ_WAIT);
-  stmtStack().append(s);
+  stmtStack() << Stmt::create(DMA_READ_WAIT);
 }
 
+
 void dmaWaitWrite() {
-  Stmt *s = Stmt::create(DMA_WRITE_WAIT);
-  stmtStack().append(s);
+  stmtStack() << Stmt::create(DMA_WRITE_WAIT);
 }
 
 
@@ -107,15 +106,15 @@ void dmaWaitWrite() {
 //=============================================================================
 
 void semaInc(int semaId) {
-  Stmt *s = Stmt::create(SEMA_INC);
+  Stmt::Ptr s = Stmt::create(SEMA_INC);
   s->semaId = semaId;
-  stmtStack().append(s);
+  stmtStack() << s;
 }
 
 void semaDec(int semaId) {
-  Stmt *s = Stmt::create(SEMA_DEC);
+  Stmt::Ptr s = Stmt::create(SEMA_DEC);
   s->semaId = semaId;
-  stmtStack().append(s);
+  stmtStack() << s;
 }
 
 
@@ -124,8 +123,7 @@ void semaDec(int semaId) {
 //=============================================================================
 
 void hostIRQ() {
-  Stmt *s = Stmt::create(SEND_IRQ_TO_HOST);
-  stmtStack().append(s);
+  stmtStack() << Stmt::create(SEND_IRQ_TO_HOST);
 }
 
 }  // namespace V3DLib

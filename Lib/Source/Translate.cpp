@@ -393,11 +393,11 @@ BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
 // Where statements
 // ============================================================================
 
-Seq<Instr> whereStmt(Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
+Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
 	using namespace V3DLib::Target::instr;
 	Seq<Instr> ret;
 
-  if (s == nullptr) return ret;
+  if (s.get() == nullptr) return ret;
   if (s->tag == SKIP) return ret;
 
 
@@ -423,8 +423,8 @@ Seq<Instr> whereStmt(Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
   // Case: s0 ; s1, where s0 and s1 are statements
   // ---------------------------------------------
   if (s->tag == SEQ) {
-    ret << whereStmt(s->seq.s0, condVar, cond, true);
-    ret << whereStmt(s->seq.s1, condVar, cond, saveRestore);
+    ret << whereStmt(s->seq_s0(), condVar, cond, true)
+        << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
     return ret;
   }
 
@@ -450,18 +450,18 @@ Seq<Instr> whereStmt(Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
 			}
 
       // Compile 'then' statement
-      if (s->where.thenStmt != NULL) {
-				auto seq = whereStmt(s->where.thenStmt, newCondVar, andCond, s->where.elseStmt != NULL);
+      if (s->thenStmt().get() != nullptr) {
+				auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, s->elseStmt().get() != nullptr);
 				if (!seq.empty()) seq.front().comment("then-branch of where (always)");
 				ret << seq;
 			}
 
       // Compile 'else' statement
-      if (s->where.elseStmt != NULL) {
-	     	Var v2      = freshVar();
+      if (s->elseStmt().get() != nullptr) {
+	     	Var v2 = freshVar();
 				ret << bxor(v2, newCondVar, 1).setCondFlag(Flag::ZC);
 
-        auto seq = whereStmt(s->where.elseStmt, v2, andCond, false);
+        auto seq = whereStmt(s->elseStmt(), v2, andCond, false);
 				if (!seq.empty()) seq.front().comment("else-branch of where (always)");
 				ret << seq;
 			}
@@ -484,20 +484,20 @@ Seq<Instr> whereStmt(Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
 				ret << seq;
 			}
 
-      if (s->where.thenStmt != NULL) {  // NOTE: syntax allows then-stmt to be empty and else not empty
+      if (s->thenStmt().get() != nullptr) {  // NOTE: syntax allows then-stmt to be empty and else not empty
 				// AND new boolean expression with original condition
 	     	Var dummy   = freshVar();
 				ret << band(dummy, condVar, newCondVar).setCondFlag(Flag::ZC);
 
         // Compile 'then' statement
 				{
-					auto seq = whereStmt(s->where.thenStmt, dummy, andCond, false);
+					auto seq = whereStmt(s->thenStmt(), dummy, andCond, false);
 					if (!seq.empty()) seq.front().comment("then-branch of where (nested)");
 					ret << seq;
 				}
       }
 
-      if (s->where.elseStmt != NULL) {
+      if (s->elseStmt() != nullptr) {
 	     	Var v2   = freshVar();
 	     	Var dummy   = freshVar();
 				ret << bxor(v2, newCondVar, 1);
@@ -505,8 +505,7 @@ Seq<Instr> whereStmt(Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
 
         // Compile 'else' statement
 				{
-	        //auto seq = whereStmt(s->where.elseStmt, dummy, andCond, false);
-	        auto seq = whereStmt(s->where.elseStmt, dummy, andCond, false);
+	        auto seq = whereStmt(s->elseStmt(), dummy, andCond, false);
 					if (!seq.empty()) seq.front().comment("else-branch of where (nested)");
 					ret << seq;
 				}
@@ -529,15 +528,16 @@ Seq<Instr> whereStmt(Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
 // Print statements
 // ============================================================================
 
-void printStmt(Seq<Instr> &seq, Stmt *stmt) {
+Seq<Instr> printStmt(Stmt::Ptr stmt) {
+	Seq<Instr> ret;
   Instr instr;
 
-	auto expr_to_reg = [&seq] (Expr::Ptr expr) -> Reg {
+	auto expr_to_reg = [&ret] (Expr::Ptr expr) -> Reg {
 		if (expr ->tag() == Expr::VAR) {
    	  return srcReg(expr->var());
 		} else {
       Var tmpVar = freshVar();
- 	    seq << varAssign(tmpVar, expr);
+ 	    ret << varAssign(tmpVar, expr);
    	  return srcReg(tmpVar);
 		}
 	};
@@ -560,7 +560,8 @@ void printStmt(Seq<Instr> &seq, Stmt *stmt) {
 			break;
   }
 
-	seq << instr;
+	ret << instr;
+	return ret;
 }
 
 
@@ -573,7 +574,7 @@ Instr loadReceive(Expr::Ptr dest) {
 }
 
 
-void stmt(Seq<Instr>* seq, Stmt* s);  // Forward declaration
+void stmt(Seq<Instr>* seq, Stmt::Ptr s);  // Forward declaration
 
 /**
  * Translate if-then-else statement to target code
@@ -584,23 +585,23 @@ void translateIf(Seq<Instr> &seq, Stmt &s) {
 	Label endifLabel = freshLabel();
 	BranchCond cond  = condExp(seq, *s.ifElse.cond);  // Compile condition
     
-	if (s.ifElse.elseStmt == NULL) {
-		seq << branch(cond.negate(), endifLabel);       // Branch over 'then' statement
-		stmt(&seq, s.ifElse.thenStmt);                  // Compile 'then' statement
+	if (s.elseStmt().get() == nullptr) {
+		seq << branch(cond.negate(), endifLabel);  // Branch over 'then' statement
+		stmt(&seq, s.thenStmt());                  // Compile 'then' statement
 	} else {
 		Label elseLabel = freshLabel();
 
-		seq << branch(cond.negate(), elseLabel);        // Branch to 'else' statement
+		seq << branch(cond.negate(), elseLabel);   // Branch to 'else' statement
 
-		stmt(&seq, s.ifElse.thenStmt);                  // Compile 'then' statement
+		stmt(&seq, s.thenStmt());                  // Compile 'then' statement
 
-		seq << branch(endifLabel)                       // Branch to endif
-		    << label(elseLabel);                        // Label for 'else' statement
+		seq << branch(endifLabel)                  // Branch to endif
+		    << label(elseLabel);                   // Label for 'else' statement
 
-		stmt(&seq, s.ifElse.elseStmt);                  // Compile 'else' statement
+		stmt(&seq, s.elseStmt());                  // Compile 'else' statement
 	}
 	
-	seq << label(endifLabel);                         // Label for endif
+	seq << label(endifLabel);                    // Label for endif
 }
 
 
@@ -614,7 +615,7 @@ void translateWhile(Seq<Instr> &seq, Stmt &s) {
 	seq << branch(cond.negate(), endLabel)             // Branch over loop body
 	    << label(startLabel);                          // Start label
 
-	if (s.loop.body != NULL) stmt(&seq, s.loop.body);  // Compile body
+	if (!s.body_is_null()) stmt(&seq, s.body());       // Compile body
 	condExp(seq, *s.loop.cond);                        // Compute condition again
 		                                                 // TODO why is this necessary?
 
@@ -627,7 +628,7 @@ void translateWhile(Seq<Instr> &seq, Stmt &s) {
 // Statements
 // ============================================================================
 
-void stmt(Seq<Instr>* seq, Stmt* s) {
+void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
   if (s == nullptr) return;
 
   switch (s->tag) {
@@ -637,8 +638,8 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
       assign(seq, s->assign_lhs(), s->assign_rhs());
 			break;
     case SEQ:                      // 's0 ; s1', where s1 and s2 are statements
-      stmt(seq, s->seq.s0);
-      stmt(seq, s->seq.s1);
+      stmt(seq, s->seq_s0());
+      stmt(seq, s->seq_s1());
 			break;
   	case IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
 			translateIf(*seq, *s);
@@ -652,7 +653,7 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 			}
 			break;
   	case PRINT:                    // 'print(e)', where e is an expr or a string
-	    printStmt(*seq, s);
+	    *seq << printStmt(s);
 			break;
   	case LOAD_RECEIVE:             // 'receive(e)', where e is an expr
 	    *seq << loadReceive(s->loadDest());
@@ -811,7 +812,7 @@ Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
  *
  * Entry point for translation of statements.
  */
-void translate_stmt(Seq<Instr> &seq, Stmt *s) {
+void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
   stmt(&seq, s);
 }
 

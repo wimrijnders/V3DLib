@@ -1,5 +1,6 @@
 #ifndef _V3DLIB_COMMON_STACK_H_
 #define _V3DLIB_COMMON_STACK_H_
+#include <memory>
 #include "Support/debug.h"
 
 namespace V3DLib {
@@ -9,9 +10,11 @@ namespace V3DLib {
  */
 template <class T> class Stack {
 private:
+	using Ptr = std::shared_ptr<T>;
+
 	class StackItem {
 	public:
-		T *head         = nullptr;;
+		Ptr head;
 		StackItem *tail = nullptr;
 	};
 
@@ -21,7 +24,7 @@ public:
 	bool     empty() const { return m_size == 0; }
 	unsigned size()  const { return m_size; }
 
-	void push(T* x) {
+	void push(Ptr x) {
 		StackItem *nextTop = new StackItem;
 		nextTop->head = x;
 		nextTop->tail = m_topItem;
@@ -30,15 +33,14 @@ public:
 		m_size++;
 	}
 
-	T *pop() {
+	Ptr pop() {
 		assert(m_size > 0);
 		assert(m_topItem != nullptr);
 		StackItem *oldTop = m_topItem;
 
 		m_topItem = oldTop->tail;
-		T *ret    = oldTop->head;
+		Ptr ret   = oldTop->head;
 
-		oldTop->head = nullptr;
 		oldTop->tail = nullptr;
 		delete oldTop;
 
@@ -46,17 +48,16 @@ public:
 		return ret;
 	}
 
-	T *top() const {
+	Ptr top() const {
 		assert(m_size > 0);
 		assert(m_topItem != nullptr);
-		assert(m_topItem->head != nullptr);
+		assert(m_topItem->head.get() != nullptr);
 		return m_topItem->head;
 	}
 
 	void clear() {
-		while (m_topItem != nullptr) {
-			T *p = pop();
-			delete p;
+		while (!empty()) {
+			pop();
 		}
 
 		assert(m_size == 0);

@@ -4,10 +4,9 @@
 #define _V3DLIB_GEN_H_
 
 #include "Common/Seq.h"
+#include "Source/Stmt.h"
 
 namespace V3DLib {
-
-class Stmt;
 
 /**
  *  Options for the program generator
@@ -55,7 +54,7 @@ struct GenOptions {
 int genIntLit();
 
 // Generate a random source program
-Stmt *progGen(GenOptions *opts);
+Stmt::Ptr progGen(GenOptions *opts);
 
 }  // namespace V3DLib
 

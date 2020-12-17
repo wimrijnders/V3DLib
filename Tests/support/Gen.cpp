@@ -4,7 +4,6 @@
 #include "Gen.h"
 #include <stdlib.h>
 #include "Source/Syntax.h"
-#include "Source/Stmt.h"
 #include "Source/Cond.h"   // mkCmp()
 
 namespace V3DLib {
@@ -318,13 +317,12 @@ Expr::Ptr genLValue(GenOptions* opts, Type t, int depth) {
 }
 
 
-// Generate assignment statement
-Stmt* genAssign(GenOptions* opts, int depth) {
-  // Generate random type (disallowing pointer types)
-  Type t = genType(opts, false);
-
-  // Generate assignment statment
-  return mkAssign(genLValue(opts, t, depth), genExpr(opts, t, depth));
+/**
+ * Generate assignment statement
+ */
+Stmt::Ptr genAssign(GenOptions* opts, int depth) {
+  Type t = genType(opts, false);  // Generate random type (disallowing pointer types)
+  return Stmt::create_assign(genLValue(opts, t, depth), genExpr(opts, t, depth));
 }
 
 
@@ -332,12 +330,12 @@ Stmt* genAssign(GenOptions* opts, int depth) {
 // Random conditional assignments
 // ============================================================================
 
-Stmt* genWhere(GenOptions* opts, int depth, int length) {
+Stmt::Ptr genWhere(GenOptions* opts, int depth, int length) {
   switch (randRange(0, 3)) {
     // Sequential composition
     case 0:
       if (length > 0)
-        return mkSeq(genWhere(opts, depth, 0), genWhere(opts, depth, length-1));
+        return Stmt::create_sequence(genWhere(opts, depth, 0), genWhere(opts, depth, length-1));
 
     // Nested where
     case 1:
@@ -364,9 +362,9 @@ Stmt* genWhere(GenOptions* opts, int depth, int length) {
 // Random while loops
 // ============================================================================
 
-Stmt* genStmt(GenOptions* opts, int depth, int length);  // Forward declaration
+Stmt::Ptr genStmt(GenOptions* opts, int depth, int length);  // Forward declaration
 
-Stmt* genWhile(GenOptions* o, int depth) {
+Stmt::Ptr genWhile(GenOptions* o, int depth) {
   assert(depth > 0 && depth <= o->depth);
 
   // Obtain a loop variable
@@ -380,15 +378,15 @@ Stmt* genWhile(GenOptions* o, int depth) {
   CExpr* c = randRange(0, 1) == 0 ? mkAny(b) : mkAll(b);
 
   // Initialise loop variable
-  Stmt* init = mkAssign(v, mkIntLit(0));
+  Stmt::Ptr init = Stmt::create_assign(v, mkIntLit(0));
 
   // Create loop increment
-  Stmt* inc = mkAssign(v, mkApply(v, Op(ADD, INT32), mkIntLit(1)));
+  Stmt::Ptr inc = Stmt::create_assign(v, mkApply(v, Op(ADD, INT32), mkIntLit(1)));
 
   // Create random loop body with loop increment
-  Stmt* body = mkSeq(genStmt(o, depth-1, o->length), inc);
+  Stmt::Ptr body = Stmt::create_sequence(genStmt(o, depth-1, o->length), inc);
 
-  return mkSeq(init, mkWhile(c, body));
+  return Stmt::create_sequence(init, mkWhile(c, body));
 }
 
 
@@ -396,10 +394,11 @@ Stmt* genWhile(GenOptions* o, int depth) {
 // Random print statements
 // ============================================================================
 
-Stmt* genPrint(GenOptions* opts, int depth) {
-  // Generate random type (disallowing pointer types)
-  Type t = genType(opts, false);
-  // Generate random expression and print its value
+/**
+ * Generate random expression and print its value
+ */
+Stmt::Ptr genPrint(GenOptions* opts, int depth) {
+  Type t = genType(opts, false);  // Generate random type (disallowing pointer types)
   return mkPrint(t.tag == INT_TYPE ? PRINT_INT : PRINT_FLOAT, genExpr(opts, t, depth));
 }
 
@@ -408,13 +407,15 @@ Stmt* genPrint(GenOptions* opts, int depth) {
 // Random statements
 // ============================================================================
 
-// Generate statement
-Stmt* genStmt(GenOptions* opts, int depth, int length) {
+/**
+ * Generate statement
+ */
+Stmt::Ptr genStmt(GenOptions* opts, int depth, int length) {
   switch (randRange(SKIP, PRINT)) {
     // Sequential composition
     case SEQ:
       if (length > 0)
-        return mkSeq(genStmt(opts, depth, 0), genStmt(opts, depth, length-1));
+        return Stmt::create_sequence(genStmt(opts, depth, 0), genStmt(opts, depth, length-1));
 
     // Where statement
     case WHERE:
@@ -474,59 +475,66 @@ int genIntLit() {
 // Top-level program generator
 // ============================================================================
 
-Stmt *progGen(GenOptions* opts) {
+Stmt::Ptr progGen(GenOptions* opts) {
   // Initialise variables
-  Stmt* pre  = mkSkip();
-  Stmt* post = mkSkip();
+  Stmt::Ptr pre  = mkSkip();
+  Stmt::Ptr post = mkSkip();
 
   // Argument FIFO
   Expr::Ptr fifo = mkVar(Var(UNIFORM));
 
-  // Next unused var id
-  //VarId next = 0;
+	auto assign_arg = [pre, fifo] (Stmt::Ptr &dst, Expr::Ptr v = nullptr, Expr::Ptr val = nullptr) {
+		if (v.get() == nullptr) {
+			v = newVar();
+		}
+		if (val.get() == nullptr) {
+			val = fifo;
+		}
+
+		dst = Stmt::create_sequence(dst, Stmt::create_assign(v, val));
+	};
 
 	// Read qpu id and num
-	pre   = mkSeq(pre, mkAssign(newVar(), fifo));
-	pre   = mkSeq(pre, mkAssign(newVar(), fifo));
+	assign_arg(pre);
+	assign_arg(pre);
 
   // Read int args
   for (int i = 0; i < opts->numIntArgs; i++) {
 		auto v = newVar();
-    pre   = mkSeq(pre, mkAssign(v, fifo));
-    post  = mkSeq(post, mkPrint(PRINT_INT, v));
+    assign_arg(pre, v);
+    post  = Stmt::create_sequence(post, mkPrint(PRINT_INT, v));
   }
 
   // Initialise int vars and loop vars
   for (int i = 0; i < opts->numIntVars + opts->depth; i++) {
 		auto v = newVar();
-    pre   = mkSeq(pre, mkAssign(v, mkIntLit(genIntLit())));
-    post  = mkSeq(post, mkPrint(PRINT_INT, v));
+    assign_arg(pre, v, mkIntLit(genIntLit()));
+    post  = Stmt::create_sequence(post, mkPrint(PRINT_INT, v));
   }
 
   // Read float args
   for (int i = 0; i < opts->numFloatArgs; i++) {
 		auto v = newVar();
-    pre   = mkSeq(pre, mkAssign(v, fifo));
-    post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
+    assign_arg(pre, v);
+    post  = Stmt::create_sequence(post, mkPrint(PRINT_FLOAT, v));
   }
 
   // Initialise float vars
   for (int i = 0; i < opts->numFloatVars; i++) {
 		auto v = newVar();
-    pre   = mkSeq(pre, mkAssign(v, Float(genFloatLit()).expr()));
-    post  = mkSeq(post, mkPrint(PRINT_FLOAT, v));
+    assign_arg(pre, v, Float(genFloatLit()).expr());
+    post  = Stmt::create_sequence(post, mkPrint(PRINT_FLOAT, v));
   }
  
   // Read pointer args
   for (int i = 0; i < opts->numPtrArgs + opts->numPtr2Args; i++) {
-		auto v = newVar();
-    pre    = mkSeq(pre, mkAssign(v, fifo));
+    assign_arg(pre);
   }
 
   // Generate statement
-  Stmt* s = genStmt(opts, opts->depth, opts->length);
+  Stmt::Ptr s = genStmt(opts, opts->depth, opts->length);
 
-  return mkSeq(pre, mkSeq(s, post));
+  return Stmt::create_sequence(pre, Stmt::create_sequence(s, post));
 }
 
 }  // namespace V3DLib

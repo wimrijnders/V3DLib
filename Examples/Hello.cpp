@@ -8,7 +8,7 @@ V3DLib::Settings settings;
 
 // Define function that runs on the GPU.
 void hello(Ptr<Int> p) {
-  *p = 1;
+  *p = 1;  comment("TODO Check if comment is working");
 }
 
 
