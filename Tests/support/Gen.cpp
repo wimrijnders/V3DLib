@@ -207,7 +207,7 @@ Expr::Ptr genExpr(GenOptions* opts, Type t, int depth) {
 // Random boolean expressions
 // ============================================================================
 
-BExpr* genBExpr(GenOptions* opts, int depth) {
+BExpr::Ptr genBExpr(GenOptions* opts, int depth) {
   switch (randRange(NOT, CMP)) {
     // Negation
     case NOT:
@@ -374,7 +374,7 @@ Stmt::Ptr genWhile(GenOptions* o, int depth) {
   Expr::Ptr v = newVar();
 
   // Create random condition with loop bound
-  BExpr* b = genBExpr(o, depth)->And(mkCmp(v, CmpOp(LT, INT32), mkIntLit(o->loopBound)));
+  BExpr::Ptr b = genBExpr(o, depth)->And(mkCmp(v, CmpOp(LT, INT32), mkIntLit(o->loopBound)));
   CExpr* c = randRange(0, 1) == 0 ? mkAny(b) : mkAll(b);
 
   // Initialise loop variable

@@ -225,21 +225,21 @@ Vec eval(CoreState* s, Expr::Ptr e) {
 // Evaluate boolean expression
 // ============================================================================
 
-Vec evalBool(CoreState* s, BExpr *e) {
+Vec evalBool(CoreState* s, BExpr::Ptr e) {
   Vec v;
 
   switch (e->tag()) {
     // Negation
     case NOT:
-      v = evalBool(s, e->neg);
+      v = evalBool(s, e->neg());
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = !v[i].intVal;
       return v;
 
     // Conjunction
     case AND: {
-      Vec a = evalBool(s, e->conj.lhs);
-      Vec b = evalBool(s, e->conj.rhs);
+      Vec a = evalBool(s, e->conj_lhs());
+      Vec b = evalBool(s, e->conj_rhs());
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal && b[i].intVal;
       return v;
@@ -247,8 +247,8 @@ Vec evalBool(CoreState* s, BExpr *e) {
 
     // Disjunction
     case OR: {
-      Vec a = evalBool(s, e->disj.lhs);
-      Vec b = evalBool(s, e->disj.rhs);
+      Vec a = evalBool(s, e->disj_lhs());
+      Vec b = evalBool(s, e->disj_rhs());
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal || b[i].intVal;
       return v;
@@ -465,7 +465,7 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
     // Nested where
     case WHERE: {
-      Vec b = evalBool(s, stmt->where.cond);
+      Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, vecAnd(b, cond), stmt->thenStmt());
       execWhere(s, vecAnd(vecNeg(b), cond), stmt->elseStmt());
       return;
@@ -564,7 +564,7 @@ void exec(InterpreterState* state, CoreState* s) {
 
     // Conditional assignment
     case WHERE: {
-      Vec b = evalBool(s, stmt->where.cond);
+      Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, b, stmt->thenStmt());
       execWhere(s, vecNeg(b), stmt->elseStmt());
       return;

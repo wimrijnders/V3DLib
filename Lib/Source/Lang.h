@@ -33,8 +33,8 @@ void Else_();
 void End_();
 void While_(Cond c);
 void While_(BoolExpr b);
-void Where__(BExpr* b);
-inline void Where_(BoolExpr b) { Where__(b.bexpr); }
+void Where__(BExpr::Ptr b);
+inline void Where_(BoolExpr b) { Where__(b.bexpr()); }
 void For_(Cond c);
 void For_(BoolExpr b);
 void ForBody_();

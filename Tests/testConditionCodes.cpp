@@ -533,6 +533,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 	//            Fix pending: https://github.com/raspberrypi/linux/pull/3816/commits/803f25eb03d2698c79eea495be7dee47c3bb86c2
 	// So it appears we just need to wait.
 	//
+
 	if (!Platform::instance().has_vc4) {
 		std::cout << "Not running the 'noloop' tests on v3d; this causes persistent timeouts (TODO)" << std::endl;
 	} else {

@@ -82,7 +82,7 @@ void pretty(FILE *f, int indent, Stmt::Ptr s) {
     case WHERE:
       indentBy(f, indent);
       fprintf(f, "Where (");
-			fprintf(f, "%s", s->where.cond->pretty().c_str());
+			fprintf(f, "%s", s->where_cond()->pretty().c_str());
       fprintf(f, ")\n");
       pretty(f, indent+2, s->thenStmt());
       if (s->elseStmt().get() != nullptr) {

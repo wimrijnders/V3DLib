@@ -70,6 +70,20 @@ void Stmt::init(StmtTag in_tag) {
 }
 
 
+BExpr::Ptr Stmt::where_cond() const {
+	assert(tag == WHERE);
+	assert(m_where_cond.get() != nullptr);
+	return m_where_cond;
+}
+
+
+void Stmt::where_cond(BExpr::Ptr cond) {
+	assert(tag == WHERE);
+	assert(m_where_cond.get() == nullptr);  // Don't reassign
+	m_where_cond = cond;
+}
+
+
 Expr::Ptr Stmt::assign_lhs() const {
 	assert(tag == ASSIGN);
 	assert(m_exp_a.get() != nullptr);
@@ -275,9 +289,9 @@ std::string Stmt::disp() const {
 			ret << "SEQ {" << seq_s0()->disp() << "; " << seq_s1()->disp() << "}";
 		break;
 		case WHERE:
-			assert(where.cond != nullptr);
+			assert(m_where_cond.get() != nullptr);
 			assert(thenStmt().get() != nullptr);
-			ret << "WHERE (" << where.cond->disp() << ") THEN " << thenStmt()->disp();
+			ret << "WHERE (" << m_where_cond->disp() << ") THEN " << thenStmt()->disp();
 			if (elseStmt().get() != nullptr) {
 				ret << " ELSE " << elseStmt()->disp();
 			}
@@ -384,7 +398,7 @@ Stmt::Ptr Stmt::create(StmtTag in_tag, Ptr s0, Ptr s1) {
 			assertq(ret->m_stmt_a.get() == nullptr, "create() WHERE: don't reassign stmt a ptr");
 			assertq(ret->m_stmt_b.get() == nullptr, "create() WHERE: don't reassign stmt b ptr");
 
-			ret->where.cond = nullptr;  // NOTE: needs to be set elsewhere
+			ret->m_where_cond.reset();  // NOTE: needs to be set elsewhere
   		ret->m_stmt_a = s0;
   		ret->m_stmt_b = s1;
 		break;
@@ -460,9 +474,9 @@ void Stmt::for_to_while(Ptr in_body) {
 
 Stmt::Ptr mkSkip() { return Stmt::create(SKIP); }
 
-Stmt::Ptr mkWhere(BExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
+Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
   Stmt::Ptr s   = Stmt::create(WHERE, thenStmt, elseStmt);
-  s->where.cond = cond;
+  s->where_cond(cond);
   return s;
 }
 

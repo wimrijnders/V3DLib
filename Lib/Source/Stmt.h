@@ -3,6 +3,7 @@
 #include "Support/InstructionComment.h"
 #include "Int.h"
 #include "Expr.h"
+#include "BExpr.h"
 
 namespace V3DLib {
 
@@ -86,6 +87,9 @@ struct Stmt : public InstructionComment {
 	// Done like this to ease the transition to smart pointers.
 	// Eventually this can be cleaned up.
 	//
+	BExpr::Ptr where_cond() const;
+	void where_cond(BExpr::Ptr cond);
+
 	Expr::Ptr assign_lhs() const;
 	Expr::Ptr assign_rhs() const;
 	Expr::Ptr stride();
@@ -127,23 +131,16 @@ struct Stmt : public InstructionComment {
   StmtTag tag;  // What kind of statement is it?
 
   union {
-//    // Sequential composition
-//    struct { Stmt* s0; Stmt* s1; } seq;
-
     // Where
-//    struct { BExpr* cond; Stmt* thenStmt; Stmt* elseStmt; } where;
-    struct { BExpr* cond; } where;
+    //struct { BExpr* cond; } where;
 
     // If
-//		struct { CExpr* cond; Stmt* thenStmt; Stmt* elseStmt; } ifElse;
     struct { CExpr* cond; } ifElse;
 
     // While
-    //struct { CExpr* cond; Stmt* body; } loop;
     struct { CExpr* cond; } loop;
 
     // For (only used intermediately during AST construction)
-    //struct { CExpr* cond; Stmt* inc; Stmt* body; } forLoop;
     struct { CExpr* cond; } forLoop;
 
     // Print
@@ -177,6 +174,8 @@ struct Stmt : public InstructionComment {
 private:
 	void init(StmtTag in_tag);
 
+	BExpr::Ptr m_where_cond;
+
 	Expr::Ptr m_exp_a;
 	Expr::Ptr m_exp_b;
 
@@ -187,7 +186,7 @@ private:
 
 // Functions to construct statements
 Stmt::Ptr mkSkip();
-Stmt::Ptr mkWhere(BExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
+Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
 Stmt::Ptr mkIf(CExpr *cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
 Stmt::Ptr mkWhile(CExpr *cond, Stmt::Ptr body);
 Stmt::Ptr mkFor(CExpr *cond, Stmt::Ptr inc, Stmt::Ptr body);

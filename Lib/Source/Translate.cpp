@@ -231,7 +231,7 @@ AssignCond boolAnd(Seq<Instr> *seq, AssignCond condA, Var condVarA, AssignCond c
  *
  * The comparison is internally implemented as a subtract-operation.
  */
-void cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
+void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
   BExpr b = *bexpr;
   assert(b.tag() == CMP);
 
@@ -295,7 +295,7 @@ void cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 }
 
 
-AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v);  // Forward declaration
+AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v);  // Forward declaration
 
 
 /**
@@ -315,10 +315,10 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v);  // Forward declaratio
 void boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
 	using namespace V3DLib::Target::instr;
 
-	boolExp(&seq, b.disj.lhs, v);                     // return val ignored
+	boolExp(&seq, b.lhs(), v);                     // return val ignored
 
 	Var w = freshVar();
-	boolExp(&seq, b.disj.rhs, w);  // idem
+	boolExp(&seq, b.rhs(), w);  // idem
 
 	if (b.tag() == OR) {
 		seq << bor(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
@@ -351,7 +351,7 @@ void boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
  *
  * @return the condition to use when checking the flags for this comparison
  */
-AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
+AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 	using namespace V3DLib::Target::instr;
   BExpr b = *bexpr;
 
@@ -359,8 +359,8 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 		case CMP:
 			cmpExp(seq, bexpr, v);
 		break;
-		case NOT: {            // '!b', where b is a boolean expression
-    	AssignCond cond = boolExp(seq, b.neg, v);
+		case NOT: {          // '!b', where b is a boolean expression
+    	AssignCond cond = boolExp(seq, b.neg(), v);
 			*seq << bxor(v, v, 1).setCondFlag(Flag::ZC);
 		}
 		break;
@@ -444,7 +444,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
 			{
 				Seq<Instr> seq;
       	// Compile new boolean expression
-      	newCond = boolExp(&seq, s->where.cond, newCondVar);
+      	newCond = boolExp(&seq, s->where_cond(), newCondVar);
 				if (!seq.empty()) seq.front().comment("Start where (always)");
 				ret << seq;
 			}
@@ -479,7 +479,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
 			{
 				Seq<Instr> seq;
       	// Compile new boolean expression
-      	newCond = boolExp(&seq, s->where.cond, newCondVar);
+      	newCond = boolExp(&seq, s->where_cond(), newCondVar);
 				if (!seq.empty()) seq.front().comment("Start where (nested)");
 				ret << seq;
 			}

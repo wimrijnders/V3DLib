@@ -116,7 +116,7 @@ void While_(BoolExpr b) {
 // 'Where' token
 //=============================================================================
 
-void Where__(BExpr* b) {
+void Where__(BExpr::Ptr b) {
   Stmt::Ptr s = mkWhere(b, nullptr, nullptr);
   controlStack.push(s);
   stmtStack().push(mkSkip());

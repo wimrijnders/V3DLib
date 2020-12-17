@@ -19,13 +19,16 @@ struct Cond {
 
 
 struct BoolExpr {
-  BExpr* bexpr;  // Abstract syntax tree
+  BoolExpr(BExpr::Ptr b) :m_bexpr(b) {}
 
-  BoolExpr(BExpr* b) { bexpr = b; }
+  BExpr::Ptr bexpr() { return m_bexpr; }
+
+private:
+  BExpr::Ptr m_bexpr;  // Abstract syntax tree
 };
 
 
-BExpr *mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs);
+BExpr::Ptr mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs);
 
 
 // ============================================================================
