@@ -37,7 +37,8 @@
 namespace {
 
 using namespace V3DLib::v3d::instr;
-using Instructions = std::vector<Instr>; 
+using Instructions = V3DLib::v3d::Instructions;
+using ByteCode = V3DLib::v3d::ByteCode;
 
 /**
  * `cond = 'push*'` sets the conditional flag A

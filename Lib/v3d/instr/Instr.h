@@ -243,6 +243,12 @@ Instr bexp(Location const &dst, Location const &srca);
 Instr blog(Location const &dst, Location const &srca);
 
 }  // instr
+
+
+// Some type definitions, for better understanding
+using Instructions = std::vector<instr::Instr>; 
+using ByteCode = std::vector<uint64_t>; 
+
 }  // v3d
 }  // V3DLib
 

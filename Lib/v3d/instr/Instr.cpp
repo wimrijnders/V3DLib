@@ -1715,7 +1715,7 @@ Instr bexp(Location const &dst, Location const &srca) {
 
 
 Instr blog(Location const &dst, Location const &srca) {
-	return Instr(V3D_QPU_A_LOG, dst, srca, r4);  // r4 implicit
+	return Instr(V3D_QPU_A_LOG, dst, srca, r5);  // r5 implicit
 }
 
 }  // instr

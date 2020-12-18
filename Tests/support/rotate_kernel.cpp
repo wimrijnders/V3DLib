@@ -6,6 +6,8 @@
 #include "rotate_kernel.h"
 #include "v3d/instr/Snippets.h"
 
+using ByteCode = V3DLib::v3d::ByteCode;
+
 //
 // Issue: disassembly code in MESA does not output rotate flag
 //
@@ -398,15 +400,7 @@ ByteCode rotate_kernel() {
 		  << tmuwt().add(rf(1), rf(1), r3);
 	}
 
-	ret
-	  << nop().thrsw()
-	  << nop().thrsw()
-	  << nop()
-	  << nop()
-	  << nop().thrsw()
-	  << nop()
-	  << nop()
-	  << nop();
+	ret << end_program();
 
 	ByteCode bytecode;
 	for (auto const &instr : ret) {

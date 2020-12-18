@@ -4,8 +4,8 @@
 #include <vector>
 #include "support.h"
 
-extern ByteCode const qpu_rotate_alias_code;
-ByteCode rotate_kernel();
-void run_rotate_alias_kernel(ByteCode const &bytecode);
+extern V3DLib::v3d::ByteCode const qpu_rotate_alias_code;
+V3DLib::v3d::ByteCode rotate_kernel();
+void run_rotate_alias_kernel(V3DLib::v3d::ByteCode const &bytecode);
 
 #endif  // _TEST_SUPPORT_ROTATE_KERNEL_H

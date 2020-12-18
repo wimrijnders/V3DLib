@@ -14,7 +14,6 @@
 #include "v3d/instr/Instr.h"
 #include "v3d/BufferObject.h"
 
-using ByteCode = std::vector<uint64_t>; 
 
 template<typename T>
 using SharedArray = V3DLib::SharedArray<T>;

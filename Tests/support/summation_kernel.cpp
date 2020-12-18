@@ -732,6 +732,8 @@ std::vector<uint64_t> summation = {
 namespace {
 
 using namespace V3DLib::v3d::instr;
+using Instructions = V3DLib::v3d::Instructions;
+using ByteCode = V3DLib::v3d::ByteCode;
 
 
 Instructions adjust_length_for_unroll(
@@ -891,7 +893,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 // It might be possible to use muliple arrays, but we're sticking to the original
 // example here.
 //
-void run_summation_kernel(std::vector<uint64_t> &bytecode, uint8_t num_qpus, int unroll_shift) {
+void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift) {
 	using namespace V3DLib::v3d;
 
 	//printf("bytecode size: %u\n", bytecode.size());

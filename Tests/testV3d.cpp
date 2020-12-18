@@ -20,8 +20,10 @@
 #include <iostream>
 #include "Common/SharedArray.h"
 #include "v3d/v3d.h"
-#include "support/support.h"
+#include "v3d/instr/Instr.h"
+#include "v3d/instr/Snippets.h"
 #include "Support/Platform.h"
+#include "support/support.h"
 #include "support/summation_kernel.h"
 #include "support/rotate_kernel.h"
 #include "support/disasm_kernel.h"
@@ -33,8 +35,10 @@ using BufferObject = V3DLib::v3d::BufferObject;
 template<typename T>
 using SharedArray = V3DLib::SharedArray<T>;
 
-
 namespace {
+
+using Instructions = V3DLib::v3d::Instructions;
+using ByteCode = V3DLib::v3d::ByteCode;
 
 const uint32_t DEFAULT_CODE_AREA_SIZE = 1024 * 1024;
 const uint32_t DEFAULT_DATA_AREA_SIZE = 32 * 1024 * 1024;
@@ -75,6 +79,49 @@ bool v3d_init() {
 // The actual tests
 //////////////////////////////////
 
+TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
+	if (!v3d_init()) return;
+
+	SECTION("Test sin opcode") {
+		using namespace V3DLib::v3d::instr;
+		using Instructions =  V3DLib::v3d::Instructions;
+
+		Instructions instrs;
+
+		instrs << nop().ldunifrf(rf(0))  // value to operate on
+		       << nop().ldunifrf(rf(1))  // ptr to location to store
+				   << bsin(r1, rf(0))
+			     << mov(tmud, r1)          // write result to main mem
+			     << mov(tmua, rf(1))
+			     << tmuwt()
+		       << end_program();
+
+		ByteCode bytecode;
+		for (auto const &instrs : instrs) {
+			bytecode << instrs.code(); 
+		}
+
+		BufferObject heap(1024);
+		SharedArray<uint64_t> codeMem(bytecode.size(), heap);
+		codeMem.copyFrom(bytecode);
+		SharedArray<uint64_t> result(16, heap);
+		SharedArray<uint32_t> unif(2, heap);
+
+		// Some magic to store a float in a uint32_t
+		float x = 21.5f;
+  	int32_t *bits = (int32_t*) &x;
+
+		unif[0] = *bits;
+		unif[1] = result.getAddress();
+
+		V3DLib::v3d::Driver driver;
+		driver.add_bo(heap);
+		REQUIRE(driver.execute(codeMem, &unif));
+		dump_data(result, true);
+	}
+}
+
+
 /*
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
@@ -83,7 +130,6 @@ TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
 
 	SECTION("Direct v3d calls should work with SharedArray") {
 		using namespace V3DLib::v3d;
-
 
 		uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
 		REQUIRE(array_length == 8);
@@ -111,18 +157,12 @@ TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
 		SharedArray<uint32_t> arr(SIZE);
 		REQUIRE(arr.size() == SIZE);
 
-		for(int offset = 0; offset < SIZE; ++offset) {
-			arr[offset] = 0;
-		}
-
+		arr.fill(0);
 		for(int offset = 0; offset < SIZE; ++offset) {
 			REQUIRE(arr[offset] == 0);
 		}
 
-		for(int offset = 0; offset < SIZE; ++offset) {
-			arr[offset] = 127;
-		}
-
+		arr.fill(127);
 		for(int offset = 0; offset < SIZE; ++offset) {
 			REQUIRE(arr[offset] == 127);
 		}
@@ -137,7 +177,6 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 	if (!v3d_init()) return;
 
 	SECTION("Summation example should work from bytecode") {
-
 		uint8_t num_qpus = 8;  // Don't change these values! That's how the summation kernel bytecode
 		int unroll_shift = 5;  // was compiled.
 
@@ -220,7 +259,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 
 
 	SECTION("Summation kernel generates correctly encoded output") {
-		std::vector<uint64_t> arr = summation_kernel(8, 5, 0);
+		auto arr = summation_kernel(8, 5, 0);
 		REQUIRE(arr.size() > 0);
 
 		match_kernel_outputs(summation, arr);
@@ -289,7 +328,6 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		REQUIRE(kernel_output.size() > 0);
 
 		match_kernel_outputs(bytecode, kernel_output, true);  // true: skip `nop` in kernel_output, can't generate
-		//REQUIRE(summation.size() == arr.size());
 	}
 
 
