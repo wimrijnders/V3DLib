@@ -133,25 +133,44 @@ CmdParameters &instance(bool use_numqpus = false) {
 
 namespace V3DLib {
 
-CmdParameters const &Settings::base_params(bool use_numqpus) {
-	return instance(use_numqpus);
+Settings::Settings(CmdParameters *derived_params, bool use_num_qpus) :
+	m_derived_params(derived_params),
+	m_use_num_qpus(use_num_qpus)
+{}
+
+
+CmdParameters &Settings::base_params() {
+	return instance(m_use_num_qpus);
 }
 
 
 int Settings::init(int argc, const char *argv[]) {
+	int ret = CmdParameters::ALL_IS_WELL;
+
 	set_name(argv[0]);
 
-	if (instance().has_errors()) {
-		std::cout << instance().get_errors();
-		return CmdParameters::EXIT_ERROR;
+	CmdParameters *params = nullptr;
+	if (m_derived_params != nullptr) {
+		m_derived_params->add(base_params());
+		params = m_derived_params;
+	} else {
+		params = &instance();
 	}
 
-	auto ret = instance().handle_commandline(argc, argv, false);
-	if (ret != CmdParameters::ALL_IS_WELL) {
-		return ret;
-	}
+	if (params->has_errors()) {
+		std::cout << params->get_errors();
+		ret = CmdParameters::EXIT_ERROR;
+	} else {
+		ret = params->handle_commandline(argc, argv, false);
 
-	process();
+		if (ret == CmdParameters::ALL_IS_WELL) {
+			if (process(*params)) {
+				init_params();  // Set derived param's , if present
+			} else {
+				ret = CmdParameters::EXIT_ERROR;
+			}
+		}
+	}
 
 	return ret;
 }
@@ -163,19 +182,17 @@ void Settings::set_name(const char *in_name) {
 }
 
 
-bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
-	CmdParameters &params = (in_params != nullptr)?*in_params:instance();
-
-	output_code  = params.parameters()["Output Generated Code"]->get_bool_value();
-	compile_only = params.parameters()["Compile Only"]->get_bool_value();
-	silent       = params.parameters()["Disable logging"]->get_bool_value();
-	run_type     = params.parameters()["Select run type"]->get_int_value();
+bool Settings::process(CmdParameters &in_params) {
+	output_code  = in_params.parameters()["Output Generated Code"]->get_bool_value();
+	compile_only = in_params.parameters()["Compile Only"]->get_bool_value();
+	silent       = in_params.parameters()["Disable logging"]->get_bool_value();
+	run_type     = in_params.parameters()["Select run type"]->get_int_value();
 #ifdef QPU_MODE
-	show_perf_counters  = params.parameters()["Performance Counters"]->get_bool_value();
+	show_perf_counters = in_params.parameters()["Performance Counters"]->get_bool_value();
 #endif  // QPU_MODE
 
-	if (use_numqpus) {
-		num_qpus    = params.parameters()["Num QPU's"]->get_int_value();
+	if (m_use_num_qpus) {
+		num_qpus    = in_params.parameters()["Num QPU's"]->get_int_value();
 
 		if (run_type != 0 || Platform::instance().has_vc4) {  // vc4 only
 			if (num_qpus < 0 || num_qpus > 12) {

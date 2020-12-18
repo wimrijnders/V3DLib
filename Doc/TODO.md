@@ -5,7 +5,7 @@
 - [ ] Tone down mesa library, compile takes long.
       Tried this but gave up after it became evident nothing could be removed.
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
-- [ ] Refactor derived settings in examples, too much duplicated screen noise.
+- [x] Refactor derived settings in examples, too much duplicated screen noise.
 
 ## v3d
 

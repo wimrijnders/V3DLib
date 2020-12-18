@@ -42,27 +42,11 @@ struct Rot3DSettings : public Settings {
 	int    kernel;
 	bool   show_results;
 
-	int init(int argc, const char *argv[]) {
-		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
-		auto const FAIL    = CmdParameters::EXIT_ERROR;
+	Rot3DSettings() : Settings(&params, true) {}
 
-		set_name(argv[0]);
-		CmdParameters &params = ::params;
-		params.add(base_params(true));
-
-		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != SUCCESS) return ret;
-
-		// Init the parameters in the parent
-		if (!process(&params, true)) {
-			ret = FAIL;
-		}
-
+	void init_params() override {
 		kernel              = params.parameters()["Kernel"]->get_int_value();
-		//kernel_name       = params.parameters()["Kernel"]->get_string_value();
 		show_results        = params.parameters()["Display Results"]->get_bool_value();
-
-		return ret;
 	}
 } settings;
 

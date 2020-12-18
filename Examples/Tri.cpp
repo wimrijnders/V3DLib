@@ -20,24 +20,10 @@ CmdParameters params = {
 struct TriSettings : public Settings {
 	int kernel;
 
-	int init(int argc, const char *argv[]) {
-		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
-		auto const FAIL    = CmdParameters::EXIT_ERROR;
+	TriSettings() : Settings(&params, true) {}
 
-		set_name(argv[0]);
-		CmdParameters &params = ::params;
-		params.add(base_params(true));
-
-		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != SUCCESS) return ret;
-
-		// Init the parameters in the parent
-		if (!process(&params, true)) {
-			ret = FAIL;
-		}
-
+	void init_params() override {
 		kernel = params.parameters()[0]->get_int_value();
-		return ret;
 	}
 
 } settings;
