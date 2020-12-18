@@ -7,6 +7,12 @@
 
 namespace V3DLib {
 
+// Reserved general-purpose vars
+enum ReservedVarId : VarId {
+  RSV_QPU_ID   = 0,
+  RSV_NUM_QPUS = 1
+};
+
 template <typename T> struct Deref; // Forward declaration template class
 
 

@@ -74,7 +74,7 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 			vc4::KernelDriver driver;
 			resetFreshVarGen();
 
-	    Stmt *s = progGen(&opts);
+	    Stmt::Ptr s = progGen(&opts);
 	    int numVars = getFreshVarCount();     // For interpreter: max var id used in source
 			driver.compile_init(false, numVars);  // NOTE: 2nd param sets globalVarId to itself! 
 			driver.add_stmt(s);
@@ -104,9 +104,7 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
 	    if (differs) {
 	      printf("Failed test %i.\n", test);
 	      printf("Source Code: \n");
-	      pretty(s);
-	      printf("\nTarget Code: \n");
-				printf(mnemonics(driver.targetCode()).c_str());
+				driver.pretty(true);
 
 	      printf("\nParams: ");
 	      for (int i = 0; i < params.size(); i++) {

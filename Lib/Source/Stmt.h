@@ -3,11 +3,9 @@
 #include "Support/InstructionComment.h"
 #include "Int.h"
 #include "Expr.h"
+#include "CExpr.h"
 
 namespace V3DLib {
-
-class BExpr;
-class CExpr;
 
 // ============================================================================
 // Class PrintStmt
@@ -62,8 +60,32 @@ enum StmtTag {
 };
 
 
+/**
+ * The original implementation put instances of `Stmt` on a custom heap.
+ * This placed a strict limit on compilation size, which I continually ran
+ * into, and complicated initialization of instances (notably, ctors were
+ * not called).
+ *
+ * The custom heap has thus been removed and instances are allocated in
+ * the regular C++ way.
+ * Pointers within this definition are in the process of being replaced
+ * with smart pointers.
+ */
 struct Stmt : public InstructionComment {
-	~Stmt();
+	using Ptr = std::shared_ptr<Stmt>;
+
+	~Stmt() {}
+
+	std::string disp() const;
+
+	//
+	// Accessors for pointer objects.
+	// They basically all do the same thing, but in a controlled manner.
+	// Done like this to ease the transition to smart pointers.
+	// Eventually this can be cleaned up.
+	//
+	BExpr::Ptr where_cond() const;
+	void where_cond(BExpr::Ptr cond);
 
 	Expr::Ptr assign_lhs() const;
 	Expr::Ptr assign_rhs() const;
@@ -79,31 +101,40 @@ struct Stmt : public InstructionComment {
 	Expr::Ptr startDMAWrite();
 	Expr::Ptr print_expr() const;
 
-	std::string disp() const;
+	Ptr seq_s0() const;
+	Ptr seq_s1() const;
+	Ptr thenStmt() const;
+	Ptr elseStmt() const;
+	Ptr body() const;
+	void thenStmt(Ptr then_ptr);
+	void elseStmt(Ptr else_ptr);
+	void body(Ptr ptr);
+	void inc(Ptr ptr);
+	bool then_is_null() const;
+	bool else_is_null() const;
+	bool body_is_null() const;
 
-	static Stmt *create(StmtTag in_tag);
-	static Stmt *create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);
-	static Stmt *create(StmtTag in_tag, Stmt *s0, Stmt *s1);
+	void for_to_while(Ptr in_body);
 
-  // What kind of statement is it?
-  StmtTag tag;
+	CExpr::Ptr if_cond() const;
+	CExpr::Ptr loop_cond() const;
+
+	//
+	// Instantiation methods
+	//
+	static Ptr create(StmtTag in_tag);
+	static Ptr create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);  // TODO make private
+	static Ptr create(StmtTag in_tag, Ptr s0, Ptr s1);
+	static Ptr create_assign(Expr::Ptr lhs, Expr::Ptr rhs);
+	static Ptr create_sequence(Ptr s0, Ptr s1);
+
+	static Ptr mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt);
+	static Ptr mkWhile(CExpr::Ptr cond, Ptr body);
+	static Ptr mkFor(CExpr::Ptr cond, Ptr inc, Ptr body);
+
+  StmtTag tag;  // What kind of statement is it?
 
   union {
-    // Sequential composition
-    struct { Stmt* s0; Stmt* s1; } seq;
-
-    // Where
-    struct { BExpr* cond; Stmt* thenStmt; Stmt* elseStmt; } where;
-
-    // If
-    struct { CExpr* cond; Stmt* thenStmt; Stmt* elseStmt; } ifElse;
-
-    // While
-    struct { CExpr* cond; Stmt* body; } loop;
-
-    // For (only used intermediately during AST construction)
-    struct { CExpr* cond; Stmt* inc; Stmt* body; } forLoop;
-
     // Print
     PrintStmt print;
 
@@ -135,20 +166,22 @@ struct Stmt : public InstructionComment {
 private:
 	void init(StmtTag in_tag);
 
+	BExpr::Ptr m_where_cond;
+
 	Expr::Ptr m_exp_a;
 	Expr::Ptr m_exp_b;
+
+	Ptr m_stmt_a;
+	Ptr m_stmt_b;
+
+	CExpr::Ptr m_cond;
 };
 
 
 // Functions to construct statements
-Stmt *mkSkip();
-Stmt *mkAssign(Expr::Ptr lhs, Expr::Ptr rhs);
-Stmt *mkSeq(Stmt *s0, Stmt *s1);
-Stmt *mkWhere(BExpr *cond, Stmt *thenStmt, Stmt *elseStmt);
-Stmt *mkIf(CExpr *cond, Stmt *thenStmt, Stmt *elseStmt);
-Stmt *mkWhile(CExpr *cond, Stmt *body);
-Stmt *mkFor(CExpr *cond, Stmt *inc, Stmt *body);
-Stmt *mkPrint(PrintTag t, Expr::Ptr e);
+Stmt::Ptr mkSkip();
+Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
+Stmt::Ptr mkPrint(PrintTag t, Expr::Ptr e);
 
 }  // namespace V3DLib
 

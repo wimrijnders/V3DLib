@@ -1,7 +1,6 @@
 #include "RegAlloc.h"
 #include <stdio.h>
 #include "Support/basics.h"  // fatal()
-#include "Source/Syntax.h"
 #include "Target/Syntax.h"
 #include "Target/Subst.h"
 #include "SourceTranslate.h"

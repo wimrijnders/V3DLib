@@ -12,8 +12,8 @@
 #ifdef QPU_MODE
 #include "Support/Platform.h"
 #include "vc4/PerformanceCounters.h"
+#include "v3d/PerformanceCounters.h"
 
-using PC = V3DLib::PerformanceCounters;
 #endif  // QPU_MODE
 
 namespace {
@@ -45,42 +45,6 @@ std::string stem(const char *input) {
 
 	return filename;
 }
-
-
-// ============================================================================
-// Performance Counters 
-// ============================================================================
-
-#ifdef QPU_MODE
-/**
- * @brief Enable the counters we are interested in
- */
-void initPerfCounters() {
-	PC::Init list[] = {
-		{ 0, PC::QPU_INSTRUCTIONS },
-		{ 1, PC::QPU_STALLED_TMU },
-		{ 2, PC::L2C_CACHE_HITS },
-		{ 3, PC::L2C_CACHE_MISSES },
-		{ 4, PC::QPU_INSTRUCTION_CACHE_HITS },
-		{ 5, PC::QPU_INSTRUCTION_CACHE_MISSES },
-		{ 6, PC::QPU_CACHE_HITS },
-		{ 7, PC::QPU_CACHE_MISSES },
-		{ 8, PC::QPU_IDLE },
-		{ PC::END_MARKER, PC::END_MARKER }
-	};
-
-	PC::enable(list);
-	PC::clear(PC::enabled());
-
-	//printf("Perf Count mask: %0X\n", PC::enabled());
-
-	// The following will show zeroes for all counters, *except*
-	// for QPU_IDLE, because this was running from the clear statement.
-	// Perhaps there are more counters like that.
-	//std::string output = PC::showEnabled();
-	//printf("%s\n", output.c_str());
-}
-#endif  // QPU_MODE
 
 
 // ============================================================================
@@ -169,25 +133,44 @@ CmdParameters &instance(bool use_numqpus = false) {
 
 namespace V3DLib {
 
-CmdParameters const &Settings::base_params(bool use_numqpus) {
-	return instance(use_numqpus);
+Settings::Settings(CmdParameters *derived_params, bool use_num_qpus) :
+	m_derived_params(derived_params),
+	m_use_num_qpus(use_num_qpus)
+{}
+
+
+CmdParameters &Settings::base_params() {
+	return instance(m_use_num_qpus);
 }
 
 
 int Settings::init(int argc, const char *argv[]) {
+	int ret = CmdParameters::ALL_IS_WELL;
+
 	set_name(argv[0]);
 
-	if (instance().has_errors()) {
-		std::cout << instance().get_errors();
-		return CmdParameters::EXIT_ERROR;
+	CmdParameters *params = nullptr;
+	if (m_derived_params != nullptr) {
+		m_derived_params->add(base_params());
+		params = m_derived_params;
+	} else {
+		params = &instance();
 	}
 
-	auto ret = instance().handle_commandline(argc, argv, false);
-	if (ret != CmdParameters::ALL_IS_WELL) {
-		return ret;
-	}
+	if (params->has_errors()) {
+		std::cout << params->get_errors();
+		ret = CmdParameters::EXIT_ERROR;
+	} else {
+		ret = params->handle_commandline(argc, argv, false);
 
-	process();
+		if (ret == CmdParameters::ALL_IS_WELL) {
+			if (process(*params)) {
+				init_params();  // Set derived param's , if present
+			} else {
+				ret = CmdParameters::EXIT_ERROR;
+			}
+		}
+	}
 
 	return ret;
 }
@@ -199,19 +182,17 @@ void Settings::set_name(const char *in_name) {
 }
 
 
-bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
-	CmdParameters &params = (in_params != nullptr)?*in_params:instance();
-
-	output_code  = params.parameters()["Output Generated Code"]->get_bool_value();
-	compile_only = params.parameters()["Compile Only"]->get_bool_value();
-	silent       = params.parameters()["Disable logging"]->get_bool_value();
-	run_type     = params.parameters()["Select run type"]->get_int_value();
+bool Settings::process(CmdParameters &in_params) {
+	output_code  = in_params.parameters()["Output Generated Code"]->get_bool_value();
+	compile_only = in_params.parameters()["Compile Only"]->get_bool_value();
+	silent       = in_params.parameters()["Disable logging"]->get_bool_value();
+	run_type     = in_params.parameters()["Select run type"]->get_int_value();
 #ifdef QPU_MODE
-	show_perf_counters  = params.parameters()["Performance Counters"]->get_bool_value();
+	show_perf_counters = in_params.parameters()["Performance Counters"]->get_bool_value();
 #endif  // QPU_MODE
 
-	if (use_numqpus) {
-		num_qpus    = params.parameters()["Num QPU's"]->get_int_value();
+	if (m_use_num_qpus) {
+		num_qpus    = in_params.parameters()["Num QPU's"]->get_int_value();
 
 		if (run_type != 0 || Platform::instance().has_vc4) {  // vc4 only
 			if (num_qpus < 0 || num_qpus > 12) {
@@ -238,16 +219,48 @@ bool Settings::process(CmdParameters *in_params, bool use_numqpus) {
 }
 
 
+/**
+ * @brief Performance Counters: Enable the counters we are interested in
+ */
 void Settings::startPerfCounters() {
 	//printf("Entered Settings::startPerfCounters()\n");
 
 #ifdef QPU_MODE
-	if (show_perf_counters) {
-		if (Platform::instance().has_vc4) {  // vc4 only
-			initPerfCounters();
-		} else {
-			printf("NOTE: Performance counters enabled for VC4 only.\n");
-		}
+	if (!show_perf_counters) return;
+
+	using PC = V3DLib::vc4::PerformanceCounters;
+ 
+	if (Platform::instance().has_vc4) {
+		PC::enable({
+			PC::QPU_INSTRUCTIONS,
+			PC::QPU_STALLED_TMU,
+			PC::L2C_CACHE_HITS,
+			PC::L2C_CACHE_MISSES,
+			PC::QPU_INSTRUCTION_CACHE_HITS,
+			PC::QPU_INSTRUCTION_CACHE_MISSES,
+			PC::QPU_CACHE_HITS,
+			PC::QPU_CACHE_MISSES,
+			PC::QPU_IDLE,
+		});
+	} else {
+		using PC3 = V3DLib::v3d::PerformanceCounters;
+
+		PC3::enter({
+			// vc4 counters, check if same and working.
+			// They work, but overlap is hard to detect with vc4.
+			PC::QPU_INSTRUCTIONS,
+			PC::QPU_STALLED_TMU,
+			PC::L2C_CACHE_HITS,
+			PC::L2C_CACHE_MISSES,
+			PC::QPU_INSTRUCTION_CACHE_HITS,
+			PC::QPU_INSTRUCTION_CACHE_MISSES,
+			PC::QPU_CACHE_HITS,
+			PC::QPU_CACHE_MISSES,
+			PC::QPU_IDLE,
+
+			PC3::CORE_PCTR_CYCLE_COUNT,  // specific for v3d
+			// CHECKED for <= 40
+		});
 	}
 #endif
 }
@@ -255,13 +268,21 @@ void Settings::startPerfCounters() {
 
 void Settings::stopPerfCounters() {
 #ifdef QPU_MODE
-	if (show_perf_counters) {
-		if (Platform::instance().has_vc4) {  // vc4 only
-			// Show values current counters
-			std::string output = PC::showEnabled();
-			printf("%s\n", output.c_str());
-		}
+	if (!show_perf_counters) return;
+ 
+	std::string output;
+
+	if (Platform::instance().has_vc4) {
+		// Show values current counters
+		using PC = V3DLib::vc4::PerformanceCounters;
+
+		output = PC::showEnabled();
+	} else {
+		using PC = V3DLib::v3d::PerformanceCounters;
+		output = PC::showEnabled();
 	}
+
+	printf("%s\n", output.c_str());
 #endif
 }
 

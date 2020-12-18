@@ -119,6 +119,17 @@ Instr::Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, Small
 }
 
 
+/**
+ * This only works if imma == immb (test here internally)
+ * The syntax, however, allows this.
+ */
+Instr::Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, SmallImm const &immb) {
+	init(NOP);
+	alu_add_set(dst, imma, immb);
+	alu.add.op = op;
+}
+
+
 std::string Instr::dump(bool to_stdout) const {
 	std::string ret;
 	char buffer[10*1024];
@@ -428,6 +439,16 @@ Instr &Instr::ldunifarf(Location const &loc) {
 	return *this;
 }
 
+
+Instr &Instr::ldunifrf(Location const &loc) {
+	sig.ldunifrf = true;
+
+	sig_magic = !loc.is_rf();
+	sig_addr = loc.to_waddr();
+	return *this;
+}
+
+
 //
 // Conditions  branch instructions
 //
@@ -623,9 +644,16 @@ void Instr::alu_add_set_reg_b(Location const &loc) {
 	if (loc.is_rf()) {
 		if (!sig.small_imm) {
 			if (alu.add.a == V3D_QPU_MUX_A) {
-				// raddr_a already taken, use b instead
-				raddr_b          = loc.to_waddr(); 
-				alu.add.b        = V3D_QPU_MUX_B;
+				// raddr_a already taken
+
+				if (raddr_a == loc.to_waddr()) {
+					// If it's the same, reuse
+					alu.add.b        = V3D_QPU_MUX_A;
+				} else {
+					// use b instead
+					raddr_b          = loc.to_waddr(); 
+					alu.add.b        = V3D_QPU_MUX_B;
+				}
 			} else {
 				raddr_a          = loc.to_waddr(); 
 				alu.add.b        = V3D_QPU_MUX_A;
@@ -910,18 +938,6 @@ Instr ftoi(Location const &dst, Location const &srca, SmallImm const &immb) {
 
 
 /**
- * Prefix 'b' because 'and' is a keyword.
- */
-Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
-	Instr instr;
-	instr.alu_add_set(dst, srca, immb);
-
-	instr.alu.add.op    = V3D_QPU_A_AND;
-	return instr;
-}
-
-
-/**
  * Returns index of current vector item on a given QPU.
  * This will be something in the range [0..15]
  */
@@ -970,12 +986,6 @@ Instr add(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
 
 Instr sub(Location const &dst, Location const &srca, Location const &srcb) {
 	return Instr(V3D_QPU_A_SUB, dst, srca, srcb);
-/*
-	Instr instr;
-	instr.alu_add_set(loc1, loc2, loc3);
-	instr.alu.add.op = V3D_QPU_A_SUB;
-	return instr;
-*/
 }
 
 
@@ -1085,20 +1095,31 @@ Instr mov(Location const &loc1, Location const &loc2) {
 
 // or is reserved keyword
 Instr bor(Location const &dst, Location const &srca, Location const &srcb) {
-	Instr instr;
-	instr.alu_add_set(dst, srca, srcb);
+	return Instr(V3D_QPU_A_OR, dst, srca, srcb);
+}
 
-	instr.alu.add.op    = V3D_QPU_A_OR;
-	return instr;
+Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
+	return Instr(V3D_QPU_A_OR, dst, imma, immb);
+}
+
+Instr band(Location const &dst, Location const &srca, Location const &srcb) {
+	return Instr(V3D_QPU_A_AND, dst, srca, srcb);
 }
 
 
-Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
-	Instr instr;
-	instr.alu_add_set(dst, imma, immb);
+/**
+ * Prefix 'b' because 'and' is a keyword.
+ */
+Instr band(Location const &dst, Location const &srca, SmallImm const &immb) {
+	return Instr(V3D_QPU_A_AND, dst, srca, immb);
+}
 
-	instr.alu.add.op    = V3D_QPU_A_OR;
-	return instr;
+
+/**
+ * Prefix 'b' because 'xor' is a keyword.
+ */
+Instr bxor(Location const &dst, Location const &srca, SmallImm const &immb) {
+	return Instr(V3D_QPU_A_XOR, dst, srca, immb);
 }
 
 
@@ -1368,22 +1389,14 @@ Instr vpmsetup(Register const &reg2) {
 }
 
 
-// First param ignored??
-Instr ffloor(uint32_t magic_value, RFAddress rf_addr2, Register const &reg3) {
+Instr ffloor(Location const &dst, Location const &srca) {
 	Instr instr;
+	instr.alu_add_set_dst(dst);
+	instr.alu_add_set_reg_a(srca);
+	instr.alu_add_set_reg_b(r1);  // apparently implicit
 
-	if (magic_value == ifb) {
-		instr.flags.ac = V3D_QPU_COND_IFB;
-	}
-
-
-	instr.alu.add.op    = V3D_QPU_A_FFLOOR;
-	instr.alu.add.a     = reg3.to_mux();
-	instr.alu.add.b     = V3D_QPU_MUX_R1;
-	instr.alu.add.waddr = rf_addr2.to_waddr();
-	instr.alu.add.magic_write = false;
-	instr.alu.add.output_pack = rf_addr2.output_pack();
-	instr.alu.add.b_unpack = (v3d_qpu_input_unpack) magic_value;
+	instr.alu.add.op = V3D_QPU_A_FFLOOR;
+	instr.alu.add.b_unpack = (v3d_qpu_input_unpack) V3D_QPU_A_FFLOOR; // ?? Looks wrong but matches the mesa disasm
 
 	return instr;
 }
@@ -1642,6 +1655,67 @@ Instr max(Location const &dst, Location const &srca, Location const &srcb) {
 
 	instr.alu.add.op = V3D_QPU_A_MAX;
 	return instr;
+}
+
+
+Instr ldvpmg_in(Location const &dst, Location const &srca, Location const &srcb) {
+	return Instr(V3D_QPU_A_LDVPMG_IN, dst, srca, srcb);
+}
+
+
+Instr stvpmv(SmallImm const &imma, Location const &srca) {
+//	return Instr(V3D_QPU_A_STVPMV, r0, imma, srca);  //  TODO not implemented yet
+	Instr instr;
+	instr.alu_add_set(rf(0), imma, srca);  // rf(0) is dummy, to align with mesa disasm
+
+	instr.alu.add.op = V3D_QPU_A_STVPMV;
+	return instr;
+}
+
+
+Instr sampid(Location const &dst) {
+	Instr instr;
+	instr.alu_add_set(dst, r3, r3);  // Apparently r3 r2 are implicit
+
+	instr.alu.add.op = V3D_QPU_A_SAMPID;
+	return instr;
+}
+
+
+/**
+ * Prefix 'b' used to disambiguate, was a naming collision.
+ */
+Instr brecip(Location const &dst, Location const &srca) {
+	Instr instr;
+	instr.alu_add_set(dst, srca, r5);  // r5 implicit
+
+	instr.alu.add.op = V3D_QPU_A_RECIP;
+	return instr;
+}
+
+
+Instr brsqrt(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_RSQRT, dst, srca, r3);  // r3 implicit
+}
+
+
+Instr brsqrt2(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_RSQRT2, dst, srca, r3);  // r3 implicit
+}
+
+
+Instr bsin(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_SIN, dst, srca, srca);  // 2nd srca implicit
+}
+
+
+Instr bexp(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_EXP, dst, srca, r4);  // r4 implicit
+}
+
+
+Instr blog(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_LOG, dst, srca, r4);  // r4 implicit
 }
 
 }  // instr

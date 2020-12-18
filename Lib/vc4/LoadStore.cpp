@@ -1,6 +1,5 @@
 #include "LoadStore.h"
 #include <assert.h>
-#include "Source/Syntax.h"
 #include "Target/Syntax.h"
 
 namespace V3DLib {
@@ -222,11 +221,15 @@ Instr genSetReadPitch(int pitch) {
   return li(RD_SETUP, setup);
 }
 
-void genSetReadPitch(Seq<Instr>* instrs, Reg pitch) {
+
+Seq<Instr> genSetReadPitch(Reg pitch) {
+	Seq<Instr> ret;
   Reg tmp = freshReg();
 
-  *instrs << li(tmp, 0x90000000)
-          << bor(RD_SETUP, tmp, pitch);
+  ret << li(tmp, 0x90000000)
+      << bor(RD_SETUP, tmp, pitch);
+
+	return ret;
 }
 
 

@@ -1,7 +1,6 @@
 #include "Source/Interpreter.h"
 #include "Common/SharedArray.h"
 #include "Source/Stmt.h"
-#include "Source/Syntax.h"
 #include "Common/BufferObject.h"
 #include "Target/EmuSupport.h"
 #include "Support/basics.h"
@@ -21,7 +20,7 @@ struct CoreState {
   Vec* env = nullptr;            // Environment mapping vars to values
   int sizeEnv;                   // Size of the environment
   Seq<char>* output = nullptr;   // Output from print statements
-  Seq<Stmt*> stack;              // Control stack
+  Seq<Stmt::Ptr> stack;          // Control stack
   Seq<Vec> loadBuffer;           // Load buffer
 	SharedArray<uint32_t> emuHeap;
 
@@ -225,21 +224,21 @@ Vec eval(CoreState* s, Expr::Ptr e) {
 // Evaluate boolean expression
 // ============================================================================
 
-Vec evalBool(CoreState* s, BExpr *e) {
+Vec evalBool(CoreState* s, BExpr::Ptr e) {
   Vec v;
 
   switch (e->tag()) {
     // Negation
     case NOT:
-      v = evalBool(s, e->neg);
+      v = evalBool(s, e->neg());
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = !v[i].intVal;
       return v;
 
     // Conjunction
     case AND: {
-      Vec a = evalBool(s, e->conj.lhs);
-      Vec b = evalBool(s, e->conj.rhs);
+      Vec a = evalBool(s, e->conj_lhs());
+      Vec b = evalBool(s, e->conj_rhs());
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal && b[i].intVal;
       return v;
@@ -247,8 +246,8 @@ Vec evalBool(CoreState* s, BExpr *e) {
 
     // Disjunction
     case OR: {
-      Vec a = evalBool(s, e->disj.lhs);
-      Vec b = evalBool(s, e->disj.rhs);
+      Vec a = evalBool(s, e->disj_lhs());
+      Vec b = evalBool(s, e->disj_rhs());
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal || b[i].intVal;
       return v;
@@ -311,7 +310,7 @@ Vec evalBool(CoreState* s, BExpr *e) {
 // Evaulate condition
 // ============================================================================
 
-bool evalCond(CoreState* s, CExpr* e) {
+bool evalCond(CoreState* s, CExpr::Ptr e) {
   Vec v = evalBool(s, e->bexpr());
 
   switch (e->tag()) {
@@ -440,8 +439,7 @@ Vec vecAnd(Vec x, Vec y)
 // Execute where statement
 // ============================================================================
 
-void execWhere(CoreState* s, Vec cond, Stmt* stmt)
-{
+void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
   if (stmt == NULL) return;
 
   switch (stmt->tag) {
@@ -451,8 +449,8 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
 
     // Sequential composition
     case SEQ:
-      execWhere(s, cond, stmt->seq.s0);
-      execWhere(s, cond, stmt->seq.s1);
+      execWhere(s, cond, stmt->seq_s0());
+      execWhere(s, cond, stmt->seq_s1());
       return;
 
     // Assignment
@@ -466,23 +464,21 @@ void execWhere(CoreState* s, Vec cond, Stmt* stmt)
 
     // Nested where
     case WHERE: {
-      Vec b = evalBool(s, stmt->where.cond);
-      execWhere(s, vecAnd(b, cond), stmt->where.thenStmt);
-      execWhere(s, vecAnd(vecNeg(b), cond), stmt->where.elseStmt);
+      Vec b = evalBool(s, stmt->where_cond());
+      execWhere(s, vecAnd(b, cond), stmt->thenStmt());
+      execWhere(s, vecAnd(vecNeg(b), cond), stmt->elseStmt());
       return;
     }
   }
 
-  printf("V3DLib: only assignments and nested 'where' \
-          statements can occur in a 'where' statement\n");
-  assert(false);
+  assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement");
 }
 
 // ============================================================================
 // Execute print statement
 // ============================================================================
 
-void execPrint(CoreState* s, Stmt *stmt) {
+void execPrint(CoreState* s, Stmt::Ptr stmt) {
   switch (stmt->print.tag()) {
     // Integer
     case PRINT_INT: {
@@ -540,13 +536,12 @@ void execStoreRequest(CoreState* s, Expr::Ptr data, Expr::Ptr addr) {
 // Execute code
 // ============================================================================
 
-void exec(InterpreterState* state, CoreState* s)
-{
+void exec(InterpreterState* state, CoreState* s) {
   // Control stack must be non-empty
   assert(s->stack.size() > 0);
 
   // Pop the statement at the top of the stack
-  Stmt* stmt = s->stack.pop();
+  Stmt::Ptr stmt = s->stack.pop();
 
   if (stmt == NULL) return;
 
@@ -562,31 +557,31 @@ void exec(InterpreterState* state, CoreState* s)
 
     // Sequential composition
     case SEQ:
-      s->stack.push(stmt->seq.s1);
-      s->stack.push(stmt->seq.s0);
+      s->stack.push(stmt->seq_s1());
+      s->stack.push(stmt->seq_s0());
       return;
 
     // Conditional assignment
     case WHERE: {
-      Vec b = evalBool(s, stmt->where.cond);
-      execWhere(s, b, stmt->where.thenStmt);
-      execWhere(s, vecNeg(b), stmt->where.elseStmt);
+      Vec b = evalBool(s, stmt->where_cond());
+      execWhere(s, b, stmt->thenStmt());
+      execWhere(s, vecNeg(b), stmt->elseStmt());
       return;
     }
 
     // If statement
     case IF:
-      if (evalCond(s, stmt->ifElse.cond))
-        s->stack.push(stmt->ifElse.thenStmt);
+      if (evalCond(s, stmt->if_cond()))
+        s->stack.push(stmt->thenStmt());
       else
-        s->stack.push(stmt->ifElse.elseStmt);
+        s->stack.push(stmt->elseStmt());
       return;
 
     // While statement
     case WHILE:
-      if (evalCond(s, stmt->loop.cond)) {
+      if (evalCond(s, stmt->loop_cond())) {
         s->stack.push(stmt);
-        s->stack.push(stmt->loop.body);
+        s->stack.push(stmt->body());
       }
       return;
 
@@ -658,13 +653,25 @@ void exec(InterpreterState* state, CoreState* s)
 // Interpreter
 // ============================================================================
 
+/**
+ * The interpreter works in a similar way to the emulator.  The
+ * difference is that the former operates on source code and the
+ * latter on target code.
+ *
+ * @param numCores  Number of cores active
+ * @param stmt      Source code
+ * @param numVars   Max var id used in source
+ * @param uniforms  Kernel parameters
+ * @param heap
+ * @param output    Output from print statements (if NULL, stdout is used)
+ */
 void interpreter(
-	int numCores,           // Number of cores active
-	Stmt* stmt,             // Source code
-	int numVars,            // Max var id used in source
-	Seq<int32_t> &uniforms, // Kernel parameters
+	int numCores,
+	Stmt::Ptr stmt,
+	int numVars,
+	Seq<int32_t> &uniforms,
 	BufferObject &heap,
-	Seq<char>* output       // Output from print statements (if NULL, stdout is used)
+	Seq<char>* output
 ) {
   InterpreterState state;
 

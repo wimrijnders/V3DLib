@@ -20,17 +20,20 @@ struct Settings {
 	bool   show_perf_counters;
 #endif  // QPU_MODE
 
-	CmdParameters const &base_params(bool use_numqpus = false);
-	int init(int argc, const char *argv[]);
-	bool process(CmdParameters *in_params = nullptr, bool use_numqpus = false);
-	void process(KernelBase &k);
+	Settings(CmdParameters *derived_params = nullptr, bool use_num_qpus = false);
 
-protected:
+	int init(int argc, const char *argv[]);
+	void process(KernelBase &k);
+	virtual void init_params() {}
+
+private:
+	bool const m_use_num_qpus;
+	CmdParameters * const m_derived_params;
 	int output_count = 0;
 
 	void set_name(const char *in_name);
-
-private:
+	bool process(CmdParameters &in_params);
+	CmdParameters &base_params();
 	void startPerfCounters();
 	void stopPerfCounters();
 };

@@ -1,6 +1,6 @@
-#include "Syntax.h"
-#include "Common/Stack.h"
+#include "BExpr.h"
 #include "Support/basics.h"
+
 
 namespace V3DLib {
 
@@ -28,12 +28,63 @@ BExpr::BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
 }
 
 
+BExpr::Ptr BExpr::neg() const {
+	assert(m_tag == NOT && m_lhs.get() != nullptr);
+	assert(m_rhs.get() == nullptr);  // Should not be used with negate
+	return m_lhs;
+}
+
+
+BExpr::Ptr BExpr::conj_lhs() const {
+	assert(m_tag == AND && m_lhs.get() != nullptr);
+	return m_lhs;
+}
+
+
+BExpr::Ptr BExpr::conj_rhs() const {
+	assert(m_tag == AND && m_rhs.get() != nullptr);
+	return m_rhs;
+}
+
+
+BExpr::Ptr BExpr::disj_lhs() const {
+	assert(m_tag == OR && m_lhs.get() != nullptr);
+	return m_lhs;
+}
+
+
+BExpr::Ptr BExpr::disj_rhs() const {
+	assert(m_tag == OR && m_rhs.get() != nullptr);
+	return m_rhs;
+}
+
+
+BExpr::Ptr BExpr::lhs() const {
+	assert(m_tag == OR || m_tag == AND);
+	assert(m_lhs.get() != nullptr);
+	return m_lhs;
+}
+
+
+BExpr::Ptr BExpr::rhs() const {
+	assert(m_tag == OR || m_tag == AND);
+	assert(m_rhs.get() != nullptr);
+	return m_rhs;
+}
+
+
 Expr::Ptr BExpr::cmp_lhs() const { assert(m_tag == CMP && m_cmp_lhs.get() != nullptr); return  m_cmp_lhs; }
 Expr::Ptr BExpr::cmp_rhs() const { assert(m_tag == CMP && m_cmp_rhs.get() != nullptr); return  m_cmp_rhs; }
 
 void BExpr::cmp_lhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_lhs = p; }
 void BExpr::cmp_rhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_rhs = p; }
 
+/**
+ * Return copy of current instance as a shared ptr.
+ */
+BExpr::Ptr BExpr::ptr() const {
+  return Ptr(new BExpr(*this));  // Verified correct (looked tricky)
+}
 
 /**
  * Create a new instance which encapsulates the current instance with
@@ -41,10 +92,10 @@ void BExpr::cmp_rhs(Expr::Ptr p) { assert(m_tag == CMP); m_cmp_rhs = p; }
  *
  * `not` is a keyword, hence capital.
  */
-BExpr *BExpr::Not() const {
-  BExpr *b = new BExpr();
+BExpr::Ptr BExpr::Not() const {
+  Ptr b(new BExpr());
   b->m_tag = NOT;
-  b->neg   = const_cast<BExpr *>(this);
+  b->m_lhs = ptr();
   return b;
 }
 
@@ -55,11 +106,11 @@ BExpr *BExpr::Not() const {
  *
  * `and` is a keyword, hence capital.
  */
-BExpr *BExpr::And(BExpr *rhs) const {
-  BExpr *b = new BExpr();
+BExpr::Ptr BExpr::And(Ptr rhs) const {
+  Ptr b(new BExpr());
   b->m_tag = AND;
-  b->conj.lhs = const_cast<BExpr *>(this);
-  b->conj.rhs = rhs;
+  b->m_lhs = ptr();
+  b->m_rhs = rhs;
   return b;
 }
 
@@ -70,11 +121,11 @@ BExpr *BExpr::And(BExpr *rhs) const {
  *
  * `or` is a keyword, hence capital.
  */
-BExpr *BExpr::Or(BExpr *rhs) const {
-  BExpr *b    = new BExpr();
+BExpr::Ptr BExpr::Or(Ptr rhs) const {
+  Ptr b(new BExpr());
   b->m_tag     = OR;
-  b->disj.lhs = const_cast<BExpr *>(this);
-  b->disj.rhs = rhs;
+  b->m_lhs = ptr();
+  b->m_rhs = rhs;
   return b;
 }
 
@@ -87,22 +138,22 @@ std::string BExpr::pretty() const {
   switch (tag()) {
     // Negation
     case NOT:
-			assert(neg != nullptr);
-			ret << "!" << neg->pretty();
+			assert(m_lhs.get() != nullptr);
+			ret << "!" << m_lhs->pretty();
       break;
 
     // Conjunction
     case AND:
-			assert(conj.lhs != nullptr);
-			assert(conj.rhs != nullptr);
-      ret << "(" << conj.lhs->pretty() << " && " << conj.rhs->pretty() << ")";
+			assert(m_lhs.get() != nullptr);
+			assert(m_rhs.get() != nullptr);
+      ret << "(" << m_lhs->pretty() << " && " << m_rhs->pretty() << ")";
       break;
 
     // Disjunction
     case OR:
-			assert(disj.lhs != nullptr);
-			assert(disj.rhs != nullptr);
-			ret << "(" << disj.lhs->pretty() << " || " << disj.rhs->pretty() << ")";
+			assert(m_lhs.get() != nullptr);
+			assert(m_rhs.get() != nullptr);
+			ret << "(" << m_lhs->pretty() << " || " << m_rhs->pretty() << ")";
       break;
 
     // Comparison
@@ -114,19 +165,5 @@ std::string BExpr::pretty() const {
 	return ret;
 }
 
-
-
-// ============================================================================
-// Functions on conditionals
-// ============================================================================
-
-CExpr *mkAll(BExpr* bexpr) {
-  return new CExpr(ALL, bexpr);
-}
-
-
-CExpr *mkAny(BExpr* bexpr) {
-  return new CExpr(ANY, bexpr);
-}
 
 }  // namespace V3DLib

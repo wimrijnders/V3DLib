@@ -2,7 +2,6 @@
 
 #ifndef _V3DLIB_VC4_REGISTERMAP_H
 #define _V3DLIB_VC4_REGISTERMAP_H
-#include <memory>
 #include <stdint.h>
 
 namespace V3DLib {
@@ -133,12 +132,10 @@ private:
 	volatile uint32_t *m_addr{nullptr};
 	unsigned m_size{0};
 
-	static std::unique_ptr<RegisterMap> m_instance;
-
 	uint32_t read(int offset) const;
 	void write(int offset, uint32_t value);
 
-	static RegisterMap *instance();
+	static RegisterMap &instance();
 	static void check_page_align(unsigned addr);
 	static void checkVersionString(uint32_t reg);
 	static uint32_t *adress();

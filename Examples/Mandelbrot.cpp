@@ -70,28 +70,13 @@ struct MandSettings : public Settings {
   float offsetX() const { return (bottomRightReal - topLeftReal  )/((float) numStepsWidth  - 1); }
   float offsetY() const { return (topLeftIm       - bottomRightIm)/((float) numStepsHeight - 1); }
 
-	int init(int argc, const char *argv[]) {
-		auto const SUCCESS = CmdParameters::ALL_IS_WELL;
-		auto const FAIL    = CmdParameters::EXIT_ERROR;
+	MandSettings() : Settings(&params, true) {}
 
-		set_name(argv[0]);
-		CmdParameters &params = ::params;
-		params.add(base_params(true));
-
-		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != SUCCESS) return ret;
-
-		// Init the parameters in the parent
-		if (!process(&params, true)) {
-			ret = FAIL;
-		}
-
+	void init_params() override {
 		kernel         = params.parameters()["Kernel"]->get_int_value();
 		kernel_name    = params.parameters()["Kernel"]->get_string_value();
 		output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
 		num_iterations = params.parameters()["Number of steps"]->get_int_value();
-
-		return ret;
 	}
 } settings;
 

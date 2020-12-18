@@ -755,19 +755,19 @@ void emulate(
       if (s->running) {
         anyRunning = true;
         assert(s->pc < instrs->size());
-        Instr instr = instrs->get(s->pc++);
+        Instr const instr = instrs->get(s->pc++);
         switch (instr.tag) {
           // Load immediate
           case LI: {
             Vec imm = evalImm(instr.LI.imm);
-            writeReg(s, &state, instr.LI.setCond.flags_set(), instr.LI.cond, instr.LI.dest, imm);
+            writeReg(s, &state, instr.setCond().flags_set(), instr.LI.cond, instr.LI.dest, imm);
             break;
           }
           // ALU operation
           case ALU: {
             Vec result = alu(s, &state, instr.ALU.srcA, instr.ALU.op, instr.ALU.srcB);
             if (instr.ALU.op != NOP)
-              writeReg(s, &state, instr.ALU.setCond.flags_set(), instr.ALU.cond, instr.ALU.dest, result);
+              writeReg(s, &state, instr.setCond().flags_set(), instr.ALU.cond, instr.ALU.dest, result);
             break;
           }
           // End program (halt)

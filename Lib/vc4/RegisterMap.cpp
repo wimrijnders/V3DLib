@@ -1,6 +1,7 @@
 #ifdef QPU_MODE
 
 #include "RegisterMap.h"
+#include <memory>
 #include <cassert>
 #include <cstring>
 #include <stdio.h>
@@ -12,8 +13,9 @@
 
 
 namespace V3DLib {
-
-std::unique_ptr<RegisterMap> RegisterMap::m_instance;
+namespace {
+std::unique_ptr<RegisterMap> _instance;
+}  // anon namespace
 
 
 RegisterMap::RegisterMap() {
@@ -66,7 +68,7 @@ void RegisterMap::write(int offset, uint32_t value) {
  * This avoids having to use `instance()->` for every read access.
  */
 uint32_t RegisterMap::readRegister(int offset) {
-	return instance()->read(offset);
+	return instance().read(offset);
 }
 
 
@@ -76,17 +78,17 @@ uint32_t RegisterMap::readRegister(int offset) {
  * This avoids having to use `instance()->` for every write access.
  */
 void RegisterMap::writeRegister(int offset, uint32_t value) {
-	return instance()->write(offset, value);
+	return instance().write(offset, value);
 }
 
 
 uint32_t *RegisterMap::adress() {
-	return (uint32_t *) instance()->m_addr;
+	return (uint32_t *) instance().m_addr;
 }
 
 
 unsigned RegisterMap::size() {
-	return instance()->m_size;
+	return instance().m_size;
 }
 
 
@@ -133,7 +135,7 @@ buf[2] = (reg >> 16)  & 0xff;
 			printf("%u,",s);
 		}
 
-		uint32_t val = instance()->m_addr[s];
+		uint32_t val = instance().m_addr[s];
 		if ((val & 0x00ffffff) == buf2) {
 			printf("Found '%s' at register: %08X\n", buf,  s);
 		}
@@ -273,12 +275,12 @@ void RegisterMap::resetAllSchedulerRegisters() {
 }
 
 
-RegisterMap *RegisterMap::instance() {
-	if (m_instance.get() == nullptr) {
-		m_instance.reset(new RegisterMap);
+RegisterMap &RegisterMap::instance() {
+	if (_instance.get() == nullptr) {
+		_instance.reset(new RegisterMap);
 	}
 
-	return m_instance.get();
+	return *_instance.get();
 }
 
 

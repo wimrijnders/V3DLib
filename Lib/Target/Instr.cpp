@@ -13,12 +13,12 @@ Instr::Instr(InstrTag in_tag) {
 	switch (in_tag) {
 	case InstrTag::ALU:
   	tag          = InstrTag::ALU;
-	  ALU.setCond.clear();
+	  ALU.m_setCond.clear();
 	  ALU.cond     = always;
 		break;
 	case InstrTag::LI:
     tag          = InstrTag::LI;
-	  LI.setCond.clear();
+	  LI.m_setCond.clear();
 	  LI.cond      = always;
 		break;
 	case InstrTag::INIT_BEGIN:
@@ -63,31 +63,14 @@ Instr Instr::nop() {
 /**
  * Initial capital to discern it from member var's `setFlags`.
  */
-Instr &Instr::SetFlags(Flag flag) {
-	SetCond::Tag set_tag = SetCond::NO_COND;
+Instr &Instr::setCondFlag(Flag flag) {
+	setCond().setFlag(flag);
+	return *this;
+}
 
-	switch (flag) {
-		case ZS: 
-		case ZC: 
-			set_tag = SetCond::Z;
-			break;
-		case NS: 
-		case NC: 
-			set_tag = SetCond::N;
-			break;
-		default:
-			assert(false);  // Not expecting anything else right now
-			break;
-	}
 
-	if (tag == InstrTag::LI) {
-		LI.setCond.tag(set_tag);
-	} else if (tag == InstrTag::ALU) {
-		ALU.setCond.tag(set_tag);
-	} else {
-		assert(false);
-	}
-
+Instr &Instr::setCondOp(CmpOp const &cmp_op) {
+	setCond().setOp(cmp_op);
 	return *this;
 }
 
@@ -122,15 +105,38 @@ bool Instr::isLast() const {
 }
 
 
-Instr &Instr::pushz() {
-	if (tag == InstrTag::LI) {
-		LI.setCond.tag(SetCond::Z);
-	} else if (tag == InstrTag::ALU) {
-		ALU.setCond.tag(SetCond::Z);
-	} else {
-		assert(false);
+SetCond const &Instr::setCond() const {
+  switch (tag) {
+    case InstrTag::LI:
+			return LI.m_setCond;
+    case InstrTag::ALU:
+			return ALU.m_setCond;
+		default:
+			assertq(false, "setCond() can only be called for LI or ALU");
+			break;
 	}
 
+	return ALU.m_setCond;  // Return anything
+}
+
+
+SetCond &Instr::setCond() {
+  switch (tag) {
+    case InstrTag::LI:
+			return LI.m_setCond;
+    case InstrTag::ALU:
+			return ALU.m_setCond;
+		default:
+			assertq(false, "setCond() can only be called for LI or ALU");
+			break;
+	}
+
+	return ALU.m_setCond;  // Return anything
+}
+
+
+Instr &Instr::pushz() {
+	setCond().tag(SetCond::Z);
 	return *this;
 }
 
@@ -215,7 +221,7 @@ bool Instr::isTMUAWrite() const {
  */
 bool Instr::isZero() const {
 	return tag == InstrTag::LI
-		  && !LI.setCond.flags_set()
+		  && !LI.m_setCond.flags_set()
 		  && LI.cond.tag      == AssignCond::NEVER
 		  && LI.cond.flag     == ZS
 		  && LI.dest.tag      == REG_A

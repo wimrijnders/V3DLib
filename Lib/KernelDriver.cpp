@@ -14,14 +14,21 @@ using ::operator<<;  // C++ weirdness
 
 namespace {
 
-void print_source_code(FILE *f, Stmt *body) {
-	// Emit source code
+/**
+ * Emit source code
+ */
+void print_source_code(FILE *f, Stmt::Ptr body) {
+	if (f == nullptr) {
+		f = stdout;
+	}
+
 	fprintf(f, "Source code\n");
 	fprintf(f, "===========\n\n");
-	if (body == nullptr)
+
+	if (body.get() == nullptr)
 		fprintf(stderr, "<No source code to print>");
 	else
-		V3DLib::pretty(f, body);
+		fprintf(f, "%s", pretty(body).c_str());
 
 	fprintf(f, "\n");
 	fflush(f);
@@ -196,8 +203,8 @@ void KernelDriver::invoke(int numQPUs, Seq<int32_t> &params) {
 
 #ifdef DEBUG
 // Only here for autotest
-void KernelDriver::add_stmt(Stmt *stmt) {
-	m_stmtStack.append(stmt);
+void KernelDriver::add_stmt(Stmt::Ptr stmt) {
+	m_stmtStack << stmt;
 }
 #endif
 

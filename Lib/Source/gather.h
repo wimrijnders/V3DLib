@@ -11,8 +11,7 @@ namespace V3DLib {
 //=============================================================================
 
 inline void gatherExpr(Expr::Ptr e) {
-  Stmt* s = mkAssign(mkVar(Var(TMU0_ADDR)), e);
-  stmtStack() << s;
+  stmtStack() << Stmt::create_assign(mkVar(Var(TMU0_ADDR)), e);
 }
 
 

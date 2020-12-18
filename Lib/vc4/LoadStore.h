@@ -1,9 +1,7 @@
 #ifndef _V3DLIB_LOADSTORE_H_
 #define _V3DLIB_LOADSTORE_H_
-
 #include "Common/Seq.h"
 #include "Target/Syntax.h"
-#include "Source/Syntax.h"
 
 namespace V3DLib {
 
@@ -24,7 +22,7 @@ Instr genStartDMAStore(Reg memAddr);
 Instr genWaitDMAStore();
 
 Instr genSetReadPitch(int pitch);
-void genSetReadPitch(Seq<Instr>* instrs, Reg pitch);
+Seq<Instr> genSetReadPitch(Reg pitch);
 
 Instr genSetWriteStride(int stride);
 Seq<Instr> genSetWriteStride(Reg stride);

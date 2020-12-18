@@ -2,7 +2,6 @@
 #include "Support/Platform.h"
 #include "SourceTranslate.h"
 #include "Source/Stmt.h"
-#include "Source/Syntax.h"
 #include "Target/SmallLiteral.h"
 #include "Common/Seq.h"
 
@@ -201,7 +200,7 @@ AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond con
   if (condA.is_never()  && condB.is_never() ) return never;
 
   if (condB.is_never()) {                     // condA == FLAG
-    seq << mov(None, condVar).SetFlags(condA.flag);     // Set implicit condition vector to variable
+    seq << mov(None, condVar).setCondFlag(condA.flag);     // Set implicit condition vector to variable
     return condA;
   } else if (condA.is_never()) {              // condB == FLAG
 		int val = determineCondVar(condB);
@@ -212,7 +211,7 @@ AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond con
 		int val = determineCondVar(condA);
 
 		seq << li(condVar, val).cond(condB)       // Adjust condVar for condB
-        << mov(None, condVar).SetFlags(condB.flag);     // Set implicit condition vector for new value condVar
+        << mov(None, condVar).setCondFlag(condB.flag);     // Set implicit condition vector for new value condVar
     return condA;
   }
 }
@@ -226,7 +225,12 @@ AssignCond boolAnd(Seq<Instr> *seq, AssignCond condA, Var condVarA, AssignCond c
 }
 
 
-AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
+/**
+ * Creates the instructions for this comparison.
+ *
+ * The comparison is internally implemented as a subtract-operation.
+ */
+void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
   BExpr b = *bexpr;
   assert(b.tag() == CMP);
 
@@ -265,58 +269,110 @@ AssignCond cmpExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
 	//
  	// At this point x and y are simple
 	//
+	using namespace V3DLib::Target::instr;
+
+	Var dummy  = freshVar();
+	Var dummy2 = freshVar();
+	AssignCond assign_cond = AssignCond(b.cmp.op);
 
 	// Implement comparison using subtraction instruction
 	Op op(SUB, b.cmp.op.type);
 
 	Instr instr(ALU);
-	instr.ALU.setCond  = SetCond(b.cmp.op);  // For v3d
-	instr.ALU.dest     = dstReg(v);
+	instr.setCondOp(b.cmp.op);
+	instr.ALU.dest     = dstReg(dummy);
 	instr.ALU.srcA     = operand(b.cmp_lhs());
 	instr.ALU.op       = op.opcode();
 	instr.ALU.srcB     = operand(b.cmp_rhs());
 
-	*seq << instr;
-	return AssignCond(b.cmp.op);
+	*seq << li(v, 0)
+	     << instr
+	     << mov(v, 1).cond(assign_cond)            // TODO: would be better if this used acc-reg
+	     << mov(dummy2, v).setCondFlag(Flag::ZC);  // Reset flags so that Z-flag is used
+
+	seq->back().comment("Store condition as Bool var");
+}
+
+
+AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v);  // Forward declaration
+
+
+/**
+ * Previous case for or:
+ * 
+ *     AssignCond condA = boolExp(seq, b.disj.lhs, v);
+ *     Var w = freshVar();
+ *     AssignCond condB = boolExp(seq, b.disj.rhs, w);
+ *     return boolOr(*seq, condA, v, condB);
+ * 
+ * Previous case for and:
+ *  
+ *     // Use De Morgan's law
+ *     BExpr* demorgan = b.conj.lhs->Not()->Or(b.conj.rhs->Not())->Not();
+ *     return boolExp(seq, demorgan, v);
+ */
+void boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
+	using namespace V3DLib::Target::instr;
+
+	boolExp(&seq, b.lhs(), v);                     // return val ignored
+
+	Var w = freshVar();
+	boolExp(&seq, b.rhs(), w);  // idem
+
+	if (b.tag() == OR) {
+		seq << bor(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
+		seq.back().comment("Bool var OR");
+	} else if (b.tag() == AND) {
+		seq << band(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
+		seq.back().comment("Bool var AND");
+	} else {
+		assert(false);
+	}
 }
 
 
 /**
  * Handle general boolean expressions.
+ *
+ * Boolean conditions var's are used, to unify the differing approaches
+ * to flag checking in `v3d` and `vc4`.
+ *
+ * The condition result is stored as booleans (with 0/1) in `v`, indicating the truth
+ * value of the flag tests.
+ *
+ * The condition is reset to always use Z. Checks should be on ZC (zero clear) for 1 == true.
+ *
  * 
  * @param seq    instruction sequence to which the instructions to evaluate the
  *               expression are appended
  * @param bexpr  the boolean expression to evaluate;
  * @param v      condVar 'v' to which the evaluated expression will be written to
  *
- * @return  the condFlag corresponding to `v`
- *
+ * @return the condition to use when checking the flags for this comparison
  */
-AssignCond boolExp(Seq<Instr> *seq, BExpr *bexpr, Var v) {
+AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
+	using namespace V3DLib::Target::instr;
   BExpr b = *bexpr;
 
 	switch (b.tag()) {
 		case CMP:
-			return cmpExp(seq, bexpr, v);
-		case NOT: {            // '!b', where b is a boolean expression
-    	AssignCond cond = boolExp(seq, b.neg, v);
-	    return cond.negate();
+			cmpExp(seq, bexpr, v);
+		break;
+		case NOT: {          // '!b', where b is a boolean expression
+    	AssignCond cond = boolExp(seq, b.neg(), v);
+			*seq << bxor(v, v, 1).setCondFlag(Flag::ZC);
 		}
-		case OR: {             // 'a || b', where a, b are boolean expressions
-			Var w = freshVar();
-			AssignCond condA = boolExp(seq, b.disj.lhs, v);
-			AssignCond condB = boolExp(seq, b.disj.rhs, w);
-			return boolOr(*seq, condA, v, condB);
-	  }
-		case AND: {            // 'a && b', where a, b are boolean expressions
-    	// Use De Morgan's law
-	    BExpr* demorgan = b.conj.lhs->Not()->Or(b.conj.rhs->Not())->Not();
-	    return boolExp(seq, demorgan, v);
-		}
+		break;
+		case OR:             // 'a || b', where a, b are boolean expressions
+		case AND:            // 'a && b', where a, b are boolean expressions
+			boolVarExp(*seq, b, v);
+			break;
 		default:
   		assert(false);
-			return always;       // Return anything
+			break;
   }
+
+	return AssignCond(CmpOp(NEQ, INT32));  // Wonky syntax to get the flags right
 }
 
 
@@ -336,36 +392,39 @@ BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
 // Where statements
 // ============================================================================
 
-void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool saveRestore) {
-  if (s == nullptr) return;
-  if (s->tag == SKIP) return;
+Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
+	using namespace V3DLib::Target::instr;
+	Seq<Instr> ret;
+
+  if (s.get() == nullptr) return ret;
+  if (s->tag == SKIP) return ret;
 
 
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
   if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::VAR) {
-		assign(seq, s->assign_lhs(), s->assign_rhs());
-		seq->back().cond(cond).comment("Assign var in Where");
-    return;
+		assign(&ret, s->assign_lhs(), s->assign_rhs());
+		ret.back().cond(cond); //.comment("Assign var in Where");
+    return ret;
   }
 
   // ------------------------------------------------------
   // Case: *v = e, where v is a pointer and e an expression
   // ------------------------------------------------------
   if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
-		assign(seq, s->assign_lhs(), s->assign_rhs());
-		seq->back().cond(cond).comment("Assign *var (deref) in Where");
-    return;
+		assign(&ret, s->assign_lhs(), s->assign_rhs());
+		ret.back().cond(cond); //.comment("Assign *var (deref) in Where");
+    return ret;
   }
 
   // ---------------------------------------------
   // Case: s0 ; s1, where s0 and s1 are statements
   // ---------------------------------------------
   if (s->tag == SEQ) {
-    whereStmt(seq, s->seq.s0, condVar, cond, true);
-    whereStmt(seq, s->seq.s1, condVar, cond, saveRestore);
-    return;
+    ret << whereStmt(s->seq_s0(), condVar, cond, true)
+        << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
+    return ret;
   }
 
   // ----------------------------------------------------------
@@ -374,64 +433,93 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
   // ----------------------------------------------------------
   if (s->tag == WHERE) {
 		using Target::instr::mov;
-
-//breakpoint
+		AssignCond andCond = AssignCond(CmpOp(NEQ, INT32));  // Wonky syntax to get the flags right
 
     if (cond.is_always()) {
-      // This case has a cheaper implementation
+			// Top-level handling of where-statements
 
-      // Compile new boolean expression
-      AssignCond newCond = boolExp(seq, s->where.cond, condVar);
+      Var newCondVar   = freshVar();
+			AssignCond newCond;
+			{
+				Seq<Instr> seq;
+      	// Compile new boolean expression
+      	newCond = boolExp(&seq, s->where_cond(), newCondVar);
+				if (!seq.empty()) seq.front().comment("Start where (always)");
+				ret << seq;
+			}
 
       // Compile 'then' statement
-      if (s->where.thenStmt != NULL)
-        whereStmt(seq, s->where.thenStmt, condVar, newCond, s->where.elseStmt != NULL);
+      if (s->thenStmt().get() != nullptr) {
+				auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, s->elseStmt().get() != nullptr);
+				if (!seq.empty()) seq.front().comment("then-branch of where (always)");
+				ret << seq;
+			}
 
       // Compile 'else' statement
-      if (s->where.elseStmt != NULL)
-        whereStmt(seq, s->where.elseStmt, condVar, newCond.negate(), false);
+      if (s->elseStmt().get() != nullptr) {
+	     	Var v2 = freshVar();
+				ret << bxor(v2, newCondVar, 1).setCondFlag(Flag::ZC);
+
+        auto seq = whereStmt(s->elseStmt(), v2, andCond, false);
+				if (!seq.empty()) seq.front().comment("else-branch of where (always)");
+				ret << seq;
+			}
+
+			// Reset flags to initial value
+			// TODO check if really needed
+			Var dummy = freshVar();
+			ret << mov(dummy, condVar).setCondFlag(Flag::ZC);
     } else {
-
-//breakpoint
-
-      Var savedCondVar = freshVar();
-      Var newCondVar   = freshVar();
-
-      // Save condVar
-      if (saveRestore || s->where.elseStmt != NULL)
-        *seq << mov(savedCondVar, condVar);
+			// Where-statements nested in other where-statements
 
       // Compile new boolean expression
-      AssignCond newCond = boolExp(seq, s->where.cond, newCondVar);
+      Var newCondVar   = freshVar();
+			AssignCond newCond;
+			{
+				Seq<Instr> seq;
+      	// Compile new boolean expression
+      	newCond = boolExp(&seq, s->where_cond(), newCondVar);
+				if (!seq.empty()) seq.front().comment("Start where (nested)");
+				ret << seq;
+			}
 
-      if (s->where.thenStmt != NULL) {
-        // AND new boolean expression with original condition
-        AssignCond andCond = boolAnd(seq, cond, condVar, newCond);
+      if (s->thenStmt().get() != nullptr) {  // NOTE: syntax allows then-stmt to be empty and else not empty
+				// AND new boolean expression with original condition
+	     	Var dummy   = freshVar();
+				ret << band(dummy, condVar, newCondVar).setCondFlag(Flag::ZC);
 
         // Compile 'then' statement
-        whereStmt(seq, s->where.thenStmt, condVar, andCond, false);
+				{
+					auto seq = whereStmt(s->thenStmt(), dummy, andCond, false);
+					if (!seq.empty()) seq.front().comment("then-branch of where (nested)");
+					ret << seq;
+				}
       }
 
-      if (saveRestore || s->where.elseStmt != NULL)
-        *seq << mov(condVar, savedCondVar).SetFlags(ZC);
+      if (s->elseStmt() != nullptr) {
+	     	Var v2   = freshVar();
+	     	Var dummy   = freshVar();
+				ret << bxor(v2, newCondVar, 1);
+				ret << band(dummy, condVar, v2).setCondFlag(Flag::ZC);
 
-      if (s->where.elseStmt != NULL) {
-        // AND negation of new boolean expression with original condition
-        AssignCond andCond = boolAnd(seq, newCond.negate(), newCondVar, cond);
-  
         // Compile 'else' statement
-        whereStmt(seq, s->where.elseStmt, newCondVar, andCond, false);
-  
-        // Restore condVar and implicit condition vector
-        if (saveRestore)
-          *seq << mov(condVar, savedCondVar).SetFlags(ZC);
+				{
+	        auto seq = whereStmt(s->elseStmt(), dummy, andCond, false);
+					if (!seq.empty()) seq.front().comment("else-branch of where (nested)");
+					ret << seq;
+				}
       }
+
+			// Reset flags to initial value
+     	Var dummy = freshVar();
+			ret << mov(dummy, condVar).setCondFlag(Flag::ZC);
     }
 
-    return;
+    return ret;
   }
 
   assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement", true);
+	return ret;
 }
 
 
@@ -439,15 +527,16 @@ void whereStmt(Seq<Instr> *seq, Stmt *s, Var condVar, AssignCond cond, bool save
 // Print statements
 // ============================================================================
 
-void printStmt(Seq<Instr> &seq, Stmt *stmt) {
+Seq<Instr> printStmt(Stmt::Ptr stmt) {
+	Seq<Instr> ret;
   Instr instr;
 
-	auto expr_to_reg = [&seq] (Expr::Ptr expr) -> Reg {
+	auto expr_to_reg = [&ret] (Expr::Ptr expr) -> Reg {
 		if (expr ->tag() == Expr::VAR) {
    	  return srcReg(expr->var());
 		} else {
       Var tmpVar = freshVar();
- 	    seq << varAssign(tmpVar, expr);
+ 	    ret << varAssign(tmpVar, expr);
    	  return srcReg(tmpVar);
 		}
 	};
@@ -470,7 +559,8 @@ void printStmt(Seq<Instr> &seq, Stmt *stmt) {
 			break;
   }
 
-	seq << instr;
+	ret << instr;
+	return ret;
 }
 
 
@@ -483,7 +573,7 @@ Instr loadReceive(Expr::Ptr dest) {
 }
 
 
-void stmt(Seq<Instr>* seq, Stmt* s);  // Forward declaration
+void stmt(Seq<Instr>* seq, Stmt::Ptr s);  // Forward declaration
 
 /**
  * Translate if-then-else statement to target code
@@ -492,25 +582,25 @@ void translateIf(Seq<Instr> &seq, Stmt &s) {
 	using namespace Target::instr;
 
 	Label endifLabel = freshLabel();
-	BranchCond cond  = condExp(seq, *s.ifElse.cond);  // Compile condition
+	BranchCond cond  = condExp(seq, *s.if_cond());  // Compile condition
     
-	if (s.ifElse.elseStmt == NULL) {
-		seq << branch(cond.negate(), endifLabel);       // Branch over 'then' statement
-		stmt(&seq, s.ifElse.thenStmt);                  // Compile 'then' statement
+	if (s.elseStmt().get() == nullptr) {
+		seq << branch(cond.negate(), endifLabel);  // Branch over 'then' statement
+		stmt(&seq, s.thenStmt());                  // Compile 'then' statement
 	} else {
 		Label elseLabel = freshLabel();
 
-		seq << branch(cond.negate(), elseLabel);        // Branch to 'else' statement
+		seq << branch(cond.negate(), elseLabel);   // Branch to 'else' statement
 
-		stmt(&seq, s.ifElse.thenStmt);                  // Compile 'then' statement
+		stmt(&seq, s.thenStmt());                  // Compile 'then' statement
 
-		seq << branch(endifLabel)                       // Branch to endif
-		    << label(elseLabel);                        // Label for 'else' statement
+		seq << branch(endifLabel)                  // Branch to endif
+		    << label(elseLabel);                   // Label for 'else' statement
 
-		stmt(&seq, s.ifElse.elseStmt);                  // Compile 'else' statement
+		stmt(&seq, s.elseStmt());                  // Compile 'else' statement
 	}
 	
-	seq << label(endifLabel);                         // Label for endif
+	seq << label(endifLabel);                    // Label for endif
 }
 
 
@@ -519,13 +609,13 @@ void translateWhile(Seq<Instr> &seq, Stmt &s) {
 
 	Label startLabel = freshLabel();
 	Label endLabel   = freshLabel();
-	BranchCond cond  = condExp(seq, *s.loop.cond);     // Compile condition
+	BranchCond cond  = condExp(seq, *s.loop_cond());     // Compile condition
  
 	seq << branch(cond.negate(), endLabel)             // Branch over loop body
 	    << label(startLabel);                          // Start label
 
-	if (s.loop.body != NULL) stmt(&seq, s.loop.body);  // Compile body
-	condExp(seq, *s.loop.cond);                        // Compute condition again
+	if (!s.body_is_null()) stmt(&seq, s.body());       // Compile body
+	condExp(seq, *s.loop_cond());                        // Compute condition again
 		                                                 // TODO why is this necessary?
 
 	seq << branch(cond, startLabel)                    // Branch to start
@@ -537,7 +627,7 @@ void translateWhile(Seq<Instr> &seq, Stmt &s) {
 // Statements
 // ============================================================================
 
-void stmt(Seq<Instr>* seq, Stmt* s) {
+void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
   if (s == nullptr) return;
 
   switch (s->tag) {
@@ -547,8 +637,8 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
       assign(seq, s->assign_lhs(), s->assign_rhs());
 			break;
     case SEQ:                      // 's0 ; s1', where s1 and s2 are statements
-      stmt(seq, s->seq.s0);
-      stmt(seq, s->seq.s1);
+      stmt(seq, s->seq_s0());
+      stmt(seq, s->seq_s1());
 			break;
   	case IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
 			translateIf(*seq, *s);
@@ -558,11 +648,11 @@ void stmt(Seq<Instr>* seq, Stmt* s) {
 			break;
   	case WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
 	    	Var condVar = freshVar();  // This is the top-level definition of condVar
-	    	whereStmt(seq, s, condVar, always, false);
+	    	*seq << whereStmt(s, condVar, always, false);
 			}
 			break;
   	case PRINT:                    // 'print(e)', where e is an expr or a string
-	    printStmt(*seq, s);
+	    *seq << printStmt(s);
 			break;
   	case LOAD_RECEIVE:             // 'receive(e)', where e is an expr
 	    *seq << loadReceive(s->loadDest());
@@ -721,7 +811,7 @@ Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
  *
  * Entry point for translation of statements.
  */
-void translate_stmt(Seq<Instr> &seq, Stmt *s) {
+void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
   stmt(&seq, s);
 }
 

@@ -2,11 +2,13 @@
 
 #ifndef _V3DLIB_VC4_PERFORMANCECOUNTERS_H
 #define _V3DLIB_VC4_PERFORMANCECOUNTERS_H
-#include <string.h>
+#include <string>
+#include <vector>
 #include "RegisterMap.h"
 
 
 namespace V3DLib {
+namespace vc4 {
 
 class PerformanceCounters {
  public:
@@ -22,7 +24,7 @@ class PerformanceCounters {
 	 * These are made up and not part of the reference doc.
 	 * Derived from the counter descriptions.
 	 */
-	enum Index {
+	enum Index : uint32_t {
 		FEP_NO_RENDERED_PIXELS,
 		FEP_VALID_PRIMITIVES,
 		FEP_CLIPPED_QUADS,
@@ -68,16 +70,19 @@ class PerformanceCounters {
 	};
 
 
-  static void clear(uint32_t bitMask = ALL_COUNTERS);
 	static uint32_t enabled();
 	static void enable(Init list[]);
+	static void enable(std::vector<Index> const &srcs);
 	static void disable(uint32_t bitMask = ALL_COUNTERS);
 	static std::string showEnabled();
 
  private:
 	static const char *Description[NUM_PERF_COUNTERS];
+
+  static void clear(uint32_t bitMask = ALL_COUNTERS);
 };
 
+}  // namespace vc4
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_VC4_PERFORMANCECOUNTERS_H

@@ -303,6 +303,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 			<< shl(r3, 4, 4).mov(rf(1), r5)
 		;
 
+/*
 		// Just eyeball them for now
 		printf("Eyeballing opcodes:\n");
 		for (auto &op : ret) {
@@ -317,6 +318,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 			std::cout << op.mnemonic() << std::endl;
 			op.dump(true);
 		}
+*/
 	}
 }
 

@@ -8,8 +8,6 @@
 
 namespace V3DLib {
 
-class Stmt;
-
 class KernelDriver {
 public:
 	KernelDriver(BufferType in_buffer_type) : buffer_type(in_buffer_type) {}
@@ -24,7 +22,7 @@ public:
 	/**
 	 * @return AST representing the source code
 	 */
-	Stmt *sourceCode() { return m_body; }
+	Stmt::Ptr sourceCode() { return m_body; }
 
 	Seq<Instr> &targetCode() { return m_targetCode; }
 
@@ -32,7 +30,7 @@ public:
 
 #ifdef DEBUG
 	// Only here for autotest
-	void add_stmt(Stmt *stmt);
+	void add_stmt(Stmt::Ptr stmt);
 #endif
 
 
@@ -40,7 +38,7 @@ protected:
 	const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
   Seq<Instr> m_targetCode;            // Target code generated from AST
-  Stmt *m_body = nullptr;
+  Stmt::Ptr  m_body;
 
   int qpuCodeMemOffset = 0;
 	std::vector<std::string> errors;

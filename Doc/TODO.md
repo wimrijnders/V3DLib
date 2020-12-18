@@ -1,12 +1,20 @@
 # TODO
 
+## General
+
+- [ ] Tone down mesa library, compile takes long.
+      Tried this but gave up after it became evident nothing could be removed.
+      Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
+- [x] Refactor derived settings in examples, too much duplicated screen noise.
+
 ## v3d
 
 - [ ] Has the timeout hang been fixed yet in the kernel driver? Check from time to time
 - [ ] Figure out when and how `sig_magic` and `sig_addr` are used.
       Clues: `mesa/src/compiler/vir_to_qpu.c`, `mesa/src/broadcom/qpu/qpu_disasm.c`
-- [ ] Add performance counters; examine python project for this.
-- [ ] Fix unit test for Rot3D kernel 2 with >1 QPU
+- [x] Add performance counters; examine python project for this.
+  * [ ] figure out what the counters signify on `v3d`
+- [x] Fix unit test for Rot3D kernel 2 with >1 QPU
 
 
 ## vc4
@@ -93,17 +101,26 @@ Source code:
 
 - [ ] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
 - [ ] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
-  - **NO** Allocate `astHeap` for each kernel *- Nope, global heap required for language*
-  - **NO** Increase heap size dynamically when needed *- Can only be done by creating a new heap and transferring data*
   - [x] Add freeing of memory to `SharedArray` heap. This will increase the complexity of the heap code hugely
-  - [ ] Add freeing of memory to AST heap BO definitions.
+  - [x] Get rid of AST heap
+	- [ ] fix unfreed elements of `Stmt` (perhaps elsewhere). Made a start with using `std::shared_ptr` for `Expr`
 
+
+## CmdParameter
+- [x] Allow for chained blocks of parameter definitions
+- [ ] For display, sort the parameters (except for `--help`, which should be at top)
+- Issue, when leaving out `=` for param `-n`:
+
+```
+> sudo ./obj/qpu-debug/bin/Mandelbrot  -n12
+Error(s) on command line:
+  Parameter 'Num QPU's' (-n) takes a value, none specified.
+
+  Use 'help' or '-h' to view options
+
+```
 
 ## Library Code
-
-- [ ] CMDLine
-  - [x] Allow for chained blocks of parameter definitions
-  - [ ] For display, sort the parameters (except for `--help`, which should be at top)
 - [ ] Add check in emulator for too many `gather()` calls
 - [x] Determine num QPUs from hardware
 - [x] Add method to determine RPi hardware revision number via mailbox

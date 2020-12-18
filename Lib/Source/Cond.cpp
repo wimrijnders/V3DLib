@@ -21,8 +21,8 @@ BoolExpr mkIntCmp(IntExpr a, CmpOp op, IntExpr b) {
 }  // anon namespace
 
 
-BExpr *mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
-  return new BExpr(lhs, op, rhs);
+BExpr::Ptr mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
+  return BExpr::Ptr(new BExpr(lhs, op, rhs));
 }
 
 
@@ -55,12 +55,12 @@ BoolExpr operator>=(FloatExpr a, FloatExpr b) { return mkFloatCmp(a, CmpOp(GE, F
 // Boolean operators
 // ============================================================================
 
-BoolExpr operator!(BoolExpr a)              { return BoolExpr(a.bexpr->Not()); }
-BoolExpr operator&&(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr->And(b.bexpr)); }
-BoolExpr operator||(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr->Or(b.bexpr)); }
+BoolExpr operator!(BoolExpr a)              { return BoolExpr(a.bexpr()->Not()); }
+BoolExpr operator&&(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr()->And(b.bexpr())); }
+BoolExpr operator||(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr()->Or(b.bexpr())); }
 
-Cond any(BoolExpr a) { return Cond(mkAny(a.bexpr)); }
-Cond all(BoolExpr a) { return Cond(mkAll(a.bexpr)); }
+Cond any(BoolExpr a) { return Cond(mkAny(a.bexpr())); }
+Cond all(BoolExpr a) { return Cond(mkAll(a.bexpr())); }
 
 }  // namespace V3DLib
 

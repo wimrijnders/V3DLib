@@ -62,11 +62,6 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 	 * test will fail.
 	 */
 	SECTION("All kernel versions should return the same") {
-		if (!Platform::instance().has_vc4) {
-			printf("NB: Rot3D kernel unit test not working on v3d\n");
-			return;
-		}
-
 		//
 		// Run the scalar version
 		//
@@ -86,10 +81,10 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 		// Compare scalar with QPU output - will not be exact
 		{
 	  	auto k = compile(rot3D_1);
-			k.pretty(true, "rot3D_1.txt");
+			//k.pretty(true, "rot3D_1.txt");
 			initArrays(x_1, y_1, N);
   		k.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
-			compareResults(x_scalar, y_scalar, x_1, y_1, N, "Rot3D 1", false);
+			compareResults(x_scalar, y_scalar, x_1, y_1, N, "Rot3D 1", false);  // Last param false: do approximate match
 		}
 
 
@@ -104,21 +99,13 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 		}
 
 
-/*
-		// NOT WORKING
-		// The first 16 values are good, at pos 16 it's the initialized value in the result array.
-		// The crazy thing is, the cmdline Rot3D works as expected, and the code here is more or less identical
-		// SO WHAT'S THE ISSUE? Can not see it....
-
 		{
 			INFO("Running with 8 kernels");
   		k2.setNumQPUs(8);
 			initArrays(x, y, N);
   		k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
-			//compareResults(x_scalar, y_scalar, x, y, N, "Rot3D_2 8 QPU's", false);
 			compareResults(x_1, y_1, x, y, N, "Rot3D_2 8 QPU's");
 		}
-*/
 	}
 
 

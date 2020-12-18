@@ -73,26 +73,13 @@ struct HeatMapSettings : public Settings {
 	int    num_steps;
 	int    num_points;
 
-	int init(int argc, const char *argv[]) {
-		auto const FAIL    = CmdParameters::EXIT_ERROR;
+	HeatMapSettings() : Settings(&params, true) {}
 
-		set_name(argv[0]);
-		params.add(base_params(true));
-
-		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != CmdParameters::ALL_IS_WELL) return ret;
-
-		// Init the parameters in the parent
-		if (!process(&params, true)) {
-			ret = FAIL;
-		}
-
+	void init_params() override {
 		kernel      = params.parameters()["Kernel"]->get_int_value();
 		kernel_name = params.parameters()["Kernel"]->get_string_value();
 		num_steps   = params.parameters()["Number of steps"]->get_int_value();
 		num_points  = params.parameters()["Number of points"]->get_int_value();
-
-		return ret;
 	}
 } settings;
 

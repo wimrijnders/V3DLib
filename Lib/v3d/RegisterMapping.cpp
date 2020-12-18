@@ -14,11 +14,12 @@
 // - Branch >= lima4.18-rc4:  'gca' in v3d_drv.c
 //
 ///////////////////////////////////////////////////////////////////////////////
+#include "RegisterMapping.h"
 #include <stdio.h>
 #include <unistd.h>  // usleep
-#include "RegisterMapping.h"
-#include "Support/debug.h"
+#include <memory>
 #include "../vc4/Mailbox.h"  // for mapmem()
+#include "Support/debug.h"
 
 
 namespace {
@@ -127,12 +128,24 @@ enum: unsigned {  // NOTE: the pointers are to 4-bit words
 	V3D_MMU_ILLEGAL_ADDR = 0x01230 >> 2,
 	V3D_MMU_ILLEGAL_ADDR_ENABLE = 1u << 31,  // BIT(31)
 
-	// Other non-register-address constants
+	//
+	// Performance Counters
+	//
   CORE_BASE       = (0xfec04000 + 0x4000) >> 2,
+
+	// Offsets relative per core
 	CORE_IDENT0     = 0x00000,
 	CORE_IDENT1     = 0x00004 >> 2,
 	CORE_IDENT2     = 0x00008 >> 2,
 
+
+	//
+	// NOTE: sequences CORE_PCTR_0_SRC_[0-7] and CORE_PCTR_0_PCTR[0-31] made public for perf counters
+
+
+	//
+	// Other non-register-address constants
+	//
 	V3D_CTL_MISCCFG = 0x00018 >> 2,
 	// V3D_CTL_MISCCFG_QRMAXCNT_MASK                 V3D_MASK(3, 1)
 	// V3D_CTL_MISCCFG_QRMAXCNT_SHIFT                1
@@ -158,6 +171,11 @@ uint32_t HubField(uint32_t reg, unsigned high, unsigned low) {
 
 namespace V3DLib {
 namespace v3d {
+namespace {
+
+std::unique_ptr<RegisterMapping> _instance;
+
+}  // anon namespace
 
 
 //
@@ -330,6 +348,11 @@ void RegisterMapping::v3d_bridge_write(uint32_t offset, uint32_t val) {
 
 void RegisterMapping::v3d_core_write(int core_index, uint32_t offset, uint32_t val) {
 	map_cores[core_index][offset] = val;
+}
+
+
+uint32_t RegisterMapping::core_read(int core_index, uint32_t offset) {
+	return map_cores[core_index][offset];
 }
 
 
@@ -612,6 +635,16 @@ void RegisterMapping::reset_v3d() {
 	}
 
 	v3d_irq_enable();
+}
+
+
+RegisterMapping &RegisterMapping::instance() {
+	if (_instance.get() == nullptr) {
+		_instance.reset(new RegisterMapping);
+		_instance->init();
+	}
+
+	return *_instance.get();
 }
 
 }  // v3d

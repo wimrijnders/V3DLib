@@ -1,6 +1,6 @@
 #include "Syntax.h"
+#include "Source/BExpr.h"
 #include "Support/basics.h"
-#include "Source/Syntax.h"
 
 namespace V3DLib {
 
@@ -132,6 +132,11 @@ std::string BranchCond::to_string() const {
 ///////////////////////////////////////////////////////////////////////////////
 
 SetCond::SetCond(CmpOp const &cmp_op) {
+	setOp(cmp_op);
+}
+
+
+void SetCond::setOp(CmpOp const &cmp_op) {
 	m_tag = NO_COND;
 
 	switch (cmp_op.op) {
@@ -154,6 +159,36 @@ const char *SetCond::to_string() const {
 			assert(false);
 			return "<UNKNOWN>";
 	}
+}
+
+
+std::string SetCond::pretty() const {
+	std::string ret;
+	if (flags_set()) {
+		ret << "{sf-" << to_string() << "}";
+	}
+	return ret;
+}
+
+
+void SetCond::setFlag(Flag flag) {
+	Tag set_tag = NO_COND;
+
+	switch (flag) {
+		case ZS: 
+		case ZC: 
+			set_tag = SetCond::Z;
+			break;
+		case NS: 
+		case NC: 
+			set_tag = SetCond::N;
+			break;
+		default:
+			assert(false);  // Not expecting anything else right now
+			break;
+	}
+
+	tag(set_tag);
 }
 
 
@@ -323,6 +358,11 @@ Instr mov(Var dst, Var src) {
 }
 
 
+Instr mov(Var dst, int n) {
+  return mov(dstReg(dst), n);
+}
+
+
 Instr mov(Reg dst, Var src) {
   return mov(dst, srcReg(src));
 }
@@ -344,6 +384,26 @@ Instr mov(Reg dst, Reg src) {
  */
 Instr bor(Reg dst, Reg srcA, Reg srcB) {
 	return genInstr(A_BOR, dst, srcA, srcB);
+}
+
+
+Instr band(Reg dst, Reg srcA, Reg srcB) {
+	return genInstr(A_BAND, dst, srcA, srcB);
+}
+
+
+Instr band(Var dst, Var srcA, Var srcB) {
+	return genInstr(A_BAND, dstReg(dst), srcReg(srcA), srcReg(srcB));
+}
+
+
+Instr band(Reg dst, Reg srcA, int n) {
+	return genInstr(A_BAND, dst, srcA, n);
+}
+
+
+Instr bxor(Var dst, Var srcA, int n) {
+	return genInstr(A_BXOR, dstReg(dst), srcReg(srcA), n);
 }
 
 
@@ -379,11 +439,6 @@ Instr add(Reg dst, Reg srcA, int n) {
 Instr sub(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
 	return genInstr(A_SUB, dst, srcA, n);
-}
-
-
-Instr band(Reg dst, Reg srcA, int n) {
-	return genInstr(A_BAND, dst, srcA, n);
 }
 
 
