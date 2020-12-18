@@ -50,7 +50,7 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< nop().ldunifa()  // NB for version 33 this is `nop().ldvpm()`
 		<< bor(rf(0), r3, r3).mov(vpm, r3)
 
-		// ver 42, error in instr_unpack():
+		// ver 42, error in instr_unpack():     WARNING: Instr:init: call to instr_unpack failed.
 		// { 33, 0x57403006bbb80000ull, "nop                  ; fmul  r0, rf0, r5 ; ldvpm; ldunif" },
 		<< nop()
 
@@ -59,15 +59,9 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 
 		/* vfmul input packing */
 		<< fmax(rf(46), r4.l(), r2.l()).nornn().vfmul(rf(45), r3, r5).ifnb()
-
 		<< faddnf(r2.l(), r5.l(), r4).norc().vfmul(rf(15), r0.ll(), r4).ldunif().ifb()
 		<< fcmp(rf(61).h(), r4.abs(), r2.l()).ifna().vfmul(rf(55), r2.hh(), r1)
-
-		// ver 42 all flags get reset in output bytecode.
-		// Also happens for fsub -> add, and also if I remove *all* postfixes
-		// << fsub(rf(27), r4.abs(), r1.abs()).norz().vfmul(rf(34), r3.swp(), r1).ifa()
-		<< nop()
-
+		<< fsub(rf(27), r4.abs(), r1.abs()).norz().vfmul(rf(34), r3.swp(), r1).ifa()
 		<< vfpack(rf(43), rf(15).l(), r0.h()).andnc().fmul(rf(10).h(), r4.l(), r5.abs()).ifna()
 		<< fdx(rf(7).h(), r1.l()).ifnb().fmul(rf(46), r3.l(), r2.abs()).pushn()
 
@@ -109,33 +103,29 @@ std::vector<uint64_t> qpu_disasm_kernel() {
 		<< brecip(rf(1), rf(62)).fmul(r3.h(), r2.l(), r1.l()).ldunifrf(rf(53))
 
 		/* v4.1 SFU instructions. */
+		<< brsqrt(rf(30), r4).fmul(rf(11), r4.h(), r2.h()).ldunifrf(rf(31))
+		<< brsqrt2(rf(26), r3).fmul(rf(29).l(), r2.h(), r1.abs()).ldunifrf(rf(9))
+		<< bsin(rf(8), rf(36)).fmul(rf(32), r2.h(), r0.l()).ldunifrf(rf(32))
+		<< bexp(rf(20), r2).ifb().add(r2, rf(35), r2)
+		<< blog(rf(63), r2).fmul(rf(34).h(), r4.l(), r1.abs()).andnn()
+
+		/* v4.2 changes */
+		<< barrierid(syncb).nop().thrsw()
 	;
 
-	// Useful little code snippet for debugging
-	//nop().dump(true);
-	uint64_t op = 0xe98d60c1ba2aef80ull; //, "recip  rf1, rf62     ; fmul  r3.h, r2.l, r1.l; ldunifrf.rf53" },
+/*
+	// Useful little code snippet for comparing expected and generated opcodes
+
+	uint64_t op = 0x3c203192bb814000ull; //, "barrierid  syncb     ; nop               ; thrsw" },
 	test_unpack_pack(op);
 	Instr::show(op);
 	auto tmp_op =
-		brecip(rf(1), rf(62)).fmul(r3.h(), r2.l(), r1.l()).ldunifrf(rf(53))
-		//sampid(rf(16)).fmul(rf(57).h(), r3, r1.l())
+		barrierid(syncb).nop().thrsw()
 	;
 	tmp_op.dump(true);
+*/
 
-	ret <<
-		nop()
-	;
-
-#if 0
-        { 41, 0x7d87c2debc51c000ull, "rsqrt  rf30, r4      ; fmul  rf11, r4.h, r2.h; ldunifrf.rf31" },
-        { 41, 0xb182475abc2bb000ull, "rsqrt2  rf26, r3     ; fmul  rf29.l, r2.h, r1.abs; ldunifrf.rf9" },
-        { 41, 0x79880808bc0b6900ull, "sin  rf8, rf36       ; fmul  rf32, r2.h, r0.l; ldunifrf.rf32" },
-        { 41, 0x04092094bc5a28c0ull, "exp.ifb  rf20, r2    ; add  r2, rf35, r2" },
-        { 41, 0xe00648bfbc32a000ull, "log  rf63, r2        ; fmul.andnn  rf34.h, r4.l, r1.abs" },
-
-        /* v4.2 changes */
-        { 42, 0x3c203192bb814000ull, "barrierid  syncb     ; nop               ; thrsw" },
-#endif
+	ret << nop();
 
 	std::vector<uint64_t> bytecode;
 	for (auto const &instr : ret) {

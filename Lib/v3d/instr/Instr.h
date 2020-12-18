@@ -231,7 +231,16 @@ Instr max(Location const &dst, Location const &srca, Location const &srcb);
 Instr ldvpmg_in(Location const &dst, Location const &srca, Location const &srcb);
 Instr stvpmv(SmallImm const &imma, Location const &srca);
 Instr sampid(Location const &dst);
+
+/**
+ * Prefix 'b' follwoing to disambiguate, naming collisions with registers
+ */
 Instr brecip(Location const &dst, Location const &srca);
+Instr brsqrt(Location const &dst, Location const &srca);
+Instr brsqrt2(Location const &dst, Location const &srca);
+Instr bsin(Location const &dst, Location const &srca);
+Instr bexp(Location const &dst, Location const &srca);
+Instr blog(Location const &dst, Location const &srca);
 
 }  // instr
 }  // v3d

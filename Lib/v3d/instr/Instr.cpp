@@ -644,9 +644,16 @@ void Instr::alu_add_set_reg_b(Location const &loc) {
 	if (loc.is_rf()) {
 		if (!sig.small_imm) {
 			if (alu.add.a == V3D_QPU_MUX_A) {
-				// raddr_a already taken, use b instead
-				raddr_b          = loc.to_waddr(); 
-				alu.add.b        = V3D_QPU_MUX_B;
+				// raddr_a already taken
+
+				if (raddr_a == loc.to_waddr()) {
+					// If it's the same, reuse
+					alu.add.b        = V3D_QPU_MUX_A;
+				} else {
+					// use b instead
+					raddr_b          = loc.to_waddr(); 
+					alu.add.b        = V3D_QPU_MUX_B;
+				}
 			} else {
 				raddr_a          = loc.to_waddr(); 
 				alu.add.b        = V3D_QPU_MUX_A;
@@ -1684,6 +1691,31 @@ Instr brecip(Location const &dst, Location const &srca) {
 
 	instr.alu.add.op = V3D_QPU_A_RECIP;
 	return instr;
+}
+
+
+Instr brsqrt(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_RSQRT, dst, srca, r3);  // r3 implicit
+}
+
+
+Instr brsqrt2(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_RSQRT2, dst, srca, r3);  // r3 implicit
+}
+
+
+Instr bsin(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_SIN, dst, srca, srca);  // 2nd srca implicit
+}
+
+
+Instr bexp(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_EXP, dst, srca, r4);  // r4 implicit
+}
+
+
+Instr blog(Location const &dst, Location const &srca) {
+	return Instr(V3D_QPU_A_LOG, dst, srca, r4);  // r4 implicit
 }
 
 }  // instr

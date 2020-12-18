@@ -3,7 +3,6 @@
 ///////////////////////////////////////////////////////////////////////////////
 #include "Gen.h"
 #include <stdlib.h>
-#include "Source/Syntax.h"
 #include "Source/Cond.h"   // mkCmp()
 
 namespace V3DLib {
