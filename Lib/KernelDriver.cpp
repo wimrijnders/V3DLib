@@ -14,14 +14,21 @@ using ::operator<<;  // C++ weirdness
 
 namespace {
 
+/**
+ * Emit source code
+ */
 void print_source_code(FILE *f, Stmt::Ptr body) {
-	// Emit source code
+	if (f == nullptr) {
+		f = stdout;
+	}
+
 	fprintf(f, "Source code\n");
 	fprintf(f, "===========\n\n");
+
 	if (body.get() == nullptr)
 		fprintf(stderr, "<No source code to print>");
 	else
-		V3DLib::pretty(f, body);
+		fprintf(f, "%s", pretty(body).c_str());
 
 	fprintf(f, "\n");
 	fflush(f);

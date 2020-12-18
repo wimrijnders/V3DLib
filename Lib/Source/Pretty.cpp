@@ -15,89 +15,58 @@ std::string indentBy(int indent) {
 }
 
 
-void indentBy(FILE *f, int indent) {
-	fprintf(f, "%s", indentBy(indent).c_str());
-}
-
-}  // anon namespace
-
-
-void pretty(FILE *f, int indent, Stmt::Ptr s) {
-  assert(f != nullptr);
-  if (s.get() == nullptr) return;
-
-	auto add_eol = [f, s] () {
-		if (!s->comment().empty()) {
-			fprintf(f, "                           # %s", s->comment().c_str());
-		}
-		fprintf(f, "\n");
-	};
+std::string pretty(int indent, Stmt::Ptr s) {
+	std::string ret;
+	bool do_eol = true;
 
   switch (s->tag) {
-    case SKIP: break;
+    case SKIP: do_eol = false; break;
 
-    // Assignment
-    case ASSIGN: {
-			std::string ret;
+    case ASSIGN:
 			ret << indentBy(indent)
 			    << s->assign_lhs()->pretty() << " = " << s->assign_rhs()->pretty() << ";";
-      fprintf(f, "%s", ret.c_str());
-			add_eol();
-		}
-		break;
+			break;
 
-    // Sequential composition
-    case SEQ:
-      pretty(f, indent, s->seq_s0());
-      pretty(f, indent, s->seq_s1());
-      break;
+    case SEQ:  // Sequential composition
+			ret << pretty(indent, s->seq_s0())
+			    << pretty(indent, s->seq_s1());
+			do_eol = false;
+			break;
 
-    // Where statement
     case WHERE:
-      indentBy(f, indent);
-      fprintf(f, "Where (");
-			fprintf(f, "%s", s->where_cond()->pretty().c_str());
-      fprintf(f, ")\n");
-      pretty(f, indent+2, s->thenStmt());
-      if (s->elseStmt().get() != nullptr) {
-        indentBy(f, indent);
-        fprintf(f, "Else\n");
-        pretty(f, indent+2, s->elseStmt());
-      }
-      indentBy(f, indent);
-      fprintf(f, "End\n");
-      break;
+			ret << indentBy(indent)
+			    << "Where (" << s->where_cond()->pretty() << ")\n"
+			    << pretty(indent+2, s->thenStmt());
 
-    // If statement
+			if (s->elseStmt().get() != nullptr) {
+				ret << indentBy(indent) << "Else\n"
+				    << pretty(indent+2, s->elseStmt());
+			}
+
+			ret << indentBy(indent) << "End";
+			break;
+
     case IF:
-      indentBy(f, indent);
-      fprintf(f, "If (");
-      fprintf(f, "%s", s->if_cond()->pretty().c_str());
-      fprintf(f, ")\n");
-      pretty(f, indent+2, s->thenStmt());
-      if (s->elseStmt().get() != nullptr) {
-        indentBy(f, indent);
-        fprintf(f, "Else\n");
-        pretty(f, indent+2, s->elseStmt());
-      }
-      indentBy(f, indent);
-      fprintf(f, "End\n");
-      break;
+			ret << indentBy(indent)
+			    << "If  (" << s->if_cond()->pretty() << ")\n"
+			    << pretty(indent+2, s->thenStmt());
 
-    // While statement
+			if (s->elseStmt().get() != nullptr) {
+				ret << indentBy(indent) << "Else\n"
+				    << pretty(indent+2, s->elseStmt());
+			}
+
+			ret << indentBy(indent) << "End";
+			break;
+
     case WHILE:
-      indentBy(f, indent);
-      fprintf(f, "While (");
-      fprintf(f, "%s", s->loop_cond()->pretty().c_str());
-      fprintf(f, ")\n");
-      pretty(f, indent+2, s->body());
-      indentBy(f, indent);
-      fprintf(f, "End\n");
-      break;
+			ret << indentBy(indent)
+			    << "While  (" << s->loop_cond()->pretty() << ")\n"
+			    << pretty(indent+2, s->body())
+			    << indentBy(indent) << "End";
+			break;
 
-    // Print statement
-    case PRINT: {
-			std::string ret;
+    case PRINT:
       ret << indentBy(indent)
 			    << "Print (";
 
@@ -108,154 +77,126 @@ void pretty(FILE *f, int indent, Stmt::Ptr s) {
 			}
 
       ret << ")\n";
+			break;
 
-			fprintf(f, "%s", ret.c_str());
-		}
-		break;
-
-    // Set read stride
     case SET_READ_STRIDE:
-      indentBy(f, indent);
-      fprintf(f, "dmaSetReadPitch(");
-     	fprintf(f, "%s",  s->stride()->pretty().c_str());
-      fprintf(f, ")\n");
-      break;
+      ret << indentBy(indent) << "dmaSetReadPitch(" << s->stride()->pretty() << ");";
+			break;
 
-    // Set write stride
     case SET_WRITE_STRIDE:
-      indentBy(f, indent);
-      fprintf(f, "dmaSetWriteStride(");
-     	fprintf(f, "%s",  s->stride()->pretty().c_str());
-      fprintf(f, ")\n");
-      break;
+			ret << indentBy(indent) << "dmaSetWriteStride(" << s->stride()->pretty() << ")";
+			break;
 
-    // Load receive
     case LOAD_RECEIVE:
-      indentBy(f, indent);
-      fprintf(f, "receive(");
-     	fprintf(f, "%s",  s->loadDest()->pretty().c_str());
-      fprintf(f, ")");
-			add_eol();
-      break;
+			ret << indentBy(indent)
+			    << "receive(" << s->loadDest()->pretty() << ")";
+			break;
 
-    // Store request
     case STORE_REQUEST:
-      indentBy(f, indent);
-      fprintf(f, "store(");
-     	fprintf(f, "%s",  s->storeReq_data()->pretty().c_str());
-      fprintf(f, ", ");
-     	fprintf(f, "%s",  s->storeReq_addr()->pretty().c_str());
-      fprintf(f, ")\n");
+			ret << indentBy(indent)
+			    << "store(" << s->storeReq_data()->pretty() << ", " << s->storeReq_addr()->pretty() << ")\n";
+			break;
+
+    case SEMA_INC:  // Increment semaphore
+			ret << indentBy(indent) << "semaInc(" << s->semaId << ");";
+			break;
+
+    case SEMA_DEC: // Decrement semaphore
+			ret << indentBy(indent) << "semaDec(" << s->semaId << ");";
       break;
 
-    // Increment semaphore
-    case SEMA_INC:
-      indentBy(f, indent);
-      fprintf(f, "semaInc(%i)\n", s->semaId);
-      break;
-
-    // Decrement semaphore
-    case SEMA_DEC:
-      indentBy(f, indent);
-      fprintf(f, "semaDec(%i)\n", s->semaId);
-      break;
-
-    // Host IRQ
     case SEND_IRQ_TO_HOST:
-      indentBy(f, indent);
-      fprintf(f, "hostIRQ()\n");
+			ret << indentBy(indent) << "hostIRQ();";
       break;
 
-    // Setup VPM Read
     case SETUP_VPM_READ:
-      indentBy(f, indent);
-      fprintf(f, "vpmSetupRead(");
-      fprintf(f, "numVecs=%i, ", s->setupVPMRead.numVecs);
-      fprintf(f, "dir=%s,", s->setupVPMRead.hor ? "HOR" : "VIR");
-      fprintf(f, "stride=%i,", s->setupVPMRead.stride);
-     	fprintf(f, "%s",  s->setupVPMRead_addr()->pretty().c_str());
-      fprintf(f, ");\n");
-      break;
+			ret << indentBy(indent)
+			    << "vpmSetupRead("
+			    << "numVecs=" << s->setupVPMRead.numVecs               << ","
+			    << "dir="     << (s->setupVPMRead.hor ? "HOR" : "VIR") << ","
+			    << "stride="  << s->setupVPMRead.stride                << ","
+			    << s->setupVPMRead_addr()->pretty()
+			    << ");";
+			break;
 
-    // Setup VPM Write
     case SETUP_VPM_WRITE:
-      indentBy(f, indent);
-      fprintf(f, "vpmSetupWrite(");
-      fprintf(f, "dir=%s,", s->setupVPMWrite.hor ? "HOR" : "VIR");
-      fprintf(f, "stride=%i,", s->setupVPMWrite.stride);
-     	fprintf(f, "%s",  s->setupVPMWrite_addr()->pretty().c_str());
-      fprintf(f, ");\n");
-      break;
+			ret << indentBy(indent)
+			    << "vpmSetupWrite("
+			    << "dir="    << (s->setupVPMWrite.hor ? "HOR" : "VIR") << ","
+			    << "stride=" << s->setupVPMWrite.stride                << ","
+			    << s->setupVPMWrite_addr()->pretty()
+			    << ");";
+			break;
 
-    // DMA read wait
     case DMA_READ_WAIT:
-      indentBy(f, indent);
-      fprintf(f, "dmaReadWait();\n");
-      break;
+			ret << indentBy(indent) << "dmaReadWait();";
+			break;
 
-    // DMA write wait
     case DMA_WRITE_WAIT:
-      indentBy(f, indent);
-      fprintf(f, "dmaWriteWait();\n");
-      break;
+			ret << indentBy(indent) << "dmaWriteWait();";
+			break;
 
-    // DMA start read
     case DMA_START_READ:
-      indentBy(f, indent);
-      fprintf(f, "dmaStartRead(");
-     	fprintf(f, "%s",  s->startDMARead()->pretty().c_str());
-      fprintf(f, ");\n");
-      break;
+			ret << indentBy(indent)
+			    << "dmaStartRead(" << s->startDMARead()->pretty() << ");";
+			break;
 
-    // DMA start write
     case DMA_START_WRITE:
-      indentBy(f, indent);
-      fprintf(f, "dmaStartWrite(");
-     	fprintf(f, "%s",  s->startDMAWrite()->pretty().c_str());
-      fprintf(f, ");\n");
-      break;
+			ret << indentBy(indent)
+			    << "dmaStartWrite(" << s->startDMAWrite()->pretty() << ");";
+			break;
 
-    // DMA read setup
     case SETUP_DMA_READ:
-      indentBy(f, indent);
-      fprintf(f, "dmaSetupRead(");
-      fprintf(f, "numRows=%i,", s->setupDMARead.numRows);
-      fprintf(f, "rowLen=%i,", s->setupDMARead.rowLen);
-      fprintf(f, "dir=%s,", s->setupDMARead.hor ? "HORIZ" : "VERT");
-      fprintf(f, "vpitch=%i,", s->setupDMARead.vpitch);
-     	fprintf(f, "%s",  s->setupDMARead_vpmAddr()->pretty().c_str());
-      fprintf(f, ");\n");
-      break;
+      ret << indentBy(indent)
+			    << "dmaSetupRead("
+			    << "numRows=" << s->setupDMARead.numRows                  << ","
+			    << "rowLen=%" << s->setupDMARead.rowLen                   << ","
+			    << "dir="     << (s->setupDMARead.hor ? "HORIZ" : "VERT") << ","
+			    << "vpitch="  <<  s->setupDMARead.vpitch                  << ","
+			    << s->setupDMARead_vpmAddr()->pretty()
+			    << ");";
+			break;
 
-    // DMA write setup
     case SETUP_DMA_WRITE:
-      indentBy(f, indent);
-      fprintf(f, "dmaSetupWrite(");
-      fprintf(f, "numRows=%i,", s->setupDMAWrite.numRows);
-      fprintf(f, "rowLen=%i,", s->setupDMAWrite.rowLen);
-      fprintf(f, "dir=%s,", s->setupDMAWrite.hor ? "HORIZ" : "VERT");
-     	fprintf(f, "%s",  s->setupDMAWrite_vpmAddr()->pretty().c_str());
-      fprintf(f, ");\n");
-      break;
+      ret << indentBy(indent)
+			    << "dmaSetupWrite("
+			    << "numRows=" << s->setupDMAWrite.numRows                  << ","
+			    << "rowLen="  << s->setupDMAWrite.rowLen                   << ","
+			    << "dir="     << (s->setupDMAWrite.hor ? "HORIZ" : "VERT") << ","
+			    << s->setupDMAWrite_vpmAddr()->pretty()
+			    << ");";
+			break;
 
     // Not reachable
     default:
       assert(false);
+			break;
   }
+
+	if (!ret.empty()) {  // Can only be empty for SKIP
+		// NOTE: For multiline output, the comment gets added to the end!
+		//       We might want to fix this.
+		if (!s->comment().empty()) {
+			ret << "                           # %s", s->comment();
+		}
+
+		if (do_eol) {
+			ret << "\n";
+		}
+	}
+
+	return ret;
 }
 
-
-void pretty(FILE *f, Stmt::Ptr s) {
-  assert(f != nullptr);
-  pretty(f, 0, s);
-}
+}  // anon namespace
 
 
 /**
- * @brief Override using stdout as output
+ * Pretty printer for the V3DLib source language
  */
-void pretty(Stmt::Ptr s) {
-  pretty(stdout, s);
+std::string pretty(Stmt::Ptr s) {
+  assert(s.get() != nullptr);
+	return pretty(0, s);
 }
 
 }  // namespace V3DLib
