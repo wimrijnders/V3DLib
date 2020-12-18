@@ -14,7 +14,7 @@
       Clues: `mesa/src/compiler/vir_to_qpu.c`, `mesa/src/broadcom/qpu/qpu_disasm.c`
 - [x] Add performance counters; examine python project for this.
   * [ ] figure out what the counters signify on `v3d`
-- [ ] Fix unit test for Rot3D kernel 2 with >1 QPU
+- [x] Fix unit test for Rot3D kernel 2 with >1 QPU
 
 
 ## vc4
