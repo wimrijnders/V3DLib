@@ -185,7 +185,7 @@ Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 
 Instr mov(Location const &loc1, SmallImm val);
-Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
+//Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
 Instr mov(Location const &loc1, Location const &loc2);
 
 Instr bor(Location const &dst, Location const &srca, Location const &srcb);

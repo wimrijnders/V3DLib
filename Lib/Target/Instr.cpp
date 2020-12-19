@@ -316,5 +316,4 @@ std::string mnemonics(Seq<Instr> const &code, bool with_comments) {
 	return ret;
 }
 
-
 }  // namespace V3DLib

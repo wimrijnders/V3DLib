@@ -23,6 +23,7 @@
 #include "v3d/instr/Instr.h"
 #include "v3d/instr/Snippets.h"
 #include "Support/Platform.h"
+#include "Target/Syntax.h"   // mnemonics()
 #include "support/support.h"
 #include "support/summation_kernel.h"
 #include "support/rotate_kernel.h"
@@ -80,20 +81,71 @@ bool v3d_init() {
 //////////////////////////////////
 
 TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
+	using namespace V3DLib::v3d::instr;
+	using Instructions =  V3DLib::v3d::Instructions;
+
 	if (!v3d_init()) return;
 
+	// NOTE: Always uses rf(1) as dest ptr
+	auto output = [] (Location const &src) -> Instructions {
+		Instructions ret;
+		ret << mov(tmud, src)          // write result to main mem
+		    << mov(tmua, rf(1))
+		    << tmuwt()  // does nothing?
+
+		    << add(rf(1), rf(1), 4);
+
+		ret.front().comment("Output to main mem");
+		ret.back().comment("increment pointer");
+		return ret;
+	};
+
+	auto mnemonics = [] (Instructions const &code, bool with_comments = false) -> std::string {
+	std::string ret;
+
+	for (int i = 0; i < code.size(); i++) {
+		auto const &instr = code[i];
+		ret << i << ": " << instr.mnemonic(with_comments).c_str() << "\n";
+	}
+
+	return ret;
+};
+
+
 	SECTION("Test sin opcode") {
-		using namespace V3DLib::v3d::instr;
-		using Instructions =  V3DLib::v3d::Instructions;
+		auto sin =  V3DLib::v3d::instr::sin;
+		auto exp =  V3DLib::v3d::instr::exp;
 
 		Instructions instrs;
 
 		instrs << nop().ldunifrf(rf(0))  // value to operate on
 		       << nop().ldunifrf(rf(1))  // ptr to location to store
-				   << bsin(r1, rf(0))
-			     << mov(tmud, r1)          // write result to main mem
-			     << mov(tmua, rf(1))
-			     << tmuwt()
+//				   << bsin(r1, rf(0))
+//		       << mov(r1, rf(0))
+//		       << nop().fmul(r1, rf(0), rf(0))
+//				   << brsqrt(r1, rf(0))
+//		       << mov(sin, rf(0))
+
+//		       << mov(rsqrt, rf(0))  // working
+//		       << mov(exp, rf(0))  // base 2! Working
+
+		// The classic way of using SFU:
+		// - write to special register for function
+		// - wait 2 cycles (for r4 to stabilize, can optimize with other instructions!)
+		// - read result in r4
+
+//		       << bexp(r1, rf(0))  // base 2!
+
+		       << mov(exp, rf(0))  // base 2! Working
+		       << nop()
+		       << nop()
+		       << output(r4)
+
+		       << mov(rsqrt, rf(0))  // base 2! Working
+		       << nop()
+		       << nop()
+		       << output(r4)
+
 		       << end_program();
 
 		ByteCode bytecode;
@@ -104,20 +156,69 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		BufferObject heap(1024);
 		SharedArray<uint64_t> codeMem(bytecode.size(), heap);
 		codeMem.copyFrom(bytecode);
-		SharedArray<uint64_t> result(16, heap);
+		SharedArray<float> result(16, heap);
 		SharedArray<uint32_t> unif(2, heap);
 
 		// Some magic to store a float in a uint32_t
-		float x = 21.5f;
+		float x = 2.5f; // 21.5f;
   	int32_t *bits = (int32_t*) &x;
-
 		unif[0] = *bits;
+
+//		unif[0] = 123;
+		unif[1] = result.getAddress();
+
+		V3DLib::v3d::Driver driver;
+		driver.add_bo(heap);
+		REQUIRE(driver.execute(codeMem, &unif));
+		dump_data(result, true, true);
+		printf("\n");
+	}
+
+	SECTION("Test add/mov") {
+		Instructions instrs;
+
+		instrs << nop().ldunifrf(rf(0))  // value to operate on
+		       << nop().ldunifrf(rf(1))  // ptr to location to store
+
+		       // Output original value
+		       << output(rf(0))
+
+			     << add(rf(0), rf(0), 4)   // add small imm, works
+		       << output(rf(0))
+
+		       << mov(r2, 4)             // add via acc, result mostly 191, 633 639 but sometimes random
+		       << output(r2)
+			     << add(rf(0), rf(0), r2)
+		       << output(rf(0))
+
+		       << mov(r2, 4)            // add first in acc, then move
+			     << add(r2, r2, rf(1))
+		       << mov(rf(1), r2)
+		       << output(rf(0))
+
+		       << end_program();
+
+		printf("%s\n", mnemonics(instrs, true).c_str());
+
+		ByteCode bytecode;
+		for (auto const &instrs : instrs) {
+			bytecode << instrs.code(); 
+		}
+
+		BufferObject heap(1024);
+		SharedArray<uint64_t> codeMem(bytecode.size(), heap);
+		codeMem.copyFrom(bytecode);
+		SharedArray<int> result(16, heap);
+		SharedArray<uint32_t> unif(2, heap);
+
+		unif[0] = 123;
 		unif[1] = result.getAddress();
 
 		V3DLib::v3d::Driver driver;
 		driver.add_bo(heap);
 		REQUIRE(driver.execute(codeMem, &unif));
 		dump_data(result, true);
+		printf("\n");
 	}
 }
 

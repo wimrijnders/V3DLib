@@ -1063,8 +1063,8 @@ Instr mov(Location const &loc1, SmallImm val) {
 /**
  * Location for loc2 hangs the GPU in unit tests.
  * TODO: examine and fix
- */
-Instr mov(Register const &reg, RFAddress /* Location */ const &loc2) {
+ * /
+Instr mov(Register const &reg, RFAddress / * Location * / const &loc2) {
 	Instr instr;
 
 	if (loc2.is_rf()) {
@@ -1081,12 +1081,12 @@ Instr mov(Register const &reg, RFAddress /* Location */ const &loc2) {
 
 	return instr;
 }
+*/
 
 
 Instr mov(Location const &loc1, Location const &loc2) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, loc2);
-
 	instr.alu.add.op    = V3D_QPU_A_OR;
 
 	return instr;
