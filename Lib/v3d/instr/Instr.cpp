@@ -502,8 +502,9 @@ Instr &Instr::nop() {
 }
 
 
-Instr &Instr::mov(Location const &dst,  SmallImm const &imm) {
+Instr &Instr::mov(Location const &dst, SmallImm const &imm) {
 	m_doing_add = false;
+
 	alu_mul_set_dst(dst);
 	alu_mul_set_imm_a(imm);
 

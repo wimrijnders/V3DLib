@@ -113,38 +113,64 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 
 
 	SECTION("Test sin opcode") {
+		// This is bothersome
+		// TODO find way to avoid qualifying namespaces
 		auto sin =  V3DLib::v3d::instr::sin;
 		auto exp =  V3DLib::v3d::instr::exp;
+		auto log =  V3DLib::v3d::instr::log;
 
 		Instructions instrs;
 
 		instrs << nop().ldunifrf(rf(0))  // value to operate on
 		       << nop().ldunifrf(rf(1))  // ptr to location to store
-//				   << bsin(r1, rf(0))
-//		       << mov(r1, rf(0))
-//		       << nop().fmul(r1, rf(0), rf(0))
-//				   << brsqrt(r1, rf(0))
-//		       << mov(sin, rf(0))
-
-//		       << mov(rsqrt, rf(0))  // working
-//		       << mov(exp, rf(0))  // base 2! Working
 
 		// The classic way of using SFU:
 		// - write to special register for function
 		// - wait 2 cycles (for r4 to stabilize, can optimize with other instructions!)
 		// - read result in r4
 
-//		       << bexp(r1, rf(0))  // base 2!
-
-		       << mov(exp, rf(0))  // base 2! Working
+		       << mov(recip, rf(0))
 		       << nop()
 		       << nop()
 		       << output(r4)
 
-		       << mov(rsqrt, rf(0))  // base 2! Working
+		       << mov(rsqrt, rf(0))
 		       << nop()
 		       << nop()
 		       << output(r4)
+
+		       << mov(exp, rf(0))    // base 2!
+		       << nop()
+		       << nop()
+		       << output(r4)
+
+		       << mov(log, rf(0))    // base 2!
+		       << nop()
+		       << nop()
+		       << output(r4)
+
+		       << mov(sin, rf(0))
+		       << nop()
+		       << nop()
+		       << output(r4)
+
+		       << mov(rsqrt2, rf(0))  // TODO what is difference with rsqrt?
+		       << nop()
+		       << nop()
+		       << output(r4)
+
+		// Using v3d ALU op's for the same
+		// No output here
+		// TODO investigate further
+
+//				   << bsin(r1, rf(0))
+//				   << brsqrt(r1, rf(0))
+		       << bexp(r1, rf(0))  // base 2!
+		       << nop() // no difference....
+		       << nop()
+		       << nop()
+		       << nop()
+		       << output(r1)
 
 		       << end_program();
 
@@ -164,7 +190,6 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
   	int32_t *bits = (int32_t*) &x;
 		unif[0] = *bits;
 
-//		unif[0] = 123;
 		unif[1] = result.getAddress();
 
 		V3DLib::v3d::Driver driver;
@@ -174,31 +199,40 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		printf("\n");
 	}
 
+
+	/**
+	 * Added to investigate strange output with add/mov.
+	 * Works now, is a canary
+	 */
 	SECTION("Test add/mov") {
 		Instructions instrs;
 
-		instrs << nop().ldunifrf(rf(0))  // value to operate on
-		       << nop().ldunifrf(rf(1))  // ptr to location to store
+		instrs << nop().ldunifrf(rf(0))       // value to operate on
+		       << nop().ldunifrf(rf(1))       // ptr to location to store
+		       << mov(r2, 4)                  // Prepare ptr increment value
+		       << output(rf(0))               // Output original value
 
-		       // Output original value
+			     << add(rf(0), rf(0), 4)        // add small imm
 		       << output(rf(0))
 
-			     << add(rf(0), rf(0), 4)   // add small imm, works
+			     << add(rf(0), rf(0), r2)       // add via acc
 		       << output(rf(0))
 
-		       << mov(r2, 4)             // add via acc, result mostly 191, 633 639 but sometimes random
-		       << output(r2)
-			     << add(rf(0), rf(0), r2)
+			     << add(r3, r2, rf(0))          // add first in acc, then move
+		       << mov(rf(0), r3)
 		       << output(rf(0))
 
-		       << mov(r2, 4)            // add first in acc, then move
-			     << add(r2, r2, rf(1))
-		       << mov(rf(1), r2)
+			     << nop().mov(r2, 5)            // using mul alu for mov/add
+			     << nop().add(rf(0), rf(0), r2)
+		       << output(rf(0))
+
+			     << nop().add(r3, r2, rf(0))    // using mul aly for add/mov
+		       << nop().mov(rf(0), r3)
 		       << output(rf(0))
 
 		       << end_program();
 
-		printf("%s\n", mnemonics(instrs, true).c_str());
+		//printf("%s\n", mnemonics(instrs, true).c_str());
 
 		ByteCode bytecode;
 		for (auto const &instrs : instrs) {
@@ -217,8 +251,16 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		V3DLib::v3d::Driver driver;
 		driver.add_bo(heap);
 		REQUIRE(driver.execute(codeMem, &unif));
+
 		dump_data(result, true);
 		printf("\n");
+
+		REQUIRE(result[0] == 123);
+		REQUIRE(result[1] == 127);
+		REQUIRE(result[2] == 131);
+		REQUIRE(result[3] == 135);
+		REQUIRE(result[4] == 140);
+		REQUIRE(result[5] == 145);
 	}
 }
 
