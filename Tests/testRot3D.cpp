@@ -133,7 +133,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 
 	SECTION("Multiple kernel definitions should be possible") {
 		if (!Platform::instance().has_vc4) {
-			printf("NB: Rot3D kernel unit test not working on v3d\n");
+			printf("NB: Rot3D kernel unit test not working on v3d, timeout hang\n");
 			return;
 		}
 
