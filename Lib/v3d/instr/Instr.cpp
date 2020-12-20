@@ -164,17 +164,19 @@ std::string Instr::pretty_instr() const {
 
 	// Output rotate signal (not done in MESA)
 	if (sig.rotate) {
+		if (type != V3D_QPU_INSTR_TYPE_BRANCH) {  // Assumption: rotate signal irrelevant for branch
 
-		// Only two possibilities here: r5 or small imm (sig for small imm not set!)
-		if (alu.mul.b == V3D_QPU_MUX_R5) {
-			ret << ", r5";
-		} else if (alu.mul.b == V3D_QPU_MUX_B) {
-			ret << ", " << raddr_b;
-		} else {
-			assertq(false, "pretty_instr(): unexpected mux value for mul b for rotate", true);
+			// Only two possibilities here: r5 or small imm (sig for small imm not set!)
+			if (alu.mul.b == V3D_QPU_MUX_R5) {
+				ret << ", r5";
+			} else if (alu.mul.b == V3D_QPU_MUX_B) {
+				ret << ", " << raddr_b;
+			} else {
+				assertq(false, "pretty_instr(): unexpected mux value for mul b for rotate", true);
+			}
+
+			ret << indent(ret.size()) << "; rot";
 		}
-
-		ret << indent(ret.size()) << "; rot";
 	}
 
 	return ret;
@@ -216,6 +218,17 @@ void Instr::show(uint64_t in_code) {
 std::string Instr::mnemonic(uint64_t in_code) {
 	Instr instr(in_code);
 	return instr.mnemonic();
+}
+
+
+std::string Instr::mnemonics(std::vector<uint64_t> in_code) {
+	std::string ret;
+
+	for (int i = 0; i < in_code.size(); i++) {
+		ret << i << ": " << mnemonic(in_code[i]) << "\n";
+	}
+
+	return ret;
 }
 
 
@@ -440,7 +453,7 @@ Instr &Instr::ldunifarf(Location const &loc) {
 }
 
 
-Instr &Instr::ldunifrf(Location const &loc) {
+Instr &Instr::ldunifrf(RFAddress const &loc) {
 	sig.ldunifrf = true;
 
 	sig_magic = !loc.is_rf();
@@ -481,6 +494,14 @@ Instr &Instr::add(Location const &loc1, Location const &loc2, Location const &lo
 }
 
 
+Instr &Instr::sub(Location const &loc1, Location const &loc2, Location const &loc3) {
+	m_doing_add = false;
+	alu_mul_set(loc1, loc2, loc3); 
+	alu.mul.op    = V3D_QPU_M_SUB;
+	return *this;
+}
+
+/*
 Instr &Instr::sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 	m_doing_add = false;
 
@@ -493,6 +514,7 @@ Instr &Instr::sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
 
 	return *this;
 }
+*/
 
 
 Instr &Instr::nop() {
@@ -853,7 +875,7 @@ Instr nop() {
 	return instr;
 }
 
-
+/*
 Instr ldunifrf(uint8_t rf_address) {
 	Instr instr;
 
@@ -862,6 +884,7 @@ Instr ldunifrf(uint8_t rf_address) {
 
 	return instr;
 }
+*/
 
 
 Instr shr(Location const &dst, Location const &srca, SmallImm const &immb) {
@@ -1124,6 +1147,11 @@ Instr bxor(Location const &dst, Location const &srca, SmallImm const &immb) {
 }
 
 
+Instr bxor(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
+	return Instr(V3D_QPU_A_XOR, dst, imma, immb);
+}
+
+/*
 Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
 	Instr instr;
 
@@ -1137,6 +1165,7 @@ Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
 
 	return instr;
 }
+*/
 
 
 ///////////////////////////////////////////////////////////////////////////////

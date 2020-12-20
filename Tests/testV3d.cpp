@@ -100,19 +100,25 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		return ret;
 	};
 
+
 	auto mnemonics = [] (Instructions const &code, bool with_comments = false) -> std::string {
-	std::string ret;
+		std::string ret;
 
-	for (int i = 0; i < code.size(); i++) {
-		auto const &instr = code[i];
-		ret << i << ": " << instr.mnemonic(with_comments).c_str() << "\n";
-	}
+		for (int i = 0; i < code.size(); i++) {
+			auto const &instr = code[i];
+			ret << i << ": " << instr.mnemonic(with_comments) << "\n";
+		}
 
-	return ret;
-};
+		return ret;
+	};
 
 
-	SECTION("Test sin opcode") {
+	/**
+	 * Issues here:
+	 * - sin via register always returns 1.0
+	 * - ALU op's return nothing
+	 */
+	SECTION("Test SFU opcodes") {
 		// This is bothersome
 		// TODO find way to avoid qualifying namespaces
 		auto sin =  V3DLib::v3d::instr::sin;
@@ -160,14 +166,35 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		       << output(r4)
 
 		// Using v3d ALU op's for the same
-		// No output here
+		// No output here!
 		// TODO investigate further
 
-//				   << bsin(r1, rf(0))
-//				   << brsqrt(r1, rf(0))
-		       << bexp(r1, rf(0))  // base 2!
-		       << nop() // no difference....
+		       << brecip(r1, rf(0))
 		       << nop()
+		       << nop()
+		       << output(r1)
+
+		       << brsqrt(r1, rf(0))
+		       << nop()
+		       << nop()
+		       << output(r1)
+
+		       << bexp(r1, rf(0))  // base 2!
+		       << nop()
+		       << nop()
+		       << output(r1)
+
+		       << blog(r1, rf(0))  // base 2!
+		       << nop()
+		       << nop()
+		       << output(r1)
+
+		       << bsin(r1, rf(0))
+		       << nop()
+		       << nop()
+		       << output(r1)
+
+		       << brsqrt2(r1, rf(0))
 		       << nop()
 		       << nop()
 		       << output(r1)
@@ -186,7 +213,7 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		SharedArray<uint32_t> unif(2, heap);
 
 		// Some magic to store a float in a uint32_t
-		float x = 2.5f; // 21.5f;
+		float x = 2.5f;
   	int32_t *bits = (int32_t*) &x;
 		unif[0] = *bits;
 
@@ -195,6 +222,7 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		V3DLib::v3d::Driver driver;
 		driver.add_bo(heap);
 		REQUIRE(driver.execute(codeMem, &unif));
+
 		dump_data(result, true, true);
 		printf("\n");
 	}
@@ -226,7 +254,7 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 			     << nop().add(rf(0), rf(0), r2)
 		       << output(rf(0))
 
-			     << nop().add(r3, r2, rf(0))    // using mul aly for add/mov
+			     << nop().add(r3, r2, rf(0))    // using mul alu for add/mov
 		       << nop().mov(rf(0), r3)
 		       << output(rf(0))
 
@@ -252,8 +280,8 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		driver.add_bo(heap);
 		REQUIRE(driver.execute(codeMem, &unif));
 
-		dump_data(result, true);
-		printf("\n");
+		//dump_data(result, true);
+		//printf("\n");
 
 		REQUIRE(result[0] == 123);
 		REQUIRE(result[1] == 127);
@@ -328,6 +356,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 	SECTION("Summation example should work from kernel output") {
+/*
 		uint8_t num_qpus = 8;
 		int unroll_shift = 5;
 
@@ -339,6 +368,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		unroll_shift = 1;
 		data = summation_kernel(num_qpus, unroll_shift);
 		run_summation_kernel(data, num_qpus, unroll_shift);
+*/
 	}
 
 
@@ -348,7 +378,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 	SECTION("Rotate example should work from kernel output") {
-		run_rotate_alias_kernel(rotate_kernel());
+//		run_rotate_alias_kernel(rotate_kernel());
 	}
 }
 
@@ -404,6 +434,8 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 	SECTION("Summation kernel generates correctly encoded output") {
 		auto arr = summation_kernel(8, 5, 0);
 		REQUIRE(arr.size() > 0);
+
+		printf("%s\n", Instr::mnemonics(arr).c_str());
 
 		match_kernel_outputs(summation, arr);
 		REQUIRE(summation.size() == arr.size());

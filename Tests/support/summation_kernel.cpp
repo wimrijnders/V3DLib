@@ -736,11 +736,7 @@ using Instructions = V3DLib::v3d::Instructions;
 using ByteCode = V3DLib::v3d::ByteCode;
 
 
-Instructions adjust_length_for_unroll(
-	uint8_t num_qpus,
-	int     unroll_shift,
-	uint8_t reg_length
-) {
+Instructions adjust_length_for_unroll(uint8_t num_qpus, int unroll_shift, uint8_t reg_length) {
 	Instructions ret;
 
 	uint8_t num_qpus_shift = get_shift(num_qpus);
@@ -821,7 +817,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	// alu's are working in parallel
 	//   add: load TMU slot with address in reg_src
 	//   mul: reg_src += reg_stride
-	auto prefetch = mov(tmua, reg_src).add(rf(reg_src), rf(reg_src), rf(reg_stride));
+	auto prefetch = mov(tmua, rf(reg_src)).add(rf(reg_src), rf(reg_src), rf(reg_stride));
 
 	// alu's are working in parallel
 	//   add: reg_sum += r0
@@ -832,16 +828,16 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	//
 	// Start of program emission
 	//
-	ret << ldunifrf(reg_length)
-	    << ldunifrf(reg_src)
-	    << ldunifrf(reg_dst)
+	ret << nop().ldunifrf(rf(reg_length))
+	    << nop().ldunifrf(rf(reg_src))
+	    << nop().ldunifrf(rf(reg_dst))
 	    << calc_offset(num_qpus, reg_qpu_num)                     // Puts offset in r0
 	    << add(rf(reg_src), rf(reg_src), r0).add(rf(reg_dst), rf(reg_dst), r0)
 	    << calc_stride(num_qpus, reg_stride)
 			<< adjust_length_for_unroll(num_qpus, unroll_shift, reg_length)
 
 	    << enable_tmu_read(
-	       	&bxor(reg_sum, 1, 1).mov(r1, SmallImm(1))            // Passed opcode fills last delay slot
+	       	&bxor(rf(reg_sum), 1, 1).mov(r1, 1)                  // Passed opcode fills last delay slot
 	       )
 
 	    << align_code(ret.size() + code_offset, 170);            // Why the magic number?
@@ -855,7 +851,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 		ret << prefetch;
 	}
 
-	ret << mov(tmua, reg_src).sub(reg_length, reg_length, r1).pushz()  // Apparently pushz sets flag for cond na0
+	ret << mov(tmua, rf(reg_src)).sub(rf(reg_length), rf(reg_length), r1).pushz()  // pushz sets flag for cond na0
 			<< add(rf(reg_src), rf(reg_src), rf(reg_stride)).ldtmu(r0);
 
 	ret << emit_unroll(unroll, {
@@ -872,8 +868,8 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 	    << sum_and_load                               // delay slot
 	    << add(rf(reg_sum), rf(reg_sum), r0)          // delay slot, last sum without load
 
-	    << mov(tmud, reg_sum)                         // Write final result back to main mem
-      << mov(tmua, reg_dst)
+	    << mov(tmud, rf(reg_sum))                     // Write final result back to main mem
+      << mov(tmua, rf(reg_dst))
 
 	    << sync_tmu()
 	    << end_program();

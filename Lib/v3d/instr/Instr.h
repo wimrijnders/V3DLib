@@ -46,6 +46,7 @@ public:
 	uint64_t code() const;
 	static void show(uint64_t in_code);
 	static std::string mnemonic(uint64_t in_code);
+	static std::string mnemonics(std::vector<uint64_t> in_code);
 
 	operator uint64_t() const { return code(); }
 
@@ -58,7 +59,7 @@ public:
 	Instr &ldunif();
 	Instr &ldunifa();
 	Instr &ldunifarf(Location const &loc);
-	Instr &ldunifrf(Location const &loc);
+	Instr &ldunifrf(RFAddress const &loc);
 	Instr &ldtmu(Register const &reg);
 	Instr &ldvpm();
 
@@ -98,7 +99,8 @@ public:
 	Instr &nop();
 
 	Instr &add(Location const &dst, Location const &srca, Location const &srcb);
-	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
+	Instr &sub(Location const &dst, Location const &srca, Location const &srcb);
+//	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 
 	Instr &mov(Location const &dst, SmallImm const &imm);
 	Instr &mov(uint8_t rf_addr, Register const &reg);
@@ -163,7 +165,7 @@ const uint8_t  vpm       = 14;
 const uint32_t zero_addr = 0;
 
 Instr nop();
-Instr ldunifrf(uint8_t rf_address);
+//Instr ldunifrf(uint8_t rf_address);
 Instr tidx(Location const &reg);
 Instr eidx(Location const &reg);
 
@@ -193,7 +195,8 @@ Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb);
 Instr band(Location const &dst, Location const &srca, Location const &srcb);
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr bxor(Location const &dst, Location const &srca, SmallImm const &immb);
-Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
+Instr bxor(Location const &dst, SmallImm const &imma, SmallImm const &immb);
+//Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);
 Instr branch(int target, bool relative);
