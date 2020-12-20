@@ -100,7 +100,6 @@ public:
 
 	Instr &add(Location const &dst, Location const &srca, Location const &srcb);
 	Instr &sub(Location const &dst, Location const &srca, Location const &srcb);
-//	Instr &sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3);
 
 	Instr &mov(Location const &dst, SmallImm const &imm);
 	Instr &mov(uint8_t rf_addr, Register const &reg);
@@ -165,7 +164,6 @@ const uint8_t  vpm       = 14;
 const uint32_t zero_addr = 0;
 
 Instr nop();
-//Instr ldunifrf(uint8_t rf_address);
 Instr tidx(Location const &reg);
 Instr eidx(Location const &reg);
 
@@ -187,7 +185,6 @@ Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 
 Instr mov(Location const &loc1, SmallImm val);
-//Instr mov(Register const &reg, RFAddress /* Location */ const &loc2);
 Instr mov(Location const &loc1, Location const &loc2);
 
 Instr bor(Location const &dst, Location const &srca, Location const &srcb);
@@ -196,7 +193,6 @@ Instr band(Location const &dst, Location const &srca, Location const &srcb);
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr bxor(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr bxor(Location const &dst, SmallImm const &imma, SmallImm const &immb);
-//Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2);
 
 Instr branch(int target, int current);
 Instr branch(int target, bool relative);

@@ -501,22 +501,6 @@ Instr &Instr::sub(Location const &loc1, Location const &loc2, Location const &lo
 	return *this;
 }
 
-/*
-Instr &Instr::sub(uint8_t rf_addr1, uint8_t rf_addr2, Register const &reg3) {
-	m_doing_add = false;
-
-	raddr_b       = rf_addr1; 
-	alu.mul.op    = V3D_QPU_M_SUB;
-	alu.mul.a     = V3D_QPU_MUX_B;
-	alu.mul.b     = reg3.to_mux();
-	alu.mul.waddr = rf_addr2;
-	alu.mul.magic_write = false;
-
-	return *this;
-}
-*/
-
-
 Instr &Instr::nop() {
 	m_doing_add = false;
 	// With normal usage, the mul-part is already nop
@@ -875,18 +859,6 @@ Instr nop() {
 	return instr;
 }
 
-/*
-Instr ldunifrf(uint8_t rf_address) {
-	Instr instr;
-
-	instr.sig.ldunifrf = true; 
-	instr.sig_addr = rf_address; 
-
-	return instr;
-}
-*/
-
-
 Instr shr(Location const &dst, Location const &srca, SmallImm const &immb) {
 	Instr instr;
 	instr.alu_add_set(dst, srca, immb);
@@ -1084,30 +1056,6 @@ Instr mov(Location const &loc1, SmallImm val) {
 }
 
 
-/**
- * Location for loc2 hangs the GPU in unit tests.
- * TODO: examine and fix
- * /
-Instr mov(Register const &reg, RFAddress / * Location * / const &loc2) {
-	Instr instr;
-
-	if (loc2.is_rf()) {
-		instr.raddr_a = loc2.to_waddr();
-		instr.alu.add.a     = V3D_QPU_MUX_A;
-	} else {
-		instr.alu.add.a     = loc2.to_mux();
-	}
-
-	instr.alu.add.op    = V3D_QPU_A_OR;
-	instr.alu.add.b     = V3D_QPU_MUX_A;
-	instr.alu.add.waddr = reg.to_waddr();
-	instr.alu.add.magic_write = true;
-
-	return instr;
-}
-*/
-
-
 Instr mov(Location const &loc1, Location const &loc2) {
 	Instr instr;
 	instr.alu_add_set(loc1, loc2, loc2);
@@ -1150,23 +1098,6 @@ Instr bxor(Location const &dst, Location const &srca, SmallImm const &immb) {
 Instr bxor(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
 	return Instr(V3D_QPU_A_XOR, dst, imma, immb);
 }
-
-/*
-Instr bxor(uint8_t rf_addr, uint8_t val1, uint8_t val2) {
-	Instr instr;
-
-	instr.sig.small_imm = true; 
-	instr.raddr_b       = val1; 
-	instr.alu.add.op    = V3D_QPU_A_XOR;
-	instr.alu.add.a     = V3D_QPU_MUX_B;
-	instr.alu.add.b     = V3D_QPU_MUX_B;
-	instr.alu.add.waddr = rf_addr;
-	instr.alu.add.magic_write = false;
-
-	return instr;
-}
-*/
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Label support
