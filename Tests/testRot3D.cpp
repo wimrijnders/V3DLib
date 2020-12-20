@@ -120,7 +120,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 			// Also works fine for cmdline version Rot3D
 		} else {
 			INFO("Running with 8 kernels");
-  		k2.setNumQPUs(2);
+  		k2.setNumQPUs(8);
 			initArrays(x, y, N);
   		k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
 			compareResults(x_1, y_1, x, y, N, "Rot3D_2 8 QPU's");
