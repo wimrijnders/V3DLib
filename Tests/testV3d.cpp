@@ -225,6 +225,8 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 
 		dump_data(result, true, true);
 		printf("\n");
+
+		// TODO: add REQUIRE's for expected output
 	}
 
 
@@ -356,7 +358,6 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 	SECTION("Summation example should work from kernel output") {
-/*
 		uint8_t num_qpus = 8;
 		int unroll_shift = 5;
 
@@ -368,7 +369,6 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 		unroll_shift = 1;
 		data = summation_kernel(num_qpus, unroll_shift);
 		run_summation_kernel(data, num_qpus, unroll_shift);
-*/
 	}
 
 
@@ -378,7 +378,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
 
 
 	SECTION("Rotate example should work from kernel output") {
-//		run_rotate_alias_kernel(rotate_kernel());
+		run_rotate_alias_kernel(rotate_kernel());
 	}
 }
 
@@ -435,7 +435,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		auto arr = summation_kernel(8, 5, 0);
 		REQUIRE(arr.size() > 0);
 
-		printf("%s\n", Instr::mnemonics(arr).c_str());
+		//printf("%s\n", Instr::mnemonics(arr).c_str());
 
 		match_kernel_outputs(summation, arr);
 		REQUIRE(summation.size() == arr.size());
