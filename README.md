@@ -18,7 +18,8 @@ and run on the `VideoCore 6`.
 I have finally reached this point; however, **there are caveats**.
 
 There are some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
-will run *sometimes* on a `VideoCore 6`. This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
+will run *sometimes* on a `VideoCore 6`, and otherwise hang.
+This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
 There are also some unit tests which have the same problem, these are disabled when running on `VideoCore 6`.
 
 I haven't been able to resolve these issues and I am waiting for a kernel update with fixes.
