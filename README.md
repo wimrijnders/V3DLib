@@ -71,7 +71,7 @@ int main(int argc, const char *argv[]) {
 
 ## Credit where Credit is Due
 This project builds upon the [QPULib](https://github.com/mn416/QPULib) project, by **Matthew Naylor**.
-I fully acknowledge his work for the Videcore 4 and am grateful for what he has acheived in setting
+I fully acknowledge his work for the Videcore 4 and am grateful for what he has achieved in setting
 up the compilation and assembly.
 
 `QPULib`, however, is no longer under development, and I felt the need to expand it to support
@@ -84,7 +84,7 @@ This assumes that you are building on a Raspberry Pi.
 
 For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
 
-    > sudo apt-get install git  # If not done already
+    > sudo apt-get install git                                       # If not done already
     > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # get only latest commit
                                                                      # TODO test
     > git clone --depth 1 ssh://wim@shanna/home/git_masters/QPULib   # local pull, for comparisong
@@ -92,15 +92,14 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
     > cd V3DLib
 	
     # As long as the files don't change, you need to run these script only once.
-    > script/install.sh  # Pull in and build external library
-    > script/gen.sh      # Generate file dependencies
+    > script/install.sh                                              # Pull in and build external library
+    > script/gen.sh                                                  # Generate file dependencies
     # After this, it's sufficient to do just the following line for a build
 	
-    > make QPU=1 DEBUG=1 all  # Made debug version with hardware GPU support
-                              # First compile will take some time
+    > make QPU=1 DEBUG=1 all                                         # Made debug version with hardware GPU support
+                                                                     # First compile will take some time
     
-    > make QPU=1 DEBUG=1 test # Run the tests
-
+    > make QPU=1 DEBUG=1 test                                        # Run the tests
 
 ## Useful Links
 ### References
@@ -133,7 +132,7 @@ The following works were *very* helpful in the development.
 
 --------------------------
 
-[VideoCore IV Reference Manualhttps://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf
+[VideoCore IV Reference Manual]: https://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf
 
 [Errata]: https://www.elinux.org/VideoCore_IV_3D_Architecture_Reference_Guide_errata
 
