@@ -31,33 +31,26 @@ It has been tested on the `Pi 1 Model B`, the `Pi 2` and the `Pi 3 Model B`. **T
 
 ## Getting Started
 
+This assumes that you are building on a Raspberry Pi.
+
 For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
 
-`QPULib` requires an external library to compile.
-Run the following to pull it in:
+    > sudo apt-get install git  # If not done already
+    > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # get only latest commit
+                                                                     # TODO test
+    > git clone --depth 1 ssh://wim@shanna/home/git_masters/QPULib   # local pull, for comparisong
 
-```
-script/install.sh
-```
+    > cd V3DLib
+    > script/install.sh  # Pull in and build external library
+    > script/gen.sh      # Generate file dependencies
+                         # As long as the files don't change, you need to run this script only once.
 
-In addition, the file depencies must be generated:
-
-```
-script/gen.sh
-```
-As long as the files don't change, you need to run this script only once.
-
-
-Then:
-
-```
-sudo apt-get install git
-git clone https://github.com/mn416/QPULib
-make QPU=1 all
-make test
-...
-make clean
-```
+    # After this, it's sufficient to do just the following line for a build
+	
+    > make QPU=1 DEBUG=1 all  # Made debug version with hardware GPU support
+                              # 1st compile will take some time
+    > make QPU=1 DEBUG=1 test # Run the tests
+	
 
 - `QPU=1` will use the GPU to run kernels.
 - Any other value, notably `QPU=0`, will run the kernels in an emulator
