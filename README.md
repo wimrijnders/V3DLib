@@ -86,7 +86,7 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
     > make QPU=1 DEBUG=1 test # Run the tests
 
 
-## Useful links
+## Useful Links
 ### References
 
 The following works were *very* helpful in the development.
@@ -99,9 +99,13 @@ The following works were *very* helpful in the development.
   by Andrew Holme.
 	
 #### VideoCore 6
-* (v3d driver code in the linux kernel repository)[[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d]
-  - of special interest: [[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d/v3d_gem.c][v3d_gem.c]], [[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/uapi/drm/v3d_drm.h][v3d_drm.h]]
-* [[https://github.com/Idein/py-videocore6][py-videocore6]] - Python project hacking the VC6
+* (v3d driver code in the linux kernel repository)[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d]
+  - of special interest:
+    (v3d_gem.c)[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d/v3d_gem.c],
+	(v3d_drm.h)[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/uapi/drm/v3d_drm.h]
+* (MESA v3d driver)[https://gitlab.freedesktop.org/mesa/mesa/-/tree/master/src/gallium/drivers/v3d] - (github)[https://github.com/intel/external-mesa/tree/master/src/gallium/drivers/v3d]; =vc4= on same level
+* (py-videocore6)[https://github.com/Idein/py-videocore6] - Python project hacking the VC6
+* (Broadcom code for v3d)[https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-kitkat-wear/drivers/char/broadcom/mm/v3d/] - (relevant part)[https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-kitkat-wear/drivers/char/broadcom/mm/v3d/v3d_user.c#179]; not sure if this is also for vc6, date 2010 so prob no
 
 ### Tools
 
