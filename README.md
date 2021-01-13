@@ -11,6 +11,21 @@ The Pi 4, however, has a `VideoCore 6` GPU which, although related, is significa
 Kernel programs compile dynamically, so that a given program can run unchanged on any version of the RaspBerry Pi.
 The kernels are generated inline and offloaded to the GPU's at runtime.
 
+## First Release
+
+When I started this project, I resolved to release at the point that all examples would compile
+and run on the `VideoCore 6`.
+I have finally reached this point; however, **there are caveats**.
+
+There are some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
+will run *sometimes* on a `VideoCore 6`. This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
+There are also some unit tests which have the same problem, these are disabled when running on `VideoCore 6`.
+
+I haven't been able to resolve these issues and I am waiting for a kernel update with fixes.
+All code for the `VideoCore 4` compiles and runs fine.
+
+## The Programming Language
+
 `V3DLib` contains a high-level programming language for easing the pain of GPU-programming.
 The following is an example of the language (the 'Hello' example):
 
@@ -99,13 +114,13 @@ The following works were *very* helpful in the development.
   by Andrew Holme.
 	
 #### VideoCore 6
-* [v3d driver code in the linux kernel repository] - of special interest: [v3d_gem.c], [v3d_drm.h];
-  [v3d_drm.h on github]m `vc4` on same level
-* [MESA v3d driver] - [github]`vc4` on same level
+* [v3d driver code in the linux kernel repository] - of special interest: [v3d_gem.c],
+  [v3d_drm.h], `vc4` on same level
+* [MESA v3d driver] - [github], `vc4` on same level
 * [py-videocore6](https://github.com/Idein/py-videocore6) - Python project hacking the `VideoCore 6`
 * [Broadcom code for v3d] - [relevant part], not sure if this is also for `vc4`, 2010 so probably no
-- [List of V3D registers] - contains registers not in the ref doc: [Source doc for registers]
-- Broadcom VideoCore V QPU Instruction Set] - [translation]
+- [Source doc for registers] - contains registers not in the ref doc:
+- [Broadcom VideoCore V QPU Instruction Set] - [translation]
 - [Notowaga example code] - useful!
 - [Linux doc for v3d] - this is vc6
 
@@ -117,7 +132,7 @@ The following works were *very* helpful in the development.
 
 --------------------------
 
-[VideoCore IV Reference Manual]: https://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf
+[VideoCore IV Reference Manualhttps://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf
 
 [Errata]: https://www.elinux.org/VideoCore_IV_3D_Architecture_Reference_Guide_errata
 
@@ -127,16 +142,12 @@ The following works were *very* helpful in the development.
 
 [v3d_drm.h]: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/uapi/drm/v3d_drm.h
 
-[v3d_drm.h on github]: https://github.com/intel/external-mesa/blob/master/include/drm-uapi/v3d_drm.h]
-
 [MESA v3d driver]: https://gitlab.freedesktop.org/mesa/mesa/-/tree/master/src/gallium/drivers/v3d)
 [github]: https://github.com/intel/external-mesa/tree/master/src/gallium/drivers/v3d
 
 [Broadcom code for v3d]: https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-kitkat-wear/drivers/char/broadcom/mm/v3d/
 
 [relevant part]: https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-kitkat-wear/drivers/char/broadcom/mm/v3d/v3d_user.c#179
-
-[List of v3d registers]: https://github.com/bieltv3/brcm_android_ICS_graphics_stack/blob/master/brcm_usrlib/dag/vmcsx/vcinclude/bcm2708_chip/v3d.h]
 
 [Source doc for registers]: https://vc4-notes.tumblr.com/post/125039428234/v3d-registers-not-on-videocore-iv-3d-architecture]
 
