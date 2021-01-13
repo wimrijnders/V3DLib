@@ -14,8 +14,12 @@ The kernels are generated inline and offloaded to the GPU's at runtime.
 ## First Release
 
 When I started this project, I resolved to release at the point that all examples would compile
-and run on the `VideoCore 6`.
-I have finally reached this point; however, **there are caveats**.
+and run on the `VideoCore 6`. I have finally reached this point.
+
+**NOTE:** This means that `V3DLib` has reached a level of mimimum viability.
+**It is by no means feature-complete** and can definitely use some refactoring and cleanup.
+
+However, **there are caveats**.
 
 There are some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
 will run *sometimes* on a `VideoCore 6`, and otherwise hang.
