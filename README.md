@@ -1,19 +1,61 @@
 # V3DLib
 
-Version 0.1.0.
+**Version 0.0.0**
 
-`V3DLib` is a C++ library for easing the creation of programs to run on the `VideoCore` GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
+`V3DLib` is a C++ library for creating programs to run on the `VideoCore` GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 
-Prior to the Pi 4, this meant compiling for the `VideoCore 4` GPU. The Pi 4, however, has a `VideoCore 6 GPU`, which is significantly differen.
+Prior to the Pi 4, this meant compiling for just the `VideoCore 4` GPU.
+The Pi 4, however, has a `VideoCore 6` GPU which, although related, is significantly different.
+`V3DLib` compiles and assembles for both version of the VideoCore GPU.
 
-`V3DLib` contains a high-level programming language and compilers for both version of the VideoCore GPU.
-These compile dynamically, so that a given program can run unchanged on any version of the RaspBerry Pi.
+Kernel programs compile dynamically, so that a given program can run unchanged on any version of the RaspBerry Pi.
 Kernel programs are generated inline and offloaded to the GPU's at runtime.
+
+`V3DLib` contains a high-level programming language for easing the pain of GPU-programming.
+The following is an example of the language (the 'Hello' example):
+
+```
+#include "V3DLib.h"
+#include "Support/Settings.h"
+
+using namespace V3DLib;
+
+V3DLib::Settings settings;
+
+
+// Define function that runs on the GPU.
+void hello(Ptr<Int> p) {
+  *p = 1;
+}
+
+
+int main(int argc, const char *argv[]) {
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+  // Construct kernel
+  auto k = compile(hello);
+
+  // Allocate and initialise array shared between ARM and GPU
+  SharedArray<int> array(16);
+  array.fill(100);
+
+  // Invoke the kernel
+  k.load(&array);
+  settings.process(k);
+
+  // Display the result
+  for (int i = 0; i < array.size(); i++) {
+    printf("%i: %i\n", i, array[i]);
+  }
+  return 0;
+}
+```
 
 
 ## Credit where Credit is Due
-This project builds upon the [QPULib](https://github.com/mn416/QPULib) project, by *Matthew Naylor*.
-I fully acknowledge his work for the Videcore 4 and am grateful for the work he has done in setting
+This project builds upon the [QPULib](https://github.com/mn416/QPULib) project, by **Matthew Naylor**.
+I fully acknowledge his work for the Videcore 4 and am grateful for what he has acheived in setting
 up the compilation and assembly.
 
 `QPULib`, however, is no longer under development, and I felt the need to expand it to support
@@ -44,16 +86,19 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
     > make QPU=1 DEBUG=1 test # Run the tests
 
 
-## References
+## Useful links
+### References
 
-The following works were *very* helpful in the development of
-QPULib.
+The following works were *very* helpful in the development for the `VideoCore 4`.
 
   * The [VideoCore IV Reference Manual](https://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf) by Broadcom. [Errata](https://www.elinux.org/VideoCore_IV_3D_Architecture_Reference_Guide_errata).
 
-  * The [documentation, demos, and
-    assembler](https://github.com/hermanhermitage/videocoreiv-qpu)
+  * The [documentation, demos, and assembler](https://github.com/hermanhermitage/videocoreiv-qpu)
     by Herman Hermitage.
 
   * The [FFT implementation](http://www.aholme.co.uk/GPU_FFT/Main.htm)
     by Andrew Holme.
+
+### Tools
+
+- [vcgencmd](https://www.raspberrypi.org/documentation/raspbian/applications/vcgencmd.md)

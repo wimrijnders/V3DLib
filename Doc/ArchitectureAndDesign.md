@@ -6,13 +6,15 @@ This document explains the basics of the QPU architecture and documents some des
 # Naming
 
 In conformance with the linux kernel, the following naming is use within the project:
-- The `VideoCore IV` is referred to as `vc4`,
+
+- the `VideoCore IV` is referred to as `vc4`,
 - the `VideoCore VI` as `v3d`.
 
 # Support
 
 `V3DLib` is supported for Raspbian distributions from  `wheezy` onwards.
 It has been tested on the:
+
 - `Pi 1 Model B`
 - `Pi 2`
 - `Pi 3 Model B`
@@ -26,12 +28,12 @@ It has been tested on the:
 # VideoCore Background
 
 The
-[QPU](http://www.broadcom.com/docs/support/videocore/VideoCoreIV-AG100-R.pdf)
-is a [vector
-processor](https://en.wikipedia.org/wiki/Vector_processor) developed by
-[Broadcom](http://www.broadcom.com/) with
+[VideoCore 4](http://www.broadcom.com/docs/support/videocore/VideoCoreIV-AG100-R.pdf)
+is a [vector processor](https://en.wikipedia.org/wiki/Vector_processor)
+developed by [Broadcom](http://www.broadcom.com/) with
 instructions that operate on 16-element vectors of 32-bit integer or
 floating point values.
+
 For example, given two 16-element vectors
 
 `10 11 12 13` `14 15 16 17` `18 19 20 21` `22 23 24 25`
@@ -52,21 +54,21 @@ the name "Quad Processing Unit" comes from: a QPU processes one quad
 per clock cycle, and a QPU instruction takes four consecutive clock
 cycles to deliver a full 16-element result vector.
 
-The Pi contains 12 QPUs in total, each running at 250MHz.  That's a
-max throughput of 750M vector instructions per second (250M cycles
-divided by 4 cycles-per-instruction times 12 QPUs).  Or: 12B
-operations per second (750M instructions times 16 vector elements).
+The Pis prior to `Pi 4` contain 12 QPUs in total, each running at 250MHz.
+That is a maximum throughput of 750M vector instructions per second (250M cycles
+divided by 4 cycles-per-instruction times 12 QPUs).
+Or: 12B operations per second (750M instructions times 16 vector elements).
 QPU instructions can in some cases deliver two results at a
 time, so the Pi's QPUs are often advertised at 24
 [GFLOPS](https://en.wikipedia.org/wiki/FLOPS).
 
+The `Pi 4` has 8 QPUs, also running at 250MHz. Due to hardware improvements, the GPU
+is still faster than in previous versions of the Pi.
+
 The QPUs are part of the Raspberry Pi's graphics pipeline.  If you're
-interested in doing efficient graphics on the Pi then you probably
-want [OpenGL
-ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md).
-But if you'd like to try accellerating a non-graphics part of your Pi
-project then QPULib is worth a look.  (And so too are
-[these references](#user-content-references).)
+interested in doing efficient graphics on the Pi then you probably want
+[OpenGL ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md).
+The added value of `V3DLib` is accelerating non-graphics parts of your Pi projects.
 
 
 # QPU Registers

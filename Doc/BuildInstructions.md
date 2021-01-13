@@ -8,10 +8,14 @@ This demonstrates the build commands by example.
 The flags `GPU` and `DEBUG` are explained below.
 
     > make QPU=1 DEBUG=1 all       # Builds all examples in debug mode with GPU hardware support
-    > sudo ./obj/qpu-debug/bin/GCD # Run an example made with previous step. sudo required for `vc4`.
+    > sudo ./obj/qpu-debug/bin/GCD # Run an example made with previous step. sudo required for `vc4`
     
-    > make QPU=1 GCD               # Builds example `GCD` in release mode with GPU hardware support
+    > make QPU=1 GCD               # Builds example `GCD` in release mode with GPU hardware support.
     > sudo ./obj-qpu/bin/GCD       # Run the example made with previous step. sudo required for `vc4`.
+	
+    > make QPU=1 DEBUG=1 test      # Run all tests, debug mode required
+	> make clean                   # Remove all binaries and intermediate file.
+                                   # This does *not* clean up external libraries.
 
 
 ## Run Modes
