@@ -6,10 +6,10 @@
 
 Prior to the Pi 4, this meant compiling for just the `VideoCore 4` GPU.
 The Pi 4, however, has a `VideoCore 6` GPU which, although related, is significantly different.
-`V3DLib` compiles and assembles for both version of the VideoCore GPU.
+`V3DLib` compiles and assembles for both versions of the VideoCore GPU.
 
 Kernel programs compile dynamically, so that a given program can run unchanged on any version of the RaspBerry Pi.
-Kernel programs are generated inline and offloaded to the GPU's at runtime.
+The kernels are generated inline and offloaded to the GPU's at runtime.
 
 `V3DLib` contains a high-level programming language for easing the pain of GPU-programming.
 The following is an example of the language (the 'Hello' example):
@@ -89,16 +89,20 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
 ## Useful links
 ### References
 
-The following works were *very* helpful in the development for the `VideoCore 4`.
+The following works were *very* helpful in the development.
 
-  * The [VideoCore IV Reference Manual](https://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf) by Broadcom. [Errata](https://www.elinux.org/VideoCore_IV_3D_Architecture_Reference_Guide_errata).
-
-  * The [documentation, demos, and assembler](https://github.com/hermanhermitage/videocoreiv-qpu)
-    by Herman Hermitage.
-
-  * The [FFT implementation](http://www.aholme.co.uk/GPU_FFT/Main.htm)
-    by Andrew Holme.
+#### VideoCore 4
+* The [VideoCore IV Reference Manual](https://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf) by Broadcom. [Errata](https://www.elinux.org/VideoCore_IV_3D_Architecture_Reference_Guide_errata).
+* The [documentation, demos, and assembler](https://github.com/hermanhermitage/videocoreiv-qpu)
+  by Herman Hermitage.
+* The [FFT implementation](http://www.aholme.co.uk/GPU_FFT/Main.htm)
+  by Andrew Holme.
+	
+#### VideoCore 6
+* (v3d driver code in the linux kernel repository)[[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d]
+  - of special interest: [[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d/v3d_gem.c][v3d_gem.c]], [[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/uapi/drm/v3d_drm.h][v3d_drm.h]]
+* [[https://github.com/Idein/py-videocore6][py-videocore6]] - Python project hacking the VC6
 
 ### Tools
 
-- [vcgencmd](https://www.raspberrypi.org/documentation/raspbian/applications/vcgencmd.md)
+* [vcgencmd](https://www.raspberrypi.org/documentation/raspbian/applications/vcgencmd.md)

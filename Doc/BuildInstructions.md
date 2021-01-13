@@ -60,7 +60,7 @@ reported, although there may be valid explanations for such
 differences.
 
 
-##### CPU/GPU memory split
+## CPU/GPU memory split
 
 Depending on your plans, it may be useful to ensure that plenty of
 memory is available to the GPU.  This can be done by using
