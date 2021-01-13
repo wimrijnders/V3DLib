@@ -70,8 +70,8 @@ Nov 21 05:11:46 pi4-3 kernel: [72969.330324] v3d fec00000.v3d: [drm:v3d_reset [v
 ```
 
 The Pi will still function normally after this, but the GPU is blocked.
-Trying to run `Mandelbrot` again, eventually the following may be shown on standard output,
-and results in the entire Pi hanging.
+On trying to run `Mandelbrot` again, eventually the following may be shown on standard output,
+and the entire Pi hangs.
 
 On `stdout`:
 ```
@@ -98,5 +98,5 @@ Message from syslogd@pi4-3 at Nov 21 05:12:55 ...    # Gets repeated before ever
  kernel:[73039.152409] Code: e1a00000 e5953014 e3540000 e3a02000 (e7842003) 
 ```
 
-There is a [pending fix](https://github.com/raspberrypi/linux/pull/3816/commits/803f25eb03d2698c79eea495be7dee47c3bb86c2) for this.
+There is a [pending fix](https://github.com/raspberrypi/linux/pull/3816) for this.
 I am anxiously waiting for its release.
