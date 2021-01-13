@@ -11,6 +11,12 @@ Copyright (c) 2012 Broadcom
 version e90cba19a98a0d1f2ef086b9cafcbca00778f094 (clean) (release) (start)
 ```
 
+Pi model:
+```
+cat /proc/device-tree/model
+Raspberry Pi 4 Model B Rev 1.1
+```
+
 Linux kernel version number:
 ```
 > uname -or
