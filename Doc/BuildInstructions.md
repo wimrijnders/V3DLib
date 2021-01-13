@@ -2,6 +2,18 @@
 
 **TODO**
 
+## Basic Build Instructions
+
+This demonstrates the build commands by example.
+The flags `GPU` and `DEBUG` are explained below.
+
+    > make QPU=1 DEBUG=1 all       # Builds all examples in debug mode with GPU hardware support
+    > sudo ./obj/qpu-debug/bin/GCD # Run an example made with previous step. sudo required for `vc4`.
+    
+    > make QPU=1 GCD               # Builds example `GCD` in release mode with GPU hardware support
+    > sudo ./obj-qpu/bin/GCD       # Run the example made with previous step. sudo required for `vc4`.
+
+
 ## Run Modes
 
 There are three run modes for the example programs.
@@ -11,10 +23,10 @@ The run modes are:
 
 - `interpreter` - interprets the source level code
 - 'emulator'    - compiles to `vc4` code and runs this on a `vc4` emulator
-- ``qpu`        - compiles to either `vc4` or v3d`, depending on which hardware you're running on,
+- `qpu`         - compiles to either `vc4` or v3d`, depending on which hardware you're running on,
                   and runs on the GPU.
 
-Note that `interpreter` and `emulator` deal with `vc4	 code only.
+Note that `interpreter` and `emulator` deal with `vc4` code only.
 The examples have a special run-mode `default`, which select the most suitable platform to run on,
 depending on the build flags below and the hardware.
 
