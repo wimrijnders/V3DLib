@@ -92,21 +92,26 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
 The following works were *very* helpful in the development.
 
 #### VideoCore 4
-* The [VideoCore IV Reference Manual](https://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf) by Broadcom. [Errata](https://www.elinux.org/VideoCore_IV_3D_Architecture_Reference_Guide_errata).
+* The [VideoCore IV Reference Manual] by Broadcom. [Errata].
 * The [documentation, demos, and assembler](https://github.com/hermanhermitage/videocoreiv-qpu)
   by Herman Hermitage.
 * The [FFT implementation](http://www.aholme.co.uk/GPU_FFT/Main.htm)
   by Andrew Holme.
 	
 #### VideoCore 6
-* (v3d driver code in the linux kernel repository)[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d]
+* [v3d driver code in the linux kernel repository](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d)
   - of special interest:
-    (v3d_gem.c)[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d/v3d_gem.c],
-	(v3d_drm.h)[https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/uapi/drm/v3d_drm.h]
-* (MESA v3d driver)[https://gitlab.freedesktop.org/mesa/mesa/-/tree/master/src/gallium/drivers/v3d] - (github)[https://github.com/intel/external-mesa/tree/master/src/gallium/drivers/v3d]; =vc4= on same level
-* (py-videocore6)[https://github.com/Idein/py-videocore6] - Python project hacking the VC6
-* (Broadcom code for v3d)[https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-kitkat-wear/drivers/char/broadcom/mm/v3d/] - (relevant part)[https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-kitkat-wear/drivers/char/broadcom/mm/v3d/v3d_user.c#179]; not sure if this is also for vc6, date 2010 so prob no
+    [v3d_gem.c](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d/v3d_gem.c),
+	[v3d_drm.h](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/uapi/drm/v3d_drm.h)
+* [MESA v3d driver](https://gitlab.freedesktop.org/mesa/mesa/-/tree/master/src/gallium/drivers/v3d) - [github](https://github.com/intel/external-mesa/tree/master/src/gallium/drivers/v3d); `vc4` on same level
+* [py-videocore6](https://github.com/Idein/py-videocore6) - Python project hacking the `VideoCore 6`
+* [Broadcom code for v3d](https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-kitkat-wear/drivers/char/broadcom/mm/v3d/) - [relevant part](https://android.googlesource.com/kernel/bcm/+/android-bcm-tetra-3.10-kitkat-wear/drivers/char/broadcom/mm/v3d/v3d_user.c#179); not sure if this is also for `vc4`, date 2010 so prob no
 
 ### Tools
 
 * [vcgencmd](https://www.raspberrypi.org/documentation/raspbian/applications/vcgencmd.md)
+
+--------------------------
+
+[VideoCore IV Reference Manual]: https://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf
+[Errata]: https://www.elinux.org/VideoCore_IV_3D_Architecture_Reference_Guide_errata
