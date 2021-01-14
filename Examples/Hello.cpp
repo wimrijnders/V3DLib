@@ -1,15 +1,13 @@
-#include "QPULib.h"
+#include "V3DLib.h"
 #include "Support/Settings.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
-QPULib::Settings settings;
+V3DLib::Settings settings;
 
 
 // Define function that runs on the GPU.
-
-void hello(Ptr<Int> p)
-{
+void hello(Ptr<Int> p) {
   *p = 1;
 }
 
@@ -23,15 +21,14 @@ int main(int argc, const char *argv[]) {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(16);
-  for (int i = 0; i < 16; i++)
-    array[i] = 100;
+	array.fill(100);
 
-  //// Invoke the kernel and display the result
-//  k(&array);
+  // Invoke the kernel
+	k.load(&array);
+	settings.process(k);  
 
-	settings.process(k, &array);  
-
-  for (int i = 0; i < 16; i++) {
+	// Display the result
+  for (int i = 0; i < array.size(); i++) {
     printf("%i: %i\n", i, array[i]);
   }
   return 0;

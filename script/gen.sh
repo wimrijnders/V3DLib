@@ -22,11 +22,34 @@
 ################################################################################
 
 # Make list of Library object files
-OBJ1=$(find Lib -name '*.cpp')
-OBJ2=$(echo "$OBJ1" | sed "s/\\.cpp$/\\.o  \\\\/g")
-#echo ====
-OBJ=$(echo "$OBJ2" | sed "s/^Lib\\//  /g")
+CPP_FILES=$(find Lib -name '*.cpp')
+OBJ_CPP=$(echo "$CPP_FILES" | sed "s/\\.cpp$/\\.o  \\\\/g")
+
+C_FILES=$(find Lib -name '*.c')
+OBJ_C=$(echo "$C_FILES" | sed "s/\\.c$/\\.o  \\\\/g")
+
+OBJ_TMP=$(echo "$OBJ_CPP
+$OBJ_C
+")
+OBJ=$(echo "$OBJ_TMP" | sed "s/^Lib\\//  /g")
 #echo $OBJ
+
+
+TEST_FILES=$(find Tests -name '*.cpp')
+CPP_OBJ_TEST_TMP=$(echo "$TEST_FILES" | sed "s/\\.cpp$/\\.o  \\\\/g")
+
+C_TEST_FILES=$(find Tests -name '*.c')
+C_OBJ_TEST_TMP=$(echo "$C_TEST_FILES" | sed "s/\\.c$/\\.o  \\\\/g")
+
+OBJ_TEST_TMP=$(echo "$CPP_OBJ_TEST_TMP
+$C_OBJ_TEST_TMP
+")
+OBJ_TEST=$(echo "$OBJ_TEST_TMP" | sed "s/^/  /g")
+
+EXAMPLES_SUPPORT="$(find Examples/Rot3DLib -name '*.cpp')
+$(find Examples/Support -name '*.cpp')
+"
+EXAMPLES_EXTRA=$(echo "$EXAMPLES_SUPPORT" | sed "s/\\.cpp$/\\.o  \\\\/g" | sed "s/^/  /")
 
 # Get list of executables
 # NOTE: grepping on 'main(' is not fool-proof, of course.
@@ -57,10 +80,11 @@ $OBJ
 EXAMPLES := \\
 $EXAMPLES
 
-
-## Rule to create obj tree
-#$   (OBJ_DIR):
-#	@mkdir -p \$(OBJ_DIR)/bin
-#$OBJ_DIRS
+# support files for examples
+EXAMPLES_EXTRA := \\
+$EXAMPLES_EXTRA
+# support files for tests
+TESTS_FILES := \\
+$OBJ_TEST
 
 END

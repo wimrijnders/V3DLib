@@ -1,15 +1,22 @@
-#ifndef _QPULIB_TRANSLATE_H_
-#define _QPULIB_TRANSLATE_H_
-
+#ifndef _V3DLIB_SOURCE_TRANSLATE_H_
+#define _V3DLIB_SOURCE_TRANSLATE_H_
 #include "Common/Seq.h"
-#include "Source/Syntax.h"
+#include "Source/Stmt.h"
 #include "Target/Syntax.h"
 
-namespace QPULib {
+namespace V3DLib {
 
-void insertEndCode(Seq<Instr>* seq);
-void translateStmt(Seq<Instr>* seq, Stmt* s);
+void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s);
+void insertInitBlock(Seq<Instr> &code);
+void loadStorePass(Seq<Instr> &instrs);
 
-}  // namespace QPULib
+//
+// Following exposed for source translates.
+//
+Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr);
+Seq<Instr> varAssign(Var v, Expr::Ptr expr);
+Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e);
 
-#endif  // _QPULIB_TRANSLATE_H_
+}  // namespace V3DLib
+
+#endif  // _V3DLIB_SOURCE_TRANSLATE_H_

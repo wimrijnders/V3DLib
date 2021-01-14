@@ -1,0 +1,122 @@
+15-12-2020
+
+- Use date for code version
+
+* Test other programs
+
+Backtrace logging (without timeout hang) also happens for:
+	- =ID=
+	- =Hello=
+	- and probably all other programs, list above confirmed
+
+All programs (expect Mandelbrot) appear to work after this.
+Ran =GCD= 20 times without problems
+
+After this, hang occurs again for =Mandelbrot=, with:
+
+: > obj/qpu-debug/bin/Mandelbrot -steps=512
+
+- This worked previously
+
+Following still worked:
+
+: > obj/qpu-debug/bin/Mandelbrot -steps=256
+: > obj/qpu-debug/bin/Mandelbrot -steps=400
+: > obj/qpu-debug/bin/Mandelbrot -steps=500
+
+Each tested 10x in succesion
+
+On running =Mandelbrot= (600 steps) during timeout hang:
+- 2nd log shown again, after timeout occurs
+- Second runs hangs =pi4-3= 
+
+No logs at all on =rianne= (pi3+). Following and other calls work fine:
+
+: > sudo ./obj/qpu-debug/bin/Mandelbrot  -steps=5192 -n=12 -pgm
+
+===================================
+
+* Document Logging
+** Steps
+
+Running:
+
+: > obj/qpu-debug/bin/Mandelbrot -steps=520
+
+This runs as expected.
+
+9 runs, all executed. This generated trace logs, see below but it ran.
+
+
+Running:
+
+: > obj/qpu-debug/bin/Mandelbrot -steps=600
+
+Times out, infinite repeat of:
+
+#+BEGIN_EXAMPLE
+Dec 15 07:33:00 pi4-3 kernel: [80671.595540] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* Resetting GPU for hang.
+Dec 15 07:33:00 pi4-3 kernel: [80671.595582] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* V3D_ERR_STAT: 0x00001000
+#+END_EXAMPLE
+
+All further runs on =v3d= now time out, also programs that ran previously with no problems.
+
+====================
+** Trace Logs
+
+Identical in =/var/log/kern.log= en =/var/log/syslog=:
+
+
+#+BEGIN_EXAMPLE
+Dec 15 07:31:56 pi4-3 kernel: [80607.984850] ------------[ cut here ]------------
+Dec 15 07:31:56 pi4-3 kernel: [80607.984907] WARNING: CPU: 1 PID: 205 at ./include/linux/dma-fence.h:533 drm_sched_main+0x238/0x31c [gpu_sched]
+Dec 15 07:31:56 pi4-3 kernel: [80607.984919] Modules linked in: cmac bnep hci_uart btbcm bluetooth ecdh_generic ecc 8021q garp stp llc brcmfmac brcmutil sha256_generic libsha256 cfg80211 rfkill bcm2835_v4l2(C) bcm2835_codec(C) bcm2835_isp(C) videobuf2_vmalloc bcm2835_mmal_vchiq(C) v4l2_mem2mem v3d videobuf2_dma_contig videobuf2_memops raspberrypi_hwmon gpu_sched videobuf2_v4l2 videobuf2_common videodev vc4 snd_bcm2835(C) mc vc_sm_cma(C) cec drm_kms_helper drm drm_panel_orientation_quirks snd_soc_core snd_compress snd_pcm_dmaengine snd_pcm snd_timer snd syscopyarea rpivid_mem sysfillrect sysimgblt fb_sys_fops uio_pdrv_genirq uio ip_tables x_tables ipv6 nf_defrag_ipv6
+Dec 15 07:31:56 pi4-3 kernel: [80607.985145] CPU: 1 PID: 205 Comm: v3d_cache_clean Tainted: G         C        5.4.51-v7l+ #1333
+Dec 15 07:31:56 pi4-3 kernel: [80607.985153] Hardware name: BCM2711
+Dec 15 07:31:56 pi4-3 kernel: [80607.985160] Backtrace: 
+Dec 15 07:31:56 pi4-3 kernel: [80607.985185] [<c020d46c>] (dump_backtrace) from [<c020d768>] (show_stack+0x20/0x24)
+Dec 15 07:31:56 pi4-3 kernel: [80607.985197]  r6:d69b4000 r5:00000000 r4:c129c8f8 r3:566ec00e
+Dec 15 07:31:56 pi4-3 kernel: [80607.985217] [<c020d748>] (show_stack) from [<c0a39a44>] (dump_stack+0xe0/0x124)
+Dec 15 07:31:56 pi4-3 kernel: [80607.985235] [<c0a39964>] (dump_stack) from [<c0221c70>] (__warn+0xec/0x104)
+Dec 15 07:31:56 pi4-3 kernel: [80607.985248]  r8:00000215 r7:00000009 r6:bf385610 r5:00000000 r4:00000000 r3:566ec00e
+Dec 15 07:31:56 pi4-3 kernel: [80607.985263] [<c0221b84>] (__warn) from [<c0221d40>] (warn_slowpath_fmt+0xb8/0xc0)
+Dec 15 07:31:56 pi4-3 kernel: [80607.985275]  r9:bf385610 r8:00000215 r7:bf3836a0 r6:00000009 r5:00000000 r4:c1204f88
+Dec 15 07:31:56 pi4-3 kernel: [80607.985307] [<c0221c8c>] (warn_slowpath_fmt) from [<bf3836a0>] (drm_sched_main+0x238/0x31c [gpu_sched])
+Dec 15 07:31:56 pi4-3 kernel: [80607.985319]  r9:00000000 r8:c1204f88 r7:d6df0500 r6:00000000 r5:d5c2e700 r4:d6d0b8a0
+Dec 15 07:31:56 pi4-3 kernel: [80607.985348] [<bf383468>] (drm_sched_main [gpu_sched]) from [<c0244e90>] (kthread+0x13c/0x168)
+Dec 15 07:31:56 pi4-3 kernel: [80607.985361]  r10:d74170dc r9:d68d1ae4 r8:bf383468 r7:d6d0b8a0 r6:00000000 r5:d7417040
+Dec 15 07:31:56 pi4-3 kernel: [80607.985368]  r4:d74170c0
+Dec 15 07:31:56 pi4-3 kernel: [80607.985383] [<c0244d54>] (kthread) from [<c02010ac>] (ret_from_fork+0x14/0x28)
+Dec 15 07:31:56 pi4-3 kernel: [80607.985392] Exception stack(0xd69b5fb0 to 0xd69b5ff8)
+Dec 15 07:31:56 pi4-3 kernel: [80607.985403] 5fa0:                                     00000000 00000000 00000000 00000000
+Dec 15 07:31:56 pi4-3 kernel: [80607.985415] 5fc0: 00000000 00000000 00000000 00000000 00000000 00000000 00000000 00000000
+Dec 15 07:31:56 pi4-3 kernel: [80607.985426] 5fe0: 00000000 00000000 00000000 00000000 00000013 00000000
+Dec 15 07:31:56 pi4-3 kernel: [80607.985438]  r10:00000000 r9:00000000 r8:00000000 r7:00000000 r6:00000000 r5:c0244d54
+Dec 15 07:31:56 pi4-3 kernel: [80607.985447]  r4:d7417040 r3:c0204648
+Dec 15 07:31:56 pi4-3 kernel: [80607.985458] ---[ end trace 0258217de3fd5255 ]---
+#+END_EXAMPLE
+
+Log after 2nd run identical except for time, =end trace= and:
+
+#+BEGIN_EXAMPLE
+...
+Dec 15 07:32:05 pi4-3 kernel: [80616.332010] CPU: 1 PID: 205 Comm: v3d_cache_clean Tainted: G        WC        5.4.51-v7l+ #1333
+...
+#+END_EXAMPLE
+
+
+When shit goes wrong, following repeats ad infinitum:
+
+#+BEGIN_EXAMPLE
+Dec 15 08:37:25 pi4-3 kernel: [  791.280091] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* Resetting GPU for hang.
+Dec 15 08:37:25 pi4-3 kernel: [  791.280134] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* V3D_ERR_STAT: 0x00001000
+...
+#+END_EXAMPLE
+
+
+Got this once in repeating logs:
+
+#+BEGIN_EXAMPLE
+Dec 15 08:37:35 pi4-3 kernel: [  801.540211] v3d fec00000.v3d: MMU error from client L2T (0) at 0x159800, write violation, pte invalid
+#+END_EXAMPLE
+

@@ -1,110 +1,75 @@
-#ifndef _QPULIB_SOURCE_COND_H_
-#define _QPULIB_SOURCE_COND_H_
+#ifndef _V3DLIB_SOURCE_COND_H_
+#define _V3DLIB_SOURCE_COND_H_
+#include "Int.h"
+#include "CExpr.h"
 
-#include "Source/Syntax.h"
-#include "Source/Int.h"
-
-namespace QPULib {
+namespace V3DLib {
 
 // ============================================================================
 // Types                   
 // ============================================================================
 
-struct Cond
-{
-  // Abstract syntax tree
-  CExpr* cexpr;
-  // Constructor
-  Cond(CExpr* c) { cexpr = c; }
+//class CExpr;  //  forward declaration
+//class BExpr;  //  forward declaration
+
+struct Cond {
+  CExpr::Ptr cexpr() { return m_cexpr; } 
+
+  Cond(CExpr::Ptr c) { m_cexpr = c; }
+
+private:
+  CExpr::Ptr m_cexpr; // Abstract syntax tree
 };
 
-struct BoolExpr
-{
-  // Abstract syntax tree
-  BExpr* bexpr;
-  // Constructor
-  BoolExpr(BExpr* b) { bexpr = b; }
-  // Cast to Cond
-  //operator Cond();
+
+struct BoolExpr {
+  BoolExpr(BExpr::Ptr b) :m_bexpr(b) {}
+
+  BExpr::Ptr bexpr() { return m_bexpr; }
+
+private:
+  BExpr::Ptr m_bexpr;  // Abstract syntax tree
 };
 
-// ============================================================================
-// Generic 'Int' comparison
-// ============================================================================
 
-inline BoolExpr mkIntCmp(IntExpr a, CmpOp op, IntExpr b)
-  { return BoolExpr(mkCmp(a.expr, op, b.expr)); }
+BExpr::Ptr mkCmp(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs);
+
 
 // ============================================================================
 // Specific 'Int' comparisons
 // ============================================================================
 
-inline BoolExpr operator==(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, mkCmpOp(EQ, INT32), b); }
+BoolExpr operator==(IntExpr a, IntExpr b);
+BoolExpr operator!=(IntExpr a, IntExpr b);
+BoolExpr operator<(IntExpr a, IntExpr b);
+BoolExpr operator<=(IntExpr a, IntExpr b);
+BoolExpr operator>(IntExpr a, IntExpr b);
+BoolExpr operator>=(IntExpr a, IntExpr b);
 
-inline BoolExpr operator!=(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, mkCmpOp(NEQ, INT32), b); }
-
-inline BoolExpr operator<(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, mkCmpOp(LT, INT32), b); }
-
-inline BoolExpr operator<=(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, mkCmpOp(LE, INT32), b); }
-
-inline BoolExpr operator>(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, mkCmpOp(GT, INT32), b); }
-
-inline BoolExpr operator>=(IntExpr a, IntExpr b)
-  { return mkIntCmp(a, mkCmpOp(GE, INT32), b); }
-
-// ============================================================================
-// Generic 'Float' comparison
-// ============================================================================
-
-inline BoolExpr mkFloatCmp(FloatExpr a, CmpOp op, FloatExpr b)
-  { return BoolExpr(mkCmp(a.expr, op, b.expr)); }
 
 // ============================================================================
 // Specific 'Float' comparisons
 // ============================================================================
 
-inline BoolExpr operator==(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, mkCmpOp(EQ, FLOAT), b); }
+BoolExpr operator==(FloatExpr a, FloatExpr b);
+BoolExpr operator!=(FloatExpr a, FloatExpr b);
+BoolExpr operator<(FloatExpr a, FloatExpr b);
+BoolExpr operator<=(FloatExpr a, FloatExpr b);
+BoolExpr operator>(FloatExpr a, FloatExpr b);
+BoolExpr operator>=(FloatExpr a, FloatExpr b);
 
-inline BoolExpr operator!=(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, mkCmpOp(NEQ, FLOAT), b); }
-
-inline BoolExpr operator<(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, mkCmpOp(LT, FLOAT), b); }
-
-inline BoolExpr operator<=(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, mkCmpOp(LE, FLOAT), b); }
-
-inline BoolExpr operator>(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, mkCmpOp(GT, FLOAT), b); }
-
-inline BoolExpr operator>=(FloatExpr a, FloatExpr b)
-  { return mkFloatCmp(a, mkCmpOp(GE, FLOAT), b); }
 
 // ============================================================================
 // Boolean operators
 // ============================================================================
 
-inline BoolExpr operator!(BoolExpr a)
-  { return BoolExpr(mkNot(a.bexpr)); }
+BoolExpr operator!(BoolExpr a);
+BoolExpr operator&&(BoolExpr a, BoolExpr b);
+BoolExpr operator||(BoolExpr a, BoolExpr b);
 
-inline BoolExpr operator&&(BoolExpr a, BoolExpr b)
-  { return BoolExpr(mkAnd(a.bexpr, b.bexpr)); }
+Cond any(BoolExpr a);
+Cond all(BoolExpr a);
 
-inline BoolExpr operator||(BoolExpr a, BoolExpr b)
-  { return BoolExpr(mkOr(a.bexpr, b.bexpr)); }
+}  // namespace V3DLib
 
-inline Cond any(BoolExpr a)
-  { return Cond(mkAny(a.bexpr)); }
-
-inline Cond all(BoolExpr a)
-  { return Cond(mkAll(a.bexpr)); }
-
-}  // namespace QPULib
-
-#endif  // _QPULIB_SOURCE_COND_H_
+#endif  // _V3DLIB_SOURCE_COND_H_

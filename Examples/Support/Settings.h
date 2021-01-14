@@ -1,41 +1,44 @@
-#ifndef _EXAMPLE_SUPPORT_SETINGS_H
-#define _EXAMPLE_SUPPORT_SETINGS_H
+#ifndef _EXAMPLE_SUPPORT_SETTINGS_H
+#define _EXAMPLE_SUPPORT_SETTINGS_H
+#include <cassert>
+#include <string>
 #include <CmdParameters.h>
 
-namespace QPULib {
+namespace V3DLib {
+
+class KernelBase;
 
 struct Settings {
-	bool output_code;
-#ifdef EMULATION_MODE
-	int run_type;
-#endif
+	std::string name;
 
-	const char *code_filename = "target_code.txt";
+	bool output_code;
+	bool compile_only;
+	bool silent;
+	int  run_type;
+	int  num_qpus = 1;
+#ifdef QPU_MODE
+	bool   show_perf_counters;
+#endif  // QPU_MODE
+
+	Settings(CmdParameters *derived_params = nullptr, bool use_num_qpus = false);
 
 	int init(int argc, const char *argv[]);
-	void output();
+	void process(KernelBase &k);
+	virtual void init_params() {}
 
-	template<typename Kernel, typename... us>
-	void process(Kernel &k, us... args) {
+private:
+	bool const m_use_num_qpus;
+	CmdParameters * const m_derived_params;
+	int output_count = 0;
 
-#ifdef EMULATION_MODE
-		switch (run_type) {
-			case 0: k(args...); break;
-			case 1: k.emu(args...); break;
-			case 2: k.interpret(args...); break;
-		}
-#endif
-#ifdef QPU_MODE
-		k(args...);
-#endif
-
-		if (output_code) {
-			k.pretty(code_filename);
-		}
-	}
+	void set_name(const char *in_name);
+	bool process(CmdParameters &in_params);
+	CmdParameters &base_params();
+	void startPerfCounters();
+	void stopPerfCounters();
 };
 
 
 }  // namespace
 
-#endif  // _EXAMPLE_SUPPORT_SETINGS_H
+#endif  // _EXAMPLE_SUPPORT_SETTINGS_H

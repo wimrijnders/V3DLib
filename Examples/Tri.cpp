@@ -1,9 +1,10 @@
-#include "QPULib.h"
+#include "V3DLib.h"
 #include <CmdParameters.h>
+#include "Support/Settings.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
-std::vector<const char *> const kernels = { "single", "multi", "float" };  // First is default
+std::vector<const char *> const kernels = { "integer", "float" };  // First is default
 
 CmdParameters params = {
 	"Tri - Calculate triangular numbers\n",
@@ -16,24 +17,15 @@ CmdParameters params = {
 };
 
 
-struct Settings {
-	int    kernel;
+struct TriSettings : public Settings {
+	int kernel;
 
-	int init(int argc, const char *argv[]) {
-		auto ret = params.handle_commandline(argc, argv, false);
-		if (ret != CmdParameters::ALL_IS_WELL) return ret;
+	TriSettings() : Settings(&params, true) {}
 
-		kernel      = params.parameters()[0]->get_int_value();
-		return ret;
+	void init_params() override {
+		kernel = params.parameters()[0]->get_int_value();
 	}
 
-
-	void output() {
-		printf("Settings:\n");
-		printf("  kernel index: %d\n", kernel);
-		printf("  kernel name : %s\n", kernels[kernel]);
-		printf("\n");
-	}
 } settings;
 
 
@@ -41,45 +33,26 @@ struct Settings {
 // Kernels
 ///////////////////////////////////////////
 
-// Define function that runs on the GPU.
-
-void tri_single(Ptr<Int> p)
-{
+void tri_int(Ptr<Int> p) {
   Int n = *p;
   Int sum = 0;
   While (any(n > 0))
     Where (n > 0)
-      sum = sum+n;
-      n = n-1;
+      sum = sum + n;
+      n = n - 1;
     End
   End
   *p = sum;
 }
 
 
-void tri_multi(Ptr<Int> p)
-{
-  p = p + (me() << 4);
-  Int n = *p;
-  Int sum = 0;
-  While (any(n > 0))
-    Where (n > 0)
-      sum = sum+n;
-      n = n-1;
-    End
-  End
-  *p = sum;
-}
-
-
-void tri_float(Ptr<Float> p)
-{
+void tri_float(Ptr<Float> p) {
   Int n = toInt(*p);
   Int sum = 0;
   While (any(n > 0))
     Where (n > 0)
-      sum = sum+n;
-      n = n-1;
+      sum = sum + n;
+      n = n - 1;
     End
   End
   *p = toFloat(sum);
@@ -90,42 +63,24 @@ void tri_float(Ptr<Float> p)
 // Local functions
 ///////////////////////////////////////////
 
-void run_single() {
-	printf("Running single kernel.\n");
+void run_int() {
+	printf("Running integer kernel.\n");
 
   // Construct kernel
-  auto k = compile(tri_single);
-  //k.pretty("Tri.log");  // Output source and target code to file
+  auto k = compile(tri_int);
+  k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(16);
-  for (int i = 0; i < 16; i++)
+  SharedArray<int> array(settings.num_qpus*16);
+  for (int i = 0; i < array.size(); i++)
     array[i] = i;
 
-  // Invoke the kernel and display the result
-  k(&array);
-  for (int i = 0; i < 16; i++)
-    printf("%i: %i\n", i, array[i]);
-}
+  // Invoke the kernel
+  k.load(&array);
+  settings.process(k);
 
-
-void run_multi() {
-	printf("Running multi kernel.\n");
-
-  // Construct kernel
-  auto k = compile(tri_multi);
-
-  // Use 4 QPUs
-  k.setNumQPUs(4);
-
-  // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(64);
-  for (int i = 0; i < 64; i++)
-    array[i] = i;
-
-  // Invoke the kernel and display the result
-  k(&array);
-  for (int i = 0; i < 64; i++)
+  // Display the result
+  for (int i = 0; i < array.size(); i++)
     printf("%i: %i\n", i, array[i]);
 }
 
@@ -135,15 +90,19 @@ void run_float() {
 
   // Construct kernel
   auto k = compile(tri_float);
+  k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<float> array(16);
-  for (int i = 0; i < 16; i++)
+  SharedArray<float> array(settings.num_qpus*16);
+  for (int i = 0; i < array.size(); i++)
     array[i] = (float) i;
 
-  // Invoke the kernel and display the result
-  k(&array);
-  for (int i = 0; i < 16; i++)
+  // Invoke the kernel
+  k.load(&array);
+  settings.process(k);
+
+  // Display the result
+  for (int i = 0; i < array.size(); i++)
     printf("%i: %f\n", i, array[i]);
 }
 
@@ -157,9 +116,8 @@ int main(int argc, const char *argv[]) {
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 	switch (settings.kernel) {
-		case 0: run_single(); break;
-		case 1: run_multi(); break;
-		case 2: run_float(); break;
+		case 0: run_int(); break;
+		case 1: run_float(); break;
 	}
   
   return 0;

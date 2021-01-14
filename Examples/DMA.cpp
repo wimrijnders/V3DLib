@@ -1,9 +1,12 @@
-#include "QPULib.h"
+#include "V3DLib.h"
+#include "vc4/DMA.h"
+#include "Support/Settings.h"
 
-using namespace QPULib;
+using namespace V3DLib;
 
-void dma(Ptr<Int> p)
-{
+V3DLib::Settings settings;
+
+void dma(Ptr<Int> p) {
   // Setup load of 16 vectors into VPM, starting at word address 0
   dmaSetReadPitch(64);
   dmaSetupRead(HORIZ, 16, 0);
@@ -29,21 +32,35 @@ void dma(Ptr<Int> p)
   dmaWaitWrite();
 }
 
-int main()
-{
+
+int main(int argc, const char *argv[]) {
+	auto ret = settings.init(argc, argv);
+	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+	if (!Platform::instance().has_vc4 && settings.run_type == 0) {
+		printf("\nThe DMA example does not work on v3d, it is only meant for vc4.\n"
+					 "It will only work for the emulator on v3d.\n\n");
+		return 1;
+	}
+
   // Construct kernel
-  auto k = compile(dma);
+  auto k = compile(dma, true);  // true: only compile for vc4
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(256);
   for (int i = 0; i < 256; i++)
     array[i] = i;
 
-  // Invoke the kernel and display the result
-  k(&array);
+  // Invoke the kernel
+	k.load(&array);  
+	settings.process(k);  
+
+	// Display the result
   for (int i = 0; i < 16; i++) {
-    for (int j = 0; j < 16; j++)
+    for (int j = 0; j < 16; j++) {
       printf("%i ", array[16*i + j]);
+		}
+
     printf("\n");
   }
   

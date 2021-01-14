@@ -1,14 +1,14 @@
-#ifndef _QPULIB_SATISFY_H_
-#define _QPULIB_SATISFY_H_
+#ifndef _V3DLIB_SATISFY_H_
+#define _V3DLIB_SATISFY_H_
 
 #include "Target/Syntax.h"
 #include "Target/CFG.h"
 
-namespace QPULib {
+namespace V3DLib {
 
 RegTag regFileOf(Reg r);
 void satisfy(Seq<Instr>* instrs);
 
-}  // namespace QPULib
+}  // namespace V3DLib
 
-#endif  // _QPULIB_SATISFY_H_
+#endif  // _V3DLIB_SATISFY_H_

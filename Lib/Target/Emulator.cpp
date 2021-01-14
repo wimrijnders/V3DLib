@@ -1,21 +1,81 @@
 #include "Target/Emulator.h"
+#include <math.h>
+#include "Support/basics.h"  // fatal()
+#include "EmuSupport.h"
+#include "Common/Seq.h"
+#include "Common/Queue.h"
+#include "Common/SharedArray.h"
 #include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
-#include "Common/SharedArray.h"
+#include "BufferObject.h"
 
-#include <math.h>
-#include <string.h>
+namespace V3DLib {
 
-namespace QPULib {
+namespace {
 
-// ============================================================================
-// Globals
-// ============================================================================
+// State of a single QPU.
+struct QPUState {
+  int id = 0;                          // QPU id
+  int numQPUs = 0;                     // QPU count
+	bool running = false;                // Is QPU active, or has it halted?
+  int pc = 0;                          // Program counter
+  Vec* regFileA = nullptr;             // Register file A
+  int sizeRegFileA = 0;                // (and size)
+  Vec* regFileB = nullptr;             // Register file B
+  int sizeRegFileB = 0;                // (and size)
+  Vec accum[6];                        // Accumulator registers
+  bool negFlags[NUM_LANES];            // Negative flags
+  bool zeroFlags[NUM_LANES];           // Zero flags
+  int nextUniform = -2;                // Pointer to next uniform to read
+  DMAAddr dmaLoad;                     // DMA load address
+  DMAAddr dmaStore;                    // DMA store address
+  DMALoadReq dmaLoadSetup;             // DMA load setup register
+  DMAStoreReq dmaStoreSetup;           // DMA store setup register
+  Queue<2, VPMLoadReq> vpmLoadQueue;   // VPM load queue
+  VPMStoreReq vpmStoreSetup;           // VPM store setup
+  int readPitch = 0;                   // Read pitch
+  int writeStride = 0;                 // Write stride
+  SmallSeq<Vec> loadBuffer;            // Load buffer for loads via TMU
 
-// Heap used in emulation mode.  See 'Pointer.h' for more details.
 
-uint32_t emuHeapEnd = 0;
-int32_t* emuHeap    = NULL;
+	QPUState() {
+    dmaLoad.active     = false;
+    dmaStore.active    = false;
+  	for (int i = 0; i < NUM_LANES; i++) negFlags[i] = false;
+  	for (int i = 0; i < NUM_LANES; i++) zeroFlags[i] = false;
+	}
+
+
+	~QPUState() {
+    delete [] regFileA;
+    delete [] regFileB;
+	}
+
+	void init(int maxReg) {
+    running            = true;
+    regFileA           = new Vec [maxReg+1];
+    sizeRegFileA       = maxReg+1;
+    regFileB           = new Vec [maxReg+1];
+    sizeRegFileB       = maxReg+1;
+	}
+};
+
+// State of the VideoCore.
+struct State {
+  QPUState qpu[MAX_QPUS];  // State of each QPU
+  Seq<int32_t> uniforms;   // Kernel parameters
+  Word vpm[VPM_SIZE];      // Shared VPM memory
+  Seq<char>* output;       // Output for print statements
+  int sema[16];            // Semaphores
+	SharedArray<uint32_t> emuHeap;
+
+	State() {
+  	// Initialise semaphores
+	  for (int i = 0; i < 16; i++) sema[i] = 0;
+	}
+};
+
+}
 
 // ============================================================================
 // Read a vector register
@@ -38,24 +98,24 @@ Vec readReg(QPUState* s, State* g, Reg reg)
     case SPECIAL:
       if (reg.regId == SPECIAL_ELEM_NUM) {
         for (int i = 0; i < NUM_LANES; i++)
-          v.elems[i].intVal = i;
+          v[i].intVal = i;
         return v;
       }
       else if (reg.regId == SPECIAL_UNIFORM) {
-        assert(s->nextUniform < g->uniforms->numElems);
+        assert(s->nextUniform < g->uniforms.size());
         for (int i = 0; i < NUM_LANES; i++)
           if (s->nextUniform == -2)
-            v.elems[i].intVal = s->id;
+            v[i].intVal = s->id;
           else if (s->nextUniform == -1)
-            v.elems[i].intVal = s->numQPUs;
+            v[i].intVal = s->numQPUs;
           else
-            v.elems[i].intVal = g->uniforms->elems[s->nextUniform];
+            v[i].intVal = g->uniforms[s->nextUniform];
         s->nextUniform++;
         return v;
       }
       else if (reg.regId == SPECIAL_QPU_NUM) {
         for (int i = 0; i < NUM_LANES; i++)
-          v.elems[i].intVal = s->id;
+          v[i].intVal = s->id;
         return v;
       }
       else if (reg.regId == SPECIAL_VPM_READ) {
@@ -68,7 +128,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int i = 0; i < NUM_LANES; i++) {
             int index = (16*req->addr+i);
             assert(index < VPM_SIZE);
-            v.elems[i] = g->vpm[index];
+            v[i] = g->vpm[index];
           }
         }
         else {
@@ -78,7 +138,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
             uint32_t y = req->addr >> 4;
             int index = (y*16*16 + x + i*16);
             assert(index < VPM_SIZE);
-            v.elems[i] = g->vpm[index];
+            v[i] = g->vpm[index];
           }
         }
         req->numVecs--;
@@ -96,8 +156,8 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t x = req->vpmAddr & 0xf;
             for (int i = 0; i < req->rowLen; i++) {
-              int addr = s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4;
-              g->vpm[y*16 + x].intVal = emuHeap[addr >> 2];
+              uint32_t addr = (uint32_t) (s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4);
+              g->vpm[y*16 + x].intVal = g->emuHeap.phy(addr >> 2);
               x = (x+1) % 16;
             }
             y = (y+1) % 64;
@@ -109,8 +169,8 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t y = ((req->vpmAddr >> 4) + r*req->vpitch) & 0x3f;
             for (int i = 0; i < req->rowLen; i++) {
-              int addr = s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4;
-              g->vpm[y*16 + x].intVal = emuHeap[addr >> 2];
+              uint32_t addr = (uint32_t) (s->dmaLoad.addr.intVal + (r * s->readPitch) + i*4);
+              g->vpm[y*16 + x].intVal = g->emuHeap.phy(addr >> 2);
               y = (y+1) % 64;
             }
             x = (x+1) % 16;
@@ -124,13 +184,14 @@ Vec readReg(QPUState* s, State* g, Reg reg)
         if (s->dmaStore.active == false) return v;
         DMAStoreReq* req = &s->dmaStoreSetup;
         uint32_t memAddr = s->dmaStore.addr.intVal;
+
         if (req->hor) {
           // Horizontal access
           uint32_t y = (req->vpmAddr >> 4) & 0x3f;
           for (int r = 0; r < req->numRows; r++) {
             uint32_t x = req->vpmAddr & 0xf;
             for (int i = 0; i < req->rowLen; i++) {
-              emuHeap[memAddr >> 2] = g->vpm[y*16 + x].intVal;
+              g->emuHeap.phy(memAddr >> 2) = g->vpm[y*16 + x].intVal;
               x = (x+1) % 16;
               memAddr = memAddr + 4;
             }
@@ -144,7 +205,7 @@ Vec readReg(QPUState* s, State* g, Reg reg)
           for (int r = 0; r < req->numRows; r++) {
             uint32_t y = (req->vpmAddr >> 4) & 0x3f;
             for (int i = 0; i < req->rowLen; i++) {
-              emuHeap[memAddr >> 2] = g->vpm[y*16 + x].intVal;
+              g->emuHeap.phy(memAddr >> 2) = g->vpm[y*16 + x].intVal;
               y = (y+1) % 64;
               memAddr = memAddr + 4;
             }
@@ -155,11 +216,10 @@ Vec readReg(QPUState* s, State* g, Reg reg)
         s->dmaStore.active = false;
         return v; // Return value unspecified
       }
-      printf("QPULib: can't read special register\n");
-      abort();
+      fatal("V3DLib: can't read special register");
     case NONE:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = 0;
+        v[i].intVal = 0;
       return v;
   }
 
@@ -175,16 +235,17 @@ Vec readReg(QPUState* s, State* g, Reg reg)
 // Given an assignment condition and an vector index, determine if the
 // condition is true at that index using the implicit condition flags.
 
-inline bool checkAssignCond(QPUState* s, AssignCond cond, int i)
-{
+inline bool checkAssignCond(QPUState* s, AssignCond cond, int i) {
+	using Tag = AssignCond::Tag;
+
   switch (cond.tag) {
-    case NEVER:  return false;
-    case ALWAYS: return true;
-    case FLAG:
+    case Tag::NEVER:  return false;
+    case Tag::ALWAYS: return true;
+    case Tag::FLAG:
       switch (cond.flag) {
-        case ZS: return s->zeroFlags[i];
+        case ZS: return  s->zeroFlags[i];
         case ZC: return !s->zeroFlags[i];
-        case NS: return s->negFlags[i];
+        case NS: return  s->negFlags[i];
         case NC: return !s->negFlags[i];
       }
   }
@@ -207,9 +268,9 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond)
     case COND_ANY:
       for (int i = 0; i < NUM_LANES; i++)
         switch (cond.flag) {
-          case ZS: bools[i] = s->zeroFlags[i];  break;
+          case ZS: bools[i] =  s->zeroFlags[i]; break;
           case ZC: bools[i] = !s->zeroFlags[i]; break;
-          case NS: bools[i] = s->negFlags[i];   break;
+          case NS: bools[i] =  s->negFlags[i];  break;
           case NC: bools[i] = !s->negFlags[i];  break;
           default: assert(false); break;
         }
@@ -232,9 +293,7 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond)
 // Write a vector to a register
 // ============================================================================
 
-void writeReg(QPUState* s, State* g, bool setFlags,
-                AssignCond cond, Reg dest, Vec v)
-{
+void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, Vec v) {
   switch (dest.tag) {
     case REG_A:
     case REG_B:
@@ -257,8 +316,8 @@ void writeReg(QPUState* s, State* g, bool setFlags,
       
       for (int i = 0; i < NUM_LANES; i++)
         if (checkAssignCond(s, cond, i)) {
-          Word x = v.elems[i];
-          if (dest.tag != NONE) w->elems[i] = x;
+          Word x = v[i];
+          if (dest.tag != NONE) w->get(i) = x;
           if (setFlags) {
             s->zeroFlags[i] = x.intVal == 0;
             s->negFlags[i]  = x.intVal < 0;
@@ -269,7 +328,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
     case SPECIAL:
       switch (dest.regId) {
         case SPECIAL_RD_SETUP: {
-          int setup = v.elems[0].intVal;
+          int setup = v[0].intVal;
           if ((setup & 0xf0000000) == 0x90000000) {
             // Set read pitch
             int pitch = (setup & 0x1fff);
@@ -307,7 +366,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
           break;
         }
         case SPECIAL_WR_SETUP: {
-          int setup = v.elems[0].intVal;
+          int setup = v[0].intVal;
           if ((setup & 0xc0000000) == 0xc0000000) {
             // Set write stride
             int stride = setup & 0x1fff;
@@ -343,7 +402,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
             for (int i = 0; i < NUM_LANES; i++) {
               int index = (16*req->addr+i);
               assert(index < VPM_SIZE);
-              g->vpm[index] = v.elems[i];
+              g->vpm[index] = v[i];
             }
           }
           else {
@@ -353,7 +412,7 @@ void writeReg(QPUState* s, State* g, bool setFlags,
             for (int i = 0; i < NUM_LANES; i++) {
               int index = (y*16*16 + x + i*16);
               assert(index < VPM_SIZE);
-              g->vpm[index] = v.elems[i];
+              g->vpm[index] = v[i];
             }
           }
           req->addr = req->addr + req->stride;
@@ -363,35 +422,34 @@ void writeReg(QPUState* s, State* g, bool setFlags,
           // Initiate DMA load
           assert(!s->dmaLoad.active);
           s->dmaLoad.active = true;
-          s->dmaLoad.addr   = v.elems[0];
+          s->dmaLoad.addr   = v[0];
           return;
         }
         case SPECIAL_DMA_ST_ADDR: {
           // Initiate DMA store
           assert(!s->dmaStore.active);
           s->dmaStore.active = true;
-          s->dmaStore.addr   = v.elems[0];
+          s->dmaStore.addr   = v[0];
           return;
         }
         case SPECIAL_HOST_INT: {
           return;
         }
         case SPECIAL_TMU0_S: {
-          assert(s->loadBuffer->numElems < 4);
+          assert(s->loadBuffer.size() < 4);
           Vec val;
           for (int i = 0; i < NUM_LANES; i++) {
-            uint32_t a = (uint32_t) v.elems[i].intVal;
-            val.elems[i].intVal = emuHeap[a>>2];
+            uint32_t a = (uint32_t) v[i].intVal;
+            val[i].intVal = g->emuHeap.phy(a>>2);
           }
-          s->loadBuffer->append(val);
+          s->loadBuffer.append(val);
           return;
         }
         default:
           break;
       }
 
-      printf("QPULib: can't write to special register\n");
-      abort();
+      fatal("V3DLib: can't write to special register");
       return;
   }
 
@@ -409,33 +467,21 @@ Vec evalImm(Imm imm)
   switch (imm.tag) {
     case IMM_INT32:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = imm.intVal;
+        v[i].intVal = imm.intVal;
       return v;
     case IMM_FLOAT32:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].floatVal = imm.floatVal;
+        v[i].floatVal = imm.floatVal;
       return v;
     case IMM_MASK:
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i].intVal = (imm.intVal >> i) & 1;
+        v[i].intVal = (imm.intVal >> i) & 1;
       return v;
   }
 
   // Unreachable
   assert(false);
 	return v;
-}
-
-// ============================================================================
-// Rotate a vector
-// ============================================================================
-
-Vec rotate(Vec v, int n)
-{
-  Vec w;
-  for (int i = 0; i < NUM_LANES; i++)
-    w.elems[(i+n) % NUM_LANES] = v.elems[i];
-  return w;
 }
 
 // ============================================================================
@@ -449,13 +495,13 @@ Vec evalSmallImm(QPUState* s, SmallImm imm)
     case SMALL_IMM: {
       Word w = decodeSmallLit(imm.val);
       for (int i = 0; i < NUM_LANES; i++)
-        v.elems[i] = w;
+        v[i] = w;
       return v;
     }
     case ROT_ACC:
     case ROT_IMM:
       int amount = (imm.tag == ROT_IMM)
-                 ? imm.val : (int) s->accum[4].elems[0].intVal;
+                 ? imm.val : (int) s->accum[4][0].intVal;
       return rotate(v, amount);
   }
 
@@ -504,19 +550,14 @@ inline int32_t clz(int32_t x)
 // ALU
 // ============================================================================
 
-Vec alu(QPUState* s, State* g,
-        RegOrImm srcA, ALUOp op, RegOrImm srcB)
-{
+Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
   // First, obtain vector operands
-  Vec x, y, z;
-  x = readRegOrImm(s, g, srcA);
+  Vec a, b, c;
+  a = readRegOrImm(s, g, srcA);
   if (srcA.tag == REG && srcB.tag == REG && srcA.reg == srcB.reg)
-    y = x;
+    b = a;
   else
-    y = readRegOrImm(s, g, srcB);
-  Word* a = x.elems;
-  Word* b = y.elems;
-  Word* c = z.elems;
+    b = readRegOrImm(s, g, srcB);
 
   // Now evaluate the operation
   switch (op) {
@@ -646,7 +687,7 @@ Vec alu(QPUState* s, State* g,
       break;
     case M_ROTATE:
       // Vector rotation
-      z = rotate(x, (int) b[0].intVal);
+      c = rotate(a, (int) b[0].intVal);
       break;
     case A_V8ADDS:
     case A_V8SUBS:
@@ -655,122 +696,78 @@ Vec alu(QPUState* s, State* g,
     case M_V8MAX:
     case M_V8ADDS:
     case M_V8SUBS:
-    default:
-      printf("QPULib: unsupported operator %i\n", op);
-      abort();
+    default: {
+			char buf[64];
+      sprintf(buf, "V3DLib: unsupported operator %i", op);
+      fatal(buf);
+		}
   }
-  return z;
-}
 
-// ============================================================================
-// Printing routines
-// ============================================================================
-
-void emitChar(Seq<char>* out, char c)
-{
-  if (out == NULL) printf("%c", c);
-  else out->append(c);
-}
-
-void emitStr(Seq<char>* out, const char* s)
-{
-  if (out == NULL)
-    printf("%s", s);
-  else
-    for (int i = 0; i < strlen(s); i++)
-      out->append(s[i]);
-}
-
-void printIntVec(Seq<char>* out, Vec x)
-{
-  char buffer[1024];
-  emitChar(out, '<');
-  for (int i = 0; i < NUM_LANES; i++) {
-    snprintf(buffer, sizeof(buffer), "%i", x.elems[i].intVal);
-    for (int j = 0; j < strlen(buffer); j++) emitChar(out, buffer[j]);
-    if (i != NUM_LANES-1) emitChar(out, ',');
-  }
-  emitChar(out, '>');
-}
-
-void printFloatVec(Seq<char>* out, Vec x)
-{
-  char buffer[1024];
-  emitChar(out, '<');
-  for (int i = 0; i < NUM_LANES; i++) {
-    snprintf(buffer, sizeof(buffer), "%f", x.elems[i].floatVal);
-    for (int j = 0; j < strlen(buffer); j++) emitChar(out, buffer[j]);
-    if (i != NUM_LANES-1) emitChar(out, ',');
-  }
-  emitChar(out, '>');
+  return c;
 }
 
 // ============================================================================
 // Emulator
 // ============================================================================
 
-void emulate
-  ( int numQPUs            // Number of QPUs active
-  , Seq<Instr>* instrs     // Instruction sequence
-  , int maxReg             // Max reg id used
-  , Seq<int32_t>* uniforms // Kernel parameters
-  , Seq<char>* output      // Output from print statements
-                           // (if NULL, stdout is used)
-  )
-{
+void emulate(
+	int numQPUs,
+	Seq<Instr>* instrs,
+	int maxReg,
+	Seq<int32_t> &uniforms,
+	BufferObject &heap,
+	Seq<char>* output
+) {
   State state;
   state.output = output;
+
   state.uniforms = uniforms;
+	// Add final dummy uniform
+	// See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
+	state.uniforms << 0;
+
+	state.emuHeap.heap_view(heap);
 
   // Initialise state
   for (int i = 0; i < numQPUs; i++) {
-    QPUState q;
-    memset(&q, 0, sizeof(QPUState));
+    QPUState &q = state.qpu[i];
+
     q.id                 = i;
     q.numQPUs            = numQPUs;
-    q.pc                 = 0;
-    q.running            = true;
-    q.regFileA           = new Vec [maxReg+1];
-    q.sizeRegFileA       = maxReg+1;
-    q.regFileB           = new Vec [maxReg+1];
-    q.sizeRegFileB       = maxReg+1;
-    q.nextUniform        = -2;
-    q.dmaLoad.active     = false;
-    q.dmaStore.active    = false;
-    q.readPitch          = 0;
-    q.writeStride        = 0;
-    q.loadBuffer         = new SmallSeq<Vec>;
-    state.qpu[i]         = q;
+		q.init(maxReg);
   }
-  // Initialise semaphores
-  for (int i = 0; i < 16; i++) state.sema[i] = 0;
+
+	// Protection against locks due to semaphore waiting
+	int const MAX_SEMAPHORE_WAIT = 1024;
+	int semaphore_wait_count = 0;
 
   bool anyRunning = true;
+
   while (anyRunning) {
+		auto ALWAYS = AssignCond::Tag::ALWAYS;
+
     anyRunning = false;
 
     // Execute an instruction in each active QPU
     for (int i = 0; i < numQPUs; i++) {
+
       QPUState* s = &state.qpu[i];
       if (s->running) {
         anyRunning = true;
-        assert(s->pc < instrs->numElems);
-        Instr instr = instrs->elems[s->pc++];
+        assert(s->pc < instrs->size());
+        Instr const instr = instrs->get(s->pc++);
         switch (instr.tag) {
           // Load immediate
           case LI: {
             Vec imm = evalImm(instr.LI.imm);
-            writeReg(s, &state, instr.LI.setFlags,
-                       instr.LI.cond, instr.LI.dest, imm);
+            writeReg(s, &state, instr.setCond().flags_set(), instr.LI.cond, instr.LI.dest, imm);
             break;
           }
           // ALU operation
           case ALU: {
-            Vec result = alu(s, &state, instr.ALU.srcA,
-                             instr.ALU.op, instr.ALU.srcB);
+            Vec result = alu(s, &state, instr.ALU.srcA, instr.ALU.op, instr.ALU.srcB);
             if (instr.ALU.op != NOP)
-              writeReg(s, &state, instr.ALU.setFlags, instr.ALU.cond,
-                       instr.ALU.dest, result);
+              writeReg(s, &state, instr.setCond().flags_set(), instr.ALU.cond, instr.ALU.dest, result);
             break;
           }
           // End program (halt)
@@ -786,8 +783,7 @@ void emulate
                 s->pc += 3+t.immOffset;
               }
               else {
-                printf("QPULib: found unsupported form of branch target\n");
-                abort();
+                fatal("V3DLib: found unsupported form of branch target");
               }
             }
             break;
@@ -796,8 +792,7 @@ void emulate
           case BRL:
           // Label
           case LAB:
-            printf("QPULib: emulator does not support labels\n");
-            abort();
+            fatal("V3DLib: emulator does not support labels");
           // No-op
           case NO_OP:
             break;
@@ -820,8 +815,8 @@ void emulate
           }
           // RECV: receive load-via-TMU response
           case RECV: {
-            assert(s->loadBuffer->numElems > 0);
-            Vec val = s->loadBuffer->remove(0);
+            assert(s->loadBuffer.size() > 0);
+            Vec val = s->loadBuffer.remove(0);
             AssignCond always;
             always.tag = ALWAYS;
             writeReg(s, &state, false, always, instr.RECV.dest, val);
@@ -829,8 +824,8 @@ void emulate
           }
           // Read from TMU0 into accumulator 4
           case TMU0_TO_ACC4: {
-            assert(s->loadBuffer->numElems > 0);
-            Vec val = s->loadBuffer->remove(0);
+            assert(s->loadBuffer.size() > 0);
+            Vec val = s->loadBuffer.remove(0);
             AssignCond always;
             always.tag = ALWAYS;
             Reg dest;
@@ -845,30 +840,41 @@ void emulate
           // Semaphore increment
           case SINC: {
             assert(instr.semaId >= 0 && instr.semaId <= 15);
-            if (state.sema[instr.semaId] == 15) s->pc--;
-            else state.sema[instr.semaId]++;
+            if (state.sema[instr.semaId] == 15) {
+							semaphore_wait_count++;
+							assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SINC appears to be stuck");
+							s->pc--;
+            } else {
+							semaphore_wait_count = 0;
+							state.sema[instr.semaId]++;
+						}
             break;
           }
           // Semaphore decrement
           case SDEC: {
             assert(instr.semaId >= 0 && instr.semaId <= 15);
-            if (state.sema[instr.semaId] == 0) s->pc--;
-            else state.sema[instr.semaId]--;
+            if (state.sema[instr.semaId] == 0) {
+							semaphore_wait_count++;
+							assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SDEC appears to be stuck");
+							s->pc--;
+            } else {
+							semaphore_wait_count = 0;
+							state.sema[instr.semaId]--;
+						}
             break;
           }
-          // Unreachable
+
+					case INIT_BEGIN:
+					case INIT_END:
+						break;  // ignore
+
+          // Should not be reached
           default: assert(false);
         }
       }
     }
   }
-
-  // Deallocate state
-  for (int i = 0; i < numQPUs; i++) {
-    delete [] state.qpu[i].regFileA;
-    delete [] state.qpu[i].regFileB;
-  }
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib
 

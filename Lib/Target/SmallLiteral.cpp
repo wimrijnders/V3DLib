@@ -1,7 +1,11 @@
-#include "Target/SmallLiteral.h"
+#include "SmallLiteral.h"
 #include <stdio.h>
+#include "Source/Expr.h"
+#include "Support/basics.h"
 
-namespace QPULib {
+namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
 
 // Small literals are literals that fit in the small immediate field
 // of the VideoCore-IV instruction set.
@@ -30,43 +34,34 @@ const float smallFloats[NUM_SMALL_FLOATS] = {
 // manual. Returns -1 if expression cannot be encoded as a small
 // literal.
 
-int encodeSmallLit(Expr* e)
-{
-  if (e->tag == INT_LIT) { 
-    if (e->intLit >= 0 && e->intLit <= 15)
-      return e->intLit;
-    else if (e->intLit >= -16 && e->intLit <= -1)
-      return 32 + e->intLit;
-  } 
-  else if (e->tag == FLOAT_LIT) {
-    if (e->floatLit == 0.0)
+int encodeSmallLit(Expr const &e) {
+  if (e.tag() == Expr::INT_LIT) { 
+    if (e.intLit >= 0 && e.intLit <= 15)
+      return e.intLit;
+    else if (e.intLit >= -16 && e.intLit <= -1)
+      return 32 + e.intLit;
+  } else if (e.tag() == Expr::FLOAT_LIT) {
+    if (e.floatLit == 0.0)
       return 0;
     else {
       int index = -1;
       for (int i = 0; i < NUM_SMALL_FLOATS; i++)
-        if (smallFloats[i] == e->floatLit) {
+        if (smallFloats[i] == e.floatLit) {
           index = i;
           break;
         }
+
       if (index != -1)
         return 32 + index;
     }
   }
+
   return -1;
 }
 
-// Determine if a given expression (source language) can be stored in
-// a small immediate.
-
-bool isSmallLit(Expr* e)
-{
-  return encodeSmallLit(e) >= 0;
-}
 
 // Decode a small literal.
-
-Word decodeSmallLit(int x)
-{
+Word decodeSmallLit(int x) {
   Word w;
   if (x >= 32) {
     w.floatVal = smallFloats[x-32];
@@ -86,16 +81,18 @@ Word decodeSmallLit(int x)
 	return w;
 }
 
-// Display a small literal.
 
-void printSmallLit(FILE *f, int x)
-{
+std::string printSmallLit(int x) {
+	std::string ret;
+
   if (x >= 32)
-    fprintf(f, "%f", smallFloats[x-32]);
+    ret << smallFloats[x - 32];
   else if (x >= 16)
-    fprintf(f, "%i", x-32);
+		ret << (x - 32);
   else if (x >= 0)
-    fprintf(f, "%i", x);
+		ret << x;
+
+	return ret;
 }
 
-}  // namespace QPULib
+}  // namespace V3DLib

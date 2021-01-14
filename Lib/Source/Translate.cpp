@@ -1,135 +1,31 @@
-#include <cassert>
-#include "Source/Syntax.h"
-#include "Target/Syntax.h"
+#include "Translate.h"
+#include "Support/Platform.h"
+#include "SourceTranslate.h"
+#include "Source/Stmt.h"
 #include "Target/SmallLiteral.h"
-#include "Target/LoadStore.h"
 #include "Common/Seq.h"
 
-namespace QPULib {
+
+namespace V3DLib {
+namespace {
 
 // ============================================================================
-// Opcodes and operands
+// Operands
 // ============================================================================
 
-// Translate source operator to target opcode
-ALUOp opcode(Op op)
-{
-  if (op.type == FLOAT) {
-    switch (op.op) {
-      case ADD:    return A_FADD;
-      case SUB:    return A_FSUB;
-      case MUL:    return M_FMUL;
-      case MIN:    return A_FMIN;
-      case MAX:    return A_FMAX;
-      case ItoF:   return A_ItoF;
-      case ROTATE: return M_ROTATE;
-      default:     assert(false);
-    }
-  }
-  else {
-    switch (op.op) {
-      case ADD:    return A_ADD;
-      case SUB:    return A_SUB;
-      case MUL:    return M_MUL24;
-      case MIN:    return A_MIN;
-      case MAX:    return A_MAX;
-      case FtoI:   return A_FtoI;
-      case SHL:    return A_SHL;
-      case SHR:    return A_ASR;
-      case USHR:   return A_SHR;
-      case ROR:    return A_ROR;
-      case BAND:   return A_BAND;
-      case BOR:    return A_BOR;
-      case BXOR:   return A_BXOR;
-      case BNOT:   return A_BNOT;
-      case ROTATE: return M_ROTATE;
-      default:     assert(false);
-    }
-  }
-
-  // Not reachable
-  assert(false);
-	return NOP;
-}
-
-// Translate variable to source register.
-Reg srcReg(Var v)
-{
-  Reg r;
-  switch (v.tag) {
-    case UNIFORM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_UNIFORM;
-      return r;
-    case QPU_NUM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_QPU_NUM;
-      return r;
-    case ELEM_NUM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_ELEM_NUM;
-      return r;
-    case VPM_READ:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_VPM_READ;
-      return r;
-    case STANDARD:
-      r.tag   = REG_A;
-      r.regId = v.id;
-      return r;
-    case VPM_WRITE:
-    case TMU0_ADDR:
-      printf("QPULib: Reading from write-only special register is forbidden\n");
-      assert(false);
-  }
-
-  // Not reachable
-  assert(false);
-	return r;
-}
-
-// Translate variable to target register.
-Reg dstReg(Var v)
-{
-  Reg r;
-  switch (v.tag) {
-    case UNIFORM:
-    case QPU_NUM:
-    case ELEM_NUM:
-    case VPM_READ:
-      printf("QPULib: writing to read-only special register is forbidden\n");
-      assert(false);
-    case STANDARD:
-      r.tag   = REG_A;
-      r.regId = v.id;
-      return r;
-    case VPM_WRITE:
-      r.tag = SPECIAL;
-      r.regId = SPECIAL_VPM_WRITE;
-      return r;
-    case TMU0_ADDR:
-      r.tag = SPECIAL;
-      r.regId = SPECIAL_TMU0_S;
-      return r;
-  }
-
-  // Not reachable
-  assert(false);
-	return r;
-}
-
-// Translate the argument of an operator (either a variable or a small
-// literal) to a target operand.
-
-RegOrImm operand(Expr* e)
-{
+/**
+ * Translate the argument of an operator (either a variable or a small imm)
+ */
+RegOrImm operand(Expr::Ptr e) {
   RegOrImm x;
-  if (e->tag == VAR) {
+
+  if (e->tag() == Expr::VAR) {
     x.tag = REG;
-    x.reg = srcReg(e->var);
+    x.reg = srcReg(e->var());
     return x;
   }
-  int enc = encodeSmallLit(e);
+
+  int enc = encodeSmallLit(*e);
   assert(enc >= 0);
   x.tag          = IMM;
   x.smallImm.tag = SMALL_IMM;
@@ -137,273 +33,66 @@ RegOrImm operand(Expr* e)
   return x;
 }
 
-// ============================================================================
-// 'Simple' expressions
-// ============================================================================
-
-// An expression is 'simple' if it is a small literal (see
-// Target/SmallLiteral.cpp) or a variable.
-
-bool isSimple(Expr* e)
-{
-  return (e->tag == VAR) || isSmallLit(e);
-}
-
-// Translate an expression to a simple expressions, generating
-// instructions along the way.  (Prototype here, implementation below,
-// since this and 'varAssign' are mutually recursive.)
-
-Expr* simplify(Seq<Instr>* seq, Expr* e);
-
-// Similar to 'simplify' but ensure that the result is a variable.
-
-Expr* putInVar(Seq<Instr>* seq, Expr* e);
 
 // ============================================================================
 // Variable assignments
 // ============================================================================
 
-// Translate the conditional assignment of a variable to an expression.
+/**
+ * Translate an expression to a simple expression, generating
+ * instructions along the way.
+ */
+Expr::Ptr simplify(Seq<Instr>* seq, Expr::Ptr e) {
+  if (e->isSimple()) {
+		return e;
+	}
 
-void varAssign( Seq<Instr>* seq   // Target instruction sequence to extend
-              , AssignCond cond   // Condition on assignment
-              , Var v             // Variable on LHS
-              , Expr* expr        // Expression on RHS
-              )
-{
-  Expr e = *expr;
-
-  // -----------------------------------------
-  // Case: v := w, where v and w are variables
-  // -----------------------------------------
-  if (e.tag == VAR) {
-    Var w = e.var;
-    Instr instr;
-    instr.tag                   = ALU;
-    instr.ALU.setFlags          = false;
-    instr.ALU.cond              = cond;
-    instr.ALU.dest              = dstReg(v);
-    instr.ALU.srcA.tag          = REG;
-    instr.ALU.srcA.reg          = srcReg(w);
-    instr.ALU.op                = A_BOR;
-    instr.ALU.srcB.tag          = REG;
-    instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
-    seq->append(instr);
-    return;
-  }
-
-  // -------------------------------------------
-  // Case: v := i, where i is an integer literal
-  // -------------------------------------------
-  if (e.tag == INT_LIT) {
-    int i = e.intLit;
-    Instr instr;
-    instr.tag           = LI;
-    instr.LI.setFlags   = false;
-    instr.LI.cond       = cond;
-    instr.LI.dest       = dstReg(v);
-    instr.LI.imm.tag    = IMM_INT32;
-    instr.LI.imm.intVal = i;
-    seq->append(instr);
-    return;
-  }
-
-  // ----------------------------------------
-  // Case: v := f, where f is a float literal
-  // ----------------------------------------
-  if (e.tag == FLOAT_LIT) {
-    float f = e.floatLit;
-    Instr instr;
-    instr.tag             = LI;
-    instr.LI.setFlags     = false;
-    instr.LI.cond         = cond;
-    instr.LI.dest         = dstReg(v);
-    instr.LI.imm.tag      = IMM_FLOAT32;
-    instr.LI.imm.floatVal = f;
-    seq->append(instr);
-    return;
-  }
-
-  // ----------------------------------------------
-  // Case: v := x op y, where x or y are not simple
-  // ----------------------------------------------
-  if (e.tag == APPLY &&
-            (!isSimple(e.apply.lhs) ||
-             !isSimple(e.apply.rhs))) {
-    e.apply.lhs = simplify(seq, e.apply.lhs);
-    e.apply.rhs = simplify(seq, e.apply.rhs);
-  }
-
-  // --------------------------------------------------
-  // Case: v := x op y, where x and y are both literals
-  // --------------------------------------------------
-  if (e.tag == APPLY && isLit(e.apply.lhs) && isLit(e.apply.rhs)) {
-    Var tmpVar = freshVar();
-    varAssign(seq, cond, tmpVar, e.apply.lhs);
-    e.apply.lhs = mkVar(tmpVar);
-  }
- 
-  // -------------------------------------------
-  // Case: v := x op y, where x and y are simple
-  // -------------------------------------------
-  if (e.tag == APPLY) {
-    Instr instr;
-    instr.tag            = ALU;
-    instr.ALU.setFlags   = false;
-    instr.ALU.cond       = cond;
-    instr.ALU.dest       = dstReg(v);
-    instr.ALU.srcA       = operand(e.apply.lhs);
-    instr.ALU.op         = opcode(e.apply.op);
-    instr.ALU.srcB       = operand(e.apply.rhs);
-    seq->append(instr);
-    return;
-  }
-
-  // ---------------------------------------
-  // Case: v := *w where w is not a variable
-  // ---------------------------------------
-  if (e.tag == DEREF &&
-           e.deref.ptr->tag != VAR) {
-    assert(!isLit(e.deref.ptr));
-    e.deref.ptr = simplify(seq, e.deref.ptr);
-  }
-
-  // -----------------------------------
-  // Case: v := *w where w is a variable
-  // -----------------------------------
-  //
-  // Restriction: we disallow dereferencing in conditional ('where')
-  // assignments for simplicity.  In most (all?) cases it should be
-  // trivial to lift these outside the 'where'.
-  //
-  if (e.tag == DEREF) {
-    if (cond.tag != ALWAYS) {
-      printf("QPULib: dereferencing not yet supported inside 'where'\n");
-      assert(false);
-    }
-    // Load address
-    Reg loadAddr;
-    loadAddr.tag = SPECIAL;
-    loadAddr.regId = SPECIAL_QPU_NUM;
-    // Setup DMA
-    genSetReadPitch(seq, 4);
-    genSetupDMALoad(seq, 16, 1, 1, 1, loadAddr);
-    // Start DMA load
-    genStartDMALoad(seq, srcReg(e.deref.ptr->var));
-    // Wait for DMA
-    genWaitDMALoad(seq);
-    // Setup VPM
-    Reg addr;
-    addr.tag = SPECIAL;
-    addr.regId = SPECIAL_QPU_NUM;
-    genSetupVPMLoad(seq, 1, addr, 0, 1);
-    // Get from VPM
-    Reg data;
-    data.tag = SPECIAL;
-    data.regId = SPECIAL_VPM_READ;
-    seq->append(genLShift(dstReg(v), data, 0));
-    return;
-  }
-
-  // This case should not be reachable
-  assert(false);
+	Var tmp = freshVar();
+	*seq << varAssign(tmp, e);
+	return mkVar(tmp);
 }
 
-// Translate an expression to a simple expression, generating
-// instructions along the way.
-
-Expr* simplify(Seq<Instr>* seq, Expr* e)
-{
-  if (!isSimple(e)) {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var tmp = freshVar();
-    varAssign(seq, always, tmp, e);
-    return mkVar(tmp);
-  }
-  else
-    return e;
-}
-
-// Similar to 'simplify' but ensure that the result is a variable.
-
-Expr* putInVar(Seq<Instr>* seq, Expr* e)
-{
-  if (e->tag != VAR) {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var tmp = freshVar();
-    varAssign(seq, always, tmp, e);
-    return mkVar(tmp);
-  }
-  else
-    return e;
-}
 
 // ============================================================================
 // Assignment statements
 // ============================================================================
 
-void assign( Seq<Instr>* seq   // Target instruction sequence to extend
-           , Expr *lhsExpr     // Expression on left-hand side
-           , Expr *rhs         // Expression on right-hand side
-           )
-{
+/**
+ * @param seq      Target instruction sequence to extend
+ * @param lhsExpr  Expression on left-hand side
+ * @param rhs      Expression on right-hand side
+ */
+void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   Expr lhs = *lhsExpr;
-
-  AssignCond always;
-  always.tag = ALWAYS;
 
   // -----------------------------------------------------------
   // Case: v := rhs, where v is a variable and rhs an expression
   // -----------------------------------------------------------
-  if (lhs.tag == VAR) {
-    varAssign(seq, always, lhs.var, rhs);
+  if (lhs.tag() == Expr::VAR) {
+    *seq << varAssign(lhs.var(), rhs);
     return;
   }
 
   // ---------------------------------------------------------
   // Case: *lhs := rhs where lhs is not a var or rhs not a var
   // ---------------------------------------------------------
-  if (lhs.tag == DEREF &&
-        (lhs.deref.ptr->tag != VAR ||
-         rhs->tag != VAR)) {
-    assert(!isLit(lhs.deref.ptr));
-    lhs.deref.ptr = simplify(seq, lhs.deref.ptr);
+  if (lhs.tag() == Expr::DEREF && (lhs.deref_ptr()->tag() != Expr::VAR || rhs->tag() != Expr::VAR)) {
+    assert(!lhs.deref_ptr()->isLit());
+    lhs.deref_ptr(simplify(seq, lhs.deref_ptr()));
     rhs = putInVar(seq, rhs);
   }
 
   // -------------------------------------------------
   // Case: *v := rhs where v is a var and rhs is a var
   // -------------------------------------------------
-  if (lhs.tag == DEREF) {
-    // QPU id
-    Reg qpuId;
-    qpuId.tag = SPECIAL;
-    qpuId.regId = SPECIAL_QPU_NUM;
-    // Setup VPM
-    Reg addr = freshReg();
-    seq->append(genLI(addr, 16));
-    seq->append(genADD(addr, addr, qpuId));
-    genSetupVPMStore(seq, addr, 0, 1);
-    // Store address
-    Reg storeAddr = freshReg();
-    seq->append(genLI(storeAddr, 256));
-    seq->append(genADD(storeAddr, storeAddr, qpuId));
-    // Setup DMA
-    genSetWriteStride(seq, 0);
-    genSetupDMAStore(seq, 16, 1, 1, storeAddr);
-    // Put to VPM
-    Reg data;
-    data.tag = SPECIAL;
-    data.regId = SPECIAL_VPM_WRITE;
-    seq->append(genLShift(data, srcReg(rhs->var), 0));
-    // Start DMA
-    genStartDMAStore(seq, srcReg(lhs.deref.ptr->var));
-    // Wait for store to complete
-    genWaitDMAStore(seq);
-    return;
-  }
+
+	// Strictly speaking, the two VAR tests are not necessary; it is the only possible case
+	// (According to previous code, that is)
+  bool handle_case = (lhs.tag() == Expr::DEREF && (lhs.deref_ptr()->tag() == Expr::VAR || rhs->tag() == Expr::VAR));
+	if (handle_case) {
+		*seq << getSourceTranslate().deref_var_var(lhs.deref_ptr()->var(), rhs->var());
+		return;
+	}
 
   // This case should not be reachable
   assert(false);
@@ -425,125 +114,10 @@ void assign( Seq<Instr>* seq   // Target instruction sequence to extend
 // an ALU instruction is 'true'.  The condition vector can be read
 // from an assignment condition or in a branch condition.
 
-// Function to negate a condition flag
-
-Flag negFlag(Flag flag)
-{
-  switch(flag) {
-    case ZS: return ZC;
-    case ZC: return ZS;
-    case NS: return NC;
-    case NC: return NS;
-  }
-
-  // Not reachable
-  assert(false);
-	return ZS;
-}
-
-// Function to negate an assignment condition.
-
-AssignCond negAssignCond(AssignCond cond)
-{
-  switch (cond.tag) {
-    case NEVER:  cond.tag = ALWAYS; return cond;
-    case ALWAYS: cond.tag = NEVER;  return cond;
-    case FLAG:   cond.flag = negFlag(cond.flag); return cond;
-  }
-
-  // Not reachable
-  assert(false);
-	return cond;
-}
-
-// Function to negate a branch condition.
-
-BranchCond negBranchCond(BranchCond cond)
-{
-  switch (cond.tag) {
-    case COND_NEVER:  cond.tag  = COND_ALWAYS; return cond;
-    case COND_ALWAYS: cond.tag  = COND_NEVER;  return cond;
-    case COND_ANY:    cond.tag  = COND_ALL;
-                      cond.flag = negFlag(cond.flag);
-                      return cond;
-    case COND_ALL:    cond.tag  = COND_ANY;
-                      cond.flag = negFlag(cond.flag);
-                      return cond;
-  }
-
-  // Not reachable
-  assert(false);
-	return cond;
-}
-
-
-
-// Return a value that will cause the specified flag bit to be set in
-// the condition vector.
-
-int setFlag(Flag f)
-{
-  switch (f) {
-    case ZS: return 0;
-    case ZC: return 1;
-    case NS: return -1;
-    case NC: return 0;
-  }
-
-  // Not reachable
-  assert(false);
-	return -1;
-}
-
-// Set the condition vector using given variable.
-
-Instr setCond(Var v)
-{
-  AssignCond always;
-  always.tag = ALWAYS;
-  Reg r;
-  r.tag = NONE;
-  Instr instr;
-  instr.tag                   = ALU;
-  instr.ALU.setFlags          = true;
-  instr.ALU.cond              = always;
-  instr.ALU.dest              = r;
-  instr.ALU.srcA.tag          = REG;
-  instr.ALU.srcA.reg          = srcReg(v);
-  instr.ALU.op                = A_BOR;
-  instr.ALU.srcB.tag          = REG;
-  instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
-  return instr;
-}
-
-// A shorthand 'move' instruction is handy later.
-
-Instr move(Var dst, Var src, bool setFlags)
-{
-  AssignCond always;
-  always.tag = ALWAYS;
-  Instr instr;
-  instr.tag                   = ALU;
-  instr.ALU.setFlags          = setFlags;
-  instr.ALU.cond              = always;
-  instr.ALU.dest              = dstReg(dst);
-  instr.ALU.srcA.tag          = REG;
-  instr.ALU.srcA.reg          = srcReg(src);
-  instr.ALU.op                = A_BOR;
-  instr.ALU.srcB.tag          = REG;
-  instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
-  return instr;
-}
-
-// ============================================================================
-// Boolean expressions
-// ============================================================================
-
 // Evaluating a vector boolean expression results in a condition
-// pair <condVar,condFlag> where
+// pair <condVar,condFlag> where:
 //
 //  * condVar is a variable containing a vector of values
-//
 //  * condFlag is a condition flag in set {ZS,ZC,NS,NC} (see above)
 //
 // If 'condVar' is assigned to a register and the 'setFlags' field of
@@ -565,196 +139,240 @@ Instr move(Var dst, Var src, bool setFlags)
 // vector has been set using the value of condVarB, hence we don't
 // need the value of condVarB as an argument.
 //
-// The 'modify' flag defines whether or not to update the implicit
-// condition vector with the final result.
-//
 // The value of condVarA will be overwritten with the 'condVar' of the
 // disjunction, and the corresponding condFlag will be returned as a
 // result.
 
-AssignCond boolOr( Seq<Instr>* seq
-                 , AssignCond condA
-                 , Var condVarA
-                 , AssignCond condB
-                 , bool modify )
-{
-  if (condA.tag == ALWAYS) return condA;
-  else if (condB.tag == ALWAYS) return condB;
-  else if (condB.tag == NEVER) {
-    if (modify) seq->append(setCond(condVarA));
+
+// ============================================================================
+// Boolean expressions
+// ============================================================================
+
+/**
+ * Pre:
+ * - Hypothesis: condVar set for condA
+ * - Implicit condition vector set for condB
+ *
+ * ## Truth Table
+ * ```
+ *        | B
+ * ------------------------------------
+ * A      | never    | always | flag
+ * ------------------------------------
+ * never  | never    | always | B
+ * always | always   | always | always
+ * flag   | A        | always |
+ * ------------------------------------
+ * ```
+ *
+ * ------
+ * ## NOTES
+ *
+ * 1. In the case of `cond = condB`, I would be expecting `condVar` to be completely reset,
+ *    i.e. first init `condVar = 0` for all vector values.
+ *
+ *    This would be OK if `condA == Never` and `condvar` still zeroes.
+ *
+ *    TODO investigate if possible
+ */
+AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond condB) {
+	using namespace Target::instr;
+
+	//breakpoint
+
+	// Determine a value that will cause the specified flag bit to be set in the condition vector.
+	auto determineCondVar = [] (AssignCond cond) -> int {
+		int val = 0;
+
+		switch (cond.flag) {
+			case ZS: val =  0; break;
+			case ZC: val =  1; break;
+			case NS: val = -1; break;
+			case NC: val =  0; break;  // TODO set to unique value (e.g. 2) -> need to research logic for correctness
+			default: assert(false); val = -1; break;
+		}
+
+		return val;
+	};
+
+
+  if (condA.is_always() || condB.is_always()) return always;
+  if (condA.is_never()  && condB.is_never() ) return never;
+
+  if (condB.is_never()) {                     // condA == FLAG
+    seq << mov(None, condVar).setCondFlag(condA.flag);     // Set implicit condition vector to variable
     return condA;
-  }
-  else if (condA.tag == NEVER) {
-    Instr instr;
-    instr.tag           = LI;
-    instr.LI.setFlags   = false;
-    instr.LI.cond       = condB;
-    instr.LI.dest       = dstReg(condVarA);
-    instr.LI.imm.tag    = IMM_INT32;
-    instr.LI.imm.intVal = setFlag(condB.flag);
-    seq->append(instr);
+  } else if (condA.is_never()) {              // condB == FLAG
+		int val = determineCondVar(condB);
+
+		seq << li(condVar, val).cond(condB);      // set condB values in condVar, See Note 1
     return condB;
-  }
-  else {
-    Instr instr;
-    instr.tag           = LI;
-    instr.LI.setFlags   = false;
-    instr.LI.cond       = condB;
-    instr.LI.dest       = dstReg(condVarA);
-    instr.LI.imm.tag    = IMM_INT32;
-    instr.LI.imm.intVal = setFlag(condA.flag);
-    seq->append(instr);
+  } else {                                    // condA == flag and condB == FLAG
+		int val = determineCondVar(condA);
 
-    if (modify) seq->append(setCond(condVarA));
+		seq << li(condVar, val).cond(condB)       // Adjust condVar for condB
+        << mov(None, condVar).setCondFlag(condB.flag);     // Set implicit condition vector for new value condVar
     return condA;
   }
 }
 
-// Conjunction is now easy thanks to De Morgan's law:
 
-AssignCond boolAnd( Seq<Instr>* seq
-                  , AssignCond condA
-                  , Var condVarA
-                  , AssignCond condB
-                  , bool modify )
-{
-  return negAssignCond(
-           boolOr(seq, negAssignCond(condA), condVarA,
-                       negAssignCond(condB), modify));
+/**
+ * Define conjunction using De Morgan.
+ */
+AssignCond boolAnd(Seq<Instr> *seq, AssignCond condA, Var condVarA, AssignCond condB) {
+  return boolOr(*seq, condA.negate(), condVarA, condB.negate()).negate();
 }
 
-// Now the translation scheme for general boolean expressions.
-// The interface is:
-// 
-//   * a boolean expression to evaluate;
-//
-//   * a condVar 'v' to which the evaluated expression will be written
-//     to; the return value will contain the corresponding condFlag.
-//
-//   * if the modify-bit is true, then the implicit condition vector
-//     will be set using with the result of the expression.  (This is a
-//     one-way 'if': you cannot rely on the condition vector not
-//     being mutated even if this bit is false.)
-//
-//   * instructions to evaluate the expression are appended to the
-//     given instruction sequence.
 
-AssignCond boolExp( Seq<Instr>* seq
-                  , BExpr* bexpr
-                  , Var v
-                  , bool modify
-                  )
-{
+/**
+ * Creates the instructions for this comparison.
+ *
+ * The comparison is internally implemented as a subtract-operation.
+ */
+void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
   BExpr b = *bexpr;
+  assert(b.tag() == CMP);
 
-  AssignCond always;
-  always.tag = ALWAYS;
+	auto cmp_swap_leftright = [] (BExpr &b) {
+    auto tmp   = b.cmp_lhs();
+    b.cmp_lhs(b.cmp_rhs());
+    b.cmp_rhs(tmp);
+	};
 
-  // -------------------------------
-  // Case: x > y, replace with y < x
-  // -------------------------------
-  if (b.tag == CMP && b.cmp.op.op == GT) {
-    Expr* e     = b.cmp.lhs;
-    b.cmp.lhs   = b.cmp.rhs;
-    b.cmp.rhs   = e;
+
+ 	if (b.cmp.op.op == GT) {       // 'x > y', replace with y < x
+		cmp_swap_leftright(b);
     b.cmp.op.op = LT;
   }
 
-  // ---------------------------------
-  // Case: x <= y, replace with y >= x
-  // ---------------------------------
-  if (b.tag == CMP && b.cmp.op.op == LE) {
-    Expr* e     = b.cmp.lhs;
-    b.cmp.lhs   = b.cmp.rhs;
-    b.cmp.rhs   = e;
+ 	if (b.cmp.op.op == LE) {       // 'x <= y', replace with y >= x
+		cmp_swap_leftright(b);
     b.cmp.op.op = GE;
   }
 
-  // -----------------------------------
-  // Case: x op y, where x is not simple
-  // -----------------------------------
-  if (b.tag == CMP && !isSimple(b.cmp.lhs)) {
-    b.cmp.lhs = simplify(seq, b.cmp.lhs);
+ 	if (!b.cmp_lhs()->isSimple()) {  // 'x op y', where x is not simple
+    b.cmp_lhs(simplify(seq, b.cmp_lhs()));
   }
 
-  // -----------------------------------
-  // Case: x op y, where y is not simple
-  // -----------------------------------
-  if (b.tag == CMP && !isSimple(b.cmp.rhs)) {
-    b.cmp.rhs = simplify(seq, b.cmp.rhs);
+ 	if (!b.cmp_rhs()->isSimple()) {  // 'x op y', where y is not simple
+    b.cmp_rhs(simplify(seq, b.cmp_rhs()));
   }
 
-  // ---------------------------------------------
-  // Case: x op y, where x and y are both literals
-  // ---------------------------------------------
-  if (b.tag == CMP && isLit(b.cmp.lhs) && isLit(b.cmp.rhs)) {
+ 	if (b.cmp_rhs()->isLit() && b.cmp_rhs()->isLit()) {  // 'x op y', where x and y are both literals
     Var tmpVar = freshVar();
-    varAssign(seq, always, tmpVar, b.cmp.lhs);
-    b.cmp.lhs = mkVar(tmpVar);
+    *seq << varAssign(tmpVar, b.cmp_lhs());
+    b.cmp_lhs(mkVar(tmpVar));
   }
 
-  // --------------------------------------
-  // Case: x op y, where x and y are simple
-  // --------------------------------------
-  if (b.tag == CMP) {
-    // Compute condition flag
-    AssignCond cond;
-    cond.tag = FLAG;
-    switch(b.cmp.op.op) {
-      case EQ:  cond.flag = ZS; break;
-      case NEQ: cond.flag = ZC; break;
-      case LT:  cond.flag = NS; break;
-      case GE:  cond.flag = NC; break;
-      default:  assert(false);
-    }
 
-    // Implement comparison using subtraction instruction
-    Op op;
-    op.type = b.cmp.op.type;
-    op.op   = SUB;
-    Instr instr;
-    instr.tag          = ALU;
-    instr.ALU.setFlags = true;
-    instr.ALU.cond     = always;
-    instr.ALU.dest     = dstReg(v);
-    instr.ALU.srcA     = operand(b.cmp.lhs);
-    instr.ALU.op       = opcode(op);
-    instr.ALU.srcB     = operand(b.cmp.rhs);
-    seq->append(instr);
+	//
+ 	// At this point x and y are simple
+	//
+	using namespace V3DLib::Target::instr;
 
-    return cond;
+	Var dummy  = freshVar();
+	Var dummy2 = freshVar();
+	AssignCond assign_cond = AssignCond(b.cmp.op);
+
+	// Implement comparison using subtraction instruction
+	Op op(SUB, b.cmp.op.type);
+
+	Instr instr(ALU);
+	instr.setCondOp(b.cmp.op);
+	instr.ALU.dest     = dstReg(dummy);
+	instr.ALU.srcA     = operand(b.cmp_lhs());
+	instr.ALU.op       = op.opcode();
+	instr.ALU.srcB     = operand(b.cmp_rhs());
+
+	*seq << li(v, 0)
+	     << instr
+	     << mov(v, 1).cond(assign_cond)            // TODO: would be better if this used acc-reg
+	     << mov(dummy2, v).setCondFlag(Flag::ZC);  // Reset flags so that Z-flag is used
+
+	seq->back().comment("Store condition as Bool var");
+}
+
+
+AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v);  // Forward declaration
+
+
+/**
+ * Previous case for or:
+ * 
+ *     AssignCond condA = boolExp(seq, b.disj.lhs, v);
+ *     Var w = freshVar();
+ *     AssignCond condB = boolExp(seq, b.disj.rhs, w);
+ *     return boolOr(*seq, condA, v, condB);
+ * 
+ * Previous case for and:
+ *  
+ *     // Use De Morgan's law
+ *     BExpr* demorgan = b.conj.lhs->Not()->Or(b.conj.rhs->Not())->Not();
+ *     return boolExp(seq, demorgan, v);
+ */
+void boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
+	using namespace V3DLib::Target::instr;
+
+	boolExp(&seq, b.lhs(), v);                     // return val ignored
+
+	Var w = freshVar();
+	boolExp(&seq, b.rhs(), w);  // idem
+
+	if (b.tag() == OR) {
+		seq << bor(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
+		seq.back().comment("Bool var OR");
+	} else if (b.tag() == AND) {
+		seq << band(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
+		seq.back().comment("Bool var AND");
+	} else {
+		assert(false);
+	}
+}
+
+
+/**
+ * Handle general boolean expressions.
+ *
+ * Boolean conditions var's are used, to unify the differing approaches
+ * to flag checking in `v3d` and `vc4`.
+ *
+ * The condition result is stored as booleans (with 0/1) in `v`, indicating the truth
+ * value of the flag tests.
+ *
+ * The condition is reset to always use Z. Checks should be on ZC (zero clear) for 1 == true.
+ *
+ * 
+ * @param seq    instruction sequence to which the instructions to evaluate the
+ *               expression are appended
+ * @param bexpr  the boolean expression to evaluate;
+ * @param v      condVar 'v' to which the evaluated expression will be written to
+ *
+ * @return the condition to use when checking the flags for this comparison
+ */
+AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
+	using namespace V3DLib::Target::instr;
+  BExpr b = *bexpr;
+
+	switch (b.tag()) {
+		case CMP:
+			cmpExp(seq, bexpr, v);
+		break;
+		case NOT: {          // '!b', where b is a boolean expression
+    	AssignCond cond = boolExp(seq, b.neg(), v);
+			*seq << bxor(v, v, 1).setCondFlag(Flag::ZC);
+		}
+		break;
+		case OR:             // 'a || b', where a, b are boolean expressions
+		case AND:            // 'a && b', where a, b are boolean expressions
+			boolVarExp(*seq, b, v);
+			break;
+		default:
+  		assert(false);
+			break;
   }
 
-  // -----------------------------------------
-  // Case: !b, where b is a boolean expression
-  // -----------------------------------------
-  if (b.tag == NOT) {
-    AssignCond cond = boolExp(seq, b.neg, v, modify);
-    return negAssignCond(cond);
-  }
-
-  // ------------------------------------------------
-  // Case: a || b, where a, b are boolean expressions
-  // ------------------------------------------------
-  if (b.tag == OR) {
-    Var w = freshVar();
-    AssignCond condA = boolExp(seq, b.disj.lhs, v, false);
-    AssignCond condB = boolExp(seq, b.disj.rhs, w, true);
-    return boolOr(seq, condA, v, condB, true);
-  }
-
-  // ------------------------------------------------
-  // Case: a && b, where a, b are boolean expressions
-  // ------------------------------------------------
-  if (b.tag == AND) {
-    // Use De Morgan's law
-    BExpr* demorgan = mkNot(mkOr(mkNot(b.conj.lhs), mkNot(b.conj.rhs)));
-    return boolExp(seq, demorgan, v, modify);
-  }
-
-  // Not reachable
-  assert(false);
-	return always;
+	return AssignCond(CmpOp(NEQ, INT32));  // Wonky syntax to get the flags right
 }
 
 
@@ -762,64 +380,51 @@ AssignCond boolExp( Seq<Instr>* seq
 // Conditional expressions
 // ============================================================================
 
-BranchCond condExp(Seq<Instr>* seq, CExpr* c)
-{
+BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
   Var v = freshVar();
-  AssignCond cond = boolExp(seq, c->bexpr, v, true);
+  AssignCond cond = boolExp(&seq, c.bexpr(), v);
 
-  BranchCond bcond;
-  if (cond.tag == ALWAYS) { bcond.tag = COND_ALWAYS; return bcond; }
-  if (cond.tag == NEVER) { bcond.tag = COND_NEVER; return bcond; }
-
-  assert(cond.tag == FLAG);
-
-  bcond.flag = cond.flag;
-  if (c->tag == ANY) {
-    bcond.tag = COND_ANY;
-    return bcond;
-  }
-  else if (c->tag == ALL) {
-    bcond.tag = COND_ALL;
-    return bcond;
-  }
-
-  // Not reachable
-  assert(false);
-	return bcond;
+	return cond.to_branch_cond(c.tag() == ALL);
 }
+
 
 // ============================================================================
 // Where statements
 // ============================================================================
 
-void whereStmt( Seq<Instr>* seq
-              , Stmt* s
-              , Var condVar
-              , AssignCond cond
-              , bool saveRestore )
-{
-  if (s == NULL) return;
+Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
+	using namespace V3DLib::Target::instr;
+	Seq<Instr> ret;
 
-  // ----------
-  // Case: skip
-  // ----------
-  if (s->tag == SKIP) return;
+  if (s.get() == nullptr) return ret;
+  if (s->tag == SKIP) return ret;
+
 
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign.lhs->tag == VAR) {
-    varAssign(seq, cond, s->assign.lhs->var, s->assign.rhs);
-    return;
+  if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::VAR) {
+		assign(&ret, s->assign_lhs(), s->assign_rhs());
+		ret.back().cond(cond); //.comment("Assign var in Where");
+    return ret;
+  }
+
+  // ------------------------------------------------------
+  // Case: *v = e, where v is a pointer and e an expression
+  // ------------------------------------------------------
+  if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
+		assign(&ret, s->assign_lhs(), s->assign_rhs());
+		ret.back().cond(cond); //.comment("Assign *var (deref) in Where");
+    return ret;
   }
 
   // ---------------------------------------------
   // Case: s0 ; s1, where s0 and s1 are statements
   // ---------------------------------------------
   if (s->tag == SEQ) {
-    whereStmt(seq, s->seq.s0, condVar, cond, true);
-    whereStmt(seq, s->seq.s1, condVar, cond, saveRestore);
-    return;
+    ret << whereStmt(s->seq_s0(), condVar, cond, true)
+        << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
+    return ret;
   }
 
   // ----------------------------------------------------------
@@ -827,587 +432,420 @@ void whereStmt( Seq<Instr>* seq
   //                        s0 and s1 are statements.
   // ----------------------------------------------------------
   if (s->tag == WHERE) {
-    if (cond.tag == ALWAYS) {
-      // This case has a cheaper implementation
+		using Target::instr::mov;
+		AssignCond andCond = AssignCond(CmpOp(NEQ, INT32));  // Wonky syntax to get the flags right
 
-      // Compile new boolean expression
-      AssignCond newCond = boolExp(seq, s->where.cond, condVar, true);
+    if (cond.is_always()) {
+			// Top-level handling of where-statements
+
+      Var newCondVar   = freshVar();
+			AssignCond newCond;
+			{
+				Seq<Instr> seq;
+      	// Compile new boolean expression
+      	newCond = boolExp(&seq, s->where_cond(), newCondVar);
+				if (!seq.empty()) seq.front().comment("Start where (always)");
+				ret << seq;
+			}
 
       // Compile 'then' statement
-      if (s->where.thenStmt != NULL)
-        whereStmt(seq, s->where.thenStmt, condVar, newCond,
-          s->where.elseStmt != NULL);
+      if (s->thenStmt().get() != nullptr) {
+				auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, s->elseStmt().get() != nullptr);
+				if (!seq.empty()) seq.front().comment("then-branch of where (always)");
+				ret << seq;
+			}
 
       // Compile 'else' statement
-      if (s->where.elseStmt != NULL)
-        whereStmt(seq, s->where.elseStmt, condVar,
-                    negAssignCond(newCond), false);
-    }
-    else {
-      // Save condVar
-      Var savedCondVar = freshVar();
-      if (saveRestore || s->where.elseStmt != NULL)
-        seq->append(move(savedCondVar, condVar, false));
+      if (s->elseStmt().get() != nullptr) {
+	     	Var v2 = freshVar();
+				ret << bxor(v2, newCondVar, 1).setCondFlag(Flag::ZC);
+
+        auto seq = whereStmt(s->elseStmt(), v2, andCond, false);
+				if (!seq.empty()) seq.front().comment("else-branch of where (always)");
+				ret << seq;
+			}
+
+			// Reset flags to initial value
+			// TODO check if really needed
+			Var dummy = freshVar();
+			ret << mov(dummy, condVar).setCondFlag(Flag::ZC);
+    } else {
+			// Where-statements nested in other where-statements
 
       // Compile new boolean expression
-      Var newCondVar = freshVar();
-      AssignCond newCond = boolExp(seq, s->where.cond, newCondVar, true);
+      Var newCondVar   = freshVar();
+			AssignCond newCond;
+			{
+				Seq<Instr> seq;
+      	// Compile new boolean expression
+      	newCond = boolExp(&seq, s->where_cond(), newCondVar);
+				if (!seq.empty()) seq.front().comment("Start where (nested)");
+				ret << seq;
+			}
 
-      if (s->where.thenStmt != NULL) {
-        // AND new boolean expression with original condition
-        AssignCond andCond = boolAnd(seq, cond, condVar, newCond, true);
+      if (s->thenStmt().get() != nullptr) {  // NOTE: syntax allows then-stmt to be empty and else not empty
+				// AND new boolean expression with original condition
+	     	Var dummy   = freshVar();
+				ret << band(dummy, condVar, newCondVar).setCondFlag(Flag::ZC);
 
         // Compile 'then' statement
-        whereStmt(seq, s->where.thenStmt, condVar, andCond, false);
+				{
+					auto seq = whereStmt(s->thenStmt(), dummy, andCond, false);
+					if (!seq.empty()) seq.front().comment("then-branch of where (nested)");
+					ret << seq;
+				}
       }
 
-      if (saveRestore || s->where.elseStmt != NULL)
-        seq->append(move(condVar, savedCondVar, true));
+      if (s->elseStmt() != nullptr) {
+	     	Var v2   = freshVar();
+	     	Var dummy   = freshVar();
+				ret << bxor(v2, newCondVar, 1);
+				ret << band(dummy, condVar, v2).setCondFlag(Flag::ZC);
 
-      if (s->where.elseStmt != NULL) {
-        // AND negation of new boolean expression with original condition
-        AssignCond andCond = boolAnd(seq, negAssignCond(newCond), newCondVar,
-                               cond, true);
-  
         // Compile 'else' statement
-        whereStmt(seq, s->where.elseStmt, newCondVar, andCond, false);
-  
-        // Restore condVar and implicit condition vector
-        if (saveRestore)
-          seq->append(move(condVar, savedCondVar, true));
+				{
+	        auto seq = whereStmt(s->elseStmt(), dummy, andCond, false);
+					if (!seq.empty()) seq.front().comment("else-branch of where (nested)");
+					ret << seq;
+				}
       }
+
+			// Reset flags to initial value
+     	Var dummy = freshVar();
+			ret << mov(dummy, condVar).setCondFlag(Flag::ZC);
     }
 
-    return;
+    return ret;
   }
 
-  printf("QPULib: only assignments and nested 'where' \
-          statements can occur in a 'where' statement\n");
-  assert(false);
+  assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement", true);
+	return ret;
 }
+
 
 // ============================================================================
 // Print statements
 // ============================================================================
 
-void printStmt(Seq<Instr>* seq, PrintStmt s)
-{
+Seq<Instr> printStmt(Stmt::Ptr stmt) {
+	Seq<Instr> ret;
   Instr instr;
-  switch (s.tag) {
-    case PRINT_INT:
-    case PRINT_FLOAT: {
-      AssignCond always;
-      always.tag = ALWAYS;
+
+	auto expr_to_reg = [&ret] (Expr::Ptr expr) -> Reg {
+		if (expr ->tag() == Expr::VAR) {
+   	  return srcReg(expr->var());
+		} else {
       Var tmpVar = freshVar();
-      varAssign(seq, always, tmpVar, s.expr);
-      if (s.tag == PRINT_INT) {
-        instr.tag = PRI;
-        instr.PRI = srcReg(tmpVar);
-      }
-      else {
-        instr.tag = PRF;
-        instr.PRF = srcReg(tmpVar);
-      }
-      seq->append(instr);
-      return;
-    }
+ 	    ret << varAssign(tmpVar, expr);
+   	  return srcReg(tmpVar);
+		}
+	};
+
+  switch (stmt->print.tag()) {
+    case PRINT_INT:
+      instr.tag = PRI;
+   	  instr.PRI = expr_to_reg(stmt->print_expr());
+    	break;
+    case PRINT_FLOAT:
+      instr.tag = PRF;
+   	  instr.PRI = expr_to_reg(stmt->print_expr());
+    	break;
     case PRINT_STR:
       instr.tag = PRS;
-      instr.PRS = s.str;
-      seq->append(instr);
-      return;
+      instr.PRS = stmt->print.str();
+    break;
+		default:
+			assert(false);
+			break;
   }
 
-  assert(false);
+	ret << instr;
+	return ret;
 }
 
-// ============================================================================
-// Set-stride statements
-// ============================================================================
 
-void setStrideStmt(Seq<Instr>* seq, StmtTag tag, Expr* e)
-{
-  if (e->tag == INT_LIT) {
-    if (tag == SET_READ_STRIDE)
-      genSetReadPitch(seq, e->intLit);
-    else
-      genSetWriteStride(seq, e->intLit);
-  }
-  else if (e->tag == VAR) {
-    if (tag == SET_READ_STRIDE)
-      genSetReadPitch(seq, srcReg(e->var));
-    else
-      genSetWriteStride(seq, srcReg(e->var));
-  }
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    if (tag == SET_READ_STRIDE)
-      genSetReadPitch(seq, srcReg(v));
-    else
-      genSetWriteStride(seq, srcReg(v));
-  }
+Instr loadReceive(Expr::Ptr dest) {
+	assert(dest->tag() == Expr::VAR);
+
+  Instr instr(RECV);
+  instr.RECV.dest = dstReg(dest->var());
+	return instr;
 }
 
-// ============================================================================
-// VPM setup statements
-// ============================================================================
 
-void setupVPMReadStmt(Seq<Instr>* seq, int n, Expr* e, int hor, int stride)
-{
-  if (e->tag == INT_LIT)
-    genSetupVPMLoad(seq, n, e->intLit, hor, stride);
-  else if (e->tag == VAR)
-    genSetupVPMLoad(seq, n, srcReg(e->var), hor, stride);
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    genSetupVPMLoad(seq, n, srcReg(v), hor, stride);
-  }
+void stmt(Seq<Instr>* seq, Stmt::Ptr s);  // Forward declaration
+
+/**
+ * Translate if-then-else statement to target code
+ */
+void translateIf(Seq<Instr> &seq, Stmt &s) {
+	using namespace Target::instr;
+
+	Label endifLabel = freshLabel();
+	BranchCond cond  = condExp(seq, *s.if_cond());  // Compile condition
+    
+	if (s.elseStmt().get() == nullptr) {
+		seq << branch(cond.negate(), endifLabel);  // Branch over 'then' statement
+		stmt(&seq, s.thenStmt());                  // Compile 'then' statement
+	} else {
+		Label elseLabel = freshLabel();
+
+		seq << branch(cond.negate(), elseLabel);   // Branch to 'else' statement
+
+		stmt(&seq, s.thenStmt());                  // Compile 'then' statement
+
+		seq << branch(endifLabel)                  // Branch to endif
+		    << label(elseLabel);                   // Label for 'else' statement
+
+		stmt(&seq, s.elseStmt());                  // Compile 'else' statement
+	}
+	
+	seq << label(endifLabel);                    // Label for endif
 }
 
-void setupVPMWriteStmt(Seq<Instr>* seq, Expr* e, int hor, int stride)
-{
-  if (e->tag == INT_LIT)
-    genSetupVPMStore(seq, e->intLit, hor, stride);
-  else if (e->tag == VAR)
-    genSetupVPMStore(seq, srcReg(e->var), hor, stride);
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    genSetupVPMStore(seq, srcReg(v), hor, stride);
-  }
+
+void translateWhile(Seq<Instr> &seq, Stmt &s) {
+	using namespace Target::instr;
+
+	Label startLabel = freshLabel();
+	Label endLabel   = freshLabel();
+	BranchCond cond  = condExp(seq, *s.loop_cond());     // Compile condition
+ 
+	seq << branch(cond.negate(), endLabel)             // Branch over loop body
+	    << label(startLabel);                          // Start label
+
+	if (!s.body_is_null()) stmt(&seq, s.body());       // Compile body
+	condExp(seq, *s.loop_cond());                        // Compute condition again
+		                                                 // TODO why is this necessary?
+
+	seq << branch(cond, startLabel)                    // Branch to start
+	    << label(endLabel);                            // End label
 }
 
-// ============================================================================
-// DMA statements
-// ============================================================================
-
-void setupDMAReadStmt(Seq<Instr>* seq, int numRows, int rowLen,
-                        int hor, Expr* e, int vpitch)
-{
-  if (e->tag == INT_LIT)
-    genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, e->intLit);
-  else if (e->tag == VAR)
-    genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, srcReg(e->var));
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    genSetupDMALoad(seq, numRows, rowLen, hor, vpitch, srcReg(v));
-  }
-}
-
-void setupDMAWriteStmt(Seq<Instr>* seq, int numRows, int rowLen,
-                        int hor, Expr* e)
-{
-  if (e->tag == INT_LIT)
-    genSetupDMAStore(seq, numRows, rowLen, hor, e->intLit);
-  else if (e->tag == VAR)
-    genSetupDMAStore(seq, numRows, rowLen, hor, srcReg(e->var));
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    genSetupDMAStore(seq, numRows, rowLen, hor, srcReg(v));
-  }
-}
-
-void startDMAReadStmt(Seq<Instr>* seq, Expr* e)
-{
-  if (e->tag == VAR)
-    genStartDMALoad(seq, srcReg(e->var));
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    genStartDMALoad(seq, srcReg(e->var));
-  }
-}
-
-void startDMAWriteStmt(Seq<Instr>* seq, Expr* e)
-{
-  if (e->tag == VAR)
-    genStartDMAStore(seq, srcReg(e->var));
-  else {
-    AssignCond always;
-    always.tag = ALWAYS;
-    Var v = freshVar();
-    varAssign(seq, always, v, e);
-    genStartDMAStore(seq, srcReg(e->var));
-  }
-}
-
-// ============================================================================
-// Load receive statements
-// ============================================================================
-
-void loadReceive(Seq<Instr>* seq, Expr* dest)
-{
-  assert(dest->tag == VAR);
-  Instr instr;
-  instr.tag = RECV;
-  instr.RECV.dest = dstReg(dest->var);
-  seq->append(instr);
-}
-
-// ============================================================================
-// Store request
-// ============================================================================
-
-// A 'store' operation of data to addr is almost the same as
-// *addr = data.  The difference is that a 'store' waits until
-// outstanding DMAs have completed before performing a write rather
-// than after a write.  This enables other operations to happen in
-// parallel with the write.
-
-void storeRequest(Seq<Instr>* seq, Expr* data, Expr* addr)
-{
-  if (data->tag != VAR || addr->tag != VAR) {
-    data = putInVar(seq, data);
-    addr = putInVar(seq, addr);
-  }
-
-  // QPU id
-  Reg qpuId;
-  qpuId.tag = SPECIAL;
-  qpuId.regId = SPECIAL_QPU_NUM;
-  // Setup VPM
-  Reg addrReg = freshReg();
-  seq->append(genLI(addrReg, 16));
-  seq->append(genADD(addrReg, addrReg, qpuId));
-  genSetupVPMStore(seq, addrReg, 0, 1);
-  // Store address
-  Reg storeAddr = freshReg();
-  seq->append(genLI(storeAddr, 256));
-  seq->append(genADD(storeAddr, storeAddr, qpuId));
-  // Wait for any outstanding store to complete
-  genWaitDMAStore(seq);
-  // Setup DMA
-  genSetWriteStride(seq, 0);
-  genSetupDMAStore(seq, 16, 1, 1, storeAddr);
-  // Put to VPM
-  Reg dataReg;
-  dataReg.tag = SPECIAL;
-  dataReg.regId = SPECIAL_VPM_WRITE;
-  seq->append(genLShift(dataReg, srcReg(data->var), 0));
-  // Start DMA
-  genStartDMAStore(seq, srcReg(addr->var));
-}
-
-// ============================================================================
-// Semaphores
-// ============================================================================
-
-void semaphore(Seq<Instr>* seq, StmtTag tag, int semaId)
-{
-  Instr instr;
-  instr.tag = tag == SEMA_INC ? SINC : SDEC;
-  instr.semaId = semaId;
-  seq->append(instr);
-}
-
-// ============================================================================
-// Host IRQ
-// ============================================================================
-
-void sendIRQToHost(Seq<Instr>* seq)
-{
-  Instr instr;
-  instr.tag = IRQ;
-  seq->append(instr);
-}
 
 // ============================================================================
 // Statements
 // ============================================================================
 
-void stmt(Seq<Instr>* seq, Stmt* s)
-{
-  if (s == NULL) return;
+void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
+  if (s == nullptr) return;
 
-  // ----------
-  // Case: skip
-  // ----------
-  if (s->tag == SKIP) return;
+  switch (s->tag) {
+		case SKIP:
+			break;
+		case ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
+      assign(seq, s->assign_lhs(), s->assign_rhs());
+			break;
+    case SEQ:                      // 's0 ; s1', where s1 and s2 are statements
+      stmt(seq, s->seq_s0());
+      stmt(seq, s->seq_s1());
+			break;
+  	case IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
+			translateIf(*seq, *s);
+			break;
+  	case WHILE:                    // 'while (c) s', where c is a condition, and s a statement
+			translateWhile(*seq, *s);
+			break;
+  	case WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
+	    	Var condVar = freshVar();  // This is the top-level definition of condVar
+	    	*seq << whereStmt(s, condVar, always, false);
+			}
+			break;
+  	case PRINT:                    // 'print(e)', where e is an expr or a string
+	    *seq << printStmt(s);
+			break;
+  	case LOAD_RECEIVE:             // 'receive(e)', where e is an expr
+	    *seq << loadReceive(s->loadDest());
+			break;
+		default:
+			if (!getSourceTranslate().stmt(*seq, s)) {
+		  	assert(false); // Should not be reachable
+			}
+			break;
+	}
 
-  // --------------------------------------------------
-  // Case: lhs = rhs, where lhs and rhs are expressions
-  // --------------------------------------------------
-  if (s->tag == ASSIGN) {
-    assign(seq, s->assign.lhs, s->assign.rhs);
-    return;
-  }
-
-  // ---------------------------------------------
-  // Case: s0 ; s1, where s1 and s2 are statements
-  // ---------------------------------------------
-
-  if (s->tag == SEQ) {
-    stmt(seq, s->seq.s0);
-    stmt(seq, s->seq.s1);
-    return;
-  }
-
-  // -------------------------------------------------------------------
-  // Case: if (c) s0 s1, where c is a condition, and lhs,rhs expressions
-  // -------------------------------------------------------------------
-  if (s->tag == IF) {
-    Instr instr;
-    Label elseLabel  = freshLabel();
-    Label endifLabel = freshLabel();
-    // Compile condition
-    BranchCond cond  = condExp(seq, s->ifElse.cond);
-    
-    // Branch to 'else' statement
-    Instr branchElse;
-    instr.tag       = BRL;
-    instr.BRL.cond  = negBranchCond(cond);
-    instr.BRL.label = elseLabel;
-    seq->append(instr);
-
-    // Compile 'then' statement
-    stmt(seq, s->ifElse.thenStmt);
-
-    // Branch to endif
-    instr.tag          = BRL;
-    instr.BRL.cond.tag = COND_ALWAYS;
-    instr.BRL.label    = endifLabel;
-    if (s->ifElse.elseStmt != NULL) seq->append(instr);
-
-    // Label for 'else' statement
-    instr.tag   = LAB;
-    instr.label = elseLabel;
-    seq->append(instr);
-
-    // Compile 'else' statement
-    stmt(seq, s->ifElse.elseStmt);
-
-    // Label for endif
-    instr.tag   = LAB;
-    instr.label = endifLabel;
-    seq->append(instr);
-
-    return;
-  }
-
-  // -----------------------------------------------------------
-  // Case: while (c) s where c is a condition, and s a statement
-  // -----------------------------------------------------------
-  if (s->tag == WHILE) {
-    Instr instr;
-    Label startLabel = freshLabel();
-    Label endLabel   = freshLabel();
-    // Compile condition
-    BranchCond cond  = condExp(seq, s->loop.cond);
- 
-    // Branch over loop body
-    Instr branchEnd;
-    instr.tag       = BRL;
-    instr.BRL.cond  = negBranchCond(cond);
-    instr.BRL.label = endLabel;
-    seq->append(instr);
-
-    // Start label
-    instr.tag   = LAB;
-    instr.label = startLabel;
-    seq->append(instr);
-
-    // Compile body
-    if (s->loop.body != NULL) stmt(seq, s->loop.body);
-
-    // Compute condition again
-    condExp(seq, s->loop.cond);
-
-    // Branch to start
-    instr.tag       = BRL;
-    instr.BRL.cond  = cond;
-    instr.BRL.label = startLabel;
-    seq->append(instr);
-
-    // End label
-    instr.tag   = LAB;
-    instr.label = endLabel;
-    seq->append(instr);
-
-    return;
-  }
-
-  // ----------------------------------------------------------------------
-  // Case: where (b) s0 s1 where c is a boolean expr, and s0, s1 statements
-  // ----------------------------------------------------------------------
-  if (s->tag == WHERE) {
-    Var condVar = freshVar();
-    AssignCond always;
-    always.tag = ALWAYS;
-    whereStmt(seq, s, condVar, always, false);
-    return;
-  }
-
-  // ---------------------------------------------
-  // Case: print(e) where e is an expr or a string
-  // ---------------------------------------------
-  if (s->tag == PRINT) {
-    printStmt(seq, s->print);
-    return;
-  }
-
-  // --------------------------------------------------------------
-  // Case: setReadStride(e) or setWriteStride(e) where e is an expr
-  // --------------------------------------------------------------
-  if (s->tag == SET_READ_STRIDE || s->tag == SET_WRITE_STRIDE) {
-    setStrideStmt(seq, s->tag, s->stride);
-    return;
-  }
-
-  // -----------------------------------
-  // Case: receive(e) where e is an expr
-  // -----------------------------------
-  if (s->tag == LOAD_RECEIVE) {
-    loadReceive(seq, s->loadDest);
-    return;
-  }
-
-  // ---------------------------------------------
-  // Case: store(e0, e1) where e1 and e2 are exprs
-  // ---------------------------------------------
-  if (s->tag == STORE_REQUEST) {
-    storeRequest(seq, s->storeReq.data, s->storeReq.addr);
-    return;
-  }
-
-  // ---------------------------------------------------------------
-  // Case: semaInc(n) or semaDec(n) where n is an int (semaphore id)
-  // ---------------------------------------------------------------
-  if (s->tag == SEMA_INC || s->tag == SEMA_DEC) {
-    semaphore(seq, s->tag, s->semaId);
-    return;
-  }
-
-  // ---------------
-  // Case: hostIRQ()
-  // ---------------
-  if (s->tag == SEND_IRQ_TO_HOST) {
-    sendIRQToHost(seq);
-    return;
-  }
-
-  // ----------------------------------------
-  // Case: vpmSetupRead(dir, n, addr, stride)
-  // ----------------------------------------
-  if (s->tag == SETUP_VPM_READ) {
-    setupVPMReadStmt(seq,
-      s->setupVPMRead.numVecs,
-      s->setupVPMRead.addr,
-      s->setupVPMRead.hor,
-      s->setupVPMRead.stride);
-    return;
-  }
-
-  // --------------------------------------
-  // Case: vpmSetupWrite(dir, addr, stride)
-  // --------------------------------------
-  if (s->tag == SETUP_VPM_WRITE) {
-    setupVPMWriteStmt(seq,
-      s->setupVPMWrite.addr,
-      s->setupVPMWrite.hor,
-      s->setupVPMWrite.stride);
-    return;
-  }
-
-  // ------------------------------------------------------
-  // Case: dmaSetupRead(dir, numRows, addr, rowLen, vpitch)
-  // ------------------------------------------------------
-  if (s->tag == SETUP_DMA_READ) {
-    setupDMAReadStmt(seq,
-      s->setupDMARead.numRows,
-      s->setupDMARead.rowLen,
-      s->setupDMARead.hor,
-      s->setupDMARead.vpmAddr,
-      s->setupDMARead.vpitch);
-    return;
-  }
-
-  // -----------------------------------------------
-  // Case: dmaSetupWrite(dir, numRows, addr, rowLen)
-  // -----------------------------------------------
-  if (s->tag == SETUP_DMA_WRITE) {
-    setupDMAWriteStmt(seq,
-      s->setupDMAWrite.numRows,
-      s->setupDMAWrite.rowLen,
-      s->setupDMAWrite.hor,
-      s->setupDMAWrite.vpmAddr);
-    return;
-  }
-
-  // -------------------
-  // Case: dmaReadWait()
-  // -------------------
-  if (s->tag == DMA_READ_WAIT) {
-    genWaitDMALoad(seq);
-    return;
-  }
-
-  // --------------------
-  // Case: dmaWriteWait()
-  // --------------------
-  if (s->tag == DMA_WRITE_WAIT) {
-    genWaitDMAStore(seq);
-    return;
-  }
-
-  // ------------------------
-  // Case: dmaStartRead(addr)
-  // ------------------------
-  if (s->tag == DMA_START_READ) {
-    startDMAReadStmt(seq, s->startDMARead);
-    return;
-  }
-
-  // -------------------------
-  // Case: dmaStartWrite(addr)
-  // -------------------------
-  if (s->tag == DMA_START_WRITE) {
-    startDMAWriteStmt(seq, s->startDMAWrite);
-    return;
-  }
-
-  // Not reachable
-  assert(false);
+	if (!s->comment().empty()) {
+		seq->back().comment(s->comment());
+	}
 }
 
-// ============================================================================
-// End code
-// ============================================================================
 
-void insertEndCode(Seq<Instr>* seq)
-{
-  Instr instr;
+/**
+ * Get the instruction of the last uniform load
+ */
+int lastUniformOffset(Seq<Instr> &code) {
+	// Detmine the first offset that is not a uniform load
+	int index = 0;
+	for (; index < code.size(); ++index) {
+		if (!code[index].isUniformLoad()) break; 
+	}
 
-  // Insert 'end' instruction
-  instr.tag = END;
-  seq->append(instr);
+	assertq(index >= 2, "Expecting at least two uniform loads.", true);
+
+	return index - 1;
 }
+
+}  // anon namespace
+
+
+/**
+ * Insert markers for initialization code
+ *
+ * Only used for `v3d`.
+ */
+void insertInitBlock(Seq<Instr> &code) {
+	using namespace V3DLib::Target::instr;  // for mov()
+
+	int index = lastUniformOffset(code);
+	Seq<Instr> ret;
+
+	if (Platform::instance().compiling_for_vc4()) {
+		// Add final dummy uniform handling
+		// See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
+		ret << mov(freshVar(), Var(UNIFORM));
+		ret.back().comment("Last uniform load is dummy value");
+	}
+
+	ret << Instr(INIT_BEGIN) << Instr(INIT_END);
+	code.insert(index + 1, ret);
+}
+
 
 // ============================================================================
 // Interface
 // ============================================================================
 
-// Top-level translation function for statements.
+/**
+ * Variable assignments
+ *
+ * Translate the conditional assignment of a variable to an expression.
+ *
+ * @param cond  Condition on assignment
+ * @param v     Variable on LHS
+ * @param expr  Expression on RHS
+ *
+ * @return  A sequence of instructions
+ */
+Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
+	using namespace V3DLib::Target::instr;
+	Seq<Instr> ret;
+  Expr e = *expr;
 
-void translateStmt(Seq<Instr>* seq, Stmt* s)
-{
-  stmt(seq, s);
-  insertEndCode(seq);
+	switch (e.tag()) {
+		case Expr::VAR:                                                   // 'v := w', where v and w are variables
+			ret << mov(v, e.var()).cond(cond);
+    	break;
+		case Expr::INT_LIT:                                               // 'v := i', where i is an integer literal
+			ret << li(v, e.intLit).cond(cond);
+    	break;
+		case Expr::FLOAT_LIT:                                             // 'v := f', where f is a float literal
+    	ret << li(v, e.floatLit).cond(cond);
+    	break;
+		case Expr::APPLY: {                                               // 'v := x op y'
+			if (!e.lhs()->isSimple() || !e.rhs()->isSimple()) { // x or y are not simple
+				e.lhs(simplify(&ret, e.lhs()));
+				e.rhs(simplify(&ret, e.rhs()));
+			}
+
+			if (e.lhs()->isLit() && e.rhs()->isLit()) {         // x and y are both literals
+				Var tmpVar = freshVar();
+				ret << varAssign(cond, tmpVar, e.lhs());
+				e.lhs(mkVar(tmpVar));
+			}
+
+			Instr instr(ALU);                                               // x and y are simple
+			instr.ALU.cond       = cond;
+			instr.ALU.dest       = dstReg(v);
+			instr.ALU.srcA       = operand(e.lhs());
+			instr.ALU.op         = e.apply_op.opcode();
+			instr.ALU.srcB       = operand(e.rhs());
+
+			ret << instr;
+		}
+		break;
+		case Expr::DEREF:                                                // 'v := *w'
+			if (e.deref_ptr()->tag() != Expr::VAR) {                       // w is not a variable
+				assert(!e.deref_ptr()->isLit());
+				e.deref_ptr(simplify(&ret, e.deref_ptr()));
+			}
+  		                                                               // w is a variable
+			//
+			// Restriction: we disallow dereferencing in conditional ('where')
+			// assignments for simplicity.  In most (all?) cases it should be
+			// trivial to lift these outside the 'where'.
+			//
+			assertq(cond.is_always(), "V3DLib: dereferencing not yet supported inside 'where'");
+			getSourceTranslate().varassign_deref_var(&ret, v, e);
+			break;
+		default:
+			assertq(false, "This case should not be reachable");
+			break;
+	}
+
+	return ret;
 }
 
-}  // namespace QPULib
+
+Seq<Instr> varAssign(Var v, Expr::Ptr expr) {
+	return varAssign(always, v, expr);  // TODO: For some reason, `always` *must* be passed in.
+	                                    //       Overloaded call generates segfault
+}
+
+
+/**
+ * Similar to 'simplify' but ensure that the result is a variable.
+ */
+Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
+	if (e->tag() == Expr::VAR) {
+		return e;
+	}
+
+	Var tmp = freshVar();
+	*seq << varAssign(tmp, e);
+	return mkVar(tmp);
+}
+
+
+/**
+ * Translate to target code
+ *
+ * Entry point for translation of statements.
+ */
+void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
+  stmt(&seq, s);
+}
+
+
+// ============================================================================
+// Load/Store pass
+// ============================================================================
+
+void loadStorePass(Seq<Instr> &instrs) {
+	using namespace V3DLib::Target::instr;
+
+  Seq<Instr> newInstrs(instrs.size()*2);
+
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
+
+    switch (instr.tag) {
+      case RECV: {
+        newInstrs << Instr(TMU0_TO_ACC4);
+				newInstrs.back().comment(instr.comment());
+        newInstrs << mov(instr.RECV.dest, ACC4);
+        break;
+      }
+      default:
+        newInstrs << instr;
+        break;
+    }
+  }
+
+
+  // Update original instruction sequence
+  instrs.clear();
+	instrs << newInstrs;
+}
+
+
+}  // namespace V3DLib

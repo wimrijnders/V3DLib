@@ -6,4 +6,4 @@ obj*
 *.pgm
 *.swp
 extern
-target_code.txt
+*_code.txt
