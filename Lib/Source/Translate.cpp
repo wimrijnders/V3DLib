@@ -753,14 +753,18 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
 				e.lhs(mkVar(tmpVar));
 			}
 
-			Instr instr(ALU);                                               // x and y are simple
-			instr.ALU.cond       = cond;
-			instr.ALU.dest       = dstReg(v);
-			instr.ALU.srcA       = operand(e.lhs());
-			instr.ALU.op         = e.apply_op.opcode();
-			instr.ALU.srcB       = operand(e.rhs());
+			if (e.apply_op.op == EXP) {
+				ret << bexp(v, e.lhs()->var());
+			} else {
+				Instr instr(ALU);                                 // x and y are simple
+				instr.ALU.cond       = cond;
+				instr.ALU.dest       = dstReg(v);
+				instr.ALU.srcA       = operand(e.lhs());
+				instr.ALU.op         = e.apply_op.opcode();
+				instr.ALU.srcB       = operand(e.rhs());
 
-			ret << instr;
+				ret << instr;
+			}
 		}
 		break;
 		case Expr::DEREF:                                                // 'v := *w'

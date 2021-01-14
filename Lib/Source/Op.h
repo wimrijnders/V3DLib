@@ -24,6 +24,9 @@ enum OpId {
 	// Conversion operators:
 	ItoF, FtoI,
 
+	// SFU functions
+	EXP,
+
 	// v3d only
 	TIDX,
 	EIDX
@@ -42,6 +45,7 @@ struct Op {
 	const char *to_string() const;
 	bool noParams() const;  // Yes, I know, doesn't make sense. Happens anyway
 	bool isUnary() const;
+	bool isFunction() const;
 	bool isCommutative() const;
 	ALUOp opcode() const;
 };

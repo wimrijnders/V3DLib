@@ -58,6 +58,9 @@ FloatExpr operator*(FloatExpr a, FloatExpr b);
 FloatExpr min(FloatExpr a, FloatExpr b);
 FloatExpr max(FloatExpr a, FloatExpr b);
 
+// SFU functions
+FloatExpr exp(FloatExpr x);
+
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_SOURCE_FLOAT_H_

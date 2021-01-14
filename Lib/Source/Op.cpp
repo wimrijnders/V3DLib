@@ -22,6 +22,8 @@ const char *Op::to_string() const {
 		case BNOT:   return "~";
 		case ItoF:   return "(Float) ";
 		case FtoI:   return "(Int) ";
+		// SFU functions
+		case EXP:    return "exp";
 		// v3d-specific
 		case TIDX:   return "tidx";
 		case EIDX:   return "eidx";
@@ -38,7 +40,12 @@ bool Op::noParams() const {
 
 
 bool Op::isUnary() const {
-  return (op == BNOT || op == ItoF || op == FtoI);
+  return (op == BNOT || op == ItoF || op == FtoI || op == EXP);
+}
+
+
+bool Op::isFunction() const {
+  return (op == EXP);
 }
 
 

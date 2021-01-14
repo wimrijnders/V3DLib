@@ -214,42 +214,42 @@ struct RegOrImm {
 
 // Add operators
 enum ALUOp {
-    NOP            // No op
+	NOP,            // No op
 
   // Opcodes for the 'add' ALU
-  , A_FADD         // Floating-point add
-  , A_FSUB         // Floating-point subtract
-  , A_FMIN         // Floating-point min
-  , A_FMAX         // Floating-point max
-  , A_FMINABS      // Floating-point min of absolute values
-  , A_FMAXABS      // Floating-point max of absolute values
-  , A_FtoI         // Float to signed integer
-  , A_ItoF         // Signed integer to float
-  , A_ADD          // Integer add
-  , A_SUB          // Integer subtract
-  , A_SHR          // Integer shift right
-  , A_ASR          // Integer arithmetic shift right
-  , A_ROR          // Integer rotate right
-  , A_SHL          // Integer shift left
-  , A_MIN          // Integer min
-  , A_MAX          // Integer max
-  , A_BAND         // Bitwise and
-  , A_BOR          // Bitwise or
-  , A_BXOR         // Bitwise xor
-  , A_BNOT         // Bitwise not
-  , A_CLZ          // Count leading zeros
-  , A_V8ADDS       // Add with saturation per 8-bit element
-  , A_V8SUBS       // Subtract with saturation per 8-bit element
+	A_FADD,         // Floating-point add
+	A_FSUB,         // Floating-point subtract
+	A_FMIN,         // Floating-point min
+	A_FMAX,         // Floating-point max
+	A_FMINABS,      // Floating-point min of absolute values
+	A_FMAXABS,      // Floating-point max of absolute values
+	A_FtoI,         // Float to signed integer
+	A_ItoF,         // Signed integer to float
+	A_ADD,          // Integer add
+	A_SUB,          // Integer subtract
+	A_SHR,          // Integer shift right
+	A_ASR,          // Integer arithmetic shift right
+	A_ROR,          // Integer rotate right
+	A_SHL,          // Integer shift left
+	A_MIN,          // Integer min
+	A_MAX,          // Integer max
+	A_BAND,         // Bitwise and
+	A_BOR,          // Bitwise or
+	A_BXOR,         // Bitwise xor
+	A_BNOT,         // Bitwise not
+	A_CLZ,          // Count leading zeros
+	A_V8ADDS,       // Add with saturation per 8-bit element
+	A_V8SUBS,       // Subtract with saturation per 8-bit element
 
   // Opcodes for the 'mul' ALU
-  , M_FMUL        // Floating-point multiply
-  , M_MUL24       // 24-bit integer multiply
-  , M_V8MUL       // Multiply per 8-bit element
-  , M_V8MIN       // Min per 8-bit element
-  , M_V8MAX       // Max per 8-bit element
-  , M_V8ADDS      // Add with saturation per 8-bit element
-  , M_V8SUBS      // Subtract with saturation per 8-bit element
-  , M_ROTATE,     // Rotation (intermediate op-code)
+	M_FMUL,        // Floating-point multiply
+	M_MUL24,       // 24-bit integer multiply
+	M_V8MUL,       // Multiply per 8-bit element
+	M_V8MIN,       // Min per 8-bit element
+	M_V8MAX,       // Max per 8-bit element
+	M_V8ADDS,      // Add with saturation per 8-bit element
+	M_V8SUBS,      // Subtract with saturation per 8-bit element
+	M_ROTATE,      // Rotation (intermediate op-code)
 
 	// v3d only
 	A_TIDX,
@@ -511,6 +511,7 @@ extern Reg const DMA_LD_WAIT;
 extern Reg const DMA_ST_WAIT;
 extern Reg const DMA_LD_ADDR;
 extern Reg const DMA_ST_ADDR;
+extern Reg const SFU_EXP;
 
 // Following registers are synonyms for v3d code generation,
 // to better indicate the intent. Definitions of vc4 concepts
@@ -526,6 +527,7 @@ Instr band(Var dst, Var srcA, Var srcB);
 Instr band(Reg dst, Reg srcA, int n);
 Instr bxor(Var dst, Var srcA, int n);
 Instr mov(Var dst, Var src);
+Instr mov(Var dst, Reg src);
 Instr mov(Var dst, int n);
 Instr mov(Reg dst, Var src);
 Instr mov(Reg dst, int n);
@@ -541,6 +543,9 @@ Instr li(Var v, float f);
 Instr branch(Label label);
 Instr branch(BranchCond cond, Label label);
 Instr label(Label in_label);
+
+// SFU functions
+Seq<Instr> bexp(Var dst, Var srcA);
 
 // v3d only
 Instr tmuwt();

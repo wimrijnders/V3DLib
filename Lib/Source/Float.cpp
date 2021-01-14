@@ -78,14 +78,22 @@ FloatExpr Float::operator=(FloatExpr rhs) {
 	return rhs;
 }
 
+
 // ============================================================================
 // Generic operations
 // ============================================================================
 
-inline FloatExpr mkFloatApply(FloatExpr a,Op op,FloatExpr b) {
-  Expr::Ptr e = mkApply(a.expr(), op, b.expr());
+inline FloatExpr mkFloatApply(FloatExpr lhs, Op op, FloatExpr rhs) {
+  Expr::Ptr e = mkApply(lhs.expr(), op, rhs.expr());
   return FloatExpr(e);
 }
+
+
+inline FloatExpr mkFloatApply(FloatExpr rhs, Op op) {
+  Expr::Ptr e = mkApply(rhs.expr(), op);
+  return FloatExpr(e);
+}
+
 
 // ============================================================================
 // Specific operations
@@ -110,5 +118,8 @@ FloatExpr operator-(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(SUB, F
 FloatExpr operator*(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(MUL, FLOAT), b); }
 FloatExpr min(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MIN, FLOAT), b); }
 FloatExpr max(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MAX, FLOAT), b); }
+
+// SFU functions
+FloatExpr exp(FloatExpr x) { return mkFloatApply(x, Op(EXP, FLOAT)); }
 
 }  // namespace V3DLib

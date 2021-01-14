@@ -92,6 +92,8 @@ std::string Expr::disp_apply() const {
 
 	if (apply_op.noParams()) {
 		ret << apply_op.to_string() << "()";
+	} else if (apply_op.isFunction()) {
+		ret << apply_op.to_string() << "(" << lhs()->pretty() << ")";
 	} else if (apply_op.isUnary()) {
 		ret << "(" << apply_op.to_string() << lhs()->pretty() << ")";
 	} else {
@@ -180,7 +182,25 @@ std::string BaseExpr::disp() const {
 
 Expr::Ptr mkIntLit(int lit) { return std::make_shared<Expr>(lit); }
 Expr::Ptr mkVar(Var var) { return std::make_shared<Expr>(var); }
-Expr::Ptr mkApply(Expr::Ptr lhs, Op op, Expr::Ptr rhs) { return std::make_shared<Expr>(lhs, op, rhs); }
 Expr::Ptr mkDeref(Expr::Ptr ptr) { return std::make_shared<Expr>(ptr); }
+
+
+/**
+ * Binary op version
+ */
+Expr::Ptr mkApply(Expr::Ptr lhs, Op op, Expr::Ptr rhs) {
+	assert(!op.isUnary());
+	return std::make_shared<Expr>(lhs, op, rhs);
+}
+
+
+/**
+ * Unary op version
+ */
+Expr::Ptr mkApply(Expr::Ptr lhs, Op op) {
+	assert(op.isUnary());
+	return std::make_shared<Expr>(lhs, op, mkIntLit(0));
+}
+
 
 }  // namespace V3DLib

@@ -343,6 +343,7 @@ Reg const DMA_LD_WAIT(SPECIAL, SPECIAL_DMA_LD_WAIT);
 Reg const DMA_ST_WAIT(SPECIAL, SPECIAL_DMA_ST_WAIT);
 Reg const DMA_LD_ADDR(SPECIAL, SPECIAL_DMA_LD_ADDR);
 Reg const DMA_ST_ADDR(SPECIAL, SPECIAL_DMA_ST_ADDR);
+Reg const SFU_EXP(    SPECIAL, SPECIAL_SFU_EXP);
 
 // Synonyms for v3d
 Reg const TMUD(SPECIAL, SPECIAL_VPM_WRITE);
@@ -355,6 +356,11 @@ Reg rf(uint8_t index) {
 
 Instr mov(Var dst, Var src) {
   return mov(dstReg(dst), srcReg(src));
+}
+
+
+Instr mov(Var dst, Reg src) {
+  return mov(dstReg(dst), src);
 }
 
 
@@ -484,6 +490,23 @@ Instr branch(Label label) {
 	instr.BRL.label    = label;
 
 	return instr;
+}
+
+
+/**
+ * This uses acc4 as interim storage.
+ * Also 2 NOP's required; TODO see this can be optimized
+ */
+Seq<Instr> bexp(Var dst, Var srcA) {
+	Instr nop;
+	Seq<Instr> ret;
+
+	ret << mov(SFU_EXP, srcA)
+	    << nop
+	    << nop
+	    << mov(dst, ACC4);
+
+	return ret;
 }
 
 

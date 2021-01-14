@@ -36,6 +36,7 @@ const char* specialStr(RegId rid)
     case SPECIAL_VPM_WRITE:    return "VPM_WRITE";
     case SPECIAL_HOST_INT:     return "HOST_INT";
     case SPECIAL_TMU0_S:       return "TMU0_S";
+    case SPECIAL_SFU_EXP:      return "SFU_EXP";
   }
 
   // Unreachable
@@ -174,6 +175,7 @@ std::string pretty_instr(Instr const &instr) {
           << pretty(instr.ALU.dest)
 			    << " <-" << instr.setCond().pretty() << " ";
 
+			// TODO rewrite as 'switch AluOp::num_operands()' or similar
 			if (instr.ALU.op == A_TIDX || instr.ALU.op == A_EIDX) {
 				// These have no source operands
 				buf << pretty_op(instr.ALU.op) << "()";
