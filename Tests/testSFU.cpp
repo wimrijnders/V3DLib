@@ -18,45 +18,56 @@ void show_results(SharedArray<float> &results) {
 
 
 void sfu(Float x, Ptr<Float> r) {
-	*r = 2*x;                r += 16;
-	*r = V3DLib::exp(3.0f);  r += 16;
-	*r = V3DLib::exp(x);     r += 16;
-	*r = V3DLib::recip(x); //    r += 16;
+	*r = 2*x;                  r += 16;
+	*r = V3DLib::exp(3.0f);    r += 16;
+	*r = V3DLib::exp(x);       r += 16;
+	*r = V3DLib::recip(x);     r += 16;
+	*r = V3DLib::recipsqrt(x); r += 16;
+	*r = V3DLib::log(x);
+}
+
+
+void check(SharedArray<float> &results, double precision) {
+	float val = 1.1f;
+
+	REQUIRE(results[0] == 2*val);
+	REQUIRE(abs(results[16*1] - 8.0)           < precision);
+	REQUIRE(abs(results[16*2] - exp2(val))     < precision);  // Should be exact, but isn't
+	REQUIRE(abs(results[16*3] - 1/val)         < precision);
+	REQUIRE(abs(results[16*4] - (1/sqrt(val))) < precision);
+	REQUIRE(abs(results[16*5] - log2(val))     < precision);
 }
 
 }  // anon namespace
 
 
 TEST_CASE("Test SFU functions", "[sfu]") {
-	Platform::use_main_memory(true);  // Remove this when testing on hardware QPUs
+	//Platform::use_main_memory(true);  // Remove this when testing on hardware QPUs
 
-	int N = 4;  // Number of results returned
+	int N = 6;  // Number of results returned
 
   SharedArray<float> results(16*N);
-  SharedArray<int> array(16);
 
 	auto k = compile(sfu);
 	k.load(1.1f, &results);
-	k.pretty(true);
+	//k.pretty(true);
 
+	INFO("Running interpreter");
 	results.fill(0.0);
 	k.interpret();
-	show_results(results);
-	CHECK(results[16*1] == 8.0f);
-	CHECK(results[16*2] == (float) exp2(1.1));  // Should be exact, but isn't
-	CHECK(results[16*3] == 1/1.1f);
+	//show_results(results);
+	check(results, 1e-6);
 
+	INFO("Running emulator");
 	results.fill(0.0);
 	k.emu();
-	show_results(results);
-	CHECK(results[16*1] == 8.0f);
-	CHECK(results[16*2] == (float) exp2(1.1));  // Should be exact, but isn't
-	CHECK(results[16*3] == 1/1.1f);
-/*
+	//show_results(results);
+	check(results, 1e-6);
+
+	INFO("Running qpu");
 	results.fill(0.0);
 	k.call();
-	show_results(results);
-	CHECK(results[16*1] == 8.0f);
-	CHECK(results[16*2] == (float) exp2(1.1));  //  Quite a large difference
-*/
+	//show_results(results);
+	check(results, 3e-4);  // None of the QPU SFU values are exact! Significant difference with int and emu
+	                       // Perhaps due to float precision, as opposed to double on cpu?
 }

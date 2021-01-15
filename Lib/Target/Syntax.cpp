@@ -97,7 +97,9 @@ Seq<Instr> sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *label
 	    << nop
 	    << mov(dst, ACC4);
 
-	ret.front().comment("SFU function exp");
+	std::string cmt = "SFU function ";
+	cmt += label;
+	ret.front().comment(cmt);
 
 	return ret;
 }
