@@ -1,5 +1,5 @@
 #include "Target/Emulator.h"
-#include <math.h>
+#include <cmath>
 #include "Support/basics.h"  // fatal()
 #include "EmuSupport.h"
 #include "Common/Seq.h"
@@ -36,6 +36,9 @@ struct QPUState {
   int readPitch = 0;                   // Read pitch
   int writeStride = 0;                 // Write stride
   SmallSeq<Vec> loadBuffer;            // Load buffer for loads via TMU
+
+	float SFU_unit[NUM_LANES];           // Last result of SFU unit call
+	int SFU_timer = -1;                  // Number of cycles to wait for SFU result.
 
 
 	QPUState() {
@@ -445,11 +448,22 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           s->loadBuffer.append(val);
           return;
         }
+				case SPECIAL_SFU_EXP: {
+					// Following check not necessary if SFU calls can be pipelined.
+					// Logic needs to change, then, to allowed for consecutive values
+					assertq(s->SFU_timer == -1, "SFU is running on SFU function call", true);
+          for (int i = 0; i < NUM_LANES; i++) {
+            float a = v[i].floatVal;
+						s->SFU_unit[i] = (float) ::exp2(a);
+          }
+					s->SFU_timer = 2;
+					return;
+				}
         default:
           break;
       }
 
-      fatal("V3DLib: can't write to special register");
+      assertq(false, "V3DLib: can't write to special register", true);
       return;
   }
 
@@ -755,6 +769,25 @@ void emulate(
       if (s->running) {
         anyRunning = true;
         assert(s->pc < instrs->size());
+
+				//
+				// Perform upkeep
+				//
+				if (s->SFU_timer > 0) {
+					s->SFU_timer--;
+				}
+
+				if (s->SFU_timer == 0) {
+					// finish pending SFU function
+          for (int i = 0; i < NUM_LANES; i++) {
+						s->accum[4][i].floatVal = s->SFU_unit[i];
+          }
+					s->SFU_timer = -1;
+				}
+
+				//
+				// Run next instruction
+				//
         Instr const instr = instrs->get(s->pc++);
         switch (instr.tag) {
           // Load immediate

@@ -158,14 +158,14 @@ Vec eval(CoreState* s, Expr::Ptr e) {
           float y = b[i].floatVal;
 
           switch (e->apply_op.op) {
-            case ADD:  v[i].floatVal = x+y;                          break;
-            case SUB:  v[i].floatVal = x-y;                          break;
-            case MUL:  v[i].floatVal = x*y;                          break;
-            case ItoF: v[i].floatVal = (float) a[i].intVal;          break;
-            case FtoI: v[i].intVal   = (int) a[i].floatVal;          break;
-            case MIN:  v[i].floatVal = x<y?x:y;                      break;
-            case MAX:  v[i].floatVal = x>y?x:y;                      break;
-            case EXP:  v[i].floatVal = (float) ::exp(a[i].floatVal); break;
+            case ADD:  v[i].floatVal = x+y;                           break;
+            case SUB:  v[i].floatVal = x-y;                           break;
+            case MUL:  v[i].floatVal = x*y;                           break;
+            case ItoF: v[i].floatVal = (float) a[i].intVal;           break;
+            case FtoI: v[i].intVal   = (int) a[i].floatVal;           break;
+            case MIN:  v[i].floatVal = x<y?x:y;                       break;
+            case MAX:  v[i].floatVal = x>y?x:y;                       break;
+            case EXP:  v[i].floatVal = (float) ::exp2(a[i].floatVal); break;
             default: assert(false);
           }
         }

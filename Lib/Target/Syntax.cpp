@@ -506,6 +506,8 @@ Seq<Instr> bexp(Var dst, Var srcA) {
 	    << nop
 	    << mov(dst, ACC4);
 
+	ret.front().comment("SFU function exp");
+
 	return ret;
 }
 

@@ -38,12 +38,14 @@ TEST_CASE("Test SFU functions", "[sfu]") {
 
 	results.fill(0.0);
 	k.interpret();
-	REQUIRE(results[16*1] == (float) exp(1.1));
-	//show_results(results);
+	show_results(results);
+	CHECK(results[16*1] == (float) exp2(1.1));  // Should be exact, but isn't
 
 	results.fill(0.0);
 	k.emu();
 	show_results(results);
+	CHECK(results[16*1] == (float) exp2(1.1));  // Should be exact, but isn't
+
 /*
 	results.fill(0.0);
 	k.call();
