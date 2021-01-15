@@ -65,6 +65,8 @@ struct Reg {
   bool operator!=(Reg const &rhs) const {
   	return !(*this == rhs);
 	}
+
+	std::string pretty() const;
 };
 
 

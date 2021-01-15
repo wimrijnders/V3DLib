@@ -154,18 +154,22 @@ Vec eval(CoreState* s, Expr::Ptr e) {
       } else if (e->apply_op.type == FLOAT) {
         // Floating-point operation
         for (int i = 0; i < NUM_LANES; i++) {
-          float x = a[i].floatVal;
-          float y = b[i].floatVal;
+          float  x = a[i].floatVal;
+          float  y = b[i].floatVal;
+          float &d = v[i].floatVal;
 
           switch (e->apply_op.op) {
-            case ADD:  v[i].floatVal = x+y;                           break;
-            case SUB:  v[i].floatVal = x-y;                           break;
-            case MUL:  v[i].floatVal = x*y;                           break;
-            case ItoF: v[i].floatVal = (float) a[i].intVal;           break;
-            case FtoI: v[i].intVal   = (int) a[i].floatVal;           break;
-            case MIN:  v[i].floatVal = x<y?x:y;                       break;
-            case MAX:  v[i].floatVal = x>y?x:y;                       break;
-            case EXP:  v[i].floatVal = (float) ::exp2(a[i].floatVal); break;
+            case ADD      : d = x+y;                   break;
+            case SUB      : d = x-y;                   break;
+            case MUL      : d = x*y;                   break;
+            case ItoF     : d = (float) a[i].intVal;   break;
+            case FtoI     : v[i].intVal   = (int) x;   break;
+            case MIN      : d = x<y?x:y;               break;
+            case MAX      : d = x>y?x:y;               break;
+            case RECIP    : d = 1/x;                   break; // TODO guard against zero?
+            case RECIPSQRT: d = (float) (1/::sqrt(x)); break; // TODO idem
+            case EXP      : d = (float) ::exp2(x);     break;
+            case LOG      : d = (float) ::log2(x);     break; // TODO idem
             default: assert(false);
           }
         }

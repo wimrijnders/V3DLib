@@ -59,7 +59,10 @@ FloatExpr min(FloatExpr a, FloatExpr b);
 FloatExpr max(FloatExpr a, FloatExpr b);
 
 // SFU functions
+FloatExpr recip(FloatExpr x);
+FloatExpr recipsqrt(FloatExpr x);
 FloatExpr exp(FloatExpr x);
+FloatExpr log(FloatExpr x);  
 
 }  // namespace V3DLib
 

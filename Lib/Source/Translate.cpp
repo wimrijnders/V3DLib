@@ -753,10 +753,23 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
 				e.lhs(mkVar(tmpVar));
 			}
 
-			if (e.apply_op.op == EXP) {
+		
+			switch (e.apply_op.op) {                            // x and y are simple
+			case RECIP:
+				ret << recip(v, e.lhs()->var());
+				break;
+			case RECIPSQRT:
+				ret << recipsqrt(v, e.lhs()->var());
+				break;
+			case EXP:
 				ret << bexp(v, e.lhs()->var());
-			} else {
-				Instr instr(ALU);                                 // x and y are simple
+				break;
+			case LOG:
+				ret << blog(v, e.lhs()->var());
+				break;
+			default:
+				// Everythin else is considered to be a single binary operation
+				Instr instr(ALU);
 				instr.ALU.cond       = cond;
 				instr.ALU.dest       = dstReg(v);
 				instr.ALU.srcA       = operand(e.lhs());
@@ -764,6 +777,7 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
 				instr.ALU.srcB       = operand(e.rhs());
 
 				ret << instr;
+				break;
 			}
 		}
 		break;

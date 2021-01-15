@@ -13,6 +13,75 @@ namespace V3DLib {
 
 namespace {
 
+class SFU {
+public:
+
+	/**
+	 * @return true if input handled, false otherwise
+	 */
+	bool writeReg(Reg dest, Vec v) {
+  	if (dest.tag != SPECIAL) return false;
+		bool handled = true;
+
+  	switch (dest.regId) {
+		case SPECIAL_SFU_RECIP:
+			for (int i = 0; i < NUM_LANES; i++) {
+				float a = v[i].floatVal;
+				value[i] = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
+			}
+			break;
+		case SPECIAL_SFU_RECIPSQRT:
+			for (int i = 0; i < NUM_LANES; i++) {
+				float a = (float) ::sqrt(v[i].floatVal);
+				value[i] = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
+			}
+			break;
+		case SPECIAL_SFU_EXP:
+			for (int i = 0; i < NUM_LANES; i++) {
+				float a = v[i].floatVal;
+				value[i] = (float) ::exp2(a);
+			}
+			break;
+		case SPECIAL_SFU_LOG:
+			for (int i = 0; i < NUM_LANES; i++) {
+				float a = v[i].floatVal;
+				value[i] = (float) ::log2(a);  // TODO what would lg2(0) return?
+			}
+			break;
+		default:
+			handled = false;
+			break;
+		}
+
+		if (handled) {
+			assertq(timer == -1, "SFU is running on SFU function call", true);
+			timer = 3;
+		}
+
+		return handled;
+	}
+
+
+	void upkeep(Vec &r4) {
+		if (timer > 0) {
+			timer--;
+		}
+
+		if (timer == 0) {
+			// finish pending SFU function
+			for (int i = 0; i < NUM_LANES; i++) {
+				r4[i].floatVal = value[i];
+			}
+			timer = -1;
+		}
+	}
+
+private:
+	float value[NUM_LANES];              // Last result of SFU unit call
+	int timer = -1;                      // Number of cycles to wait for SFU result.
+};
+
+
 // State of a single QPU.
 struct QPUState {
   int id = 0;                          // QPU id
@@ -37,9 +106,7 @@ struct QPUState {
   int writeStride = 0;                 // Write stride
   SmallSeq<Vec> loadBuffer;            // Load buffer for loads via TMU
 
-	float SFU_unit[NUM_LANES];           // Last result of SFU unit call
-	int SFU_timer = -1;                  // Number of cycles to wait for SFU result.
-
+	SFU sfu;
 
 	QPUState() {
     dmaLoad.active     = false;
@@ -60,6 +127,10 @@ struct QPUState {
     sizeRegFileA       = maxReg+1;
     regFileB           = new Vec [maxReg+1];
     sizeRegFileB       = maxReg+1;
+	}
+
+	void upkeep() {
+		sfu.upkeep(accum[4]);
 	}
 };
 
@@ -448,18 +519,10 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           s->loadBuffer.append(val);
           return;
         }
-				case SPECIAL_SFU_EXP: {
-					// Following check not necessary if SFU calls can be pipelined.
-					// Logic needs to change, then, to allowed for consecutive values
-					assertq(s->SFU_timer == -1, "SFU is running on SFU function call", true);
-          for (int i = 0; i < NUM_LANES; i++) {
-            float a = v[i].floatVal;
-						s->SFU_unit[i] = (float) ::exp2(a);
-          }
-					s->SFU_timer = 2;
-					return;
-				}
         default:
+					if (s->sfu.writeReg(dest, v)) {
+						return;
+					}
           break;
       }
 
@@ -770,20 +833,7 @@ void emulate(
         anyRunning = true;
         assert(s->pc < instrs->size());
 
-				//
-				// Perform upkeep
-				//
-				if (s->SFU_timer > 0) {
-					s->SFU_timer--;
-				}
-
-				if (s->SFU_timer == 0) {
-					// finish pending SFU function
-          for (int i = 0; i < NUM_LANES; i++) {
-						s->accum[4][i].floatVal = s->SFU_unit[i];
-          }
-					s->SFU_timer = -1;
-				}
+				s->upkeep();
 
 				//
 				// Run next instruction

@@ -81,6 +81,27 @@ const char *pretty(Flag flag) {
   }
 }
 
+
+/**
+ * This uses acc4 as interim storage.
+ * Also 2 NOP's required; TODO see this can be optimized
+ */
+Seq<Instr> sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *label) {
+	using namespace V3DLib::Target::instr;
+
+	Instr nop;
+	Seq<Instr> ret;
+
+	ret << mov(sfu_reg, srcA)
+	    << nop
+	    << nop
+	    << mov(dst, ACC4);
+
+	ret.front().comment("SFU function exp");
+
+	return ret;
+}
+
 }  // anon namespace
 
 
@@ -331,19 +352,24 @@ namespace instr {
 Reg const None(NONE, 0);
 Reg const ACC0(ACC, 0);
 Reg const ACC1(ACC, 1);
+Reg const ACC2(ACC, 2);
+Reg const ACC3(ACC, 3);
 Reg const ACC4(ACC, 4);
-Reg const QPU_ID(     SPECIAL, SPECIAL_QPU_NUM);
-Reg const ELEM_ID(    SPECIAL, SPECIAL_ELEM_NUM);
-Reg const TMU0_S(     SPECIAL, SPECIAL_TMU0_S);
-Reg const VPM_WRITE(  SPECIAL, SPECIAL_VPM_WRITE);
-Reg const VPM_READ(   SPECIAL, SPECIAL_VPM_READ);
-Reg const WR_SETUP(   SPECIAL, SPECIAL_WR_SETUP);
-Reg const RD_SETUP(   SPECIAL, SPECIAL_RD_SETUP);
-Reg const DMA_LD_WAIT(SPECIAL, SPECIAL_DMA_LD_WAIT);
-Reg const DMA_ST_WAIT(SPECIAL, SPECIAL_DMA_ST_WAIT);
-Reg const DMA_LD_ADDR(SPECIAL, SPECIAL_DMA_LD_ADDR);
-Reg const DMA_ST_ADDR(SPECIAL, SPECIAL_DMA_ST_ADDR);
-Reg const SFU_EXP(    SPECIAL, SPECIAL_SFU_EXP);
+Reg const QPU_ID(       SPECIAL, SPECIAL_QPU_NUM);
+Reg const ELEM_ID(      SPECIAL, SPECIAL_ELEM_NUM);
+Reg const TMU0_S(       SPECIAL, SPECIAL_TMU0_S);
+Reg const VPM_WRITE(    SPECIAL, SPECIAL_VPM_WRITE);
+Reg const VPM_READ(     SPECIAL, SPECIAL_VPM_READ);
+Reg const WR_SETUP(     SPECIAL, SPECIAL_WR_SETUP);
+Reg const RD_SETUP(     SPECIAL, SPECIAL_RD_SETUP);
+Reg const DMA_LD_WAIT(  SPECIAL, SPECIAL_DMA_LD_WAIT);
+Reg const DMA_ST_WAIT(  SPECIAL, SPECIAL_DMA_ST_WAIT);
+Reg const DMA_LD_ADDR(  SPECIAL, SPECIAL_DMA_LD_ADDR);
+Reg const DMA_ST_ADDR(  SPECIAL, SPECIAL_DMA_ST_ADDR);
+Reg const SFU_RECIP(    SPECIAL, SPECIAL_SFU_RECIP);
+Reg const SFU_RECIPSQRT(SPECIAL, SPECIAL_SFU_RECIPSQRT);
+Reg const SFU_EXP(      SPECIAL, SPECIAL_SFU_EXP);
+Reg const SFU_LOG(      SPECIAL, SPECIAL_SFU_LOG);
 
 // Synonyms for v3d
 Reg const TMUD(SPECIAL, SPECIAL_VPM_WRITE);
@@ -493,23 +519,10 @@ Instr branch(Label label) {
 }
 
 
-/**
- * This uses acc4 as interim storage.
- * Also 2 NOP's required; TODO see this can be optimized
- */
-Seq<Instr> bexp(Var dst, Var srcA) {
-	Instr nop;
-	Seq<Instr> ret;
-
-	ret << mov(SFU_EXP, srcA)
-	    << nop
-	    << nop
-	    << mov(dst, ACC4);
-
-	ret.front().comment("SFU function exp");
-
-	return ret;
-}
+Seq<Instr> recip(Var dst, Var srcA)     { return sfu_function(dst, srcA, SFU_RECIP    , "recip"); }
+Seq<Instr> recipsqrt(Var dst, Var srcA) { return sfu_function(dst, srcA, SFU_RECIPSQRT, "recipsqrt"); }
+Seq<Instr> bexp(Var dst, Var srcA)      { return sfu_function(dst, srcA, SFU_EXP      , "exp"); }
+Seq<Instr> blog(Var dst, Var srcA)      { return sfu_function(dst, srcA, SFU_LOG      , "log"); }
 
 
 /**

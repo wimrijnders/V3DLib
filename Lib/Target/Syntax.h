@@ -499,6 +499,8 @@ namespace instr {
 extern Reg const None;
 extern Reg const ACC0;
 extern Reg const ACC1;
+extern Reg const ACC2;
+extern Reg const ACC3;
 extern Reg const ACC4;
 extern Reg const QPU_ID;
 extern Reg const ELEM_ID;
@@ -511,7 +513,10 @@ extern Reg const DMA_LD_WAIT;
 extern Reg const DMA_ST_WAIT;
 extern Reg const DMA_LD_ADDR;
 extern Reg const DMA_ST_ADDR;
+extern Reg const SFU_RECIP;
+extern Reg const SFU_RECIPSQRT;
 extern Reg const SFU_EXP;
+extern Reg const SFU_LOG;
 
 // Following registers are synonyms for v3d code generation,
 // to better indicate the intent. Definitions of vc4 concepts
@@ -545,7 +550,10 @@ Instr branch(BranchCond cond, Label label);
 Instr label(Label in_label);
 
 // SFU functions
+Seq<Instr> recip(Var dst, Var srcA);
+Seq<Instr> recipsqrt(Var dst, Var srcA);
 Seq<Instr> bexp(Var dst, Var srcA);
+Seq<Instr> blog(Var dst, Var srcA);
 
 // v3d only
 Instr tmuwt();

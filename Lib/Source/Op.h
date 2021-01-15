@@ -25,7 +25,10 @@ enum OpId {
 	ItoF, FtoI,
 
 	// SFU functions
+	RECIP,
+	RECIPSQRT,
 	EXP,
+	LOG,
 
 	// v3d only
 	TIDX,

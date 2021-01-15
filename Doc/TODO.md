@@ -22,7 +22,7 @@
 - [ ] Consider replacing DMA transfers (notably, write) with TMU.
 - [ ] Consider using device driver interface for vc4 - this will get rid of need for `sudo`
 - [ ] Enforce acc4 (r4) as a read-only register, notably in emulator
-- [ ] Examine: can SFU functions be pipelined?
+- [ ] Enforce non-usage of acc4 (r4) during sfu-call, notably in emulator
 
 
 ## Compile source code

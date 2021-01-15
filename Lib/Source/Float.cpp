@@ -120,6 +120,9 @@ FloatExpr min(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MIN, F
 FloatExpr max(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MAX, FLOAT), b); }
 
 // SFU functions
-FloatExpr exp(FloatExpr x) { return mkFloatApply(x, Op(EXP, FLOAT)); }
+FloatExpr recip(FloatExpr x)     { return mkFloatApply(x, Op(RECIP, FLOAT)); }
+FloatExpr recipsqrt(FloatExpr x) { return mkFloatApply(x, Op(RECIPSQRT, FLOAT)); }
+FloatExpr exp(FloatExpr x)       { return mkFloatApply(x, Op(EXP, FLOAT)); }
+FloatExpr log(FloatExpr x)       { return mkFloatApply(x, Op(LOG, FLOAT)); }
 
 }  // namespace V3DLib

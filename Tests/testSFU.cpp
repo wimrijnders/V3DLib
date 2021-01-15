@@ -17,19 +17,20 @@ void show_results(SharedArray<float> &results) {
 }
 
 
-void sfu(Float x, Ptr<Float> results) {
-	*results = 2*x;                results += 16;
-	*results = V3DLib::exp(3.0f);  results += 16;
-	*results = V3DLib::exp(x);
+void sfu(Float x, Ptr<Float> r) {
+	*r = 2*x;                r += 16;
+	*r = V3DLib::exp(3.0f);  r += 16;
+	*r = V3DLib::exp(x);     r += 16;
+	*r = V3DLib::recip(x); //    r += 16;
 }
 
 }  // anon namespace
 
 
 TEST_CASE("Test SFU functions", "[sfu]") {
-	//Platform::use_main_memory(true);  // Remove this when testing on QPUs
+	Platform::use_main_memory(true);  // Remove this when testing on hardware QPUs
 
-	int N = 3;  // Number of results returned
+	int N = 4;  // Number of results returned
 
   SharedArray<float> results(16*N);
   SharedArray<int> array(16);
@@ -43,16 +44,19 @@ TEST_CASE("Test SFU functions", "[sfu]") {
 	show_results(results);
 	CHECK(results[16*1] == 8.0f);
 	CHECK(results[16*2] == (float) exp2(1.1));  // Should be exact, but isn't
+	CHECK(results[16*3] == 1/1.1f);
 
 	results.fill(0.0);
 	k.emu();
 	show_results(results);
 	CHECK(results[16*1] == 8.0f);
 	CHECK(results[16*2] == (float) exp2(1.1));  // Should be exact, but isn't
-
+	CHECK(results[16*3] == 1/1.1f);
+/*
 	results.fill(0.0);
 	k.call();
 	show_results(results);
 	CHECK(results[16*1] == 8.0f);
 	CHECK(results[16*2] == (float) exp2(1.1));  //  Quite a large difference
+*/
 }

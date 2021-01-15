@@ -19,46 +19,6 @@ const char* pretty(SubWord sw) {
   }
 }
 
-const char* specialStr(RegId rid)
-{
-  Special s = (Special) rid;
-  switch (s) {
-    case SPECIAL_UNIFORM:      return "UNIFORM";
-    case SPECIAL_ELEM_NUM:     return "ELEM_NUM";
-    case SPECIAL_QPU_NUM:      return "QPU_NUM";
-    case SPECIAL_RD_SETUP:     return "RD_SETUP";
-    case SPECIAL_WR_SETUP:     return "WR_SETUP";
-    case SPECIAL_DMA_ST_ADDR:  return "DMA_ST_ADDR";
-    case SPECIAL_DMA_LD_ADDR:  return "DMA_LD_ADDR";
-    case SPECIAL_DMA_ST_WAIT:  return "DMA_ST_WAIT";
-    case SPECIAL_DMA_LD_WAIT:  return "DMA_LD_WAIT";
-    case SPECIAL_VPM_READ:     return "VPM_READ";
-    case SPECIAL_VPM_WRITE:    return "VPM_WRITE";
-    case SPECIAL_HOST_INT:     return "HOST_INT";
-    case SPECIAL_TMU0_S:       return "TMU0_S";
-    case SPECIAL_SFU_EXP:      return "SFU_EXP";
-  }
-
-  // Unreachable
-  assert(false);
-	return "";
-}
-
-std::string pretty(Reg r) {
-	std::string ret;
-
-  switch (r.tag) {
-    case REG_A:   ret <<   "A" << r.regId; break;
-    case REG_B:   ret <<   "B" << r.regId; break;
-    case ACC:     ret << "ACC" << r.regId; break;
-    case SPECIAL: ret <<  "S[" << specialStr(r.regId) << "]"; break;
-    case NONE:    ret <<   "_"; break;
-		default: assert(false); break;
-  }
-
-	return ret;
-}
-
 
 std::string pretty(Imm imm) {
 	std::string ret;
@@ -101,7 +61,7 @@ std::string pretty(SmallImm imm) {
 
 std::string pretty(RegOrImm r) {
   switch (r.tag) {
-    case REG: return pretty(r.reg);
+    case REG: return r.reg.pretty();
     case IMM: return pretty(r.smallImm);
 		default: assert(false); return "";
   }
@@ -165,14 +125,14 @@ std::string pretty_instr(Instr const &instr) {
   switch (instr.tag) {
     case LI: {
 			buf << instr.LI.cond.to_string()
-			    << "LI " << pretty(instr.LI.dest)
+			    << "LI " << instr.LI.dest.pretty()
 			    << " <-" << instr.setCond().pretty() << " "
       		<< pretty(instr.LI.imm);
 		}
 		break;
     case ALU: {
 			buf << instr.ALU.cond.to_string()
-          << pretty(instr.ALU.dest)
+          << instr.ALU.dest.pretty()
 			    << " <-" << instr.setCond().pretty() << " ";
 
 			// TODO rewrite as 'switch AluOp::num_operands()' or similar
@@ -199,13 +159,13 @@ std::string pretty_instr(Instr const &instr) {
 			buf << "PRS(\"" << instr.PRS << "\")";
       break;
     case PRI:
-      buf << "PRI(" << pretty(instr.PRI) << ")";
+      buf << "PRI(" << instr.PRI.pretty() << ")";
       break;
     case PRF:
-      buf << "PRF(" << pretty(instr.PRF) << ")";
+      buf << "PRF(" << instr.PRF.pretty() << ")";
       break;
     case RECV:
-      buf << "RECV(" <<  pretty(instr.RECV.dest) << ")";
+      buf << "RECV(" <<  instr.RECV.dest.pretty() << ")";
       break;
     case SINC:
       buf << "SINC " << instr.semaId;
