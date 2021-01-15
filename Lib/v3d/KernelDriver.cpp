@@ -192,6 +192,12 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
 					ret.reset(new Register(tmua));
 					break;
 
+				// SFU registers
+        case SPECIAL_SFU_RECIP    : ret.reset(new Register(recip));     break;
+        case SPECIAL_SFU_RECIPSQRT: ret.reset(new Register(rsqrt));     break;  // Alternative: register rsqrt2
+        case SPECIAL_SFU_EXP      : ret.reset(new Register(exp));       break;
+        case SPECIAL_SFU_LOG      : ret.reset(new Register(log));       break;
+
         default:
 					breakpoint
 					assert(false);  // Not expecting this
@@ -588,6 +594,18 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
 			    << fsub(*dst, 0, *dst);          // This only works because the floating point representation of zero is 0x0
 		} else if (SmallImm::float_to_opcode_value(value, rep_value)) {
 			ret << nop().fmov(*dst, rep_value);  // TODO perhaps make 2nd param Small Imm
+		} else if ((value == (float) ((int) value)) && SmallImm::int_to_opcode_value((int) value, rep_value)) {
+			// Handle small floats as small int's
+			SmallImm imm(rep_value);
+
+			ret << mov(*dst, imm);
+
+			std::string str = "Load immediate float ";
+			str << value;
+			ret.back().comment(str);
+
+			ret	<< itof(*dst, *dst, imm);  // TODO: why the imm?
+
 		} else {
 			// TODO: figure out how to handle other float immediates, if necessary at all
 			err_label = "float";

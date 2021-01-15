@@ -65,9 +65,17 @@ TEST_CASE("Test SFU functions", "[sfu]") {
 	check(results, 1e-6);
 
 	INFO("Running qpu");
+	//
+	// For vc4 one of the QPU SFU values are exact! Significant difference with int and emu.
+	// Perhaps due to float precision, as opposed to double on cpu?
+	//
+	// v3d has same output as int and emu.
+	//
+	double precision = (Platform::instance().has_vc4)?3e-4:1e-6;
+
 	results.fill(0.0);
+	//k.pretty(false);
 	k.call();
 	//show_results(results);
-	check(results, 3e-4);  // None of the QPU SFU values are exact! Significant difference with int and emu
-	                       // Perhaps due to float precision, as opposed to double on cpu?
+	check(results, precision);
 }
