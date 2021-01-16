@@ -269,11 +269,11 @@ void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
 If we apply this to the vertices in [Newell's teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
 (rendered using [Richard Hull's wireframes](https://github.com/rm-hull/wireframes) tool)
 
-<img src="Doc/teapot.png" alt="Newell's teapot" width=30%>
+![Newell's teapot](./images/teapot.png)
 
 with &theta; = 180 degrees, then we get
 
-<img src="Doc/teapot180.png" alt="Newell's teapot" width=30%>
+![Newell's teapot rotated](./images/teapot180.png)
 
 ### <a name="vector-version-1-1"></a>  Vector version 1
 
@@ -395,20 +395,21 @@ This is very similar to 2D convolution using a mean filter.
 If we apply heat at the north and east edges of our 2D surface, and
 cold at the south and west edges, then ultimately the result is:
 
-<img src="Doc/heat.png" alt="Heat flow across 2D surface" width=30%>
-
 ![Heat flow across 2D surface](./images/heat.png)
 
 The `HeatMap` example program initializes a number of heat points and then
 iteratively calculates the diffusion. The default implementation starts out
 as follows:
-<img src="Doc/heatmap_0.png" alt="HeatMap step 0" width=30%>
+
+![HeatMap step 0](./images/heatmap_0.png)
 
 After 100 iterations, this becomes:
-<img src="Doc/heatmap_100.png" alt="HeatMap step 100" width=30%>
+
+![HeatMap step 100](./images/heatmap_100.png)
 
 After 1500 iterations, this becomes:
-<img src="Doc/heatmap_1500.png" alt="HeatMap step 1500" width=30%>
+
+![HeatMap step 1500](./images/heatmap_1500.png)
 
 
 ### <a name="scalar-version-2"></a> Scalar version
