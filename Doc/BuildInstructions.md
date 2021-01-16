@@ -1,7 +1,5 @@
 # Build Instructions
 
-**TODO**
-
 ## Basic Build Instructions
 
 This demonstrates the build commands by example.
@@ -21,13 +19,13 @@ The flags `GPU` and `DEBUG` are explained below.
 ## Run Modes
 
 There are three run modes for the example programs.
-These can be selected in the examples with flagi `-s=` on the command line.
+These can be selected in the examples with flag `-s=` on the command line.
 
 The run modes are:
 
 - `interpreter` - interprets the source level code
-- 'emulator'    - compiles to `vc4` code and runs this on a `vc4` emulator
-- `qpu`         - compiles to either `vc4` or v3d`, depending on which hardware you're running on,
+- `emulator`    - compiles to `vc4` code and runs this on a `vc4` emulator
+- `qpu`         - compiles to either `vc4` or `v3d` code, depending on which hardware you're running on,
                   and runs on the GPU.
 
 Note that `interpreter` and `emulator` deal with `vc4` code only.
