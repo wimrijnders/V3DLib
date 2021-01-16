@@ -187,9 +187,11 @@ Expr::Ptr mkDeref(Expr::Ptr ptr) { return std::make_shared<Expr>(ptr); }
 
 /**
  * Binary op version
+ *
+ * Unary operation can be passed in, the second parameter 'rhs'
+ * will be ignored in the assembly.
  */
 Expr::Ptr mkApply(Expr::Ptr lhs, Op op, Expr::Ptr rhs) {
-	assert(!op.isUnary());
 	return std::make_shared<Expr>(lhs, op, rhs);
 }
 

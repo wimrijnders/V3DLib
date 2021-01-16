@@ -162,14 +162,14 @@ IntExpr ror(IntExpr a, IntExpr b) { return mkIntApply(a, Op(ROR, INT32), b); }
 
 // Conversion to Int
 IntExpr toInt(FloatExpr a) {
-  Expr::Ptr e = mkApply(a.expr(), Op(FtoI, INT32), mkIntLit(0));
+  Expr::Ptr e = mkApply(a.expr(), Op(FtoI, INT32));
   return IntExpr(e);
 }
 
 
 // Conversion to Float
 FloatExpr toFloat(IntExpr a) {
-  Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT), mkIntLit(0));
+  Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT));
   return FloatExpr(e);
 }
 
