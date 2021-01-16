@@ -642,151 +642,154 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
   // First, obtain vector operands
   Vec a, b, c;
   a = readRegOrImm(s, g, srcA);
-  if (srcA.tag == REG && srcB.tag == REG && srcA.reg == srcB.reg)
+
+  if (srcA.tag == REG && srcB.tag == REG && srcA.reg == srcB.reg) {
     b = a;
-  else
+  } else {
     b = readRegOrImm(s, g, srcB);
+	}
 
   // Now evaluate the operation
-  switch (op) {
-    case NOP:
+  switch (op.value()) {
+    case ALUOp::NOP:
       // No-op
       break;
-    case A_FADD:
+    case ALUOp::A_FADD:
       // Floating-point add
       for (int i = 0; i < NUM_LANES; i++)
         c[i].floatVal = a[i].floatVal + b[i].floatVal;
       break;
-    case A_FSUB:
+    case ALUOp::A_FSUB:
       // Floating-point subtract
       for (int i = 0; i < NUM_LANES; i++)
         c[i].floatVal = a[i].floatVal - b[i].floatVal;
       break;
-    case A_FMIN:
+    case ALUOp::A_FMIN:
       // Floating-point min
       for (int i = 0; i < NUM_LANES; i++)
         c[i].floatVal = a[i].floatVal < b[i].floatVal
                       ? a[i].floatVal : b[i].floatVal;
       break;
-    case A_FMAX:
+    case ALUOp::A_FMAX:
       // Floating-point max
       for (int i = 0; i < NUM_LANES; i++)
         c[i].floatVal = a[i].floatVal > b[i].floatVal
                       ? a[i].floatVal : b[i].floatVal;
       break;
-    case A_FMINABS:
+    case ALUOp::A_FMINABS:
       // Floating-point min of absolute values
       for (int i = 0; i < NUM_LANES; i++)
         c[i].floatVal = fabs(a[i].floatVal) < fabs(b[i].floatVal)
                       ? a[i].floatVal : b[i].floatVal;
       break;
-    case A_FMAXABS:
+    case ALUOp::A_FMAXABS:
       // Floating-point max of absolute values
       for (int i = 0; i < NUM_LANES; i++)
         c[i].floatVal = fabs(a[i].floatVal) > fabs(b[i].floatVal)
                       ? a[i].floatVal : b[i].floatVal;
       break;
-    case A_FtoI:
+    case ALUOp::A_FtoI:
       // Float to signed integer
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = (int) a[i].floatVal;
       break;
-    case A_ItoF:
+    case ALUOp::A_ItoF:
       // Signed integer to float
       for (int i = 0; i < NUM_LANES; i++)
         c[i].floatVal = (float) a[i].intVal;
       break;
-    case A_ADD:
+    case ALUOp::A_ADD:
       // Integer add
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal + b[i].intVal;
       break;
-    case A_SUB:
+    case ALUOp::A_SUB:
       // Integer subtract
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal - b[i].intVal;
       break;
-    case A_SHR:
+    case ALUOp::A_SHR:
       // Integer shift right
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = (int32_t) ((uint32_t) a[i].intVal >> b[i].intVal);
       break;
-    case A_ASR:
+    case ALUOp::A_ASR:
       // Integer arithmetic shift right
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal >> b[i].intVal;
       break;
-     case A_ROR:
+     case ALUOp::A_ROR:
       // Integer rotate right
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = rotRight(a[i].intVal, b[i].intVal);
       break;
-     case A_SHL:
+     case ALUOp::A_SHL:
       // Integer shift left
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal << b[i].intVal;
       break;
-    case A_MIN:
+    case ALUOp::A_MIN:
       // Integer min
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal < b[i].intVal
                     ? a[i].intVal : b[i].intVal;
       break;
-    case A_MAX:
+    case ALUOp::A_MAX:
       // Integer max
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal > b[i].intVal
                     ? a[i].intVal : b[i].intVal;
       break;
-    case A_BAND:
+    case ALUOp::A_BAND:
       // Bitwise and
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal & b[i].intVal;
       break;
-    case A_BOR:
+    case ALUOp::A_BOR:
       // Bitwise or
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal | b[i].intVal;
       break;
-    case A_BXOR:
+    case ALUOp::A_BXOR:
       // Bitwise xor
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = a[i].intVal ^ b[i].intVal;
       break;
-    case A_BNOT:
+    case ALUOp::A_BNOT:
       // Bitwise not
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = ~a[i].intVal;
       break;
-    case A_CLZ:
+    case ALUOp::A_CLZ:
       // Count leading zeros
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = clz(a[i].intVal);
       break;
-    case M_FMUL:
+    case ALUOp::M_FMUL:
       // Floating-point multiply
       for (int i = 0; i < NUM_LANES; i++)
         c[i].floatVal = a[i].floatVal * b[i].floatVal;
       break;
-    case M_MUL24:
+    case ALUOp::M_MUL24:
       // Integer multiply (24-bit)
       for (int i = 0; i < NUM_LANES; i++)
         c[i].intVal = (a[i].intVal & 0xffffff) * (b[i].intVal & 0xffffff);
       break;
-    case M_ROTATE:
+    case ALUOp::M_ROTATE:
       // Vector rotation
       c = rotate(a, (int) b[0].intVal);
       break;
-    case A_V8ADDS:
-    case A_V8SUBS:
-    case M_V8MUL:
-    case M_V8MIN:
-    case M_V8MAX:
-    case M_V8ADDS:
-    case M_V8SUBS:
+
+    case ALUOp::A_V8ADDS:
+    case ALUOp::A_V8SUBS:
+    case ALUOp::M_V8MUL:
+    case ALUOp::M_V8MIN:
+    case ALUOp::M_V8MAX:
+    case ALUOp::M_V8ADDS:
+    case ALUOp::M_V8SUBS:
     default: {
 			char buf[64];
-      sprintf(buf, "V3DLib: unsupported operator %i", op);
+      sprintf(buf, "V3DLib: unsupported operator %i", op.value());
       fatal(buf);
 		}
   }
@@ -860,7 +863,7 @@ void emulate(
           // ALU operation
           case ALU: {
             Vec result = alu(s, &state, instr.ALU.srcA, instr.ALU.op, instr.ALU.srcB);
-            if (instr.ALU.op != NOP)
+            if (!instr.ALU.op.isNOP())
               writeReg(s, &state, instr.setCond().flags_set(), instr.ALU.cond, instr.ALU.dest, result);
             break;
           }

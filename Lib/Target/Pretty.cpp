@@ -55,50 +55,6 @@ std::string pretty(RegOrImm r) {
   }
 }
 
-
-const char *pretty_op(ALUOp op) {
-  switch (op) {
-    case NOP:       return "nop";
-    case A_FADD:    return "addf";
-    case A_FSUB:    return "subf";
-    case A_FMIN:    return "minf";
-    case A_FMAX:    return "maxf";
-    case A_FMINABS: return "minabsf";
-    case A_FMAXABS: return "maxabsf";
-    case A_FtoI:    return "ftoi";
-    case A_ItoF:    return "itof";
-    case A_ADD:     return "add";
-    case A_SUB:     return "sub";
-    case A_SHR:     return "shr";
-    case A_ASR:     return "asr";
-    case A_ROR:     return "ror";
-    case A_SHL:     return "shl";
-    case A_MIN:     return "min";
-    case A_MAX:     return "max";
-    case A_BAND:    return "and";
-    case A_BOR:     return "or";
-    case A_BXOR:    return "xor";
-    case A_BNOT:    return "not";
-    case A_CLZ:     return "clz";
-    case A_V8ADDS:  return "addsatb";
-    case A_V8SUBS:  return "subsatb";
-    case M_FMUL:    return "mulf";
-    case M_MUL24:   return "mul24";
-    case M_V8MUL:   return "mulb";
-    case M_V8MIN:   return "minb";
-    case M_V8MAX:   return "maxb";
-    case M_V8ADDS:  return "m_addsatb";
-    case M_V8SUBS:  return "m_subsatb";
-    case M_ROTATE:  return "rotate";
-		// v3d-specific
-    case A_TIDX:    return "tidx";
-    case A_EIDX:    return "eidx";
-		default:
-			assertq(false, "pretty_op(): Unknown alu opcode", true);
-			return "";
-  }
-}
-
 }  // anon namespace
 
  
@@ -121,14 +77,13 @@ std::string pretty_instr(Instr const &instr) {
     case ALU: {
 			buf << instr.ALU.cond.to_string()
           << instr.ALU.dest.pretty()
-			    << " <-" << instr.setCond().pretty() << " ";
+			    << " <-" << instr.setCond().pretty() << " "
+			    << instr.ALU.op.pretty();
 
-			// TODO rewrite as 'switch AluOp::num_operands()' or similar
-			if (instr.ALU.op == A_TIDX || instr.ALU.op == A_EIDX) {
-				// These have no source operands
-				buf << pretty_op(instr.ALU.op) << "()";
+			if (instr.ALU.op.noOperands()) {
+				buf << "()";
 			} else {
-				buf << pretty_op(instr.ALU.op) << "(" << pretty(instr.ALU.srcA) << ", " << pretty(instr.ALU.srcB) << ")";
+				buf << "(" << pretty(instr.ALU.srcA) << ", " << pretty(instr.ALU.srcB) << ")";
 			}
 		}
 		break;

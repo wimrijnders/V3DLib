@@ -278,7 +278,7 @@ void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 	instr.setCondOp(b.cmp.op);
 	instr.ALU.dest     = dstReg(dummy);
 	instr.ALU.srcA     = operand(b.cmp_lhs());
-	instr.ALU.op       = op.opcode();
+	instr.ALU.op       = ALUOp(op);
 	instr.ALU.srcB     = operand(b.cmp_rhs());
 
 	*seq << li(v, 0)
@@ -769,7 +769,7 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
 				instr.ALU.cond       = cond;
 				instr.ALU.dest       = dstReg(v);
 				instr.ALU.srcA       = operand(e.lhs());
-				instr.ALU.op         = e.apply_op.opcode();
+				instr.ALU.op         = ALUOp(e.apply_op);
 				instr.ALU.srcB       = operand(e.rhs());
 
 				ret << instr;

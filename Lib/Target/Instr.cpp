@@ -36,23 +36,6 @@ Instr::Instr(InstrTag in_tag) {
 }
 
 
-/**
- * Determines if the mul-ALU needs to be used
- *
- * TODO: Examine if this is still true for v3d
- */
-bool Instr::isMul() const {
-	auto op = ALU.op;
-
-  bool ret =
-		op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
-    op == M_V8MIN  || op == M_V8MAX || op == M_V8ADDS ||
-    op == M_V8SUBS || op == M_ROTATE;
-
-	return ret;
-}
-
-
 Instr Instr::nop() {
 	Instr instr;
 	instr.tag = NO_OP;

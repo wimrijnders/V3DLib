@@ -11,62 +11,6 @@ namespace vc4 {
 
 namespace {
 
-// ===========
-// ALU opcodes
-// ===========
-
-uint32_t encodeAddOp(ALUOp op) {
-  switch (op) {
-    case NOP:       return 0;
-    case A_FADD:    return 1;
-    case A_FSUB:    return 2;
-    case A_FMIN:    return 3;
-    case A_FMAX:    return 4;
-    case A_FMINABS: return 5;
-    case A_FMAXABS: return 6;
-    case A_FtoI:    return 7;
-    case A_ItoF:    return 8;
-    case A_ADD:     return 12;
-    case A_SUB:     return 13;
-    case A_SHR:     return 14;
-    case A_ASR:     return 15;
-    case A_ROR:     return 16;
-    case A_SHL:     return 17;
-    case A_MIN:     return 18;
-    case A_MAX:     return 19;
-    case A_BAND:    return 20;
-    case A_BOR:     return 21;
-    case A_BXOR:    return 22;
-    case A_BNOT:    return 23;
-    case A_CLZ:     return 24;
-    case A_V8ADDS:  return 30;
-    case A_V8SUBS:  return 31;
-
-		default:
-  		fatal("V3DLib: unknown add op");
-			return 0;
-  }
-}
-
-
-uint32_t encodeMulOp(ALUOp op) {
-  switch (op) {
-    case NOP:      return 0;
-    case M_FMUL:   return 1;
-    case M_MUL24:  return 2;
-    case M_V8MUL:  return 3;
-    case M_V8MIN:  return 4;
-    case M_V8MAX:  return 5;
-    case M_V8ADDS: return 6;
-    case M_V8SUBS: return 7;
-
-		default:
-  		fatal("V3DLib: unknown mul op");
-			return 0;
-  }
-}
-
-
 // ===============
 // Condition flags
 // ===============
@@ -293,6 +237,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       instr.LI.imm.tag    = IMM_INT32;
       instr.LI.imm.intVal = 1;
       break;
+
     case DMA_LOAD_WAIT:
     case DMA_STORE_WAIT: {
       RegId src = instr.tag == DMA_LOAD_WAIT ? SPECIAL_DMA_LD_WAIT : SPECIAL_DMA_ST_WAIT;
@@ -300,7 +245,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       instr.tag                   = ALU;
       instr.ALU.m_setCond.clear();
       instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
-      instr.ALU.op                = A_BOR;
+      instr.ALU.op                = ALUOp(ALUOp::A_BOR);
       instr.ALU.dest.tag          = NONE;
       instr.ALU.srcA.tag          = REG;
       instr.ALU.srcA.reg.tag      = SPECIAL;
@@ -357,12 +302,12 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 			auto &alu = instr.ALU;
 
       RegTag file;
-      uint32_t sig   = ((instr.hasImm() || instr.isRot()) ? 13 : 1) << 28;
-      uint32_t cond  = encodeAssignCond(alu.cond) << (instr.isMul() ? 14 : 17);
+      uint32_t sig   = ((instr.hasImm() || alu.op.isRot()) ? 13 : 1) << 28;
+      uint32_t cond  = encodeAssignCond(alu.cond) << (alu.op.isMul() ? 14 : 17);
       uint32_t dest  = encodeDestReg(alu.dest, &file);
       uint32_t waddr_add, waddr_mul, ws;
 
-      if (instr.isMul()) {
+      if (alu.op.isMul()) {
         waddr_add = 39 << 6;
         waddr_mul = dest;
         ws        = (file == REG_B ? 0 : 1) << 12;
@@ -375,10 +320,10 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       uint32_t sf    = (alu.m_setCond.flags_set()? 1 : 0) << 13;
       *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
 
-      if (alu.op == M_ROTATE) {
+      if (alu.op.isRot()) {
         assert(alu.srcA.tag == REG && alu.srcA.reg.tag == ACC && alu.srcA.reg.regId == 0);
         assert(alu.srcB.tag == REG ?  alu.srcB.reg.tag == ACC && alu.srcB.reg.regId == 5 : true);
-        uint32_t mulOp = encodeMulOp(M_V8MIN) << 29;
+        uint32_t mulOp = ALUOp(ALUOp::M_V8MIN).vc4_encodeMulOp() << 29;
         uint32_t raddrb;
 
         if (alu.srcB.tag == REG) {
@@ -393,8 +338,8 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
         *low = mulOp | (raddrb << 12) | (raddra << 18);
         return;
       } else {
-        uint32_t mulOp = (instr.isMul() ? encodeMulOp(alu.op) : 0) << 29;
-        uint32_t addOp = (instr.isMul() ? 0 : encodeAddOp(alu.op)) << 24;
+        uint32_t mulOp = (alu.op.isMul() ? alu.op.vc4_encodeMulOp() : 0) << 29;
+        uint32_t addOp = (alu.op.isMul() ? 0 : alu.op.vc4_encodeAddOp()) << 24;
 
         uint32_t muxa, muxb;
         uint32_t raddra, raddrb;

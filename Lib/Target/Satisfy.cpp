@@ -106,7 +106,7 @@ static void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
 
-    if (instr.tag == ALU && instr.ALU.op == M_ROTATE) {
+    if (instr.tag == ALU && instr.ALU.op.value() == ALUOp::M_ROTATE) {
       // Insert moves for horizontal rotate operations
       *newInstrs << remapAToAccum(&instr, 0);
 

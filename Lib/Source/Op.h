@@ -1,6 +1,5 @@
 #ifndef _V3DLIB_SOURCE_OP_H_
 #define _V3DLIB_SOURCE_OP_H_
-#include "Target/Syntax.h"  // ALUOp
 
 namespace V3DLib {
 
@@ -50,7 +49,6 @@ struct Op {
 	bool isUnary() const;
 	bool isFunction() const;
 	bool isCommutative() const;
-	ALUOp opcode() const;
 };
 
 }  // namespace V3DLib

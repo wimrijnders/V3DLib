@@ -286,7 +286,7 @@ void checkSpecialIndex(V3DLib::Instr const &src_instr) {
 		return;  // Nothing to do
 	}
 
-	if (src_instr.ALU.op != A_BOR) {
+	if (src_instr.ALU.op.value() != ALUOp::A_BOR) {
 		// All other instructions disallowed
 		fatal("For v3d, special registers QPU_NUM and ELEM_NUM can only be used in a move instruction");
 		return;
@@ -307,7 +307,7 @@ bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
 		return false;
 	}
 
-	if (src_instr.ALU.op != A_BOR) {
+	if (src_instr.ALU.op.value() != ALUOp::A_BOR) {
 		return false;
 	}
 
@@ -408,9 +408,11 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 		} else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
 			ret << eidx(*dst_reg);
 		} else if (reg_a.reg.tag == NONE && reg_b.reg.tag == NONE) {
-			switch (src_instr.ALU.op) {
-				case A_TIDX:  ret << tidx(*dst_reg); break;
-				case A_EIDX:  ret << eidx(*dst_reg); break;
+			assert(src_instr.ALU.op.noOperands());
+
+			switch (src_instr.ALU.op.value()) {
+				case ALUOp::A_TIDX:  ret << tidx(*dst_reg); break;
+				case ALUOp::A_EIDX:  ret << eidx(*dst_reg); break;
 				default:
 					breakpoint  // unimplemented op
 					did_something = false;
@@ -421,17 +423,17 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 			auto src_b = encodeSrcReg(reg_b.reg);
 			assert(src_a && src_b);
 
-			switch (src_instr.ALU.op) {
-				case A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
-				case A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
-				case A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
-				case A_BAND:  ret << band(*dst_reg, *src_a, *src_b);         break;
-				case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
-				case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
-				case A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
-				case A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
-				case A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
-				case A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
+			switch (src_instr.ALU.op.value()) {
+				case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
+				case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
+				case ALUOp::A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
+				case ALUOp::A_BAND:  ret << band(*dst_reg, *src_a, *src_b);         break;
+				case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
+				case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
+				case ALUOp::A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
+				case ALUOp::A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
+				case ALUOp::A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
+				case ALUOp::A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
 				default:
 					breakpoint  // unimplemented op
 					did_something = false;
@@ -443,18 +445,18 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 		assert(src_a);
 		SmallImm imm = encodeSmallImm(reg_b);
 
-		switch (src_instr.ALU.op) {
-			case A_SHL:   ret << shl(*dst_reg, *src_a, imm);          break;
-			case A_SHR:   ret << shr(*dst_reg, *src_a, imm);          break;
-			case A_ASR:   ret << asr(*dst_reg, *src_a, imm);          break;
-			case A_BAND:  ret << band(*dst_reg, *src_a, imm);         break;
-			case A_SUB:   ret << sub(*dst_reg, *src_a, imm);          break;
-			case A_ADD:   ret << add(*dst_reg, *src_a, imm);          break;
-			case M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, imm);   break;
-			case M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;
-			case A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;
-			case A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
-			case A_BXOR:  ret << bxor(*dst_reg, *src_a, imm);         break;
+		switch (src_instr.ALU.op.value()) {
+			case ALUOp::A_SHL:   ret << shl(*dst_reg, *src_a, imm);          break;
+			case ALUOp::A_SHR:   ret << shr(*dst_reg, *src_a, imm);          break;
+			case ALUOp::A_ASR:   ret << asr(*dst_reg, *src_a, imm);          break;
+			case ALUOp::A_BAND:  ret << band(*dst_reg, *src_a, imm);         break;
+			case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, imm);          break;
+			case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, imm);          break;
+			case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, imm);   break;
+			case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;
+			case ALUOp::A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;
+			case ALUOp::A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
+			case ALUOp::A_BXOR:  ret << bxor(*dst_reg, *src_a, imm);         break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -465,12 +467,12 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 		auto src_b = encodeSrcReg(reg_b.reg);
 		assert(src_b);
 
-		switch (src_instr.ALU.op) {
-			case M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
-			case M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
-			case A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
-			case A_SUB:   ret << sub(*dst_reg, imm, *src_b);          break;
-			case A_ADD:   ret << add(*dst_reg, imm, *src_b);          break;
+		switch (src_instr.ALU.op.value()) {
+			case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
+			case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
+			case ALUOp::A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
+			case ALUOp::A_SUB:   ret << sub(*dst_reg, imm, *src_b);          break;
+			case ALUOp::A_ADD:   ret << add(*dst_reg, imm, *src_b);          break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -480,8 +482,8 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 		SmallImm imm_a = encodeSmallImm(reg_a);
 		SmallImm imm_b = encodeSmallImm(reg_b);
 
-		switch (src_instr.ALU.op) {
-			case A_BOR:   ret << bor(*dst_reg, imm_a, imm_b);          break;
+		switch (src_instr.ALU.op.value()) {
+			case ALUOp::A_BOR:   ret << bor(*dst_reg, imm_a, imm_b);          break;
 			default:
 				breakpoint  // unimplemented op
 				did_something = false;
@@ -500,7 +502,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
  * @return true if rotate handled, false otherwise
  */
 bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
-	if (instr.ALU.op != M_ROTATE) {
+	if (!instr.ALU.op.isRot()) {
 		return false;
 	}
 

@@ -11,13 +11,13 @@ namespace {
 int globalLabelId = 0;  // Used for fresh label generation
 
 
-Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
+Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, Reg srcB) {
   Instr instr(ALU);
   instr.ALU.cond      = always;
   instr.ALU.dest      = dst;
   instr.ALU.srcA.tag  = REG;
   instr.ALU.srcA.reg  = srcA;
-  instr.ALU.op        = op;
+  instr.ALU.op        = ALUOp(op);
   instr.ALU.srcB.tag  = REG;
   instr.ALU.srcB.reg  = srcB;
 
@@ -25,12 +25,12 @@ Instr genInstr(ALUOp op, Reg dst, Reg srcA, Reg srcB) {
 }
 
 
-Instr genInstr(ALUOp op, Reg dst, Reg srcA, int n) {
+Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, int n) {
   Instr instr(ALU);
   instr.ALU.dest              = dst;
   instr.ALU.srcA.tag          = REG;
   instr.ALU.srcA.reg          = srcA;
-  instr.ALU.op                = op;
+  instr.ALU.op                = ALUOp(op);
   instr.ALU.srcB.tag          = IMM;
   instr.ALU.srcB.smallImm.tag = SMALL_IMM;
   instr.ALU.srcB.smallImm.val = n;
@@ -39,13 +39,13 @@ Instr genInstr(ALUOp op, Reg dst, Reg srcA, int n) {
 }
 
 
-Instr genInstr(ALUOp op, Reg dst, int n, int m) {
+Instr genInstr(ALUOp::Enum op, Reg dst, int n, int m) {
   Instr instr(ALU);
   instr.ALU.dest              = dst;
   instr.ALU.srcA.tag          = IMM;
   instr.ALU.srcA.smallImm.tag = SMALL_IMM;
   instr.ALU.srcA.smallImm.val = n;
-  instr.ALU.op                = op;
+  instr.ALU.op                = ALUOp(op);
   instr.ALU.srcB.tag          = IMM;
   instr.ALU.srcB.smallImm.tag = SMALL_IMM;
   instr.ALU.srcB.smallImm.val = m;
@@ -382,63 +382,20 @@ Reg rf(uint8_t index) {
 }
 
 
-Instr mov(Var dst, Var src) {
-  return mov(dstReg(dst), srcReg(src));
-}
+Instr mov(Var dst, Var src) { return mov(dstReg(dst), srcReg(src)); }
+Instr mov(Var dst, Reg src) { return mov(dstReg(dst), src); }
+Instr mov(Var dst, int n)   { return mov(dstReg(dst), n); }
+Instr mov(Reg dst, Var src) { return mov(dst, srcReg(src)); }
+Instr mov(Reg dst, int n)   { return genInstr(ALUOp::A_BOR, dst, n, n); }
+Instr mov(Reg dst, Reg src) { return bor(dst, src, src); }
 
 
-Instr mov(Var dst, Reg src) {
-  return mov(dstReg(dst), src);
-}
-
-
-Instr mov(Var dst, int n) {
-  return mov(dstReg(dst), n);
-}
-
-
-Instr mov(Reg dst, Var src) {
-  return mov(dst, srcReg(src));
-}
-
-
-Instr mov(Reg dst, int n) {
-	return genInstr(A_BOR, dst, n, n);
-}
-
-
-Instr mov(Reg dst, Reg src) {
-	return bor(dst, src, src);
-}
-
-
-
-/**
- * Generate bitwise-or instruction.
- */
-Instr bor(Reg dst, Reg srcA, Reg srcB) {
-	return genInstr(A_BOR, dst, srcA, srcB);
-}
-
-
-Instr band(Reg dst, Reg srcA, Reg srcB) {
-	return genInstr(A_BAND, dst, srcA, srcB);
-}
-
-
-Instr band(Var dst, Var srcA, Var srcB) {
-	return genInstr(A_BAND, dstReg(dst), srcReg(srcA), srcReg(srcB));
-}
-
-
-Instr band(Reg dst, Reg srcA, int n) {
-	return genInstr(A_BAND, dst, srcA, n);
-}
-
-
-Instr bxor(Var dst, Var srcA, int n) {
-	return genInstr(A_BXOR, dstReg(dst), srcReg(srcA), n);
-}
+// Generation of bitwise instructions
+Instr bor(Reg dst, Reg srcA, Reg srcB)  { return genInstr(ALUOp::A_BOR, dst, srcA, srcB); }
+Instr band(Reg dst, Reg srcA, Reg srcB) { return genInstr(ALUOp::A_BAND, dst, srcA, srcB); }
+Instr band(Var dst, Var srcA, Var srcB) { return genInstr(ALUOp::A_BAND, dstReg(dst), srcReg(srcA), srcReg(srcB)); }
+Instr band(Reg dst, Reg srcA, int n)    { return genInstr(ALUOp::A_BAND, dst, srcA, n); }
+Instr bxor(Var dst, Var srcA, int n)    { return genInstr(ALUOp::A_BXOR, dstReg(dst), srcReg(srcA), n); }
 
 
 /**
@@ -446,13 +403,13 @@ Instr bxor(Var dst, Var srcA, int n) {
  */
 Instr shl(Reg dst, Reg srcA, int val) {
   assert(val >= 0 && val <= 15);
-	return genInstr(A_SHL, dst, srcA, val);
+	return genInstr(ALUOp::A_SHL, dst, srcA, val);
 }
 
 
 Instr shr(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
-	return genInstr(A_SHR, dst, srcA, n);
+	return genInstr(ALUOp::A_SHR, dst, srcA, n);
 }
 
 
@@ -460,19 +417,19 @@ Instr shr(Reg dst, Reg srcA, int n) {
  * Generate addition instruction.
  */
 Instr add(Reg dst, Reg srcA, Reg srcB) {
-	return genInstr(A_ADD, dst, srcA, srcB);
+	return genInstr(ALUOp::A_ADD, dst, srcA, srcB);
 }
 
 
 Instr add(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
-	return genInstr(A_ADD, dst, srcA, n);
+	return genInstr(ALUOp::A_ADD, dst, srcA, n);
 }
 
 
 Instr sub(Reg dst, Reg srcA, int n) {
   assert(n >= 0 && n <= 15);
-	return genInstr(A_SUB, dst, srcA, n);
+	return genInstr(ALUOp::A_SUB, dst, srcA, n);
 }
 
 
