@@ -30,7 +30,7 @@ To build and run an example:
 
 ```
 make QPU=1 <name>
-sudo obj-qpu/bin/<name>
+sudo obj/qpu/bin/<name>
 ```
 
 Interesting examples (there are more):
@@ -162,7 +162,7 @@ int main() {
 }
 ```
 
-iExplanation:
+Explanation:
 
   * `compile()` takes a function defining a QPU computation and returns a
     CPU-side handle that can be used to invoke it;
