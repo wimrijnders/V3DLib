@@ -1,6 +1,6 @@
 # V3DLib
 
-**Version 0.0.0**
+**Version 0.0.1**
 
 `V3DLib` is a C++ library for creating programs to run on the `VideoCore` GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 
@@ -32,6 +32,16 @@ There are also some unit tests which have the same problem, these are disabled w
 
 I haven't been able to resolve these issues and I am waiting for a kernel update with fixes.
 All code for the `VideoCore 4` compiles and runs fine.
+
+
+## Credit where Credit is Due
+This project builds upon the [QPULib](https://github.com/mn416/QPULib) project, by **Matthew Naylor**.
+I fully acknowledge his work for the Videcore 4 and am grateful for what he has achieved in setting
+up the compilation and assembly.
+
+`QPULib`, however, is no longer under development, and I felt the need to expand it to support
+the VideoCore 6 as well. Hence, `V3DLib` was conceived.
+
 
 ## The Programming Language
 
@@ -77,15 +87,6 @@ int main(int argc, const char *argv[]) {
 ```
 
 
-## Credit where Credit is Due
-This project builds upon the [QPULib](https://github.com/mn416/QPULib) project, by **Matthew Naylor**.
-I fully acknowledge his work for the Videcore 4 and am grateful for what he has achieved in setting
-up the compilation and assembly.
-
-`QPULib`, however, is no longer under development, and I felt the need to expand it to support
-the VideoCore 6 as well. Hence, `V3DLib` was conceived.
-
-
 ## Getting Started
 
 This assumes that you are building on a Raspberry Pi.
@@ -94,9 +95,6 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
 
     > sudo apt-get install git                                       # If not done already
     > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # get only latest commit
-                                                                     # TODO test
-    > git clone --depth 1 ssh://wim@shanna/home/git_masters/QPULib   # local pull, for comparisong
-
     > cd V3DLib
 	
     # As long as the files don't change, you need to run these script only once.
@@ -104,10 +102,33 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
     > script/gen.sh                                                  # Generate file dependencies
     # After this, it's sufficient to do just the following line for a build
 	
-    > make QPU=1 DEBUG=1 all                                         # Made debug version with hardware GPU support
+    > make QPU=1 DEBUG=1 all                                         # Made debug version with hardware
+                                                                     # GPU support.
                                                                      # First compile will take some time
     
     > make QPU=1 DEBUG=1 test                                        # Run the tests
+
+
+## Compile Times
+
+**Fair Warning:** The first build can take a *long* time, especially on older Pi's.
+The culprit here is mainly the included code from the MESA library.
+
+The following table list the build times on the first and the last Pi.
+
+| Platform | Make                 | Time    | Comment                            |
+| -------- | -------------------- | ------- | -----------------------------------|
+| Pi 1     | Full Initial build   | 170m    | Also builds the MESA code          |
+|          | Library and examples |  22m    ||
+|          | Unit tests           |  22m    | without building the library       |
+| Pi 4     | Full Initial build   |  13m    | Also builds the MESA code          |
+|          | Library and examples |   2m    ||
+|          | Unit tests           |   1.25m | without building the library       |
+
+
+The difference in speed is staggering. Even if you want to run on a `Pi 1`,
+you're probably better off building on a `Pi 4`.
+
 
 ## Useful Links
 ### References
