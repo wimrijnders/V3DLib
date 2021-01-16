@@ -35,7 +35,7 @@ void emitStr(Seq<char>* out, const char* s) {
   if (out == nullptr)
     printf("%s", s);
   else
-    for (int i = 0; i < strlen(s); i++)
+    for (int i = 0; i < (int) strlen(s); i++)
       *out << s[i];
 }
 
@@ -46,7 +46,7 @@ void printIntVec(Seq<char>* out, Vec x) {
   for (int i = 0; i < NUM_LANES; i++) {
     snprintf(buffer, sizeof(buffer), "%i", x[i].intVal);
 
-    for (int j = 0; j < strlen(buffer); j++) emitChar(out, buffer[j]);
+    for (int j = 0; j < (int) strlen(buffer); j++) emitChar(out, buffer[j]);
     if (i != NUM_LANES-1) emitChar(out, ',');
   }
   emitChar(out, '>');
@@ -59,7 +59,7 @@ void printFloatVec(Seq<char>* out, Vec x) {
   for (int i = 0; i < NUM_LANES; i++) {
     snprintf(buffer, sizeof(buffer), "%f", x[i].floatVal);
 
-    for (int j = 0; j < strlen(buffer); j++) emitChar(out, buffer[j]);
+    for (int j = 0; j < (int) strlen(buffer); j++) emitChar(out, buffer[j]);
     if (i != NUM_LANES-1) emitChar(out, ',');
   }
   emitChar(out, '>');

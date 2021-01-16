@@ -9,13 +9,14 @@ std::vector<uint64_t> bytecode;
 
 /**
  * Check if there's nothing special with this particular code
- */
+ * /
 void test_unpack_pack(uint64_t in_code) {
 	using namespace V3DLib::v3d::instr;
 
 	Instr instr(in_code);  // will assert on unpack error
 	assert(in_code == instr.code());
 }
+*/
 
 }  // anon namespace
 

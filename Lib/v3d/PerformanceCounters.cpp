@@ -80,6 +80,9 @@ uint32_t get_pctr_value(int core_id, int source_index) {
 }
 
 
+/*
+ Not used, maybe later
+
 void reset_pctr_value(int core_id, int source_index) {
 	using RM = V3DLib::v3d::RegisterMapping;
 	using PC = V3DLib::v3d::PerformanceCounters;
@@ -88,6 +91,7 @@ void reset_pctr_value(int core_id, int source_index) {
 
 	regmap.core_write(core_id, RM::CORE_PCTR_0_PCTR0 + source_index, 0);
 }
+*/
 
 }  // anon namespace
 
@@ -156,18 +160,8 @@ void PerformanceCounters::enter(std::vector<int> srcs) {
 	assert(regmap.info().num_cores == 1);
 	int core_id = 0;  // Assuming 1 core with id == 0 sufficient for now
 
-/*
-	// Reset the source registers before use.
-	// Not sure if this is necessary or possible, doesn't seem to do anything for `CORE_PCTR_CYCLE_COUNT`.
-	regmap.core_write(core_id, RM::CORE_PCTR_0_EN, 0);  // disable usage source registers
-	for (int i = 0; i < srcs.size(); ++i) {
-		reset_pctr_value(core_id, i);
-	}
-*/
-
-
 	// assign counters to use to source registers
-	for (int i = 0; i < srcs.size(); ++i) {
+	for (int i = 0; i < (int) srcs.size(); ++i) {
 		set_source_field(core_id, i, srcs[i]);
 	}
 
@@ -175,8 +169,6 @@ void PerformanceCounters::enter(std::vector<int> srcs) {
 	regmap.core_write(core_id, RM::CORE_PCTR_0_CLR     , src_mask);  // Clear selected pctr registers
 	regmap.core_write(core_id, RM::CORE_PCTR_0_OVERFLOW, src_mask);
 	regmap.core_write(core_id, RM::CORE_PCTR_0_EN      , src_mask);
-
-	//std::cout << "EN mask after: " << regmap.core_read(core_id, RM::CORE_PCTR_0_EN) << std::endl;
 }
 
 
@@ -195,7 +187,6 @@ std::string PerformanceCounters::showEnabled() {
 
 	int const SLOT_COUNT = 32;
 	uint32_t bitMask = regmap.core_read(core_id, RM::CORE_PCTR_0_EN);
-	//std::cout << "EN mask before: " << bitMask << std::endl;
 
 	std::ostringstream os;
 	os << "Enabled counters:\n";

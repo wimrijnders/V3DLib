@@ -100,18 +100,18 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		return ret;
 	};
 
-
+/*
 	auto mnemonics = [] (Instructions const &code, bool with_comments = false) -> std::string {
 		std::string ret;
 
-		for (int i = 0; i < code.size(); i++) {
+		for (int i = 0; i < (int) code.size(); i++) {
 			auto const &instr = code[i];
 			ret << i << ": " << instr.mnemonic(with_comments) << "\n";
 		}
 
 		return ret;
 	};
-
+*/
 
 	/**
 	 * Issues here:
@@ -477,8 +477,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
 		instrs << band(rf(0), r0, 0b1111)
 		       << band(r1, r0, 0b1111);
 
-		for (int n = 0; n < instrs.size(); ++n) {
-			//cout << instrs[n].mnemonic() << endl;
+		for (int n = 0; n < (int) instrs.size(); ++n) {
 			REQUIRE(instrs[n].mnemonic() == expected[n]);
 		}
 	}

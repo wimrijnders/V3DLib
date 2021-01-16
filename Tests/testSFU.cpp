@@ -9,12 +9,13 @@ namespace {
 /**
  * All vector elements calculate the same thing.
  * Just show the first value of a block.
- */
+ * /
 void show_results(SharedArray<float> &results) {
-  for (int i = 0; i < results.size(); i += 16) {
+  for (int i = 0; i < (int) results.size(); i += 16) {
 		std::cout << (i >> 4) << ": " << results[i] << std::endl;
 	}
 }
+*/
 
 
 void sfu(Float x, Ptr<Float> r) {

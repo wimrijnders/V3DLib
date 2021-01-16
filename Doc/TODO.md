@@ -6,6 +6,7 @@
       Tried this but gave up after it became evident nothing could be removed.
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
+- [ ] Fix indentation tabs/spaces
 
 ## v3d
 
@@ -126,7 +127,7 @@ Error(s) on command line:
 - [ ] Add check in emulator for too many `gather()` calls
 - [x] Determine num QPUs from hardware
 - [x] Add method to determine RPi hardware revision number via mailbox
-- [ ] Add code for using the `Special Functions Unit (SFU)`, operations: `SQRT`, `RECIPSQRT`, `LOG`, `EXP` *(in progress)*
+- [x] Add code for using the `Special Functions Unit (SFU)`, operations: `RECIP`, `RECIPSQRT`, `LOG`, `EXP`
 - [x] Add performance counters to interface of `RegisterMap`
 - [ ] Add Logging class
 - [ ] Add method for build/platform info, for display on startup of an application
@@ -136,8 +137,7 @@ Error(s) on command line:
 ## Other
 
 - [x] `Rot3D` make various versions selectable on command line
-- [ ] enable `-Wall` on compilation and deal with all the fallout
-- [ ] Scan current docs for typos, good language
+- [x] enable `-Wall` on compilation and deal with all the fallout
 - [x] enable build for QPU and Emulation mode together
 
 

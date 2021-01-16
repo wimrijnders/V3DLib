@@ -1,12 +1,3 @@
-/**i***************************************************************************
- * TODO
- * ====
- *
- * - Following shouldn't be accepted:
- *
- *     sudo obj-qpu/bin/Mandelbrot -k=2 -pgmmpoep
- *
- ******************************************************************************/
 #include <string>
 #include <V3DLib.h>
 #include <CmdParameters.h>

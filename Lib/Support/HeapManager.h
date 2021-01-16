@@ -41,7 +41,7 @@ private:
 		uint32_t right = 0;
 
 		FreeRange(uint32_t l, uint32_t r) : left(l), right(r) {}  // required by std::vector
-		int size() const;
+		unsigned size() const;
 		bool empty() const { return size() == 0; }
 	};
 

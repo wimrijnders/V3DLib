@@ -80,7 +80,7 @@ void dump_data(T const &arr, bool do_all = false, bool as_float = false) {
 		print(offset);
 	}
 
-	if (first_size == arr.size()) {
+	if (first_size == (int) arr.size()) {
 		return;
 	}
 

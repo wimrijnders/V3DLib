@@ -174,7 +174,7 @@ void check_conditionals(SharedArray<int> &result, int N) {
 
   auto assertResult = [N] ( SharedArray<int> &result, int index, std::vector<int> const &expected) {
     INFO("index: " << index);
-    REQUIRE(result.size() == N*16);
+    REQUIRE(result.size() == (unsigned) N*16);
 		check_vector(result, index, expected);
   };
 

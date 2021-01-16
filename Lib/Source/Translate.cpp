@@ -149,6 +149,9 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
 // ============================================================================
 
 /**
+ * NOT USED ANY MORE
+ * Kept here for reference and fall-back
+ *
  * Pre:
  * - Hypothesis: condVar set for condA
  * - Implicit condition vector set for condB
@@ -174,7 +177,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
  *    This would be OK if `condA == Never` and `condvar` still zeroes.
  *
  *    TODO investigate if possible
- */
+ * /
 AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond condB) {
 	using namespace Target::instr;
 
@@ -215,14 +218,7 @@ AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond con
     return condA;
   }
 }
-
-
-/**
- * Define conjunction using De Morgan.
- */
-AssignCond boolAnd(Seq<Instr> *seq, AssignCond condA, Var condVarA, AssignCond condB) {
-  return boolOr(*seq, condA.negate(), condVarA, condB.negate()).negate();
-}
+*/
 
 
 /**
@@ -359,7 +355,7 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 			cmpExp(seq, bexpr, v);
 		break;
 		case NOT: {          // '!b', where b is a boolean expression
-    	AssignCond cond = boolExp(seq, b.neg(), v);
+    	boolExp(seq, b.neg(), v);
 			*seq << bxor(v, v, 1).setCondFlag(Flag::ZC);
 		}
 		break;

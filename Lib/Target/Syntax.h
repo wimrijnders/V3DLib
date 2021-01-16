@@ -30,22 +30,6 @@ namespace V3DLib {
 // taken from different register files in the target language.  It is the
 // job of a compiler pass to enforce such a constraint.
 
-// ============================================================================
-// Sub-word selectors
-// ============================================================================
-
-// A sub-word selector allows a 32, 16, or 8-bit portion of each vector
-// word to be selected.
-
-enum SubWord {
-    A8     // Bits 7..0
-  , B8     // Bits 15..8
-  , C8     // Bits 23..16
-  , D8     // Bits 31..24
-  , A16    // Bits 15..0
-  , B16    // Bits 31..16
-  , A32    // Bits 31..0
-};
 
 // ============================================================================
 // Conditions

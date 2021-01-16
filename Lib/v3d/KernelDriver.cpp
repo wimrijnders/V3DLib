@@ -78,6 +78,7 @@ SmallImm encodeSmallImm(RegOrImm const &src_reg) {
 
 /**
  *
+ * TODO this does not appear to be called any more, or at least not used fully
  */
 std::unique_ptr<Location> encodeSrcReg(Reg reg) {
 	bool is_none = false;
@@ -122,6 +123,9 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
 			is_none = true;
 			breakpoint
 			break;
+
+		default:
+	  	assertq(false, "V3DLib: unexpected reg-tag in encodeSrcReg()");
   }
 
 	if (ret.get() == nullptr && !is_none) {
@@ -229,6 +233,9 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
 			}
 
 			break;
+
+		default:
+	  	assertq(false, "V3DLib: unexpected reg tag in encodeDestReg()");
   }
 
 	if (ret.get() == nullptr && !is_none) {
@@ -294,7 +301,7 @@ void checkSpecialIndex(V3DLib::Instr const &src_instr) {
  * Pre: `checkSpecialIndex()` has been called
  */
 bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
-	assert(index == SPECIAL_ELEM_NUM || SPECIAL_QPU_NUM);
+	assert(index == SPECIAL_ELEM_NUM || index == SPECIAL_QPU_NUM);
 
   if (src_instr.tag != ALU) {
 		return false;
@@ -1004,7 +1011,7 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t> *params) {
 
 	// Allocate memory for the parameters if not done already
 	// TODO Not used in v3d, do we need this?
-	int numWords = (12*MAX_KERNEL_PARAMS + 12*2);
+	unsigned numWords = (12*MAX_KERNEL_PARAMS + 12*2);
 	if (paramMem.allocated()) {
 		assert(paramMem.size() == numWords);
 	} else {

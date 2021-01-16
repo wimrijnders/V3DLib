@@ -4,6 +4,7 @@
 
 namespace {
 
+/*
 void check_returned_registers(SharedArray<uint32_t> &Y) {
 	uint32_t cur_QPU;
 
@@ -24,6 +25,7 @@ void check_returned_registers(SharedArray<uint32_t> &Y) {
 
 	printf("\n");
 }
+*/
 
 }  // anon namespace
 
@@ -956,9 +958,6 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
 	unif[2] = Y.getAddress();
 	//printf("unif phyaddr: %u, size: %u\n", unif.getAddress(), 4*unif.size());
 
-	//printf("Executing on QPU...\n");
-	double start = get_time();
-
 	V3DLib::v3d::Driver drv;
 	drv.add_bo(heap);
 	REQUIRE(drv.execute(code, &unif, num_qpus));
@@ -985,8 +984,5 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
 	
 	// Check if values supplied
 	REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
-		
-	double end = get_time();
-	//printf("Summation done: %.6lf sec, %.6lf MB/s\n", (end - start), (length * 4 / (end - start) * 1e-6));
 }
 

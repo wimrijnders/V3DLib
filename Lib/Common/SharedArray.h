@@ -41,7 +41,7 @@ public:
 	uint32_t size() const { return m_size; }
 
 	void fill(T val) {
-  	for (int i = 0; i < size(); i++)
+  	for (int i = 0; i < (int) size(); i++)
 	    (*this)[i] = val;
 	}
 
@@ -115,7 +115,7 @@ public:
   inline const T operator[] (int i) const {
 		assert(allocated());
 		assert(i >= 0);
-		assert(i < m_size);
+		assert(i < (int) m_size);
 
     T* base = (T *) m_usraddr;
     return (T) base[i];
@@ -125,7 +125,7 @@ public:
   // Subscript
   inline T& operator[] (int i) {
 		assert(allocated());
-		assertq(i >= 0 && i < m_size, "SharedArray::[]: index outside of possible range", true);
+		assertq(i >= 0 && i < (int) m_size, "SharedArray::[]: index outside of possible range", true);
 
     T* base = (T *) m_usraddr;
     return (T&) base[i];

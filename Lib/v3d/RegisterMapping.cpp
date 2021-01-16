@@ -224,7 +224,7 @@ RegisterMapping::Info RegisterMapping::info() {
   uint32_t V3D_HUB_IDENT1_WITH_TSY = 1 << 18;
 	uint32_t V3D_HUB_IDENT1_WITH_MSO = 1 << 19;
 
-	uint32_t ident0 = m_addr[V3D_HUB_IDENT0];
+	//uint32_t ident0 = m_addr[V3D_HUB_IDENT0];
 	uint32_t ident1 = m_addr[V3D_HUB_IDENT1];
 	uint32_t ident2 = m_addr[V3D_HUB_IDENT2];
 	uint32_t ident3 = m_addr[V3D_HUB_IDENT3];
@@ -313,7 +313,7 @@ RegisterMapping::CoreInfo RegisterMapping::info_per_core(unsigned core_index) {
 	unsigned CORE_IDENT1_NTMU = HubField(val1, 15, 12);
 	unsigned CORE_IDENT1_QUPS = HubField(val1, 11, 8);
 
-	unsigned CORE_MISCCFG_QRMAXCNT  = HubField(misccfg, 3, 1);
+	//unsigned CORE_MISCCFG_QRMAXCNT  = HubField(misccfg, 3, 1);
 	unsigned CORE_MISCCFG_OVRTMUOUT = HubField(misccfg, 0, 0);
 
 
@@ -572,10 +572,11 @@ void RegisterMapping::v3d_irq_enable() {
 
 /**
  * Derived from: https://gitlab.freedesktop.org/lima/linux/-/blob/lima-5.0/drivers/gpu/drm/v3d/v3d_gem.c#L97
+ *
+ * Doesn't work as expected
+ * TODO consider removing it
  */
 void RegisterMapping::reset_v3d() {
-	bool do_reset = true;
-
 	// v3d_idle_gca(v3d);  - In code, not called for v3d ver >= 4.1. Pi4 starts with v 4.2
 	//                     - v < 4.1 uses device tree reg 'gca', not present in my system
 
@@ -584,10 +585,11 @@ void RegisterMapping::reset_v3d() {
 	//
  	//v3d_mmu_set_page_table(v3d);
 	//
-	unsigned const V3D_MMU_PAGE_SHIFT = 12;
 
 	// `v3d->pt_addr` is only used for DMA calls, which this library doesn't use for v3d.
 	// Therefore, cautiously commenting it out.
+	//
+	//  unsigned const V3D_MMU_PAGE_SHIFT = 12;
 	//
 	//	v3d_write(V3D_MMU_PT_PA_BASE, v3d->pt_paddr >> V3D_MMU_PAGE_SHIFT);
 	//

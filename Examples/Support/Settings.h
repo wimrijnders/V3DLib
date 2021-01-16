@@ -27,8 +27,8 @@ struct Settings {
 	virtual void init_params() {}
 
 private:
-	bool const m_use_num_qpus;
 	CmdParameters * const m_derived_params;
+	bool const m_use_num_qpus;
 	int output_count = 0;
 
 	void set_name(const char *in_name);

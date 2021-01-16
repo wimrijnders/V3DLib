@@ -105,7 +105,6 @@ bool resolveRegFileConflict(Instr* instr, Instr* newInstr)
 static void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
-    RegId r; RegTag rt;
 
     if (instr.tag == ALU && instr.ALU.op == M_ROTATE) {
       // Insert moves for horizontal rotate operations
@@ -153,7 +152,6 @@ static void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
-    RegId r; RegTag rt;
 
     // Insert NOPs to avoid data hazards
     useDefReg(prev, &prevSet);

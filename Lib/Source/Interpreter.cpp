@@ -352,10 +352,9 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
         if (cond[i].intVal) {
           s->env[v.id()][i] = x[i];
         }
-      return;
+      break;
 
-    // Load via TMU
-    case TMU0_ADDR: {
+    case TMU0_ADDR: {  // Load via TMU
       assert(s->loadBuffer.size() < 8);
       Vec w;
       for (int i = 0; i < NUM_LANES; i++) {
@@ -363,22 +362,25 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
         w[i].intVal = s->emuHeap.phy(addr>>2);
       }
       s->loadBuffer.append(w);
-      return;
+      break;
     }
 
-    // VPM write
     case VPM_WRITE:
-      printf("V3DLib: vpmPut() not supported by interpreter\n");
+      assertq(false, "interpreter: vpmPut() not supported");
       break;
 
     // Others are read-only
+    case VPM_READ:
     case UNIFORM:
     case QPU_NUM:
     case ELEM_NUM:
-      printf("V3DLib: writing to read-only variable\n");
-  }
+      assertq(false, "interpreter: can not write to read-only variable");
+			break;
 
-  assert(false);
+		default:
+      assertq(false, "interpreter: unexpected var-tag in assignToVar()");
+			break;
+  }
 }
 
 
@@ -475,9 +477,11 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
       execWhere(s, vecAnd(vecNeg(b), cond), stmt->elseStmt());
       return;
     }
-  }
 
-  assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement");
+		default:
+  		assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement");
+			return;
+  }
 }
 
 // ============================================================================
@@ -649,11 +653,13 @@ void exec(InterpreterState* state, CoreState* s) {
     case DMA_START_WRITE:
       fatal("V3DLib: DMA access not supported by interpreter\n");
       break;
-  }
 
-  // Unreachable
-  assert(false);
+		default:
+      assertq(false, "interpreter: unexpected stmt-tag in exec()");
+			break;
+  }
 }
+
 
 // ============================================================================
 // Interpreter

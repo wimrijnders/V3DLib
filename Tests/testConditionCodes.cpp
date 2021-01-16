@@ -114,7 +114,7 @@ ByteCode qpu_cond_push_a() {
 	return bytecode;
 }
 
-
+/*
 void dump_code(ByteCode &code) {
 	for (uint32_t offset = 0; offset < code.size(); ++offset) {
 		std::cout << Instr::mnemonic(code[offset]) << "\n";
@@ -122,6 +122,7 @@ void dump_code(ByteCode &code) {
 
 	std::cout << std::endl;
 }
+*/
 
 }  // anon namespace
 
@@ -342,7 +343,7 @@ void check(V3DLib::SharedArray<int> &result, int block, uint32_t *expected) {
 			buf2 << expected[i];
 		}
 
-		success = (result[block * VEC_SIZE + n] == expected[n]);
+		success = (result[block * VEC_SIZE + n] == (int) expected[n]);
 		if (!success) break;
 	}
 
@@ -395,12 +396,12 @@ void check_andor_result(V3DLib::SharedArray<int> &result) {
 
 
 void reset(V3DLib::SharedArray<int> &result, int val = 0) {
-  for (int i = 0; i < result.size(); i++) { result[i] = val; }
+  for (int i = 0; i < (int) result.size(); i++) { result[i] = val; }
 }
 
 
 void reset(V3DLib::SharedArray<float> &result, float val = 0.0) {
-  for (int i = 0; i < result.size(); i++) { result[i] = val; }
+  for (int i = 0; i < (int) result.size(); i++) { result[i] = val; }
 }
 
 

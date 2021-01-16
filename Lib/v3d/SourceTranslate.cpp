@@ -237,7 +237,6 @@ void add_init(Seq<Instr> &code) {
  * @return true if statement handled, false otherwise
  */
 bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt::Ptr s) {
-
 	switch (s->tag) {
 	  case STORE_REQUEST:
 			storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
@@ -258,9 +257,10 @@ bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt::Ptr s) {
 	  case DMA_START_WRITE:
 			fatal("VPM and DMA reads and writes can not be used for v3d");
 			return true;
+
+		default:
+			return false;
 	}
- 
-	return false;
 }
 
 }  // namespace v3d

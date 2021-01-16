@@ -2,10 +2,10 @@
 
 namespace V3DLib {
 
-// Rename a destination register in an instruction
-void renameDest(Instr* instr, RegTag vt, RegId v,
-                              RegTag wt, RegId w)
-{
+/**
+ * Rename a destination register in an instruction
+ */
+void renameDest(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
   switch (instr->tag) {
     // Load immediate
     case LI:
@@ -30,13 +30,16 @@ void renameDest(Instr* instr, RegTag vt, RegId v,
         instr->RECV.dest.regId = w;
       }
       return;
+		default:
+      return;
   }
 }
 
-// Renamed a used register in an instruction
-void renameUses(Instr* instr, RegTag vt, RegId v,
-                              RegTag wt, RegId w)
-{
+
+/**
+ * Renamed a used register in an instruction
+ */
+void renameUses(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
   switch (instr->tag) {
     // ALU operation
     case ALU:
@@ -68,12 +71,16 @@ void renameUses(Instr* instr, RegTag vt, RegId v,
         instr->PRF.regId = w;
       }
       return;
+		default:
+      return;
   }
 }
 
-// Globally change register tag vt to wt in given instruction
-void substRegTag(Instr* instr, RegTag vt, RegTag wt)
-{
+
+/**
+ * Globally change register tag vt to wt in given instruction
+ */
+void substRegTag(Instr* instr, RegTag vt, RegTag wt) {
   switch (instr->tag) {
     // Load immediate
     case LI:
@@ -108,7 +115,8 @@ void substRegTag(Instr* instr, RegTag vt, RegTag wt)
       if (instr->RECV.dest.tag == vt)
         instr->RECV.dest.tag = wt;
       return;
-
+		default:
+      return;
   }
 }
 

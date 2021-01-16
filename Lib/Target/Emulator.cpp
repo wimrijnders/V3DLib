@@ -134,7 +134,10 @@ struct QPUState {
 	}
 };
 
-// State of the VideoCore.
+
+/**
+ * State of the VideoCore
+ */
 struct State {
   QPUState qpu[MAX_QPUS];  // State of each QPU
   Seq<int32_t> uniforms;   // Kernel parameters
@@ -151,14 +154,18 @@ struct State {
 
 }
 
-// ============================================================================
-// Read a vector register
-// ============================================================================
 
-Vec readReg(QPUState* s, State* g, Reg reg)
-{
-  Vec v;
+/**
+ * Read a vector register
+ */
+Vec readReg(QPUState* s, State* g, Reg reg) {
   int r = reg.regId;
+  Vec v;
+
+	// Initialize v to prevent warnings on uninitialized errors
+	for (int i = 0; i < NUM_LANES; i++)
+		v[i].intVal = 0;
+
   switch (reg.tag) {
     case REG_A:
       assert(r >= 0 && r < s->sizeRegFileA);
@@ -292,9 +299,9 @@ Vec readReg(QPUState* s, State* g, Reg reg)
       }
       fatal("V3DLib: can't read special register");
     case NONE:
-      for (int i = 0; i < NUM_LANES; i++)
-        v[i].intVal = 0;
       return v;
+		default:
+			break;  // Should not happen
   }
 
   // Unreachable
@@ -329,11 +336,12 @@ inline bool checkAssignCond(QPUState* s, AssignCond cond, int i) {
 	return false;
 }
 
-// Given a branch condition, determine if it evaluates to true using
-// the implicit condition flags.
 
-inline bool checkBranchCond(QPUState* s, BranchCond cond)
-{
+/**
+ * Given a branch condition, determine if it evaluates to true using
+ * the implicit condition flags.
+ */
+inline bool checkBranchCond(QPUState* s, BranchCond cond) {
   bool bools[NUM_LANES];
   switch (cond.tag) {
     case COND_ALWAYS: return true;
@@ -348,6 +356,7 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond)
           case NC: bools[i] = !s->negFlags[i];  break;
           default: assert(false); break;
         }
+
       if (cond.tag == COND_ALL) {
         for (int i = 0; i < NUM_LANES; i++)
           if (! bools[i]) return false;
@@ -358,15 +367,16 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond)
           if (bools[i]) return true;
         return false;
       }
+		default:
+			assertq(false, "checkBranchCond(): unexpected value");
+			return false;
   }
-
-  return false;   // To shut up compiler warning; should never come here
 }
 
-// ============================================================================
-// Write a vector to a register
-// ============================================================================
 
+/**
+ * Write a vector to a register
+ */
 void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, Vec v) {
   switch (dest.tag) {
     case REG_A:
@@ -399,6 +409,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
         }
 
       return;
+
     case SPECIAL:
       switch (dest.regId) {
         case SPECIAL_RD_SETUP: {
@@ -526,20 +537,20 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           break;
       }
 
-      assertq(false, "V3DLib: can't write to special register", true);
+      assertq(false, "emulator: can not write to special register", true);
       return;
-  }
 
-  // Unreachable
-  assert(false);
+		default:
+      assertq(false, "emulator: unexpected dest tag");
+			break;
+  }
 }
 
-// ============================================================================
-// Interpret an immediate operaand
-// ============================================================================
 
-Vec evalImm(Imm imm)
-{
+/**
+ * Interpret an immediate operand
+ */
+Vec evalImm(Imm imm) {
   Vec v;
   switch (imm.tag) {
     case IMM_INT32:

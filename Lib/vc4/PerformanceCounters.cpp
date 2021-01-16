@@ -158,7 +158,7 @@ void PerformanceCounters::enable(std::vector<Index> const &srcs) {
 	RM::writeRegister(RM::V3D_PCTRE, bitMask);
 
 	// Set the passed registers
-	for (int i = 0; i < srcs.size(); ++i) {
+	for (int i = 0; i < (int) srcs.size(); ++i) {
 		RM::Index targetIndex = (RM::Index) (RM::V3D_PCTRS0 + 2*i);
 		RM::writeRegister(targetIndex, srcs[i]);
 	}

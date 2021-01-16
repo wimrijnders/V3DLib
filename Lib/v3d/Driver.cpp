@@ -61,7 +61,14 @@ bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniform
 	assertq(m_bo_handles.size() > 0, "v3d execute: There should be at least one buffer object present on execution");
 
 	// See Note 1
-	WorkGroup workgroup = (1, 1, 0);  // Setting last val to 0 ensures all QPU's return all registers
+
+	// BUG, this init was wrong
+	//
+	// TODO test this again with different values
+	//WorkGroup workgroup = (1, 1, 0);
+	//
+	WorkGroup workgroup(0);           // Setting first param to 0 ensures all QPU's return all registers
+
 	uint32_t wgs_per_sg = 16;         // Has no effect if previous (1, 1, 0)
 
 	st_v3d_submit_csd st = {
@@ -72,7 +79,7 @@ bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniform
 			(
         ((((wgs_per_sg * workgroup.wg_size() + 16u - 1u) / 16u) - 1u) << 12) |
 				(wgs_per_sg << 8) |
-				workgroup.wg_size() & 0xff
+				(workgroup.wg_size() & 0xff)
 			),
 			thread - 1,           // Number of batches minus 1
 			code_phyaddr,         // Shader address, pnan, singleseg, threading

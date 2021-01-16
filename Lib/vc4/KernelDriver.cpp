@@ -90,7 +90,7 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
 	//debug("Called vc4 KernelDriver::invoke()");	
 	assert(code.size() > 0);
 
-	int numWords = code.size() + 12*MAX_KERNEL_PARAMS + 12*2;
+	unsigned numWords = code.size() + 12*MAX_KERNEL_PARAMS + 12*2;
 
 	// Assumption: code in a kernel, once allocated, doesnt' change
 	if (qpuCodeMem.allocated()) {

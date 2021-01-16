@@ -7,18 +7,6 @@
 namespace V3DLib {
 namespace {
 
-const char* pretty(SubWord sw) {
-  switch (sw) {
-    case A8:  return "[7:0]";
-    case B8:  return "[15:8]";
-    case C8:  return "[23:16]";
-    case D8:  return "[31:24]";
-    case A16: return "[15:0]";
-    case B16: return "[31:16]";
-    default:  assert(false); return "";
-  }
-}
-
 
 std::string pretty(Imm imm) {
 	std::string ret;

@@ -441,11 +441,8 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 	unif[0] = X.getAddress();
  	unif[1] = Y.getAddress();
 
-	double start = get_time();
-
 	V3DLib::v3d::Driver drv;
 	drv.add_bo(heap);
-	//printf("Executing on QPU...\n");
 	REQUIRE(drv.execute(code, &unif, 1));
 
 	//dump_data(Y); 
@@ -461,7 +458,4 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
 			}
 		}
 	}
-
-	double end = get_time();
-	//printf("Rotate alias done: %.6lf sec\n", (end - start));
 }

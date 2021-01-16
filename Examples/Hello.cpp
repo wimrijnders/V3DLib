@@ -28,7 +28,7 @@ int main(int argc, const char *argv[]) {
 	settings.process(k);  
 
 	// Display the result
-  for (int i = 0; i < array.size(); i++) {
+  for (int i = 0; i < (int) array.size(); i++) {
     printf("%i: %i\n", i, array[i]);
   }
   return 0;

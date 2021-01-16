@@ -34,7 +34,7 @@ int main(int argc, const char *argv[]) {
 	settings.process(k);              // Invoke the kernel
 
 	// Display the result
-  for (int i = 0; i < id_array.size(); i++) {
+  for (int i = 0; i < (int) id_array.size(); i++) {
     printf("%3i: %2i, %2i\n", i, id_array[i], index_array[i]);
   }
   

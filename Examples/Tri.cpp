@@ -72,7 +72,7 @@ void run_int() {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(settings.num_qpus*16);
-  for (int i = 0; i < array.size(); i++)
+  for (int i = 0; i < (int) array.size(); i++)
     array[i] = i;
 
   // Invoke the kernel
@@ -80,7 +80,7 @@ void run_int() {
   settings.process(k);
 
   // Display the result
-  for (int i = 0; i < array.size(); i++)
+  for (int i = 0; i < (int) array.size(); i++)
     printf("%i: %i\n", i, array[i]);
 }
 
@@ -94,7 +94,7 @@ void run_float() {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<float> array(settings.num_qpus*16);
-  for (int i = 0; i < array.size(); i++)
+  for (int i = 0; i < (int) array.size(); i++)
     array[i] = (float) i;
 
   // Invoke the kernel
@@ -102,7 +102,7 @@ void run_float() {
   settings.process(k);
 
   // Display the result
-  for (int i = 0; i < array.size(); i++)
+  for (int i = 0; i < (int) array.size(); i++)
     printf("%i: %f\n", i, array[i]);
 }
 

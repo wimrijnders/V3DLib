@@ -31,7 +31,7 @@ int main(int argc, const char *argv[]) {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> array(numQpus*16 + 16);
-  for (int i = 0; i < array.size(); i++)
+  for (int i = 0; i < (int) array.size(); i++)
     array[i] = i;
 
   // Invoke the kernel

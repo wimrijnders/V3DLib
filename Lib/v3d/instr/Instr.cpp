@@ -80,10 +80,6 @@ namespace {
 
 struct v3d_device_info devinfo;  // NOTE: uninitialized struct, field 'ver' must be set! For asm/disasm OK
 
-bool is_power_of_2(int x) {
-    return x > 0 && !(x & (x - 1));
-}
-
 }  // anon namespace
 
 
@@ -224,7 +220,7 @@ std::string Instr::mnemonic(uint64_t in_code) {
 std::string Instr::mnemonics(std::vector<uint64_t> in_code) {
 	std::string ret;
 
-	for (int i = 0; i < in_code.size(); i++) {
+	for (int i = 0; i < (int) in_code.size(); i++) {
 		ret << i << ": " << mnemonic(in_code[i]) << "\n";
 	}
 
@@ -233,9 +229,7 @@ std::string Instr::mnemonics(std::vector<uint64_t> in_code) {
 
 
 void Instr::init_ver() const {
-	if (devinfo.ver != 42) {               //        <-- only this needs to be set
-		devinfo.ver = 42;
-	}
+	devinfo.ver = 42;  // only this needs to be set
 }
 
 
@@ -330,13 +324,6 @@ bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 		return false;  // Not the special case we're looking for
 	}
 
-	// Check if bu flag is set; if so, ignore bdu field
-	auto is_bu_set = [] (uint64_t code) -> bool {
-		uint64_t bu_mask = ((uint64_t) 1) << 14;
-		return 0 != (code & bu_mask);
-	};
-
-
 	// Hypothesis: non-usage of bdu depends on these two fields
 
 	uint32_t cond   = QPU_GET_FIELD(code1, VC5_QPU_BRANCH_COND);
@@ -368,10 +355,6 @@ bool Instr::compare_codes(uint64_t code1, uint64_t code2) {
 
 	breakpoint
 #endif  // DEBUG
-
-	//if (is_bu_set(code1) || is_bu_set(code2)) {
-	//	return false;  // bdu may be used
-	//}
 
 	return false;
 }

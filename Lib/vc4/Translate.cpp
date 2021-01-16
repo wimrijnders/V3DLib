@@ -236,6 +236,10 @@ bool translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
 	  case DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     return true;
 	  case DMA_START_READ:   seq<< startDMAReadStmt(s->startDMARead());    return true;
 	  case DMA_START_WRITE:  seq << startDMAWriteStmt(s->startDMAWrite()); return true;
+
+		default:
+			assertq(false, "translate_stmt(): unexpected stmt tag");
+			break;
 	}
 
 	return false;

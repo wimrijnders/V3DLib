@@ -53,6 +53,7 @@ LIBS := $(LIB_EXTERN)
 #    It is benign: https://stackoverflow.com/a/48149400 
 #
 CXX_FLAGS = \
+ -Wall \
  -Wconversion \
  -Wno-psabi \
  -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g

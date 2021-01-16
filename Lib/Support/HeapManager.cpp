@@ -1,5 +1,4 @@
 #include "HeapManager.h"
-//#include <cassert>
 #include "Support/basics.h"  // fatal()
 
 namespace  {
@@ -11,11 +10,11 @@ int const INITIAL_FREE_RANGE_SIZE = 32;
 
 namespace V3DLib {
 
-int HeapManager::FreeRange::size() const {
+unsigned HeapManager::FreeRange::size() const {
 	int ret = (int) right - (int) left + 1;
 	assert(ret >= 0);  // empty range will have left + 1 == right
 
-	return ret;
+	return (unsigned) ret;
 }
 
 
@@ -77,7 +76,7 @@ int HeapManager::alloc_intern(uint32_t size_in_bytes) {
 
 	// Find the first available space that is large enough
 	int found_index = -1;
-	for (int i = 0; i < m_free_ranges.size(); ++i) {
+	for (int i = 0; i < (int) m_free_ranges.size(); ++i) {
 		auto &cur = m_free_ranges[i];
 
 		if (size_in_bytes <= cur.size()) {
@@ -139,7 +138,7 @@ void HeapManager::dealloc_array(uint32_t index, uint32_t size) {
 	int left_match_index  = -1;
 	int right_match_index = -1;
 
-	for (int i = 0; i < m_free_ranges.size(); ++i) {
+	for (int i = 0; i < (int) m_free_ranges.size(); ++i) {
 		auto &cur = m_free_ranges[i];
 
 		if (right + 1 == cur.left) {
@@ -165,7 +164,7 @@ void HeapManager::dealloc_array(uint32_t index, uint32_t size) {
 			// Move the last range to the one we want to delete
 			auto tmp = m_free_ranges.back();
 			m_free_ranges.pop_back();
-			if (right_match_index != m_free_ranges.size()) {
+			if (right_match_index != (int) m_free_ranges.size()) {
 				m_free_ranges[right_match_index] = tmp;
 			} else {
 			}

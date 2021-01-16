@@ -142,6 +142,8 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
       // Add dest reg to 'def' set
       useDef->def.insert(instr.RECV.dest);
       return;
+		default:
+			return;
   }
 }
 
@@ -341,7 +343,7 @@ void LiveSets::dump_possible(std::vector<bool> &possible, int index) {
 	}
 	buf << ": ";
 
-	for (int j = 0; j < possible.size(); j++) {
+	for (int j = 0; j < (int) possible.size(); j++) {
 		buf << (possible[j]?"1":"0");
 	}
 	debug(buf.c_str());
@@ -355,7 +357,7 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 	assert(!possible.empty());
 	RegId chosenA = -1;
 
-	for (int j = 0; j < possible.size(); j++)
+	for (int j = 0; j < (int) possible.size(); j++)
 		if (possible[j]) { chosenA = j; break; }
 
 	if (check_limit && chosenA < 0) {

@@ -15,8 +15,7 @@ namespace {
 // ALU opcodes
 // ===========
 
-uint32_t encodeAddOp(ALUOp op)
-{
+uint32_t encodeAddOp(ALUOp op) {
   switch (op) {
     case NOP:       return 0;
     case A_FADD:    return 1;
@@ -42,14 +41,15 @@ uint32_t encodeAddOp(ALUOp op)
     case A_CLZ:     return 24;
     case A_V8ADDS:  return 30;
     case A_V8SUBS:  return 31;
-  }
 
-  fatal("V3DLib: unknown add op");
-	return 0;
+		default:
+  		fatal("V3DLib: unknown add op");
+			return 0;
+  }
 }
 
-uint32_t encodeMulOp(ALUOp op)
-{
+
+uint32_t encodeMulOp(ALUOp op) {
   switch (op) {
     case NOP:      return 0;
     case M_FMUL:   return 1;
@@ -59,18 +59,19 @@ uint32_t encodeMulOp(ALUOp op)
     case M_V8MAX:  return 5;
     case M_V8ADDS: return 6;
     case M_V8SUBS: return 7;
-  }
 
-  fatal("V3DLib: unknown mul op");
-	return 0;
+		default:
+  		fatal("V3DLib: unknown mul op");
+			return 0;
+  }
 }
+
 
 // ===============
 // Condition flags
 // ===============
 
-uint32_t encodeAssignCond(AssignCond cond)
-{
+uint32_t encodeAssignCond(AssignCond cond) {
   switch (cond.tag) {
     case AssignCond::Tag::NEVER:  return 0;
     case AssignCond::Tag::ALWAYS: return 1;
@@ -81,18 +82,19 @@ uint32_t encodeAssignCond(AssignCond cond)
         case NS: return 4;
         case NC: return 5;
      }
-  }
 
-  fatal("V3DLib: missing case in encodeAssignCond");
-	return 0;
+		default:
+  		fatal("V3DLib: missing case in encodeAssignCond");
+			return 0;
+  }
 }
+
 
 // =================
 // Branch conditions
 // =================
 
-uint32_t encodeBranchCond(BranchCond cond)
-{
+uint32_t encodeBranchCond(BranchCond cond) {
   switch (cond.tag) {
     case COND_NEVER:
       fatal("V3DLib: 'never' condition not supported");
@@ -113,16 +115,17 @@ uint32_t encodeBranchCond(BranchCond cond)
         case NC: return 7;
         default: break;
       }
-  }
 
-  fatal("V3DLib: missing case in encodeBranchCond");
-	return 0;
+		default:
+		  fatal("V3DLib: missing case in encodeBranchCond");
+			return 0;
+  }
 }
+
 
 // ================
 // Register encoder
 // ================
-
 
 /**
  * @brief Determine the regfile and index combination to use for writes, for the passed 
@@ -148,8 +151,7 @@ uint32_t encodeBranchCond(BranchCond cond)
  *   This implies that the handling of ACC5 differs from the others (at least, for ACC[0123])
  *   TODO: Check code for this; is there special handling of ACC5? 
  */
-uint32_t encodeDestReg(Reg reg, RegTag* file)
-{
+uint32_t encodeDestReg(Reg reg, RegTag* file) {
   // Selection of regfile for the cases where using A or B doesn't matter
   RegTag AorB = REG_A;  // Select A as default
   if (reg.tag == REG_A || reg.tag == REG_B) {
@@ -186,10 +188,11 @@ uint32_t encodeDestReg(Reg reg, RegTag* file)
     case NONE:
       // NONE maps to 'NOP' in regfile.
       *file = AorB; return 39;
-  }
 
-  fatal("V3DLib: missing case in encodeDestReg");
-	return 0;
+		default:
+  		fatal("V3DLib: missing case in encodeDestReg");
+			return 0;
+  }
 }
 
 
@@ -234,8 +237,7 @@ uint32_t encodeDestReg(Reg reg, RegTag* file)
  *              Verify if those distinctions are important at least for A/B.
  *              They might be the same thing.
  */
-uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux)
-{
+uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux) {
   assert (file == REG_A || file == REG_B);
 
   const uint32_t NO_REGFILE_INDEX = 0;  // Return value to use when there is no regfile mapping for the register
@@ -267,11 +269,13 @@ uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux)
         case SPECIAL_DMA_LD_WAIT: assert(file == REG_A); *mux = 6; return 50;
         case SPECIAL_DMA_ST_WAIT: assert(file == REG_B); *mux = 7; return 50;
       }
-  }
 
-  fatal("V3DLib: missing case in encodeSrcReg");
-	return 0;
+		default:
+  		fatal("V3DLib: missing case in encodeSrcReg");
+			return 0;
+  }
 }
+
 
 // ===================
 // Instruction encoder
@@ -291,8 +295,8 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       break;
     case DMA_LOAD_WAIT:
     case DMA_STORE_WAIT: {
-      RegId src = instr.tag == DMA_LOAD_WAIT ? SPECIAL_DMA_LD_WAIT :
-                  SPECIAL_DMA_ST_WAIT;
+      RegId src = instr.tag == DMA_LOAD_WAIT ? SPECIAL_DMA_LD_WAIT : SPECIAL_DMA_ST_WAIT;
+
       instr.tag                   = ALU;
       instr.ALU.m_setCond.clear();
       instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
@@ -305,10 +309,20 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
       break;
     }
+
+		default:
+			break;  // rest passes through
   }
 
   // Encode core instruction
   switch (instr.tag) {
+		// Not expecting these any more after previous step
+    case IRQ:
+    case DMA_LOAD_WAIT:
+    case DMA_STORE_WAIT:
+			assertq(false, "encodeInstr(): intermediate instruction can not be handled as core instruction");
+			return;
+
     // Load immediate
     case LI: {
 			auto &li = instr.LI;
@@ -465,15 +479,18 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
     case PRS:
     case PRF:
 		case INIT_BEGIN:
-		case INIT_END:
+		case INIT_END: {
       uint32_t waddr_add = 39 << 6;
       uint32_t waddr_mul = 39;
       *high  = 0xe0000000 | waddr_add | waddr_mul;
       *low   = 0;
       return;
-  }
+		}
 
-  fatal("V3DLib: missing case in vc4 encodeInstr");
+		default:
+  		fatal("V3DLib: missing case in vc4 encodeInstr");
+			return;
+  }
 }
 
 }  // anon namespace

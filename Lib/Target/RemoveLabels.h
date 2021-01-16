@@ -33,7 +33,7 @@ void removeLabels(Instructions &instrs) {
   // First, remove labels, remembering the index of the instruction
   // pointed to by each label.
 	std::string last_comment;
-  for (int i = 0, j = 0; i < instrs.size(); i++) {
+  for (int i = 0, j = 0; i < (int) instrs.size(); i++) {
     auto &instr = instrs[i];
 
     if (instr.is_label()) {
@@ -58,7 +58,7 @@ void removeLabels(Instructions &instrs) {
 	assert(last_comment.empty());
 
   // Second, convert branch-label instructions.
-  for (int i = 0; i < newInstrs.size(); i++) {
+  for (int i = 0; i < (int) newInstrs.size(); i++) {
     auto &instr = newInstrs[i];
 
     if (instr.is_branch_label()) {
