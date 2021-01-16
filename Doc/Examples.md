@@ -26,12 +26,14 @@
 
 ## Overview of Examples
 
-To build and an example run (assuming that the repo is cloned):
+To build and run an example:
 
 ```
 make QPU=1 <name>
 sudo obj-qpu/bin/<name>
 ```
+
+Interesting examples (there are more):
 
 - **GCD**       - [Euclid's algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm), The GCD's of some random pairs of integers
 - **Tri**       - Computes [triangular numbers](https://en.wikipedia.org/wiki/Triangular_number), using two kernels:
@@ -39,14 +41,13 @@ sudo obj-qpu/bin/<name>
   2. with float in- and output
 - **OET**       - [Odd-even transposition sorter](https://en.wikipedia.org/wiki/Odd%E2%80%93even_sort) for 32 integers
 - **HeatMap**   - Modelling heat flow across a 2D surface; outputs an image in [pgm](http://netpbm.sourceforge.net/doc/pgm.html) format, and notes the time taken
-- **Rot3D**     -  3D rotation of a random objecti; outputs the time taken
+- **Rot3D**     -  3D rotation of a random object; outputs the time taken
 
 
 ## Example 1: Euclid's Algorithm
 
-Following tradition, let's start by implementing [Euclid's
-algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm).  Given
-a pair of positive integers larger then zero, Euclid's algorithm
+Given a pair of positive integers larger than zero, 
+[Euclid's algorithm](https://en.wikipedia.org/wiki/Euclidean_algorithm).
 computes the largest integer that divides into both without a
 remainder, also known as the *greatest common divisor*, or GCD for
 short.
@@ -64,10 +65,10 @@ We present two versions of the algorithm:
 In plain C++, we can express the algorithm as follows.
 
 ```C++
-void gcd(int* p, int* q, int* r)
-{
+void gcd(int* p, int* q, int* r) {
   int a = *p;
   int b = *q;
+
   while (a != b) {
     if (a > b) 
       a = a-b;
@@ -105,38 +106,32 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
 }
 ```
 
-Even this simple example introduces a number of concepts:
+This example introduces a number of concepts:
 
   * the `Int` type denotes a 16-element vector of 32-bit integers;
-
   * the `Ptr<Int>` type denotes a 16-element vector of *addresses* of
     `Int` vectors;
-
   * the expression `*p` denotes the `Int` vector in memory starting at address
     <tt>p<sub>0</sub></tt>, i.e. starting at the *first* address in the
     vector `p`;
-
   * the expression `a != b` computes a vector of booleans via a 
     pointwise comparison of vectors `a` and `b`;
-
   * the condition `any(a != b)` is true when *any* of the booleans in the
     vector `a != b` are true;
-
   * the statement `Where (a > b) a = a-b; End` is a conditional assigment:
     only elements in vector `a` for which `a > b` holds will be
     modified.
 
 It's worth reiterating that `V3dLib` is just standard C++ code: there
-are no pre-processors being used other than the standard C
-pre-processor.  All the `V3DLib` language constructs are simply
-classes, functions, and macros exported by `V3DLib`.  This kind of
-language is somtimes known as a [Domain Specific Embedded
-Language](http://cs.yale.edu/c2/images/uploads/dsl.pdf).
+are no pre-processors being used other than the standard C pre-processor.
+All the `V3DLib` language constructs are simply classes, functions, and macros exported by `V3DLib`.
+This kind of language is called a
+[Domain Specific Embedded Language](http://cs.yale.edu/c2/images/uploads/dsl.pdf).
+
 
 ### Invoking the QPUs
 
-Now, to compute 16 GCDs on a single QPU, we write the following
-program.
+The following program computes 16 GCDs in parallel on a single QPU:
 
 ```c++
 int main() {
@@ -167,25 +162,21 @@ int main() {
 }
 ```
 
-Unpacking this a bit:
+iExplanation:
 
-  * `compile` takes function defining a QPU computation and returns a
+  * `compile()` takes a function defining a QPU computation and returns a
     CPU-side handle that can be used to invoke it;
-
   * the handle `k` is of type `Kernel<Ptr<Int>, Ptr<Int>,
     Ptr<Int>>`, capturing the types of `gcd`'s parameters,
     but we use the `auto` keyword to avoid clutter;
-
-  * when the kernel is invoked by writing `k(&a, &b, &r)`, `V3DLib`d$ knows
+  * when the kernel is invoked by writing `k(&a, &b, &r)`, `V3DLib` 
     automatically converts CPU values of type
     `SharedArray<int>*` into QPU values of type `Ptr<Int>`;
+  * Type `SharedArray&lt;&alpha;&gt;` type is used to allocate
+    memory that is accessed by both the CPU and the QPUs:
+    memory allocated with `new` and `malloc()` will not be accessible from the QPUs.
 
-  * the <tt>SharedArray&lt;&alpha;&gt;</tt> type is used to allocate
-    memory that is accessed
-    by both the CPU and the QPUs: memory allocated with `new` and
-    `malloc()` will not be accessible from the QPUs.
-
-Running this program, we get:
+Running this program produces the output:
 
 ```
 gcd(183, 186) = 3
@@ -212,12 +203,11 @@ gcd(129, 102) = 3
 technique for improving performance by reducing the number of costly
 branch instructions executed.
 
-The QPU's branch instruction can indeed be costly: it requires three
-[delay slots](https://en.wikipedia.org/wiki/Delay_slot) (that's 12
-clock cycles), and `V3DLib` currently makes no attempt to fill these
-slots with useful work.  Although `V3DLib` doesn't do loop unrolling
-for you, it does make it easy to express: we can simply
-use a C++ loop to generate multiple QPU statements.
+The QPU's branch instruction is costly: it requires three
+[delay slots](https://en.wikipedia.org/wiki/Delay_slot) (that's 12 clock cycles),
+and this project currently makes no attempt to fill these slots with useful work.
+Although loop unrolling is not done automaticlly,
+it is straightforward use a C++ loop to generate multiple QPU statements.
 
 ```c++
 void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
@@ -238,17 +228,14 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
 }
 ```
 
-Using C++ as a meta-language in this way is one of the attractions
-of `V3DLib`.  We will see lots more examples of this later!
 
 ## Example 2: 3D Rotation
 
-Let's move to another simple example that helps to introduce
-ideas: a routine to rotate 3D objects.
+This example illustrates a routine to rotate 3D objects.
 
-(Of course, [OpenGL ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md)
-would be a much better path for doing efficient graphics; this is just
-for illustration purposes.)
+([OpenGL ES](https://www.raspberrypi.org/documentation/usage/demos/hello-teapot.md)
+is probably a better idea for this if you need to rotate a lot.
+This example is just for illustration purposes)
 
 ### <a name="scalar-version-1"></a> Scalar version
 
@@ -266,20 +253,20 @@ void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
 }
 ```
 
-If we apply this to the vertices in [Newell's teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
+If this applied to the vertices of
+[Newell's teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
 (rendered using [Richard Hull's wireframes](https://github.com/rm-hull/wireframes) tool)
 
 ![Newell's teapot](./images/teapot.png)
 
-with &theta; = 180 degrees, then we get
+with &theta; = 180 degrees, the result is:
 
 ![Newell's teapot rotated](./images/teapot180.png)
 
 ### <a name="vector-version-1-1"></a>  Vector version 1
 
-Our first vector version is almost identical to the scalar version
-above: the only difference is that each loop iteration now processes
-16 vertices at a time rather than a single vertex.
+This first vector version is almost identical to the scalar version above.
+The only difference is that each loop iteration now processes 16 vertices at a time rather than a single vertex.
 
 ```c++
 void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
@@ -292,11 +279,10 @@ void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
 }
 ```
 
-This simple solution will spend a lot of time blocked on the memory subsystem, waiting for
-vector loads and stores to complete.
-To get good performance on a QPU, it is desirable to overlap memory access with computation, and
-the current `V3DLib` compiler is not clever enough to do this automatically (TODO!).
-We can however solve the problem manually, using *non-blocking* load and store operations.
+This simple solution will spend a lot of time blocking on the memory subsystem, waiting for vector loads and stores to complete.
+To get good performance on a QPU, it is desirable to overlap memory access with computation;
+the current `V3DLib` version is not good at this yet (TODO!).
+*Non-blocking* load and store operations, however, can be added explicitly.
 
 ### Vector version 2: non-blocking loads and stores
 
@@ -376,23 +362,21 @@ measuring performance with respect to scaling.
 
 ## Example 3: 2D Convolution (Heat Transfer)
 
-Let's move to a somewhat more substantial example: modelling the heat
-flow across a 2D surface.
+This example models the heat flow across a 2D surface.
 [Newton's law of cooling](https://en.wikipedia.org/wiki/Newton%27s_law_of_cooling)
 states that an object cools at a rate proportional to the difference
 between its temperature `T` and the temperature of its environment (or
 ambient temperature) `A`:
 
 ```
-dT/dt = −k(T − A)
+   dT/dt = −k(T − A)
 ```
 
-When simulating this equation, we will consider each point on our 2D surface
-to be a separate object, and the ambient temperature of each object to be the
-average of the temperatures of the 8 surrounding objects.
+In the simulation, each point on the 2D surface to be a separate object,
+and the ambient temperature of each object to be the average of the temperatures of the 8 surrounding objects.
 This is very similar to 2D convolution using a mean filter.
 
-If we apply heat at the north and east edges of our 2D surface, and
+If heat is applied at the north and east edges of our 2D surface, and
 cold at the south and west edges, then ultimately the result is:
 
 ![Heat flow across 2D surface](./images/heat.png)
@@ -418,8 +402,7 @@ The following function simulates a single time-step of the
 differential equation, applied to each object in the 2D grid.
 
 ```c++
-void step(float** grid, float** gridOut, int width, int height)
-{
+void step(float** grid, float** gridOut, int width, int height) {
   for (int y = 1; y < height-1; y++) {
     for (int x = 1; x < width-1; x++) {
       float surroundings =
@@ -436,10 +419,9 @@ void step(float** grid, float** gridOut, int width, int height)
 
 ### Vector version
 
-Before vectorising the simulation routine, we will introduce the idea
-of a **cursor** which is useful for implementing sliding window
-algorithms.  A cursor points to a window of three continguous vectors
-in memory: `prev`, `current` and `next`.
+This introduces the concept of a **cursor**, which is useful for implementing sliding window algorithms.
+
+A cursor points to a window of three continguous vectors in memory: `prev`, `current` and `next`.
 
 ```
   cursor  ------>  +---------+---------+---------+
@@ -519,13 +501,12 @@ class Cursor {
 
 Given a vector `x`, the operation `rotate(x, n)` will rotate
 `x` right by `n` places where `n` is a integer in the range 0 to 15.
-Notice that rotating right by 15 is the same as rotating left by 1.
+Noe that rotating right by 15 is the same as rotating left by 1.
 
-Now, using cursors the vectorised simulation step is expressed below.
-A slight structural difference from the scalar version is that we no
-longer treat the grid as a 2D array: it is now 1D array with a `pitch`
-parameter that gives the increment needed to get from the start of one
-row to the start of the next.
+The vectorised simulation step using cursors is expressed below.
+A difference from the scalar version is that the grid is not a 2D array:
+it is instead 1D array with a `pitch` parameter that gives the increment needed to get
+from the start of one row to the start of the next.
 
 ```C++
 void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height) {
