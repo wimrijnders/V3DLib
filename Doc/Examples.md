@@ -396,7 +396,7 @@ If we apply heat at the north and east edges of our 2D surface, and
 cold at the south and west edges, then ultimately the result is:
 
 <img src="Doc/heat.png" alt="Heat flow across 2D surface" width=30%>
-![Heat flow across 2D surface](images/heat.png)
+![Heat flow across 2D surface](./images/heat.png)
 
 The `HeatMap` example program initializes a number of heat points and then
 iteratively calculates the diffusion. The default implementation starts out
