@@ -20,6 +20,7 @@ class CmpOp {
 public:
   enum Id { EQ, NEQ, LT, GT, LE, GE };
 
+  CmpOp() : m_op(EQ), m_type(INT32) {}  // Arbitrary initializers
   CmpOp(Id op, BaseType type) : m_op(op), m_type(type) {}
 
   Id op() const { return m_op; }
@@ -69,12 +70,7 @@ struct BExpr {
   std::string pretty() const;
   std::string disp() const { return pretty(); }
 
-  union {
-    // Comparison
-    struct {
-  		CmpOp op;
-  	} cmp;
-  };
+  CmpOp cmp;
 
 private:
   BExprTag m_tag;

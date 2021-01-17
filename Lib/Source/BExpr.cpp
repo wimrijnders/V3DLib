@@ -11,11 +11,11 @@ SetCond::Tag CmpOp::cond_tag() const {
   SetCond::Tag ret = SetCond::NO_COND;
 
   switch (m_op) {
-  	case EQ:  ret = SetCond::Z; break;
-  	case NEQ: ret = SetCond::Z; break;
-  	case LT:  ret = SetCond::N; break;
-  	case GE:  ret = SetCond::N; break;
-  	default:  assert(false);
+    case EQ:  ret = SetCond::Z; break;
+    case NEQ: ret = SetCond::Z; break;
+    case LT:  ret = SetCond::N; break;
+    case GE:  ret = SetCond::N; break;
+    default:  assert(false);
   }
 
   return ret;
@@ -26,11 +26,11 @@ Flag CmpOp::assign_flag() const {
   Flag ret = ZS;  // Arbitrary initializer
 
   switch(m_op) {
-  	case EQ:  ret = ZS; break;
-  	case NEQ: ret = ZC; break;
-  	case LT:  ret = NS; break;
-  	case GE:  ret = NC; break;
-  	default:  assert(false);
+    case EQ:  ret = ZS; break;
+    case NEQ: ret = ZC; break;
+    case LT:  ret = NS; break;
+    case GE:  ret = NC; break;
+    default:  assert(false);
   }
 
   return ret;
@@ -58,10 +58,10 @@ char const *CmpOp::to_string() const {
 // ============================================================================
 
 BExpr::BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
- 	m_tag      = CMP;
-  m_cmp_lhs  = lhs;
-  cmp.op     = op;
-  m_cmp_rhs  = rhs;
+  m_tag     = CMP;
+  m_cmp_lhs = lhs;
+  cmp       = op;
+  m_cmp_rhs = rhs;
 }
 
 
@@ -151,27 +151,27 @@ std::string BExpr::pretty() const {
   switch (tag()) {
     // Negation
     case NOT:
-  		assert(m_lhs.get() != nullptr);
-  		ret << "!" << m_lhs->pretty();
+      assert(m_lhs.get() != nullptr);
+      ret << "!" << m_lhs->pretty();
       break;
 
     // Conjunction
     case AND:
-  		assert(m_lhs.get() != nullptr);
-  		assert(m_rhs.get() != nullptr);
+      assert(m_lhs.get() != nullptr);
+      assert(m_rhs.get() != nullptr);
       ret << "(" << m_lhs->pretty() << " && " << m_rhs->pretty() << ")";
       break;
 
     // Disjunction
     case OR:
-  		assert(m_lhs.get() != nullptr);
-  		assert(m_rhs.get() != nullptr);
-  		ret << "(" << m_lhs->pretty() << " || " << m_rhs->pretty() << ")";
+      assert(m_lhs.get() != nullptr);
+      assert(m_rhs.get() != nullptr);
+      ret << "(" << m_lhs->pretty() << " || " << m_rhs->pretty() << ")";
       break;
 
     // Comparison
     case CMP:
-  		ret << cmp_lhs()->pretty() << cmp.op.to_string() << cmp_rhs()->pretty();
+      ret << cmp_lhs()->pretty() << cmp.to_string() << cmp_rhs()->pretty();
       break;
   }
 

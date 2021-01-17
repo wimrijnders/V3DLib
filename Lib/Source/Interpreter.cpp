@@ -264,12 +264,12 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
     case CMP: {
       Vec a = eval(s, e->cmp_lhs());
       Vec b = eval(s, e->cmp_rhs());
-      if (e->cmp.op.type() == FLOAT) {
+      if (e->cmp.type() == FLOAT) {
         // Floating-point comparison
         for (int i = 0; i < NUM_LANES; i++) {
           float x = a[i].floatVal;
           float y = b[i].floatVal;
-          switch (e->cmp.op.op()) {
+          switch (e->cmp.op()) {
             case CmpOp::EQ:  v[i].intVal = x == y; break;
             case CmpOp::NEQ: v[i].intVal = x != y; break;
             case CmpOp::LT:  v[i].intVal = x <  y; break;
@@ -287,7 +287,7 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
           int32_t x = a[i].intVal;
           int32_t y = b[i].intVal;
 
-          switch (e->cmp.op.op()) {
+          switch (e->cmp.op()) {
             case CmpOp::EQ:  v[i].intVal = x == y; break;
             case CmpOp::NEQ: v[i].intVal = x != y; break;
             // Ideally compiler would implement:

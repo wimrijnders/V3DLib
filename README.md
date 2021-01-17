@@ -96,15 +96,15 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
     > sudo apt-get install git                                       # If not done already
     > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # get only latest commit
     > cd V3DLib
-	
+    
     # As long as the files don't change, you need to run this script only once.
     > script/install.sh                                              # Pull in and build external library
     # After this, it's sufficient to do just the following line for a build
-	
+    
     > make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
                                                                      # GPU support.
     
-    > make QPU=1 DEBUG=1 test                                        # Run the tests
+    > make QPU=1 DEBUG=1 test                                        # Build and run the tests
 
 
 ## Compile Times
@@ -139,7 +139,7 @@ The following works were *very* helpful in the development.
   by Herman Hermitage.
 * The [FFT implementation](http://www.aholme.co.uk/GPU_FFT/Main.htm)
   by Andrew Holme.
-	
+
 #### VideoCore 6
 * [v3d driver code in the linux kernel repository] - of special interest: [v3d_gem.c],
   [v3d_drm.h], `vc4` on same level
