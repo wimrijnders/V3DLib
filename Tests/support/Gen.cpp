@@ -225,14 +225,16 @@ BExpr::Ptr genBExpr(GenOptions* opts, int depth) {
 
     // Comparison
     case CMP: {
-      CmpOp op((CmpOpId) randRange(EQ, GE), INT32);
+      int cmp_select = randRange(CmpOp::EQ, CmpOp::GE);
+
       if (opts->genFloat && randRange(0, 2) == 0) {
         // Floating-point comparison
-        op.type = FLOAT;
+      	CmpOp op((CmpOp::Id) cmp_select, FLOAT);
         Type floatType; floatType.tag = FLOAT_TYPE;
         return mkCmp(genExpr(opts, floatType, depth-1), op, genExpr(opts, floatType, depth-1));
       } else {
         // Integer comparison
+      	CmpOp op((CmpOp::Id) cmp_select, INT32);
         Type intType; intType.tag = INT_TYPE;
         return mkCmp(genExpr(opts, intType, depth-1), op, genExpr(opts, intType, depth-1));
       }
@@ -373,7 +375,7 @@ Stmt::Ptr genWhile(GenOptions* o, int depth) {
   Expr::Ptr v = newVar();
 
   // Create random condition with loop bound
-  BExpr::Ptr b = genBExpr(o, depth)->And(mkCmp(v, CmpOp(LT, INT32), mkIntLit(o->loopBound)));
+  BExpr::Ptr b = genBExpr(o, depth)->And(mkCmp(v, CmpOp(CmpOp::LT, INT32), mkIntLit(o->loopBound)));
   CExpr::Ptr c = randRange(0, 1) == 0 ? mkAny(b) : mkAll(b);
 
   // Initialise loop variable
