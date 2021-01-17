@@ -1,6 +1,6 @@
 # V3DLib
 
-**Version 0.0.1**
+**Version 0.0.2**
 
 `V3DLib` is a C++ library for creating programs to run on the `VideoCore` GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 
@@ -97,14 +97,12 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
     > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # get only latest commit
     > cd V3DLib
 	
-    # As long as the files don't change, you need to run these script only once.
+    # As long as the files don't change, you need to run this script only once.
     > script/install.sh                                              # Pull in and build external library
-    > script/gen.sh                                                  # Generate file dependencies
     # After this, it's sufficient to do just the following line for a build
 	
-    > make QPU=1 DEBUG=1 all                                         # Made debug version with hardware
+    > make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
                                                                      # GPU support.
-                                                                     # First compile will take some time
     
     > make QPU=1 DEBUG=1 test                                        # Run the tests
 
@@ -112,9 +110,9 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
 ## Compile Times
 
 **Fair Warning:** The first build can take a *long* time, especially on older Pi's.
-The culprit here is mainly the included code from the MESA library.
+The culprit here is mainly the included code from the `Mesa` library.
 
-The following table list the build times on the first and the last Pi.
+The following table list the build times on the oldest and newest Pis.
 
 | Platform | Make                 | Time    | Comment                            |
 | -------- | -------------------- | ------- | -----------------------------------|

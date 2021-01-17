@@ -223,8 +223,8 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		driver.add_bo(heap);
 		REQUIRE(driver.execute(codeMem, &unif));
 
-		dump_data(result, true, true);
-		printf("\n");
+		//dump_data(result, true, true);
+		//printf("\n");
 
 		// TODO: add REQUIRE's for expected output
 	}

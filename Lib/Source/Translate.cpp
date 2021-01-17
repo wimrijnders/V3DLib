@@ -237,21 +237,21 @@ void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 	};
 
 
- 	if (b.cmp.op.op == GT) {       // 'x > y', replace with y < x
+ 	if (b.cmp.op.op() == CmpOp::GT) {                    // 'x > y', replace with y < x
 		cmp_swap_leftright(b);
-    b.cmp.op.op = LT;
+    b.cmp.op.op(CmpOp::LT);
   }
 
- 	if (b.cmp.op.op == LE) {       // 'x <= y', replace with y >= x
+ 	if (b.cmp.op.op() == CmpOp::LE) {                    // 'x <= y', replace with y >= x
 		cmp_swap_leftright(b);
-    b.cmp.op.op = GE;
+    b.cmp.op.op(CmpOp::GE);
   }
 
- 	if (!b.cmp_lhs()->isSimple()) {  // 'x op y', where x is not simple
+ 	if (!b.cmp_lhs()->isSimple()) {                      // 'x op y', where x is not simple
     b.cmp_lhs(simplify(seq, b.cmp_lhs()));
   }
 
- 	if (!b.cmp_rhs()->isSimple()) {  // 'x op y', where y is not simple
+ 	if (!b.cmp_rhs()->isSimple()) {                      // 'x op y', where y is not simple
     b.cmp_rhs(simplify(seq, b.cmp_rhs()));
   }
 
@@ -269,10 +269,10 @@ void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 
 	Var dummy  = freshVar();
 	Var dummy2 = freshVar();
-	AssignCond assign_cond = AssignCond(b.cmp.op);
+	AssignCond assign_cond(b.cmp.op);
 
 	// Implement comparison using subtraction instruction
-	Op op(SUB, b.cmp.op.type);
+	Op op(SUB, b.cmp.op.type());
 
 	Instr instr(ALU);
 	instr.setCondOp(b.cmp.op);
@@ -368,7 +368,7 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 			break;
   }
 
-	return AssignCond(CmpOp(NEQ, INT32));  // Wonky syntax to get the flags right
+	return AssignCond(CmpOp(CmpOp::NEQ, INT32));  // Wonky syntax to get the flags right
 }
 
 
@@ -429,7 +429,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
   // ----------------------------------------------------------
   if (s->tag == WHERE) {
 		using Target::instr::mov;
-		AssignCond andCond = AssignCond(CmpOp(NEQ, INT32));  // Wonky syntax to get the flags right
+		AssignCond andCond(CmpOp(CmpOp::NEQ, INT32));  // Wonky syntax to get the flags right
 
     if (cond.is_always()) {
 			// Top-level handling of where-statements

@@ -7,7 +7,6 @@
 #include "Support/basics.h"
 
 namespace V3DLib {
-
 namespace {
 
 // State of a single core.
@@ -243,8 +242,9 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 
     // Conjunction
     case AND: {
-      Vec a = evalBool(s, e->conj_lhs());
-      Vec b = evalBool(s, e->conj_rhs());
+      Vec a = evalBool(s, e->lhs());
+      Vec b = evalBool(s, e->rhs());
+
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal && b[i].intVal;
       return v;
@@ -252,8 +252,9 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 
     // Disjunction
     case OR: {
-      Vec a = evalBool(s, e->disj_lhs());
-      Vec b = evalBool(s, e->disj_rhs());
+      Vec a = evalBool(s, e->lhs());
+      Vec b = evalBool(s, e->rhs());
+
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal || b[i].intVal;
       return v;
@@ -263,18 +264,18 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
     case CMP: {
       Vec a = eval(s, e->cmp_lhs());
       Vec b = eval(s, e->cmp_rhs());
-      if (e->cmp.op.type == FLOAT) {
+      if (e->cmp.op.type() == FLOAT) {
         // Floating-point comparison
         for (int i = 0; i < NUM_LANES; i++) {
           float x = a[i].floatVal;
           float y = b[i].floatVal;
-          switch (e->cmp.op.op) {
-            case EQ:  v[i].intVal = x == y; break;
-            case NEQ: v[i].intVal = x != y; break;
-            case LT:  v[i].intVal = x <  y; break;
-            case GT:  v[i].intVal = x >  y; break;
-            case LE:  v[i].intVal = x <= y; break;
-            case GE:  v[i].intVal = x >= y; break;
+          switch (e->cmp.op.op()) {
+            case CmpOp::EQ:  v[i].intVal = x == y; break;
+            case CmpOp::NEQ: v[i].intVal = x != y; break;
+            case CmpOp::LT:  v[i].intVal = x <  y; break;
+            case CmpOp::GT:  v[i].intVal = x >  y; break;
+            case CmpOp::LE:  v[i].intVal = x <= y; break;
+            case CmpOp::GE:  v[i].intVal = x >= y; break;
             default:  assert(false);
           }
         }
@@ -285,19 +286,20 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
         for (int i = 0; i < NUM_LANES; i++) {
           int32_t x = a[i].intVal;
           int32_t y = b[i].intVal;
-          switch (e->cmp.op.op) {
-            case EQ:  v[i].intVal = x == y; break;
-            case NEQ: v[i].intVal = x != y; break;
+
+          switch (e->cmp.op.op()) {
+            case CmpOp::EQ:  v[i].intVal = x == y; break;
+            case CmpOp::NEQ: v[i].intVal = x != y; break;
             // Ideally compiler would implement:
-            // case LT:  v[i].intVal = x <  y; break;
-            // case GT:  v[i].intVal = x >  y; break;
-            // case LE:  v[i].intVal = x <= y; break;
-            // case GE:  v[i].intVal = x >= y; break;
+            // case CmpOp::LT:  v[i].intVal = x <  y; break;
+            // case CmpOp::GT:  v[i].intVal = x >  y; break;
+            // case CmpOp::LE:  v[i].intVal = x <= y; break;
+            // case CmpOp::GE:  v[i].intVal = x >= y; break;
             // But currently it implements:
-            case LT: v[i].intVal = ((x-y) & 0x80000000) != 0; break;
-            case GE: v[i].intVal = ((x-y) & 0x80000000) == 0; break;
-            case LE: v[i].intVal = ((y-x) & 0x80000000) == 0; break;
-            case GT: v[i].intVal = ((y-x) & 0x80000000) != 0; break;
+            case CmpOp::LT: v[i].intVal = ((x-y) & 0x80000000) != 0; break;
+            case CmpOp::GE: v[i].intVal = ((x-y) & 0x80000000) == 0; break;
+            case CmpOp::LE: v[i].intVal = ((y-x) & 0x80000000) == 0; break;
+            case CmpOp::GT: v[i].intVal = ((y-x) & 0x80000000) != 0; break;
             default:  assert(false);
           }
         }

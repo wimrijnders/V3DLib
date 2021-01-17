@@ -1,50 +1,60 @@
 #ifndef _V3DLIB_SOURCE_BEXPR_H_
 #define _V3DLIB_SOURCE_BEXPR_H_
 #include <memory>
+#include <string>
 #include "Expr.h"
-//#include "Op.h"  // BaseType
+#include "Target/instr/Conditions.h"
 
 namespace V3DLib {
 
-
 // ============================================================================
-// Comparison operators
+// Class CmpOp
 // ============================================================================
 
-// Comparison operators
-enum CmpOpId { EQ, NEQ, LT, GT, LE, GE };
+/**
+ * Comparison operators
+ *
+ * Pair containing comparison operator and base type.
+ */
+class CmpOp {
+public:
+  enum Id { EQ, NEQ, LT, GT, LE, GE };
 
-// Pair containing comparison operator and base type
-struct CmpOp {
-	CmpOpId op;
-	BaseType type;
+  CmpOp(Id op, BaseType type) : m_op(op), m_type(type) {}
 
-	CmpOp(CmpOpId in_op, BaseType in_type) : op(in_op), type(in_type) {}
+  Id op() const { return m_op; }
+  void op(Id val) { m_op = val; }
+  BaseType type() const { return m_type; }
 
-	char const *to_string() const;
+  SetCond::Tag cond_tag() const;
+  Flag         assign_flag() const;
+  char const  *to_string() const;
+
+private:
+  Id       m_op;
+  BaseType m_type;
 };
 
-// ============================================================================
-// Boolean expressions
-// ============================================================================
 
+// ============================================================================
+// Class BExpr
+// ============================================================================
 
 // Kinds of boolean expressions
 enum BExprTag { NOT, AND, OR, CMP };
 
+/**
+ * Boolean expressions
+ */
 struct BExpr {
-	using Ptr = std::shared_ptr<BExpr>;
+  using Ptr = std::shared_ptr<BExpr>;
 
-	BExpr() {}
-	BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs);
+  BExpr() {}
+  BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs);
 
-	BExprTag tag() const { return m_tag; }
+  BExprTag tag() const { return m_tag; }
 
   Ptr neg() const;
-  Ptr conj_lhs() const;
-  Ptr conj_rhs() const;
-  Ptr disj_lhs() const;
-  Ptr disj_rhs() const;
   Ptr lhs() const;
   Ptr rhs() const;
   Expr::Ptr cmp_lhs() const;
@@ -52,28 +62,28 @@ struct BExpr {
   void cmp_lhs(Expr::Ptr p);
   void cmp_rhs(Expr::Ptr p);
 
-	Ptr Not() const;
-	Ptr And(Ptr rhs) const;
-	Ptr Or(Ptr rhs) const;
+  Ptr Not() const;
+  Ptr And(Ptr rhs) const;
+  Ptr Or(Ptr rhs) const;
 
-	std::string pretty() const;
-	std::string disp() const { return pretty(); }
+  std::string pretty() const;
+  std::string disp() const { return pretty(); }
 
   union {
     // Comparison
     struct {
-			CmpOp op;
-		} cmp;
+  		CmpOp op;
+  	} cmp;
   };
 
 private:
   BExprTag m_tag;
   Ptr m_lhs;
-	Ptr m_rhs;
+  Ptr m_rhs;
   Expr::Ptr m_cmp_lhs;  // For comparison
-	Expr::Ptr m_cmp_rhs;  // idem
+  Expr::Ptr m_cmp_rhs;  // idem
 
-	Ptr ptr() const;
+  Ptr ptr() const;
 };
 
 }  // namespace V3DLib

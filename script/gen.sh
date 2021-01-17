@@ -67,10 +67,13 @@ EXAMPLES=$(echo "$EXE2" | sed "s/^.*\//  /g")
 
 mkdir -p obj
 
-cat << END > obj/sources.mk
+cat << END > sources.mk
+#
+# This file is generated!  Editing it directly is a bad idea.
+#
 # Generated on: $(date)
 #
-######################################
+###############################################################################
 
 # Library Object files - only used for LIB
 OBJ := \\

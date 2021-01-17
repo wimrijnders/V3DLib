@@ -1,11 +1,44 @@
 #include "BExpr.h"
 #include "Support/basics.h"
 
-
 namespace V3DLib {
 
+// ============================================================================
+// Class CmpOp
+// ============================================================================
+
+SetCond::Tag CmpOp::cond_tag() const {
+  SetCond::Tag ret = SetCond::NO_COND;
+
+  switch (m_op) {
+  	case EQ:  ret = SetCond::Z; break;
+  	case NEQ: ret = SetCond::Z; break;
+  	case LT:  ret = SetCond::N; break;
+  	case GE:  ret = SetCond::N; break;
+  	default:  assert(false);
+  }
+
+  return ret;
+}
+
+
+Flag CmpOp::assign_flag() const {
+  Flag ret = ZS;  // Arbitrary initializer
+
+  switch(m_op) {
+  	case EQ:  ret = ZS; break;
+  	case NEQ: ret = ZC; break;
+  	case LT:  ret = NS; break;
+  	case GE:  ret = NC; break;
+  	default:  assert(false);
+  }
+
+  return ret;
+}
+
+
 char const *CmpOp::to_string() const {
-  switch (op) {
+  switch (m_op) {
     case EQ : return "==";
     case NEQ: return "!=";
     case LT : return "<";
@@ -16,60 +49,40 @@ char const *CmpOp::to_string() const {
 
   // Not reachable
   assert(false);
-	return nullptr;
+  return nullptr;
 }
 
+
+// ============================================================================
+// Class BExpr
+// ============================================================================
 
 BExpr::BExpr(Expr::Ptr lhs, CmpOp op, Expr::Ptr rhs) {
  	m_tag      = CMP;
   m_cmp_lhs  = lhs;
-  cmp.op   = op;
+  cmp.op     = op;
   m_cmp_rhs  = rhs;
 }
 
 
 BExpr::Ptr BExpr::neg() const {
-	assert(m_tag == NOT && m_lhs.get() != nullptr);
-	assert(m_rhs.get() == nullptr);  // Should not be used with negate
-	return m_lhs;
-}
-
-
-BExpr::Ptr BExpr::conj_lhs() const {
-	assert(m_tag == AND && m_lhs.get() != nullptr);
-	return m_lhs;
-}
-
-
-BExpr::Ptr BExpr::conj_rhs() const {
-	assert(m_tag == AND && m_rhs.get() != nullptr);
-	return m_rhs;
-}
-
-
-BExpr::Ptr BExpr::disj_lhs() const {
-	assert(m_tag == OR && m_lhs.get() != nullptr);
-	return m_lhs;
-}
-
-
-BExpr::Ptr BExpr::disj_rhs() const {
-	assert(m_tag == OR && m_rhs.get() != nullptr);
-	return m_rhs;
+  assert(m_tag == NOT && m_lhs.get() != nullptr);
+  assert(m_rhs.get() == nullptr);  // Should not be used with negate
+  return m_lhs;
 }
 
 
 BExpr::Ptr BExpr::lhs() const {
-	assert(m_tag == OR || m_tag == AND);
-	assert(m_lhs.get() != nullptr);
-	return m_lhs;
+  assert(m_tag == OR || m_tag == AND);
+  assert(m_lhs.get() != nullptr);
+  return m_lhs;
 }
 
 
 BExpr::Ptr BExpr::rhs() const {
-	assert(m_tag == OR || m_tag == AND);
-	assert(m_rhs.get() != nullptr);
-	return m_rhs;
+  assert(m_tag == OR || m_tag == AND);
+  assert(m_rhs.get() != nullptr);
+  return m_rhs;
 }
 
 
@@ -123,7 +136,7 @@ BExpr::Ptr BExpr::And(Ptr rhs) const {
  */
 BExpr::Ptr BExpr::Or(Ptr rhs) const {
   Ptr b(new BExpr());
-  b->m_tag     = OR;
+  b->m_tag = OR;
   b->m_lhs = ptr();
   b->m_rhs = rhs;
   return b;
@@ -131,39 +144,38 @@ BExpr::Ptr BExpr::Or(Ptr rhs) const {
 
 
 std::string BExpr::pretty() const {
-	using ::operator<<;  // C++ weirdness
+  using ::operator<<;  // C++ weirdness
 
-	std::string ret;
+  std::string ret;
 
   switch (tag()) {
     // Negation
     case NOT:
-			assert(m_lhs.get() != nullptr);
-			ret << "!" << m_lhs->pretty();
+  		assert(m_lhs.get() != nullptr);
+  		ret << "!" << m_lhs->pretty();
       break;
 
     // Conjunction
     case AND:
-			assert(m_lhs.get() != nullptr);
-			assert(m_rhs.get() != nullptr);
+  		assert(m_lhs.get() != nullptr);
+  		assert(m_rhs.get() != nullptr);
       ret << "(" << m_lhs->pretty() << " && " << m_rhs->pretty() << ")";
       break;
 
     // Disjunction
     case OR:
-			assert(m_lhs.get() != nullptr);
-			assert(m_rhs.get() != nullptr);
-			ret << "(" << m_lhs->pretty() << " || " << m_rhs->pretty() << ")";
+  		assert(m_lhs.get() != nullptr);
+  		assert(m_rhs.get() != nullptr);
+  		ret << "(" << m_lhs->pretty() << " || " << m_rhs->pretty() << ")";
       break;
 
     // Comparison
     case CMP:
-			ret << cmp_lhs()->pretty() << cmp.op.to_string() << cmp_rhs()->pretty();
+  		ret << cmp_lhs()->pretty() << cmp.op.to_string() << cmp_rhs()->pretty();
       break;
   }
 
-	return ret;
+  return ret;
 }
-
 
 }  // namespace V3DLib

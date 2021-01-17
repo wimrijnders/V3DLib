@@ -53,7 +53,7 @@ Instr &Instr::setCondFlag(Flag flag) {
 
 
 Instr &Instr::setCondOp(CmpOp const &cmp_op) {
-	setCond().setOp(cmp_op);
+	setCond().tag(cmp_op.cond_tag());
 	return *this;
 }
 

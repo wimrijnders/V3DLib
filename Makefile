@@ -92,7 +92,7 @@ else
   CXX_FLAGS += -DNDEBUG		# Disable assertions
 endif
 
--include obj/sources.mk
+-include sources.mk
 
 LIB = $(patsubst %,$(OBJ_DIR)/Lib/%,$(OBJ))
 

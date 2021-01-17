@@ -12,8 +12,42 @@ The flags `GPU` and `DEBUG` are explained below.
     > sudo ./obj-qpu/bin/GCD       # Run the example made with previous step. sudo required for `vc4`.
 	
     > make QPU=1 DEBUG=1 test      # Run all tests, debug mode required
-	> make clean                   # Remove all binaries and intermediate file.
+    > make clean                   # Remove all binaries and intermediate file.
                                    # This does *not* clean up external libraries.
+
+The following scripts are also of importance:
+
+    > script/install.sh            # Clone, update and rebuild external libraries
+                                   # Run this on first build or when an external library changes
+    
+    > script/gen.sh                # Redo the file dependencies within the projects
+                                   # Run this when source files are added or removed
+
+
+## External Libraries
+
+The following external libraries are used:
+
+1. **[CmdParameter](https://github.com/wimrijnders/CmdParameter)** 
+
+This is a library for handling command line parameters in a sane way,
+of my own making.
+
+Use script `scripts/install.sh` to clone its repo and to build it.
+
+This script needs to be run only once,  before the initial build of `V3DLib`.
+If project `CmdParameter` is changed, rerun this script to get and build the latest version.
+
+
+2. **[The Mesa 3D Graphics Library](https://gitlab.freedesktop.org/mesa/mesa) 
+
+This is the go-to open source OpenGL library.
+Only selected parts are used, notably the disassembly of `VideoCore` isntructions.
+The relevants part of the library have been cherry-picked and added to `V3DLib`.
+An effort has been made to minimize the amount of code needed of this library, but it is still a lot.
+
+The building of the `Mesa` code is part of the makefile.
+This build step is the reason that the very first build takes a significantly longer time.
 
 
 ## Run Modes
