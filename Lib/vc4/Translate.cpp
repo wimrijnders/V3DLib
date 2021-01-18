@@ -46,7 +46,7 @@ Seq<Instr> setupVPMReadStmt(Stmt::Ptr s) {
 	Seq<Instr> ret;
 
 	int n       = s->setupVPMRead.numVecs;
-  Expr::Ptr e = s->setupVPMRead_addr();
+  Expr::Ptr e = s->address();
   int hor     = s->setupVPMRead.hor;
   int stride  = s->setupVPMRead.stride;
 
@@ -72,7 +72,7 @@ Seq<Instr> setupDMAReadStmt(Stmt::Ptr s) {
 	int numRows = s->setupDMARead.numRows;
 	int rowLen  = s->setupDMARead.rowLen;
 	int hor     = s->setupDMARead.hor;
-  Expr::Ptr e = s->setupDMARead_vpmAddr();
+  Expr::Ptr e = s->address();
   int vpitch  = s->setupDMARead.vpitch;
 
 	Seq<Instr> ret;
@@ -96,7 +96,7 @@ Seq<Instr> setupDMAWriteStmt(Stmt::Ptr s) {
 	int numRows = s->setupDMAWrite.numRows;
 	int rowLen  = s->setupDMAWrite.rowLen;
 	int hor     = s->setupDMAWrite.hor;
-  Expr::Ptr e = s->setupDMAWrite_vpmAddr();
+  Expr::Ptr e = s->address();
 
 	Seq<Instr> ret;
 
@@ -168,7 +168,7 @@ Instr sendIRQToHost() {
 Seq<Instr> setupVPMWriteStmt(Stmt::Ptr s) {
 	Seq<Instr> ret;
 
-  Expr::Ptr e = s->setupVPMWrite_addr();
+  Expr::Ptr e = s->address();
 	int hor     = s->setupVPMWrite.hor;
 	int stride  = s->setupVPMWrite.stride;
 
@@ -234,8 +234,8 @@ bool translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
 	  case SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  return true;
 	  case DMA_READ_WAIT:    seq << genWaitDMALoad();                      return true;
 	  case DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     return true;
-	  case DMA_START_READ:   seq<< startDMAReadStmt(s->startDMARead());    return true;
-	  case DMA_START_WRITE:  seq << startDMAWriteStmt(s->startDMAWrite()); return true;
+	  case DMA_START_READ:   seq<< startDMAReadStmt(s->address());         return true;
+	  case DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       return true;
 
 		default:
 			assertq(false, "translate_stmt(): unexpected stmt tag");

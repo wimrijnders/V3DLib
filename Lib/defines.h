@@ -9,7 +9,7 @@
 
 // GCC directive for ARM compilation
 #ifdef __arm__
-  #pragma message("Compiling for ARM")
+//  #pragma message("Compiling for ARM")
 
   #ifdef __aarch64__
     #define ARM64

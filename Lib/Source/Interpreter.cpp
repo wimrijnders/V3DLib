@@ -614,7 +614,7 @@ void exec(InterpreterState* state, CoreState* s) {
 
     // Load receive
     case LOAD_RECEIVE:
-      execLoadReceive(s, stmt->loadDest());
+      execLoadReceive(s, stmt->address());
       return;
 
     // Store request

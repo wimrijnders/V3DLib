@@ -15,16 +15,16 @@ namespace V3DLib {
 enum PrintTag { PRINT_INT, PRINT_FLOAT, PRINT_STR };
 
 struct PrintStmt {
-	PrintTag tag() const { return m_tag;}
-	void tag(PrintTag tag) { m_tag = tag;}
+  PrintTag tag() const { return m_tag;}
+  void tag(PrintTag tag) { m_tag = tag;}
 
-	char const *str() const;
-	void str(char const *str);
-	std::string disp() const;
+  char const *str() const;
+  void str(char const *str);
+  std::string disp() const;
 
 private:
   PrintTag    m_tag;
-	const char *m_str;
+  const char *m_str;
 };
 
 
@@ -34,29 +34,29 @@ private:
 
 // What kind of statement is it?
 enum StmtTag {
-	SKIP,
-	ASSIGN,
-	SEQ,
-	WHERE,
-	IF,
-	WHILE,
-	PRINT,
-	FOR,
-	SET_READ_STRIDE,
-	SET_WRITE_STRIDE,
-	LOAD_RECEIVE,
-	STORE_REQUEST,
-	SEND_IRQ_TO_HOST,
-	SEMA_INC,
-	SEMA_DEC,
-	SETUP_VPM_READ,
-	SETUP_VPM_WRITE,
-	SETUP_DMA_READ,
-	SETUP_DMA_WRITE,
-	DMA_READ_WAIT,
-	DMA_WRITE_WAIT,
-	DMA_START_READ,
-	DMA_START_WRITE
+  SKIP,
+  ASSIGN,
+  SEQ,
+  WHERE,
+  IF,
+  WHILE,
+  PRINT,
+  FOR,
+  SET_READ_STRIDE,
+  SET_WRITE_STRIDE,
+  LOAD_RECEIVE,
+  STORE_REQUEST,
+  SEND_IRQ_TO_HOST,
+  SEMA_INC,
+  SEMA_DEC,
+  SETUP_VPM_READ,
+  SETUP_VPM_WRITE,
+  SETUP_DMA_READ,
+  SETUP_DMA_WRITE,
+  DMA_READ_WAIT,
+  DMA_WRITE_WAIT,
+  DMA_START_READ,
+  DMA_START_WRITE
 };
 
 
@@ -72,65 +72,59 @@ enum StmtTag {
  * with smart pointers.
  */
 struct Stmt : public InstructionComment {
-	using Ptr = std::shared_ptr<Stmt>;
+  using Ptr = std::shared_ptr<Stmt>;
 
-	~Stmt() {}
+  ~Stmt() {}
 
-	std::string disp() const;
+  std::string disp() const;
 
-	//
-	// Accessors for pointer objects.
-	// They basically all do the same thing, but in a controlled manner.
-	// Done like this to ease the transition to smart pointers.
-	// Eventually this can be cleaned up.
-	//
-	BExpr::Ptr where_cond() const;
-	void where_cond(BExpr::Ptr cond);
+  //
+  // Accessors for pointer objects.
+  // They basically all do the same thing, but in a controlled manner.
+  // Done like this to ease the transition to smart pointers.
+  // Eventually this can be cleaned up.
+  //
+  BExpr::Ptr where_cond() const;
+  void where_cond(BExpr::Ptr cond);
 
-	Expr::Ptr assign_lhs() const;
-	Expr::Ptr assign_rhs() const;
-	Expr::Ptr stride();
-	Expr::Ptr loadDest();
-	Expr::Ptr storeReq_data();
-	Expr::Ptr storeReq_addr();
-	Expr::Ptr setupVPMRead_addr();
-	Expr::Ptr setupVPMWrite_addr();
-	Expr::Ptr setupDMARead_vpmAddr();
-	Expr::Ptr setupDMAWrite_vpmAddr();
-	Expr::Ptr startDMARead();
-	Expr::Ptr startDMAWrite();
-	Expr::Ptr print_expr() const;
+  Expr::Ptr assign_lhs() const;
+  Expr::Ptr assign_rhs() const;
+  Expr::Ptr stride();
+  Expr::Ptr storeReq_data();
+  Expr::Ptr storeReq_addr();
+  Expr::Ptr address();
+  Expr::Ptr print_expr() const;
 
-	Ptr seq_s0() const;
-	Ptr seq_s1() const;
-	Ptr thenStmt() const;
-	Ptr elseStmt() const;
-	Ptr body() const;
-	void thenStmt(Ptr then_ptr);
-	void elseStmt(Ptr else_ptr);
-	void body(Ptr ptr);
-	void inc(Ptr ptr);
-	bool then_is_null() const;
-	bool else_is_null() const;
-	bool body_is_null() const;
+  Ptr seq_s0() const;
+  Ptr seq_s1() const;
+  Ptr thenStmt() const;
+  Ptr elseStmt() const;
+  Ptr body() const;
+  void thenStmt(Ptr then_ptr);
+  void elseStmt(Ptr else_ptr);
+  void body(Ptr ptr);
+  void inc(Ptr ptr);
+  bool then_is_null() const;
+  bool else_is_null() const;
+  bool body_is_null() const;
 
-	void for_to_while(Ptr in_body);
+  void for_to_while(Ptr in_body);
 
-	CExpr::Ptr if_cond() const;
-	CExpr::Ptr loop_cond() const;
+  CExpr::Ptr if_cond() const;
+  CExpr::Ptr loop_cond() const;
 
-	//
-	// Instantiation methods
-	//
-	static Ptr create(StmtTag in_tag);
-	static Ptr create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);  // TODO make private
-	static Ptr create(StmtTag in_tag, Ptr s0, Ptr s1);
-	static Ptr create_assign(Expr::Ptr lhs, Expr::Ptr rhs);
-	static Ptr create_sequence(Ptr s0, Ptr s1);
+  //
+  // Instantiation methods
+  //
+  static Ptr create(StmtTag in_tag);
+  static Ptr create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);  // TODO make private
+  static Ptr create(StmtTag in_tag, Ptr s0, Ptr s1);
+  static Ptr create_assign(Expr::Ptr lhs, Expr::Ptr rhs);
+  static Ptr create_sequence(Ptr s0, Ptr s1);
 
-	static Ptr mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt);
-	static Ptr mkWhile(CExpr::Ptr cond, Ptr body);
-	static Ptr mkFor(CExpr::Ptr cond, Ptr inc, Ptr body);
+  static Ptr mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt);
+  static Ptr mkWhile(CExpr::Ptr cond, Ptr body);
+  static Ptr mkFor(CExpr::Ptr cond, Ptr inc, Ptr body);
 
   StmtTag tag;  // What kind of statement is it?
 
@@ -149,32 +143,32 @@ struct Stmt : public InstructionComment {
 
     // DMA read setup
     struct {
-			int numRows;
-			int rowLen;
-			int hor;
-			int vpitch;
-		} setupDMARead;
+      int numRows;
+      int rowLen;
+      int hor;
+      int vpitch;
+    } setupDMARead;
 
     // DMA write setup
     struct {
-			int numRows;
-			int rowLen;
-			int hor;
-		} setupDMAWrite;
+      int numRows;
+      int rowLen;
+      int hor;
+    } setupDMAWrite;
   };
 
 private:
-	void init(StmtTag in_tag);
+  void init(StmtTag in_tag);
 
-	BExpr::Ptr m_where_cond;
+  BExpr::Ptr m_where_cond;
 
-	Expr::Ptr m_exp_a;
-	Expr::Ptr m_exp_b;
+  Expr::Ptr m_exp_a;
+  Expr::Ptr m_exp_b;
 
-	Ptr m_stmt_a;
-	Ptr m_stmt_b;
+  Ptr m_stmt_a;
+  Ptr m_stmt_b;
 
-	CExpr::Ptr m_cond;
+  CExpr::Ptr m_cond;
 };
 
 

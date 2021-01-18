@@ -651,7 +651,7 @@ void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
       *seq << printStmt(s);
       break;
     case LOAD_RECEIVE:             // 'receive(e)', where e is an expr
-      *seq << loadReceive(s->loadDest());
+      *seq << loadReceive(s->address());
       break;
     default:
       if (!getSourceTranslate().stmt(*seq, s)) {

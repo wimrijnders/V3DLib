@@ -89,7 +89,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 
     case LOAD_RECEIVE:
 			ret << indentBy(indent)
-			    << "receive(" << s->loadDest()->pretty() << ")";
+			    << "receive(" << s->address()->pretty() << ")";
 			break;
 
     case STORE_REQUEST:
@@ -115,7 +115,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 			    << "numVecs=" << s->setupVPMRead.numVecs               << ","
 			    << "dir="     << (s->setupVPMRead.hor ? "HOR" : "VIR") << ","
 			    << "stride="  << s->setupVPMRead.stride                << ","
-			    << s->setupVPMRead_addr()->pretty()
+			    << s->address()->pretty()
 			    << ");";
 			break;
 
@@ -124,7 +124,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 			    << "vpmSetupWrite("
 			    << "dir="    << (s->setupVPMWrite.hor ? "HOR" : "VIR") << ","
 			    << "stride=" << s->setupVPMWrite.stride                << ","
-			    << s->setupVPMWrite_addr()->pretty()
+			    << s->address()->pretty()
 			    << ");";
 			break;
 
@@ -138,12 +138,12 @@ std::string pretty(int indent, Stmt::Ptr s) {
 
     case DMA_START_READ:
 			ret << indentBy(indent)
-			    << "dmaStartRead(" << s->startDMARead()->pretty() << ");";
+			    << "dmaStartRead(" << s->address()->pretty() << ");";
 			break;
 
     case DMA_START_WRITE:
 			ret << indentBy(indent)
-			    << "dmaStartWrite(" << s->startDMAWrite()->pretty() << ");";
+			    << "dmaStartWrite(" << s->address()->pretty() << ");";
 			break;
 
     case SETUP_DMA_READ:
@@ -153,7 +153,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 			    << "rowLen=%" << s->setupDMARead.rowLen                   << ","
 			    << "dir="     << (s->setupDMARead.hor ? "HORIZ" : "VERT") << ","
 			    << "vpitch="  <<  s->setupDMARead.vpitch                  << ","
-			    << s->setupDMARead_vpmAddr()->pretty()
+			    << s->address()->pretty()
 			    << ");";
 			break;
 
@@ -163,7 +163,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 			    << "numRows=" << s->setupDMAWrite.numRows                  << ","
 			    << "rowLen="  << s->setupDMAWrite.rowLen                   << ","
 			    << "dir="     << (s->setupDMAWrite.hor ? "HORIZ" : "VERT") << ","
-			    << s->setupDMAWrite_vpmAddr()->pretty()
+			    << s->address()->pretty()
 			    << ");";
 			break;
 
