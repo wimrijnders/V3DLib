@@ -16,20 +16,20 @@ namespace {
  * @return true if all went well, false if file could not be read.
  */
 bool loadFileInString(const char *filename, std::string & out_str) {
-	std::ifstream t(filename);
-	if (!t.is_open()) {
-		return false;
-	}
+  std::ifstream t(filename);
+  if (!t.is_open()) {
+    return false;
+  }
 
-	std::string str((std::istreambuf_iterator<char>(t)),
-  	               std::istreambuf_iterator<char>());
+  std::string str((std::istreambuf_iterator<char>(t)),
+                   std::istreambuf_iterator<char>());
 
-	if (str.empty()) {
-		return false;
-	}
+  if (str.empty()) {
+    return false;
+  }
 
-	out_str = str;
-	return true;
+  out_str = str;
+  return true;
 }
 
 
@@ -42,14 +42,14 @@ bool loadFileInString(const char *filename, std::string & out_str) {
  *         false otherwise.
  */
 bool get_platform_string(std::string &content) {
-	const char *filename = "/sys/firmware/devicetree/base/model";
+  const char *filename = "/sys/firmware/devicetree/base/model";
 
-	bool success = loadFileInString(filename, content);
-	if (!success) {
-		content == "";
-	}
+  bool success = loadFileInString(filename, content);
+  if (!success) {
+    content == "";
+  }
 
-	return success;
+  return success;
 }
 
 
@@ -80,32 +80,32 @@ bool get_platform_string(std::string &content) {
  */
 
 bool get_chip_version(std::string &output) {
-	const char *BCM_VERSION_PREFIX = "BCM2";
-	const char *filename = "/proc/cpuinfo";
+  const char *BCM_VERSION_PREFIX = "BCM2";
+  const char *filename = "/proc/cpuinfo";
 
-	output.clear();
+  output.clear();
 
-	std::ifstream t(filename);
-	if (!t.is_open()) return false;
+  std::ifstream t(filename);
+  if (!t.is_open()) return false;
 
-	std::string line;
-	while (getline(t, line)) {
-	  if (!strstr(line.c_str(), "Hardware")) continue;
+  std::string line;
+  while (getline(t, line)) {
+    if (!strstr(line.c_str(), "Hardware")) continue;
 
-		if (strstr(line.c_str(), BCM_VERSION_PREFIX)) {
-	  	// For now, don't try to exactly specify the model.
-			// This could be done with field "Revision' in current input.
+    if (strstr(line.c_str(), BCM_VERSION_PREFIX)) {
+      // For now, don't try to exactly specify the model.
+      // This could be done with field "Revision' in current input.
 
-			size_t pos = line.find(BCM_VERSION_PREFIX);
-			if (pos != line.npos) {
-				output = line.substr(pos);
-			}
+      size_t pos = line.find(BCM_VERSION_PREFIX);
+      if (pos != line.npos) {
+        output = line.substr(pos);
+      }
 
-			return true;
-		}
+      return true;
+    }
   }
 
-	return false;
+  return false;
 }
 
 // Defined like this to delay the creation of the instance after program init,
@@ -116,70 +116,69 @@ std::unique_ptr<PlatformInfo> local_instance;
 
 
 PlatformInfo::PlatformInfo() {
-	is_pi_platform = get_platform_string(platform_id);
-	if (get_chip_version(chip_version)) {
-		is_pi_platform = true;
-	}
+  is_pi_platform = get_platform_string(platform_id);
+  if (get_chip_version(chip_version)) {
+    is_pi_platform = true;
+  }
 
-	if (!platform_id.empty() && is_pi_platform) {
-		has_vc4 = (platform_id.npos == platform_id.find("Pi 4"));
-	}
+  if (!platform_id.empty() && is_pi_platform) {
+    has_vc4 = (platform_id.npos == platform_id.find("Pi 4"));
+  }
 
 #ifndef QPU_MODE
-	// Allow only emulator and interpreter modes, no hardware
-	m_use_main_memory = true;
-	has_vc4 = true;       // run vc4 code only
+  // Allow only emulator and interpreter modes, no hardware
+  m_use_main_memory = true;
+  has_vc4 = true;       // run vc4 code only
 #endif
 }
 
 
 void PlatformInfo::output() {
-	if (!platform_id.empty()) {
-		printf("Platform: %s\n", platform_id.c_str());
-	} else {
-		printf("Platform: %s\n", "Unknown");
-	}
+  if (!platform_id.empty()) {
+    printf("Platform: %s\n", platform_id.c_str());
+  } else {
+    printf("Platform: %s\n", "Unknown");
+  }
 
-	printf("Chip version: %s\n", chip_version.c_str());
+  printf("Chip version: %s\n", chip_version.c_str());
 
-	if (!is_pi_platform) {
-		printf("This is NOT a pi platform!\n");
-	} else {
-		printf("This is a pi platform.\n");
+  if (!is_pi_platform) {
+    printf("This is NOT a pi platform!\n");
+  } else {
+    printf("This is a pi platform.\n");
 
-		if (has_vc4) {
-			printf("GPU: vc4\n");
-		} else {
-			printf("GPU: vc6\n");
-		}
-	}
+    if (has_vc4) {
+      printf("GPU: vc4\n");
+    } else {
+      printf("GPU: vc6\n");
+    }
+  }
 }
 
 
 PlatformInfo &Platform::instance_local() {
-	if (!local_instance) {
-		local_instance.reset(new PlatformInfo);
-	}
+  if (!local_instance) {
+    local_instance.reset(new PlatformInfo);
+  }
 
-	return *local_instance;
+  return *local_instance;
 }
 
 
 PlatformInfo const  &Platform::instance() {
-	return instance_local();
+  return instance_local();
 }
 
 
 void Platform::use_main_memory(bool val) {
-#ifndef QPU_MODE
-	// Pedantic paranoia - prob too strict, eg. for non-pi platforms.
-	warning("use_main_memory() called with QPU mode disabled");
-	assertq(instance_local().m_use_main_memory, "Should only use main memory for emulator and interpreter", true);
-	if (!val) {
-		fatal("Can only use main memory for emulator and interpreter");
-	}
+#ifdef QPU_MODE
+  instance_local().m_use_main_memory = val;
 #else
-	instance_local().m_use_main_memory = val;
+  assertq(instance_local().m_use_main_memory, "Should only use main memory for emulator and interpreter", true);
+
+  if (!val) {
+    warning("use_main_memory(): ignoring passed value 'false', because QPU mode is disabled");
+  }
 #endif
 }
 
@@ -191,7 +190,7 @@ void Platform::use_main_memory(bool val) {
  * The compilation can occur on any platform, including non-pi.
  */
 void Platform::compiling_for_vc4(bool val) {
-	instance_local().m_compiling_for_vc4 = val;
+  instance_local().m_compiling_for_vc4 = val;
 }
 
 
@@ -215,11 +214,11 @@ void Platform::compiling_for_vc4(bool val) {
  * concept can actually be convoluted as f*** underwater.
  */
 int PlatformInfo::size_regfile() const {
-	if (m_compiling_for_vc4) {
-		return 32;
-	} else {
-		return 64;
-	}
+  if (m_compiling_for_vc4) {
+    return 32;
+  } else {
+    return 64;
+  }
 }
 
 }  // namespace V3DLib

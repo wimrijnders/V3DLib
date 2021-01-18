@@ -1,6 +1,7 @@
 #include "Invoke.h"
 #include "Mailbox.h"
 #include "vc4.h"
+#include "defines.h"
 
 #define QPU_TIMEOUT 10000
 
@@ -21,16 +22,14 @@ namespace V3DLib {
  *    which can be mangled to the heart's content of the hardware.
  */
 void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, Seq<int32_t>* params) {
-  int mb = getMailbox();  // Open mailbox for talking to vc4
-
-	//
+  //
   // Number of 32-bit words needed for kernel code & parameters
-	// - First two values are always the QPU ID and num QPU's
-	// - Next come the actual kernel parameters, as defined in the user code
-	// - This is terminated by a dummy uniform value, see Note 1.
-	// - The final two words are the pointer to the parameters per QPU, and
-	//   the pointer to the kernel program to execute.
-	//
+  // - First two values are always the QPU ID and num QPU's
+  // - Next come the actual kernel parameters, as defined in the user code
+  // - This is terminated by a dummy uniform value, see Note 1.
+  // - The final two words are the pointer to the parameters per QPU, and
+  //   the pointer to the kernel program to execute.
+  //
   unsigned numWords = qpuCodeMemOffset + (2 + params->size() + 1)*numQPUs + 2*numQPUs;
 
   assert(numWords < codeMem.size());
@@ -50,6 +49,9 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
     codeMem[offset++] = 0;                         // Dummy final parameter, see Note 1.
   }
 
+#ifdef ARM32
+  int mb = getMailbox();  // Open mailbox for talking to vc4
+
   // Copy launch messages
   uint32_t* launchMsgsPtr = qpuCodePtr + offset;
   for (int i = 0; i < numQPUs; i++) {
@@ -61,6 +63,12 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
 
   // Launch QPUs
   unsigned result = execute_qpu(mb, numQPUs, (uint32_t) launchMsgsPtr, 1, QPU_TIMEOUT);
+#else
+  #pragma message("WARNING: invoke() will not run on this platform, only on ARM 32-bits")
+  assertq(false, "invoke() will not run on this platform, only on ARM 32-bits");
+
+  unsigned result = 1;  // Force error message
+#endif
 
   if (result != 0) {
     printf("Failed to invoke kernel on QPUs\n");

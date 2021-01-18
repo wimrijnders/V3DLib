@@ -18,14 +18,14 @@ namespace V3DLib {
  * as well (TODO research, it might be smart enough to clean up on program exit).
  */
 inline void fatal(const char *msg) {
-	std::string str = "FATAL: ";
-	str += msg;
-	throw Exception(str);
+  std::string str = "FATAL: ";
+  str += msg;
+  throw Exception(str);
 }
 
 
 inline void fatal(std::string const &msg) {
-	fatal(msg.c_str());
+  fatal(msg.c_str());
 }
 
 }  // V3DLib
@@ -37,51 +37,51 @@ inline void fatal(std::string const &msg) {
 
 template<typename T>
 inline std::vector<T> &operator<<(std::vector<T> &a, T val) {
-	a.push_back(val);	
-	return a;
+  a.push_back(val);  
+  return a;
 }
 
 
 template<typename T>
 inline std::vector<T> &operator<<(std::vector<T> &a, std::vector<T> const &b) {
-	a.insert(a.end(), b.begin(), b.end());
-	return a;
+  a.insert(a.end(), b.begin(), b.end());
+  return a;
 }
 
 
 inline std::vector<std::string> &operator<<(std::vector<std::string> &a, char const *str) {
-	a.push_back(str);	
-	return a;
+  a.push_back(str);  
+  return a;
 }
 
 
 inline std::string &operator<<(std::string &a, char const *str) {
-	a += str;
-	return a;
+  a += str;
+  return a;
 }
 
 
 inline std::string &operator<<(std::string &a, std::string const &str) {
-	a += str;
-	return a;
+  a += str;
+  return a;
 }
 
 
 inline std::string &operator<<(std::string &a, int val) {
-	a += std::to_string(val);
-	return a;
+  a += std::to_string(val);
+  return a;
 }
 
 
 inline std::string &operator<<(std::string &a, uint32_t val) {
-	a += std::to_string(val);
-	return a;
+  a += std::to_string(val);
+  return a;
 }
 
 
 inline std::string &operator<<(std::string &a, float val) {
-	a += std::to_string(val);
-	return a;
+  a += std::to_string(val);
+  return a;
 }
 
 

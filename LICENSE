@@ -5,6 +5,7 @@ in the V3DLib repository, except for:
   * Doc/images/teapot180.png
   * Lib/vc4/Mailbox.h
   * Lib/vc4/Mailbox.cpp
+  * Lib/Support/assign.h
   * Tests/catch.hpp
   * Everything under mesa/src
   * Everything under mesa/include

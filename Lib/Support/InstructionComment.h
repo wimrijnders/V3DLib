@@ -9,18 +9,18 @@ namespace V3DLib {
  */
 class InstructionComment {
 public:
-	void clear_comments();
-	void header(std::string const &msg);
-	void comment(std::string msg);
-	std::string const &header() const { return m_header; }
-	std::string const &comment() const { return m_comment; }
+  void clear_comments();
+  void header(std::string const &msg);
+  void comment(std::string msg);
+  std::string const &header() const { return m_header; }
+  std::string const &comment() const { return m_comment; }
 
 protected:
-	std::string emit_comment(int instr_size) const;
+  std::string emit_comment(int instr_size) const;
 
 private:
-	std::string m_header;
-	std::string m_comment;
+  std::string m_header;
+  std::string m_comment;
 };
 
 }  // namespace V3DLib

@@ -4,7 +4,7 @@
 // implementation details, users never invoke these directly
 namespace detail
 {
-    template <typename F, typename Tuple, bool Done, int Total, int... N>
+    template <typename F, typename Tuple, bool Done, int Total, std::size_t... N>
     struct call_impl
     {
         static void call(F f, Tuple && t)
@@ -13,7 +13,7 @@ namespace detail
         }
     };
 
-    template <typename F, typename Tuple, int Total, int... N>
+    template <typename F, typename Tuple, int Total, std::size_t... N>
     struct call_impl<F, Tuple, true, Total, N...>
     {
         static void call(F f, Tuple && t)

@@ -3,11 +3,13 @@
 //
 // Note 1:
 //
+// TODO all the following in this not is wrong due to code issue, redo
+//
 // Setting workgroup value to non-zero has the effect that:
 //
- //  - Some QPU's don't return anything, which QPU's varies
- //  - Other QPU's return 1 or a limited number of registers, which QPU's varies
- //  - The reg's that *are* returned, have the correct value
+//  - Some QPU's don't return anything, which QPU's varies
+//  - Other QPU's return 1 or a limited number of registers, which QPU's varies
+//  - The reg's that *are* returned, have the correct value
 //
 // special observed cases:
 //
@@ -20,17 +22,17 @@
 //  - consistently one QPU with first 4 re'gs filled, which QPU varies
 //
 // 1,1,1     1
-//	- 4-6 QPU's return with only reg 0 filled, which QPU's vary
+//  - 4-6 QPU's return with only reg 0 filled, which QPU's vary
 //
 // 1,1,2     1
-//	- 5-6 QPU's return with only reg 0 and 1 filled, which QPU's vary
+//  - 5-6 QPU's return with only reg 0 and 1 filled, which QPU's vary
 //
 //1,1,7     1
-//	- >= 4 QPU's return with only reg's 0-6 filled, which QPU's vary
+//  - >= 4 QPU's return with only reg's 0-6 filled, which QPU's vary
 // 
 // 1,7,2     3
 // 0,7,2     3
-//	- 3-5 QPU's return with only reg's 0-5 filled, which QPU's vary
+//  - 3-5 QPU's return with only reg's 0-5 filled, which QPU's vary
 //
 ///////////////////////////////////////////////////////////////////////////////
 #include <algorithm>  // find()
@@ -54,52 +56,52 @@ namespace v3d {
  * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
  */
 bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms, uint32_t thread) {
-	uint32_t code_phyaddr = code.getAddress();
-	uint32_t unif_phyaddr = (uniforms == nullptr)?0u:uniforms->getAddress();
+  uint32_t code_phyaddr = code.getAddress();
+  uint32_t unif_phyaddr = (uniforms == nullptr)?0u:uniforms->getAddress();
 
-	assert(m_timeout_sec > 0);
-	assertq(m_bo_handles.size() > 0, "v3d execute: There should be at least one buffer object present on execution");
+  assert(m_timeout_sec > 0);
+  assertq(m_bo_handles.size() > 0, "v3d execute: There should be at least one buffer object present on execution");
 
-	// See Note 1
+  // See Note 1
 
-	// BUG, this init was wrong
-	//
-	// TODO test this again with different values
-	//WorkGroup workgroup = (1, 1, 0);
-	//
-	WorkGroup workgroup(0);           // Setting first param to 0 ensures all QPU's return all registers
+  // BUG, this init was wrong
+  //
+  // TODO test this again with different values
+  //WorkGroup workgroup = (1, 1, 0);
+  //
+  WorkGroup workgroup(0);           // Setting first param to 0 ensures all QPU's return all registers
 
-	uint32_t wgs_per_sg = 16;         // Has no effect if previous (1, 1, 0)
+  uint32_t wgs_per_sg = 16;         // Has no effect if previous (1, 1, 0)
 
-	st_v3d_submit_csd st = {
-		{
-			workgroup.wg_x << 16,
-			workgroup.wg_y << 16,
-			workgroup.wg_z << 16,
-			(
+  st_v3d_submit_csd st = {
+    {
+      workgroup.wg_x << 16,
+      workgroup.wg_y << 16,
+      workgroup.wg_z << 16,
+      (
         ((((wgs_per_sg * workgroup.wg_size() + 16u - 1u) / 16u) - 1u) << 12) |
-				(wgs_per_sg << 8) |
-				(workgroup.wg_size() & 0xff)
-			),
-			thread - 1,           // Number of batches minus 1
-			code_phyaddr,         // Shader address, pnan, singleseg, threading
-			unif_phyaddr
-		},
-		{0,0,0,0},
-		(uint64_t) m_bo_handles.data(),
-		m_bo_handles.size(),
-		0,   // in_sync
-		0    // out_sync
-	};
+        (wgs_per_sg << 8) |
+        (workgroup.wg_size() & 0xff)
+      ),
+      thread - 1,           // Number of batches minus 1
+      code_phyaddr,         // Shader address, pnan, singleseg, threading
+      unif_phyaddr
+    },
+    {0,0,0,0},
+    (uint64_t) m_bo_handles.data(),
+    (uint32_t) m_bo_handles.size(),
+    0,   // in_sync
+    0    // out_sync
+  };
 
-	uint64_t timeout_ns = 1000000000llu * m_timeout_sec;
+  uint64_t timeout_ns = 1000000000llu * m_timeout_sec;
 
-	bool ret = (0 == v3d_submit_csd(st));
-	assert(ret);
-	if (ret) {
-		ret = v3d_wait_bo(m_bo_handles, timeout_ns);
-	}
-	return ret;
+  bool ret = (0 == v3d_submit_csd(st));
+  assert(ret);
+  if (ret) {
+    ret = v3d_wait_bo(m_bo_handles, timeout_ns);
+  }
+  return ret;
 }
 
 }  // v3d
