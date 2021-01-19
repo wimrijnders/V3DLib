@@ -1,8 +1,6 @@
 Frequently Asked Questions
 --------------------------
 
-This serves as a central location for essential info.
-
 **NOTE:**
 VideoCore VI is mostly referred to as `v3d`, because this is how it is named in the linux kernel code and in the `Mesa` library.
 For the same reason, VideoCore IV is refered to as `vc4`.
@@ -10,12 +8,12 @@ For the same reason, VideoCore IV is refered to as `vc4`.
 
 # Table of Contents
 
-- [What are the differences between VideoCore IV and VI?](#whatarethedifferencesbetweenvideocoreivandvi)
-- [Differences in execution](#differencesinexecution)
-- [Calculated theoretical max FLOPs per QPU](#calculatedtheoreticalmaxflopsperqpu)
-- [Function `compile()` is not Thread-Safe](#functioncompileisnotthreadsafe)
-- [Handling privileges](#handlingprivileges)
-- [Known limitations for old distributions](#knownlimitationsforolddistributions)
+- [What are the differences between VideoCore IV and VI?](#what-are-the-differences-between-videocore-iv-and-vi)
+- [Differences in Execution](#differences-in-execution)
+- [Calculated theoretical max FLOPs per QPU](#calculated-theoretical-max-flops-per-qpu)
+- [Function `compile()` is not Thread-Safe](#function-compile-is-not-threadsafe)
+- [Handling privileges](#handling-privileges)
+- [Issues with Old Distributions and Compilers](#issues-with-old-distributions-and-compilers)
 
 -----
 
@@ -72,7 +70,7 @@ Further:
 - All the features needed for opengl es 3.2 and vulkan 1.1
 - With the threading improvements, the QPUs should spent much less time idle waiting for memory requests.
 
-## Differences in execution
+## Differences in Execution
 
 This section records differences between the `vc4` and `v3d` QPU hardware and consequently in the instructions.
 
@@ -205,33 +203,23 @@ Unfortunately, this solution will not work for access to `/dev/mem`. You will st
 
 
 ----
-# Known limitations for old distributions
+# Issues with Old Distributions and Compilers
 
 Following is known to occur with `Raspbian wheezy`.
 
-## Certain expected functions are not defined yet
+## Certain expected functions are not defined
 
-Notably, missing in in `/opt/vc/include/bcm_host.h`:
+Following prototypes are missing in in `/opt/vc/include/bcm_host.h`:
 
 - `bcm_host_get_peripheral_address()`
--  `bcm_host_get_peripheral_size()`
+- `bcm_host_get_peripheral_size()`
 
-There is a check on the presence of these function definitions in the Makefile; if not detected,
-drop-in local functions will be used instead.
 
- However, the detection is not foolproof. If you get compilation errors anyway due to absence of these `bcm` functions, force the following makefile variable to 'no':
+## Compiler Limitations
 
-```make
-#USE_BCM_HEADERS:= $(shell grep bcm_host_get_peripheral_address /opt/vc/include/bcm_host.h && echo "no" || echo "yes")
-USE_BCM_HEADERS:=no       # <---- use this instead
-```
+When compiling with `-std=c++0x`, the following issues occur:
 
-## Known limitations with compiler
-
-`Raspbian wheezy` uses `gcc` version *(@mn416 please supply your gcc version here!)*.
-At time of writing, the code is compiled with `-std=c++0x`.
-
-* This gcc version does not compile inline initialization of class variables (`C++11`standard):
+* Inline initialization of class variables is not allowed. E.g.:
 
 ```c++
 class Klass {
@@ -241,13 +229,13 @@ class Klass {
 }
 ```
 
-* Some function definitions, which are found automatically in `c++11`, need explicit includes.
+* Some function definitions need explicit includes.
 
 Known cases (there may be more):
 
-| Function | Needs include |
-|-|-|
-| `exit(int)` | `#include <stdlib.h>` |
-| `errno()` | `#include <errno.h>` |
-| `printf()` etc | `#include <stdio.h>` |
+| Function       | Needs include         |
+| -              | -                     |
+| `exit(int)`    | `#include <stdlib.h>` |
+| `errno()`      | `#include <errno.h>`  |
+| `printf()` etc | `#include <stdio.h>`  |
 

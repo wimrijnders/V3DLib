@@ -1,5 +1,23 @@
 # Build Instructions
 
+## General Project Information
+
+- The C++ code is compiled with language version `c++11`
+- All development and testing is done on **Raspbian 10 Buster**.
+
+`V3DLib` should compile and run on Raspbian versions from **Jessie** onwards.
+There are compatibility issues with previous versions (Wheezy and before), see the FAQ for known issues.
+In general, don't bother with old distributions. Use the latest distro instead.
+
+
+In the code:
+
+- VideoCore IV is referred to as `vc4`
+- VideoCore VI is referred to as `v3d`
+
+This follows the naming as used in the linux kernel code and in the `Mesa` library.
+
+
 ## Basic Build Instructions
 
 This demonstrates the build commands by example.

@@ -2,25 +2,24 @@
 [//]: # (This is not required for unambiguous links, `markdown` and/or `gitlit` can deal with these)
 
 
-
 # Examples
 
 ## Contents
 
-* [Overview of Examples](#overviewofexamples)
-* [Example 1: Euclid's Algorithm](#example1euclidsalgorithm)
-    * [Scalar version](#scalarversion)
-    * [Vector version 1](#vectorversion1)
-    * [Invoking the QPUs](#invokingtheqpus)
-    * [Vector version 2: loop unrolling](#vectorversion2loopunrolling)
-* [Example 2: 3D Rotation](#example23drotation)
+* [Overview of Examples](#overview-of-examples)
+* [Example 1: Euclid's Algorithm](#example-1-euclids-algorithm)
+    * [Scalar version](#scalar-version)
+    * [Vector version 1](#vector-version-1)
+    * [Invoking the QPUs](#invoking-the-qpus)
+    * [Vector version 2: loop unrolling](#vector-version-2-loop-unrolling)
+* [Example 2: 3D Rotation](#example-2-3d-rotation)
     * [Scalar version](#scalar-version-1)
     * [Vector version 1](#vector-version-1-1)
-    * [Vector version 2: non-blocking loads and stores](#vectorversion2nonblockingloadsandstores)
+    * [Vector version 2: non-blocking loads and stores](#vector-version-2-non-blocking-loads-and-stores)
     * [Performance](#performance)
-* [Example 3: 2D Convolution (Heat Transfer)](#example32dconvolutionheattransfer)
+* [Example 3: 2D Convolution (Heat Transfer)](#example-3-2d-convolution-heat-transfer)
     * [Scalar version](#scalar-version-2)
-    * [Vector version](#vectorversion)
+    * [Vector version](#vector-version)
     * [Performance](#performance-1)
 
 
