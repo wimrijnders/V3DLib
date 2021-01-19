@@ -70,6 +70,15 @@ The building of the `Mesa` code is part of the makefile.
 This build step is the reason that the very first build takes a significantly longer time.
 
 
+## Running with `sudo`
+
+You need to run the example programs with sudo in the following situations:
+
+- On Pis prior to `Pi 4`
+- On a `Pi 4` when running on Raspbian 64-bits (`aarch64`) - *unfortunately! I was hoping to avoid this*
+- When using command line option `-pc`
+
+
 ## Basic Build Instructions
 
 This demonstrates the build commands by example.
