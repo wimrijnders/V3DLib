@@ -39,6 +39,7 @@ The following platforms are used for unit testing:
 - Raspberry Pi 3 Model B Rev 1.2
 - Raspberry Pi 2 - **TODO Set up**
 - Raspberry Pi Model B Rev 2
+- Raspberry Pi 4 Model B Rev 1.1,  Debian GNU/Linux 10 (buster) aarch64 (ARM 64-bits)
 - Debian Buster 64-bits on Intel i7  - with QPU=0, skips the hardware GPU tests (obviously)
 
 

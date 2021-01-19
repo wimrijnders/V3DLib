@@ -1005,10 +1005,10 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t> *params) {
 		std::vector<uint64_t> code = to_opcodes();
 
 		// Allocate memory for the QPU code
-		qpuCodeMem.alloc(code.size());
+		qpuCodeMem.alloc((uint32_t) code.size());
 		qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
 
-		qpuCodeMemOffset = 8*code.size();
+		qpuCodeMemOffset = (int) (8*code.size());
 	}
 
 	// Allocate memory for the parameters if not done already

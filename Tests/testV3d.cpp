@@ -207,7 +207,7 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		}
 
 		BufferObject heap(1024);
-		SharedArray<uint64_t> codeMem(bytecode.size(), heap);
+		SharedArray<uint64_t> codeMem((uint32_t) bytecode.size(), heap);
 		codeMem.copyFrom(bytecode);
 		SharedArray<float> result(16, heap);
 		SharedArray<uint32_t> unif(2, heap);
@@ -270,7 +270,7 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 		}
 
 		BufferObject heap(1024);
-		SharedArray<uint64_t> codeMem(bytecode.size(), heap);
+		SharedArray<uint64_t> codeMem((uint32_t) bytecode.size(), heap);
 		codeMem.copyFrom(bytecode);
 		SharedArray<int> result(16, heap);
 		SharedArray<uint32_t> unif(2, heap);

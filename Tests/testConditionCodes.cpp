@@ -138,7 +138,7 @@ TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
 		BufferObject heap(10*1024);  // arbitrary size, large enough
 		//dump_code(bytecode);
 
-		SharedArray<uint64_t> code(bytecode.size(), heap);
+		SharedArray<uint64_t> code((uint32_t) bytecode.size(), heap);
 		code.copyFrom(bytecode);
 
 		SharedArray<uint32_t> data(6*DATA_SIZE, heap);
