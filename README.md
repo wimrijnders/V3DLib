@@ -86,12 +86,14 @@ int main(int argc, const char *argv[]) {
 }
 ```
 
-
 ## Getting Started
 
 This assumes that you are building on a Raspberry Pi.
 
 For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
+
+**Fair Warning:** The first build can take a *long* time, especially on older Pi's.
+See the Build Instructions for details.
 
     > sudo apt-get install git                                       # If not done already
     > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # get only latest commit
@@ -105,27 +107,6 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
                                                                      # GPU support.
     
     > make QPU=1 DEBUG=1 test                                        # Build and run the tests
-
-
-## Compile Times
-
-**Fair Warning:** The first build can take a *long* time, especially on older Pi's.
-The culprit here is mainly the included code from the `Mesa` library.
-
-The following table list the build times on the oldest and newest Pis.
-
-| Platform | Make                 | Time    | Comment                            |
-| -------- | -------------------- | ------- | -----------------------------------|
-| Pi 1     | Full Initial build   | 170m    | Also builds the MESA code          |
-|          | Library and examples |  22m    ||
-|          | Unit tests           |  22m    | without building the library       |
-| Pi 4     | Full Initial build   |  13m    | Also builds the MESA code          |
-|          | Library and examples |   2m    ||
-|          | Unit tests           |   1.25m | without building the library       |
-
-
-The difference in speed is staggering. Even if you want to run on a `Pi 1`,
-you're probably better off building on a `Pi 4`.
 
 
 ## Useful Links

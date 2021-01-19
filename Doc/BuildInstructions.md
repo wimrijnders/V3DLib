@@ -1,14 +1,11 @@
 # Build Instructions
 
+Jump straight to the actual [Basic Build Instructions](#basic-build-instructions).
+
+
 ## General Project Information
 
 - The C++ code is compiled with language version `c++11`
-- All development and testing is done on **Raspbian 10 Buster**.
-
-`V3DLib` should compile and run on Raspbian versions from **Jessie** onwards.
-There are compatibility issues with previous versions (Wheezy and before), see the FAQ for known issues.
-In general, don't bother with old distributions. Use the latest distro instead.
-
 
 In the code:
 
@@ -18,31 +15,34 @@ In the code:
 This follows the naming as used in the linux kernel code and in the `Mesa` library.
 
 
-## Basic Build Instructions
+### All `Pi`s run **Raspbian 10 Buster**
 
-This demonstrates the build commands by example.
-The flags `GPU` and `DEBUG` are explained below.
+In other words, the latest stable release is used. Upgrades are run regularly.
+All development and testing is done on this distribution.
 
-    > make QPU=1 DEBUG=1 all       # Builds all examples in debug mode with GPU hardware support
-    > sudo ./obj/qpu-debug/bin/GCD # Run an example made with previous step. sudo required for `vc4`
-    
-    > make QPU=1 GCD               # Builds example `GCD` in release mode with GPU hardware support.
-    > sudo ./obj-qpu/bin/GCD       # Run the example made with previous step. sudo required for `vc4`.
-	
-    > make QPU=1 DEBUG=1 test      # Run all tests, debug mode required
-    > make clean                   # Remove all binaries and intermediate files.
-                                   # This does *not* clean up external libraries.
+`V3DLib` should compile and run on Raspbian versions from **Jessie** onwards.
+There are compatibility issues with previous versions (Wheezy and before), see the FAQ.
 
-The following scripts are also of importance:
-
-    > script/install.sh            # Clone, update and rebuild external libraries
-                                   # Run this on first build or when an external library changes
-    
-    > script/gen.sh                # Redo the file dependencies within the projects
-                                   # Run this when source files are added or removed
+In general, don't bother with old distributions. Use the latest distro instead.
 
 
-## External Libraries
+### Unit Testing 
+
+Unit tests are run often and always before a push to the central repository on `github`
+(although I may skip tests on some platforms if the fix is obvious).
+
+All platforms mentioned below run `Raspbian Buster 32-bits`, unless otherwise specified.
+
+The following platforms are used for unit testing:
+
+- Raspberry Pi 4 Model B Rev 1.1
+- Raspberry Pi 3 Model B Rev 1.2
+- Raspberry Pi 2 - **TODO Set up**
+- Raspberry Pi Model B Rev 2
+- Debian Buster 64-bits on Intel i7  - with QPU=0, skips the hardware GPU tests (obviously)
+
+
+### External Libraries
 
 The following external libraries are used:
 
@@ -67,6 +67,37 @@ An effort has been made to minimize the amount of code needed of this library, b
 
 The building of the `Mesa` code is part of the makefile.
 This build step is the reason that the very first build takes a significantly longer time.
+
+
+## Basic Build Instructions
+
+This demonstrates the build commands by example.
+The flags `GPU` and `DEBUG` are explained below.
+
+    > make help                     # Overview of specific build commands
+    > make                          # same
+    
+    > make QPU=1 DEBUG=1 all        # Builds all examples in debug mode with GPU hardware support
+    > sudo ./obj/qpu-debug/bin/GCD  # Run an example made with previous step. sudo required for `vc4`
+    
+    > make QPU=1 GCD                # Builds example `GCD` in release mode with GPU hardware support.
+    > sudo ./obj-qpu/bin/GCD        # Run the example made with previous step. sudo required for `vc4`.
+	
+    > make QPU=1 DEBUG=1 test       # Run all tests, debug mode required
+    
+    > make QPU=1 DEBUG=1 make_test  # Same as previous, in two steps. Sometimes useful
+    > ./obj/qpu-debug/bin/runTests
+    
+    > make clean                    # Remove all binaries and intermediate files.
+                                    # This does *not* clean up external libraries.
+
+The following scripts are also of importance:
+
+    > script/install.sh            # Clone, update and rebuild external libraries
+                                   # Run this on first build or when an external library changes
+    
+    > script/gen.sh                # Redo the file dependencies within the projects
+                                   # Run this when source files are added or removed
 
 
 ## Run Modes
@@ -109,6 +140,26 @@ Strictly speaking, any program that works in emulation mode but not on
 the Pi's physical QPUs is probably a bug in `V3DLib` and should be
 reported, although there may be valid explanations for such
 differences.
+
+
+## Compile Times
+
+The culprit here is mainly the included code from the `Mesa` library.
+
+The following table list the build times on the oldest and newest Pis.
+
+| Platform | Make                 | Time    | Comment                            |
+| -------- | -------------------- | ------- | -----------------------------------|
+| Pi 1     | Full Initial build   | 170m    | Also builds the MESA code          |
+|          | Library and examples |  22m    ||
+|          | Unit tests           |  22m    | without building the library       |
+| Pi 4     | Full Initial build   |  13m    | Also builds the MESA code          |
+|          | Library and examples |   2m    ||
+|          | Unit tests           |   1.25m | without building the library       |
+
+
+The difference in speed is staggering. Even if you want to run on a `Pi 1`,
+you're probably better off building on a `Pi 4`.
 
 
 ## CPU/GPU memory split

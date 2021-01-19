@@ -1,17 +1,12 @@
 Frequently Asked Questions
 --------------------------
 
-**NOTE:**
-VideoCore VI is mostly referred to as `v3d`, because this is how it is named in the linux kernel code and in the `Mesa` library.
-For the same reason, VideoCore IV is refered to as `vc4`.
-
-
 # Table of Contents
 
 - [What are the differences between VideoCore IV and VI?](#what-are-the-differences-between-videocore-iv-and-vi)
 - [Differences in Execution](#differences-in-execution)
 - [Calculated theoretical max FLOPs per QPU](#calculated-theoretical-max-flops-per-qpu)
-- [Function `compile()` is not Thread-Safe](#function-compile-is-not-threadsafe)
+- [Function `compile()` is not Thread-Safe](#not-thread-safe)
 - [Handling privileges](#handling-privileges)
 - [Issues with Old Distributions and Compilers](#issues-with-old-distributions-and-compilers)
 
@@ -169,7 +164,7 @@ So, calculation:
 
 
 -----
-# Function `compile()` is not Thread-Safe
+# <a name="not-thread-safe">Function `compile()` is not Thread-Safe</a>
 Function `compile()` is used to compile a kernel from a class generator definition into a format that is runnable on a QPU. This uses *global* heaps internally for e.g. generating the AST and for storing the resulting statements.
 
 Because the heaps are global, running `compile()` parallel on different threads will lead to problems. The result of the compile, however, should be fine, so it's possible to have multiple kernel instances on different threads.
@@ -207,12 +202,12 @@ Unfortunately, this solution will not work for access to `/dev/mem`. You will st
 
 Following is known to occur with `Raspbian wheezy`.
 
-## Certain expected functions are not defined
+* Certain expected functions are not defined
 
 Following prototypes are missing in in `/opt/vc/include/bcm_host.h`:
 
-- `bcm_host_get_peripheral_address()`
-- `bcm_host_get_peripheral_size()`
+  - `bcm_host_get_peripheral_address()`
+  - `bcm_host_get_peripheral_size()`
 
 
 ## Compiler Limitations
