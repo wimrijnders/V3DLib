@@ -236,7 +236,18 @@ This example illustrates a routine to rotate 3D objects.
 is probably a better idea for this if you need to rotate a lot.
 This example is just for illustration purposes)
 
-### <a name="scalar-version-1"></a> Scalar version
+If this is applied to the vertices of
+[Newell's teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
+(rendered using [Richard Hull's wireframes](https://github.com/rm-hull/wireframes) tool)
+
+![Newell's teapot](./images/teapot.png)
+
+with &theta; = 180 degrees, the result is:
+
+![Newell's teapot rotated](./images/teapot180.png)
+
+
+### <a name="scalar-version-1">Scalar version</a>
 
 The following function will rotate `n` vertices about the Z axis by
 &theta; degrees.
@@ -251,16 +262,6 @@ void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
   }
 }
 ```
-
-If this applied to the vertices of
-[Newell's teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
-(rendered using [Richard Hull's wireframes](https://github.com/rm-hull/wireframes) tool)
-
-![Newell's teapot](./images/teapot.png)
-
-with &theta; = 180 degrees, the result is:
-
-![Newell's teapot rotated](./images/teapot180.png)
 
 ### <a name="vector-version-1-1"></a>  Vector version 1
 

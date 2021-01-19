@@ -23,7 +23,7 @@ All development and testing is done on this distribution.
 `V3DLib` should compile and run on Raspbian versions from **Jessie** onwards.
 There are compatibility issues with previous versions (Wheezy and before), see the FAQ.
 
-In general, don't bother with old distributions. Use the latest distro instead.
+In general, don't bother with old distributions. Use the latest stable distro instead.
 
 
 ### Unit Testing 
@@ -144,6 +144,7 @@ differences.
 
 ## Compile Times
 
+The first build can take a *long* time, especially on older Pi's.
 The culprit here is mainly the included code from the `Mesa` library.
 
 The following table list the build times on the oldest and newest Pis.
