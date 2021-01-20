@@ -176,7 +176,7 @@ public:
   void dump(int first_offset, int last_offset) {
     assert(first_offset >= 0);
     assert(first_offset <= last_offset);
-    assert(last_offset < size());
+    assert(last_offset < (int) size());
 
     char const *format = "%8d: 0x%x - %d\n";
 
