@@ -8,9 +8,26 @@
 #include <V3DLib.h>
 #include "Support/basics.h"
 
-
 namespace {
-	using namespace V3DLib;
+using namespace V3DLib;
+
+void dump(SharedArray<float> &a, int linesize = -1) {
+	std::string str("<");
+
+	for (int i = 0; i < (int) a.size(); i++) {
+
+		if (linesize != -1) {
+			if (i % linesize == 0) {
+				str << "\n";
+			}
+		}
+		str << a[i] << ", " ;
+	}
+
+	str << ">";
+	printf("%s\n", str.c_str());
+};
+
 
 /**
  * CPU version of matrix multiplication, naive implementation
@@ -152,20 +169,6 @@ void check_dotvector(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> result) {
  */
 template<int const N>
 void test_dotvector() {
-		auto dump = [] (SharedArray<float> &a) {
-			std::string str("<");
-
-			for (int i = 0; i < (int) a.size(); i++) {
-				str << a[i] << ", " ;
-			}
-
-			str << ">";
-			printf("%s\n", str.c_str());
-		};
-
-
-		//                  // Should correspond with size DotVector instance in kernel
-
 	  SharedArray<float> a(16*N);
 
 		for (int i = 0; i < (int) a.size(); i++) {
@@ -212,6 +215,30 @@ void test_dotvector() {
 		k.interpret();
 		REQUIRE(result[0] == 16*N);
 }
+
+
+void check_matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
+	int const N = 1;
+
+	DotVector vec(N);
+	Float result;
+
+	For (Int y = 0, y < 16*N, y++)
+		vec.load(a + 16*y);
+
+		for (int x = 0; x < 16*N; ++x) {
+			//Int x_val = 2; //x;
+			Float tmp;
+			vec.dot_product(b + x*16, tmp);
+			//set_at(result, x_val, tmp);
+			result = tmp;
+		}
+
+		*dst = result;
+		dst += 16;
+	End
+}
+
 
 }  // anon namespace
 
@@ -311,6 +338,38 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
 		test_dotvector<2>();
 		test_dotvector<4>();
 		test_dotvector<10>();
+	}
+
+
+	SECTION("Check matrix multiplication") {
+		int const N = 1;  // dimension of square matrix in block of 16 values;
+		int const SIZE = 16*N*16*N;
+
+		SharedArray<float> a(SIZE);
+		a.fill(1);
+
+		SharedArray<float> result(SIZE);
+		result.fill(-1);
+
+		float a_scalar[SIZE];
+		for (int i = 0; i < SIZE; i++) {
+			a_scalar[i] = 1;
+		}
+
+		float expected[SIZE];
+		for (int i = 0; i < SIZE; i++) {
+			expected[i] = -1;
+		}
+		matrix_mult_scalar(16*N, expected, a_scalar, a_scalar);
+
+		for (int i = 0; i < SIZE; i++) {
+			REQUIRE(expected[i] == 16);
+		}
+
+		auto k = compile(check_matrix_mult);
+		k.load(&result, &a, &a);
+		k.interpret();
+		dump(result, 16);
 	}
 
 
