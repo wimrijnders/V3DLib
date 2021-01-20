@@ -134,14 +134,83 @@ private:
 /**
  * Kernel for unit testing dot vectors of size 2
  */
+template<int const N>
 void check_dotvector(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> result) {
-	DotVector vec(2);
+	DotVector vec(N);
 	vec.load(a);
 	vec.save(dst);
 
 	Float tmp = -2;  // Silly value for detection in unit test
 	vec.dot_product(a, tmp);
 	*result = tmp;
+}
+
+
+/**
+ * Template parameter N is the number of 16-value blocks in arrays.
+ * It also sets the number of registers for a dot vector in the kernel.
+ */
+template<int const N>
+void test_dotvector() {
+		auto dump = [] (SharedArray<float> &a) {
+			std::string str("<");
+
+			for (int i = 0; i < (int) a.size(); i++) {
+				str << a[i] << ", " ;
+			}
+
+			str << ">";
+			printf("%s\n", str.c_str());
+		};
+
+
+		//                  // Should correspond with size DotVector instance in kernel
+
+	  SharedArray<float> a(16*N);
+
+		for (int i = 0; i < (int) a.size(); i++) {
+			a[i] = 1.0f*((float ) (i + 1));
+		}
+
+	  SharedArray<float> b(16*N);
+		b.fill(-1);
+
+	  SharedArray<float> result(16);
+		result.fill(-1.0f);
+		//dump(result);
+
+		REQUIRE(a.size() == b.size());
+
+		auto k = compile(check_dotvector<N>);
+		k.load(&b, &a, &result);
+		k.interpret();
+
+		for (int i = 0; i < (int) a.size(); i++) {
+			REQUIRE(a[i] == b[i]);
+		}
+
+		//dump(result);
+
+		// Calculate and check expected result of dot product
+		float expected = 0;
+		for (int i = 0; i < (int) a.size(); i++) {
+			expected += a[i]*a[i];
+		}
+
+		for (int i = 0; i < (int) result.size(); i++) {
+			if (i == 0) {
+				INFO("result[0]: " << result[i]);
+				REQUIRE(result[i] == expected);
+			} else {
+				REQUIRE(result[i] == -2);
+			}
+		}
+
+		// Do it again with simpler values for hand calculation
+		a.fill(1);
+		k.load(&b, &a, &result);
+		k.interpret();
+		REQUIRE(result[0] == 16*N);
 }
 
 }  // anon namespace
@@ -239,68 +308,9 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
 
 
 	SECTION("Check correct working dotvector") {
-
-		auto dump = [] (SharedArray<float> &a) {
-			std::string str("<");
-
-			for (int i = 0; i < (int) a.size(); i++) {
-				str << a[i] << ", " ;
-			}
-
-			str << ">";
-			printf("%s\n", str.c_str());
-		};
-
-
-		int const N = 2;  // Number of 16-value blocks in arrays
-		                  // Should correspond with size DotVector instance in kernel
-
-	  SharedArray<float> a(16*N);
-
-		for (int i = 0; i < (int) a.size(); i++) {
-			a[i] = 1.0f*((float ) (i + 1));
-		}
-
-	  SharedArray<float> b(16*N);
-		b.fill(-1);
-
-	  SharedArray<float> result(16);
-		result.fill(-1.0f);
-		//dump(result);
-
-		REQUIRE(a.size() == b.size());
-
-		auto k = compile(check_dotvector);
-		k.load(&b, &a, &result);
-		k.interpret();
-
-		for (int i = 0; i < (int) a.size(); i++) {
-			REQUIRE(a[i] == b[i]);
-		}
-
-
-		dump(result);
-
-		// Calculate and check expected result of dot product
-		float expected = 0;
-		for (int i = 0; i < (int) a.size(); i++) {
-			expected += a[i]*a[i];
-		}
-
-		for (int i = 0; i < (int) result.size(); i++) {
-			if (i == 0) {
-				INFO("result[0]: " << result[i]);
-				REQUIRE(result[i] == expected);
-			} else {
-				REQUIRE(result[i] == -2);
-			}
-		}
-
-		// Do it again with simpler values for hand calculation
-		a.fill(1);
-		k.load(&b, &a, &result);
-		k.interpret();
-		REQUIRE(result[0] == 16*N);
+		test_dotvector<2>();
+		test_dotvector<4>();
+		test_dotvector<10>();
 	}
 
 
