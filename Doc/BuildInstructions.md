@@ -89,7 +89,7 @@ The flags `GPU` and `DEBUG` are explained below.
     > sudo ./obj/qpu-debug/bin/GCD  # Run an example made with previous step. sudo usually required 
     
     > make QPU=1 GCD                # Builds example `GCD` in release mode with GPU hardware support.
-    > sudo ./obj-qpu/bin/GCD        # Run the example made with previous step. sudo usually
+    > sudo ./obj-qpu/bin/GCD        # Run the example made with previous step. sudo usually required
 	
     > make QPU=1 DEBUG=1 test       # Run all tests, debug mode required
     
@@ -99,7 +99,7 @@ The flags `GPU` and `DEBUG` are explained below.
     > make clean                    # Remove all binaries and intermediate files.
                                     # This does *not* clean up external libraries.
 
-The following scripts are also of importance:
+The following scripts are also significant:
 
     > script/install.sh            # Clone, update and rebuild external libraries.
                                    # Run this on first build or when an external library changes
@@ -111,18 +111,18 @@ The following scripts are also of importance:
 ## Run Modes
 
 There are three actual run modes and one convenience run mode for the example programs.
-These can be selected in the examples with flag `-s=` on the command line.
+These can be selected with flag `-s=` on the command line.
 
 The run modes are:
 
-- `interpreter` - interprets the source level code
-- `emulator`    - compiles to `vc4` code and runs this on a `vc4` emulator
-- `qpu`         - compiles to either `vc4` or `v3d` code, depending on which hardware you're running on,
-                  and runs on the GPU.
-- `default`     - selects the most suitable platform to run on,
-                  depending on the build flags below and the hardware.
+| `interpreter` | interprets the source level code
+| `emulator`    | compiles to `vc4` code and runs this on a `vc4` emulator
+| `qpu`         | compiles to either `vc4` or `v3d` code, depending on which hardware you're running on,
+|               | and runs on the GPU
+| `default`     | selects the most suitable platform to run on,
+|               | depending on the build flags below and the hardware
 
-Note that there is no `v3d` interpreter.
+Note that there is no `v3d` emulator.
 
 On a Pi-platform, `interpreter` and `emulator` are useful for asserting that the hardware output
 is correct. You can expect, however, that these will run a *lot* slower than hardware.
