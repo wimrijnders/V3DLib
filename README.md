@@ -4,8 +4,8 @@
 
 `V3DLib` is a C++ library for creating programs to run on the `VideoCore` GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 
-Prior to the Pi 4, this meant compiling for just the `VideoCore 4` GPU.
-The Pi 4, however, has a `VideoCore 6` GPU which, although related, is significantly different.
+Prior to the Pi 4, this meant compiling for just the `VideoCore IV` GPU.
+The Pi 4, however, has a `VideoCore VI` GPU which, although related, is significantly different.
 `V3DLib` compiles and assembles for both versions of the VideoCore GPU.
 
 Kernel programs compile dynamically, so that a given program can run unchanged on any version of the RaspBerry Pi.
@@ -14,7 +14,7 @@ The kernels are generated inline and offloaded to the GPU's at runtime.
 ## First Release
 
 When I started this project, I resolved to release at the point that all examples would compile
-and run on the `VideoCore 6`. I have finally reached this point.
+and run on the `VideoCore VI`. I have finally reached this point.
 
 -----
 
@@ -26,12 +26,12 @@ and run on the `VideoCore 6`. I have finally reached this point.
 However, **there are caveats**.
 
 There are some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
-will run *sometimes* on a `VideoCore 6`, and otherwise hang.
+will run *sometimes* on a `VideoCore VI`, and otherwise hang.
 This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
-There are also some unit tests which have the same problem, these are disabled when running on `VideoCore 6`.
+There are also some unit tests which have the same problem, these are disabled when running on `VideoCore VI`.
 
 I haven't been able to resolve these issues and I am waiting for a kernel update with fixes.
-All code for the `VideoCore 4` compiles and runs fine.
+All code for the `VideoCore IV` compiles and runs fine.
 
 
 ## Credit where Credit is Due
@@ -40,7 +40,7 @@ I fully acknowledge his work for the Videcore 4 and am grateful for what he has 
 up the compilation and assembly.
 
 `QPULib`, however, is no longer under development, and I felt the need to expand it to support
-the VideoCore 6 as well. Hence, `V3DLib` was conceived.
+the VideoCore VI as well. Hence, `V3DLib` was conceived.
 
 
 ## The Programming Language
@@ -114,18 +114,18 @@ See the Build Instructions for details.
 
 The following works were *very* helpful in the development.
 
-#### VideoCore 4
+#### VideoCore IV 
 * The [VideoCore IV Reference Manual] by Broadcom. [Errata].
 * The [documentation, demos, and assembler](https://github.com/hermanhermitage/videocoreiv-qpu)
   by Herman Hermitage.
 * The [FFT implementation](http://www.aholme.co.uk/GPU_FFT/Main.htm)
   by Andrew Holme.
 
-#### VideoCore 6
+#### VideoCore VI 
 * [v3d driver code in the linux kernel repository] - of special interest: [v3d_gem.c],
   [v3d_drm.h], `vc4` on same level
 * [MESA v3d driver] - [github], `vc4` on same level
-* [py-videocore6](https://github.com/Idein/py-videocore6) - Python project hacking the `VideoCore 6`
+* [py-videocore6](https://github.com/Idein/py-videocore6) - Python project hacking the `VideoCore VI`
 * [Broadcom code for v3d] - [relevant part], not sure if this is also for `vc4`, 2010 so probably no
 - [Source doc for registers] - contains registers not in the ref doc:
 - [Broadcom VideoCore V QPU Instruction Set] - [translation]

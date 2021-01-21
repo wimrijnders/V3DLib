@@ -15,13 +15,12 @@ In the code:
 This follows the naming as used in the linux kernel code and in the `Mesa` library.
 
 
-### All `Pi`s run **Raspbian 10 Buster**
+### All development is done on **Raspbian 10 Buster**
 
 In other words, the latest stable release is used. Upgrades are run regularly.
-All development and testing is done on this distribution.
 
 `V3DLib` should compile and run on Raspbian versions from **Jessie** onwards.
-There are compatibility issues with previous versions (Wheezy and before), see the FAQ.
+There are compatibility issues with previous versions (Wheezy and before), see the FAQ for known issues.
 
 In general, don't bother with old distributions. Use the latest stable distro instead.
 
@@ -39,7 +38,7 @@ The following platforms are used for unit testing:
 - Raspberry Pi 3 Model B Rev 1.2
 - Raspberry Pi 2 - **TODO Set up**
 - Raspberry Pi Model B Rev 2
-- Raspberry Pi 4 Model B Rev 1.1,  Debian GNU/Linux 10 (buster) aarch64 (ARM 64-bits)
+- Raspberry Pi 4 Model B Rev 1.1,  aarch64 (ARM 64-bits)
 - Debian Buster 64-bits on Intel i7  - with QPU=0, skips the hardware GPU tests (obviously)
 
 
@@ -49,12 +48,11 @@ The following external libraries are used:
 
 1. **[CmdParameter](https://github.com/wimrijnders/CmdParameter)** 
 
-This is a library for handling command line parameters in a sane way,
-of my own making.
+This is a library for handling command line parameters in a sane way, of my own making.
 
 Use script `scripts/install.sh` to clone its repo and to build it.
 
-This script needs to be run only once,  before the initial build of `V3DLib`.
+This script needs to be run only once, before the initial build of `V3DLib`.
 If project `CmdParameter` is changed, rerun this script to get and build the latest version.
 
 
@@ -88,10 +86,10 @@ The flags `GPU` and `DEBUG` are explained below.
     > make                          # same
     
     > make QPU=1 DEBUG=1 all        # Builds all examples in debug mode with GPU hardware support
-    > sudo ./obj/qpu-debug/bin/GCD  # Run an example made with previous step. sudo required for `vc4`
+    > sudo ./obj/qpu-debug/bin/GCD  # Run an example made with previous step. sudo usually required 
     
     > make QPU=1 GCD                # Builds example `GCD` in release mode with GPU hardware support.
-    > sudo ./obj-qpu/bin/GCD        # Run the example made with previous step. sudo required for `vc4`.
+    > sudo ./obj-qpu/bin/GCD        # Run the example made with previous step. sudo usually
 	
     > make QPU=1 DEBUG=1 test       # Run all tests, debug mode required
     
@@ -103,16 +101,16 @@ The flags `GPU` and `DEBUG` are explained below.
 
 The following scripts are also of importance:
 
-    > script/install.sh            # Clone, update and rebuild external libraries
+    > script/install.sh            # Clone, update and rebuild external libraries.
                                    # Run this on first build or when an external library changes
     
-    > script/gen.sh                # Redo the file dependencies within the projects
-                                   # Run this when source files are added or removed
+    > script/gen.sh                # Redo the file dependencies within the projectA.s
+                                   # Run this when source files are added or removed during development
 
 
 ## Run Modes
 
-There are three run modes for the example programs.
+There are three actual run modes and one convenience run mode for the example programs.
 These can be selected in the examples with flag `-s=` on the command line.
 
 The run modes are:
@@ -121,13 +119,16 @@ The run modes are:
 - `emulator`    - compiles to `vc4` code and runs this on a `vc4` emulator
 - `qpu`         - compiles to either `vc4` or `v3d` code, depending on which hardware you're running on,
                   and runs on the GPU.
+- `default`     - selects the most suitable platform to run on,
+                  depending on the build flags below and the hardware.
 
-Note that `interpreter` and `emulator` deal with `vc4` code only.
-The examples have a special run-mode `default`, which select the most suitable platform to run on,
-depending on the build flags below and the hardware.
+Note that there is no `v3d` interpreter.
 
 On a Pi-platform, `interpreter` and `emulator` are useful for asserting that the hardware output
-is as correct. You can expect, however, that these will run a *lot* slower than hardware.
+is correct. You can expect, however, that these will run a *lot* slower than hardware.
+
+A program that works in emulation mode but not on the physical GPU probably indicates a bug in `V3DLib`.
+Please report this and hopefully a valid explanation can be found for the differences.
 
 
 ## Build flags
@@ -142,14 +143,14 @@ The makefile takes two flags:
 Using `QPU=0` allows you to develop run code on non-Pi platforms.
 Run modes `emulator` and `interpreter` will then still be available.
 
-The output directory
-depends on the make flags passed.  For example, `make all` will output to directory
-`obj`, `make QPU=1 all` will output to directory `obj-qpu`.
+The build directory depends on the make flags passed. The combinations are:
 
-Strictly speaking, any program that works in emulation mode but not on
-the Pi's physical QPUs is probably a bug in `V3DLib` and should be
-reported, although there may be valid explanations for such
-differences.
+| QPU | DEBUG | build directory |
+| --- | ----- | --------------- |
+| 0   | 0     | `obj/emu`       |
+| 0   | 1     | `obj/emu-debug` |
+| 1   | 0     | `obj/qpu`       |
+| 1   | 1     | `obj/qpu-debug` |
 
 
 ## Compile Times
@@ -157,7 +158,7 @@ differences.
 The first build can take a *long* time, especially on older Pi's.
 The culprit here is mainly the included code from the `Mesa` library.
 
-The following table list the build times on the oldest and newest Pis.
+The following table lists the build times on the oldest and newest Pis.
 
 | Platform | Make                 | Time    | Comment                            |
 | -------- | -------------------- | ------- | -----------------------------------|
@@ -175,8 +176,14 @@ you're probably better off building on a `Pi 4`.
 
 ## CPU/GPU memory split
 
-Depending on your plans, it may be useful to ensure that plenty of
-memory is available to the GPU.  This can be done by using
-`raspi-config`, selecting `Advanced Options` and then `Memory Split`:
-(On a Raspberry Pi 1 Model B, 32M seems to be the minimum that works
-for me.)
+Depending on your plans, it may be useful to ensure that plenty of memory is available to the GPU.
+The shared memory can be changed with `raspi-config`:
+
+- `sudo raspi-config`
+- select `Advanced Options`
+- select `Memory Split`
+- change the value
+
+On a Raspberry Pi 1 Model B, 32MB seems to be the minimum that works.
+
+The `Pi 4` uses a different shared memory model, for which a memory split is irrelevant.
