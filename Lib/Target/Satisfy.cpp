@@ -4,6 +4,7 @@
 #include <stdio.h>
 
 namespace V3DLib {
+namespace {
 
 /**
  * Remap register A to accumulator
@@ -15,7 +16,7 @@ namespace V3DLib {
 Instr remapAToAccum(Instr* instr, RegId acc) {
   assert(instr->ALU.srcA.tag == REG);
 
-	Reg src = instr->ALU.srcA.reg;
+  Reg src = instr->ALU.srcA.reg;
   instr->ALU.srcA.reg.tag    = ACC;
   instr->ALU.srcA.reg.regId  = acc;
 
@@ -24,55 +25,31 @@ Instr remapAToAccum(Instr* instr, RegId acc) {
 
 
 /**
- * Remap register A to accumulator
- *
+ * Remap register B to accumulator
  */
 Instr remapBToAccum(Instr* instr, RegId acc) {
   assert(instr->ALU.srcB.tag == REG);
 
-	Reg src = instr->ALU.srcB.reg;
+  Reg src = instr->ALU.srcB.reg;
   instr->ALU.srcB.reg.tag   = ACC;
   instr->ALU.srcB.reg.regId = acc;
 
   return Target::instr::mov(Reg(ACC, acc), src);
 }
 
-// ==============================
-// Resolve register file conflict
-// ==============================
 
-// Determine reg file of given register.
-
-RegTag regFileOf(Reg r)
-{
-  if (r.tag == REG_A) return REG_A;
-  if (r.tag == REG_B) return REG_B;
-  if (r.tag == SPECIAL) {
-    if (r.regId == SPECIAL_ELEM_NUM) return REG_A;
-    if (r.regId == SPECIAL_QPU_NUM) return REG_B;
-    if (r.regId == SPECIAL_RD_SETUP) return REG_A;
-    if (r.regId == SPECIAL_WR_SETUP) return REG_B;
-    if (r.regId == SPECIAL_DMA_LD_WAIT) return REG_A;
-    if (r.regId == SPECIAL_DMA_ST_WAIT) return REG_B;
-    if (r.regId == SPECIAL_DMA_LD_ADDR) return REG_A;
-    if (r.regId == SPECIAL_DMA_ST_ADDR) return REG_B;
-  }
-  return NONE;
-}
-
-// When an instruction uses two (different) registers that are mapped
-// to the same register file, then remap one of them to an
-// accumulator.
-
-bool resolveRegFileConflict(Instr* instr, Instr* newInstr)
-{
-  if (instr->tag == ALU && instr->ALU.srcA.tag == REG
-                        && instr->ALU.srcB.tag == REG) {
+/**
+ * When an instruction uses two (different) registers that are mapped
+ * to the same register file, then remap one of them to an accumulator.
+ */
+bool resolveRegFileConflict(Instr* instr, Instr* newInstr) {
+  if (instr->tag == ALU && instr->ALU.srcA.tag == REG && instr->ALU.srcB.tag == REG) {
     int rfa = regFileOf(instr->ALU.srcA.reg);
     int rfb = regFileOf(instr->ALU.srcB.reg);
+
     if (rfa != NONE && rfb != NONE) {
-      bool conflict = rfa == rfb &&
-           !(instr->ALU.srcA.reg == instr->ALU.srcB.reg);
+      bool conflict = rfa == rfb && !(instr->ALU.srcA.reg == instr->ALU.srcB.reg);
+
       if (conflict) {
         *newInstr = remapAToAccum(instr, 0);
         return true;
@@ -82,27 +59,11 @@ bool resolveRegFileConflict(Instr* instr, Instr* newInstr)
   return false;
 }
 
-// =============================
-// Satisfy VideoCore constraints
-// =============================
 
-// Transform an instruction sequence to satisfy various VideoCore
-// constraints, including:
-//
-//   1. fill branch delay slots with NOPs;
-//
-//   2. introduce accumulators for operands mapped to the same
-//      register file;
-//
-//   3. introduce accumulators for horizontal rotation operands;
-//
-//   4. insert NOPs to account for data hazards: a destination
-//      register (assuming it's not an accumulator) cannot be read by
-//      the next instruction.
-
-// First pass: insert move-to-accumulator instructions.
-
-static void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
+/**
+ * First pass for satisfy constraints: insert move-to-accumulator instructions
+ */
+void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
 
@@ -114,22 +75,19 @@ static void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
         *newInstrs << remapBToAccum(&instr, 5);
 
       *newInstrs << Instr::nop();
-    }
-    else if (instr.tag == ALU && instr.ALU.srcA.tag == IMM &&
+    } else if (instr.tag == ALU && instr.ALU.srcA.tag == IMM &&
              instr.ALU.srcB.tag == REG &&
              regFileOf(instr.ALU.srcB.reg) == REG_B) {
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.
       *newInstrs << remapBToAccum(&instr, 0);
-    }
-    else if (instr.tag == ALU && instr.ALU.srcB.tag == IMM &&
+    } else if (instr.tag == ALU && instr.ALU.srcB.tag == IMM &&
              instr.ALU.srcA.tag == REG &&
              regFileOf(instr.ALU.srcA.reg) == REG_B) {
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.
       newInstrs->append(remapAToAccum(&instr, 0));
-    }
-    else {
+    } else {
       // Insert moves for operands that are mapped to the same reg file
       Instr move;
       if (resolveRegFileConflict(&instr, &move))
@@ -142,8 +100,10 @@ static void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
 }
 
 
-// Second pass: insert NOPs
-static void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
+/**
+ * Second pass satisfy constraints: insert NOPs
+ */
+void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
   // Use/def sets
   UseDefReg mySet, prevSet;
 
@@ -183,9 +143,10 @@ static void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
 }
 
 
-// Return true for any instruction that doesn't read from the VPM
-bool notVPMGet(Instr instr)
-{
+/**
+ * Return true for any instruction that doesn't read from the VPM
+ */
+bool notVPMGet(Instr instr) {
   // Use/def sets
   UseDefReg useDef;
 
@@ -198,8 +159,11 @@ bool notVPMGet(Instr instr)
   return true;
 }
 
-// Insert NOPs between VPM setup and VPM read, if needed
-static void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
+
+/**
+ * Insert NOPs between VPM setup and VPM read, if needed
+ */
+void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
   // Use/def sets
   UseDefReg useDef;
 
@@ -222,10 +186,62 @@ static void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
   }
 }
 
-// Combine passes
+}  // anon namespace
+
+
+// ==============================
+// Resolve register file conflict
+// ==============================
+
+/**
+ * Determine reg file of given register.
+ */
+RegTag regFileOf(Reg r) {
+  if (r.tag == REG_A) return REG_A;
+  if (r.tag == REG_B) return REG_B;
+
+  if (r.tag == SPECIAL) {
+    switch(r.regId) {
+    case SPECIAL_ELEM_NUM:
+    case SPECIAL_RD_SETUP:
+    case SPECIAL_DMA_LD_WAIT:
+    case SPECIAL_DMA_LD_ADDR:
+      return REG_A;
+    case SPECIAL_QPU_NUM:
+    case SPECIAL_WR_SETUP:
+    case SPECIAL_DMA_ST_WAIT:
+    case SPECIAL_DMA_ST_ADDR:
+      return REG_B;
+    default:
+      assert(false);
+      break;
+    }
+  }
+
+  return NONE;
+}
+
+
+// =============================
+// Satisfy VideoCore constraints
+// =============================
+
+// Transform an instruction sequence to satisfy various VideoCore
+// constraints, including:
+//
+//   1. fill branch delay slots with NOPs;
+//
+//   2. introduce accumulators for operands mapped to the same
+//      register file;
+//
+//   3. introduce accumulators for horizontal rotation operands;
+//
+//   4. insert NOPs to account for data hazards: a destination
+//      register (assuming it's not an accumulator) cannot be read by
+//      the next instruction.
 
 void satisfy(Seq<Instr>* instrs) {
-	assert(instrs != nullptr);
+  assert(instrs != nullptr);
 
   // New instruction sequence
   Seq<Instr> newInstrs0(instrs->size() * 2);
