@@ -213,7 +213,6 @@ RegTag regFileOf(Reg r) {
     case SPECIAL_DMA_ST_ADDR:
       return REG_B;
     default:
-      assert(false);
       break;
     }
   }

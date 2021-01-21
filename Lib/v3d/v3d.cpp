@@ -36,9 +36,9 @@ typedef struct {
 } gem_close;
 
 struct st_v3d_wait_bo {
-	uint32_t handle;
-	uint32_t pad;
-	uint64_t timeout_ns;
+  uint32_t handle;
+  uint32_t pad;
+  uint64_t timeout_ns;
 };
 
 // Derived from linux/include/uapi/drm/drm.h
@@ -71,30 +71,30 @@ const unsigned V3D_PARAM_SUPPORTS_CSD = 8;
 
 
 void log_error(int ret, char const *prefix = "") {
-	if (ret == 0) return;
+  if (ret == 0) return;
 
-	char buf[256];
-	sprintf(buf, "%sioctl: %s\n", prefix, strerror(errno));
-	error(buf);
+  char buf[256];
+  sprintf(buf, "%sioctl: %s\n", prefix, strerror(errno));
+  error(buf);
 }
 
 
 bool alloc_intern(
-	int fd, uint32_t size,
-	uint32_t &handle,
-	uint32_t &phyaddr,
-	void **usraddr,
-	bool show_perror = true) {
-	assert(fd != 0);
+  int fd, uint32_t size,
+  uint32_t &handle,
+  uint32_t &phyaddr,
+  void **usraddr,
+  bool show_perror = true) {
+  assert(fd != 0);
 
   drm_v3d_create_bo create_bo;
   create_bo.size = size;
   create_bo.flags = 0;
-	{
-		int res = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
-		if (show_perror) log_error(res);  // NOTE: `show_perror` intentionally only used here
-		if (res != 0) return false;
-	}
+  {
+    int res = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
+    if (show_perror) log_error(res);  // NOTE: `show_perror` intentionally only used here
+    if (res != 0) return false;
+  }
   handle  = create_bo.handle;
   phyaddr = create_bo.offset;
 
@@ -103,8 +103,8 @@ bool alloc_intern(
   mmap_bo.flags = 0;
   {
     int res = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);
-		log_error(res);
-		if (res != 0) return false;
+    log_error(res);
+    if (res != 0) return false;
   }
   *usraddr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (__off_t) mmap_bo.offset);
   return (usraddr != MAP_FAILED);
@@ -112,61 +112,61 @@ bool alloc_intern(
 
 
 void fd_close(int fd) {
-	if (fd > 0 ) {
-		int ret = close(fd);
-		assert(ret >= 0);
-	}
+  if (fd > 0 ) {
+    int ret = close(fd);
+    assert(ret >= 0);
+  }
 }
 
 
 int open_card(char const *card) {
-	int fd = open(card , O_RDWR);
+  int fd = open(card , O_RDWR);
 
-	if (fd == 0) {
-		V3DLib::fatal("FATAL: Can't open card device (sudo?)");
-	}
+  if (fd == 0) {
+    V3DLib::fatal("FATAL: Can't open card device (sudo?)");
+  }
 
-	//
-	// Perform an operation on the device: allocate 16 bytes of memory.
-	// The 'wrong' card will fail here
-	//
-	{
-		const uint32_t ALLOC_SIZE = 16;
+  //
+  // Perform an operation on the device: allocate 16 bytes of memory.
+  // The 'wrong' card will fail here
+  //
+  {
+    const uint32_t ALLOC_SIZE = 16;
 
-		// Place a call on it see if it works
+    // Place a call on it see if it works
     uint32_t handle = 0;
     uint32_t phyaddr = 0;
-		void *usraddr = nullptr;
+    void *usraddr = nullptr;
 
-		if (alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr, false)) {
-			// worked! clean up
-			v3d_unmap(ALLOC_SIZE, handle, usraddr);
-			//printf("open_card(): alloc test succeeded for card %s\n", card);
-		} else {
-			// fail
-			fd_close(fd);
-			fd = 0;
-			//printf("open_card(): alloc test FAILED for card %s\n", card);
-		}
-	}
+    if (alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr, false)) {
+      // worked! clean up
+      v3d_unmap(ALLOC_SIZE, handle, usraddr);
+      //printf("open_card(): alloc test succeeded for card %s\n", card);
+    } else {
+      // fail
+      fd_close(fd);
+      fd = 0;
+      //printf("open_card(): alloc test FAILED for card %s\n", card);
+    }
+  }
 
-	return fd;
+  return fd;
 }
 
 
 bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
-	assert(handle != 0);
-	assert(timeout_ns > 0);
+  assert(handle != 0);
+  assert(timeout_ns > 0);
 
-	st_v3d_wait_bo st = {
-		handle,
-		0,
-		timeout_ns,
-	};
+  st_v3d_wait_bo st = {
+    handle,
+    0,
+    timeout_ns,
+  };
 
-	int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
-	log_error(ret, "v3d_wait_bo() ");
-	return (ret == 0);
+  int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
+  log_error(ret, "v3d_wait_bo() ");
+  return (ret == 0);
 }
 
 }  // anon namespace
@@ -176,10 +176,10 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
  *
  */
 int v3d_submit_csd(st_v3d_submit_csd &st) {
-	int ret = ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &st);
-	log_error(ret);
-	assert(ret == 0);
-	return ret;
+  int ret = ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &st);
+  log_error(ret);
+  assert(ret == 0);
+  return ret;
 }
 
 
@@ -192,26 +192,26 @@ int v3d_submit_csd(st_v3d_submit_csd &st) {
  * @return true if opening succeeded, false otherwise
  */
 bool v3d_open() {
-	if (fd != 0) {
-		return true;  // Already open, all is well
-	}
+  if (fd != 0) {
+    return true;  // Already open, all is well
+  }
 
-	// It appears to be a random crap shoot which device card0 and card1 address
-	// So we try both, test them and pick the one that works (if any)
-	int fd0 = open_card("/dev/dri/card0");
-	int fd1 = open_card("/dev/dri/card1");
+  // It appears to be a random crap shoot which device card0 and card1 address
+  // So we try both, test them and pick the one that works (if any)
+  int fd0 = open_card("/dev/dri/card0");
+  int fd1 = open_card("/dev/dri/card1");
 
-	if (fd0 == 0) {
-		assert(fd1 != 0);
-		fd = fd1;
-	} else if (fd1 == 0) {
-		assert(fd0 != 0);
-		fd = fd0;
-	} else {
-		V3DLib::fatal("FATAL: could not open card device");
-	}
+  if (fd0 == 0) {
+    assert(fd1 != 0);
+    fd = fd1;
+  } else if (fd1 == 0) {
+    assert(fd0 != 0);
+    fd = fd0;
+  } else {
+    V3DLib::fatal("FATAL: could not open card device");
+  }
 
-	return (fd > 0);
+  return (fd > 0);
 }
 
 
@@ -219,38 +219,38 @@ bool v3d_open() {
  * @return true if close executed, false if already closed
  */
 bool v3d_close() {
-	if (fd == 0) { return false; }
+  if (fd == 0) { return false; }
 
-	fd_close(fd);
-	fd = 0;
+  fd_close(fd);
+  fd = 0;
 
-	return true;
+  return true;
 }
 
 
 bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usraddr) {
-	assert(size > 0);
-	assert(handle == 0);
-	assert(phyaddr == 0);
-	assert(*usraddr == nullptr);
+  assert(size > 0);
+  assert(handle == 0);
+  assert(phyaddr == 0);
+  assert(*usraddr == nullptr);
 
-	return  alloc_intern(fd, size, handle, phyaddr, usraddr);
+  return  alloc_intern(fd, size, handle, phyaddr, usraddr);
 }
 
 
 bool v3d_unmap(uint32_t size, uint32_t handle,  void *usraddr) {
-	assert(size > 0);
-	assert(handle > 0);
-	assert(usraddr != nullptr);
+  assert(size > 0);
+  assert(handle > 0);
+  assert(usraddr != nullptr);
 
-	int res = munmap(usraddr, size);
-	if (res != 0) {
-		return false;
-	}
+  int res = munmap(usraddr, size);
+  if (res != 0) {
+    return false;
+  }
 
-	gem_close cl;
-	cl.handle = handle;
-	return (ioctl(fd, IOCTL_GEM_CLOSE, &cl) == 0);
+  gem_close cl;
+  cl.handle = handle;
+  return (ioctl(fd, IOCTL_GEM_CLOSE, &cl) == 0);
 }
 
 
@@ -258,17 +258,17 @@ bool v3d_unmap(uint32_t size, uint32_t handle,  void *usraddr) {
  * @return true if all waits succeeded, false otherwise
  */
 bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns) {
-	assert(bo_handles.size() > 0);
-	assert(timeout_ns > 0);
+  assert(bo_handles.size() > 0);
+  assert(timeout_ns > 0);
 
-	int ret = true;
+  int ret = true;
 
-	for (auto handle : bo_handles) {
-		if (!v3d_wait_bo(handle, timeout_ns)) { 
-			ret = false;
-		}
-	}
-	//printf("Done calling v3d_wait_bo()\n");
+  for (auto handle : bo_handles) {
+    if (!v3d_wait_bo(handle, timeout_ns)) { 
+      ret = false;
+    }
+  }
+  //printf("Done calling v3d_wait_bo()\n");
 
-	return ret;
+  return ret;
 }

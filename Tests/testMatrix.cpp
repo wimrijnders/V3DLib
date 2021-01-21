@@ -11,6 +11,13 @@
 namespace {
 using namespace V3DLib;
 
+// ============================================================================
+// Support routines
+// ============================================================================
+
+/**
+ * Show contents of main memory array
+ */
 void dump(float *a, int size,  int linesize = -1) {
   std::string str("<");
 
@@ -29,6 +36,9 @@ void dump(float *a, int size,  int linesize = -1) {
 };
 
 
+/**
+ * Show contents of SharedArray instance
+ */
 void dump(SharedArray<float> &a, int linesize = -1) {
   std::string str("<");
 
@@ -45,6 +55,17 @@ void dump(SharedArray<float> &a, int linesize = -1) {
   str << ">";
   printf("%s\n", str.c_str());
 };
+
+
+/**
+ * Convenience method to make switching run modes easier
+ */
+template<typename Kernel>
+void run_kernel(Kernel &k) {
+  //k.interpret();
+  //k.emu();
+  k.qpu();
+}
 
 
 /**
@@ -71,6 +92,19 @@ void matrix_mult_scalar(int N, float *c, float *a, float *b) {
 
 
 /**
+ * Copy values from square array `a` to array `b`, tranposing the array in the process
+ */
+template<typename Arr>
+void matrix_copy_transposed(Arr &b, Arr &a, int dim) {
+  for (int x = 0; x < dim; x++) {
+    for (int y = 0; y < dim; y++) {
+      b[y + dim*x] = a[x + dim*y];
+    }
+  }
+}
+
+
+/**
  * Sum up all the vector elements of a register.
  *
  * All vector elements of register result will contain the same value.
@@ -80,21 +114,23 @@ void matrix_mult_scalar(int N, float *c, float *a, float *b) {
 void rotate_sum(Float &input, Float &result) {
   result = input;
 
-  Float tmp = input;
-  for (int i = 0; i < 15; i++) {
+  Float tmp = input;              comment("rotate_sum, loop unrolled");
+  for (int i = 0; i < 15; i++) {  // loop unroll
     tmp = rotate(tmp, 1);
-    //result += tmp;  // TODO this should work
+    //result += tmp;              // TODO this should work
     result = result + tmp;
   }
 }
 
 
-void check_sum(Ptr<Float> input, Ptr<Float> result) {
+/**
+ * Kernel to test correct working of `rotate_sum`
+ */
+void check_sum_kernel(Ptr<Float> input, Ptr<Float> result) {
   Float val = *input;
   Float sum;
 
   rotate_sum(val, sum);
-
   *result = sum;
 }
 
@@ -115,6 +151,9 @@ void set_at(Float &dst, Int n, Float &src) {
 }
 
 
+/**
+ * Kernel to test correct working of `set_at`
+ */
 void check_set_at(Ptr<Float> input, Ptr<Float> result, Int index) {
   Float a = *input;
   Float b = *result;
@@ -124,8 +163,17 @@ void check_set_at(Ptr<Float> input, Ptr<Float> result, Int index) {
   *result = b;
 }
 
+
 /**
- * This is a kernel helper class
+ * Kernel helper class for loading in a sequence of values into QPU registers
+ *
+ * A Number of registers in the register file are allocated for the sequence.
+ * These registers are indexed to retain the order.
+ * 16 consequent values are loaded into the vector of a register.
+ *
+ * The goal here is to have the entire sequence of values loaded into the QPU
+ * register file, so that it can be reused.
+ * This, of course, places an upper limit on the length of the sequence.
  */
 class DotVector {
 public:
@@ -155,7 +203,7 @@ public:
    * All vector elements of the result will contain the same value.
    */
   void dot_product(Ptr<Float> rhs, Float &result) {
-    Float tmp = 0;
+    Float tmp = 0;  comment("DotVector::dot_product()");
 
     for (int i = 0; i < (int) elements.size(); ++i) {
       tmp = tmp + elements[i]*(*rhs);  rhs += 16;
@@ -170,7 +218,7 @@ private:
 
 
 /**
- * Kernel for unit testing dot vectors of size 2
+ * Kernel for unit testing dot vectors
  */
 template<int const N>
 void check_dotvector(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> result) {
@@ -209,7 +257,7 @@ void test_dotvector() {
 
   auto k = compile(check_dotvector<N>);
   k.load(&b, &a, &result);
-  k.interpret();
+  run_kernel(k);
 
   for (int i = 0; i < (int) a.size(); i++) {
     REQUIRE(a[i] == b[i]);
@@ -233,11 +281,19 @@ void test_dotvector() {
   // Do it again with simpler values for hand calculation
   a.fill(1);
   k.load(&b, &a, &result);
-  k.interpret();
+  run_kernel(k);
   REQUIRE(result[0] == 16*N);
 }
 
 
+/**
+ * Multiply two square matrixes
+ *
+ * Does a matrix multiplication of `a` and `b` and puts the result in `dst`.
+ *
+ * Input matrix `b` needs to be in transposed form before usage.
+ * Template parameters N is dimension of square matrix in blocks of 16 values.
+ */
 template<int const N>
 void check_matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   int const DIM = 16*N;
@@ -248,7 +304,7 @@ void check_matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   For (Int y = 0, y < DIM, y++)
     vec.load(a + DIM*y);
 
-    for (int x = 0; x < DIM; ++x) {
+    for (int x = 0; x < DIM; ++x) {  // Loop unroll
       Float tmp;
       vec.dot_product(b + DIM*x, tmp);
 
@@ -266,7 +322,7 @@ void check_matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
 
 
 /**
- * Template parameters N is dimension of square matrix in block of 16 values
+ * Template parameters N is dimension of square matrix in blocks of 16 values.
  */
 template<int const N>
 void test_matrix_multiplication() {
@@ -298,7 +354,7 @@ void test_matrix_multiplication() {
   //
   a.fill(0);
   result.fill(-1);
-  k.interpret();
+  run_kernel(k);
 
   for (int i = 0; i < SIZE; i++) {
     REQUIRE(result[i] == 0);
@@ -309,7 +365,7 @@ void test_matrix_multiplication() {
   //
   a.fill(1);
   result.fill(-1);
-  k.interpret();
+  run_kernel(k);
 
   for (int i = 0; i < SIZE; i++) {
     REQUIRE(result[i] == 16*N);
@@ -323,7 +379,7 @@ void test_matrix_multiplication() {
     a[i + 16*N*i] = 1;
   }
 
-  k.interpret();
+  run_kernel(k);
 
   //dump(expected, SIZE, 16);
   //dump(result, 16*N);
@@ -348,19 +404,13 @@ void test_matrix_multiplication() {
     a_scalar[i] = val;
   }
 
-  // b matrix needs to be transposed
   SharedArray<float> b(SIZE);
-
-  for (int x = 0; x < 16*N; x++) {
-    for (int y = 0; y < 16*N; y++) {
-      b[y + 16*N*x] = a[x + 16*N*y];
-    }
-  }
+  matrix_copy_transposed(b, a, 16*N);
 
   matrix_mult_scalar(16*N, expected, a_scalar, a_scalar);
 
   k.load(&result, &a, &b);
-  k.interpret();
+  run_kernel(k);
 
   float precision = 1e-5f;
 
@@ -374,7 +424,7 @@ void test_matrix_multiplication() {
 
 TEST_CASE("Test Matrix algebra", "[matrix]") {
   using namespace V3DLib;
-  Platform::use_main_memory(true);  // Run only interpreter and emulator for now
+  //Platform::use_main_memory(true);  // Run only interpreter and emulator for now
 
 
   SECTION("Check scalar matrix multiplication") {
@@ -411,10 +461,13 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
     SharedArray<float> result(16);
     result.fill(-1);
 
-    auto k = compile(check_sum);
+    printf("Compiling kernel\n");
+    auto k = compile(check_sum_kernel);
+    k.pretty(false);
 
+    printf("Running kernel\n");
     k.load(&vec, &result);
-    k.interpret();
+    run_kernel(k);
     REQUIRE(result[0] == 4.8f);
 
     for (int i = 0; i < (int) vec.size(); i++) {
@@ -422,9 +475,8 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
     }
 
     k.load(&vec, &result);
-    k.interpret();
+    run_kernel(k);
     REQUIRE(result[0] == 0.1f*(16*17/2));
-    
   }
 
 
@@ -440,7 +492,7 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
 
     auto k = compile(check_set_at);
     k.load(&vec, &result, 0);
-    k.interpret();
+    run_kernel(k);
 
     for (int i = 0; i < (int) result.size(); i++) {
       if (i == 0) {
@@ -451,7 +503,7 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
     }
 
     k.load(&vec, &result, 7);
-    k.interpret();
+    run_kernel(k);
 
     for (int i = 0; i < (int) result.size(); i++) {
       if (i == 0 || i == 7) {
@@ -475,6 +527,5 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
     test_matrix_multiplication<2>();
   }
 
-
-  Platform::use_main_memory(false);
+  //Platform::use_main_memory(false);
 }

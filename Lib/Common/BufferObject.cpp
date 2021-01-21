@@ -15,55 +15,56 @@ namespace V3DLib {
  * @return physical address of the newly allocated memory in the heap
  */
 uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address) {
-	int new_offset = HeapManager::alloc_array(size_in_bytes);
-	assert(new_offset >= 0);
-	array_start_address = arm_base + (uint32_t) new_offset;
-	return phy_address() + (uint32_t) new_offset;
+  int new_offset = HeapManager::alloc_array(size_in_bytes);
+  assert(new_offset >= 0);
+  array_start_address = arm_base + (uint32_t) new_offset;
+  return phy_address() + (uint32_t) new_offset;
 }
 
 
 void BufferObject::dealloc_array(uint32_t in_phyaddr, uint32_t in_size) {
-	assert(phy_address() <= in_phyaddr && in_phyaddr < (phy_address() + size()));
-	HeapManager::dealloc_array(in_phyaddr - phy_address(), in_size);
+  assert(phy_address() <= in_phyaddr && in_phyaddr < (phy_address() + size()));
+  HeapManager::dealloc_array(in_phyaddr - phy_address(), in_size);
 }
 
 
 uint32_t BufferObject::getHandle() const {
-	assert(false);  // Only use the override for v3d
-	return 0;
+  breakpoint
+  assertq(!Platform::instance().compiling_for_vc4(), "getHandle(): only use this override when compiling for v3d");
+  return 0;
 }
 
 
 void BufferObject::set_phy_address(uint32_t val) {
-	assert(val > 0);
-	assert(phyaddr == 0);  // Only allow initial size setting for now
-	phyaddr = val;
+  assert(val > 0);
+  assert(phyaddr == 0);  // Only allow initial size setting for now
+  phyaddr = val;
 }
 
 
 void BufferObject::clear() {
-	phyaddr = 0;
-	HeapManager::clear();
+  phyaddr = 0;
+  HeapManager::clear();
 }
 
 
 bool BufferObject::is_cleared() const {
-	if  (size() == 0) {
-		assert(phyaddr == 0);
-	}
+  if  (size() == 0) {
+    assert(phyaddr == 0);
+  }
 
-	return HeapManager::is_cleared();
+  return HeapManager::is_cleared();
 }
 
 
 BufferObject &getBufferObject() {
-	if (Platform::instance().use_main_memory()) {
-		return emu::getHeap();
-	} else if (Platform::instance().has_vc4) {
-		return vc4::getHeap();
-	} else {
-		return v3d::getMainHeap();
-	}
+  if (Platform::instance().use_main_memory()) {
+    return emu::getHeap();
+  } else if (Platform::instance().has_vc4) {
+    return vc4::getHeap();
+  } else {
+    return v3d::getMainHeap();
+  }
 }
 
 }  // namespace V3DLib
