@@ -7,7 +7,7 @@
 namespace V3DLib {
 
 namespace {
-	StmtStack controlStack;
+  StmtStack controlStack;
 } // anon namespace
 
 
@@ -68,15 +68,15 @@ void End_() {
   if (!controlStack.empty()) {
     Stmt::Ptr s = controlStack.top();
 
-		if (s->tag == IF || s->tag == WHERE) {
-			if (s->then_is_null()) {
-				s->thenStmt(stmtStack().pop());
-				ok = 1;
-			} else if (s->else_is_null()) {
-				s->elseStmt(stmtStack().pop());
-				ok = 1;
-			}
-		}
+    if (s->tag == IF || s->tag == WHERE) {
+      if (s->then_is_null()) {
+        s->thenStmt(stmtStack().pop());
+        ok = 1;
+      } else if (s->else_is_null()) {
+        s->elseStmt(stmtStack().pop());
+        ok = 1;
+      }
+    }
 
     if (s->tag == WHILE && s->body_is_null()) {
       s->body(stmtStack().pop());
@@ -84,7 +84,7 @@ void End_() {
     }
 
     if (s->tag == FOR && s->body_is_null()) {
-			s->for_to_while(stmtStack().pop());
+      s->for_to_while(stmtStack().pop());
       ok = 1;
     }
 
@@ -159,9 +159,15 @@ void Print(IntExpr x) {
 }
 
 
+void header(char const *str) {
+   assert(stmtStack().top() != nullptr);
+   stmtStack().top()->seq_s1()->header(str);
+}
+
+
 void comment(char const *str) {
- 	assert(stmtStack().top() != nullptr);
- 	stmtStack().top()->seq_s1()->comment(str);
+   assert(stmtStack().top() != nullptr);
+   stmtStack().top()->seq_s1()->comment(str);
 }
 
 
@@ -169,15 +175,15 @@ void comment(char const *str) {
  * QPU code for clean exit
  */
 void finishStmt() {
-	clearStack();
+  clearStack();
 }
 
 
 void initStmt(StmtStack &stmtStack) {
-	controlStack.clear();
-	stmtStack.clear();
-	stmtStack.push(mkSkip());
-	setStack(stmtStack);
+  controlStack.clear();
+  stmtStack.clear();
+  stmtStack.push(mkSkip());
+  setStack(stmtStack);
 }
 
 }  // namespace V3DLib

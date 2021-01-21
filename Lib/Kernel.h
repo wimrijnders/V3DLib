@@ -87,14 +87,14 @@ template <> inline Float mkArg<Float>() {
 template <> inline Ptr<Int> mkArg< Ptr<Int> >() {
   Ptr<Int> x;
   x = getUniformPtr<Int>();
-	uniform_int_pointers.push_back(x);
+  uniform_int_pointers.push_back(x);
   return x;
 }
 
 template <> inline Ptr<Float> mkArg< Ptr<Float> >() {
   Ptr<Float> x;
   x = getUniformPtr<Float>();
-	uniform_float_pointers.push_back(x);
+  uniform_float_pointers.push_back(x);
   return x;
 }
 
@@ -148,26 +148,26 @@ inline bool passParam< Ptr<Float>, SharedArray<float>* > (Seq<int32_t>* uniforms
 
 class KernelBase {
 public:
-	void pretty(bool output_for_vc4, const char *filename = nullptr);
+  void pretty(bool output_for_vc4, const char *filename = nullptr);
 
   void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
-	static int maxQPUs();
+  static int maxQPUs();
 
-	void emu();
-	void interpret();
+  void emu();
+  void interpret();
   void call();
 #ifdef QPU_MODE
   void qpu();
 #endif  // QPU_MODE
 
 protected:
-	int numQPUs = 1;                 // Number of QPUs to run on
-	Seq<int32_t> uniforms;           // Parameters to be passed to kernel
-	vc4::KernelDriver m_vc4_driver;  // Always required for emulator
-	int numVars;                     // The number of variables in the source code
+  int numQPUs = 1;                 // Number of QPUs to run on
+  Seq<int32_t> uniforms;           // Parameters to be passed to kernel
+  vc4::KernelDriver m_vc4_driver;  // Always required for emulator
+  int numVars;                     // The number of variables in the source code
 
 #ifdef QPU_MODE
-	v3d::KernelDriver m_v3d_driver;
+  v3d::KernelDriver m_v3d_driver;
 #endif
 };
 
@@ -197,64 +197,64 @@ protected:
  *   it is necessary to have the vc4 kernel driver in use in all build cases.
  */
 template <typename... ts> struct Kernel : public KernelBase {
-	using KernelFunction = void (*)(ts... params);
+  using KernelFunction = void (*)(ts... params);
 
 public:
 
-	/**
+  /**
    * Construct kernel out of C++ function
-	 */
+   */
   Kernel(KernelFunction f, bool vc4_only = false) {
-		{
-			m_vc4_driver.compile_init();
+    {
+      m_vc4_driver.compile_init();
 
-	    auto args = std::make_tuple(mkArg<ts>()...);
+      auto args = std::make_tuple(mkArg<ts>()...);
 
-			//
-			// Add offsets to the uniform pointers
-			//
-			Int offset = me() << 4;
+      //
+      // Add offsets to the uniform pointers
+      //
+      Int offset = me() << 4;
 
-			for (auto &expr : uniform_int_pointers) {
-				expr = expr + offset;
-			}
-			for (auto &expr : uniform_float_pointers) {
-				expr = expr + offset;
-			}
+      for (auto &expr : uniform_int_pointers) {
+        expr = expr + offset;
+      }
+      for (auto &expr : uniform_float_pointers) {
+        expr = expr + offset;
+      }
 
-	    // Construct the AST for vc4
-	    apply(f, args);
-			m_vc4_driver.compile();
+      // Construct the AST for vc4
+      apply(f, args);
+      m_vc4_driver.compile();
 
-    	// Remember the number of variables used - for emulator/interpreter
-	    numVars = getFreshVarCount();
-		}
+      // Remember the number of variables used - for emulator/interpreter
+      numVars = getFreshVarCount();
+    }
 
 #ifdef QPU_MODE
-		if (!vc4_only && !Platform::instance().has_vc4) {
-			m_v3d_driver.compile_init();
+    if (!vc4_only && !Platform::instance().has_vc4) {
+      m_v3d_driver.compile_init();
 
-	    // Construct the AST for v3d
-	    f(mkArg<ts>()...);
+      // Construct the AST for v3d
+      f(mkArg<ts>()...);
 
-			m_v3d_driver.compile();
-		}
+      m_v3d_driver.compile();
+    }
 #endif  // QPU_MODE
   }
 
 
-	/**
-	 * Load uniform values.
-	 *
-	 * Pass params, checking arguments types us against parameter types ts.
-	 */
+  /**
+   * Load uniform values.
+   *
+   * Pass params, checking arguments types us against parameter types ts.
+   */
   template <typename... us>
-	Kernel &load(us... args) {
+  Kernel &load(us... args) {
     uniforms.clear();
     nothing(passParam<ts, us>(&uniforms, args)...);
 
-		return *this;
-	}
+    return *this;
+  }
 };
 
 // Initialiser

@@ -40,6 +40,7 @@ void For_(BoolExpr b);
 void ForBody_();
 void Print(const char *);
 void Print(IntExpr x);
+void header(char const *str);
 void comment(char const *str);
 void initStmt(StmtStack &stmtStack);
 void finishStmt();

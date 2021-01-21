@@ -23,6 +23,17 @@ void findAndReplaceAll(std::string & data, std::string toSearch, std::string rep
 namespace V3DLib {
 
 
+void InstructionComment::transfer_comments(InstructionComment const &rhs) {
+  if (!rhs.header().empty()) {
+    header(rhs.header());
+  }
+
+  if (!rhs.comment().empty()) {
+    comment(rhs.comment());
+  }
+}
+
+
 void InstructionComment::clear_comments() {
   m_header.clear();
   m_comment.clear();
@@ -58,6 +69,15 @@ void InstructionComment::comment(std::string msg) {
   }
 
   m_comment += msg;
+}
+
+
+std::string InstructionComment::emit_header() const {
+  if (m_header.empty()) return "";
+
+  std::string ret;
+  ret << "\n# " << header() << "\n";
+  return ret;
 }
 
 

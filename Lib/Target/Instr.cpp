@@ -267,17 +267,17 @@ void check_zeroes(Seq<Instr> const &instrs) {
 /**
  * Returns a string representation of an instruction.
  */
-std::string Instr::mnemonic(bool with_comments) const {
+std::string Instr::mnemonic(bool with_comments, std::string const &prefix) const {
   std::string ret;
 
-  if (with_comments && !header().empty()) {
-    ret << "\n# " << header() << "\n";
+  if (with_comments) {
+    ret << emit_header();
   }
 
   std::string out = pretty_instr(*this);
-  ret << out;
+  ret << prefix << out;
 
-  if (with_comments && !comment().empty()) {
+  if (with_comments) {
     ret << emit_comment((int) out.size());
   }
 
@@ -289,11 +289,15 @@ std::string Instr::mnemonic(bool with_comments) const {
  * Generates a string representation of the passed string of instructions.
  */
 std::string mnemonics(Seq<Instr> const &code, bool with_comments) {
+  std::string prefix;
   std::string ret;
 
   for (int i = 0; i < code.size(); i++) {
     auto const &instr = code[i];
-    ret << i << ": " << instr.mnemonic(with_comments).c_str() << "\n";
+    prefix.clear();
+    prefix << i << ": ";
+
+    ret << instr.mnemonic(with_comments, prefix).c_str() << "\n";
   }
 
   return ret;

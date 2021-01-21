@@ -64,13 +64,13 @@ Int::operator IntExpr() { return IntExpr(m_expr); }
 // Assignment
 
 Int &Int::operator=(Int &rhs) {
-	assign(m_expr, rhs.expr());
-	return rhs;
+  assign(m_expr, rhs.expr());
+  return rhs;
 }
 
 IntExpr Int::operator=(IntExpr rhs) {
-	assign(m_expr, rhs.expr());
-	return rhs;
+  assign(m_expr, rhs.expr());
+  return rhs;
 };
 
 // ============================================================================
@@ -89,7 +89,7 @@ inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
 
 // Read an Int from the UNIFORM FIFO.
 IntExpr getUniformInt() {
- 	Expr::Ptr e = std::make_shared<Expr>(Var(UNIFORM));
+   Expr::Ptr e = std::make_shared<Expr>(Var(UNIFORM));
   return IntExpr(e);
 }
 
@@ -100,14 +100,14 @@ IntExpr getUniformInt() {
  * On `vc4` this is a special register, on `v3d` this is an instruction.
  */
 IntExpr index() {
-	if (Platform::instance().compiling_for_vc4()) {
-  	Expr::Ptr e = std::make_shared<Expr>(Var(ELEM_NUM));
-	  return IntExpr(e);
-	} else {
-		Expr::Ptr a = mkVar(Var(DUMMY));
-  	Expr::Ptr e = mkApply(a, Op(EIDX, INT32), a);
-  	return IntExpr(e);
-	}
+  if (Platform::instance().compiling_for_vc4()) {
+    Expr::Ptr e = std::make_shared<Expr>(Var(ELEM_NUM));
+    return IntExpr(e);
+  } else {
+    Expr::Ptr a = mkVar(Var(DUMMY));
+    Expr::Ptr e = mkApply(a, Op(EIDX, INT32), a);
+    return IntExpr(e);
+  }
 }
 
 // A vector containing the QPU id

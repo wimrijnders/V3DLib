@@ -9,6 +9,9 @@ using namespace Rot3DLib;
 // Support routines
 // ============================================================================
 
+/**
+ * Convenience method to initialize arrays.
+ */
 template<typename Arr>
 void initArrays(Arr &x, Arr &y, int size, float mult = 1.0f) {
   for (int i = 0; i < size; i++) {

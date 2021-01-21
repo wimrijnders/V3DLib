@@ -67,13 +67,13 @@ struct SmallImm {
   // Immediate value
   int val;
 
-	bool operator==(SmallImm const &rhs) const {
-		return tag == rhs.tag && val == rhs.val;
-	}
+  bool operator==(SmallImm const &rhs) const {
+    return tag == rhs.tag && val == rhs.val;
+  }
 
   bool operator!=(SmallImm const &rhs) const {
-  	return !(*this == rhs);
-	}
+    return !(*this == rhs);
+  }
 };
 
 // A register or a small immediate operand?
@@ -91,19 +91,19 @@ struct RegOrImm {
     SmallImm smallImm;
   };
 
-	bool operator==(RegOrImm const &rhs) const {
-		if (tag != rhs.tag) return false;
+  bool operator==(RegOrImm const &rhs) const {
+    if (tag != rhs.tag) return false;
 
-		if (tag == REG) {
-			return reg == rhs.reg;
-		} else {
-			return smallImm == rhs.smallImm;
-		}
-	}
+    if (tag == REG) {
+      return reg == rhs.reg;
+    } else {
+      return smallImm == rhs.smallImm;
+    }
+  }
 
   bool operator!=(RegOrImm const &rhs) const {
-  	return !(*this == rhs);
-	}
+    return !(*this == rhs);
+  }
 };
 
 
@@ -119,7 +119,7 @@ struct BranchTarget {
 
   int immOffset;      // Plus 32-bit immediate value
 
-	std::string to_string() const;
+  std::string to_string() const;
 };
 
 
@@ -150,53 +150,53 @@ void resetFreshLabelGen(int val);
 
 // QPU instruction tags
 enum InstrTag {
-	LI,             // Load immediate
-	ALU,            // ALU operation
-	BR,             // Conditional branch to target
-	END,            // Program end (halt)
+  LI,             // Load immediate
+  ALU,            // ALU operation
+  BR,             // Conditional branch to target
+  END,            // Program end (halt)
 
   // ==================================================
   // Intermediate-language constructs
   // ==================================================
 
-	BRL,            // Conditional branch to label
-	LAB,            // Label
-	NO_OP,          // No-op
+  BRL,            // Conditional branch to label
+  LAB,            // Label
+  NO_OP,          // No-op
 
-	VC4_ONLY,
+  VC4_ONLY,
 
-	DMA_LOAD_WAIT = VC4_ONLY, // Wait for DMA load to complete
-	DMA_STORE_WAIT, // Wait for DMA store to complete
-	SINC,           // Increment semaphore
-	SDEC,           // Decrement semaphore
-	IRQ,            // Send IRQ to host
+  DMA_LOAD_WAIT = VC4_ONLY, // Wait for DMA load to complete
+  DMA_STORE_WAIT, // Wait for DMA store to complete
+  SINC,           // Increment semaphore
+  SDEC,           // Decrement semaphore
+  IRQ,            // Send IRQ to host
 
   // Print instructions
-	PRS,            // Print string
-	PRI,            // Print integer
-	PRF,            // Print float
+  PRS,            // Print string
+  PRI,            // Print integer
+  PRF,            // Print float
 
-	VPM_STALL,      // Marker for VPM read setup
+  VPM_STALL,      // Marker for VPM read setup
 
-	END_VC4_ONLY,
+  END_VC4_ONLY,
 
   // Load receive via TMU
-	RECV = END_VC4_ONLY,
-	TMU0_TO_ACC4,
+  RECV = END_VC4_ONLY,
+  TMU0_TO_ACC4,
 
-	// Init program block (Currently filled only for v3d)
-	INIT_BEGIN,     // Marker for start of init block
-	INIT_END,       // Marker for end of init block
+  // Init program block (Currently filled only for v3d)
+  INIT_BEGIN,     // Marker for start of init block
+  INIT_END,       // Marker for end of init block
 
   // ==================================================
   // v3d-only instructions
   // ==================================================
-	V3D_ONLY,
+  V3D_ONLY,
 
-	TMUWT = V3D_ONLY,
-	// TODO Add as required here
+  TMUWT = V3D_ONLY,
+  // TODO Add as required here
 
-	END_V3D_ONLY
+  END_V3D_ONLY
 };
 
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4);
@@ -208,42 +208,42 @@ struct Instr : public InstructionComment {
 
   union {
     // Load immediate
-		struct {
-			SetCond    m_setCond;
-			AssignCond cond;
-			Reg        dest;
-			Imm        imm;
-		} LI;
+    struct {
+      SetCond    m_setCond;
+      AssignCond cond;
+      Reg        dest;
+      Imm        imm;
+    } LI;
 
     // ALU operation
-		struct {
-			SetCond    m_setCond;
-			AssignCond cond;
-			Reg        dest;
-			RegOrImm   srcA;
-			ALUOp      op;
-			RegOrImm   srcB;
-		} ALU;
+    struct {
+      SetCond    m_setCond;
+      AssignCond cond;
+      Reg        dest;
+      RegOrImm   srcA;
+      ALUOp      op;
+      RegOrImm   srcB;
+    } ALU;
 
     // Conditional branch (to target)
-		struct {
-			BranchCond cond;
-			BranchTarget target;
-		} BR;
+    struct {
+      BranchCond cond;
+      BranchTarget target;
+    } BR;
 
     // ==================================================
     // Intermediate-language constructs
     // ==================================================
 
     // Conditional branch (to label)
-		struct {
-			BranchCond cond;
-			Label label;
-		} BRL;
+    struct {
+      BranchCond cond;
+      Label label;
+    } BRL;
 
     // Labels, denoting branch targets
     Label m_label;  // Renamed during debugging
-		                // TODO perhaps revert
+                    // TODO perhaps revert
 
     // Semaphores
     int semaId;                 // Semaphore id (range 0..15)
@@ -258,73 +258,73 @@ struct Instr : public InstructionComment {
   };
 
 
-	Instr() : tag(NO_OP) {} 
-	Instr(InstrTag in_tag);
+  Instr() : tag(NO_OP) {} 
+  Instr(InstrTag in_tag);
 
 
-	// ==================================================
-	// Helper methods
-	// ==================================================
-	Instr &setCondFlag(Flag flag);
-	Instr &setCondOp(CmpOp const &cmp_op);
-	Instr &cond(AssignCond in_cond);
-	bool isCondAssign() const;
-	bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
-	bool isUniformLoad() const;
-	bool isTMUAWrite() const;
-	bool isZero() const;
-	bool isLast() const;
+  // ==================================================
+  // Helper methods
+  // ==================================================
+  Instr &setCondFlag(Flag flag);
+  Instr &setCondOp(CmpOp const &cmp_op);
+  Instr &cond(AssignCond in_cond);
+  bool isCondAssign() const;
+  bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
+  bool isUniformLoad() const;
+  bool isTMUAWrite() const;
+  bool isZero() const;
+  bool isLast() const;
 
-	SetCond const &setCond() const;
-	std::string mnemonic(bool with_comments = false) const;
+  SetCond const &setCond() const;
+  std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;
 
-	bool operator==(Instr const &rhs) const {
-		// Cheat by comparing the string representation,
-		// to avoid having to check the union members separately, and to skip unused fields
-		return this->mnemonic() == rhs.mnemonic();
-	}
+  bool operator==(Instr const &rhs) const {
+    // Cheat by comparing the string representation,
+    // to avoid having to check the union members separately, and to skip unused fields
+    return this->mnemonic() == rhs.mnemonic();
+  }
 
 
-	static Instr nop();
+  static Instr nop();
 
-	/////////////////////////////////////
-	// Label support
-	/////////////////////////////////////
+  /////////////////////////////////////
+  // Label support
+  /////////////////////////////////////
 
-	bool is_label() const { return tag == InstrTag::LAB; }
-	bool is_branch_label() const { return tag == InstrTag::BRL; }
+  bool is_label() const { return tag == InstrTag::LAB; }
+  bool is_branch_label() const { return tag == InstrTag::BRL; }
 
-	Label branch_label() const {
-		assert(tag == InstrTag::BRL);
-		return BRL.label;
-	}
+  Label branch_label() const {
+    assert(tag == InstrTag::BRL);
+    return BRL.label;
+  }
 
-	void label_to_target(int offset);
+  void label_to_target(int offset);
     
-	void label(Label val) {
-		assert(tag == InstrTag::LAB);
-		m_label = val;
-	}
+  void label(Label val) {
+    assert(tag == InstrTag::LAB);
+    m_label = val;
+  }
 
-	Label label() const {
-		assert(tag == InstrTag::LAB);
-		return m_label;
-	}
+  Label label() const {
+    assert(tag == InstrTag::LAB);
+    return m_label;
+  }
 
-	// ==================================================
-	// v3d-specific  methods
-	// ==================================================
-	Instr &pushz();
+  // ==================================================
+  // v3d-specific  methods
+  // ==================================================
+  Instr &pushz();
 
-	Instr &allzc() {
-		assert(tag == InstrTag::BRL);
-		BRL.cond.tag  = COND_ALL;
-		BRL.cond.flag = Flag::ZC;
-		return *this;
-	}
+  Instr &allzc() {
+    assert(tag == InstrTag::BRL);
+    BRL.cond.tag  = COND_ALL;
+    BRL.cond.flag = Flag::ZC;
+    return *this;
+  }
 
 private:
-	SetCond &setCond();
+  SetCond &setCond();
 };
 
 

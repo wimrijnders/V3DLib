@@ -660,8 +660,8 @@ void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
       break;
   }
 
-  if (!s->comment().empty()) {
-    seq->back().comment(s->comment());
+  if (!seq->empty()) {
+    seq->back().transfer_comments(*s);
   }
 }
 
@@ -843,7 +843,7 @@ void loadStorePass(Seq<Instr> &instrs) {
     switch (instr.tag) {
       case RECV: {
         newInstrs << Instr(TMU0_TO_ACC4);
-        newInstrs.back().comment(instr.comment());
+        newInstrs.back().transfer_comments(instr);
         newInstrs << mov(instr.RECV.dest, ACC4);
         break;
       }
