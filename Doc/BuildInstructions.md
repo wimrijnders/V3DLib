@@ -115,14 +115,14 @@ These can be selected with flag `-s=` on the command line.
 
 The run modes are:
 
-| | |
+| Run Mode | Description |
 | - | - |
 | `interpreter` | interprets the source level code |
 | `emulator`    | compiles to `vc4` code and runs this on a `vc4` emulator |
-| `qpu`         | compiles to either `vc4` or `v3d` code, depending on which hardware you're running on, |
-|               | and runs on the GPU |
-| `default`     | selects the most suitable platform to run on, |
-|               | depending on the build flags below and the hardware |
+| `qpu`         | compiles to either `vc4` or `v3d` code, depending on which hardware you're running on,
+                  and runs on the GPU |
+| `default`     | selects the most suitable platform to run on,
+                  depending on the build flags below and the hardware |
 
 Note that there is no `v3d` emulator.
 
