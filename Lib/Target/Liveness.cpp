@@ -18,24 +18,23 @@ namespace {
 // Accumulator allocation
 // ============================================================================
 
-// This is a simple peephole optimisation, captured by the following
-// rewrite rule:
-//
-//   i:  x <- f(...)
-//   j:  g(..., x, ...)
-// 
-// ===> if x not live-out of j
-// 
-//   i:  acc <- f(...)
-//   j:  g(..., acc, ...)
-
+/**
+ * This is a simple peephole optimisation, captured by the following
+ * rewrite rule:
+ *
+ *     i:  x <- f(...)
+ *     j:  g(..., x, ...)
+ * 
+ * ===> if x not live-out of j
+ * 
+ *     i:  acc <- f(...)
+ *     j:  g(..., acc, ...)
+ */
 void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
-  UseDef useDefPrev, useDefCurrent;
+  auto ALWAYS = AssignCond::Tag::ALWAYS;
+  UseDef  useDefPrev;
+  UseDef  useDefCurrent;
   LiveSet liveOut;
-
-  Reg acc;
-  acc.tag = ACC;
-  acc.regId = 1;
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr prev  = instrs[i-1];
@@ -44,36 +43,48 @@ void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
     // Compute vars defined by prev
     useDef(prev, &useDefPrev);
 
-    if (useDefPrev.def.size() > 0) {
-      RegId def = useDefPrev.def[0];
-
-      // Compute vars used by instr
-      useDef(instr, &useDefCurrent);
-
-      // Compute vars live-out of instr
-      live.computeLiveOut(i, liveOut);
-
-      // Check that write is non-conditional
-			auto ALWAYS = AssignCond::Tag::ALWAYS;
-      bool always = (prev.tag == LI && prev.LI.cond.tag == ALWAYS)
-                 || (prev.tag == ALU && prev.ALU.cond.tag == ALWAYS);
-
-      if (always && useDefCurrent.use.member(def) && !liveOut.member(def)) {
-        renameDest(&prev, REG_A, def, ACC, 1);
-        renameUses(&instr, REG_A, def, ACC, 1);
-        instrs[i-1] = prev;
-        instrs[i]   = instr;
-				
-/*
-				// WRI DEBUG
-				// Result: Happens a lot!
-				// Keeping this in for optimization (e.g. multiple passes)
-				std::string buf = "Liveness: used peephole for instructions ";
-				buf << (i-1) << " and " << i;
-				debug(buf.c_str());
-*/
-      }
+    if (useDefPrev.def.empty()) {
+      continue;
     }
+
+    RegId def = useDefPrev.def[0];
+
+    // Compute vars used by instr
+    useDef(instr, &useDefCurrent);
+
+    // Compute vars live-out of instr
+    live.computeLiveOut(i, liveOut);
+
+    // Check that write is non-conditional
+    bool always = (prev.tag == LI && prev.LI.cond.tag == ALWAYS)
+               || (prev.tag == ALU && prev.ALU.cond.tag == ALWAYS);
+
+    bool do_it = (always && useDefCurrent.use.member(def) && !liveOut.member(def));
+    if (!do_it) {
+      continue;
+    }
+
+    int acc_id =1;
+    // ROT uses ACC1 internally, don't use it here
+    // TODO better selection of subsitution ACC
+    if (prev.ALU.op.isRot() || instr.ALU.op.isRot()) {
+      //warning("introduceAccum(): subsituting ACC in ROT operation");
+      acc_id = 2;
+    }
+
+    renameDest( &prev, REG_A, def, ACC, acc_id);
+    renameUses(&instr, REG_A, def, ACC, acc_id);
+    instrs[i-1] = prev;
+    instrs[i]   = instr;
+        
+/*
+    // WRI DEBUG
+    // Result: Happens a lot!
+    // Keeping this in for optimization (e.g. multiple passes)
+    std::string buf = "Liveness: used peephole for instructions ";
+    buf << (i-1) << " and " << i;
+    debug(buf.c_str());
+*/
   }
 }
 
@@ -90,7 +101,7 @@ void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
  * Compute 'use' and 'def' sets for a given instruction
  */
 void useDefReg(Instr instr, UseDefReg* useDef) {
-	auto ALWAYS = AssignCond::Tag::ALWAYS;
+  auto ALWAYS = AssignCond::Tag::ALWAYS;
 
   // Make the 'use' and 'def' sets empty
   useDef->use.clear();
@@ -142,8 +153,8 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
       // Add dest reg to 'def' set
       useDef->def.insert(instr.RECV.dest);
       return;
-		default:
-			return;
+    default:
+      return;
   }
 }
 
@@ -204,7 +215,7 @@ namespace {
  */
 void liveness(Seq<Instr> &instrs, Liveness &live) {
   // Initialise live mapping to have one entry per instruction
-	live.setSize(instrs.size());
+  live.setSize(instrs.size());
 
   // For storing the 'use' and 'def' sets of each instruction
   UseDef useDefSets;
@@ -254,13 +265,13 @@ void liveness(Seq<Instr> &instrs, Liveness &live) {
 
 
 LiveSets::LiveSets(int size) : m_size(size) {
-	assert(size > 0);
-	m_sets = new LiveSet [size];  // confirmed: default ctor LiveSet called here (notably ctor SmallSeq)
+  assert(size > 0);
+  m_sets = new LiveSet [size];  // confirmed: default ctor LiveSet called here (notably ctor SmallSeq)
 }
 
 
 LiveSets::~LiveSets() {
-	delete [] m_sets;
+  delete [] m_sets;
 }
 
 
@@ -292,8 +303,8 @@ void LiveSets::init(Seq<Instr> &instrs, Liveness &live) {
 
 
 LiveSet &LiveSets::operator[](int index) {
-	assert(index >=0 && index < m_size);
-	return m_sets[index];
+  assert(index >=0 && index < m_size);
+  return m_sets[index];
 }
 
 
@@ -306,18 +317,18 @@ std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &allo
   const int NUM_REGS = Platform::instance().size_regfile();
   std::vector<bool> possible(NUM_REGS);
 
-	for (int j = 0; j < NUM_REGS; j++)
-		possible[j] = true;
+  for (int j = 0; j < NUM_REGS; j++)
+    possible[j] = true;
 
-    LiveSet &set = (*this)[index];
+  LiveSet &set = (*this)[index];
 
-    // Eliminate impossible choices of register for this variable
-    for (int j = 0; j < set.size(); j++) {
-      Reg neighbour = alloc[set[j]];
-      if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
-    }
+  // Eliminate impossible choices of register for this variable
+  for (int j = 0; j < set.size(); j++) {
+    Reg neighbour = alloc[set[j]];
+    if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
+  }
 
-	return possible;
+  return possible;
 }
 
 
@@ -333,20 +344,20 @@ std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &allo
  * @param index - index value of current variable displayed. If `-1`, don't show. For display purposes only.
  */
 void LiveSets::dump_possible(std::vector<bool> &possible, int index) {
-	std::string buf = "possible: ";
+  std::string buf = "possible: ";
 
-	if (index >= 0) {
-		if (index < 10) buf << "  ";
-		else if (index < 100) buf << " ";
+  if (index >= 0) {
+    if (index < 10) buf << "  ";
+    else if (index < 100) buf << " ";
 
-		buf << index;
-	}
-	buf << ": ";
+    buf << index;
+  }
+  buf << ": ";
 
-	for (int j = 0; j < (int) possible.size(); j++) {
-		buf << (possible[j]?"1":"0");
-	}
-	debug(buf.c_str());
+  for (int j = 0; j < (int) possible.size(); j++) {
+    buf << (possible[j]?"1":"0");
+  }
+  debug(buf.c_str());
 }
 
 
@@ -354,23 +365,23 @@ void LiveSets::dump_possible(std::vector<bool> &possible, int index) {
  * Find possible register in each register file
  */
 RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
-	assert(!possible.empty());
-	RegId chosenA = -1;
+  assert(!possible.empty());
+  RegId chosenA = -1;
 
-	for (int j = 0; j < (int) possible.size(); j++)
-		if (possible[j]) { chosenA = j; break; }
+  for (int j = 0; j < (int) possible.size(); j++)
+    if (possible[j]) { chosenA = j; break; }
 
-	if (check_limit && chosenA < 0) {
-		fatal("LiveSets::choose_register(): register allocation failed, insufficient capacity");
-	}
+  if (check_limit && chosenA < 0) {
+    fatal("LiveSets::choose_register(): register allocation failed, insufficient capacity");
+  }
 
-	return chosenA;
-}	
+  return chosenA;
+}  
 
 
 void Liveness::compute(Seq<Instr> &instrs) {
-	liveness(instrs, *this);
-	//printf("%s", dump().c_str());
+  liveness(instrs, *this);
+  //printf("%s", dump().c_str());
 
   // Optimisation pass that introduces accumulators
   introduceAccum(*this, instrs);
@@ -402,34 +413,34 @@ void Liveness::setSize(int size) {
 
 
 bool Liveness::insert(int index, RegId item) {
-	return m_set[index].insert(item);
+  return m_set[index].insert(item);
 }
 
 
 std::string Liveness::dump() {
-	std::string ret;
+  std::string ret;
 
-	ret += "Liveness dump:\n";
+  ret += "Liveness dump:\n";
 
-	for (int i = 0; i < m_set.size(); ++i) {
-		ret += std::to_string(i) + ": ";
+  for (int i = 0; i < m_set.size(); ++i) {
+    ret += std::to_string(i) + ": ";
 
-		auto &item = m_set[i];
-		bool did_first = false;
-		for (int j = 0; j < item.size(); j++) {
-			if (did_first) {
-				ret += ", ";
-			} else {
-				did_first = true;
-			}
-			ret += std::to_string(item[j]);
-		}
-		ret += "\n";
-	}
+    auto &item = m_set[i];
+    bool did_first = false;
+    for (int j = 0; j < item.size(); j++) {
+      if (did_first) {
+        ret += ", ";
+      } else {
+        did_first = true;
+      }
+      ret += std::to_string(item[j]);
+    }
+    ret += "\n";
+  }
 
-	ret += "\n";
+  ret += "\n";
 
-	return ret;
+  return ret;
 }
 
 }  // namespace V3DLib
