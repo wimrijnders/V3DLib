@@ -40,8 +40,9 @@ struct Float : public BaseExpr {
   operator FloatExpr();
 
   // Assignment
-  Float& operator=(Float& rhs);
+  Float &operator=(Float& rhs);
   FloatExpr operator=(FloatExpr rhs);
+  Float &operator+=(FloatExpr rhs);
 };
 
 

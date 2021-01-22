@@ -71,23 +71,35 @@ Int &Int::operator=(Int &rhs) {
 IntExpr Int::operator=(IntExpr rhs) {
   assign(m_expr, rhs.expr());
   return rhs;
-};
+}
+
+
+Int &Int::operator+=(IntExpr rhs){
+  *this = *this + rhs;
+  return *this;
+}
+
+
+void Int::operator++(int) { *this = *this + 1; }
+
 
 // ============================================================================
 // Generic operations
 // ============================================================================
 
-inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b)
-{
+inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b) {
   Expr::Ptr e = mkApply(a.expr(), op, b.expr());
   return IntExpr(e);
 }
+
 
 // ============================================================================
 // Specific operations
 // ============================================================================
 
-// Read an Int from the UNIFORM FIFO.
+/**
+ * Read an Int from the UNIFORM FIFO.
+ */
 IntExpr getUniformInt() {
    Expr::Ptr e = std::make_shared<Expr>(Var(UNIFORM));
   return IntExpr(e);
@@ -126,16 +138,21 @@ IntExpr numQPUs() {
 }
 
 
-// Read vector from VPM
+/**
+ * Read vector from VPM
+ */
 IntExpr vpmGetInt() {
   Expr::Ptr e = std::make_shared<Expr>(Var(VPM_READ));
   return IntExpr(e);
 }
 
 
-// Vector rotation
-IntExpr rotate(IntExpr a, IntExpr b)
-  { return mkIntApply(a, Op(ROTATE, INT32), b); }
+/**
+ * Vector rotation
+ */
+IntExpr rotate(IntExpr a, IntExpr b) {
+  return mkIntApply(a, Op(ROTATE, INT32), b);
+}
 
 
 FloatExpr rotate(FloatExpr a, IntExpr b) {
@@ -143,31 +160,34 @@ FloatExpr rotate(FloatExpr a, IntExpr b) {
   return FloatExpr(e);
 }
 
-void Int::operator++(int) { *this = *this + 1; }
 
-IntExpr operator+(IntExpr a, IntExpr b) { return mkIntApply(a, Op(ADD, INT32), b); }
-IntExpr operator-(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SUB, INT32), b); }
-IntExpr operator*(IntExpr a, IntExpr b) { return mkIntApply(a, Op(MUL, INT32), b); }
-IntExpr min(IntExpr a, IntExpr b) { return mkIntApply(a, Op(MIN, INT32), b); }
-IntExpr max(IntExpr a, IntExpr b) { return mkIntApply(a, Op(MAX, INT32), b); }
-IntExpr operator<<(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SHL, INT32), b); }
-IntExpr operator>>(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SHR, INT32), b); }
-IntExpr operator&(IntExpr a, IntExpr b) { return mkIntApply(a, Op(BAND, INT32), b); }
-IntExpr operator|(IntExpr a, IntExpr b) { return mkIntApply(a, Op(BOR, INT32), b); }
-IntExpr operator^(IntExpr a, IntExpr b) { return mkIntApply(a, Op(BXOR, INT32), b); }
-IntExpr operator~(IntExpr a) { return mkIntApply(a, Op(BNOT, INT32), a); }
-IntExpr shr(IntExpr a, IntExpr b) { return mkIntApply(a, Op(USHR, INT32), b); }
-IntExpr ror(IntExpr a, IntExpr b) { return mkIntApply(a, Op(ROR, INT32), b); }
+IntExpr operator+(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(ADD,  INT32), b); }
+IntExpr operator-(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(SUB,  INT32), b); }
+IntExpr operator*(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(MUL,  INT32), b); }
+IntExpr min(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(MIN,  INT32), b); }
+IntExpr max(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(MAX,  INT32), b); }
+IntExpr operator<<(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SHL,  INT32), b); }
+IntExpr operator>>(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SHR,  INT32), b); }
+IntExpr operator&(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(BAND, INT32), b); }
+IntExpr operator|(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(BOR,  INT32), b); }
+IntExpr operator^(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(BXOR, INT32), b); }
+IntExpr operator~(IntExpr a)             { return mkIntApply(a, Op(BNOT, INT32), a); }
+IntExpr shr(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(USHR, INT32), b); }
+IntExpr ror(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(ROR,  INT32), b); }
 
 
-// Conversion to Int
+/**
+ * Conversion to Int
+ */
 IntExpr toInt(FloatExpr a) {
   Expr::Ptr e = mkApply(a.expr(), Op(FtoI, INT32));
   return IntExpr(e);
 }
 
 
-// Conversion to Float
+/**
+ * Conversion to Float
+ */
 FloatExpr toFloat(IntExpr a) {
   Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT));
   return FloatExpr(e);

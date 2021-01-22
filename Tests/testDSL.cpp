@@ -1,9 +1,9 @@
 #include "catch.hpp"
 #include <iostream>
-#include <vector>
 #include <string>
 #include <sstream>
 #include <V3DLib.h>
+#include "support/support.h"
 
 using namespace V3DLib;
 using namespace std;
@@ -27,7 +27,8 @@ string showResult(Array &result, int index) {
 }
 
 
-string showExpected(const std::vector<int> &expected) {
+template<typename T>
+string showExpected(const std::vector<T> &expected) {
   ostringstream buf;
 
   buf << "expected: ";
@@ -83,8 +84,8 @@ void test(BoolExpr cond, Ptr<Int> &result) {
 
 void kernel_specific_instructions(Ptr<Int> result) {
   Int a = index();
-	Int b = a ^ 1;
-	out(b, result);
+  Int b = a ^ 1;
+  out(b, result);
 }
 
 
@@ -150,63 +151,64 @@ void kernelIfWhen(Ptr<Int> result) {
 }
 
 
-void check_vector(SharedArray<int> &result, int index, std::vector<int> const &expected) {
-	REQUIRE(expected.size() == 16);
+template<typename T>
+void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expected) {
+  REQUIRE(expected.size() == 16);
 
- 	bool passed = true;
-	int j = 0;
-	for (; j < 16; ++j) {
-		if (result[16*index + j] != expected[j]) {
-			passed = false;
-			break;
-		}
-	}
+  bool passed = true;
+  int j = 0;
+  for (; j < 16; ++j) {
+    if (result[16*index + j] != expected[j]) {
+      passed = false;
+      break;
+    }
+  }
 
-	INFO("j: " << j);
-	INFO(showResult(result, index) << showExpected(expected));
-	REQUIRE(passed);
+  INFO("j: " << j);
+  INFO(showResult(result, index) << showExpected(expected));
+  REQUIRE(passed);
 }
 
 
 void check_conditionals(SharedArray<int> &result, int N) {
-	vector<int> allZeroes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
-	vector<int> allOnes   = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
+  vector<int> allZeroes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+  vector<int> allOnes   = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 
   auto assertResult = [N] ( SharedArray<int> &result, int index, std::vector<int> const &expected) {
     INFO("index: " << index);
     REQUIRE(result.size() == (unsigned) N*16);
-		check_vector(result, index, expected);
+    check_vector(result, index, expected);
   };
 
-	// any
-	assertResult(result,  0, allZeroes);
-	assertResult(result,  1, allOnes);
-	assertResult(result,  2, allOnes);
-	assertResult(result,  3, allOnes);
-	assertResult(result,  4, allOnes);
-	assertResult(result,  5, allZeroes);
-	// all
-	assertResult(result,  6, allZeroes);
-	assertResult(result,  7, allZeroes);
-	assertResult(result,  8, allZeroes);
-	assertResult(result,  9, allZeroes);
-	assertResult(result, 10, allOnes);
-	assertResult(result, 11, allZeroes);
-	// Just If - should be same as any
-	assertResult(result, 12, allZeroes);
-	assertResult(result, 13, allOnes);
-	assertResult(result, 14, allOnes);
-	assertResult(result, 15, allOnes);
-	assertResult(result, 16, allOnes);
-	assertResult(result, 17, allZeroes);
-	// where
-	assertResult(result, 18, allZeroes);
-	assertResult(result, 19, {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
-	assertResult(result, 20, {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1});
-	assertResult(result, 21, {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0});
-	assertResult(result, 22, {0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1});
-	assertResult(result, 23, allOnes);
-	assertResult(result, 24, allZeroes);
+  // any
+  assertResult(result,  0, allZeroes);
+  assertResult(result,  1, allOnes);
+  assertResult(result,  2, allOnes);
+  assertResult(result,  3, allOnes);
+  assertResult(result,  4, allOnes);
+  assertResult(result,  5, allZeroes);
+  // all
+  assertResult(result,  6, allZeroes);
+  assertResult(result,  7, allZeroes);
+  assertResult(result,  8, allZeroes);
+  assertResult(result,  9, allZeroes);
+  assertResult(result, 10, allOnes);
+  assertResult(result, 11, allZeroes);
+  // Just If - should be same as any
+  assertResult(result, 12, allZeroes);
+  assertResult(result, 13, allOnes);
+  assertResult(result, 14, allOnes);
+  assertResult(result, 15, allOnes);
+  assertResult(result, 16, allOnes);
+  assertResult(result, 17, allZeroes);
+  // where
+  assertResult(result, 18, allZeroes);
+  assertResult(result, 19, {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
+  assertResult(result, 20, {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1});
+  assertResult(result, 21, {1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0});
+  assertResult(result, 22, {0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1});
+  assertResult(result, 23, allOnes);
+  assertResult(result, 24, allZeroes);
 }
 
 
@@ -295,29 +297,29 @@ void kernelComplex(Ptr<Float> input, Ptr<Float> result) {
 //=============================================================================
 
 TEST_CASE("Test correct working DSL", "[dsl]") {
-	const int N = 25;  // Number of expected result vectors
+  const int N = 25;  // Number of expected result vectors
 
   SECTION("Test specific instructions") {
-		int const NUM = 1;
-		vector<int> expected = {1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14};
+    int const NUM = 1;
+    vector<int> expected = {1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14};
 
     auto k = compile(kernel_specific_instructions);
-		//k.pretty(true);
+    //k.pretty(true);
 
     SharedArray<int> result(16*NUM);
 
-		result.fill(-2);  // Initialize to unexpected value
-   	k.load(&result).emu();
-		check_vector(result, 0, expected);
+    result.fill(-2);  // Initialize to unexpected value
+     k.load(&result).emu();
+    check_vector(result, 0, expected);
 
-		result.fill(-2);
-   	k.load(&result).interpret();
-		check_vector(result, 0, expected);
+    result.fill(-2);
+     k.load(&result).interpret();
+    check_vector(result, 0, expected);
 
-		result.fill(-2);
-   	k.load(&result).call();
-		check_vector(result, 0, expected);
-	}
+    result.fill(-2);
+     k.load(&result).call();
+    check_vector(result, 0, expected);
+  }
 
 
   //
@@ -326,29 +328,28 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
   SECTION("Conditionals work as expected") {
     // Construct kernel
     auto k = compile(kernelIfWhen);
-		//k.pretty(true);
 
     SharedArray<int> result(16*N);
 
-		// Reset result array to unexpected values
-		auto reset = [&result] () {
-			result.fill(-2);  // Initialize to unexpected value
-		};
+    // Reset result array to unexpected values
+    auto reset = [&result] () {
+      result.fill(-2);  // Initialize to unexpected value
+    };
 
-		//
+    //
     // Run kernel in the three different run modes
-		//
-		reset();
-   	k.load(&result).call();
-		check_conditionals(result, N);
+    //
+    reset();
+    k.load(&result).call();
+    check_conditionals(result, N);
 
-		reset();
-   	k.load(&result).emu();
-		check_conditionals(result, N);
+    reset();
+    k.load(&result).emu();
+    check_conditionals(result, N);
 
-		reset();
-   	k.load(&result).interpret();
-		check_conditionals(result, N);
+    reset();
+    k.load(&result).interpret();
+    check_conditionals(result, N);
   }
 }
 
@@ -356,7 +357,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
 
   SECTION("Test Complex composed type") {
-		// TODO: No assertion in this part, need any?
+    // TODO: No assertion in this part, need any?
 
     const int N = 1;  // Number Complex items in vectors
 
@@ -375,5 +376,58 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
     k.load(&input, &result).call();
 
     //cout << showResult(result, 0) << endl;
+  }
+}
+
+
+//-----------------------------------------------------------------------------
+// Test for specific DSL operations.
+//-----------------------------------------------------------------------------
+
+void int_ops_kernel(Ptr<Int> result) {
+  Int a = index();
+  a += 3;
+
+  *result = a;
+}
+
+
+void float_ops_kernel(Ptr<Float> result) {
+  Float a = toFloat(index());
+  a += 3.0f;
+  a += 0.25f;
+
+  *result = a;
+}
+
+
+TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
+  SECTION("Test integer operations") {
+    int const N = 1;  // Number of expected results
+
+    auto k = compile(int_ops_kernel);
+
+    SharedArray<int> result(16*N);
+
+    k.load(&result).qpu();
+
+    vector<int> expected = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
+    check_vector(result, 0, expected);
+  }
+
+
+  SECTION("Test float operations") {
+    int const N = 1;  // Number of expected results
+
+    auto k = compile(float_ops_kernel);
+
+    SharedArray<float> result(16*N);
+
+    k.load(&result).qpu();
+
+    vector<float> expected = { 3.25,  4.25,  5.25,  6.25,  7.25,  8.25,  9.25, 10.25,
+                              11.25, 12.25, 13.25, 14.25, 15.25, 16.25, 17.25, 18.25};
+    //dump_array(result);
+    check_vector(result, 0, expected);
   }
 }

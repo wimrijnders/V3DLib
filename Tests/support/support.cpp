@@ -87,3 +87,43 @@ void make_test_dir() {
 }
 
 
+namespace {
+
+template<typename T>
+void dump_array_template(T const &a, int size,  int linesize) {
+  std::string str("<");
+
+  for (int i = 0; i < (int) size; i++) {
+
+    if (linesize != -1) {
+      if (i % linesize == 0) {
+        str << "\n";
+      }
+    }
+    str << a[i] << ", " ;
+  }
+
+  str << ">";
+  printf("%s\n", str.c_str());
+}
+}  // anon namespace
+
+/**
+ * Show contents of main memory array
+ */
+void dump_array(float *a, int size,  int linesize) {
+  dump_array_template(a, size, linesize);
+}
+
+
+/**
+ * Show contents of SharedArray instance
+ */
+void dump_array(V3DLib::SharedArray<float> const &a, int linesize) {
+  dump_array_template(a, a.size(), linesize);
+}
+
+
+void dump_array(V3DLib::SharedArray<int> const &a, int linesize) {
+  dump_array_template(a, a.size(), linesize);
+}

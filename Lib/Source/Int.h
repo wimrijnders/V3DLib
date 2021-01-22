@@ -48,6 +48,7 @@ struct Int : public BaseExpr {
   IntExpr operator=(IntExpr rhs);
 
   void operator++(int);
+  Int &operator+=(IntExpr rhs);
 };
 
 

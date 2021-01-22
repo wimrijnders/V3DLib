@@ -4,7 +4,7 @@
 namespace V3DLib {
 
 // ============================================================================
-// Type 'FloatExpr'
+// Class FloatExpr
 // ============================================================================
 
 FloatExpr::FloatExpr(float x) {
@@ -15,7 +15,7 @@ FloatExpr::FloatExpr(Deref<Float> d) : BaseExpr(d.expr()) {}
 
 
 // ============================================================================
-// Type 'Float'
+// Class Float
 // ============================================================================
 
 Float::Float() {
@@ -54,6 +54,7 @@ Float::Float(Float &x) {
   assign(m_expr, x.expr());
 }
 
+
 Float::Float(Float const &x) {
   Var v    = freshVar();
   m_expr = mkVar(v);
@@ -61,13 +62,16 @@ Float::Float(Float const &x) {
 }
 
 
-// Cast to an FloatExpr
-
+/**
+ * Cast to an FloatExpr
+ */
 Float::operator FloatExpr() { return FloatExpr(m_expr); }
 
-// Assignment
 
-Float& Float::operator=(Float &rhs) {
+/**
+ * Assignment
+ */
+Float &Float::operator=(Float &rhs) {
 	assign(m_expr, rhs.expr());
 	return rhs;
 }
@@ -76,6 +80,12 @@ Float& Float::operator=(Float &rhs) {
 FloatExpr Float::operator=(FloatExpr rhs) {
 	assign(m_expr, rhs.expr());
 	return rhs;
+}
+
+
+Float &Float::operator+=(FloatExpr rhs) {
+  *this = *this + rhs;
+	return *this;
 }
 
 
