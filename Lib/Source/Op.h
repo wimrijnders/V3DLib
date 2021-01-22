@@ -14,24 +14,24 @@ enum BaseType { UINT8, INT16, INT32, FLOAT };
 // Order of operators is important to the random generator, see `Gen.cpp`.
 // This applies to the range ROTATE...ROR.
 enum OpId {
-	// Int & Float operators:
-	ROTATE, ADD, SUB, MUL, MIN, MAX,
+  // Int & Float operators:
+  ROTATE, ADD, SUB, MUL, MIN, MAX,
 
-	// Int only operators:
-	SHL, SHR, USHR, BOR, BAND, BXOR, BNOT, ROR,
+  // Int only operators:
+  SHL, SHR, USHR, BOR, BAND, BXOR, BNOT, ROR,
 
-	// Conversion operators:
-	ItoF, FtoI,
+  // Conversion operators:
+  ItoF, FtoI,
 
-	// SFU functions
-	RECIP,
-	RECIPSQRT,
-	EXP,
-	LOG,
+  // SFU functions
+  RECIP,
+  RECIPSQRT,
+  EXP,
+  LOG,
 
-	// v3d only
-	TIDX,
-	EIDX
+  // v3d only
+  TIDX,
+  EIDX
 };
 
 
@@ -39,16 +39,16 @@ enum OpId {
  * Pair containing operator and base type
  */
 struct Op {
-	OpId op;
-	BaseType type;
+  OpId op;
+  BaseType type;
 
-	Op(OpId in_op, BaseType in_type) : op(in_op), type(in_type) {}
+  Op(OpId in_op, BaseType in_type) : op(in_op), type(in_type) {}
 
-	const char *to_string() const;
-	bool noParams() const;  // Yes, I know, doesn't make sense. Happens anyway
-	bool isUnary() const;
-	bool isFunction() const;
-	bool isCommutative() const;
+  const char *to_string() const;
+  bool noParams() const;  // Yes, I know, doesn't make sense. Happens anyway
+  bool isUnary() const;
+  bool isFunction() const;
+  bool isCommutative() const;
 };
 
 }  // namespace V3DLib

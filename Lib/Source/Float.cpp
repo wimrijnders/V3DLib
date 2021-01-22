@@ -8,7 +8,7 @@ namespace V3DLib {
 // ============================================================================
 
 FloatExpr::FloatExpr(float x) {
-	m_expr = std::make_shared<Expr>(x);
+  m_expr = std::make_shared<Expr>(x);
 }
 
 FloatExpr::FloatExpr(Deref<Float> d) : BaseExpr(d.expr()) {}
@@ -27,7 +27,7 @@ Float::Float() {
 Float::Float(float x) {
   Var v  = freshVar();
   m_expr = mkVar(v);
-	auto a = std::make_shared<Expr>(x);
+  auto a = std::make_shared<Expr>(x);
   assign(m_expr, a);
 }
 
@@ -72,20 +72,20 @@ Float::operator FloatExpr() { return FloatExpr(m_expr); }
  * Assignment
  */
 Float &Float::operator=(Float &rhs) {
-	assign(m_expr, rhs.expr());
-	return rhs;
+  assign(m_expr, rhs.expr());
+  return rhs;
 }
 
 
 FloatExpr Float::operator=(FloatExpr rhs) {
-	assign(m_expr, rhs.expr());
-	return rhs;
+  assign(m_expr, rhs.expr());
+  return rhs;
 }
 
 
 Float &Float::operator+=(FloatExpr rhs) {
   *this = *this + rhs;
-	return *this;
+  return *this;
 }
 
 

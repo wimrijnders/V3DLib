@@ -18,8 +18,8 @@ template <typename T> struct Deref; // Forward declaration template class
 
 struct FloatExpr :public BaseExpr {
   FloatExpr(float x);
-	FloatExpr(Expr::Ptr e) : BaseExpr(e) {}
-	FloatExpr(Deref<Float> d);
+  FloatExpr(Expr::Ptr e) : BaseExpr(e) {}
+  FloatExpr(Deref<Float> d);
 };
 
 
