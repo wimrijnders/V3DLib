@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_SUPPORT_HEAPMANAGER_H_
 #define _V3DLIB_SUPPORT_HEAPMANAGER_H_
 #include <stdint.h>
+#include <string>
 #include <vector>
 
 namespace V3DLib {
@@ -43,12 +44,18 @@ private:
     FreeRange(uint32_t l, uint32_t r) : left(l), right(r) {}  // required by std::vector
     unsigned size() const;
     bool empty() const { return size() == 0; }
+
+    bool overlaps(FreeRange const &rhs) const {
+      return !(rhs.left > right || rhs.right < left);
+    }
+
+    std::string dump() const;
   };
 
   std::vector<FreeRange> m_free_ranges;
 
   bool check_available(uint32_t n);
-  int alloc_intern(uint32_t size_in_bytes);
+  void dealloc_array(FreeRange const in_range);
 };
 
 }  // namespace V3DLib

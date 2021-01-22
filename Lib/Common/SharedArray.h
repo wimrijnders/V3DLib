@@ -22,6 +22,7 @@ public:
   SharedArray() {}
   SharedArray(uint32_t n) { alloc(n); }
   SharedArray(uint32_t n, BufferObject &heap) : m_heap(&heap) { alloc(n); }
+  SharedArray(SharedArray const &a) = delete;  // Disallow copy
   ~SharedArray() { dealloc(); }
 
   void heap_view(BufferObject &heap) {
@@ -189,6 +190,10 @@ public:
 
 
 private:
+  // Disallow copy assignment
+  void operator=(SharedArray a);
+  void operator=(SharedArray const &a);
+
   BufferObject *m_heap = nullptr;  // Reference to used heap
   uint8_t *m_usraddr   = nullptr;  // Start of the heap in main memory, as seen by the CPU
   uint32_t m_phyaddr   = 0;        // Starting index of memory in GPU space
