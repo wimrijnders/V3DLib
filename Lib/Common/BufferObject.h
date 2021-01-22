@@ -1,19 +1,11 @@
 #ifndef _V3DLIB_COMMON_BUFFEROBJECT_H_
 #define _V3DLIB_COMMON_BUFFEROBJECT_H_
+// This is the very first include file of the library to be compiled,
+// therefore a great place for global includes.
 #include <stdint.h>
+#include "defines.h"
 #include "Common/BufferType.h"
 #include "Support/HeapManager.h"
-
-// NOTE: QPU_MODE and EMULATION_MODE exclude each other
-#if !defined(QPU_MODE) && !defined(EMULATION_MODE)
-//
-// Detect mode, set default if none defined.
-// This is the best place to test it in the code, since it's
-// the first of the header files to be compiled.
-//
-#pragma message "WARNING: QPU_MODE and EMULATION_MODE not defined, defaulting to EMULATION_MODE"
-#define EMULATION_MODE
-#endif
 
 
 namespace V3DLib {
@@ -44,7 +36,7 @@ protected:
 private:
   // Disallow assignment
   void operator=(BufferObject a);
-  void operator=(BufferObject& a);
+  void operator=(BufferObject const &a);
 
   uint32_t phyaddr  = 0;
 };
