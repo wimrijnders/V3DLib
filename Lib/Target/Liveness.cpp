@@ -65,11 +65,14 @@ void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
     }
 
     int acc_id =1;
-    // ROT uses ACC1 internally, don't use it here
-    // TODO better selection of subsitution ACC
-    if (prev.ALU.op.isRot() || instr.ALU.op.isRot()) {
-      //warning("introduceAccum(): subsituting ACC in ROT operation");
-      acc_id = 2;
+
+    if (!Platform::instance().compiling_for_vc4()) {
+      // v3d ROT uses ACC1 (r1) internally, don't use it here
+      // TODO better selection of subsitution ACC
+      if (prev.ALU.op.isRot() || instr.ALU.op.isRot()) {
+        //warning("introduceAccum(): subsituting ACC in ROT operation");
+        acc_id = 2;
+      }
     }
 
     renameDest( &prev, REG_A, def, ACC, acc_id);
