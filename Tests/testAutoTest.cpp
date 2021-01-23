@@ -67,7 +67,7 @@ TEST_CASE("Interpreter and emulator should work the same", "[autotest]") {
     // Basic options
     GenOptions opts = basicGenOpts();
 
-    const int numTests = 2000; // Originally 10000, was a bit steep
+    const int numTests = 1000; // Originally 10000, was a bit steep
 
     for (int test = 0; test < numTests; test++) {
       //astHeap.clear();

@@ -5,6 +5,7 @@
 
 using namespace Rot3DLib;
 
+
 // ============================================================================
 // Support routines
 // ============================================================================
@@ -97,7 +98,6 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     // Compare scalar with QPU output - will not be exact
     {
       auto k = compile(rot3D_1);
-      //k.pretty(true, "rot3D_1.txt");
       initArrays(x_1, y_1, N);
       k.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
       compareResults(x_scalar, y_scalar, x_1, y_1, N, "Rot3D 1", false);  // Last param false: do approximate match
@@ -148,7 +148,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     auto k_2 = compile(rot3D_2);
     SharedArray<float> x_2(N), y_2(N);
     initArrays(x_2, y_2, N);
-     k_2.load(N, cosf(THETA), sinf(THETA), &x_2, &y_2).call();
+    k_2.load(N, cosf(THETA), sinf(THETA), &x_2, &y_2).call();
 
     compareResults(x_1, y_1, x_2, y_2, N, "Rot3D_1 and Rot3D_2 1 QPU");
   }

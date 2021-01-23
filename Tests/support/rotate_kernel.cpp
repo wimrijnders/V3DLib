@@ -8,6 +8,9 @@
 
 using ByteCode = V3DLib::v3d::ByteCode;
 
+template<typename T>
+using SharedArray =  V3DLib::SharedArray<T>;
+
 //
 // Issue: disassembly code in MESA does not output rotate flag
 //

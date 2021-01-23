@@ -4,6 +4,9 @@
 
 namespace {
 
+template<typename T>
+using SharedArray =  V3DLib::SharedArray<T>;
+
 /*
 void check_returned_registers(SharedArray<uint32_t> &Y) {
   uint32_t cur_QPU;
