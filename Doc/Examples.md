@@ -376,11 +376,6 @@ In the simulation, each point on the 2D surface to be a separate object,
 and the ambient temperature of each object to be the average of the temperatures of the 8 surrounding objects.
 This is very similar to 2D convolution using a mean filter.
 
-If heat is applied at the north and east edges of our 2D surface, and
-cold at the south and west edges, then ultimately the result is:
-
-![Heat flow across 2D surface](./images/heat.png)
-
 The `HeatMap` example program initializes a number of heat points and then
 iteratively calculates the diffusion. The default implementation starts out
 as follows:

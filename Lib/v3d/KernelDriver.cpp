@@ -452,6 +452,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       case ALUOp::A_BAND:  ret << band(*dst_reg, *src_a, imm);         break;
       case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, imm);          break;
       case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, imm);          break;
+      case ALUOp::A_FADD:  ret << fadd(*dst_reg, *src_a, imm);         break;
       case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, imm);   break;
       case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;
       case ALUOp::A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;

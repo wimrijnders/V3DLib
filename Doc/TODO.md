@@ -7,6 +7,9 @@
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
 - [ ] Fix indentation tabs/spaces
+- [ ] Consider adding **Navier-Stokes** as an example.
+      [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
+      looks promising.
 
 ## v3d
 
