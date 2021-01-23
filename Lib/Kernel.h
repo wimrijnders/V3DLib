@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_KERNEL_H_
 #define _V3DLIB_KERNEL_H_
 #include <tuple>
+#include <algorithm>  // std::move
 #include "Source/Int.h"
 #include "Source/Ptr.h"
 #include "Source/Interpreter.h"
@@ -67,8 +68,11 @@ namespace V3DLib {
 // ============================================================================
 
 // Construct an argument of QPU type 't'.
+
+// This usage is freaking ugly, but I don't have a better solution yet
 extern std::vector<Ptr<Int>>   uniform_int_pointers;
 extern std::vector<Ptr<Float>> uniform_float_pointers;
+
 
 template <typename t> inline t mkArg();
 
@@ -148,6 +152,9 @@ inline bool passParam< Ptr<Float>, SharedArray<float>* > (Seq<int32_t>* uniforms
 
 class KernelBase {
 public:
+  KernelBase() {}
+  KernelBase(KernelBase &&k) = default;
+
   void pretty(bool output_for_vc4, const char *filename = nullptr);
 
   void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
@@ -159,6 +166,7 @@ public:
 #ifdef QPU_MODE
   void qpu();
 #endif  // QPU_MODE
+
 
 protected:
   int numQPUs = 1;                 // Number of QPUs to run on
@@ -200,12 +208,17 @@ template <typename... ts> struct Kernel : public KernelBase {
   using KernelFunction = void (*)(ts... params);
 
 public:
+  Kernel(Kernel const &k) = delete;
+  Kernel(Kernel &&k) = default;
 
   /**
    * Construct kernel out of C++ function
    */
   Kernel(KernelFunction f, bool vc4_only = false) {
     {
+      uniform_int_pointers.clear();
+      uniform_float_pointers.clear();
+
       m_vc4_driver.compile_init();
 
       auto args = std::make_tuple(mkArg<ts>()...);
@@ -224,6 +237,7 @@ public:
 
       // Construct the AST for vc4
       apply(f, args);
+
       m_vc4_driver.compile();
 
       // Remember the number of variables used - for emulator/interpreter
@@ -262,7 +276,7 @@ public:
 template <typename... ts>
 Kernel<ts...> compile(void (*f)(ts... params), bool vc4_only = false) {
   Kernel<ts...> k(f, vc4_only);
-  return k;
+  return std::move(k);
 }
 
 }  // namespace V3DLib

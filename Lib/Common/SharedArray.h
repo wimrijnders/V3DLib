@@ -23,6 +23,10 @@ public:
   SharedArray(uint32_t n) { alloc(n); }
   SharedArray(uint32_t n, BufferObject &heap) : m_heap(&heap) { alloc(n); }
   SharedArray(SharedArray const &a) = delete;  // Disallow copy
+
+  SharedArray(SharedArray &&a) = default;
+  SharedArray &operator=(SharedArray &&a) = default; 
+
   ~SharedArray() { dealloc(); }
 
   void heap_view(BufferObject &heap) {
