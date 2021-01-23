@@ -15,47 +15,6 @@ using namespace V3DLib;
 // Support routines
 // ============================================================================
 
-/**
- * Show contents of main memory array
- */
-void dump(float *a, int size,  int linesize = -1) {
-  std::string str("<");
-
-  for (int i = 0; i < (int) size; i++) {
-
-    if (linesize != -1) {
-      if (i % linesize == 0) {
-        str << "\n";
-      }
-    }
-    str << a[i] << ", " ;
-  }
-
-  str << ">";
-  printf("%s\n", str.c_str());
-};
-
-
-/**
- * Show contents of SharedArray instance
- */
-void dump(SharedArray<float> &a, int linesize = -1) {
-  std::string str("<");
-
-  for (int i = 0; i < (int) a.size(); i++) {
-
-    if (linesize != -1) {
-      if (i % linesize == 0) {
-        str << "\n";
-      }
-    }
-    str << a[i] << ", " ;
-  }
-
-  str << ">";
-  printf("%s\n", str.c_str());
-};
-
 
 /**
  * Convenience method to make switching run modes easier
@@ -117,8 +76,8 @@ void rotate_sum(Float &input, Float &result) {
   Float tmp = input;              comment("rotate_sum, loop unrolled");
   for (int i = 0; i < 15; i++) {  // loop unroll
     tmp = rotate(tmp, 1);
-    //result += tmp;              // TODO this should work
-    result = result + tmp;
+    result += tmp;
+    //result = result + tmp;
   }
 }
 
@@ -293,32 +252,45 @@ void test_dotvector() {
  *
  * Input matrix `b` needs to be in transposed form before usage.
  * Template parameters N is dimension of square matrix in blocks of 16 values.
+ *
+ * ----------------------------------------------------------------------------
+ * Optimizations
+ * =============
+ *
+ * - Load one entire row of a into the QPU for fetching one single time
+ * - unroll the internal loop (TODO)
+ * - Use all QPU's (TODO)
+ * - All QPU's iterate over b together -> increase cache hits
  */
 template<int const N>
-void check_matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
+void matrix_mult_kernel(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   int const DIM = 16*N;
 
   DotVector vec(N);
   Float result;
 
-  For (Int y = 0, y < DIM, y++)
-    vec.load(a + DIM*y);
+  For (Int a_index = 0,  a_index< DIM, a_index++)
+    Ptr<Float> b_in = b + 0;  // Wonky '+ 0' to ensure pointer value is COPIED, not referenced.
+    vec.load(a + 0);          // And again, and below again
+                             // TODO fix this very NOT intuitive 'feature'. Bitten me >1 times.
 
-    for (int x = 0; x < DIM; ++x) {  // Loop unroll
+    For (Int b_index = 0, b_index < DIM, b_index++)
       Float tmp;
-      vec.dot_product(b + DIM*x, tmp);
+      vec.dot_product(b_in + 0, tmp);
 
-      set_at(result, x % 16, tmp);
+      set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
 
-      if (x % 16 == 15) {
+      If ((b_index & 0xf) == 15)
         *dst = result;
         dst += 16;
-      }
-    }
+      End
 
+      b_in += DIM;
+    End  // IDIOT }  - never forget
+
+    a += DIM;
   End
 }
-
 
 
 /**
@@ -326,7 +298,8 @@ void check_matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  */
 template<int const N>
 void test_matrix_multiplication() {
-  int const SIZE = 16*N*16*N;
+  int const DIM  = 16*N;
+  int const SIZE = DIM*DIM;
 
   SharedArray<float> a(SIZE);
   SharedArray<float> result(SIZE);
@@ -340,13 +313,13 @@ void test_matrix_multiplication() {
   for (int i = 0; i < SIZE; i++) {
     expected[i] = -1;
   }
-  matrix_mult_scalar(16*N, expected, a_scalar, a_scalar);
+  matrix_mult_scalar(DIM, expected, a_scalar, a_scalar);
 
   for (int i = 0; i < SIZE; i++) {
-    REQUIRE(expected[i] == 16*N);
+    REQUIRE(expected[i] == DIM);
   }
 
-  auto k = compile(check_matrix_mult<N>);
+  auto k = compile(matrix_mult_kernel<N>);
   k.load(&result, &a, &a);
 
   //
@@ -368,6 +341,8 @@ void test_matrix_multiplication() {
   run_kernel(k);
 
   for (int i = 0; i < SIZE; i++) {
+    INFO("N : " << N);
+    INFO("Index " << i << ", [x,y] = [" << (i % DIM) << ", " << (i / DIM) << "]");
     REQUIRE(result[i] == 16*N);
   }
 
@@ -380,9 +355,6 @@ void test_matrix_multiplication() {
   }
 
   run_kernel(k);
-
-  //dump(expected, SIZE, 16);
-  //dump(result, 16*N);
 
   for (int x = 0; x < 16*N; x++) {
     for (int y = 0; y < 16*N; y++) {
@@ -410,9 +382,13 @@ void test_matrix_multiplication() {
   matrix_mult_scalar(16*N, expected, a_scalar, a_scalar);
 
   k.load(&result, &a, &b);
-  run_kernel(k);
 
-  float precision = 1e-5f;
+  printf("Running kernel\n");
+  run_kernel(k);
+  printf("Done running kernel\n");
+
+  float precision = 2.5e-4f;  // Empirically determined - the bigger the matrices, the less precise
+                              // This value works for 640x640 matrices
 
   for (int i = 0; i < SIZE; i++) {
     REQUIRE(abs(result[i] - expected[i]) < precision);
@@ -422,7 +398,7 @@ void test_matrix_multiplication() {
 }  // anon namespace
 
 
-TEST_CASE("Test Matrix algebra", "[matrix]") {
+TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
   using namespace V3DLib;
   //Platform::use_main_memory(true);  // Run only interpreter and emulator for now
 
@@ -463,7 +439,6 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
 
     printf("Compiling kernel\n");
     auto k = compile(check_sum_kernel);
-    k.pretty(false);
 
     printf("Running kernel\n");
     k.load(&vec, &result);
@@ -521,10 +496,17 @@ TEST_CASE("Test Matrix algebra", "[matrix]") {
     test_dotvector<10>();
   }
 
+  //Platform::use_main_memory(false);
+}
+
+
+TEST_CASE("Test matrix algebra", "[matrix][mult]") {
+  //Platform::use_main_memory(true);
 
   SECTION("Check matrix multiplication") {
     test_matrix_multiplication<1>();
     test_matrix_multiplication<2>();
+    //test_matrix_multiplication<40>();  // 640x640 matrices, works! If you don't mind waiting for test to complete.
   }
 
   //Platform::use_main_memory(false);
