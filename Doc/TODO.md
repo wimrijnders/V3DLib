@@ -2,14 +2,16 @@
 
 ## General
 
-- [ ] Tone down mesa library, compile takes long.
-      Tried this but gave up after it became evident nothing could be removed.
-      Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
+- [ ] ! Fix '+ 0' hack for kernel pointers, this is confusing
+- [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
-- [ ] Fix indentation tabs/spaces
+- [ ] Fix indentation tabs/spaces - ongoing
 - [ ] Consider adding **Navier-Stokes** as an example.
       [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
       looks promising.
+- [ ] Tone down mesa library, compile takes long.
+      Tried this but gave up after it became evident nothing could be removed.
+      Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
 
 ## v3d
 
