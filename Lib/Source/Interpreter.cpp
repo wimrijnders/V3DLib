@@ -22,13 +22,13 @@ struct CoreState {
   Seq<char>* output = nullptr;   // Output from print statements
   Seq<Stmt::Ptr> stack;          // Control stack
   Seq<Vec> loadBuffer;           // Load buffer
-	SharedArray<uint32_t> emuHeap;
+  SharedArray<uint32_t> emuHeap;
 
 
-	~CoreState() {
-		// Don't delete uniform and output here, these are used as references
+  ~CoreState() {
+    // Don't delete uniform and output here, these are used as references
     delete [] env;
-	}
+  }
 };
 
 // State of the Interpreter.
@@ -37,10 +37,10 @@ struct InterpreterState {
   Word vpm[VPM_SIZE];        // Shared VPM memory
   int sema[16];              // Semaphores
 
-	InterpreterState() {
-  	// Initialise semaphores
-	  for (int i = 0; i < 16; i++) sema[i] = 0;
-	}
+  InterpreterState() {
+    // Initialise semaphores
+    for (int i = 0; i < 16; i++) sema[i] = 0;
+  }
 };
 
 
@@ -105,7 +105,7 @@ Vec evalVar(CoreState* s, Var v) {
   }
 
   assert(false);
-	return Vec();
+  return Vec();
 }
 
 
@@ -208,9 +208,9 @@ Vec eval(CoreState* s, Expr::Ptr e) {
       Vec a = eval(s, e->deref_ptr());
       uint32_t hp = (uint32_t) a[0].intVal;
 
-			// NOTE: `hp` is the same for all lanes.
-			//       This has been tested and verified.
-			//       So, all we need to do here is add the index number to the pointer.
+      // NOTE: `hp` is the same for all lanes.
+      //       This has been tested and verified.
+      //       So, all we need to do here is add the index number to the pointer.
 
       Vec v;
       for (int i = 0; i < NUM_LANES; i++) {
@@ -221,7 +221,7 @@ Vec eval(CoreState* s, Expr::Ptr e) {
   }
 
   assert(false);
-	return Vec();
+  return Vec();
 }
 
 
@@ -310,7 +310,7 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 
   // Unreachable
   assert(false);
-	return Vec();
+  return Vec();
 }
 
 
@@ -339,7 +339,7 @@ bool evalCond(CoreState* s, CExpr::Ptr e) {
 
   // Unreachable
   assert(false);
-	return false;
+  return false;
 }
 
 
@@ -377,11 +377,11 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
     case QPU_NUM:
     case ELEM_NUM:
       assertq(false, "interpreter: can not write to read-only variable");
-			break;
+      break;
 
-		default:
+    default:
       assertq(false, "interpreter: unexpected var-tag in assignToVar()");
-			break;
+      break;
   }
 }
 
@@ -400,16 +400,16 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
       break;
 
     // Dereferenced pointer
-		// Comparable to execStoreRequest()
+    // Comparable to execStoreRequest()
     case Expr::DEREF: {
       Vec index = eval(s, lhs->deref_ptr());
-			storeToHeap(s, index, val);
+      storeToHeap(s, index, val);
     }
     break;
 
-		default:
-  		assert(false);
-		break;
+    default:
+      assert(false);
+    break;
   }
 }
 
@@ -480,9 +480,9 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
       return;
     }
 
-		default:
-  		assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement");
-			return;
+    default:
+      assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement");
+      return;
   }
 }
 
@@ -540,7 +540,7 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
 void execStoreRequest(CoreState* s, Expr::Ptr data, Expr::Ptr addr) {
   Vec val = eval(s, data);
   Vec index = eval(s, addr);
-	storeToHeap(s, index, val);
+  storeToHeap(s, index, val);
 }
 
 
@@ -627,7 +627,7 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     // Increment semaphore
-		// NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
+    // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
     case SEMA_INC:
       assert(stmt->semaId >= 0 && stmt->semaId < 16);
       if (state->sema[stmt->semaId] == 15) s->stack.push(stmt);
@@ -635,7 +635,7 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
  
     // Decrement semaphore
-		// Note at SEMA_INC also applies here
+    // Note at SEMA_INC also applies here
     case SEMA_DEC:
       assert(stmt->semaId >= 0 && stmt->semaId < 16);
       if (state->sema[stmt->semaId] == 0) s->stack.push(stmt);
@@ -656,9 +656,9 @@ void exec(InterpreterState* state, CoreState* s) {
       fatal("V3DLib: DMA access not supported by interpreter\n");
       break;
 
-		default:
+    default:
       assertq(false, "interpreter: unexpected stmt-tag in exec()");
-			break;
+      break;
   }
 }
 
@@ -680,12 +680,12 @@ void exec(InterpreterState* state, CoreState* s) {
  * @param output    Output from print statements (if NULL, stdout is used)
  */
 void interpreter(
-	int numCores,
-	Stmt::Ptr stmt,
-	int numVars,
-	Seq<int32_t> &uniforms,
-	BufferObject &heap,
-	Seq<char>* output
+  int numCores,
+  Stmt::Ptr stmt,
+  int numVars,
+  Seq<int32_t> &uniforms,
+  BufferObject &heap,
+  Seq<char>* output
 ) {
   InterpreterState state;
 
@@ -699,12 +699,12 @@ void interpreter(
     s.env         = new Vec [numVars + 1];
     s.sizeEnv     = numVars + 1;
     s.output      = output;
-		s.emuHeap.heap_view(heap);
+    s.emuHeap.heap_view(heap);
   }
 
-	// Put statement on each core's control stack
-	for (int i = 0; i < numCores; i++)
-		state.core[i].stack.push(stmt);
+  // Put statement on each core's control stack
+  for (int i = 0; i < numCores; i++)
+    state.core[i].stack.push(stmt);
 
   // Run code
   bool running = true;

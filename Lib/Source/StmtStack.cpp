@@ -47,10 +47,6 @@ StmtStack &stmtStack() {
 
 void clearStack() {
   assert(p_stmtStack != nullptr);
-
-//  std::cout << p_stmtStack->dump();
-//  breakpoint
-
   p_stmtStack = nullptr;
 }
 

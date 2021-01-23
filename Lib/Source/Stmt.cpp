@@ -152,7 +152,7 @@ Stmt::Ptr Stmt::seq_s0() const {
 
 
 Stmt::Ptr Stmt::seq_s1() const {
-   assert(tag == SEQ);
+  assert(tag == SEQ);
   assert(m_stmt_b.get() != nullptr);
   return m_stmt_b;
 }
@@ -170,14 +170,14 @@ Stmt::Ptr Stmt::thenStmt() const {
 
 
 Stmt::Ptr Stmt::body() const {
-   assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
+  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
   assert(m_stmt_a.get() != nullptr);
   return m_stmt_a;
 }
 
 
 Stmt::Ptr Stmt::elseStmt() const {
-   assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
+  assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
   // where and else stmt may not both be null
   assert(m_stmt_a.get() != nullptr || m_stmt_b.get() != nullptr);
   return m_stmt_b; // May be null
@@ -185,47 +185,47 @@ Stmt::Ptr Stmt::elseStmt() const {
 
 
 void Stmt::thenStmt(Ptr then_ptr) {
-   assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF and WHERE", true);
+  assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF and WHERE", true);
   assert(m_stmt_a.get() == nullptr);  // Only assign once
   m_stmt_a = then_ptr;
 }
 
 
 void Stmt::elseStmt(Ptr else_ptr) {
-   assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
+  assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
   assert(m_stmt_b.get() == nullptr);  // Only assign once
   m_stmt_b = else_ptr;
 }
 
 
 void Stmt::body(Ptr ptr) {
-   assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
+  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
   assert(m_stmt_a.get() == nullptr);  // Only assign once
   m_stmt_a = ptr;
 }
 
 
 void Stmt::inc(Ptr ptr) {
-   assertq(tag == FOR, "Inc-statement only valid for FOR", true);
+  assertq(tag == FOR, "Inc-statement only valid for FOR", true);
   assert(m_stmt_b.get() == nullptr);  // Only assign once
   m_stmt_b = ptr;
 }
 
 
 bool Stmt::then_is_null() const {
-   assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF and WHERE", true);
+  assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF and WHERE", true);
   return m_stmt_a.get() == nullptr;
 }
 
 
 bool Stmt::else_is_null() const {
-   assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
+  assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
   return m_stmt_b.get() == nullptr;
 }
 
 
 bool Stmt::body_is_null() const {
-   assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
+  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
   return m_stmt_a.get() == nullptr;
 }
 
