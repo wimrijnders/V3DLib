@@ -25,7 +25,7 @@
 
 ## vc4
 
-- [ ] Consider replacing DMA transfers (notably, write) with TMU.
+- [ ] Consider replacing DMA transfers with TMU. Selection of either could be optional.
 - [ ] Consider using device driver interface for vc4 - this will get rid of need for `sudo`
 - [ ] Enforce acc4 (r4) as a read-only register, notably in emulator
 - [ ] Enforce non-usage of acc4 (r4) during sfu-call, notably in emulator

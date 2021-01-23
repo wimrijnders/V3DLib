@@ -6,13 +6,15 @@ Jump straight to the actual [Basic Build Instructions](#basic-build-instructions
 ## General Project Information
 
 - The C++ code is compiled with language version `c++11`
+- Indent is two spaces. Not because I want it to (I vastly prefer tabs), but because `github`
+  otherwise makes a mess of the source display, especially when tabs and spaces are mixed.
 
 In the code:
 
-- VideoCore IV is referred to as `vc4`
-- VideoCore VI is referred to as `v3d`
+- `VideoCore IV` is referred to as `vc4`
+- `VideoCore VI` is referred to as `v3d`
 
-This follows the naming as used in the linux kernel code and in the `Mesa` library.
+This follows the naming convention as used in the linux kernel code and in the `Mesa` library.
 
 
 ### All development is done on **Raspbian 10 Buster**

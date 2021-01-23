@@ -258,6 +258,7 @@ void test_dotvector() {
  * =============
  *
  * - Load one entire row of a into the QPU for fetching one single time
+ * - Use prefetching on the TMU (TODO)
  * - unroll the internal loop (TODO)
  * - Use all QPU's (TODO)
  * - All QPU's iterate over b together -> increase cache hits
