@@ -180,7 +180,8 @@ Instr sub(Location const &dst, Location const &srca, Location const &srcb);
 Instr sub(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb);
 
-Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3);
+Instr fadd(Location const &dst, Location const &srca, Location const &srcb);
+Instr fadd(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 

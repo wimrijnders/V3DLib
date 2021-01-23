@@ -975,12 +975,13 @@ Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb) {
 }
 
 
-Instr fadd(Location const &loc1, Location const &loc2, Location const &loc3) {
-  Instr instr;
-  instr.alu_add_set(loc1, loc2, loc3);
+Instr fadd(Location const &dst, Location const &srca, Location const &srcb) {
+  return Instr(V3D_QPU_A_FADD, dst, srca, srcb);
+}
 
-  instr.alu.add.op    = V3D_QPU_A_FADD;
-  return instr;
+
+Instr fadd(Location const &dst, Location const &srca, SmallImm const &immb) {
+  return Instr(V3D_QPU_A_FADD, dst, srca, immb);
 }
 
 
