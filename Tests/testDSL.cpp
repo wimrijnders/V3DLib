@@ -431,3 +431,45 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
     check_vector(result, 0, expected);
   }
 }
+
+
+void nested_for_kernel(Ptr<Int> result) {
+  int const COUNT = 3;
+  Int x = 0;
+
+  For (Int n = 0, n < COUNT, n++)
+    For (Int m = 0, m < COUNT, m++)
+      x += 1;
+
+      Where ((index() & 0x1) == 1)
+        x += 1;
+      End
+
+      If ((m & 0x1) == 1)
+        x += 1;
+      End
+    End
+
+    x += 2;
+  End
+
+  *result = x;
+}
+
+
+TEST_CASE("Test For-loops", "[dsl][for]") {
+  Platform::use_main_memory(true);
+
+  SECTION("Test nested For-loops") {
+    auto k = compile(nested_for_kernel);
+
+    SharedArray<int> result(16);
+    k.load(&result).emu();
+    //dump_array(result);
+
+    vector<int> expected = {18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27};
+    check_vector(result, 0, expected);
+  }
+
+  Platform::use_main_memory(false);
+} 
