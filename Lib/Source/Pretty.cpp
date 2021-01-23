@@ -35,7 +35,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 
     case WHERE:
       ret << indentBy(indent)
-          << "Where (" << s->where_cond()->pretty() << ")\n"
+          << "Where (" << s->where_cond()->dump() << ")\n"
           << pretty(indent+2, s->thenStmt());
 
       if (s->elseStmt().get() != nullptr) {
@@ -48,7 +48,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 
     case IF:
       ret << indentBy(indent)
-          << "If  (" << s->if_cond()->pretty() << ")\n"
+          << "If  (" << s->if_cond()->dump() << ")\n"
           << pretty(indent+2, s->thenStmt());
 
       if (s->elseStmt().get() != nullptr) {
@@ -61,7 +61,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 
     case WHILE:
       ret << indentBy(indent)
-          << "While  (" << s->loop_cond()->pretty() << ")\n"
+          << "While  (" << s->loop_cond()->dump() << ")\n"
           << pretty(indent+2, s->body())
           << indentBy(indent) << "End";
       break;

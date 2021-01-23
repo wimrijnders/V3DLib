@@ -122,7 +122,7 @@ std::string Expr::pretty() const {
 }
 
 
-std::string Expr::disp() const {
+std::string Expr::dump() const {
 	std::string ret;
 
 	switch(m_tag) {
@@ -130,7 +130,7 @@ std::string Expr::disp() const {
 		case FLOAT_LIT: ret << "Float "  << floatLit;            break;
 		case VAR:       ret << "Var: "   << m_var.disp();        break;
 		case APPLY:     ret << "Apply: " << disp_apply();        break;
-		case DEREF:     ret << "Deref: " << deref_ptr()->disp(); break;
+		case DEREF:     ret << "Deref: " << deref_ptr()->dump(); break;
 		default:
 			assert(false);
 		break;
@@ -169,9 +169,9 @@ Expr::Ptr BaseExpr::deref_with_index(Expr::Ptr base, Expr::Ptr index_expr) {
 }
 
 
-std::string BaseExpr::disp() const {
+std::string BaseExpr::dump() const {
 	std::string ret;
-	ret << m_label << " " << m_expr->disp(); 
+	ret << m_label << " " << m_expr->dump(); 
 	return ret;
 }
 

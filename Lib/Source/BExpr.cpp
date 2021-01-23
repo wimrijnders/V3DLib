@@ -143,7 +143,7 @@ BExpr::Ptr BExpr::Or(Ptr rhs) const {
 }
 
 
-std::string BExpr::pretty() const {
+std::string BExpr::dump() const {
   using ::operator<<;  // C++ weirdness
 
   std::string ret;
@@ -152,26 +152,26 @@ std::string BExpr::pretty() const {
     // Negation
     case NOT:
       assert(m_lhs.get() != nullptr);
-      ret << "!" << m_lhs->pretty();
+      ret << "!" << m_lhs->dump();
       break;
 
     // Conjunction
     case AND:
       assert(m_lhs.get() != nullptr);
       assert(m_rhs.get() != nullptr);
-      ret << "(" << m_lhs->pretty() << " && " << m_rhs->pretty() << ")";
+      ret << "(" << m_lhs->dump() << " && " << m_rhs->dump() << ")";
       break;
 
     // Disjunction
     case OR:
       assert(m_lhs.get() != nullptr);
       assert(m_rhs.get() != nullptr);
-      ret << "(" << m_lhs->pretty() << " || " << m_rhs->pretty() << ")";
+      ret << "(" << m_lhs->dump() << " || " << m_rhs->dump() << ")";
       break;
 
     // Comparison
     case CMP:
-      ret << cmp_lhs()->pretty() << cmp.to_string() << cmp_rhs()->pretty();
+      ret << cmp_lhs()->dump() << cmp.to_string() << cmp_rhs()->dump();
       break;
   }
 

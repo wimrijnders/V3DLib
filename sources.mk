@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Wed 20 Jan 2021 03:40:17 AM CET
+# Generated on: Sat 23 Jan 2021 03:57:08 AM CET
 #
 ###############################################################################
 
@@ -23,6 +23,7 @@ OBJ := \
   Support/Platform.o  \
   Support/debug.o  \
   Support/InstructionComment.o  \
+  Support/basics.o  \
   Support/HeapManager.o  \
   SourceTranslate.o  \
   Kernel.o  \

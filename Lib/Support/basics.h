@@ -31,6 +31,9 @@ inline void fatal(std::string const &msg) {
 }  // V3DLib
 
 
+void findAndReplaceAll(std::string &data, std::string toSearch, std::string replaceStr);
+
+
 //
 // Convenience definitions
 //

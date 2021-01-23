@@ -1,6 +1,8 @@
 #ifndef _V3DLIB_COMMON_STACK_H_
 #define _V3DLIB_COMMON_STACK_H_
 #include <memory>
+#include <functional>
+#include <utility>
 #include "Support/debug.h"
 
 namespace V3DLib {
@@ -10,62 +12,74 @@ namespace V3DLib {
  */
 template <class T> class Stack {
 private:
-	using Ptr = std::shared_ptr<T>;
+  using Ptr = std::shared_ptr<T>;
 
-	class StackItem {
-	public:
-		Ptr head;
-		StackItem *tail = nullptr;
-	};
+  class StackItem {
+  public:
+    Ptr head;
+    StackItem *tail = nullptr;
+  };
 
 public:
-	~Stack() { clear(); }
+  ~Stack() { clear(); }
 
-	bool     empty() const { return m_size == 0; }
-	unsigned size()  const { return m_size; }
+  bool     empty() const { return m_size == 0; }
+  unsigned size()  const { return m_size; }
 
-	void push(Ptr x) {
-		StackItem *nextTop = new StackItem;
-		nextTop->head = x;
-		nextTop->tail = m_topItem;
-		
-		m_topItem = nextTop;
-		m_size++;
-	}
+  void push(Ptr x) {
+    StackItem *nextTop = new StackItem;
+    nextTop->head = x;
+    nextTop->tail = m_topItem;
+    
+    m_topItem = nextTop;
+    m_size++;
+  }
 
-	Ptr pop() {
-		assert(m_size > 0);
-		assert(m_topItem != nullptr);
-		StackItem *oldTop = m_topItem;
+  Ptr pop() {
+    assert(m_size > 0);
+    assert(m_topItem != nullptr);
+    StackItem *oldTop = m_topItem;
 
-		m_topItem = oldTop->tail;
-		Ptr ret   = oldTop->head;
+    m_topItem = oldTop->tail;
+    Ptr ret   = oldTop->head;
 
-		oldTop->tail = nullptr;
-		delete oldTop;
+    oldTop->tail = nullptr;
+    delete oldTop;
 
-		m_size--;
-		return ret;
-	}
+    m_size--;
+    return ret;
+  }
 
-	Ptr top() const {
-		assert(m_size > 0);
-		assert(m_topItem != nullptr);
-		assert(m_topItem->head.get() != nullptr);
-		return m_topItem->head;
-	}
+  Ptr top() const {
+    assert(m_size > 0);
+    assert(m_topItem != nullptr);
+    assert(m_topItem->head.get() != nullptr);
+    return m_topItem->head;
+  }
 
-	void clear() {
-		while (!empty()) {
-			pop();
-		}
+  void clear() {
+    while (!empty()) {
+      pop();
+    }
 
-		assert(m_size == 0);
-	}
+    assert(m_size == 0);
+  }
+
+protected:
+  using Callback = std::function<void(T const &)>;
+
+  void each(Callback f) const {
+    StackItem *cur = m_topItem;
+
+    while (cur != nullptr) {
+      f(*(cur->head));
+      cur = cur->tail; 
+    }
+  }
 
 private:
-	unsigned int m_size  = 0;
-	StackItem *m_topItem = nullptr;
+  unsigned int m_size  = 0;
+  StackItem *m_topItem = nullptr;
 };
 
 }  // namespace V3DLib

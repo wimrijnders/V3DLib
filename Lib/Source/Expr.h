@@ -42,7 +42,7 @@ struct Expr {
 	Var var();
 
 	std::string pretty() const;
-	std::string disp() const;
+	std::string dump() const;
 
   union {
     int   intLit;   // Integer literal
@@ -68,7 +68,7 @@ public:
 	BaseExpr() {}
 
 	Expr::Ptr expr() const { return m_expr; }
-	std::string disp() const;
+	std::string dump() const;
 
 protected:
   Expr::Ptr m_expr;  // Abstract syntax tree

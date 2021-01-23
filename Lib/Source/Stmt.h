@@ -76,7 +76,8 @@ struct Stmt : public InstructionComment {
 
   ~Stmt() {}
 
-  std::string disp() const;
+  std::string disp() const { return disp_intern(false, 0); }
+  std::string dump() const { return disp_intern(true, 0); }
 
   //
   // Accessors for pointer objects.
@@ -158,8 +159,6 @@ struct Stmt : public InstructionComment {
   };
 
 private:
-  void init(StmtTag in_tag);
-
   BExpr::Ptr m_where_cond;
 
   Expr::Ptr m_exp_a;
@@ -169,6 +168,9 @@ private:
   Ptr m_stmt_b;
 
   CExpr::Ptr m_cond;
+
+  void init(StmtTag in_tag);
+  std::string disp_intern(bool with_linebreaks, int seq_depth) const;
 };
 
 

@@ -159,9 +159,12 @@ Stmt::Ptr Stmt::seq_s1() const {
 
 
 Stmt::Ptr Stmt::thenStmt() const {
-   assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF and WHERE", true);
+  assertq(tag == IF || tag == WHERE || tag == WHILE, "Then-statement only valid for IF, WHERE and WHILE", true);
+  // while must have then and no else
+  assert(tag != WHILE || (m_stmt_a.get() != nullptr || m_stmt_b.get() == nullptr));
   // where and else stmt may not both be null
   assert(m_stmt_a.get() != nullptr || m_stmt_b.get() != nullptr);
+
   return m_stmt_a;  // May be null
 }
 
@@ -229,10 +232,8 @@ bool Stmt::body_is_null() const {
 
 /**
  * Debug routine for easier display of instance contents during debugging
- *
- * Not filled out completely yet, will do that as needed.
  */
-std::string Stmt::disp() const {
+std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
   std::string ret;
 
   switch (tag) {
@@ -240,26 +241,61 @@ std::string Stmt::disp() const {
       ret << "SKIP";
     break;
     case ASSIGN:
-      ret << "ASSIGN " << assign_lhs()->disp() << " = " << assign_rhs()->disp();
+      ret << "ASSIGN " << assign_lhs()->dump() << " = " << assign_rhs()->dump();
     break;
     case SEQ:
       assert(seq_s0().get() != nullptr);
       assert(seq_s1().get() != nullptr);
-      ret << "SEQ {" << seq_s0()->disp() << "; " << seq_s1()->disp() << "}";
+
+      if (with_linebreaks) {
+        std::string tmp;
+
+        tmp << "  " << seq_s0()->disp_intern(with_linebreaks, seq_depth + 1) << "\n"
+            << "  " << seq_s1()->disp_intern(with_linebreaks, seq_depth + 1) << "\n";
+
+        // Remove all superfluous whitespace
+        if (seq_depth == 0) {
+          std::string tmp2;
+          bool changed = true;
+
+          while (changed)  {
+            tmp2 = tmp;
+            findAndReplaceAll(tmp2, "    ", "  ");
+            findAndReplaceAll(tmp2, "\n\n", "\n");
+
+            changed = (tmp2 != tmp);
+            tmp = tmp2;
+          }
+
+          // TODO make indent based on sequence depth
+          ret << "SEQ*: {\n" << tmp << "} END SEQ*\n";
+        } else {
+          ret << tmp;
+        }
+  
+      } else {
+        ret << "SEQ {" << seq_s0()->disp_intern(with_linebreaks, seq_depth + 1) << "; "
+                       << seq_s1()->disp_intern(with_linebreaks, seq_depth + 1) << "}";
+      }
     break;
     case WHERE:
       assert(m_where_cond.get() != nullptr);
-      assert(thenStmt().get() != nullptr);
-      ret << "WHERE (" << m_where_cond->disp() << ") THEN " << thenStmt()->disp();
+      ret << "WHERE (" << m_where_cond->dump() << ") THEN " << thenStmt()->dump();
       if (elseStmt().get() != nullptr) {
-        ret << " ELSE " << elseStmt()->disp();
+        ret << " ELSE " << elseStmt()->dump();
       }
     break;
     case IF:
-      ret << "IF";
+      assert(m_cond.get() != nullptr);
+      ret << "IF (" << m_cond->dump() << ") THEN " << thenStmt()->dump();
+      if (elseStmt().get() != nullptr) {
+        ret << " ELSE " << elseStmt()->dump();
+      }
     break;
     case WHILE:
-      ret << "WHILE";
+      assert(m_cond.get() != nullptr);
+      ret << "WHILE (" << m_cond->dump() << ") " << thenStmt()->dump();
+      // There is no ELSE for while
     break;
     case PRINT:
       ret << print.disp();
@@ -267,7 +303,7 @@ std::string Stmt::disp() const {
         if (m_exp_a.get() == nullptr) {
           ret << " <no expr>";
         } else {
-          ret << m_exp_a->disp();
+          ret << m_exp_a->dump();
         }
       }
     break;

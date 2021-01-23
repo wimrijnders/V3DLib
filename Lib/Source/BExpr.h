@@ -67,8 +67,7 @@ struct BExpr {
   Ptr And(Ptr rhs) const;
   Ptr Or(Ptr rhs) const;
 
-  std::string pretty() const;
-  std::string disp() const { return pretty(); }
+  std::string dump() const;
 
   CmpOp cmp;
 

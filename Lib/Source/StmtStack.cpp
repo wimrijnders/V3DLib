@@ -1,10 +1,11 @@
 #include "StmtStack.h"
-
+#include <iostream>          // std::cout
+#include "Support/basics.h"
 
 namespace V3DLib {
 
 namespace {
-	StmtStack *p_stmtStack = nullptr;
+  StmtStack *p_stmtStack = nullptr;
 } // anon namespace
 
 
@@ -19,27 +20,44 @@ namespace {
  * of statements to be compiled.
  */
 void StmtStack::append(Stmt::Ptr stmt) {
-	assert(stmt.get() != nullptr);
-	assert(!empty());
-	push(Stmt::create_sequence(pop(), stmt));
+  assert(stmt.get() != nullptr);
+  assert(!empty());
+  push(Stmt::create_sequence(pop(), stmt));
+}
+
+
+std::string StmtStack::dump() const {
+  using ::operator<<;  // C++ weirdness
+
+  std::string ret;
+
+  each([&ret] (Stmt const & item) {
+    ret << item.dump() << "\n";
+  });
+
+  return ret;
 }
 
 
 StmtStack &stmtStack() {
-	assert(p_stmtStack != nullptr);
-	return *p_stmtStack;
+  assert(p_stmtStack != nullptr);
+  return *p_stmtStack;
 }
 
 
 void clearStack() {
-	assert(p_stmtStack != nullptr);
-	p_stmtStack = nullptr;
+  assert(p_stmtStack != nullptr);
+
+//  std::cout << p_stmtStack->dump();
+//  breakpoint
+
+  p_stmtStack = nullptr;
 }
 
 
 void setStack(StmtStack &stmtStack) {
-	assert(p_stmtStack == nullptr);
-	p_stmtStack = &stmtStack;
+  assert(p_stmtStack == nullptr);
+  p_stmtStack = &stmtStack;
 }
 
 }  // namespace V3DLib

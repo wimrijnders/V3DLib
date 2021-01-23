@@ -21,7 +21,7 @@ struct CExpr {
   BExpr::Ptr bexpr() const { return m_bexpr; }
   CExprTag tag() const { return m_tag; }
 
-	std::string pretty() const;
+	std::string dump() const;
 
 private:
 
