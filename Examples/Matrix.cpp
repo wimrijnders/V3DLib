@@ -29,9 +29,13 @@ CmdParameters params = {
 
 
 struct MatrixSettings : public Settings {
-	static int const N    = 5;
-	static int const DIM  = 16*N;
-	static int const SIZE = DIM*DIM;
+	int N    = 15;
+
+	int size() {
+		int DIM  = 16*N;
+		int SIZE = DIM*DIM;
+		return SIZE;
+	}
 
 	int    kernel;
 
@@ -49,15 +53,16 @@ struct MatrixSettings : public Settings {
 // ============================================================================
 
 void run_qpu_kernel() {
-  auto k = compile(kernels::matrix_mult<MatrixSettings::N>);  // Construct kernel
+  auto k = compile(kernels::matrix_mult_decorator(settings.N));  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
-  // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> a(MatrixSettings::SIZE);
-  SharedArray<float> b(MatrixSettings::SIZE);
-  SharedArray<float> result(MatrixSettings::SIZE);
 
-  for (int i = 0; i < MatrixSettings::SIZE; i++) {
+  // Allocate and initialise arrays shared between ARM and GPU
+  SharedArray<float> a(settings.size());
+  SharedArray<float> b(settings.size());
+  SharedArray<float> result(settings.size());
+
+  for (int i = 0; i < settings.size(); i++) {
     a[i] = random_float();
     b[i] = random_float();
   }
@@ -69,11 +74,11 @@ void run_qpu_kernel() {
 
 void run_scalar_kernel() {
   // Allocate and initialise
-  float a[MatrixSettings::SIZE];
-  float b[MatrixSettings::SIZE];
-  float result[MatrixSettings::SIZE];
+  float *a      = new float [settings.size()];
+  float *b      = new float [settings.size()];
+  float *result = new float [settings.size()];
 
-  for (int i = 0; i < MatrixSettings::SIZE; i++) {
+  for (int i = 0; i < settings.size(); i++) {
     a[i] = random_float();
     b[i] = random_float();
   }
@@ -81,6 +86,10 @@ void run_scalar_kernel() {
 	if (!settings.compile_only) {
 		kernels::matrix_mult_scalar(settings.N, result, a, b);
 	}
+
+	delete [] a;
+	delete [] b;
+	delete [] result;
 }
 
 

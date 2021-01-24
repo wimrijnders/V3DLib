@@ -160,7 +160,7 @@ void test_matrix_multiplication() {
     REQUIRE(expected[i] == DIM);
   }
 
-  auto k = compile(kernels::matrix_mult<N>);
+  auto k = compile(kernels::matrix_mult_decorator(N));
   k.load(&result, &a, &a);
 
   //
@@ -266,20 +266,10 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     SharedArray<float> vec(16);
     vec.fill(0.3f);
 
-    float expected = 0;
-    for (int i = 0; i < (int) vec.size(); i++) {
-      expected += vec[i];
-    }
-
-    REQUIRE(expected == 4.8f);
-
     SharedArray<float> result(16);
     result.fill(-1);
 
-    //printf("Compiling kernel\n");
     auto k = compile(check_sum_kernel);
-
-    //printf("Running kernel\n");
     k.load(&vec, &result);
     run_kernel(k);
     REQUIRE(result[0] == 4.8f);
@@ -345,6 +335,7 @@ TEST_CASE("Test matrix algebra", "[matrix][mult]") {
   SECTION("Check matrix multiplication") {
     test_matrix_multiplication<1>();
     test_matrix_multiplication<2>();
+    test_matrix_multiplication<5>();
     //test_matrix_multiplication<40>();  // 640x640 matrices, works! If you don't mind waiting for test to complete.
   }
 

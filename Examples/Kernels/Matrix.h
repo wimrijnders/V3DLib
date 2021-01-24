@@ -8,6 +8,7 @@
 
 float random_float();
 
+
 ////////////////////////////////////////////////////////////////////////////////
 // Kernel code definitions for Matric
 ////////////////////////////////////////////////////////////////////////////////
@@ -15,6 +16,7 @@ float random_float();
 namespace kernels {
 
 using namespace V3DLib;
+
 
 ////////////////////////////////////////////////////////////////////////////////
 // Internal functions - should not be called directly
@@ -46,7 +48,6 @@ class DotVector {
 public:
   DotVector(int size);
 
-
   void load(Ptr<Float> input);
   void save(Ptr<Float> output);
 	void dot_product(Ptr<Float> rhs, Float &result);
@@ -62,10 +63,11 @@ private:
 
 void matrix_mult_scalar(int N, float *c, float *a, float *b);
 
-template<int const N>
-void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
-	matrix_mult_kernel(N, dst, a, b);
-}
+void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b);
+
+using FuncType = decltype(matrix_mult);
+
+FuncType *matrix_mult_decorator(int N);
 
 }  // namespace kernels
 

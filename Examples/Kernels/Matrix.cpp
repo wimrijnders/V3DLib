@@ -1,6 +1,10 @@
 #include "Matrix.h"
 #include "Support/debug.h"
 
+namespace {
+	int M = 1;
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Utility functions
 ////////////////////////////////////////////////////////////////////////////////
@@ -13,6 +17,7 @@ float random_float() {
 ////////////////////////////////////////////////////////////////////////////////
 // Kernel code definitions for Matric
 ////////////////////////////////////////////////////////////////////////////////
+
 namespace kernels {
 
 using namespace V3DLib;
@@ -119,6 +124,10 @@ void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
 // End Class DotVector 
 ////////////////////////////////////////////////////////////////////////////////
 
+void set_matrix_dim(int val) {
+	M = val;
+}
+
 
 /**
  * Multiply two square matrixes
@@ -138,7 +147,9 @@ void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
  * - Use all QPU's (TODO)
  * - All QPU's iterate over b together -> increase cache hits
  */
-void matrix_mult_kernel(int const N, Ptr<Float> &dst, Ptr<Float> &a, Ptr<Float> &b) {
+void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
+	int const N = M;
+
   int const DIM = 16*N;
 
   DotVector vec(N);
@@ -165,6 +176,12 @@ void matrix_mult_kernel(int const N, Ptr<Float> &dst, Ptr<Float> &a, Ptr<Float> 
 
     a += DIM;
   End
+}
+
+
+FuncType *matrix_mult_decorator(int N) {
+	M = N;
+	return matrix_mult;
 }
 
 }  // namespace kernels
