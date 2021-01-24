@@ -46,9 +46,11 @@ $C_OBJ_TEST_TMP
 ")
 OBJ_TEST=$(echo "$OBJ_TEST_TMP" | sed "s/^/  /g")
 
-EXAMPLES_SUPPORT="$(find Examples/Rot3DLib -name '*.cpp')
+EXAMPLES_SUPPORT="$(find Examples/Kernels -name '*.cpp')
 $(find Examples/Support -name '*.cpp')
 "
+
+# TODO remove final line with two spaces (need bash equivalent of 'chomp')
 EXAMPLES_EXTRA=$(echo "$EXAMPLES_SUPPORT" | sed "s/\\.cpp$/\\.o  \\\\/g" | sed "s/^/  /")
 
 # Get list of executables

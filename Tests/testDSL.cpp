@@ -409,7 +409,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
 
     SharedArray<int> result(16*N);
 
-    k.load(&result).qpu();
+    k.load(&result).call();
 
     vector<int> expected = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
     check_vector(result, 0, expected);
@@ -423,7 +423,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
 
     SharedArray<float> result(16*N);
 
-    k.load(&result).qpu();
+    k.load(&result).call();
 
     vector<float> expected = { 3.25,  4.25,  5.25,  6.25,  7.25,  8.25,  9.25, 10.25,
                               11.25, 12.25, 13.25, 14.25, 15.25, 16.25, 17.25, 18.25};

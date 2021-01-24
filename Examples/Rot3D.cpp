@@ -4,10 +4,10 @@
 #include "Support/Settings.h"
 #include "Support/Timer.h"
 #include "Support/debug.h"
-#include "Rot3DLib/Rot3DKernels.h"
+#include "Kernels/Rot3D.h"
 
 using namespace V3DLib;
-using namespace Rot3DLib;
+using namespace kernels;
 using KernelType = decltype(rot3D_1);  // All kernel functions except scalar have same prototype
 
 // Number of vertices and angle of rotation
@@ -19,7 +19,7 @@ const float THETA = (float) 3.14159;
 // Command line handling
 // ============================================================================
 
-std::vector<const char *> const kernels = { "2", "1", "cpu" };  // First is default
+std::vector<const char *> const kernel_id = { "2", "1", "cpu" };  // First is default
 
 
 CmdParameters params = {
@@ -27,7 +27,7 @@ CmdParameters params = {
   {{
     "Kernel",
     "-k=",
-		kernels,
+		kernel_id,
     "Select the kernel to use"
 	}, {
     "Display Results",
@@ -121,7 +121,7 @@ void run_kernel(int kernel_index) {
 		case 2: run_scalar_kernel(); break;
 	}
 
-	auto name = kernels[kernel_index];
+	auto name = kernel_id[kernel_index];
 
 	if (!settings.silent) {
 		printf("Ran kernel '%s' with %d QPU's.\n", name, settings.num_qpus);

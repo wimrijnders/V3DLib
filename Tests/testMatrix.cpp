@@ -23,7 +23,7 @@ template<typename Kernel>
 void run_kernel(Kernel &k) {
   //k.interpret();
   //k.emu();
-  k.qpu();
+  k.call();  // k.qpu() is the intention, but is not compiled on non-arm
 }
 
 
@@ -384,9 +384,9 @@ void test_matrix_multiplication() {
 
   k.load(&result, &a, &b);
 
-  printf("Running kernel\n");
+  //printf("Running kernel\n");
   run_kernel(k);
-  printf("Done running kernel\n");
+  //printf("Done running kernel\n");
 
   float precision = 2.5e-4f;  // Empirically determined - the bigger the matrices, the less precise
                               // This value works for 640x640 matrices
@@ -438,10 +438,10 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     SharedArray<float> result(16);
     result.fill(-1);
 
-    printf("Compiling kernel\n");
+    //printf("Compiling kernel\n");
     auto k = compile(check_sum_kernel);
 
-    printf("Running kernel\n");
+    //printf("Running kernel\n");
     k.load(&vec, &result);
     run_kernel(k);
     REQUIRE(result[0] == 4.8f);

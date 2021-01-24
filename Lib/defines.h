@@ -27,10 +27,10 @@
   #endif
 #endif
 
-#if !defined(ARM64) && !defined(ARM32)
-  #pragma message("Compiling on non-ARM platform")
+//#if !defined(ARM64) && !defined(ARM32)
+//  #pragma message("Compiling on non-ARM platform")
 //#else
 //  #pragma message("Compiling for ARM")
-#endif
+//#endif
 
 #endif  // V3DLIB_DEFINES_H

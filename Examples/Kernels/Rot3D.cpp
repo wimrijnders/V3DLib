@@ -5,9 +5,9 @@
 // in the unit tests.
 //
 // ============================================================================
-#include "Rot3DKernels.h"
+#include "Rot3D.h"
 
-namespace Rot3DLib { 
+namespace kernels { 
 
 using namespace V3DLib;
 
@@ -62,4 +62,4 @@ void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) 
   receive(xOld); receive(yOld);
 }
 
-}  // namespace Rot3DLib
+}  // namespace kernels

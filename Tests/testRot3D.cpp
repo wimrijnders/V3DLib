@@ -1,9 +1,9 @@
 #include "catch.hpp"
 #include <math.h>
 #include <cmath>  // frexp()
-#include "../Examples/Rot3DLib/Rot3DKernels.h"
+#include "../Examples/Kernels/Rot3D.h"
 
-using namespace Rot3DLib;
+using namespace kernels;
 
 
 // ============================================================================
