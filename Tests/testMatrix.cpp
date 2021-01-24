@@ -212,9 +212,7 @@ void test_matrix_multiplication() {
   // Random values in array
   //
   for (int i = 0; i < SIZE; i++) {
-    float val = (1.0f*(((float) (rand() % 200)) - 100.0f))/100.0f;  // Intention: values between -1 and 1
-    a[i] = val;
-    a_scalar[i] = val;
+    a_scalar[i] = a[i] = random_float();
   }
 
   SharedArray<float> b(SIZE);

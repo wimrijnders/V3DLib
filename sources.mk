@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sun 24 Jan 2021 03:38:20 AM CET
+# Generated on: Sun 24 Jan 2021 05:33:02 AM CET
 #
 ###############################################################################
 
@@ -80,6 +80,7 @@ EXAMPLES := \
   ID  \
   Rot3D  \
   Tri  \
+  Matrix  \
   Print  \
   Hello  \
   DMA  \
@@ -92,6 +93,7 @@ EXAMPLES := \
 # support files for examples
 EXAMPLES_EXTRA := \
   Examples/Kernels/Rot3D.o  \
+  Examples/Kernels/Matrix.o  \
   Examples/Support/Settings.o  \
   Examples/Support/Timer.o  \
   
