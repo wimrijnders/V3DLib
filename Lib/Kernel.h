@@ -113,6 +113,7 @@ template <typename... ts> inline void nothing(ts... args) {}
 template <typename t, typename u>
 inline bool passParam(Seq<int32_t>* uniforms, u x);
 
+
 // Pass an int
 template <>
 inline bool passParam<Int, int> (Seq<int32_t>* uniforms, int x) {
