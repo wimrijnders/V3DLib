@@ -29,10 +29,9 @@ CmdParameters params = {
 
 
 struct MatrixSettings : public Settings {
-	int N    = 15;
+	int DIM  = 16*15;
 
 	int size() {
-		int DIM  = 16*N;
 		int SIZE = DIM*DIM;
 		return SIZE;
 	}
@@ -53,7 +52,7 @@ struct MatrixSettings : public Settings {
 // ============================================================================
 
 void run_qpu_kernel() {
-  auto k = compile(kernels::matrix_mult_decorator(settings.N));  // Construct kernel
+  auto k = compile(kernels::matrix_mult_decorator(settings.DIM));  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
 
@@ -84,7 +83,7 @@ void run_scalar_kernel() {
   }
 
 	if (!settings.compile_only) {
-		kernels::matrix_mult_scalar(settings.N, result, a, b);
+		kernels::matrix_mult_scalar(settings.DIM, result, a, b);
 	}
 
 	delete [] a;

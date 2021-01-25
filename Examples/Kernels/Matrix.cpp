@@ -2,7 +2,7 @@
 #include "Support/debug.h"
 
 namespace {
-	int M = 1;
+	int N = 1;  // Dimension of square matrix in blocks of 16 values.
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -125,7 +125,7 @@ void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
 ////////////////////////////////////////////////////////////////////////////////
 
 void set_matrix_dim(int val) {
-	M = val;
+	N = val;
 }
 
 
@@ -148,9 +148,7 @@ void set_matrix_dim(int val) {
  * - All QPU's iterate over b together -> increase cache hits
  */
 void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
-	int const N = M;
-
-  int const DIM = 16*N;
+  int const DIM = 16*N;  // N is global static
 
   DotVector vec(N);
   Float result;
@@ -179,8 +177,23 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
 }
 
 
-FuncType *matrix_mult_decorator(int N) {
-	M = N;
+/**
+ * Decorator for the matrix multiplication kernel.
+ *
+ * This passes in a value for the compilation, while leaving the prototype as is.
+ *
+ * NOTE: This function is not thread-safe. It sets a global static.
+ *       Since currently multiple threads are neither used nor supported, 
+ *       this is not an issue. 
+ *
+ * @param dimension  dimension of matrixes used in multiplication,
+ *                   must be a multiple of 16
+ */
+FuncType *matrix_mult_decorator(int dimension) {
+	assert(dimension > 0);
+	assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
+
+	N = dimension >> 4;
 	return matrix_mult;
 }
 

@@ -10,7 +10,7 @@ float random_float();
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Kernel code definitions for Matric
+// Kernel code definitions for Matrix
 ////////////////////////////////////////////////////////////////////////////////
 
 namespace kernels {
@@ -67,7 +67,7 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b);
 
 using FuncType = decltype(matrix_mult);
 
-FuncType *matrix_mult_decorator(int N);
+FuncType *matrix_mult_decorator(int dimension);
 
 }  // namespace kernels
 

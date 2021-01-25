@@ -135,12 +135,12 @@ void test_dotvector() {
 
 
 /**
- * Template parameters N is dimension of square matrix in blocks of 16 values.
+ *
  */
-template<int const N>
-void test_matrix_multiplication() {
-  int const DIM  = 16*N;
-  int const SIZE = DIM*DIM;
+void test_matrix_multiplication(int dimension) {
+	REQUIRE(dimension > 1);
+	REQUIRE(dimension % 16 == 0);
+  int const SIZE = dimension*dimension;
 
   SharedArray<float> a(SIZE);
   SharedArray<float> result(SIZE);
@@ -154,13 +154,13 @@ void test_matrix_multiplication() {
   for (int i = 0; i < SIZE; i++) {
     expected[i] = -1;
   }
-  kernels::matrix_mult_scalar(DIM, expected, a_scalar, a_scalar);
+  kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
 
   for (int i = 0; i < SIZE; i++) {
-    REQUIRE(expected[i] == DIM);
+    REQUIRE(expected[i] == (float) dimension);
   }
 
-  auto k = compile(kernels::matrix_mult_decorator(N));
+  auto k = compile(kernels::matrix_mult_decorator(dimension));
   k.load(&result, &a, &a);
 
   //
@@ -171,6 +171,7 @@ void test_matrix_multiplication() {
   run_kernel(k);
 
   for (int i = 0; i < SIZE; i++) {
+    INFO("Dimension: " << dimension <<", i: " << i);
     REQUIRE(result[i] == 0);
   }
 
@@ -182,27 +183,26 @@ void test_matrix_multiplication() {
   run_kernel(k);
 
   for (int i = 0; i < SIZE; i++) {
-    INFO("N : " << N);
-    INFO("Index " << i << ", [x,y] = [" << (i % DIM) << ", " << (i / DIM) << "]");
-    REQUIRE(result[i] == 16*N);
+    INFO("Index " << i << ", [x,y] = [" << (i % dimension) << ", " << (i / dimension) << "]");
+    REQUIRE(result[i] == (float) dimension);
   }
 
   //
   // Square of unit matrix
   //
   a.fill(0);
-  for (int i = 0; i < 16*N; i++) {
-    a[i + 16*N*i] = 1;
+  for (int i = 0; i < dimension; i++) {
+    a[i + dimension*i] = 1;
   }
 
   run_kernel(k);
 
-  for (int x = 0; x < 16*N; x++) {
-    for (int y = 0; y < 16*N; y++) {
+  for (int x = 0; x < dimension; x++) {
+    for (int y = 0; y < dimension; y++) {
       if (x == y) {
-        REQUIRE(result[x + 16*N*y] == 1);
+        REQUIRE(result[x + dimension*y] == 1);
       } else {
-        REQUIRE(result[x + 16*N*y] == 0);
+        REQUIRE(result[x + dimension*y] == 0);
       }
     }
   }
@@ -216,9 +216,9 @@ void test_matrix_multiplication() {
   }
 
   SharedArray<float> b(SIZE);
-  matrix_copy_transposed(b, a, 16*N);
+  matrix_copy_transposed(b, a, dimension);
 
-  kernels::matrix_mult_scalar(16*N, expected, a_scalar, a_scalar);
+  kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
 
   k.load(&result, &a, &b);
 
@@ -333,10 +333,10 @@ TEST_CASE("Test matrix algebra", "[matrix][mult]") {
   //Platform::use_main_memory(true);
 
   SECTION("Check matrix multiplication") {
-    test_matrix_multiplication<1>();
-    test_matrix_multiplication<2>();
-    test_matrix_multiplication<5>();
-    //test_matrix_multiplication<40>();  // 640x640 matrices, works! If you don't mind waiting for test to complete.
+    test_matrix_multiplication(16);
+    test_matrix_multiplication(2*16);
+    test_matrix_multiplication(5*16);
+    //test_matrix_multiplication(40*16);  // 640x640 matrices, works! If you don't mind waiting for test to complete.
   }
 
   //Platform::use_main_memory(false);
