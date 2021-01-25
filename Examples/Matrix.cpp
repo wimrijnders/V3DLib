@@ -18,30 +18,35 @@ std::vector<const char *> const kernel_id = { "qpu", "cpu" };  // First is defau
 
 
 CmdParameters params = {
-  "Matrix Multiplication\n",
+  "Matrix Multiplication\n\n"
+  "Calculates the multiplication of two square matrices\n",
   {{
     "Kernel",
     "-k=",
 		kernel_id,
     "Select the kernel to use"
+  },{
+    "Matrix dimension",
+    { "-d=","-dimension="},
+		ParamType::POSITIVE_INTEGER,
+    "The number of matrix elements in a row/column. "
+    "Must be a multiple of 16",
+    40
   }}
 };
 
 
 struct MatrixSettings : public Settings {
-	int DIM  = 16*15;
+	int kernel;
+	int dimension  = 16*15;
 
-	int size() {
-		int SIZE = DIM*DIM;
-		return SIZE;
-	}
-
-	int    kernel;
+	int size() const { return dimension*dimension; }
 
 	MatrixSettings() : Settings(&params, true) {}
 
 	void init_params() override {
-		kernel = params.parameters()["Kernel"]->get_int_value();
+		kernel    = params.parameters()["Kernel"]->get_int_value();
+		dimension = params.parameters()["Matrix dimension"]->get_int_value();
 	}
 } settings;
 
@@ -52,7 +57,7 @@ struct MatrixSettings : public Settings {
 // ============================================================================
 
 void run_qpu_kernel() {
-  auto k = compile(kernels::matrix_mult_decorator(settings.DIM));  // Construct kernel
+  auto k = compile(kernels::matrix_mult_decorator(settings.dimension));  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
 
@@ -83,7 +88,7 @@ void run_scalar_kernel() {
   }
 
 	if (!settings.compile_only) {
-		kernels::matrix_mult_scalar(settings.DIM, result, a, b);
+		kernels::matrix_mult_scalar(settings.dimension, result, a, b);
 	}
 
 	delete [] a;
