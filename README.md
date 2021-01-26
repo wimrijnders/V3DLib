@@ -1,10 +1,12 @@
 # V3DLib
 
-**Version 0.0.9**
+**Version 0.0.10**
 
 -----
-**NOTE:** External library `CmdParameter` has changed.
-          Please run `./script/install.sh` when upgrading from version `0.0.8`.
+## NOTE
+
+External library `CmdParameter` has changed.
+Please run `./script/install.sh` when upgrading from a version <= `0.0.8`.
 
 -----
 
