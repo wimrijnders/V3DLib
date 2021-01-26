@@ -5,6 +5,7 @@
 -----
 **NOTE:** External library `CmdParameter` has changed.
           Please run `./script/install.sh` when upgrading from version `0.0.8`.
+
 -----
 
 `V3DLib` is a C++ library for creating programs to run on the `VideoCore` GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
