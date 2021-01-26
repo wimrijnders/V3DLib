@@ -32,21 +32,29 @@ CmdParameters params = {
     "The number of matrix elements in a row/column. "
     "Must be a multiple of 16",
     48
+  },{
+    "Number of repeats",
+    { "-p=","-repeat="},
+		ParamType::POSITIVE_INTEGER,
+    "The number times to execute the matrix multiplication",
+    1
   }}
 };
 
 
 struct MatrixSettings : public Settings {
 	int kernel;
-	int dimension  = 16*15;
+	int dimension;
+	int repeats;
 
 	int size() const { return dimension*dimension; }
 
 	MatrixSettings() : Settings(&params, true) {}
 
 	void init_params() override {
-		kernel    = params.parameters()["Kernel"]->get_int_value();
-		dimension = params.parameters()["Matrix dimension"]->get_int_value();
+		kernel    = params.parameters()["Kernel"           ]->get_int_value();
+		dimension = params.parameters()["Matrix dimension" ]->get_int_value();
+		repeats   = params.parameters()["Number of repeats"]->get_int_value();
 	}
 } settings;
 
@@ -71,12 +79,18 @@ void run_qpu_kernel() {
     b[i] = random_float();
   }
 
+	Timer timer;
   k.load(&result, &a, &b);
-  settings.process(k);
+  for (int i = 0; i < settings.repeats; ++i) {
+    settings.process(k);
+  }
+	timer.end(!settings.silent);
 }
 
 
 void run_scalar_kernel() {
+	if (settings.compile_only) return;
+ 
   // Allocate and initialise
   float *a      = new float [settings.size()];
   float *b      = new float [settings.size()];
@@ -87,34 +101,15 @@ void run_scalar_kernel() {
     b[i] = random_float();
   }
 
-	if (!settings.compile_only) {
-		kernels::matrix_mult_scalar(settings.dimension, result, a, b);
-	}
+	Timer timer;
+  for (int i = 0; i < settings.repeats; ++i) {
+  	kernels::matrix_mult_scalar(settings.dimension, result, a, b);
+  }
+	timer.end(!settings.silent);
 
 	delete [] a;
 	delete [] b;
 	delete [] result;
-}
-
-
-/**
- * Run a kernel as specified by the passed kernel index
- */
-void run_kernel() {
-	Timer timer;
-
-	switch (settings.kernel) {
-		case 0: run_qpu_kernel();    break;	
-		case 1: run_scalar_kernel(); break;
-	}
-
-	auto name = kernel_id[settings.kernel];
-
-	timer.end(!settings.silent);
-
-	if (!settings.silent) {
-		printf("Ran kernel '%s' with %d QPU's.\n", name, settings.num_qpus);
-	}
 }
 
 
@@ -126,7 +121,17 @@ int main(int argc, const char *argv[]) {
 	auto ret = settings.init(argc, argv);
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-	run_kernel();
+  // Run a kernel as specified by the passed kernel index
+	switch (settings.kernel) {
+		case 0: run_qpu_kernel();    break;	
+		case 1: run_scalar_kernel(); break;
+	}
+
+	if (!settings.silent) {
+	  auto name = kernel_id[settings.kernel];
+		printf("Ran kernel '%s' %d time(s) with matrix size %d and %d QPU's.\n",
+           name, settings.repeats, settings.dimension, settings.num_qpus);
+	}
 
   return 0;
 }
