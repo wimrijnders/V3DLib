@@ -31,7 +31,7 @@ CmdParameters params = {
 		ParamType::POSITIVE_INTEGER,
     "The number of matrix elements in a row/column. "
     "Must be a multiple of 16",
-    40
+    48
   }}
 };
 
