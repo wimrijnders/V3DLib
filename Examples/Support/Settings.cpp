@@ -84,7 +84,7 @@ CmdParameters base_params = {
     "Run the kernel on the QPU, emulator or on the interpreter"
   }, {
     "Disable logging",
-    "-s", "-silent",
+    { "-s", "-silent" },
     ParamType::NONE,     // Prefix needed to dsambiguate
     "Do not show the logging output on standard output"
 #ifdef QPU_MODE
