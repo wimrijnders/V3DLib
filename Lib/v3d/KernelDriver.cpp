@@ -553,35 +553,35 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
  * Convert powers of 2 of direct small immediates
  */
 bool convert_int_powers(Instructions &output, int in_value) {
-	if (in_value < 0)  return false;  // only positive values for now
-	if (in_value < 16) return false;  // don't bother with values within range
+  if (in_value < 0)  return false;  // only positive values for now
+  if (in_value < 16) return false;  // don't bother with values within range
 
-	int value = in_value;
-	int left_shift = 0;
+  int value = in_value;
+  int left_shift = 0;
 
   while (value != 0 && (value & 1) == 0) {
     left_shift++;
     value >>= 1;
   }
 
-	if (left_shift == 0) return false;
+  if (left_shift == 0) return false;
 
   int rep_value;
   if (!SmallImm::int_to_opcode_value(value, rep_value)) return false;
 
-	SmallImm imm(rep_value);
+  SmallImm imm(rep_value);
 
-	Instructions ret;
-	ret << mov(r0, imm);
-	ret << shl(r0, r0, SmallImm(left_shift));
+  Instructions ret;
+  ret << mov(r0, imm);
+  ret << shl(r0, r0, SmallImm(left_shift));
 
   std::string cmt;
   cmt << "Load immediate " << in_value;
   ret.front().comment(cmt);
 
-	output << ret;
+  output << ret;
 
-	return true;
+  return true;
 }
 
 
@@ -597,72 +597,72 @@ bool convert_int_powers(Instructions &output, int in_value) {
  * @return  true if conversion successful, false otherwise
  */
 bool encode_int_immediate(Instructions &output, int in_value) {
-	Instructions ret;
-	uint32_t value = (uint32_t) in_value;
+  Instructions ret;
+  uint32_t value = (uint32_t) in_value;
 
-	uint32_t nibbles[7];
+  uint32_t nibbles[7];
 
-	for (int i = 0; i < 8; ++i) {
-		nibbles[i] = (value  >> (4*i)) & 0xf;
-	}
+  for (int i = 0; i < 8; ++i) {
+    nibbles[i] = (value  >> (4*i)) & 0xf;
+  }
 
-	bool did_first = false;
-	for (int i = 7; i >= 0; --i) {
-		if (nibbles[i] == 0) continue;
+  bool did_first = false;
+  for (int i = 7; i >= 0; --i) {
+    if (nibbles[i] == 0) continue;
 
     SmallImm imm(nibbles[i]);
 
-		// r0 is used as temp value,
-		// result is in r1
+    // r0 is used as temp value,
+    // result is in r1
 
-		if (!did_first) {
-  		ret << mov(r1, imm);
+    if (!did_first) {
+      ret << mov(r1, imm);
 
-			if (i > 0) {
-    		if (convert_int_powers(ret, 4*i)) {
-					// r0 now contains value for left shift
-		  		ret << shl(r1, r1, r0);
-				} else {
-		  		ret << shl(r1, r1, SmallImm(4*i));
-				}
-			}
-			did_first = true;
-		} else {
-			if (i > 0) {
-    		if (convert_int_powers(ret, 4*i)) {
-					// r0 now contains value for left shift
-    			ret << mov(r2, imm);
-		  		ret << shl(r0, r2, r0);
-				} else {
-    			ret << mov(r0, imm);
-		  		ret << shl(r0, r0, SmallImm(4*i));
-				}
+      if (i > 0) {
+        if (convert_int_powers(ret, 4*i)) {
+          // r0 now contains value for left shift
+          ret << shl(r1, r1, r0);
+        } else {
+          ret << shl(r1, r1, SmallImm(4*i));
+        }
+      }
+      did_first = true;
+    } else {
+      if (i > 0) {
+        if (convert_int_powers(ret, 4*i)) {
+          // r0 now contains value for left shift
+          ret << mov(r2, imm);
+          ret << shl(r0, r2, r0);
+        } else {
+          ret << mov(r0, imm);
+          ret << shl(r0, r0, SmallImm(4*i));
+        }
 
 
-				ret << bor(r1, r1, r0);
-			} else {
-				ret << bor(r1, r1, imm);
-			}
-		}
-	}
+        ret << bor(r1, r1, r0);
+      } else {
+        ret << bor(r1, r1, imm);
+      }
+    }
+  }
 
-	if (ret.empty()) return false;  // Not expected, but you never know
+  if (ret.empty()) return false;  // Not expected, but you never know
 
-	std::string cmt;
-	cmt << "Load immediate " << in_value;
-	ret.front().comment(cmt);
+  std::string cmt;
+  cmt << "Load immediate " << in_value;
+  ret.front().comment(cmt);
 
-	std::string cmt2;
-	cmt2 << "End load immediate " << in_value;
-	ret.back().comment(cmt2);
+  std::string cmt2;
+  cmt2 << "End load immediate " << in_value;
+  ret.back().comment(cmt2);
 
-	output << ret;
-	return true;
+  output << ret;
+  return true;
 }
 
 
 bool encode_int(Instructions &ret, std::unique_ptr<Location> &dst, int value) {
-	bool success = true;
+  bool success = true;
   int rep_value;
 
   if (SmallImm::int_to_opcode_value(value, rep_value)) {  // direct translation
@@ -670,15 +670,15 @@ bool encode_int(Instructions &ret, std::unique_ptr<Location> &dst, int value) {
     ret << mov(*dst, imm);
   } else if (convert_int_powers(ret, value)) {                 // powers of 2 of basic small int's 
     ret << mov(*dst, r0);
-	} else if (encode_int_immediate(ret, value)) {
-		// All is well
+  } else if (encode_int_immediate(ret, value)) {
+    // All is well
     ret << mov(*dst, r1);
-	} else {
-		// Conversion failed
-		success = false;
-	}
+  } else {
+    // Conversion failed
+    success = false;
+  }
 
-	return success;
+  return success;
 }
 
 
@@ -695,7 +695,7 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
   if (instr.imm.tag == IMM_INT32) {
     int value = instr.imm.intVal;
 
-		if (!encode_int(ret, dst, value)) {
+    if (!encode_int(ret, dst, value)) {
       // Conversion failed, output error
       err_label = "int";
       err_value = std::to_string(value);
@@ -705,7 +705,7 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
     // Allows for the legal int small imm values and their negatives
     float value = instr.imm.floatVal;
     int rep_value;
-		bool success = true;
+    bool success = true;
 
     if (value == 0.0) {
       ret << nop().fmov(*dst, 0.0);  // This only works because the floating point representation of zero is 0x0
@@ -715,20 +715,20 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
     } else if (SmallImm::float_to_opcode_value(value, rep_value)) {
       ret << nop().fmov(*dst, rep_value);  // TODO perhaps make 2nd param Small Imm
     } else if ((value == (float) ((int) value))) {
-			int int_value = (int) value;
+      int int_value = (int) value;
       SmallImm imm(0); // dummy value, TODO why need it???
 
-			if (encode_int(ret, dst, int_value)) {
-      	ret  << itof(*dst, *dst, imm);
-			} else {
-				success = false;
-			}
+      if (encode_int(ret, dst, int_value)) {
+        ret  << itof(*dst, *dst, imm);
+      } else {
+        success = false;
+      }
     } else {
       // TODO: figure out how to handle other float immediates, if necessary at all
-			success = false;
-		}
+      success = false;
+    }
 
-		if (!success) {
+    if (!success) {
       err_label = "float";
       err_value = std::to_string(value);
     }
