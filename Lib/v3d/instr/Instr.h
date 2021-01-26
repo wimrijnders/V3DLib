@@ -188,8 +188,9 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 Instr mov(Location const &loc1, SmallImm val);
 Instr mov(Location const &loc1, Location const &loc2);
 
-Instr bor(Location const &dst, Location const &srca, Location const &srcb);
-Instr bor(Location const &dst, SmallImm const &imma, SmallImm const &immb);
+Instr bor( Location const &dst, Location const &srca, Location const &srcb);
+Instr bor( Location const &dst, Location const &srca, SmallImm const &immb);
+Instr bor( Location const &dst, SmallImm const &imma, SmallImm const &immb);
 Instr band(Location const &dst, Location const &srca, Location const &srcb);
 Instr band(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr bxor(Location const &dst, Location const &srca, SmallImm const &immb);
