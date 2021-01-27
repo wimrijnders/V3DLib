@@ -8,6 +8,7 @@
 #include <memory>
 #include <iostream>
 #include "Kernel.h"
+#include "LibSettings.h"
 
 #ifdef QPU_MODE
 #include "Support/Platform.h"
@@ -94,6 +95,12 @@ CmdParameters base_params = {
     ParamType::NONE,
     "Show the values of the performance counters (vc4 only)"
 #endif  // QPU_MODE
+    }, {
+    "QPU timeout",
+    { "-t=", "-timeout="},
+    ParamType::POSITIVE_INTEGER,
+    "Time in seconds to wait for a result to come back from the QPUs",
+    10
   }}
 };
 
@@ -190,6 +197,9 @@ bool Settings::process(CmdParameters &in_params) {
 #ifdef QPU_MODE
   show_perf_counters = in_params.parameters()["Performance Counters"]->get_bool_value();
 #endif  // QPU_MODE
+
+  int qpu_timeout  = in_params.parameters()["QPU timeout"]->get_int_value();
+  LibSettings::qpu_timeout(qpu_timeout);
 
   if (m_use_num_qpus) {
     num_qpus    = in_params.parameters()["Num QPU's"]->get_int_value();
