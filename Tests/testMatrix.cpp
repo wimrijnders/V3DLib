@@ -272,7 +272,13 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     auto k = compile(check_sum_kernel);
     k.load(&vec, &result);
     run_kernel(k);
-    REQUIRE(result[0] == 4.8f);
+
+		float precision = 0.0f;
+		if (Platform::instance().compiling_for_vc4()) {
+			precision = 1e-5f;
+		}
+
+    REQUIRE(abs(result[0] - 4.8f) <= precision);
 
     for (int i = 0; i < (int) vec.size(); i++) {
       vec[i] = 0.1f*((float ) (i + 1));
@@ -280,7 +286,7 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
 
     k.load(&vec, &result);
     run_kernel(k);
-    REQUIRE(result[0] == 0.1f*(16*17/2));
+    REQUIRE(abs(result[0] - 0.1f*(16*17/2)) <= precision);
   }
 
 

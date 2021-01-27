@@ -15,22 +15,21 @@ namespace v3d {
  * TODO: check if this is relevant
  */
 class Driver {
-	using BoHandles = std::vector<uint32_t>;
+  using BoHandles = std::vector<uint32_t>;
 
 public:
-	void add_bo(BufferObject const &bo) {
-		m_bo_handles.push_back(bo.getHandle());
-	}
+  void add_bo(BufferObject const &bo) {
+    m_bo_handles.push_back(bo.getHandle());
+  }
 
-	void add_bo(uint32_t bo_handle) {
-		m_bo_handles.push_back(bo_handle);
-	}
+  void add_bo(uint32_t bo_handle) {
+    m_bo_handles.push_back(bo_handle);
+  }
 
-	bool execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms = nullptr, uint32_t thread = 1);
+  bool execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms = nullptr, uint32_t thread = 1);
 
 private:
-	BoHandles m_bo_handles;
-  int       m_timeout_sec = 10;
+  BoHandles m_bo_handles;
 };  // class Driver
 
 }  // v3d
