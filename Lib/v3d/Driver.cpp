@@ -39,6 +39,7 @@
 #include "Support/debug.h"
 #include "Driver.h"
 #include "v3d.h"
+#include "LibSettings.h"
 
 namespace V3DLib {
 namespace v3d {
@@ -59,7 +60,6 @@ bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniform
   uint32_t code_phyaddr = code.getAddress();
   uint32_t unif_phyaddr = (uniforms == nullptr)?0u:uniforms->getAddress();
 
-  assert(m_timeout_sec > 0);
   assertq(m_bo_handles.size() > 0, "v3d execute: There should be at least one buffer object present on execution");
 
   // See Note 1
@@ -94,7 +94,7 @@ bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniform
     0    // out_sync
   };
 
-  uint64_t timeout_ns = 1000000000llu * m_timeout_sec;
+  uint64_t timeout_ns = 1000000000llu * LibSettings::qpu_timeout();
 
   bool ret = (0 == v3d_submit_csd(st));
   assert(ret);
