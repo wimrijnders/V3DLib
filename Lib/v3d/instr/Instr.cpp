@@ -1013,6 +1013,11 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
 Instr mov(Location const &loc1, SmallImm val) {
   Instr instr;
 
+  instr.alu_add_set(loc1, val, val);
+  instr.alu.add.op    = V3D_QPU_A_OR;
+
+  return instr;
+/*
   if (loc1.is_rf()) {
     instr.alu.add.magic_write = false;
   } else {
@@ -1028,6 +1033,7 @@ Instr mov(Location const &loc1, SmallImm val) {
   instr.alu.add.waddr = loc1.to_waddr();
 
   return instr;
+*/
 }
 
 
