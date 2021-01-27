@@ -14,7 +14,7 @@ using namespace kernels;
 // Command line handling
 // ============================================================================
 
-std::vector<const char *> const kernel_id = { "qpu", "cpu" };  // First is default
+std::vector<const char *> const kernel_id = { "qpu", "cpu", "dummy" };  // First is default
 
 
 CmdParameters params = {
@@ -24,7 +24,8 @@ CmdParameters params = {
     "Kernel",
     "-k=",
     kernel_id,
-    "Select the kernel to use"
+    "Select the kernel to use\n"
+    "'dummy' is a test-kernel which does all the matrix calculation but does not read or write to main memory"
   },{
     "Matrix dimension",
     { "-d=","-dimension="},
@@ -64,8 +65,8 @@ struct MatrixSettings : public Settings {
 // Local functions
 // ============================================================================
 
-void run_qpu_kernel() {
-  auto k = compile(kernels::matrix_mult_decorator(settings.dimension));  // Construct kernel
+void run_qpu_kernel(bool do_readwrite) {
+  auto k = compile(kernels::matrix_mult_decorator(settings.dimension, do_readwrite));  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
 
@@ -123,8 +124,9 @@ int main(int argc, const char *argv[]) {
 
   // Run a kernel as specified by the passed kernel index
   switch (settings.kernel) {
-    case 0: run_qpu_kernel();    break;  
-    case 1: run_scalar_kernel(); break;
+    case 0: run_qpu_kernel(true); break;  
+    case 1: run_scalar_kernel();  break;
+    case 2: run_qpu_kernel(false); break;  
   }
 
   if (!settings.silent) {

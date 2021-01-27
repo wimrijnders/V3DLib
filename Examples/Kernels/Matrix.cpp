@@ -2,7 +2,8 @@
 #include "Support/debug.h"
 
 namespace {
-	int N = 1;  // Dimension of square matrix in blocks of 16 values.
+	int N             = 1;  // Dimension of square matrix in blocks of 16 values.
+  bool do_readwrite = true;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -14,43 +15,19 @@ float random_float() {
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-// Kernel code definitions for Matric
-////////////////////////////////////////////////////////////////////////////////
-
 namespace kernels {
 
 using namespace V3DLib;
 
-/**
- * CPU version of matrix multiplication, naive implementation
- *
- * Matrixes are assumed to be square.
- *
- * @param N  dimension of square matrices
- * @param c  Pointer to result array
- */
-void matrix_mult_scalar(int N, float *c, float *a, float *b) {
-  for (int x = 0; x < N; x++) {
-    for (int y = 0; y < N; y++) {
-      float result = 0;
 
-      for (int i = 0; i < N; i++) {
-        result += a[i + y*N] * b [x + i*N];
-      }
-
-      c[x + y*N] = result;
-    }
-  }
-}
-
+////////////////////////////////////////////////////////////////////////////////
+// Kernel Helper Functions
+////////////////////////////////////////////////////////////////////////////////
 
 /**
  * Set value of src to vector element 'n' of dst
  *
  * All other values in dst are untouched.
- *
- * This is a kernel helper function.
  *
  * @param n  index of vector element to set. Must be in range 0..15 inclusive
  */
@@ -65,8 +42,6 @@ void set_at(Float &dst, Int n, Float &src) {
  * Sum up all the vector elements of a register.
  *
  * All vector elements of register result will contain the same value.
- *
- * This is a kernel helper function.
  */
 void rotate_sum(Float &input, Float &result) {
   result = input;
@@ -92,14 +67,24 @@ DotVector::DotVector(int size) {
 
 void DotVector::load(Ptr<Float> input) {
   for (int i = 0; i < (int) elements.size(); ++i) {
-    elements[i] = *input;  input += 16;
+    if (do_readwrite) {
+      elements[i] = *input;
+    } else {
+      elements[i] = 0.0f;
+    }
+
+    input += 16;
   }
 }
 
 
 void DotVector::save(Ptr<Float> output) {
   for (int i = 0; i < (int) elements.size(); ++i) {
-    *output = elements[i];  output += 16;
+    if (do_readwrite) {
+      *output = elements[i];
+    }
+
+    output += 16;
   }
 }
 
@@ -113,19 +98,44 @@ void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
   Float tmp = 0;  comment("DotVector::dot_product()");
 
   for (int i = 0; i < (int) elements.size(); ++i) {
-    tmp = tmp + elements[i]*(*rhs);  rhs += 16;
+    if (do_readwrite) {
+      tmp = tmp + elements[i]*(*rhs);
+    } else {
+      Float val = 0;
+      tmp = tmp + elements[i]*val;
+    }
+
+    rhs += 16;
   }
 
   rotate_sum(tmp, result);
 }
 
 
-////////////////////////////////////////////////////////////////////////////////
-// End Class DotVector 
+///////////////////////////////////////////////////////////////////////////////n
+// Kernels
 ////////////////////////////////////////////////////////////////////////////////
 
-void set_matrix_dim(int val) {
-	N = val;
+/**
+ * CPU version of matrix multiplication, naive implementation
+ *
+ * Matrixes are assumed to be square.
+ *
+ * @param N  dimension of square matrices
+ * @param c  Pointer to result array
+ */
+void matrix_mult_scalar(int N, float *c, float *a, float *b) {
+  for (int x = 0; x < N; x++) {
+    for (int y = 0; y < N; y++) {
+      float result = 0;
+
+      for (int i = 0; i < N; i++) {
+        result += a[i + y*N] * b [x + i*N];
+      }
+
+      c[x + y*N] = result;
+    }
+  }
 }
 
 
@@ -165,7 +175,9 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
       set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
 
       If ((b_index & 0xf) == 15)
-        *dst = result;
+        if (do_readwrite) {
+          *dst = result;
+        }
         dst += 16;
       End
 
@@ -174,6 +186,16 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
 
     a += DIM;
   End
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////n
+// Decorator Functions
+////////////////////////////////////////////////////////////////////////////////
+
+void set_matrix_dim(int val) {
+	N = val;
 }
 
 
@@ -189,11 +211,13 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  * @param dimension  dimension of matrixes used in multiplication,
  *                   must be a multiple of 16
  */
-FuncType *matrix_mult_decorator(int dimension) {
+FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite) {
 	assert(dimension > 0);
 	assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
 
 	N = dimension >> 4;
+  do_readwrite = in_do_readwrite;
+
 	return matrix_mult;
 }
 
