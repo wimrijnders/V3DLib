@@ -2,6 +2,8 @@
 
 ## General
 
+- [ ] Get `Pi 1` running again; fails on qpu_enable call
+- [ ] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
 - [ ] ! Fix '+ 0' hack for kernel pointers, this is confusing
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
