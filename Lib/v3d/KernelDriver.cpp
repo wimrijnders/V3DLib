@@ -616,7 +616,8 @@ bool encode_int_immediate(Instructions &output, int in_value) {
     // result is in r1
 
     if (!did_first) {
-      ret << mov(r1, imm);
+      ret << mov(r1, imm);  // TODO Gives segfault on p4-3
+                            //      No clue why, works fine on silke (arm64)d$ and pi3
 
       if (i > 0) {
         if (convert_int_powers(ret, 4*i)) {

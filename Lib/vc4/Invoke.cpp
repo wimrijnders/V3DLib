@@ -2,8 +2,7 @@
 #include "Mailbox.h"
 #include "vc4.h"
 #include "defines.h"
-
-#define QPU_TIMEOUT 10000
+#include "LibSettings.h"
 
 namespace V3DLib {
 
@@ -62,7 +61,7 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
   assertq(offset == (int) numWords, "Check final offset failed");
 
   // Launch QPUs
-  unsigned result = execute_qpu(mb, numQPUs, (uint32_t) launchMsgsPtr, 1, QPU_TIMEOUT);
+  unsigned result = execute_qpu(mb, numQPUs, (uint32_t) launchMsgsPtr, 1, LibSettings::qpu_timeout()*1000);
 #else
   #pragma message("WARNING: invoke() will not run on this platform, only on ARM 32-bits")
   assertq(false, "invoke() will not run on this platform, only on ARM 32-bits");

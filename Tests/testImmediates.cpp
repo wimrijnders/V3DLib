@@ -38,7 +38,7 @@ TEST_CASE("Test loading of integer immediates", "[dsl][imm]") {
   SharedArray<int> int_result(16*N);
   int_result.fill(0);
   SharedArray<float> float_result(16*(N + 1));
-  int_result.fill(0.0f);
+  float_result.fill(0.0f);
 
   auto k = compile(immediate_kernel);
   //k.pretty(false);

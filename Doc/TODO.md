@@ -137,7 +137,7 @@ Error(s) on command line:
 - [x] Add performance counters to interface of `RegisterMap`
 - [ ] Add Logging class
 - [ ] Add method for build/platform info, for display on startup of an application
-- [ ] Make QPU execution timeout a runtime setting
+- [x] Make QPU execution timeout a runtime setting
 
 
 ## Other
