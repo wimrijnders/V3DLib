@@ -253,10 +253,10 @@ void test_matrix_multiplication(int dimension) {
 	//
 	// TODO fix
 	//
-/*
   auto k = compile(kernels::matrix_mult_decorator(dimension));
   k.load(&result, &a, &a);
 	k.pretty(false, "Matrix_code.txt");
+/*
 	check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
 */
 	// Do the same thing with TMU (different for vc4 only)
