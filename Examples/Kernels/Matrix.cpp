@@ -101,19 +101,17 @@ void pre_read(Float &dst, Ptr<Float> &src) {
     return;
   }
 
-/*
   if (do_preload) {
     // on vc4, this will use TMU
     gather(src);
     receive(dst);
     src += 16;
   } else {
-*/
     // on v3d, this will create the same code as the if-block
     // on vc4, this will use DMA
     dst = *src;
     src += 16;
-//  }
+  }
 }
 
 
