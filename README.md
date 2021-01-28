@@ -1,6 +1,6 @@
 # V3DLib
 
-**Version 0.0.11**
+**Version 0.0.12**
 
 -----
 ## NOTE
