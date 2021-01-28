@@ -135,35 +135,15 @@ void test_dotvector() {
 }
 
 
-/**
- *
- */
-void test_matrix_multiplication(int dimension) {
-	REQUIRE(dimension > 1);
-	REQUIRE(dimension % 16 == 0);
-  int const SIZE = dimension*dimension;
-
-  SharedArray<float> a(SIZE);
-  SharedArray<float> result(SIZE);
-
-  float a_scalar[SIZE];
-  for (int i = 0; i < SIZE; i++) {
-    a_scalar[i] = 1;
-  }
-
-  float expected[SIZE];
-  for (int i = 0; i < SIZE; i++) {
-    expected[i] = -1;
-  }
-  kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
-
-  for (int i = 0; i < SIZE; i++) {
-    REQUIRE(expected[i] == (float) dimension);
-  }
-
-  auto k = compile(kernels::matrix_mult_decorator(dimension));
-  k.load(&result, &a, &a);
-
+template<typename Kernel>
+void check_matrix_results(
+	int SIZE,
+	int dimension,
+	Kernel &k,
+	SharedArray<float> &a,
+	SharedArray<float> &result,
+	float *a_scalar,
+	float *expected) {
   //
   // Multiplication of empty input matrix
   //
@@ -233,6 +213,47 @@ void test_matrix_multiplication(int dimension) {
   for (int i = 0; i < SIZE; i++) {
     REQUIRE(abs(result[i] - expected[i]) < precision);
   }
+}
+
+
+/**
+ *
+ */
+void test_matrix_multiplication(int dimension) {
+	REQUIRE(dimension > 1);
+	REQUIRE(dimension % 16 == 0);
+  int const SIZE = dimension*dimension;
+
+  SharedArray<float> a(SIZE);
+  SharedArray<float> result(SIZE);
+	result.fill(-1.0f);
+
+  float a_scalar[SIZE];
+  for (int i = 0; i < SIZE; i++) {
+    a_scalar[i] = 1;
+  }
+
+  float expected[SIZE];
+  for (int i = 0; i < SIZE; i++) {
+    expected[i] = -1;
+  }
+  kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
+
+  for (int i = 0; i < SIZE; i++) {
+    REQUIRE(expected[i] == (float) dimension);
+  }
+
+  auto k = compile(kernels::matrix_mult_decorator(dimension));
+  k.load(&result, &a, &a);
+	check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
+
+/*
+	// Do the same thing with TMU (different for vc4 only)
+  auto k2 = compile(kernels::matrix_mult_decorator(dimension, true, true));
+  k2.load(&result, &a, &a);
+	check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);
+*/
+
 }
 
 }  // anon namespace

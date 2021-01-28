@@ -5,6 +5,7 @@
 namespace {
 	int N             = 1;  // Dimension of square matrix in blocks of 16 values.
   bool do_readwrite = true;
+  bool do_preload   = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -19,7 +20,6 @@ float random_float() {
 namespace kernels {
 
 using namespace V3DLib;
-//using ::operator<<;  // C++ weirdness
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +60,19 @@ void rotate_sum(Float &input, Float &result) {
  * The reason for this is that the dotvector product is already unrolled.
  *
  * Will still be useful in other contexts.
+ *
+ * ## Usage
+ * Given a loop:
+ * 
+ *   For (Int b_index = 0, b_index < DIM, b_index++)
+ *     // Code possibly using b_index
+ *   End
+ *
+ * Replace with following:
+ *
+ *   loop_unroll(DIM, 8, [&] (Int b_index) {
+ *     // Same code as in loop above
+ *   });
  */
 void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
   assert(size > 0);
@@ -81,6 +94,46 @@ void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
 }
 
 
+void pre_read(Float &dst, Ptr<Float> &src) {
+  if (!do_readwrite) {
+    dst = 0.0f;
+    src += 16;
+    return;
+  }
+
+  if (do_preload) {
+    // on vc4, this will use TMU
+    gather(src);
+    receive(dst);
+    src += 16;
+  } else {
+    // on v3d, this will create the same code as the if-block
+    // on vc4, this will use DMA
+    dst = *src;
+    src += 16;
+  }
+}
+
+
+void pre_write(Ptr<Float> &dst, Float &src) {
+  if (!do_readwrite) {
+    dst += 16;
+    return;
+  }
+
+  if (do_preload) {
+    // on vc4, this will use TMU
+    store(src, dst);
+    dst += 16;
+  } else {
+    // on v3d, this will create the same code as the if-block
+    // on vc4, this will use DMA
+    *dst = src;
+    dst += 16;
+  }
+}
+
+
 ////////////////////////////////////////////////////////////////////////////////
 // Class DotVector 
 ////////////////////////////////////////////////////////////////////////////////
@@ -92,27 +145,15 @@ DotVector::DotVector(int size) {
 
 
 void DotVector::load(Ptr<Float> input) {
-  if (do_readwrite) {
-      for (int i = 0; i < (int) elements.size(); ++i) {
-        elements[i] = *input;
-        input += 16;
-      }
-  } else {
-      for (int i = 0; i < (int) elements.size(); ++i) {
-        elements[i] = 0.0f;
-        input += 16;
-      }
+  for (int i = 0; i < (int) elements.size(); ++i) {
+    pre_read(elements[i], input);
   }
 }
 
 
 void DotVector::save(Ptr<Float> output) {
   for (int i = 0; i < (int) elements.size(); ++i) {
-    if (do_readwrite) {
-      *output = elements[i];
-    }
-
-    output += 16;
+    pre_write(output, elements[i]);
   }
 }
 
@@ -125,17 +166,10 @@ void DotVector::save(Ptr<Float> output) {
 void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
   Float tmp = 0;  comment("DotVector::dot_product()");
 
-  if (do_readwrite) {
-    for (int i = 0; i < (int) elements.size(); ++i) {
-      tmp += elements[i]*(*rhs);
-      rhs += 16;
-    }
-  } else {
-    for (int i = 0; i < (int) elements.size(); ++i) {
-      Float val = 0;
-      tmp += elements[i]*val;
-      rhs += 16;
-    }
+  for (int i = 0; i < (int) elements.size(); ++i) {
+    Float tmp2;
+    pre_read(tmp2, rhs);
+    tmp += elements[i]*tmp2;
   }
 
   rotate_sum(tmp, result);
@@ -183,7 +217,7 @@ void matrix_mult_scalar(int N, float *c, float *a, float *b) {
  *
  * - Load one entire row of a into the QPU for fetching one single time
  * - Use prefetching on the TMU (TODO)
- * - unroll the internal loop (TODO)
+ * - unroll the internal loop (does not help, not implemented here)
  * - Use all QPU's (TODO)
  * - All QPU's iterate over b together -> increase cache hits
  */
@@ -205,21 +239,11 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
       set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
 
       If ((b_index & 0xf) == 15)
-        if (do_readwrite) {
-          *dst = result;
-        }
-        dst += 16;
+        pre_write(dst, result);
       End
 
       b_in += DIM;
     End  // IDIOT }  - never forget
-/*
-    // Loop unroll version:
-
-    loop_unroll(DIM, 8, [&] (Int b_index) {
-      // ... same code as in loop above
-    });
-*/
 
     a += DIM;
   End
@@ -236,21 +260,24 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  *
  * This passes in a value for the compilation, while leaving the prototype as is.
  *
- * NOTE: This function is not thread-safe, it sets global statics.
- *       Since currently multiple threads are neither used nor supported, 
- *       this is not an issue. 
+ * **NOTE:** This function is not thread-safe, it sets global statics.
+ *           Since currently multiple threads are neither used nor supported, 
+ *           this is not an issue. 
  *
- * @param dimension  dimension of matrixes used in multiplication,
- *                   must be a multiple of 16
+ * @param dimension       dimension of matrixes used in multiplication,
+ *                        must be a multiple of 16
  * @param in_do_readwrite if true, read/write to/from main memory (what you
- *                  normally expect). Otherwise, do the kernel operations only.
+ *                        normally expect). Otherwise, do the kernel operations only.
+ *
+ * @return  pointer to the actual kernel function
  */
-FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite) {
+FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_do_preload) {
 	assert(dimension > 0);
 	assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
 
 	N = dimension >> 4;
   do_readwrite = in_do_readwrite;
+  do_preload   = in_do_preload;
 
 	return matrix_mult;
 }
