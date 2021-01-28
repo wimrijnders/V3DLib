@@ -41,7 +41,9 @@ void ForBody_();
 void Print(const char *);
 void Print(IntExpr x);
 void header(char const *str);
+inline void header(std::string const &str) { header(str.c_str()); }
 void comment(char const *str);
+inline void comment(std::string const &str) { comment(str.c_str()); }
 void initStmt(StmtStack &stmtStack);
 void finishStmt();
 

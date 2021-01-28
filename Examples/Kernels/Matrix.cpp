@@ -1,5 +1,6 @@
 #include "Matrix.h"
-#include "Support/debug.h"
+#include <functional>
+#include "Support/basics.h"
 
 namespace {
 	int N             = 1;  // Dimension of square matrix in blocks of 16 values.
@@ -18,6 +19,7 @@ float random_float() {
 namespace kernels {
 
 using namespace V3DLib;
+//using ::operator<<;  // C++ weirdness
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -44,14 +46,38 @@ void set_at(Float &dst, Int n, Float &src) {
  * All vector elements of register result will contain the same value.
  */
 void rotate_sum(Float &input, Float &result) {
-  result = input;
+  result = input;              comment("rotate_sum");
 
-  Float tmp = input;              comment("rotate_sum, loop unrolled");
-  for (int i = 0; i < 15; i++) {  // loop unroll
-    tmp = rotate(tmp, 1);
-    result += tmp;
-    //result = result + tmp;
-  }
+  result += rotate(result, 1);
+  result += rotate(result, 2);
+  result += rotate(result, 4);
+  result += rotate(result, 8);
+}
+
+
+/**
+ * Works, but does not improve the performance of matrix in any way.
+ * The reason for this is that the dotvector product is already unrolled.
+ *
+ * Will still be useful in other contexts.
+ */
+void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
+  assert(size > 0);
+  assert(unroll > 0);
+  assert(size >= unroll);
+  assertq(size % unroll == 0, "loop_unroll(): size must be a multiple of unroll");
+
+  std::string cmt("Loop unroll ");
+  cmt << unroll << " for size " << size;
+
+  Int i = 0;  comment(cmt);
+  For (, i < size, i += unroll)
+    for (int j = 0; j < unroll; ++j) {
+      f(i + j);
+      cmt = "End loop unroll ";
+      comment(cmt << j << "/" << unroll);
+    }
+  End
 }
 
 
@@ -66,14 +92,16 @@ DotVector::DotVector(int size) {
 
 
 void DotVector::load(Ptr<Float> input) {
-  for (int i = 0; i < (int) elements.size(); ++i) {
-    if (do_readwrite) {
-      elements[i] = *input;
-    } else {
-      elements[i] = 0.0f;
-    }
-
-    input += 16;
+  if (do_readwrite) {
+      for (int i = 0; i < (int) elements.size(); ++i) {
+        elements[i] = *input;
+        input += 16;
+      }
+  } else {
+      for (int i = 0; i < (int) elements.size(); ++i) {
+        elements[i] = 0.0f;
+        input += 16;
+      }
   }
 }
 
@@ -97,15 +125,17 @@ void DotVector::save(Ptr<Float> output) {
 void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
   Float tmp = 0;  comment("DotVector::dot_product()");
 
-  for (int i = 0; i < (int) elements.size(); ++i) {
-    if (do_readwrite) {
-      tmp = tmp + elements[i]*(*rhs);
-    } else {
-      Float val = 0;
-      tmp = tmp + elements[i]*val;
+  if (do_readwrite) {
+    for (int i = 0; i < (int) elements.size(); ++i) {
+      tmp += elements[i]*(*rhs);
+      rhs += 16;
     }
-
-    rhs += 16;
+  } else {
+    for (int i = 0; i < (int) elements.size(); ++i) {
+      Float val = 0;
+      tmp += elements[i]*val;
+      rhs += 16;
+    }
   }
 
   rotate_sum(tmp, result);
@@ -183,6 +213,13 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
 
       b_in += DIM;
     End  // IDIOT }  - never forget
+/*
+    // Loop unroll version:
+
+    loop_unroll(DIM, 8, [&] (Int b_index) {
+      // ... same code as in loop above
+    });
+*/
 
     a += DIM;
   End
@@ -191,25 +228,22 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
 
 
 ///////////////////////////////////////////////////////////////////////////////n
-// Decorator Functions
+// Decorator Function
 ////////////////////////////////////////////////////////////////////////////////
-
-void set_matrix_dim(int val) {
-	N = val;
-}
-
 
 /**
  * Decorator for the matrix multiplication kernel.
  *
  * This passes in a value for the compilation, while leaving the prototype as is.
  *
- * NOTE: This function is not thread-safe. It sets a global static.
+ * NOTE: This function is not thread-safe, it sets global statics.
  *       Since currently multiple threads are neither used nor supported, 
  *       this is not an issue. 
  *
  * @param dimension  dimension of matrixes used in multiplication,
  *                   must be a multiple of 16
+ * @param in_do_readwrite if true, read/write to/from main memory (what you
+ *                  normally expect). Otherwise, do the kernel operations only.
  */
 FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite) {
 	assert(dimension > 0);

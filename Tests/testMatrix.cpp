@@ -108,6 +108,7 @@ void test_dotvector() {
   run_kernel(k);
 
   for (int i = 0; i < (int) a.size(); i++) {
+		INFO("N: " << N << ", i: " << i);
     REQUIRE(a[i] == b[i]);
   }
 
