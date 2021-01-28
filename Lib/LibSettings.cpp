@@ -3,7 +3,7 @@
 
 namespace V3DLib {
 namespace {
-int const QPU_TIMEOUT = 10000;
+int const QPU_TIMEOUT = 10;
 
 struct SettingsInternal {
 	int qpu_timeout = -1;  // seconds, time to wait for response from QPU

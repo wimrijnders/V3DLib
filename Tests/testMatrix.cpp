@@ -144,6 +144,7 @@ void check_matrix_results(
 	SharedArray<float> &result,
 	float *a_scalar,
 	float *expected) {
+
   //
   // Multiplication of empty input matrix
   //
@@ -243,17 +244,26 @@ void test_matrix_multiplication(int dimension) {
     REQUIRE(expected[i] == (float) dimension);
   }
 
+
+	//
+	// EITHER enable kernel k code OR kernel k2.
+	// Enabling both leads to GPU hang!
+	// Either works fine when run by itself
+	// Confirmed that at this stage, output code is same for both kernels.
+	//
+	// TODO fix
+	//
+/*
   auto k = compile(kernels::matrix_mult_decorator(dimension));
   k.load(&result, &a, &a);
+	k.pretty(false, "Matrix_code.txt");
 	check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
-
-/*
+*/
 	// Do the same thing with TMU (different for vc4 only)
   auto k2 = compile(kernels::matrix_mult_decorator(dimension, true, true));
+	k2.pretty(false, "Matrix_code_preload.txt");
   k2.load(&result, &a, &a);
 	check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);
-*/
-
 }
 
 }  // anon namespace

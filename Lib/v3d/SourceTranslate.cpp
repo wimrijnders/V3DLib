@@ -68,7 +68,8 @@ void storeRequest(Seq<Instr> &seq, Expr::Ptr data, Expr::Ptr addr) {
 
   seq << mov(TMUD, srcData);
   seq.back().comment("Store request");
-  seq << mov(TMUA, srcAddr);
+  seq << mov(TMUA, srcAddr)
+	    << tmuwt();
 }
 
 }  // anon namespace

@@ -101,17 +101,19 @@ void pre_read(Float &dst, Ptr<Float> &src) {
     return;
   }
 
+/*
   if (do_preload) {
     // on vc4, this will use TMU
     gather(src);
     receive(dst);
     src += 16;
   } else {
+*/
     // on v3d, this will create the same code as the if-block
     // on vc4, this will use DMA
     dst = *src;
     src += 16;
-  }
+//  }
 }
 
 
@@ -220,6 +222,7 @@ void matrix_mult_scalar(int N, float *c, float *a, float *b) {
  * - unroll the internal loop (does not help, not implemented here)
  * - Use all QPU's (TODO)
  * - All QPU's iterate over b together -> increase cache hits
+ * - Maybe utilize wait slots in branches (TODO)
  */
 void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   int const DIM = 16*N;  // N is global static
