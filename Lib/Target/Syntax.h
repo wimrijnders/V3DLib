@@ -205,15 +205,15 @@ void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4);
 // QPU instructions
 struct Instr : public InstructionComment {
 
-	class List : public Seq<Instr> {
-		using Parent = Seq<Instr>;
-	public:
-		List() = default;
-		List(int size) : Parent(size) {}
+  class List : public Seq<Instr> {
+    using Parent = Seq<Instr>;
+  public:
+    List() = default;
+    List(int size) : Parent(size) {}
 
-		std::string dump() const;
-		std::string mnemonics(bool with_comments = false) const;
-	};
+    std::string dump() const;
+    std::string mnemonics(bool with_comments = false) const;
+  };
 
   InstrTag tag;
 

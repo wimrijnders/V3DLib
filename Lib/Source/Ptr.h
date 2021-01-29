@@ -73,7 +73,7 @@ struct Ptr : public BaseExpr {
   Ptr<T>() : BaseExpr(mkVar(freshVar()), "Ptr") {}
 
 /*
-	// TODO get rid of ctor acting as reference
+  // TODO get rid of ctor acting as reference
   Ptr<T>(Ptr<T> const &rhs) : Ptr<T>() {
     assign(expr(), rhs.expr());
   }

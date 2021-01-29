@@ -995,8 +995,8 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
  * Translate instructions from target to v3d
  */
 void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &instructions) {
-	//breakpoint
-	//std::cout << instrs.dump();
+  //breakpoint
+  //std::cout << instrs.dump();
 
   assert(checkUniformAtTop(instrs));
   bool prev_was_init_begin = false;
