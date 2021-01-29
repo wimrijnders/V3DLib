@@ -32,32 +32,6 @@ private:
 // Class Stmt
 // ============================================================================
 
-// What kind of statement is it?
-enum StmtTag {
-  SKIP,
-  ASSIGN,
-  SEQ,
-  WHERE,
-  IF,
-  WHILE,
-  PRINT,
-  FOR,
-  SET_READ_STRIDE,
-  SET_WRITE_STRIDE,
-  LOAD_RECEIVE,
-  STORE_REQUEST,
-  SEND_IRQ_TO_HOST,
-  SEMA_INC,
-  SEMA_DEC,
-  SETUP_VPM_READ,
-  SETUP_VPM_WRITE,
-  SETUP_DMA_READ,
-  SETUP_DMA_WRITE,
-  DMA_READ_WAIT,
-  DMA_WRITE_WAIT,
-  DMA_START_READ,
-  DMA_START_WRITE
-};
 
 
 /**
@@ -73,6 +47,37 @@ enum StmtTag {
  */
 struct Stmt : public InstructionComment {
   using Ptr = std::shared_ptr<Stmt>;
+
+  // What kind of statement is it?
+  enum Tag {
+    SKIP,
+    ASSIGN,
+    SEQ,
+    WHERE,
+    IF,
+    WHILE,
+    PRINT,
+    FOR,
+    LOAD_RECEIVE,
+    STORE_REQUEST,
+
+    GATHER_PRELOAD,
+
+    // DMA stuff
+    SET_READ_STRIDE,
+    SET_WRITE_STRIDE,
+    SEND_IRQ_TO_HOST,
+    SEMA_INC,
+    SEMA_DEC,
+    SETUP_VPM_READ,
+    SETUP_VPM_WRITE,
+    SETUP_DMA_READ,
+    SETUP_DMA_WRITE,
+    DMA_READ_WAIT,
+    DMA_WRITE_WAIT,
+    DMA_START_READ,
+    DMA_START_WRITE
+  };
 
   ~Stmt() {}
 
@@ -117,9 +122,9 @@ struct Stmt : public InstructionComment {
   //
   // Instantiation methods
   //
-  static Ptr create(StmtTag in_tag);
-  static Ptr create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);  // TODO make private
-  static Ptr create(StmtTag in_tag, Ptr s0, Ptr s1);
+  static Ptr create(Tag in_tag);
+  static Ptr create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1);  // TODO make private
+  static Ptr create(Tag in_tag, Ptr s0, Ptr s1);
   static Ptr create_assign(Expr::Ptr lhs, Expr::Ptr rhs);
   static Ptr create_sequence(Ptr s0, Ptr s1);
 
@@ -127,7 +132,7 @@ struct Stmt : public InstructionComment {
   static Ptr mkWhile(CExpr::Ptr cond, Ptr body);
   static Ptr mkFor(CExpr::Ptr cond, Ptr inc, Ptr body);
 
-  StmtTag tag;  // What kind of statement is it?
+  Tag tag;  // What kind of statement is it?
 
   union {
     // Print
@@ -169,7 +174,7 @@ private:
 
   CExpr::Ptr m_cond;
 
-  void init(StmtTag in_tag);
+  void init(Tag in_tag);
   std::string disp_intern(bool with_linebreaks, int seq_depth) const;
 };
 

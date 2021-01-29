@@ -4,6 +4,7 @@
 #include "Source/Stmt.h"  // srcReg()
 #include "Target/Liveness.h"
 #include "Target/Subst.h"
+#include "vc4/DMA/DMA.h"
 
 namespace V3DLib {
 
@@ -238,25 +239,14 @@ void add_init(Seq<Instr> &code) {
  * @return true if statement handled, false otherwise
  */
 bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt::Ptr s) {
-  switch (s->tag) {
-    case STORE_REQUEST:
-      storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
-      return true;
+	if (DMA::is_dma_tag(s->tag)) {
+    fatal("VPM and DMA reads and writes can not be used for v3d");
+    return true;
+	}
 
-    case SET_READ_STRIDE:
-    case SET_WRITE_STRIDE:
-    case SEMA_INC:
-    case SEMA_DEC:
-    case SEND_IRQ_TO_HOST:
-    case SETUP_VPM_READ:
-    case SETUP_VPM_WRITE:
-    case SETUP_DMA_READ:
-    case SETUP_DMA_WRITE:
-    case DMA_READ_WAIT:
-    case DMA_WRITE_WAIT:
-    case DMA_START_READ:
-    case DMA_START_WRITE:
-      fatal("VPM and DMA reads and writes can not be used for v3d");
+  switch (s->tag) {
+    case Stmt::STORE_REQUEST:
+      storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
       return true;
 
     default:

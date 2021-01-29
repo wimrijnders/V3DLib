@@ -61,7 +61,7 @@ std::string PrintStmt::disp() const {
  * Replacement initializer for this class,
  * because a class with unions can not have a ctor.
  */
-void Stmt::init(StmtTag in_tag) {
+void Stmt::init(Tag in_tag) {
   clear_comments();  // TODO prob not necessary, check
 
   assert(SKIP <= in_tag && in_tag <= DMA_START_WRITE);
@@ -327,14 +327,14 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
 }
 
 
-Stmt::Ptr Stmt::create(StmtTag in_tag) {
+Stmt::Ptr Stmt::create(Tag in_tag) {
   Ptr ret(new Stmt());
   ret->init(in_tag);
   return ret;
 }
 
 
-Stmt::Ptr Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
+Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
   Ptr ret(new Stmt());
   ret->init(in_tag);
 
@@ -368,7 +368,7 @@ Stmt::Ptr Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 }
 
 
-Stmt::Ptr Stmt::create(StmtTag in_tag, Ptr s0, Ptr s1) {
+Stmt::Ptr Stmt::create(Tag in_tag, Ptr s0, Ptr s1) {
   Ptr ret(new Stmt());
   ret->init(in_tag);
 
@@ -473,38 +473,38 @@ CExpr::Ptr Stmt::loop_cond() const {
 // Functions on statements
 // ============================================================================
 
-Stmt::Ptr mkSkip() { return Stmt::create(SKIP); }
+Stmt::Ptr mkSkip() { return Stmt::create(Stmt::SKIP); }
 
 Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
-  Stmt::Ptr s = Stmt::create(WHERE, thenStmt, elseStmt);
+  Stmt::Ptr s = Stmt::create(Stmt::WHERE, thenStmt, elseStmt);
   s->where_cond(cond);
   return s;
 }
 
 
 Stmt::Ptr Stmt::mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt) {
-  Stmt::Ptr s = Stmt::create(IF, thenStmt, elseStmt);
+  Stmt::Ptr s = Stmt::create(Stmt::IF, thenStmt, elseStmt);
   s->m_cond   = cond;
   return s;
 }
 
 
 Stmt::Ptr Stmt::mkWhile(CExpr::Ptr cond, Ptr body) {
-  Stmt::Ptr s = Stmt::create(WHILE, body, Stmt::Ptr());
+  Stmt::Ptr s = Stmt::create(Stmt::WHILE, body, Stmt::Ptr());
   s->m_cond   = cond;
   return s;
 }
 
 
 Stmt::Ptr Stmt::mkFor(CExpr::Ptr cond, Ptr inc, Ptr body) {
-  Stmt::Ptr s = Stmt::create(FOR, inc, body);
+  Stmt::Ptr s = Stmt::create(Stmt::FOR, inc, body);
   s->m_cond   = cond;
   return s;
 }
 
 
 Stmt::Ptr mkPrint(PrintTag t, Expr::Ptr e) {
-  Stmt::Ptr s = Stmt::create(PRINT, e, nullptr);
+  Stmt::Ptr s = Stmt::create(Stmt::PRINT, e, nullptr);
   s->print.tag(t);
   return s;
 }

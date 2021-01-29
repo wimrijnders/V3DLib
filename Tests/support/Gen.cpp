@@ -412,45 +412,37 @@ Stmt::Ptr genPrint(GenOptions* opts, int depth) {
  * Generate statement
  */
 Stmt::Ptr genStmt(GenOptions* opts, int depth, int length) {
-  switch (randRange(SKIP, PRINT)) {
-    // Sequential composition
-    case SEQ:
+  switch (randRange(Stmt::SKIP, Stmt::PRINT)) {
+    case Stmt::SEQ:    // Sequential composition
       if (length > 0)
         return Stmt::create_sequence(genStmt(opts, depth, 0), genStmt(opts, depth, length-1));
 
-    // Where statement
-    case WHERE:
+    case Stmt::WHERE:
       if (length > 0 && depth > 0)
         return mkWhere(
 					genBExpr(opts, depth),
           genWhere(opts, depth-1, opts->length),
           genWhere(opts, depth-1, opts->length));
 
-    // If statement
-    case IF:
+    case Stmt::IF:
       if (length > 0 && depth > 0)
         return Stmt::mkIf(
 					genCExpr(opts, depth),
 					genStmt(opts, depth-1, opts->length),
 					genStmt(opts, depth-1, opts->length));
 
-    // While statement
-    case WHILE:
+    case Stmt::WHILE:
       if (length > 0 && depth > 0)
         return genWhile(opts, depth);
 
-    // Print statement
-    case PRINT:
+    case Stmt::PRINT:
       return genPrint(opts, depth);
 
-    // No-op
-    case SKIP:
+    case Stmt::SKIP:   // No-op
       return mkSkip();
 
-    // Assignment
-    case ASSIGN:
+    case Stmt::ASSIGN: // Assignment
       return genAssign(opts, depth);
-
   }
 
   // Not reachable

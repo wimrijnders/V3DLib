@@ -4,32 +4,31 @@
 #include "LoadStore.h"
 
 namespace V3DLib {
-
 namespace {
 
 // ============================================================================
 // Set-stride statements
 // ============================================================================
 
-Seq<Instr> setStrideStmt(StmtTag tag, Expr::Ptr e) {
+Seq<Instr> setStrideStmt(Stmt::Tag tag, Expr::Ptr e) {
   Seq<Instr> ret;
 
   if (e->tag() == Expr::INT_LIT) {
-    if (tag == SET_READ_STRIDE)
+    if (tag == Stmt::SET_READ_STRIDE)
       ret << genSetReadPitch(e->intLit);
     else
       ret << genSetWriteStride(e->intLit);
   } else if (e->tag() == Expr::VAR) {
     Reg reg = srcReg(e->var());
 
-    if (tag == SET_READ_STRIDE)
+    if (tag == Stmt::SET_READ_STRIDE)
       ret << genSetReadPitch(reg);
     else
       ret << genSetWriteStride(reg);
   } else {
     Var v = freshVar();
     ret << varAssign(v, e);
-    if (tag == SET_READ_STRIDE)
+    if (tag == Stmt::SET_READ_STRIDE)
       ret << genSetReadPitch(srcReg(v));
     else
       ret << genSetWriteStride(srcReg(v));
@@ -145,9 +144,9 @@ Seq<Instr> startDMAWriteStmt(Expr::Ptr e) {
 // Semaphores
 // ============================================================================
 
-Instr semaphore(StmtTag tag, int semaId) {
+Instr semaphore(Stmt::Tag tag, int semaId) {
   Instr instr;
-  instr.tag = (tag == SEMA_INC)? SINC : SDEC;
+  instr.tag = (tag == Stmt::SEMA_INC)? SINC : SDEC;
   instr.semaId = semaId;
 
   return instr;
@@ -222,20 +221,20 @@ namespace vc4 {
 bool translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
 
   switch (s->tag) {
-    case STORE_REQUEST:    seq << storeRequestOperation(s);              return true;
-    case SET_READ_STRIDE:
-    case SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    return true;
-    case SEMA_INC:
-    case SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          return true;
-    case SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       return true;
-    case SETUP_VPM_READ:   seq << setupVPMReadStmt(s);                   return true;
-    case SETUP_VPM_WRITE:  seq << setupVPMWriteStmt(s);                  return true;
-    case SETUP_DMA_READ:   seq << setupDMAReadStmt(s);                   return true;
-    case SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  return true;
-    case DMA_READ_WAIT:    seq << genWaitDMALoad();                      return true;
-    case DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     return true;
-    case DMA_START_READ:   seq<< startDMAReadStmt(s->address());         return true;
-    case DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       return true;
+    case Stmt::STORE_REQUEST:    seq << storeRequestOperation(s);              return true;
+    case Stmt::SET_READ_STRIDE:
+    case Stmt::SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    return true;
+    case Stmt::SEMA_INC:
+    case Stmt::SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          return true;
+    case Stmt::SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       return true;
+    case Stmt::SETUP_VPM_READ:   seq << setupVPMReadStmt(s);                   return true;
+    case Stmt::SETUP_VPM_WRITE:  seq << setupVPMWriteStmt(s);                  return true;
+    case Stmt::SETUP_DMA_READ:   seq << setupDMAReadStmt(s);                   return true;
+    case Stmt::SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  return true;
+    case Stmt::DMA_READ_WAIT:    seq << genWaitDMALoad();                      return true;
+    case Stmt::DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     return true;
+    case Stmt::DMA_START_READ:   seq<< startDMAReadStmt(s->address());         return true;
+    case Stmt::DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       return true;
 
     default:
       assertq(false, "translate_stmt(): unexpected stmt tag");

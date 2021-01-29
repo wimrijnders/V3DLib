@@ -1,5 +1,5 @@
 #include "V3DLib.h"
-#include "vc4/DMA.h"
+#include "vc4/DMA/Operations.h"
 #include "Support/Settings.h"
 
 using namespace V3DLib;

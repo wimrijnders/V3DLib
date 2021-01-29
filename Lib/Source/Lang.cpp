@@ -46,7 +46,7 @@ void Else_() {
   if (controlStack.size() > 0) {
     Stmt::Ptr s = controlStack.top();
 
-    if ((s->tag == IF || s->tag == WHERE ) && s->then_is_null()) {
+    if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
       s->thenStmt(stmtStack().pop());
       stmtStack().push(mkSkip());
       ok = 1;
@@ -68,7 +68,7 @@ void End_() {
   if (!controlStack.empty()) {
     Stmt::Ptr s = controlStack.top();
 
-    if (s->tag == IF || s->tag == WHERE) {
+    if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
       if (s->then_is_null()) {
         s->thenStmt(stmtStack().pop());
         ok = 1;
@@ -78,12 +78,12 @@ void End_() {
       }
     }
 
-    if (s->tag == WHILE && s->body_is_null()) {
+    if (s->tag == Stmt::WHILE && s->body_is_null()) {
       s->body(stmtStack().pop());
       ok = 1;
     }
 
-    if (s->tag == FOR && s->body_is_null()) {
+    if (s->tag == Stmt::FOR && s->body_is_null()) {
       s->for_to_while(stmtStack().pop());
       ok = 1;
     }
@@ -147,14 +147,14 @@ void ForBody_() {
 //=============================================================================
 
 void Print(const char *str) {
-  Stmt::Ptr s = Stmt::create(PRINT);
+  Stmt::Ptr s = Stmt::create(Stmt::PRINT);
   s->print.str(str);
   stmtStack().append(s);
 }
 
 
 void Print(IntExpr x) {
-  Stmt::Ptr s = Stmt::create(PRINT, x.expr(), nullptr);
+  Stmt::Ptr s = Stmt::create(Stmt::PRINT, x.expr(), nullptr);
   stmtStack().append(s);
 }
 

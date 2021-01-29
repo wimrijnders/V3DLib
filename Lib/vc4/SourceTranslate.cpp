@@ -1,9 +1,9 @@
 #include "SourceTranslate.h"
 #include "Support/debug.h"
 #include "Source/Translate.h"  // srcReg()
-#include "LoadStore.h"
 #include "Target/Subst.h"
-#include "Translate.h"
+#include "DMA/LoadStore.h"
+#include "DMA/Translate.h"
 #include "RegAlloc.h"
 
 namespace V3DLib {

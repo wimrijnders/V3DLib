@@ -15,20 +15,20 @@ std::string pretty(int indent, Stmt::Ptr s) {
   bool do_eol = true;
 
   switch (s->tag) {
-    case SKIP: do_eol = false; break;
+    case Stmt::SKIP: do_eol = false; break;
 
-    case ASSIGN:
+    case Stmt::ASSIGN:
       ret << indentBy(indent)
           << s->assign_lhs()->pretty() << " = " << s->assign_rhs()->pretty() << ";";
       break;
 
-    case SEQ:  // Sequential composition
+    case Stmt::SEQ:  // Sequential composition
       ret << pretty(indent, s->seq_s0())
           << pretty(indent, s->seq_s1());
       do_eol = false;
       break;
 
-    case WHERE:
+    case Stmt::WHERE:
       ret << indentBy(indent)
           << "Where (" << s->where_cond()->dump() << ")\n"
           << pretty(indent+2, s->thenStmt());
@@ -41,7 +41,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
       ret << indentBy(indent) << "End";
       break;
 
-    case IF:
+    case Stmt::IF:
       ret << indentBy(indent)
           << "If  (" << s->if_cond()->dump() << ")\n"
           << pretty(indent+2, s->thenStmt());
@@ -54,14 +54,14 @@ std::string pretty(int indent, Stmt::Ptr s) {
       ret << indentBy(indent) << "End";
       break;
 
-    case WHILE:
+    case Stmt::WHILE:
       ret << indentBy(indent)
           << "While  (" << s->loop_cond()->dump() << ")\n"
           << pretty(indent+2, s->body())
           << indentBy(indent) << "End";
       break;
 
-    case PRINT:
+    case Stmt::PRINT:
       ret << indentBy(indent)
           << "Print (";
 
@@ -74,12 +74,12 @@ std::string pretty(int indent, Stmt::Ptr s) {
       ret << ")\n";
       break;
 
-    case LOAD_RECEIVE:
+    case Stmt::LOAD_RECEIVE:
       ret << indentBy(indent)
           << "receive(" << s->address()->pretty() << ")";
       break;
 
-    case STORE_REQUEST:
+    case Stmt::STORE_REQUEST:
       ret << indentBy(indent)
           << "store(" << s->storeReq_data()->pretty() << ", " << s->storeReq_addr()->pretty() << ")\n";
       break;

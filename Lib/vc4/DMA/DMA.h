@@ -7,7 +7,8 @@ namespace V3DLib {
 namespace DMA {
 
 std::string pretty(int indent, Stmt::Ptr s);
-std::string disp(StmtTag tag);
+std::string disp(Stmt::Tag tag);
+bool is_dma_tag(Stmt::Tag tag);
 
 }  // namespace DMA
 }  // namespace V3DLib

@@ -2,10 +2,10 @@
 #include "Source/Lang.h"
 #include "Source/Translate.h"
 #include "Target/RemoveLabels.h"
-#include "Translate.h"
 #include "vc4.h"
 #include "Encode.h"
-#include "DMA.h"
+#include "DMA/Translate.h"
+#include "DMA/Operations.h"
 #include "dump_instr.h"
 
 namespace V3DLib {

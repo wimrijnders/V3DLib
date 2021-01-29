@@ -393,13 +393,13 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
   Seq<Instr> ret;
 
   if (s.get() == nullptr) return ret;
-  if (s->tag == SKIP) return ret;
+  if (s->tag == Stmt::SKIP) return ret;
 
 
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::VAR) {
+  if (s->tag == Stmt::ASSIGN && s->assign_lhs()->tag() == Expr::VAR) {
     assign(&ret, s->assign_lhs(), s->assign_rhs());
     ret.back().cond(cond); //.comment("Assign var in Where");
     return ret;
@@ -408,7 +408,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
   // ------------------------------------------------------
   // Case: *v = e, where v is a pointer and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
+  if (s->tag == Stmt::ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
     assign(&ret, s->assign_lhs(), s->assign_rhs());
     ret.back().cond(cond); //.comment("Assign *var (deref) in Where");
     return ret;
@@ -417,7 +417,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
   // ---------------------------------------------
   // Case: s0 ; s1, where s0 and s1 are statements
   // ---------------------------------------------
-  if (s->tag == SEQ) {
+  if (s->tag == Stmt::SEQ) {
     ret << whereStmt(s->seq_s0(), condVar, cond, true)
         << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
     return ret;
@@ -427,7 +427,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
   // Case: where (b) s0 s1, where b is a boolean expression and
   //                        s0 and s1 are statements.
   // ----------------------------------------------------------
-  if (s->tag == WHERE) {
+  if (s->tag == Stmt::WHERE) {
     using Target::instr::mov;
     AssignCond andCond(CmpOp(CmpOp::NEQ, INT32));  // Wonky syntax to get the flags right
 
@@ -627,30 +627,30 @@ void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
   if (s == nullptr) return;
 
   switch (s->tag) {
-    case SKIP:
+    case Stmt::SKIP:
       break;
-    case ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
+    case Stmt::ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
       assign(seq, s->assign_lhs(), s->assign_rhs());
       break;
-    case SEQ:                      // 's0 ; s1', where s1 and s2 are statements
+    case Stmt::SEQ:                      // 's0 ; s1', where s1 and s2 are statements
       stmt(seq, s->seq_s0());
       stmt(seq, s->seq_s1());
       break;
-    case IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
+    case Stmt::IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
       translateIf(*seq, *s);
       break;
-    case WHILE:                    // 'while (c) s', where c is a condition, and s a statement
+    case Stmt::WHILE:                    // 'while (c) s', where c is a condition, and s a statement
       translateWhile(*seq, *s);
       break;
-    case WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
+    case Stmt::WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
         Var condVar = freshVar();  // This is the top-level definition of condVar
         *seq << whereStmt(s, condVar, always, false);
       }
       break;
-    case PRINT:                    // 'print(e)', where e is an expr or a string
+    case Stmt::PRINT:                    // 'print(e)', where e is an expr or a string
       *seq << printStmt(s);
       break;
-    case LOAD_RECEIVE:             // 'receive(e)', where e is an expr
+    case Stmt::LOAD_RECEIVE:             // 'receive(e)', where e is an expr
       *seq << loadReceive(s->address());
       break;
     default:

@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Fri 29 Jan 2021 05:30:19 AM CET
+# Generated on: Fri 29 Jan 2021 06:35:50 AM CET
 #
 ###############################################################################
 
@@ -12,12 +12,12 @@ OBJ := \
   vc4/SourceTranslate.o  \
   vc4/Invoke.o  \
   vc4/vc4.o  \
-  vc4/LoadStore.o  \
   vc4/BufferObject.o  \
-  vc4/DMA.o  \
+  vc4/DMA/LoadStore.o  \
   vc4/DMA/DMA.o  \
+  vc4/DMA/Operations.o  \
+  vc4/DMA/Translate.o  \
   vc4/KernelDriver.o  \
-  vc4/Translate.o  \
   vc4/Encode.o  \
   vc4/Mailbox.o  \
   vc4/PerformanceCounters.o  \
