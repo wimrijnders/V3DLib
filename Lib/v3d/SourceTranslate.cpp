@@ -70,7 +70,7 @@ void storeRequest(Seq<Instr> &seq, Expr::Ptr data, Expr::Ptr addr) {
   seq << mov(TMUD, srcData);
   seq.back().comment("Store request");
   seq << mov(TMUA, srcAddr)
-	    << tmuwt();
+      << tmuwt();
 }
 
 }  // anon namespace
@@ -239,10 +239,10 @@ void add_init(Seq<Instr> &code) {
  * @return true if statement handled, false otherwise
  */
 bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt::Ptr s) {
-	if (DMA::is_dma_tag(s->tag)) {
+  if (DMA::is_dma_tag(s->tag)) {
     fatal("VPM and DMA reads and writes can not be used for v3d");
     return true;
-	}
+  }
 
   switch (s->tag) {
     case Stmt::STORE_REQUEST:

@@ -314,12 +314,12 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
     case STORE_REQUEST:    ret << "STORE_REQUEST";    break;
 
     default: {
-				std::string tmp = DMA::disp(tag);
-				if (tmp.empty()) {
-    	  	assertq(false, "Unknown tag in Stmt::disp_intern()");
-				}
-				ret << tmp;
-			}
+        std::string tmp = DMA::disp(tag);
+        if (tmp.empty()) {
+          assertq(false, "Unknown tag in Stmt::disp_intern()");
+        }
+        ret << tmp;
+      }
       break;
   }
 

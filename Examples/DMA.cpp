@@ -34,14 +34,14 @@ void dma(Ptr<Int> p) {
 
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-	if (!Platform::instance().has_vc4 && settings.run_type == 0) {
-		printf("\nThe DMA example does not work on v3d, it is only meant for vc4.\n"
-					 "It will only work for the emulator on v3d.\n\n");
-		return 1;
-	}
+  if (!Platform::instance().has_vc4 && settings.run_type == 0) {
+    printf("\nThe DMA example does not work on v3d, it is only meant for vc4.\n"
+           "It will only work for the emulator on v3d.\n\n");
+    return 1;
+  }
 
   // Construct kernel
   auto k = compile(dma, true);  // true: only compile for vc4
@@ -52,14 +52,14 @@ int main(int argc, const char *argv[]) {
     array[i] = i;
 
   // Invoke the kernel
-	k.load(&array);  
-	settings.process(k);  
+  k.load(&array);  
+  settings.process(k);  
 
-	// Display the result
+  // Display the result
   for (int i = 0; i < 16; i++) {
     for (int j = 0; j < 16; j++) {
       printf("%i ", array[16*i + j]);
-		}
+    }
 
     printf("\n");
   }

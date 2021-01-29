@@ -3,7 +3,7 @@
 #include "Support/basics.h"
 
 namespace {
-	int N             = 1;  // Dimension of square matrix in blocks of 16 values.
+  int N             = 1;  // Dimension of square matrix in blocks of 16 values.
   bool do_readwrite = true;
   bool do_preload   = false;
 }
@@ -13,7 +13,7 @@ namespace {
 ////////////////////////////////////////////////////////////////////////////////
 
 float random_float() {
-	return  (1.0f*(((float) (rand() % 200)) - 100.0f))/100.0f;  // Intention: values between -1 and 1
+  return  (1.0f*(((float) (rand() % 200)) - 100.0f))/100.0f;  // Intention: values between -1 and 1
 }
 
 
@@ -273,14 +273,14 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  * @return  pointer to the actual kernel function
  */
 FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_do_preload) {
-	assert(dimension > 0);
-	assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
+  assert(dimension > 0);
+  assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
 
-	N = dimension >> 4;
+  N = dimension >> 4;
   do_readwrite = in_do_readwrite;
   do_preload   = in_do_preload;
 
-	return matrix_mult;
+  return matrix_mult;
 }
 
 }  // namespace kernels

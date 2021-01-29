@@ -10,12 +10,12 @@ namespace V3DLib {
 namespace {
 
 Expr::Ptr newVar() {
-	return mkVar(freshVar());
+  return mkVar(freshVar());
 };
 
 
 Expr::Ptr mkFloatLit(float lit) {
-	return std::make_shared<Expr>(lit);
+  return std::make_shared<Expr>(lit);
 }
 
 
@@ -49,7 +49,7 @@ int randRange(int min, int max) {
 // ============================================================================
 
 Expr::Ptr pickVar(GenOptions* o, Type t) {
-	int const QPU_ID_NUM = 2;  // Shift for qpu id and num
+  int const QPU_ID_NUM = 2;  // Shift for qpu id and num
 
   int intHigh   = QPU_ID_NUM + o->numIntArgs + o->numIntVars;
   int floatLow  = intHigh   + o->depth;
@@ -57,7 +57,7 @@ Expr::Ptr pickVar(GenOptions* o, Type t) {
   int ptrHigh   = floatHigh + o->numPtrArgs;
   int ptr2High  = ptrHigh   + o->numPtr2Args;
 
-	VarId val;
+  VarId val;
   switch (t.tag) {
     case INT_TYPE:   val = randRange(QPU_ID_NUM, intHigh-1); break;
     case FLOAT_TYPE: val = randRange(floatLow, floatHigh-1); break;
@@ -109,14 +109,14 @@ Op genOp(GenOptions* opts, Type t) {
     case PTR2_TYPE: {
       OpId op = (OpId) randRange(opts->genRotate ? ROTATE : ADD, BNOT);
       return Op(op, INT32);
-		}
+    }
     case FLOAT_TYPE: {
       OpId op = (OpId) randRange(opts->genRotate ? ROTATE : ADD, MAX);
       return Op(op, FLOAT);
-		}
-		default:
-			assert(false);
-			return Op(SUB, INT32);  // Return anything
+    }
+    default:
+      assert(false);
+      return Op(SUB, INT32);  // Return anything
   }
 }
 
@@ -129,12 +129,12 @@ Expr::Ptr genExpr(GenOptions* opts, Type t, int depth) {
   switch (randRange(0, 3)) { 
     // Literal
     case 0: {
-			// Attempt to create Literals without using stmtStack
+      // Attempt to create Literals without using stmtStack
       if (t.tag == FLOAT_TYPE) {
-				return mkFloatLit(genFloatLit());
-			} else if (t.tag == INT_TYPE) {
-				return mkIntLit(genIntLit());
-			}
+        return mkFloatLit(genFloatLit());
+      } else if (t.tag == INT_TYPE) {
+        return mkIntLit(genIntLit());
+      }
     }
 
     // Dereference
@@ -198,7 +198,7 @@ Expr::Ptr genExpr(GenOptions* opts, Type t, int depth) {
 
   // Unreachable
   assert(false);
-	return nullptr;
+  return nullptr;
 }
 
 
@@ -229,12 +229,12 @@ BExpr::Ptr genBExpr(GenOptions* opts, int depth) {
 
       if (opts->genFloat && randRange(0, 2) == 0) {
         // Floating-point comparison
-      	CmpOp op((CmpOp::Id) cmp_select, FLOAT);
+        CmpOp op((CmpOp::Id) cmp_select, FLOAT);
         Type floatType; floatType.tag = FLOAT_TYPE;
         return mkCmp(genExpr(opts, floatType, depth-1), op, genExpr(opts, floatType, depth-1));
       } else {
         // Integer comparison
-      	CmpOp op((CmpOp::Id) cmp_select, INT32);
+        CmpOp op((CmpOp::Id) cmp_select, INT32);
         Type intType; intType.tag = INT_TYPE;
         return mkCmp(genExpr(opts, intType, depth-1), op, genExpr(opts, intType, depth-1));
       }
@@ -243,7 +243,7 @@ BExpr::Ptr genBExpr(GenOptions* opts, int depth) {
 
   // Unreachable
   assert(false);
-	return nullptr;
+  return nullptr;
 }
 
 
@@ -259,7 +259,7 @@ CExpr::Ptr genCExpr(GenOptions* opts, int depth) {
 
   // Unreachable
   assert(false);
-	return nullptr;
+  return nullptr;
 }
 
 
@@ -355,7 +355,7 @@ Stmt::Ptr genWhere(GenOptions* opts, int depth, int length) {
 
   // Unreachable
   assert(false);
-	return nullptr;
+  return nullptr;
 }
 
 
@@ -420,16 +420,16 @@ Stmt::Ptr genStmt(GenOptions* opts, int depth, int length) {
     case Stmt::WHERE:
       if (length > 0 && depth > 0)
         return mkWhere(
-					genBExpr(opts, depth),
+          genBExpr(opts, depth),
           genWhere(opts, depth-1, opts->length),
           genWhere(opts, depth-1, opts->length));
 
     case Stmt::IF:
       if (length > 0 && depth > 0)
         return Stmt::mkIf(
-					genCExpr(opts, depth),
-					genStmt(opts, depth-1, opts->length),
-					genStmt(opts, depth-1, opts->length));
+          genCExpr(opts, depth),
+          genStmt(opts, depth-1, opts->length),
+          genStmt(opts, depth-1, opts->length));
 
     case Stmt::WHILE:
       if (length > 0 && depth > 0)
@@ -447,7 +447,7 @@ Stmt::Ptr genStmt(GenOptions* opts, int depth, int length) {
 
   // Not reachable
   assert(false);
-	return nullptr;
+  return nullptr;
 }
 
 }  // anon namespace
@@ -478,45 +478,45 @@ Stmt::Ptr progGen(GenOptions* opts) {
   // Argument FIFO
   Expr::Ptr fifo = mkVar(Var(UNIFORM));
 
-	auto assign_arg = [pre, fifo] (Stmt::Ptr &dst, Expr::Ptr v = nullptr, Expr::Ptr val = nullptr) {
-		if (v.get() == nullptr) {
-			v = newVar();
-		}
-		if (val.get() == nullptr) {
-			val = fifo;
-		}
+  auto assign_arg = [pre, fifo] (Stmt::Ptr &dst, Expr::Ptr v = nullptr, Expr::Ptr val = nullptr) {
+    if (v.get() == nullptr) {
+      v = newVar();
+    }
+    if (val.get() == nullptr) {
+      val = fifo;
+    }
 
-		dst = Stmt::create_sequence(dst, Stmt::create_assign(v, val));
-	};
+    dst = Stmt::create_sequence(dst, Stmt::create_assign(v, val));
+  };
 
-	// Read qpu id and num
-	assign_arg(pre);
-	assign_arg(pre);
+  // Read qpu id and num
+  assign_arg(pre);
+  assign_arg(pre);
 
   // Read int args
   for (int i = 0; i < opts->numIntArgs; i++) {
-		auto v = newVar();
+    auto v = newVar();
     assign_arg(pre, v);
     post  = Stmt::create_sequence(post, mkPrint(PRINT_INT, v));
   }
 
   // Initialise int vars and loop vars
   for (int i = 0; i < opts->numIntVars + opts->depth; i++) {
-		auto v = newVar();
+    auto v = newVar();
     assign_arg(pre, v, mkIntLit(genIntLit()));
     post  = Stmt::create_sequence(post, mkPrint(PRINT_INT, v));
   }
 
   // Read float args
   for (int i = 0; i < opts->numFloatArgs; i++) {
-		auto v = newVar();
+    auto v = newVar();
     assign_arg(pre, v);
     post  = Stmt::create_sequence(post, mkPrint(PRINT_FLOAT, v));
   }
 
   // Initialise float vars
   for (int i = 0; i < opts->numFloatVars; i++) {
-		auto v = newVar();
+    auto v = newVar();
     assign_arg(pre, v, Float(genFloatLit()).expr());
     post  = Stmt::create_sequence(post, mkPrint(PRINT_FLOAT, v));
   }
