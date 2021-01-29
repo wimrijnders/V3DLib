@@ -199,11 +199,22 @@ enum InstrTag {
   END_V3D_ONLY
 };
 
+
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4);
 
 // QPU instructions
 struct Instr : public InstructionComment {
-  // What kind of instruction is it?
+
+	class List : public Seq<Instr> {
+		using Parent = Seq<Instr>;
+	public:
+		List() = default;
+		List(int size) : Parent(size) {}
+
+		std::string dump() const;
+		std::string mnemonics(bool with_comments = false) const;
+	};
+
   InstrTag tag;
 
   union {
@@ -277,6 +288,7 @@ struct Instr : public InstructionComment {
 
   SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;
+  std::string dump() const;
 
   bool operator==(Instr const &rhs) const {
     // Cheat by comparing the string representation,
@@ -326,9 +338,6 @@ struct Instr : public InstructionComment {
 private:
   SetCond &setCond();
 };
-
-
-std::string mnemonics(Seq<Instr> const &code, bool with_comments = false);
 
 
 // Instruction id: also the index of an instruction

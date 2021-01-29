@@ -35,10 +35,10 @@ void print_source_code(FILE *f, Stmt::Ptr body) {
 }
 
 
-void print_target_code(FILE *f, Seq<Instr> const &code) {
+void print_target_code(FILE *f, Instr::List const &code) {
   fprintf(f, "Target code\n");
   fprintf(f, "===========\n\n");
-  fprintf(f, mnemonics(code, true).c_str());
+  fprintf(f, code.mnemonics(true).c_str());
   fprintf(f, "\n");
   fflush(f);
 }
@@ -52,7 +52,7 @@ void print_target_code(FILE *f, Seq<Instr> const &code) {
 /**
  * @param targetCode  output variable for the target code assembled from the AST and adjusted
  */
-void compile_postprocess(Seq<Instr> &targetCode) {
+void compile_postprocess(Instr::List &targetCode) {
   assertq(!targetCode.empty(), "compile_postprocess(): passed target code is empty");
 
   // Load/store pass

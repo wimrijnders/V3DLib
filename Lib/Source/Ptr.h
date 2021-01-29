@@ -26,41 +26,41 @@ namespace V3DLib {
 // RHS of assignment statements.
 template <typename T>
 struct PtrExpr : public BaseExpr {
-	PtrExpr(Expr::Ptr e) : BaseExpr(e, "PtrExpr") {}
+  PtrExpr(Expr::Ptr e) : BaseExpr(e, "PtrExpr") {}
 
-	/**
-	 * Dereference
-	 */
+  /**
+   * Dereference
+   */
   Deref<T> operator*() {
     auto e = mkDeref(expr());
-		return Deref<T>(e);
+    return Deref<T>(e);
   }
 
 
-	/**
-	 * Array index
-	 */
+  /**
+   * Array index
+   */
   Deref<T> operator[](IntExpr index) {
-		//breakpoint  // TODO When is this ever called??
+    //breakpoint  // TODO When is this ever called??
     auto e = deref_with_index(expr(), index.expr());
-		return Deref<T>(e);
+    return Deref<T>(e);
   }
 };
 
 
 template <typename T>
 struct Deref : public BaseExpr {
-	explicit Deref(Expr::Ptr e) : BaseExpr(e) {}
+  explicit Deref(Expr::Ptr e) : BaseExpr(e) {}
 
-	T &operator=(T &rhs) {
-		assign(m_expr, rhs.expr());
-		return rhs;
-	}
+  T &operator=(T &rhs) {
+    assign(m_expr, rhs.expr());
+    return rhs;
+  }
 
-	T const &operator=(T const &rhs) {
-		assign(m_expr, rhs.expr());
-		return rhs;
-	}
+  T const &operator=(T const &rhs) {
+    assign(m_expr, rhs.expr());
+    return rhs;
+  }
 };
 
 
@@ -70,8 +70,14 @@ struct Deref : public BaseExpr {
 template <typename T>
 struct Ptr : public BaseExpr {
 
-  // Constructors
   Ptr<T>() : BaseExpr(mkVar(freshVar()), "Ptr") {}
+
+/*
+	// TODO get rid of ctor acting as reference
+  Ptr<T>(Ptr<T> const &rhs) : Ptr<T>() {
+    assign(expr(), rhs.expr());
+  }
+*/
 
   Ptr<T>(PtrExpr<T> rhs) : Ptr<T>() {
     assign(expr(), rhs.expr());
@@ -89,22 +95,22 @@ struct Ptr : public BaseExpr {
   }
 
 
-	/**
-	 * Dereference
-	 */
+  /**
+   * Dereference
+   */
   Deref<T> operator*() {
     auto e = mkDeref(expr());
-		return Deref<T>(e);
+    return Deref<T>(e);
   }
 
 
-	/**
-	 * Array index
-	 */
+  /**
+   * Array index
+   */
   Deref<T> operator[](IntExpr index) {
-		//breakpoint  // TODO When is this ever called??
+    //breakpoint  // TODO When is this ever called??
     auto e = deref_with_index(expr(), index.expr());
-		return Deref<T>(e);
+    return Deref<T>(e);
   }
 };
 
@@ -115,8 +121,8 @@ struct Ptr : public BaseExpr {
 
 template <typename T>
 inline PtrExpr<T> getUniformPtr() {
-	Var v = Var(UNIFORM);
-	v.setUniformPtr();
+  Var v = Var(UNIFORM);
+  v.setUniformPtr();
   Expr::Ptr e = std::make_shared<Expr>(v);
   return PtrExpr<T>(e);
 }

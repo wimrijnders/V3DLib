@@ -37,8 +37,8 @@ public:
 protected:
   const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
-  Seq<Instr> m_targetCode;            // Target code generated from AST
-  Stmt::Ptr  m_body;
+  Instr::List m_targetCode;           // Target code generated from AST
+  Stmt::Ptr   m_body;
 
   int qpuCodeMemOffset = 0;
   std::vector<std::string> errors;
@@ -58,7 +58,7 @@ private:
   bool handle_errors();
 };
 
-void compile_postprocess(Seq<Instr> &targetCode);
+void compile_postprocess(Instr::List &targetCode);
 
 }  // namespace V3DLib
 

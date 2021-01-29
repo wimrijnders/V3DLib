@@ -195,11 +195,11 @@ Seq<Instr> setupVPMWriteStmt(Stmt::Ptr s) {
 // than after a write.  This enables other operations to happen in
 // parallel with the write.
 
-Seq<Instr> storeRequestOperation(Stmt::Ptr s) {
+Instr::List storeRequestOperation(Stmt::Ptr s) {
   Expr::Ptr data = s->storeReq_data();
   Expr::Ptr addr = s->storeReq_addr();
 
-  Seq<Instr> ret;
+  Instr::List ret;
 
   if (data->tag() != Expr::VAR || addr->tag() != Expr::VAR) {
     data = putInVar(&ret, data);
@@ -218,8 +218,7 @@ namespace vc4 {
 /**
  * @return true if statement handled, false otherwise
  */
-bool translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
-
+bool translate_stmt(Instr::List &seq, Stmt::Ptr s) {
   switch (s->tag) {
     case Stmt::STORE_REQUEST:    seq << storeRequestOperation(s);              return true;
     case Stmt::SET_READ_STRIDE:

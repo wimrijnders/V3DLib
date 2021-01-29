@@ -1,6 +1,6 @@
 #ifdef QPU_MODE
-
 #include "KernelDriver.h"
+#include <iostream>
 #include <memory>
 #include "Source/Translate.h"
 #include "Target/SmallLiteral.h"  // decodeSmallLit()
@@ -107,8 +107,7 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
         case SPECIAL_QPU_NUM:
         case SPECIAL_ELEM_NUM:
         case SPECIAL_UNIFORM:
-          breakpoint
-          assertq(false, "encodeSrcReg(): Not expecting this SPECIAL regId, should be handled before call()");
+          assertq(false, "encodeSrcReg(): Not expecting this SPECIAL regId, should be handled before call()", true);
         break;
 
         // Not handled (yet)
@@ -129,8 +128,7 @@ std::unique_ptr<Location> encodeSrcReg(Reg reg) {
   }
 
   if (ret.get() == nullptr && !is_none) {
-    breakpoint
-    assertq(false, "V3DLib: missing case in encodeSrcReg()");
+    assertq(false, "V3DLib: missing case in encodeSrcReg()", true);
   }
 
   return ret;
@@ -176,8 +174,7 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
         case SPECIAL_RD_SETUP:            // value 6
         case SPECIAL_WR_SETUP:            // value 7
         case SPECIAL_HOST_INT:            // value 11
-          breakpoint
-          assert(false);                  // Do not want this
+          assertq(false, "Regid's should not be generated for v3d", true);
           break;
 
         case SPECIAL_DMA_LD_ADDR:         // value 9
@@ -203,8 +200,7 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
         case SPECIAL_SFU_LOG      : ret.reset(new Register(log));       break;
 
         default:
-          breakpoint
-          assert(false);  // Not expecting this
+          assertq(false, "encodeDestReg(): not expecting reg tag", true);
           break;
       }
       break;
@@ -971,7 +967,7 @@ Instructions encode_init(uint8_t numQPUs) {
 /**
  * Check assumption: uniform loads are always at the top of the instruction list.
  */
-bool checkUniformAtTop(Seq<V3DLib::Instr> &instrs) {
+bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
   bool doing_top = true;
 
   for (int i = 0; i < instrs.size(); i++) {
@@ -998,7 +994,10 @@ bool checkUniformAtTop(Seq<V3DLib::Instr> &instrs) {
 /**
  * Translate instructions from target to v3d
  */
-void _encode(uint8_t numQPUs, Seq<V3DLib::Instr> &instrs, Instructions &instructions) {
+void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &instructions) {
+	//breakpoint
+	//std::cout << instrs.dump();
+
   assert(checkUniformAtTop(instrs));
   bool prev_was_init_begin = false;
   bool prev_was_init_end    = false;

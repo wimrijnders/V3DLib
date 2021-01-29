@@ -3,7 +3,7 @@
 #include "SourceTranslate.h"
 #include "Source/Stmt.h"
 #include "Target/SmallLiteral.h"
-#include "Common/Seq.h"
+//#include "Common/Seq.h"
 
 
 namespace V3DLib {
@@ -42,7 +42,7 @@ RegOrImm operand(Expr::Ptr e) {
  * Translate an expression to a simple expression, generating
  * instructions along the way.
  */
-Expr::Ptr simplify(Seq<Instr>* seq, Expr::Ptr e) {
+Expr::Ptr simplify(Instr::List *seq, Expr::Ptr e) {
   if (e->isSimple()) {
     return e;
   }
@@ -62,7 +62,7 @@ Expr::Ptr simplify(Seq<Instr>* seq, Expr::Ptr e) {
  * @param lhsExpr  Expression on left-hand side
  * @param rhs      Expression on right-hand side
  */
-void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
+void assign(Instr::List *seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   Expr lhs = *lhsExpr;
 
   // -----------------------------------------------------------
@@ -178,7 +178,7 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
  *
  *    TODO investigate if possible
  * /
-AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond condB) {
+AssignCond boolOr(Instr::List &seq, AssignCond condA, Var condVar, AssignCond condB) {
   using namespace Target::instr;
 
   //breakpoint
@@ -226,7 +226,7 @@ AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond con
  *
  * The comparison is internally implemented as a subtract-operation.
  */
-void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
+void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
   BExpr b = *bexpr;
   assert(b.tag() == CMP);
 
@@ -290,7 +290,7 @@ void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 }
 
 
-AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v);  // Forward declaration
+AssignCond boolExp(Instr::List *seq, BExpr::Ptr bexpr, Var v);  // Forward declaration
 
 
 /**
@@ -307,7 +307,7 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v);  // Forward declar
  *     BExpr* demorgan = b.conj.lhs->Not()->Or(b.conj.rhs->Not())->Not();
  *     return boolExp(seq, demorgan, v);
  */
-void boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
+void boolVarExp(Instr::List &seq, BExpr b, Var v) {
   using namespace V3DLib::Target::instr;
 
   boolExp(&seq, b.lhs(), v);                     // return val ignored
@@ -346,7 +346,7 @@ void boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
  *
  * @return the condition to use when checking the flags for this comparison
  */
-AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
+AssignCond boolExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
   using namespace V3DLib::Target::instr;
   BExpr b = *bexpr;
 
@@ -376,7 +376,7 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 // Conditional expressions
 // ============================================================================
 
-BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
+BranchCond condExp(Instr::List &seq, CExpr &c) {
   Var v = freshVar();
   AssignCond cond = boolExp(&seq, c.bexpr(), v);
 
@@ -388,9 +388,9 @@ BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
 // Where statements
 // ============================================================================
 
-Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
+Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
   using namespace V3DLib::Target::instr;
-  Seq<Instr> ret;
+  Instr::List ret;
 
   if (s.get() == nullptr) return ret;
   if (s->tag == Stmt::SKIP) return ret;
@@ -437,7 +437,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
       Var newCondVar   = freshVar();
       AssignCond newCond;
       {
-        Seq<Instr> seq;
+        Instr::List seq;
         // Compile new boolean expression
         newCond = boolExp(&seq, s->where_cond(), newCondVar);
         if (!seq.empty()) seq.front().comment("Start where (always)");
@@ -472,7 +472,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
       Var newCondVar   = freshVar();
       AssignCond newCond;
       {
-        Seq<Instr> seq;
+        Instr::List seq;
         // Compile new boolean expression
         newCond = boolExp(&seq, s->where_cond(), newCondVar);
         if (!seq.empty()) seq.front().comment("Start where (nested)");
@@ -523,8 +523,8 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
 // Print statements
 // ============================================================================
 
-Seq<Instr> printStmt(Stmt::Ptr stmt) {
-  Seq<Instr> ret;
+Instr::List printStmt(Stmt::Ptr stmt) {
+  Instr::List ret;
   Instr instr;
 
   auto expr_to_reg = [&ret] (Expr::Ptr expr) -> Reg {
@@ -569,12 +569,12 @@ Instr loadReceive(Expr::Ptr dest) {
 }
 
 
-void stmt(Seq<Instr>* seq, Stmt::Ptr s);  // Forward declaration
+void stmt(Instr::List *seq, Stmt::Ptr s);  // Forward declaration
 
 /**
  * Translate if-then-else statement to target code
  */
-void translateIf(Seq<Instr> &seq, Stmt &s) {
+void translateIf(Instr::List &seq, Stmt &s) {
   using namespace Target::instr;
 
   Label endifLabel = freshLabel();
@@ -600,7 +600,7 @@ void translateIf(Seq<Instr> &seq, Stmt &s) {
 }
 
 
-void translateWhile(Seq<Instr> &seq, Stmt &s) {
+void translateWhile(Instr::List &seq, Stmt &s) {
   using namespace Target::instr;
 
   Label startLabel = freshLabel();
@@ -623,7 +623,7 @@ void translateWhile(Seq<Instr> &seq, Stmt &s) {
 // Statements
 // ============================================================================
 
-void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
+void stmt(Instr::List *seq, Stmt::Ptr s) {
   if (s == nullptr) return;
 
   switch (s->tag) {
@@ -669,7 +669,7 @@ void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
 /**
  * Get the instruction of the last uniform load
  */
-int lastUniformOffset(Seq<Instr> &code) {
+int lastUniformOffset(Instr::List &code) {
   // Detmine the first offset that is not a uniform load
   int index = 0;
   for (; index < code.size(); ++index) {
@@ -688,11 +688,11 @@ int lastUniformOffset(Seq<Instr> &code) {
  *
  * Only used for `v3d`.
  */
-void insertInitBlock(Seq<Instr> &code) {
+void insertInitBlock(Instr::List &code) {
   using namespace V3DLib::Target::instr;  // for mov()
 
   int index = lastUniformOffset(code);
-  Seq<Instr> ret;
+  Instr::List ret;
 
   if (Platform::instance().compiling_for_vc4()) {
     // Add final dummy uniform handling
@@ -721,9 +721,9 @@ void insertInitBlock(Seq<Instr> &code) {
  *
  * @return  A sequence of instructions
  */
-Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
+Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
   using namespace V3DLib::Target::instr;
-  Seq<Instr> ret;
+  Instr::List ret;
   Expr e = *expr;
 
   switch (e.tag()) {
@@ -798,7 +798,7 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
 }
 
 
-Seq<Instr> varAssign(Var v, Expr::Ptr expr) {
+Instr::List varAssign(Var v, Expr::Ptr expr) {
   return varAssign(always, v, expr);  // TODO: For some reason, `always` *must* be passed in.
                                       //       Overloaded call generates segfault
 }
@@ -807,7 +807,7 @@ Seq<Instr> varAssign(Var v, Expr::Ptr expr) {
 /**
  * Similar to 'simplify' but ensure that the result is a variable.
  */
-Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
+Expr::Ptr putInVar(Instr::List *seq, Expr::Ptr e) {
   if (e->tag() == Expr::VAR) {
     return e;
   }
@@ -823,7 +823,7 @@ Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
  *
  * Entry point for translation of statements.
  */
-void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
+void translate_stmt(Instr::List &seq, Stmt::Ptr s) {
   stmt(&seq, s);
 }
 
@@ -832,10 +832,10 @@ void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
 // Load/Store pass
 // ============================================================================
 
-void loadStorePass(Seq<Instr> &instrs) {
+void loadStorePass(Instr::List &instrs) {
   using namespace V3DLib::Target::instr;
 
-  Seq<Instr> newInstrs(instrs.size()*2);
+  Instr::List newInstrs(instrs.size()*2);
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];

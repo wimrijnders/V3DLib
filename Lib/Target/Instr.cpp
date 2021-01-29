@@ -217,6 +217,45 @@ bool Instr::isZero() const {
 
 
 /**
+ * Can't be inlined for debugger
+ */
+std::string Instr::dump() const {
+  return mnemonic(true);
+}
+
+
+std::string Instr::List::dump() const {
+  std::string ret;
+
+  for (int i = 0; i < size(); ++i ) {
+    ret << (*this)[i].dump() << "\n";
+  }
+
+  return ret;
+}
+
+
+/**
+ * Generates a string representation of the passed string of instructions.
+ */
+std::string Instr::List::mnemonics(bool with_comments) const {
+  std::string prefix;
+  std::string ret;
+
+  for (int i = 0; i < size(); i++) {
+    auto const &instr = (*this)[i];
+    prefix.clear();
+    prefix << i << ": ";
+
+    ret << instr.mnemonic(with_comments, prefix).c_str() << "\n";
+  }
+
+  return ret;
+}
+
+
+
+/**
  * Check if given tag is for the specified platform
  */
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4) {
@@ -279,25 +318,6 @@ std::string Instr::mnemonic(bool with_comments, std::string const &prefix) const
 
   if (with_comments) {
     ret << emit_comment((int) out.size());
-  }
-
-  return ret;
-}
-
-
-/**
- * Generates a string representation of the passed string of instructions.
- */
-std::string mnemonics(Seq<Instr> const &code, bool with_comments) {
-  std::string prefix;
-  std::string ret;
-
-  for (int i = 0; i < code.size(); i++) {
-    auto const &instr = code[i];
-    prefix.clear();
-    prefix << i << ": ";
-
-    ret << instr.mnemonic(with_comments, prefix).c_str() << "\n";
   }
 
   return ret;
