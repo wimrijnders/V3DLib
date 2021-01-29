@@ -3,12 +3,12 @@
 #include "Support/basics.h"
 #include "Support/Platform.h"  // has_vc4() 
 #include "v3d.h"
+#include "LibSettings.h"
 
 namespace V3DLib {
 namespace v3d {
 
 BufferObject::~BufferObject() {
-	//debug("Called dtor v3d BO");
 	dealloc_mem();
 }
 
@@ -127,7 +127,7 @@ BufferObject &getMainHeap() {
 	if (!Platform::instance().has_vc4) {
 		if (!mainHeap) {
 			//debug("Allocating main heap v3d\n");
-			mainHeap.reset(new BufferObject(BufferObject::DEFAULT_HEAP_SIZE));
+			mainHeap.reset(new BufferObject(LibSettings::heap_size()));
 		}
 	}
 
