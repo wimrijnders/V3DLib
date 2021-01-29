@@ -1,5 +1,6 @@
 #include "Stmt.h"
 #include "Support/basics.h"
+#include "vc4/DMA/DMA.h"
 
 namespace V3DLib {
 
@@ -309,25 +310,17 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
     break;
 
     case FOR:              ret << "FOR";              break;
-    case SET_READ_STRIDE:  ret << "SET_READ_STRIDE";  break;
-    case SET_WRITE_STRIDE: ret << "SET_WRITE_STRIDE"; break;
     case LOAD_RECEIVE:     ret << "LOAD_RECEIVE";     break;
     case STORE_REQUEST:    ret << "STORE_REQUEST";    break;
-    case SEND_IRQ_TO_HOST: ret << "SEND_IRQ_TO_HOST"; break;
-    case SEMA_INC:         ret << "SEMA_INC";         break;
-    case SEMA_DEC:         ret << "SEMA_DEC";         break;
-    case SETUP_VPM_READ:   ret << "SETUP_VPM_READ";   break;
-    case SETUP_VPM_WRITE:  ret << "SETUP_VPM_WRITE";  break;
-    case SETUP_DMA_READ:   ret << "SETUP_DMA_READ";   break;
-    case SETUP_DMA_WRITE:  ret << "SETUP_DMA_WRITE";  break;
-    case DMA_READ_WAIT:    ret << "DMA_READ_WAIT";    break;
-    case DMA_WRITE_WAIT:   ret << "DMA_WRITE_WAIT";   break;
-    case DMA_START_READ:   ret << "DMA_START_READ";   break;
-    case DMA_START_WRITE:  ret << "DMA_START_WRITE";  break;
 
-    default:
-      assert(false);
-    break;
+    default: {
+				std::string tmp = DMA::disp(tag);
+				if (tmp.empty()) {
+    	  	assertq(false, "Unknown tag in Stmt::disp_intern()");
+				}
+				ret << tmp;
+			}
+      break;
   }
 
   return ret;

@@ -1,19 +1,14 @@
 #include "Pretty.h"
 #include "Stmt.h"
 #include "Support/basics.h"
+#include "Support/Helpers.h"
+#include "vc4/DMA/DMA.h"
 
 namespace V3DLib {
 
 using ::operator<<;  // C++ weirdness
 
 namespace {
-
-std::string indentBy(int indent) {
-  std::string ret;
-  for (int i = 0; i < indent; i++) ret += " ";
-  return ret;
-}
-
 
 std::string pretty(int indent, Stmt::Ptr s) {
   std::string ret;
@@ -79,14 +74,6 @@ std::string pretty(int indent, Stmt::Ptr s) {
       ret << ")\n";
       break;
 
-    case SET_READ_STRIDE:
-      ret << indentBy(indent) << "dmaSetReadPitch(" << s->stride()->pretty() << ");";
-      break;
-
-    case SET_WRITE_STRIDE:
-      ret << indentBy(indent) << "dmaSetWriteStride(" << s->stride()->pretty() << ")";
-      break;
-
     case LOAD_RECEIVE:
       ret << indentBy(indent)
           << "receive(" << s->address()->pretty() << ")";
@@ -97,79 +84,13 @@ std::string pretty(int indent, Stmt::Ptr s) {
           << "store(" << s->storeReq_data()->pretty() << ", " << s->storeReq_addr()->pretty() << ")\n";
       break;
 
-    case SEMA_INC:  // Increment semaphore
-      ret << indentBy(indent) << "semaInc(" << s->semaId << ");";
-      break;
-
-    case SEMA_DEC: // Decrement semaphore
-      ret << indentBy(indent) << "semaDec(" << s->semaId << ");";
-      break;
-
-    case SEND_IRQ_TO_HOST:
-      ret << indentBy(indent) << "hostIRQ();";
-      break;
-
-    case SETUP_VPM_READ:
-      ret << indentBy(indent)
-          << "vpmSetupRead("
-          << "numVecs=" << s->setupVPMRead.numVecs               << ","
-          << "dir="     << (s->setupVPMRead.hor ? "HOR" : "VIR") << ","
-          << "stride="  << s->setupVPMRead.stride                << ","
-          << s->address()->pretty()
-          << ");";
-      break;
-
-    case SETUP_VPM_WRITE:
-      ret << indentBy(indent)
-          << "vpmSetupWrite("
-          << "dir="    << (s->setupVPMWrite.hor ? "HOR" : "VIR") << ","
-          << "stride=" << s->setupVPMWrite.stride                << ","
-          << s->address()->pretty()
-          << ");";
-      break;
-
-    case DMA_READ_WAIT:
-      ret << indentBy(indent) << "dmaReadWait();";
-      break;
-
-    case DMA_WRITE_WAIT:
-      ret << indentBy(indent) << "dmaWriteWait();";
-      break;
-
-    case DMA_START_READ:
-      ret << indentBy(indent)
-          << "dmaStartRead(" << s->address()->pretty() << ");";
-      break;
-
-    case DMA_START_WRITE:
-      ret << indentBy(indent)
-          << "dmaStartWrite(" << s->address()->pretty() << ");";
-      break;
-
-    case SETUP_DMA_READ:
-      ret << indentBy(indent)
-          << "dmaSetupRead("
-          << "numRows=" << s->setupDMARead.numRows                  << ","
-          << "rowLen=%" << s->setupDMARead.rowLen                   << ","
-          << "dir="     << (s->setupDMARead.hor ? "HORIZ" : "VERT") << ","
-          << "vpitch="  <<  s->setupDMARead.vpitch                  << ","
-          << s->address()->pretty()
-          << ");";
-      break;
-
-    case SETUP_DMA_WRITE:
-      ret << indentBy(indent)
-          << "dmaSetupWrite("
-          << "numRows=" << s->setupDMAWrite.numRows                  << ","
-          << "rowLen="  << s->setupDMAWrite.rowLen                   << ","
-          << "dir="     << (s->setupDMAWrite.hor ? "HORIZ" : "VERT") << ","
-          << s->address()->pretty()
-          << ");";
-      break;
-
-    // Not reachable
-    default:
-      assert(false);
+    default: {
+				std::string tmp = DMA::pretty(indent, s);
+				if (tmp.empty()) {
+    	  	assertq(false, "Unknown statement tag in Source::pretty()");
+				}
+				ret << tmp;
+			}
       break;
   }
 

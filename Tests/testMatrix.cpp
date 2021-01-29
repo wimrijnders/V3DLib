@@ -251,6 +251,7 @@ void test_matrix_multiplication(int dimension) {
 	{
   	auto k = compile(kernels::matrix_mult_decorator(dimension));
 	  k.load(&result, &a, &a);
+		k.pretty(true, "Matrix_code_vc4.txt");
 		k.pretty(false, "Matrix_code.txt");
 		check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
 	}
