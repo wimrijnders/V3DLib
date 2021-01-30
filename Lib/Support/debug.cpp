@@ -1,7 +1,7 @@
 #include "debug.h"
-#include <cstdio>
+#include <iostream>
+//#include <cstdio>
 #include "Exception.h"
-
 
 namespace {
 
@@ -76,6 +76,7 @@ void assertq(bool cond, const char *msg, bool do_break) {
 
 #ifdef DEBUG
   if (do_break) {
+    std::cout << "assertq(): breakpoint with message: '" << str << "'" << std::endl;
     breakpoint
   }
 #endif

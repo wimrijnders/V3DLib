@@ -18,12 +18,19 @@ public:
   }
 
   std::string dump() const;
+
+  void add_preload(BaseExpr const &exp);
+
+private:
+  Stmt::Ptr preload = nullptr;
 };
 
 
 StmtStack &stmtStack();
 void clearStack();
 void setStack(StmtStack &stmtStack);
+
+void add_preload(BaseExpr const &exp);
 
 }  // namespace V3DLib
 

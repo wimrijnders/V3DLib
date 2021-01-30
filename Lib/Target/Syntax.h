@@ -214,6 +214,7 @@ struct Instr : public InstructionComment {
     std::string dump() const;
     std::string mnemonics(bool with_comments = false) const;
 		int lastUniformOffset();
+		int tag_index(InstrTag tagi, bool ensure_one = true);
 		int tag_count(InstrTag tag);
   };
 

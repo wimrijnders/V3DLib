@@ -40,19 +40,6 @@ Instr::List add_uniform_pointer_offset(Instr::List &code) {
 }
 
 
-int get_init_begin_marker(Instr::List &code) {
-  // Find the init begin marker
-  int index = 0;
-  for (; index < code.size(); ++index) {
-    if (code[index].tag == INIT_BEGIN) break; 
-  }
-  assertq(index < code.size(), "Expecting INIT_BEGIN marker.");
-  assertq(index >= 2, "Expecting at least two uniform loads.", true);
-
-  return index;
-}
-
-
 /**
  * @param seq  list of generated instructions up till now
  */
@@ -198,7 +185,9 @@ Instr label(Label in_label) {
 void add_init(Instr::List &code) {
   using namespace V3DLib::Target::instr;
 
-  int insert_index = get_init_begin_marker(code);
+  int insert_index = code.tag_index(INIT_BEGIN);
+  assertq(insert_index >= 0, "Expecting init begin marker");
+
   Instr::List ret;
   Label endifLabel = freshLabel();
 

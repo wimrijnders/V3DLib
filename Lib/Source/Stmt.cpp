@@ -70,6 +70,14 @@ void Stmt::init(Tag in_tag) {
 }
 
 
+void Stmt::append(Ptr rhs) {
+  Ptr s0;
+  s0.reset(new Stmt(*this));
+  auto tmp = create_sequence(s0, rhs);
+  *this = *tmp;
+}
+
+
 BExpr::Ptr Stmt::where_cond() const {
   assert(tag == WHERE);
   assert(m_where_cond.get() != nullptr);
@@ -309,6 +317,7 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
       }
     break;
 
+    case GATHER_PRELOAD:   ret << "GATHER_PRELOAD";   break;
     case FOR:              ret << "FOR";              break;
     case LOAD_RECEIVE:     ret << "LOAD_RECEIVE";     break;
     case STORE_REQUEST:    ret << "STORE_REQUEST";    break;
@@ -316,7 +325,14 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
     default: {
         std::string tmp = DMA::disp(tag);
         if (tmp.empty()) {
-          assertq(false, "Unknown tag in Stmt::disp_intern()");
+          std::string msg;
+          msg << "Unknown tag '" << tag << "' in Stmt::disp_intern()";
+
+        if (tag < 0 || tag > DMA_START_WRITE) {
+          msg << "; tag out of range";
+        }
+
+          assertq(false, msg);
         }
         ret << tmp;
       }

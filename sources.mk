@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Fri 29 Jan 2021 06:35:50 AM CET
+# Generated on: Sat 30 Jan 2021 04:20:18 AM CET
 #
 ###############################################################################
 
@@ -119,5 +119,6 @@ TESTS_FILES := \
   Tests/testMatrix.o  \
   Tests/testImmediates.o  \
   Tests/testMain.o  \
+  Tests/testPreload.o  \
   Tests/support/qpu_disasm.o  \
 

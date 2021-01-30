@@ -84,6 +84,10 @@ std::string pretty(int indent, Stmt::Ptr s) {
           << "store(" << s->storeReq_data()->pretty() << ", " << s->storeReq_addr()->pretty() << ")\n";
       break;
 
+		case Stmt::GATHER_PRELOAD:
+      ret << indentBy(indent) << "Preload()";
+      break;
+
     default: {
         std::string tmp = DMA::pretty(indent, s);
         if (tmp.empty()) {

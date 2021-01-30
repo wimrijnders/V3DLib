@@ -11,6 +11,10 @@ void storeExpr(Expr::Ptr e0, Expr::Ptr e1) {
 }  // anon namespace
 
 
+void gatherExpr(Expr::Ptr e) {
+  stmtStack() << Stmt::create_assign(mkVar(Var(TMU0_ADDR)), e);
+}
+
 void receiveExpr(Expr::Ptr e) {
   stmtStack() << Stmt::create(Stmt::LOAD_RECEIVE, e, nullptr);
 }

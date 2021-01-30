@@ -10,9 +10,7 @@ namespace V3DLib {
 // Receive, request, store operations
 //=============================================================================
 
-inline void gatherExpr(Expr::Ptr e) {
-  stmtStack() << Stmt::create_assign(mkVar(Var(TMU0_ADDR)), e);
-}
+void gatherExpr(Expr::Ptr e);
 
 
 template <typename T>

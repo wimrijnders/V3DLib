@@ -83,6 +83,7 @@ struct Stmt : public InstructionComment {
 
   std::string disp() const { return disp_intern(false, 0); }
   std::string dump() const { return disp_intern(true, 0); }
+  void append(Ptr rhs);
 
   //
   // Accessors for pointer objects.

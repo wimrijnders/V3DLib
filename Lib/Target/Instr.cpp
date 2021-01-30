@@ -262,7 +262,7 @@ std::string Instr::List::mnemonics(bool with_comments) const {
  * Get the index of the last uniform load
  */
 int Instr::List::lastUniformOffset() {
-  // Detmine the first offset that is not a uniform load
+  // Determine the first offset that is not a uniform load
   int index = 0;
   for (; index < size(); ++index) {
     if (!(*this)[index].isUniformLoad()) break; 
@@ -285,6 +285,24 @@ int Instr::List::tag_count(InstrTag tag) {
   return count;
 }
 
+
+int Instr::List::tag_index(InstrTag tag, bool ensure_one) {
+  // Find the init begin marker
+  int found = -1;
+  int count = 0;
+
+  for (int index = 0; index < size(); ++index) {
+    if ((*this)[index].tag == tag) {
+      if (found == -1) {  // Only remember first
+        found = index;
+      }
+      count++;
+    }
+  }
+
+  assertq(!ensure_one || count == 1, "List::tag_index() Expecting exactly one tag found.");
+  return found;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // End Class Instr::List

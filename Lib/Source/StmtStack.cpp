@@ -22,7 +22,11 @@ namespace {
 void StmtStack::append(Stmt::Ptr stmt) {
   assert(stmt.get() != nullptr);
   assert(!empty());
-  push(Stmt::create_sequence(pop(), stmt));
+  
+  //push(Stmt::create_sequence(pop(), stmt));
+  auto top = top_item();
+  auto seq = Stmt::create_sequence(top->head, stmt);
+  top->head = seq;
 }
 
 
@@ -36,6 +40,30 @@ std::string StmtStack::dump() const {
   });
 
   return ret;
+}
+
+
+void StmtStack::add_preload(BaseExpr const &exp) {
+//  if (preload.get() != nullptr) {
+//    std::cout << "Pre: " << preload->dump() << std::endl;
+//  }
+
+  if (preload == nullptr) {
+    auto pre = Stmt::create(Stmt::GATHER_PRELOAD);
+    append(pre);
+    preload = pre;
+  }
+
+  assert(preload.get() != nullptr);
+  assert(preload->tag == Stmt::SEQ || preload->tag == Stmt::GATHER_PRELOAD);
+  auto assign = Stmt::create_assign(mkVar(Var(TMU0_ADDR)), exp.expr());
+
+  if (preload->tag == Stmt::GATHER_PRELOAD) {
+    assign->comment("Start Preload");
+  }
+
+  preload->append(assign);
+  std::cout << preload->dump() << std::endl;
 }
 
 
@@ -54,6 +82,10 @@ void clearStack() {
 void setStack(StmtStack &stmtStack) {
   assert(p_stmtStack == nullptr);
   p_stmtStack = &stmtStack;
+}
+
+void add_preload(BaseExpr const &exp) {
+  stmtStack().add_preload(exp);
 }
 
 }  // namespace V3DLib

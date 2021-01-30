@@ -11,8 +11,9 @@ namespace V3DLib {
  * TODO: Perhaps replace this with `Seq` as underlying base class
  */
 template <class T> class Stack {
-private:
   using Ptr = std::shared_ptr<T>;
+
+protected:
 
   class StackItem {
   public:
@@ -51,10 +52,7 @@ public:
   }
 
   Ptr top() const {
-    assert(m_size > 0);
-    assert(m_topItem != nullptr);
-    assert(m_topItem->head.get() != nullptr);
-    return m_topItem->head;
+    return top_item()->head;
   }
 
   void clear() {
@@ -75,6 +73,14 @@ protected:
       f(*(cur->head));
       cur = cur->tail; 
     }
+  }
+
+
+  StackItem *top_item() const {
+    assert(m_size > 0);
+    assert(m_topItem != nullptr);
+    assert(m_topItem->head.get() != nullptr);
+    return m_topItem;
   }
 
 private:

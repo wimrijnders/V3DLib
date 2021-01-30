@@ -83,6 +83,8 @@ void KernelDriver::compile_intern() {
     using namespace V3DLib::Target::instr;  // for mov()
 
     int index = m_targetCode.lastUniformOffset();
+    assert(index > 0);
+
     Instr::List ret;
 
     ret << mov(freshVar(), Var(UNIFORM));
@@ -90,7 +92,7 @@ void KernelDriver::compile_intern() {
 
     m_targetCode.insert(index + 1, ret);
 
-    warning("Added dummy uniform");
+    //warning("Added dummy uniform");
   }
 
   m_targetCode << Instr(END);
