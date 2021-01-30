@@ -35,6 +35,8 @@ inline void gather(Ptr<T>& addr) {
 	}
 }
 
+void gather_preload();
+
 void receiveExpr(Expr::Ptr e);
 void receive(Int &dest);
 void receive(Float &dest);

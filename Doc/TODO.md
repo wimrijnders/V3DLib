@@ -2,6 +2,8 @@
 
 ## General
 
+- [ ] Automate loading of new versions external libraries
+- [ ] Complete conversion `Seq<Instr>` to `Instr::List`
 - [ ] Get `Pi 1` running again; fails on qpu_enable call
 - [ ] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
 - [ ] Make heap memory size configurable (ideally cmldine option)

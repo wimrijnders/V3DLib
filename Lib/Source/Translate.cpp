@@ -627,6 +627,7 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
   if (s == nullptr) return;
 
   switch (s->tag) {
+		case Stmt::GATHER_PRELOAD:           // Remove if still present
     case Stmt::SKIP:
       break;
     case Stmt::ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
@@ -643,7 +644,7 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
       translateWhile(*seq, *s);
       break;
     case Stmt::WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
-        Var condVar = freshVar();  // This is the top-level definition of condVar
+        Var condVar = freshVar();        // This is the top-level definition of condVar
         *seq << whereStmt(s, condVar, always, false);
       }
       break;
@@ -665,21 +666,6 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
   }
 }
 
-
-/**
- * Get the instruction of the last uniform load
- */
-int lastUniformOffset(Instr::List &code) {
-  // Detmine the first offset that is not a uniform load
-  int index = 0;
-  for (; index < code.size(); ++index) {
-    if (!code[index].isUniformLoad()) break; 
-  }
-
-  assertq(index >= 2, "Expecting at least two uniform loads.", true);
-  return index - 1;
-}
-
 }  // anon namespace
 
 
@@ -689,19 +675,10 @@ int lastUniformOffset(Instr::List &code) {
  * Only used for `v3d`.
  */
 void insertInitBlock(Instr::List &code) {
-  using namespace V3DLib::Target::instr;  // for mov()
-
-  int index = lastUniformOffset(code);
+  int index = code.lastUniformOffset();
   Instr::List ret;
-
-  if (Platform::instance().compiling_for_vc4()) {
-    // Add final dummy uniform handling
-    // See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
-    ret << mov(freshVar(), Var(UNIFORM));
-    ret.back().comment("Last uniform load is dummy value");
-  }
-
   ret << Instr(INIT_BEGIN) << Instr(INIT_END);
+
   code.insert(index + 1, ret);
 }
 
@@ -824,6 +801,11 @@ Expr::Ptr putInVar(Instr::List *seq, Expr::Ptr e) {
  * Entry point for translation of statements.
  */
 void translate_stmt(Instr::List &seq, Stmt::Ptr s) {
+	assert(seq.empty());  // TODO check this
+
+	// TODO detect GATHER_PRELOAD here (or somewhere else)
+	//int count = seq.tag_count(
+
   stmt(&seq, s);
 }
 

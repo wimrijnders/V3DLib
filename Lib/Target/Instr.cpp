@@ -224,6 +224,10 @@ std::string Instr::dump() const {
 }
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Class Instr::List
+///////////////////////////////////////////////////////////////////////////////
+
 std::string Instr::List::dump() const {
   std::string ret;
 
@@ -254,6 +258,37 @@ std::string Instr::List::mnemonics(bool with_comments) const {
 }
 
 
+/**
+ * Get the index of the last uniform load
+ */
+int Instr::List::lastUniformOffset() {
+  // Detmine the first offset that is not a uniform load
+  int index = 0;
+  for (; index < size(); ++index) {
+    if (!(*this)[index].isUniformLoad()) break; 
+  }
+
+  assertq(index >= 2, "Expecting at least two uniform loads.", true);
+  return index - 1;
+}
+
+
+int Instr::List::tag_count(InstrTag tag) {
+  int count = 0;
+
+  for (int index = 0; index < size(); ++index) {
+    if ((*this)[index].tag == tag) {
+      ++count;
+    }
+  }
+
+  return count;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// End Class Instr::List
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * Check if given tag is for the specified platform

@@ -236,7 +236,7 @@ bool translate_stmt(Instr::List &seq, Stmt::Ptr s) {
     case Stmt::DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       return true;
 
     default:
-      assertq(false, "translate_stmt(): unexpected stmt tag");
+      assertq(false, "translate_stmt(): unexpected stmt tag", true);
       break;
   }
 

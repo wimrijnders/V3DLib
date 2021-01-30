@@ -15,6 +15,10 @@ void receiveExpr(Expr::Ptr e) {
   stmtStack() << Stmt::create(Stmt::LOAD_RECEIVE, e, nullptr);
 }
 
+void gather_preload() {
+  Expr::Ptr e0;  // intentional nullptr;
+  stmtStack() << Stmt::create(Stmt::GATHER_PRELOAD, e0, nullptr);
+}
 
 void receive(Int &dest)   { receiveExpr(dest.expr()); }
 void receive(Float &dest) { receiveExpr(dest.expr()); }
