@@ -1,12 +1,15 @@
 # V3DLib
 
-**Version 0.0.13**
+**Version 0.0.14**
 
 -----
-## NOTE
+## Release Notes
 
-External library `CmdParameter` has changed.
+* External library `CmdParameter` has changed.
 Please run `./script/install.sh` when upgrading from a version <= `0.0.8`.
+* Addition  `preload` is still in progress. It's a significant API change and I can't ignore the version numbering now like
+  I did with previous commits to `0.0`. I'll bump the version up to `0.1.0` when preload is fully working, 
+  even though changes are added now.
 
 -----
 
