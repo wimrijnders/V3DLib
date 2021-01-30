@@ -9,10 +9,11 @@
 namespace V3DLib {
 namespace vc4 {
 
+// TODO: fix this for TMU usage
 Instr::List SourceTranslate::deref_var_var(Var lhs, Var rhs) {
   Instr::List ret;
   
-  ret << StoreRequest(lhs, rhs)
+  ret << DMA::StoreRequest(lhs, rhs)
       << genWaitDMAStore();  // Wait for store to complete
 
   return ret;
@@ -48,7 +49,20 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List *instrs) {
  * @return true if statement handled, false otherwise
  */
 bool SourceTranslate::stmt(Instr::List &seq, Stmt::Ptr s) {
-  return vc4::translate_stmt(seq, s);
+  bool ret = true;
+
+  switch (s->tag) {
+    // Add tag handling here as required
+
+    default:
+      if (!DMA::translate_stmt(seq, s)) {
+        assertq(false, "translate_stmt(): unexpected stmt tag", true);
+        ret = false;
+      }
+      break;
+  }
+
+  return ret;
 }
 
 }  // namespace vc4

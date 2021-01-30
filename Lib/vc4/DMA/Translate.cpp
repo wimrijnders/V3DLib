@@ -206,41 +206,43 @@ Instr::List storeRequestOperation(Stmt::Ptr s) {
     addr = putInVar(&ret, addr);
   }
 
-  ret << vc4::StoreRequest(addr->var(), data->var(), true);
+  ret << DMA::StoreRequest(addr->var(), data->var(), true);
   return ret;
 }
 
 }  // anon namespace
 
 
-namespace vc4 {
+namespace DMA {
 
 /**
  * @return true if statement handled, false otherwise
  */
 bool translate_stmt(Instr::List &seq, Stmt::Ptr s) {
+  bool ret = true;
+
   switch (s->tag) {
-    case Stmt::STORE_REQUEST:    seq << storeRequestOperation(s);              return true;
+    case Stmt::STORE_REQUEST:    seq << storeRequestOperation(s);              break;
     case Stmt::SET_READ_STRIDE:
-    case Stmt::SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    return true;
+    case Stmt::SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    break;
     case Stmt::SEMA_INC:
-    case Stmt::SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          return true;
-    case Stmt::SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       return true;
-    case Stmt::SETUP_VPM_READ:   seq << setupVPMReadStmt(s);                   return true;
-    case Stmt::SETUP_VPM_WRITE:  seq << setupVPMWriteStmt(s);                  return true;
-    case Stmt::SETUP_DMA_READ:   seq << setupDMAReadStmt(s);                   return true;
-    case Stmt::SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  return true;
-    case Stmt::DMA_READ_WAIT:    seq << genWaitDMALoad();                      return true;
-    case Stmt::DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     return true;
-    case Stmt::DMA_START_READ:   seq<< startDMAReadStmt(s->address());         return true;
-    case Stmt::DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       return true;
+    case Stmt::SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          break;
+    case Stmt::SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       break;
+    case Stmt::SETUP_VPM_READ:   seq << setupVPMReadStmt(s);                   break;
+    case Stmt::SETUP_VPM_WRITE:  seq << setupVPMWriteStmt(s);                  break;
+    case Stmt::SETUP_DMA_READ:   seq << setupDMAReadStmt(s);                   break;
+    case Stmt::SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  break;
+    case Stmt::DMA_READ_WAIT:    seq << genWaitDMALoad();                      break;
+    case Stmt::DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     break;
+    case Stmt::DMA_START_READ:   seq<< startDMAReadStmt(s->address());         break;
+    case Stmt::DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       break;
 
     default:
-      assertq(false, "translate_stmt(): unexpected stmt tag", true);
+      ret = false;
       break;
   }
 
-  return false;
+  return ret;
 }
 
 
@@ -274,5 +276,5 @@ Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
   return ret;
 }
 
-}  // namespace vc4
+}  // namespace DMA
 }  // namespace V3DLib

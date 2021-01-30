@@ -5,13 +5,12 @@
 #include "Target/Syntax.h"
 
 namespace V3DLib {
-
-namespace vc4 {
+namespace DMA {
 
 bool translate_stmt(Instr::List &seq, Stmt::Ptr s);
 Seq<Instr> StoreRequest(Var addr_var, Var data_var, bool wait = false);
 
-}  // namespace vc4
+}  // namespace DMA
 }  // namespace V3DLib
 
 #endif  // _LIB_VC4_DMA_TRANSLATE_H

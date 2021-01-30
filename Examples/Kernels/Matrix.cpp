@@ -227,8 +227,6 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   DotVector vec(N);
   Float result;
 
-  gather_preload();
-
   For (Int a_index = 0,  a_index < DIM, a_index++)
     Ptr<Float> b_in = b + 0;  // Wonky '+ 0' to ensure pointer value is COPIED, not referenced.
     vec.load(a + 0);          // And again, and below again

@@ -84,9 +84,9 @@ struct Ptr : public BaseExpr {
   }
 
   // Assignment
-  Ptr<T>& operator=(Ptr<T>& rhs) {
-    assign(expr, rhs.expr);
-    return rhs;
+  Ptr<T>& operator=(Ptr<T> &rhs) {
+    assign(expr(), rhs.expr());
+    return *this; //rhs;
   }
 
   PtrExpr<T> operator=(PtrExpr<T> rhs) {

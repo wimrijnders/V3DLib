@@ -63,9 +63,9 @@ Int::operator IntExpr() { return IntExpr(m_expr); }
 
 // Assignment
 
-Int &Int::operator=(Int &rhs) {
+Int &Int::operator=(Int const &rhs) {
   assign(m_expr, rhs.expr());
-  return rhs;
+  return *this; //rhs;
 }
 
 IntExpr Int::operator=(IntExpr rhs) {

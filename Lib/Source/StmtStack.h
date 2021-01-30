@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_SOURCE_STMTSTACK_H_
 #define _V3DLIB_SOURCE_STMTSTACK_H_
 #include "Common/Stack.h"
+#include "Source/Ptr.h"
 #include "Stmt.h"
 
 namespace V3DLib {
@@ -19,6 +20,7 @@ public:
 
   std::string dump() const;
 
+  void add_preload(V3DLib::Ptr<Int> &src);
   void add_preload(BaseExpr const &exp);
 
 private:

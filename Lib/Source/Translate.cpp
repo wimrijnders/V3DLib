@@ -801,11 +801,7 @@ Expr::Ptr putInVar(Instr::List *seq, Expr::Ptr e) {
  * Entry point for translation of statements.
  */
 void translate_stmt(Instr::List &seq, Stmt::Ptr s) {
-	assert(seq.empty());  // TODO check this
-
-	// TODO detect GATHER_PRELOAD here (or somewhere else)
-	//int count = seq.tag_count(
-
+	assert(seq.empty());  // TODO perhaps move this test up, or seq as return value
   stmt(&seq, s);
 }
 

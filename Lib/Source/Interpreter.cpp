@@ -454,6 +454,7 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
   switch (stmt->tag) {
     // No-op
+    case Stmt::GATHER_PRELOAD:
     case Stmt::SKIP:
       return;
 
@@ -558,19 +559,20 @@ void exec(InterpreterState* state, CoreState* s) {
   if (stmt == NULL) return;
 
   switch (stmt->tag) {
-    case Stmt::SKIP:    // No-op
+    case Stmt::GATHER_PRELOAD:  // Ignore
+    case Stmt::SKIP:
       return;
 
-    case Stmt::ASSIGN:  // Assignment
+    case Stmt::ASSIGN:          // Assignment
       execAssign(s, vecAlways(), stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
-    case Stmt::SEQ:     // Sequential composition
+    case Stmt::SEQ:             // Sequential composition
       s->stack.push(stmt->seq_s1());
       s->stack.push(stmt->seq_s0());
       return;
 
-    case Stmt::WHERE: { // Conditional assignment
+    case Stmt::WHERE: {         // Conditional assignment
       Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, b, stmt->thenStmt());
       execWhere(s, vecNeg(b), stmt->elseStmt());

@@ -67,6 +67,11 @@ void StmtStack::add_preload(BaseExpr const &exp) {
 }
 
 
+void StmtStack::add_preload(V3DLib::Ptr<Int> &src) {
+  add_preload((BaseExpr const &) src );
+}
+
+
 StmtStack &stmtStack() {
   assert(p_stmtStack != nullptr);
   return *p_stmtStack;
