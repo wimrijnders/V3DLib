@@ -57,21 +57,31 @@ void prefetch_kernel(Ptr<T> result, Ptr<T> in_src) {
   input = -3;
   T input2 = -4;
   T a = 1357;             // Interference
-  add_prefetch(src);
+  prefetch(input, src);
   T b = 2468;             // Interference
-  add_prefetch(src);
-  add_prefetch(src + 0);  // For test of usage PointerExpr
-
+  prefetch(input2, src);
   T input3 = -6;
-  receive(input);
-  receive(input2);
-  receive(input3);
+  prefetch(input3, src + 0);  // For test of usage PointerExpr
 
   store(input, dst);
   dst += 16;
   store(input2, dst);
   dst += 16;
   store(input3, dst);
+}
+
+
+template<int const N>
+void multi_prefetch_kernel(Ptr<Int> result, Ptr<Int> src) {
+  Int a = 234;  // Best to have the receiving var out of the loop,
+                // otherwise it might be recreated in a different register of the rf
+                // (Unproven but probably correct hypothesis)
+
+  for (int i = 0; i < N; ++i) {
+    prefetch(a, src);
+    store(2*a, result);
+    result += 16;
+  }
 }
 
 }  // anon namespace
@@ -123,4 +133,29 @@ TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
       REQUIRE(result[i] == src[i]);
     }
   } 
+
+
+  SECTION("Test more fetches than prefetch slots") {
+    const int N = 10;  // anything over 8 will result in prefetches after loads
+
+    SharedArray<int> src(16*N);
+    for (int i = 0; i < (int) src.size(); ++i) {
+      src[i] = i + 1;
+    }
+
+    SharedArray<int> result(16*N);
+    result.fill(-1);
+
+    auto k = compile(multi_prefetch_kernel<N>);
+    //k.pretty(true);
+    k.load(&result, &src);
+    k.interpret();
+
+    //dump_array(result, 16);
+
+    for (int i = 0; i < (int) result.size(); ++i) {
+      INFO("i: " << i);
+      REQUIRE(result[i] == 2*src[i]);
+    }
+  }
 }

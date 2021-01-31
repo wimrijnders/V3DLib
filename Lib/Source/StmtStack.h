@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_SOURCE_STMTSTACK_H_
 #define _V3DLIB_SOURCE_STMTSTACK_H_
 #include <functional>
+#include <vector>
 #include "Common/Stack.h"
 #include "Source/Ptr.h"
 #include "Stmt.h"
@@ -24,15 +25,21 @@ public:
   }
 
   std::string dump() const;
-  bool add_prefetch(Pointer &exp);
-  bool add_prefetch(PointerExpr const &exp);
+
+  void first_prefetch();
+  void add_prefetch(Pointer &exp);
+  void add_prefetch(PointerExpr const &exp);
   Stmt *first_in_seq() const;
+  bool prefetch_empty() const { return m_prefetch_tags.empty() &&  m_assigns.empty(); }
+  void resolve_prefetches();
 
 private:
-  Stmt::Ptr prefetch = nullptr;
   int prefetch_count = 0;
 
-  bool init_prefetch();
+  std::vector<Stmt::Ptr> m_prefetch_tags;
+  std::vector<Ptr>       m_assigns;
+
+  void init_prefetch();
   void post_prefetch(Ptr assign);
 };
 
@@ -41,12 +48,18 @@ StmtStack &stmtStack();
 void clearStack();
 void initStack(StmtStack &stmtStack);
 
-inline bool add_prefetch(PointerExpr addr) {
-  return stmtStack().add_prefetch(addr);
+template<typename T>
+void prefetch(T &dst, PointerExpr src) {
+  stmtStack().first_prefetch();
+  receive(dst);
+  stmtStack().add_prefetch(src);
 }
 
-inline bool add_prefetch(Pointer addr) {
-  return stmtStack().add_prefetch(addr);
+template<typename T>
+void prefetch(T &dst, Pointer &src) {
+  stmtStack().first_prefetch();
+  receive(dst);
+  stmtStack().add_prefetch(src);
 }
 
 }  // namespace V3DLib

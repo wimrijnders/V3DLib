@@ -3,17 +3,28 @@
 #include "Support/basics.h"
 
 namespace {
-  int N             = 1;  // Dimension of square matrix in blocks of 16 values.
-  bool do_readwrite = true;
-  bool do_prefetch  = false;
-}
+
+enum LoadStore {
+  DEFAULT,
+  USE_TMU,
+  DO_PREFETCH,
+  NO_READWRITE
+};
+
+int N = 1;                         // Dimension of square matrix in blocks of 16 values.
+LoadStore do_loadstore = DEFAULT;
+
+}  // anon namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 // Utility functions
 ////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Return a random float value between -1 and 1
+ */ 
 float random_float() {
-  return  (1.0f*(((float) (rand() % 200)) - 100.0f))/100.0f;  // Intention: values between -1 and 1
+  return  (1.0f*(((float) (rand() % 200)) - 100.0f))/100.0f;
 }
 
 
@@ -61,6 +72,7 @@ void rotate_sum(Float &input, Float &result) {
  * Will still be useful in other contexts.
  *
  * ## Usage
+ *
  * Given a loop:
  * 
  *   For (Int b_index = 0, b_index < DIM, b_index++)
@@ -94,41 +106,54 @@ void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
 
 
 void pre_read(Float &dst, Ptr<Float> &src) {
-  if (!do_readwrite) {
-    dst = 0.0f;
-    src += 16;
-    return;
-  }
+  // on v3d, TMU is used always
 
-  if (do_prefetch) {
-    // on vc4, this will use TMU
-    gather(src);
-    receive(dst);
-    src += 16;
-  } else {
-    // on v3d, this will create the same code as the if-block
-    // on vc4, this will use DMA
-    dst = *src;
-    src += 16;
+  switch (do_loadstore) {
+    case DEFAULT:
+      // on vc4, this will use DMA
+      dst = *src;
+      src += 16;
+      break;
+    case USE_TMU:
+      // on vc4, this will use TMU
+      gather(src);
+      receive(dst);
+      src += 16;
+      break;
+    case DO_PREFETCH:
+      assert(false);  // TODO
+      break;
+    case NO_READWRITE:
+      dst = 0.0f;
+      src += 16;
+      break;
+    default:
+      assert(false);
   }
 }
 
 
 void pre_write(Ptr<Float> &dst, Float &src) {
-  if (!do_readwrite) {
-    dst += 16;
-    return;
-  }
+  // on v3d, TMU is used always
 
-  if (do_prefetch) {
-    // on vc4, this will use TMU
-    store(src, dst);
-    dst += 16;
-  } else {
-    // on v3d, this will create the same code as the if-block
-    // on vc4, this will use DMA
-    *dst = src;
-    dst += 16;
+  switch (do_loadstore) {
+    case DEFAULT:
+      // on vc4, this will use DMA
+      *dst = src;
+      dst += 16;
+      break;
+    case USE_TMU:
+    case DO_PREFETCH:
+      // on vc4, this should use TMU, but uses DMA anyway
+      // TODO fix this
+      store(src, dst);
+      dst += 16;
+      break;
+    case NO_READWRITE:
+      dst += 16;
+      break;
+    default:
+      assert(false);
   }
 }
 
@@ -271,13 +296,16 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  *
  * @return  pointer to the actual kernel function
  */
-FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_do_prefetch) {
+FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_use_tmu) {
   assert(dimension > 0);
   assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
 
   N = dimension >> 4;
-  do_readwrite = in_do_readwrite;
-  do_prefetch  = in_do_prefetch;
+  if (!in_do_readwrite) {
+    do_loadstore = NO_READWRITE;
+  } else if (in_use_tmu) {
+    do_loadstore = USE_TMU;
+  }
 
   return matrix_mult;
 }
