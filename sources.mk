@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sun 31 Jan 2021 05:20:36 AM CET
+# Generated on: Sun 31 Jan 2021 09:18:54 AM CET
 #
 ###############################################################################
 
@@ -39,6 +39,7 @@ OBJ := \
   Source/Float.o  \
   Source/CExpr.o  \
   Source/Cond.o  \
+  Source/Ptr.o  \
   Source/Var.o  \
   Source/Op.o  \
   Source/BExpr.o  \

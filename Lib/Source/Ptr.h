@@ -24,8 +24,8 @@ namespace V3DLib {
 
 class PointerExpr : public BaseExpr {
 public:
-  PointerExpr(Expr::Ptr e) : BaseExpr(e, "PointerExpr") {}
-  PointerExpr(BaseExpr const &e) : BaseExpr(e.expr(), "PointerExpr") {}
+  PointerExpr(Expr::Ptr e);
+  PointerExpr(BaseExpr const &e);
 };
 
 
@@ -73,35 +73,19 @@ struct Deref : public BaseExpr {
 
 class Pointer : public BaseExpr {
 public:
-	Pointer() : BaseExpr(mkVar(freshVar()), "Ptr") {}
+  Pointer();
+  Pointer(PointerExpr rhs);
 
-  Pointer(PointerExpr rhs) : Pointer() {
-    assign(expr(), rhs.expr());
-  }
+  PointerExpr operator=(PointerExpr rhs);
+  PointerExpr operator+(int b);
+  PointerExpr operator+=(int b);
+  PointerExpr operator+(IntExpr b);
 
-  PointerExpr operator+(int b) { return add(b); }
-  PointerExpr operator+=(int b) { return addself(b); }
-	PointerExpr operator+(IntExpr b) { return add(b); }
-
-  PointerExpr operator=(PointerExpr rhs) {
-    assign(expr(), rhs.expr());
-    return rhs;
-  }
 
 protected:
-  PointerExpr addself(int b) {
-		Pointer &me = *(const_cast<Pointer *>(this));
-    return (me = me + b);
-  }
-
-  PointerExpr add(int b) {
-    return mkApply(expr(), Op(ADD, INT32), mkIntLit(4*b));
-  }
-
-  PointerExpr add(IntExpr b) {
-    breakpoint  // TODO check correct working
-    return mkApply(expr(), Op(ADD, INT32), (b << 2).expr());
-  }
+  PointerExpr addself(int b);
+  PointerExpr add(int b);
+  PointerExpr add(IntExpr b);
 };
 
 
@@ -114,7 +98,7 @@ class Ptr : public Pointer {
   using Parent = Pointer;
 
 public:
-	Ptr() = default;
+  Ptr() = default;
 
 /*
   // TODO get rid of ctor acting as reference
