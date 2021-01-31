@@ -6,9 +6,10 @@ namespace {
 
 using namespace V3DLib;
 
-void prefetch_kernel(Ptr<Int> result, Ptr<Int> in_src) {
-  Ptr<Int> src = in_src;
-  Ptr<Int> dst = result;
+template<typename T>
+void prefetch_kernel(Ptr<T> result, Ptr<T> in_src) {
+  Ptr<T> src = in_src;
+  Ptr<T> dst = result;
 
   //
   // The usual way of doing things
@@ -16,7 +17,7 @@ void prefetch_kernel(Ptr<Int> result, Ptr<Int> in_src) {
 
 //  Int input = -2;  comment("Start regular fetch/store");
 //  input = *src; //cannot bind non-const lvalue reference of type ‘V3DLib::Int&’ to an rvalue of type ‘V3DLib::Int’
-  Int input = *src;  comment("Start regular fetch/store");
+  T input = *src;  comment("Start regular fetch/store");
 
   src += 16;
   *dst = input;
@@ -27,7 +28,7 @@ void prefetch_kernel(Ptr<Int> result, Ptr<Int> in_src) {
 //  src += 16;
 //  *dst = input;
 //  dst += 16;
-  Int inputa = *src;
+  T inputa = *src;
   src += 16;
   *dst = inputa;
   dst += 16;
@@ -35,7 +36,8 @@ void prefetch_kernel(Ptr<Int> result, Ptr<Int> in_src) {
   //
   // With regular gather
   //
-  input = (Int) -2; comment("Start regular gather");  // TODO silly that the case is required
+  //input = (Int) -2; comment("Start regular gather");  // TODO silly that the case is required
+  input = -2; comment("Start regular gather");  // TODO silly that the case is required
 
   gather(src);
   gather(src + 16);
@@ -53,46 +55,72 @@ void prefetch_kernel(Ptr<Int> result, Ptr<Int> in_src) {
   *dst = 123;  comment("Start prefetch");
   src += 32;
   input = -3;
-  Int input2 = -4;
-  Int a = index();   // Interference
+  T input2 = -4;
+  T a = 1357;             // Interference
   add_prefetch(src);
-  Int b = 1;         // Interference
-  add_prefetch(src + 16);
-  src += 2*16;
+  T b = 2468;             // Interference
+  add_prefetch(src);
+  add_prefetch(src + 0);  // For test of usage PointerExpr
+
+  T input3 = -6;
   receive(input);
   receive(input2);
+  receive(input3);
 
   store(input, dst);
   dst += 16;
   store(input2, dst);
   dst += 16;
+  store(input3, dst);
 }
 
 }  // anon namespace
 
 
 TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
-  int const N = 6;
+  int const N = 7;
 
-  SharedArray<int> src(16*N);
-  for (int i = 0; i < (int) src.size(); ++i) {
-    src[i] = i + 1;
-  }
+  SECTION("Test prefetch with integers") {
+    SharedArray<int> src(16*N);
+    for (int i = 0; i < (int) src.size(); ++i) {
+      src[i] = i + 1;
+    }
 
-  SharedArray<int> result(16*N);
-  result.fill(-1);
+    SharedArray<int> result(16*N);
+    result.fill(-1);
 
-  auto k = compile(prefetch_kernel);
-  //k.pretty(false);
-  //k.pretty(true);
-  k.load(&result, &src);
-  k.interpret();
-  //k.emu();  // Failed assertion, DMA not active
+    auto k = compile(prefetch_kernel<Int>);
+    //k.pretty(true);
+    //k.pretty(false);
+    k.load(&result, &src);
+    k.interpret();
+    //k.emu();  // Failed assertion, DMA not active
 
-  //dump_array(result, 16);
+    //dump_array(result, 16);
   
-  for (int i = 0; i < (int) result.size(); ++i) {
-    INFO("i: " << i);
-    REQUIRE(result[i] == src[i]);
+    for (int i = 0; i < (int) result.size(); ++i) {
+      INFO("i: " << i);
+      REQUIRE(result[i] == src[i]);
+    }
   }
+
+
+  SECTION("Test prefetch with floats") {
+    SharedArray<float> src(16*N);
+    for (int i = 0; i < (int) src.size(); ++i) {
+      src[i] = (float) (i + 1);
+    }
+
+    SharedArray<float> result(16*N);
+    result.fill(-1);
+
+    auto k = compile(prefetch_kernel<Float>);
+    k.load(&result, &src);
+    k.interpret();
+
+    for (int i = 0; i < (int) result.size(); ++i) {
+      INFO("i: " << i);
+      REQUIRE(result[i] == src[i]);
+    }
+  } 
 }

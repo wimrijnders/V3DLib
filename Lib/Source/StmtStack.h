@@ -7,11 +7,14 @@
 
 namespace V3DLib {
 
+
 /**
  * 
  */
 class StmtStack : public Stack<Stmt> {
 public:
+  using Ptr = std::shared_ptr<StmtStack>;
+
   void reset();
   void append(Stmt::Ptr stmt);
 
@@ -21,13 +24,16 @@ public:
   }
 
   std::string dump() const;
-
-  void add_prefetch(V3DLib::Ptr<Int> &src);
-  void add_prefetch(BaseExpr const &exp);
+  bool add_prefetch(Pointer &exp);
+  bool add_prefetch(PointerExpr const &exp);
   Stmt *first_in_seq() const;
 
 private:
   Stmt::Ptr prefetch = nullptr;
+  int prefetch_count = 0;
+
+  bool init_prefetch();
+  void post_prefetch(Ptr assign);
 };
 
 
@@ -35,23 +41,13 @@ StmtStack &stmtStack();
 void clearStack();
 void initStack(StmtStack &stmtStack);
 
-
-template <typename T>
-inline void add_prefetch(PtrExpr<T> addr) {
-  stmtStack().add_prefetch(addr);
+inline bool add_prefetch(PointerExpr addr) {
+  return stmtStack().add_prefetch(addr);
 }
 
-
-template <typename T>
-inline void add_prefetch(Ptr<T> &addr) {
-  stmtStack().add_prefetch(addr);
+inline bool add_prefetch(Pointer addr) {
+  return stmtStack().add_prefetch(addr);
 }
-
-
-using StackCallback = std::function<void()>;
-using StackPtr = std::shared_ptr<StmtStack>;
-
-StackPtr tempStack(StackCallback f);
 
 }  // namespace V3DLib
 

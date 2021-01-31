@@ -22,11 +22,18 @@ namespace V3DLib {
 // Types                   
 // ============================================================================
 
+class PointerExpr : public BaseExpr {
+public:
+  PointerExpr(Expr::Ptr e) : BaseExpr(e, "PointerExpr") {}
+  PointerExpr(BaseExpr const &e) : BaseExpr(e.expr(), "PointerExpr") {}
+};
+
+
 // A 'PtrExpr<T>' defines a pointer expression which can only be used on the
 // RHS of assignment statements.
 template <typename T>
-struct PtrExpr : public BaseExpr {
-  PtrExpr(Expr::Ptr e) : BaseExpr(e, "PtrExpr") {}
+struct PtrExpr : public PointerExpr {
+  PtrExpr(Expr::Ptr e) : PointerExpr(e) {}
 
   /**
    * Dereference
@@ -64,24 +71,63 @@ struct Deref : public BaseExpr {
 };
 
 
-// A 'Ptr<T>' defines a pointer variable which can be used in both the LHS and
-// RHS of an assignment.
+class Pointer : public BaseExpr {
+public:
+	Pointer() : BaseExpr(mkVar(freshVar()), "Ptr") {}
 
+  Pointer(PointerExpr rhs) : Pointer() {
+    assign(expr(), rhs.expr());
+  }
+
+  PointerExpr operator+(int b) { return add(b); }
+  PointerExpr operator+=(int b) { return addself(b); }
+	PointerExpr operator+(IntExpr b) { return add(b); }
+
+  PointerExpr operator=(PointerExpr rhs) {
+    assign(expr(), rhs.expr());
+    return rhs;
+  }
+
+protected:
+  PointerExpr addself(int b) {
+		Pointer &me = *(const_cast<Pointer *>(this));
+    return (me = me + b);
+  }
+
+  PointerExpr add(int b) {
+    return mkApply(expr(), Op(ADD, INT32), mkIntLit(4*b));
+  }
+
+  PointerExpr add(IntExpr b) {
+    breakpoint  // TODO check correct working
+    return mkApply(expr(), Op(ADD, INT32), (b << 2).expr());
+  }
+};
+
+
+/**
+ * A 'Ptr<T>' defines a pointer variable which can be used in both the lhs and
+ * rhs of an assignment.
+ */
 template <typename T>
-struct Ptr : public BaseExpr {
+class Ptr : public Pointer {
+  using Parent = Pointer;
 
-  Ptr<T>() : BaseExpr(mkVar(freshVar()), "Ptr") {}
+public:
+	Ptr() = default;
 
 /*
   // TODO get rid of ctor acting as reference
   Ptr<T>(Ptr<T> const &rhs) : Ptr<T>() {
     assign(expr(), rhs.expr());
   }
-*/
 
   Ptr<T>(PtrExpr<T> rhs) : Ptr<T>() {
     assign(expr(), rhs.expr());
   }
+*/
+
+  Ptr<T>(PtrExpr<T> rhs) : Pointer(rhs) {}
 
   // Assignment
   Ptr<T>& operator=(Ptr<T> &rhs) {
@@ -112,6 +158,16 @@ struct Ptr : public BaseExpr {
     auto e = deref_with_index(expr(), index.expr());
     return Deref<T>(e);
   }
+
+  PtrExpr<T> operator+(int b) {
+    Expr::Ptr e = add(b).expr();
+    return PtrExpr<T>(e);
+  }
+
+  PtrExpr<T> operator+=(int b) {
+    Expr::Ptr e = addself(b).expr();
+    return PtrExpr<T>(e);
+  }
 };
 
 
@@ -134,22 +190,6 @@ inline PtrExpr<T> operator+(PtrExpr<T> a, int b) {
   return PtrExpr<T>(e);
 }
 
-
-template <typename T>
-inline PtrExpr<T> operator+(Ptr<T> &a, int b) {
-  Expr::Ptr e = mkApply(a.expr(), Op(ADD, INT32), mkIntLit(4*b));
-  return PtrExpr<T>(e);
-}
-
-
-template <typename T> inline PtrExpr<T> operator+=(Ptr<T> &a, int b) {
-  return a = a + b;
-}
-
-template <typename T> inline PtrExpr<T> operator+(PtrExpr<T> a, IntExpr b) {
-  Expr::Ptr e = mkApply(a.expr(), Op(ADD, INT32), (b << 2).expr());
-  return PtrExpr<T>(e);
-}
 
 template <typename T> inline PtrExpr<T> operator+(Ptr<T> &a, IntExpr b) {
   Expr::Ptr e = mkApply(a.expr(), Op(ADD, INT32), (b << 2).expr());

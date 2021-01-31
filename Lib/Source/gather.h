@@ -25,45 +25,6 @@ inline void gather(Ptr<T> &addr) {
   gatherBaseExpr(addr);
 }
 
-/*
-template <typename T>
-inline void gather(PtrExpr<T> addr) {
-  if (Platform::instance().compiling_for_vc4()) {
-    Ptr<T> temp = addr + index();
-    stmtStack() << gatherExpr(temp.expr());
-  } else {
-    stmtStack() <<  gatherExpr(addr.expr());
-  }
-}
-
-
-template <typename T>
-inline void gather(Ptr<T> &addr) {
-  if (Platform::instance().compiling_for_vc4()) {
-    Ptr<T> temp = addr + index();
-    stmtStack() << gatherExpr(temp.expr());
-  } else {
-    stmtStack() << gatherExpr(addr.expr());
-  }
-}
-*/
-
-
-/*
-template <typename T>
-inline StackPtr gatherStmt(PtrExpr<T> addr) {
-  return tempStack([&addr] {
-    gather(addr);
-  });
-}
-
-template <typename T>
-inline StackPtr gatherStmt(Ptr<T> &addr) {
-  return tempStack([&addr] {
-    gather(addr);
-  });
-}
-*/
 
 void receiveExpr(Expr::Ptr e);
 void receive(Int &dest);

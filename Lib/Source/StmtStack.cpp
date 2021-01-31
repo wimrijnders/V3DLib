@@ -5,8 +5,27 @@
 
 namespace V3DLib {
 
+using StackCallback = std::function<void()>;
+
 namespace {
-  StmtStack *p_stmtStack = nullptr;
+
+StmtStack *p_stmtStack = nullptr;
+
+StmtStack::Ptr tempStack(StackCallback f) {
+  StmtStack::Ptr stack;
+  stack.reset(new StmtStack);
+  stack->reset();
+
+  // Temporarily replace global stack
+  StmtStack *global_stack = p_stmtStack;
+  p_stmtStack = stack.get();
+
+  f();  
+
+  p_stmtStack = global_stack;
+  return stack;
+}
+
 } // anon namespace
 
 
@@ -49,10 +68,9 @@ std::string StmtStack::dump() const {
 }
 
 
-void StmtStack::add_prefetch(BaseExpr const &exp) {
-//  if (prefetch.get() != nullptr) {
-//    std::cout << "Pre: " << prefetch->dump() << std::endl;
-//  }
+bool StmtStack::init_prefetch() {
+  assert(prefetch_count <= 8);
+  if (prefetch_count >= 8) return false;
 
   if (prefetch == nullptr) {
     auto pre = Stmt::create(Stmt::GATHER_PREFETCH);
@@ -62,12 +80,20 @@ void StmtStack::add_prefetch(BaseExpr const &exp) {
 
   assert(prefetch.get() != nullptr);
   assert(prefetch->tag == Stmt::SEQ || prefetch->tag == Stmt::GATHER_PREFETCH);
+  return true;
+}
 
-  StackPtr assign = tempStack([&exp] {
-    gatherBaseExpr(exp);
-  });
+
+void StmtStack::post_prefetch(Ptr assign) {
   assert(assign.get() != nullptr);
   assert(assign->size() == 1);  // Not expecting anything else
+
+/*
+  std::cout << "===== assign stack =====\n"
+            << assign->dump()
+            << "========================\n"
+            << std::endl;
+*/
 
   if (prefetch->tag == Stmt::GATHER_PREFETCH) {
     auto item = assign->first_in_seq();
@@ -76,12 +102,43 @@ void StmtStack::add_prefetch(BaseExpr const &exp) {
   }
 
   prefetch->append(assign->top());
-  std::cout << prefetch->dump() << std::endl;
+  //std::cout << prefetch->dump() << std::endl;
+
+  prefetch_count++;
 }
 
 
-void StmtStack::add_prefetch(V3DLib::Ptr<Int> &src) {
-  add_prefetch((BaseExpr const &) src );
+/**
+ * Technically, the param should be a pointer in some form.
+ * This is not enforced right now.
+ * TODO find a way to enforce this
+ *
+ * @return true if param added to prefetch list,
+ *         false otherwise (prefetch list is full)
+ */
+bool StmtStack::add_prefetch(PointerExpr const &exp) {
+  if (!init_prefetch()) return false;;
+
+  Ptr assign = tempStack([&exp] {
+    Pointer ptr = exp;
+    gatherBaseExpr(exp);
+  });
+
+  post_prefetch(assign);
+  return true;
+}
+
+
+bool StmtStack::add_prefetch(Pointer &exp) {
+  if (!init_prefetch()) return false;;
+
+  Ptr assign = tempStack([&exp] {
+    gatherBaseExpr(exp);
+    exp += 16;
+  });
+
+  post_prefetch(assign);
+  return true;
 }
 
 
@@ -114,22 +171,6 @@ void initStack(StmtStack &stmtStack) {
   assert(p_stmtStack == nullptr);
   stmtStack.reset();
   p_stmtStack = &stmtStack;
-}
-
-
-StackPtr tempStack(StackCallback f) {
-  StackPtr stack;
-  stack.reset(new StmtStack);
-  stack->reset();
-
-  // Temporarily replace global stack
-  StmtStack *global_stack = p_stmtStack;
-  p_stmtStack = stack.get();
-
-  f();  
-
-  p_stmtStack = global_stack;
-  return stack;
 }
 
 }  // namespace V3DLib
