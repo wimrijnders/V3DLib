@@ -317,7 +317,7 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
       }
     break;
 
-    case GATHER_PRELOAD:   ret << "GATHER_PRELOAD";   break;
+    case GATHER_PREFETCH:  ret << "GATHER_PREFETCH";  break;
     case FOR:              ret << "FOR";              break;
     case LOAD_RECEIVE:     ret << "LOAD_RECEIVE";     break;
     case STORE_REQUEST:    ret << "STORE_REQUEST";    break;
@@ -375,7 +375,7 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
       assertq(e0 != nullptr && e1 == nullptr, "create 2");
       ret->m_exp_a = e0;
     break;
-    case GATHER_PRELOAD:
+    case GATHER_PREFETCH:
       // Nothing to do
     break;
     default:
@@ -496,7 +496,7 @@ Stmt *Stmt::first_in_seq() const {
     if (tag == SKIP) {
       return nullptr;
     } else {
-      assert(tag != Stmt::GATHER_PRELOAD);  // paranoia
+      assert(tag != Stmt::GATHER_PREFETCH);  // paranoia
       return const_cast<Stmt *>(this);
     }
   }

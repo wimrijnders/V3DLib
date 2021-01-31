@@ -5,7 +5,7 @@
 namespace {
   int N             = 1;  // Dimension of square matrix in blocks of 16 values.
   bool do_readwrite = true;
-  bool do_preload   = false;
+  bool do_prefetch  = false;
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -100,7 +100,7 @@ void pre_read(Float &dst, Ptr<Float> &src) {
     return;
   }
 
-  if (do_preload) {
+  if (do_prefetch) {
     // on vc4, this will use TMU
     gather(src);
     receive(dst);
@@ -120,7 +120,7 @@ void pre_write(Ptr<Float> &dst, Float &src) {
     return;
   }
 
-  if (do_preload) {
+  if (do_prefetch) {
     // on vc4, this will use TMU
     store(src, dst);
     dst += 16;
@@ -271,13 +271,13 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  *
  * @return  pointer to the actual kernel function
  */
-FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_do_preload) {
+FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_do_prefetch) {
   assert(dimension > 0);
   assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
 
   N = dimension >> 4;
   do_readwrite = in_do_readwrite;
-  do_preload   = in_do_preload;
+  do_prefetch  = in_do_prefetch;
 
   return matrix_mult;
 }

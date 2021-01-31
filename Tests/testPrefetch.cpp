@@ -6,7 +6,7 @@ namespace {
 
 using namespace V3DLib;
 
-void preload_kernel(Ptr<Int> result, Ptr<Int> in_src) {
+void prefetch_kernel(Ptr<Int> result, Ptr<Int> in_src) {
   Ptr<Int> src = in_src;
   Ptr<Int> dst = result;
 
@@ -48,16 +48,16 @@ void preload_kernel(Ptr<Int> result, Ptr<Int> in_src) {
 
 
   //
-  // Now with preload
+  // Now with prefetch
   //
-  *dst = 123;  comment("Start with preload");
+  *dst = 123;  comment("Start prefetch");
   src += 32;
   input = -3;
   Int input2 = -4;
   Int a = index();   // Interference
-  add_preload(src);
+  add_prefetch(src);
   Int b = 1;         // Interference
-  add_preload(src + 16);
+  add_prefetch(src + 16);
   src += 2*16;
   receive(input);
   receive(input2);
@@ -71,7 +71,7 @@ void preload_kernel(Ptr<Int> result, Ptr<Int> in_src) {
 }  // anon namespace
 
 
-TEST_CASE("Test preload on stmt stack", "[preload]") {
+TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
   int const N = 6;
 
   SharedArray<int> src(16*N);
@@ -82,7 +82,7 @@ TEST_CASE("Test preload on stmt stack", "[preload]") {
   SharedArray<int> result(16*N);
   result.fill(-1);
 
-  auto k = compile(preload_kernel);
+  auto k = compile(prefetch_kernel);
   //k.pretty(false);
   //k.pretty(true);
   k.load(&result, &src);

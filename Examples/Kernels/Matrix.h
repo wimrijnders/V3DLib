@@ -67,7 +67,7 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b);
 
 using FuncType = decltype(matrix_mult);
 
-FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite = true, bool in_do_preload = false);
+FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite = true, bool in_do_prefetch = false);
 
 }  // namespace kernels
 

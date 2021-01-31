@@ -454,7 +454,7 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
   switch (stmt->tag) {
     // No-op
-    case Stmt::GATHER_PRELOAD:
+    case Stmt::GATHER_PREFETCH:
     case Stmt::SKIP:
       return;
 
@@ -559,7 +559,7 @@ void exec(InterpreterState* state, CoreState* s) {
   if (stmt == NULL) return;
 
   switch (stmt->tag) {
-    case Stmt::GATHER_PRELOAD:  // Ignore
+    case Stmt::GATHER_PREFETCH: // Ignore
     case Stmt::SKIP:
       return;
 

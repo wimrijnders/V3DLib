@@ -84,8 +84,8 @@ std::string pretty(int indent, Stmt::Ptr s) {
           << "store(" << s->storeReq_data()->pretty() << ", " << s->storeReq_addr()->pretty() << ")\n";
       break;
 
-		case Stmt::GATHER_PRELOAD:
-      ret << indentBy(indent) << "Preload()";
+		case Stmt::GATHER_PREFETCH:
+      ret << indentBy(indent) << "Prefetch Tag";
       break;
 
     default: {

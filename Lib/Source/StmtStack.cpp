@@ -49,19 +49,19 @@ std::string StmtStack::dump() const {
 }
 
 
-void StmtStack::add_preload(BaseExpr const &exp) {
-//  if (preload.get() != nullptr) {
-//    std::cout << "Pre: " << preload->dump() << std::endl;
+void StmtStack::add_prefetch(BaseExpr const &exp) {
+//  if (prefetch.get() != nullptr) {
+//    std::cout << "Pre: " << prefetch->dump() << std::endl;
 //  }
 
-  if (preload == nullptr) {
-    auto pre = Stmt::create(Stmt::GATHER_PRELOAD);
+  if (prefetch == nullptr) {
+    auto pre = Stmt::create(Stmt::GATHER_PREFETCH);
     append(pre);
-    preload = pre;
+    prefetch = pre;
   }
 
-  assert(preload.get() != nullptr);
-  assert(preload->tag == Stmt::SEQ || preload->tag == Stmt::GATHER_PRELOAD);
+  assert(prefetch.get() != nullptr);
+  assert(prefetch->tag == Stmt::SEQ || prefetch->tag == Stmt::GATHER_PREFETCH);
 
   StackPtr assign = tempStack([&exp] {
     gatherBaseExpr(exp);
@@ -69,19 +69,19 @@ void StmtStack::add_preload(BaseExpr const &exp) {
   assert(assign.get() != nullptr);
   assert(assign->size() == 1);  // Not expecting anything else
 
-  if (preload->tag == Stmt::GATHER_PRELOAD) {
+  if (prefetch->tag == Stmt::GATHER_PREFETCH) {
     auto item = assign->first_in_seq();
     assert(item != nullptr);
-    item->comment("Start Preload");
+    item->comment("Start Prefetch");
   }
 
-  preload->append(assign->top());
-  std::cout << preload->dump() << std::endl;
+  prefetch->append(assign->top());
+  std::cout << prefetch->dump() << std::endl;
 }
 
 
-void StmtStack::add_preload(V3DLib::Ptr<Int> &src) {
-  add_preload((BaseExpr const &) src );
+void StmtStack::add_prefetch(V3DLib::Ptr<Int> &src) {
+  add_prefetch((BaseExpr const &) src );
 }
 
 

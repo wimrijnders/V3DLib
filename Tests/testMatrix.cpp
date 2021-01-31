@@ -251,7 +251,7 @@ void test_matrix_multiplication(int dimension) {
   {
     auto k = compile(kernels::matrix_mult_decorator(dimension));
     k.load(&result, &a, &a);
-    k.pretty(true, "Matrix_code_vc4.txt");
+    k.pretty(true,  "Matrix_code_vc4.txt");
     k.pretty(false, "Matrix_code.txt");
     check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
   }
@@ -259,7 +259,7 @@ void test_matrix_multiplication(int dimension) {
   {
     // Do the same thing with TMU (different for vc4 only)
     auto k2 = compile(kernels::matrix_mult_decorator(dimension, true, true));
-    k2.pretty(false, "Matrix_code_preload.txt");
+    k2.pretty(false, "Matrix_code_prefetch.txt");
     k2.load(&result, &a, &a);
     check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);
   }

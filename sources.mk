@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sat 30 Jan 2021 04:20:18 AM CET
+# Generated on: Sun 31 Jan 2021 05:20:36 AM CET
 #
 ###############################################################################
 
@@ -112,6 +112,7 @@ TESTS_FILES := \
   Tests/testRot3D.o  \
   Tests/testRegMap.o  \
   Tests/testSFU.o  \
+  Tests/testPrefetch.o  \
   Tests/testConditionCodes.o  \
   Tests/testV3d.o  \
   Tests/testCmdLine.o  \
@@ -119,6 +120,5 @@ TESTS_FILES := \
   Tests/testMatrix.o  \
   Tests/testImmediates.o  \
   Tests/testMain.o  \
-  Tests/testPreload.o  \
   Tests/support/qpu_disasm.o  \
 

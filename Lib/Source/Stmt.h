@@ -66,7 +66,7 @@ struct Stmt : public InstructionComment {
     LOAD_RECEIVE,
     STORE_REQUEST,
 
-    GATHER_PRELOAD,
+    GATHER_PREFETCH,
 
     // DMA stuff
     SET_READ_STRIDE,

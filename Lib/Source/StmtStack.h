@@ -22,12 +22,12 @@ public:
 
   std::string dump() const;
 
-  void add_preload(V3DLib::Ptr<Int> &src);
-  void add_preload(BaseExpr const &exp);
+  void add_prefetch(V3DLib::Ptr<Int> &src);
+  void add_prefetch(BaseExpr const &exp);
   Stmt *first_in_seq() const;
 
 private:
-  Stmt::Ptr preload = nullptr;
+  Stmt::Ptr prefetch = nullptr;
 };
 
 
@@ -37,14 +37,14 @@ void initStack(StmtStack &stmtStack);
 
 
 template <typename T>
-inline void add_preload(PtrExpr<T> addr) {
-  stmtStack().add_preload(addr);
+inline void add_prefetch(PtrExpr<T> addr) {
+  stmtStack().add_prefetch(addr);
 }
 
 
 template <typename T>
-inline void add_preload(Ptr<T> &addr) {
-  stmtStack().add_preload(addr);
+inline void add_prefetch(Ptr<T> &addr) {
+  stmtStack().add_prefetch(addr);
 }
 
 
