@@ -1,6 +1,7 @@
 #include "StmtStack.h"
 #include <iostream>          // std::cout
 #include "Support/basics.h"
+#include "Source/gather.h"
 
 namespace V3DLib {
 
@@ -8,6 +9,11 @@ namespace {
   StmtStack *p_stmtStack = nullptr;
 } // anon namespace
 
+
+void StmtStack::reset() {
+  clear();
+  push(mkSkip());
+}
 
 /**
  * Add passed statement to the end of the current instructions
@@ -56,19 +62,39 @@ void StmtStack::add_preload(BaseExpr const &exp) {
 
   assert(preload.get() != nullptr);
   assert(preload->tag == Stmt::SEQ || preload->tag == Stmt::GATHER_PRELOAD);
-  auto assign = Stmt::create_assign(mkVar(Var(TMU0_ADDR)), exp.expr());
+
+  StackPtr assign = tempStack([&exp] {
+    gatherBaseExpr(exp);
+  });
+  assert(assign.get() != nullptr);
+  assert(assign->size() == 1);  // Not expecting anything else
 
   if (preload->tag == Stmt::GATHER_PRELOAD) {
-    assign->comment("Start Preload");
+    auto item = assign->first_in_seq();
+    assert(item != nullptr);
+    item->comment("Start Preload");
   }
 
-  preload->append(assign);
+  preload->append(assign->top());
   std::cout << preload->dump() << std::endl;
 }
 
 
 void StmtStack::add_preload(V3DLib::Ptr<Int> &src) {
   add_preload((BaseExpr const &) src );
+}
+
+
+/**
+ * Only first item on stack is checked
+ */
+Stmt *StmtStack::first_in_seq() const {
+  if (empty()) {
+    return nullptr;
+  }
+
+  Stmt::Ptr item = top();
+  return item->first_in_seq();
 }
 
 
@@ -84,13 +110,26 @@ void clearStack() {
 }
 
 
-void setStack(StmtStack &stmtStack) {
+void initStack(StmtStack &stmtStack) {
   assert(p_stmtStack == nullptr);
+  stmtStack.reset();
   p_stmtStack = &stmtStack;
 }
 
-void add_preload(BaseExpr const &exp) {
-  stmtStack().add_preload(exp);
+
+StackPtr tempStack(StackCallback f) {
+  StackPtr stack;
+  stack.reset(new StmtStack);
+  stack->reset();
+
+  // Temporarily replace global stack
+  StmtStack *global_stack = p_stmtStack;
+  p_stmtStack = stack.get();
+
+  f();  
+
+  p_stmtStack = global_stack;
+  return stack;
 }
 
 }  // namespace V3DLib

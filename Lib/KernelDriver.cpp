@@ -84,7 +84,8 @@ KernelDriver::~KernelDriver() {}
  * @param numVars           number of variables already assigned prior to compilation
  */
 void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
-  initStmt(m_stmtStack);
+  initStmt();
+	initStack(m_stmtStack);
   resetFreshVarGen(numVars);
   resetFreshLabelGen();
 
@@ -98,7 +99,7 @@ void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
 
 
 void KernelDriver::obtain_ast() {
-  finishStmt();
+  clearStack();
   m_body = m_stmtStack.pop();
 }
 

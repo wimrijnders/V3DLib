@@ -488,6 +488,30 @@ CExpr::Ptr Stmt::loop_cond() const {
 }
 
 
+/**
+ * Do a leftmost search for non-SEQ item
+ */
+Stmt *Stmt::first_in_seq() const {
+  if (tag != SEQ) {
+    if (tag == SKIP) {
+      return nullptr;
+    } else {
+      assert(tag != Stmt::GATHER_PRELOAD);  // paranoia
+      return const_cast<Stmt *>(this);
+    }
+  }
+
+  Stmt *ret = seq_s0()->first_in_seq();
+  if (ret != nullptr) {
+    return ret;
+  }
+
+  return seq_s1()->first_in_seq();
+}
+
+
+
+
 // ============================================================================
 // Functions on statements
 // ============================================================================

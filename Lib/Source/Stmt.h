@@ -35,6 +35,9 @@ private:
 
 
 /**
+ * An instance is actually a tree of statements, due to having SEQ as 
+ * a possible element.
+ *
  * The original implementation put instances of `Stmt` on a custom heap.
  * This placed a strict limit on compilation size, which I continually ran
  * into, and complicated initialization of instances (notably, ctors were
@@ -42,8 +45,10 @@ private:
  *
  * The custom heap has thus been removed and instances are allocated in
  * the regular C++ way.
+ *
  * Pointers within this definition are in the process of being replaced
  * with smart pointers.
+ * TODO check if done
  */
 struct Stmt : public InstructionComment {
   using Ptr = std::shared_ptr<Stmt>;
@@ -101,6 +106,7 @@ struct Stmt : public InstructionComment {
   Expr::Ptr storeReq_addr();
   Expr::Ptr address();
   Expr::Ptr print_expr() const;
+  Stmt *first_in_seq() const;
 
   Ptr seq_s0() const;
   Ptr seq_s1() const;

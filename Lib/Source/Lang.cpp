@@ -171,19 +171,8 @@ void comment(char const *str) {
 }
 
 
-/**
- * QPU code for clean exit
- */
-void finishStmt() {
-  clearStack();
-}
-
-
-void initStmt(StmtStack &stmtStack) {
+void initStmt() {
   controlStack.clear();
-  stmtStack.clear();
-  stmtStack.push(mkSkip());
-  setStack(stmtStack);
 }
 
 }  // namespace V3DLib

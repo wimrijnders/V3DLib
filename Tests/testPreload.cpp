@@ -13,15 +13,23 @@ void preload_kernel(Ptr<Int> result, Ptr<Int> in_src) {
   //
   // The usual way of doing things
   //
-  Int input = -2;  comment("Start regular fetch/store");
-  input = *src;
+
+//  Int input = -2;  comment("Start regular fetch/store");
+//  input = *src; //cannot bind non-const lvalue reference of type ‘V3DLib::Int&’ to an rvalue of type ‘V3DLib::Int’
+  Int input = *src;  comment("Start regular fetch/store");
+
   src += 16;
   *dst = input;
   dst += 16;
 
-  input = *src;
+  // See above
+//  input = *src;
+//  src += 16;
+//  *dst = input;
+//  dst += 16;
+  Int inputa = *src;
   src += 16;
-  *dst = input;
+  *dst = inputa;
   dst += 16;
 
   //
@@ -44,7 +52,7 @@ void preload_kernel(Ptr<Int> result, Ptr<Int> in_src) {
   //
   *dst = 123;  comment("Start with preload");
   src += 32;
-  input = (Int) -3;  // TODO silly that the case is required
+  input = -3;
   Int input2 = -4;
   Int a = index();   // Interference
   add_preload(src);
@@ -76,12 +84,12 @@ TEST_CASE("Test preload on stmt stack", "[preload]") {
 
   auto k = compile(preload_kernel);
   //k.pretty(false);
-  k.pretty(true);
+  //k.pretty(true);
   k.load(&result, &src);
-  k.interpret();  // preload  only returning first values of loaded vector in all vector slots
-  // k.emu();  Failed assertion
+  k.interpret();
+  //k.emu();  // Failed assertion, DMA not active
 
-  dump_array(result, 16);
+  //dump_array(result, 16);
   
   for (int i = 0; i < (int) result.size(); ++i) {
     INFO("i: " << i);
