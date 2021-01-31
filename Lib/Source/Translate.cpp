@@ -627,7 +627,7 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
   if (s == nullptr) return;
 
   switch (s->tag) {
-		case Stmt::GATHER_PRELOAD:           // Remove if still present
+    case Stmt::GATHER_PRELOAD:           // Remove if still present
     case Stmt::SKIP:
       break;
     case Stmt::ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
@@ -801,7 +801,7 @@ Expr::Ptr putInVar(Instr::List *seq, Expr::Ptr e) {
  * Entry point for translation of statements.
  */
 void translate_stmt(Instr::List &seq, Stmt::Ptr s) {
-	assert(seq.empty());  // TODO perhaps move this test up, or seq as return value
+  assert(seq.empty());  // TODO perhaps move this test up, or seq as return value
   stmt(&seq, s);
 }
 

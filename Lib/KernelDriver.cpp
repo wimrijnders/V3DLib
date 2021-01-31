@@ -85,7 +85,7 @@ KernelDriver::~KernelDriver() {}
  */
 void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
   initStmt();
-	initStack(m_stmtStack);
+  initStack(m_stmtStack);
   resetFreshVarGen(numVars);
   resetFreshLabelGen();
 

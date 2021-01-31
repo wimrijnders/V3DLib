@@ -375,9 +375,9 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
       assertq(e0 != nullptr && e1 == nullptr, "create 2");
       ret->m_exp_a = e0;
     break;
-		case GATHER_PRELOAD:
-			// Nothing to do
-		break;
+    case GATHER_PRELOAD:
+      // Nothing to do
+    break;
     default:
       fatal("This tag not handled yet in create(Expr,Expr)");
     break;

@@ -22,14 +22,14 @@ Stmt::Ptr gatherExpr(Expr::Ptr e) {
 void gatherBaseExpr(BaseExpr const &addr) {
   if (Platform::instance().compiling_for_vc4()) {
     // Intention:
- 		// Ptr<T> temp = addr + index();
+     // Ptr<T> temp = addr + index();
     Int b = index();
     Expr::Ptr temp = mkApply(addr.expr(), Op(ADD, INT32), (b << 2).expr());
 
- 		stmtStack() << gatherExpr(temp);
- 	} else {
- 		stmtStack() <<  gatherExpr(addr.expr());
- 	}
+    stmtStack() << gatherExpr(temp);
+  } else {
+    stmtStack() <<  gatherExpr(addr.expr());
+  }
 }
 
 

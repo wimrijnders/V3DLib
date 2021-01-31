@@ -29,22 +29,22 @@ inline void gather(Ptr<T> &addr) {
 template <typename T>
 inline void gather(PtrExpr<T> addr) {
   if (Platform::instance().compiling_for_vc4()) {
- 		Ptr<T> temp = addr + index();
- 		stmtStack() << gatherExpr(temp.expr());
- 	} else {
- 		stmtStack() <<  gatherExpr(addr.expr());
- 	}
+    Ptr<T> temp = addr + index();
+    stmtStack() << gatherExpr(temp.expr());
+  } else {
+    stmtStack() <<  gatherExpr(addr.expr());
+  }
 }
 
 
 template <typename T>
 inline void gather(Ptr<T> &addr) {
   if (Platform::instance().compiling_for_vc4()) {
- 		Ptr<T> temp = addr + index();
- 		stmtStack() << gatherExpr(temp.expr());
- 	} else {
- 		stmtStack() << gatherExpr(addr.expr());
- 	}
+    Ptr<T> temp = addr + index();
+    stmtStack() << gatherExpr(temp.expr());
+  } else {
+    stmtStack() << gatherExpr(addr.expr());
+  }
 }
 */
 
