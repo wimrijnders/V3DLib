@@ -63,9 +63,7 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
   // Launch QPUs
   unsigned result = execute_qpu(mb, numQPUs, (uint32_t) launchMsgsPtr, 1, LibSettings::qpu_timeout()*1000);
 #else
-  #pragma message("WARNING: invoke() will not run on this platform, only on ARM 32-bits")
   assertq(false, "invoke() will not run on this platform, only on ARM 32-bits");
-
   unsigned result = 1;  // Force error message
 #endif
 
