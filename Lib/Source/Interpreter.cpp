@@ -400,7 +400,6 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
       break;
 
     // Dereferenced pointer
-    // Comparable to execStoreRequest()
     case Expr::DEREF: {
       Vec index = eval(s, lhs->deref_ptr());
       storeToHeap(s, index, val);
@@ -538,13 +537,6 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
 }
 
 
-void execStoreRequest(CoreState* s, Expr::Ptr data, Expr::Ptr addr) {
-  Vec val = eval(s, data);
-  Vec index = eval(s, addr);
-  storeToHeap(s, index, val);
-}
-
-
 // ============================================================================
 // Execute code
 // ============================================================================
@@ -607,10 +599,6 @@ void exec(InterpreterState* state, CoreState* s) {
 
     case Stmt::LOAD_RECEIVE:
       execLoadReceive(s, stmt->address());
-      return;
-
-    case Stmt::STORE_REQUEST:
-      execStoreRequest(s, stmt->storeReq_data(), stmt->storeReq_addr());
       return;
 
     case Stmt::SEND_IRQ_TO_HOST:

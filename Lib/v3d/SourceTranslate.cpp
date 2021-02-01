@@ -42,7 +42,7 @@ Instr::List add_uniform_pointer_offset(Instr::List &code) {
 
 /**
  * @param seq  list of generated instructions up till now
- */
+ * /
 void storeRequest(Instr::List &seq, Expr::Ptr data, Expr::Ptr addr) {
   using namespace V3DLib::Target::instr;
 
@@ -59,6 +59,7 @@ void storeRequest(Instr::List &seq, Expr::Ptr data, Expr::Ptr addr) {
   seq << mov(TMUA, srcAddr)
       << tmuwt();
 }
+*/
 
 }  // anon namespace
 
@@ -233,14 +234,7 @@ bool SourceTranslate::stmt(Instr::List &seq, Stmt::Ptr s) {
     return true;
   }
 
-  switch (s->tag) {
-    case Stmt::STORE_REQUEST:
-      storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
-      return true;
-
-    default:
-      return false;
-  }
+  return false;
 }
 
 }  // namespace v3d

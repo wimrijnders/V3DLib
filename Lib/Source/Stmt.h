@@ -64,7 +64,6 @@ struct Stmt : public InstructionComment {
     PRINT,
     FOR,
     LOAD_RECEIVE,
-    STORE_REQUEST,
 
     GATHER_PREFETCH,
 
@@ -102,8 +101,6 @@ struct Stmt : public InstructionComment {
   Expr::Ptr assign_lhs() const;
   Expr::Ptr assign_rhs() const;
   Expr::Ptr stride();
-  Expr::Ptr storeReq_data();
-  Expr::Ptr storeReq_addr();
   Expr::Ptr address();
   Expr::Ptr print_expr() const;
   Stmt *first_in_seq() const;

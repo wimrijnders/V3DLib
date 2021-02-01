@@ -79,11 +79,6 @@ std::string pretty(int indent, Stmt::Ptr s) {
           << "receive(" << s->address()->pretty() << ")";
       break;
 
-    case Stmt::STORE_REQUEST:
-      ret << indentBy(indent)
-          << "store(" << s->storeReq_data()->pretty() << ", " << s->storeReq_addr()->pretty() << ")\n";
-      break;
-
 		case Stmt::GATHER_PREFETCH:
       ret << indentBy(indent) << "Prefetch Tag";
       break;

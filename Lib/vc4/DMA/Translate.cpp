@@ -184,32 +184,6 @@ Seq<Instr> setupVPMWriteStmt(Stmt::Ptr s) {
   return ret;
 }
 
-
-// ============================================================================
-// Store request operation
-// ============================================================================
-
-// A 'store' operation of data to addr is almost the same as
-// *addr = data.  The difference is that a 'store' waits until
-// outstanding DMAs have completed before performing a write rather
-// than after a write.  This enables other operations to happen in
-// parallel with the write.
-
-Instr::List storeRequestOperation(Stmt::Ptr s) {
-  Expr::Ptr data = s->storeReq_data();
-  Expr::Ptr addr = s->storeReq_addr();
-
-  Instr::List ret;
-
-  if (data->tag() != Expr::VAR || addr->tag() != Expr::VAR) {
-    data = putInVar(&ret, data);
-    addr = putInVar(&ret, addr);
-  }
-
-  ret << DMA::StoreRequest(addr->var(), data->var(), true);
-  return ret;
-}
-
 }  // anon namespace
 
 
@@ -222,7 +196,6 @@ bool translate_stmt(Instr::List &seq, Stmt::Ptr s) {
   bool ret = true;
 
   switch (s->tag) {
-    case Stmt::STORE_REQUEST:    seq << storeRequestOperation(s);              break;
     case Stmt::SET_READ_STRIDE:
     case Stmt::SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    break;
     case Stmt::SEMA_INC:
@@ -246,7 +219,7 @@ bool translate_stmt(Instr::List &seq, Stmt::Ptr s) {
 }
 
 
-Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
+Seq<Instr> StoreRequest(Var addr_var, Var data_var) {
   using namespace V3DLib::Target::instr;
 
   Reg addr      = freshReg();
@@ -254,18 +227,14 @@ Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
 
   Seq<Instr> ret;
 
-  ret << li(addr, 16)                       // Setup VPM
+  ret << li(addr, 16)                                        // Setup VPM
       << add(addr, addr, QPU_ID)
       << genSetupVPMStore(addr, 0, 1)
-      << li(storeAddr, 256)                 // Store address
-      << add(storeAddr, storeAddr, QPU_ID);
+      << li(storeAddr, 256)                                  // Store address
+      << add(storeAddr, storeAddr, QPU_ID)
+      << genWaitDMAStore()                                   // Wait for any previous store to complete
 
-  if (wait) {
-    ret << genWaitDMAStore();                             // Wait for any outstanding store to complete
-  }
-
-  // Setup DMA
-  ret << genSetWriteStride(0)
+      << genSetWriteStride(0)                                // Setup DMA
       << genSetupDMAStore(16, 1, 1, storeAddr)
       << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0)  // Put to VPM
       << genStartDMAStore(srcReg(addr_var));                 // Start DMA

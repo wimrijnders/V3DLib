@@ -33,11 +33,6 @@ void receive(Float &dest);
 template <typename T>
 inline void receive(Ptr<T> &dest) { receiveExpr(dest.expr); }
 
-void store(IntExpr data, PtrExpr<Int> addr);
-void store(FloatExpr data, PtrExpr<Float> addr);
-void store(IntExpr data, Ptr<Int> &addr);
-void store(FloatExpr data, Ptr<Float> &addr);
-
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_SOURCE_GATHER_H_

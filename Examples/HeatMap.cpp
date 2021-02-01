@@ -242,8 +242,7 @@ void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
 				output = 0.0f;
 			End
 
-     	store(output, p);
-
+     	*p = output;
       p = p + 16;
     End
 

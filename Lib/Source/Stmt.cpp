@@ -114,20 +114,6 @@ Expr::Ptr Stmt::stride() {
 }
 
 
-Expr::Ptr Stmt::storeReq_data() {
-  assert(tag == STORE_REQUEST);
-  assert(m_exp_a.get() != nullptr);
-  return m_exp_a;
-}
-
-
-Expr::Ptr Stmt::storeReq_addr() {
-  assert(tag == STORE_REQUEST);
-  assert(m_exp_b.get() != nullptr);
-  return m_exp_b;
-}
-
-
 Expr::Ptr Stmt::address() {
   assert(
     tag == LOAD_RECEIVE    ||
@@ -320,7 +306,6 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
     case GATHER_PREFETCH:  ret << "GATHER_PREFETCH";  break;
     case FOR:              ret << "FOR";              break;
     case LOAD_RECEIVE:     ret << "LOAD_RECEIVE";     break;
-    case STORE_REQUEST:    ret << "STORE_REQUEST";    break;
 
     default: {
         std::string tmp = DMA::disp(tag);
@@ -356,7 +341,6 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 
   switch (in_tag) {
     case ASSIGN:
-    case STORE_REQUEST:
       assertq(e0 != nullptr && e1 != nullptr, "create 1");
       ret->m_exp_a = e0;
       ret->m_exp_b = e1;
@@ -375,11 +359,12 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
       assertq(e0 != nullptr && e1 == nullptr, "create 2");
       ret->m_exp_a = e0;
     break;
+
     case GATHER_PREFETCH:
       // Nothing to do
     break;
     default:
-      fatal("This tag not handled yet in create(Expr,Expr)");
+      fatal("create(Expr,Expr): Tag not handled");
     break;
   }
 

@@ -235,8 +235,7 @@ void noloop_where_kernel(Ptr<Int> result, Int x, Int y) {
   Where (y > 10 && y < 20 && x > 10 && x < 20)
     tmp = 1;
   End
-  store(tmp, result);
-  //*result = tmp;  // Adds tmuwt to output for v3d, no difference
+  *result = tmp;
 }
 
 
@@ -245,8 +244,7 @@ void noloop_if_and_kernel(Ptr<Int> result, Int x, Int y) {
   If (y > 10 && y < 20 && x > 10 && x < 20)
     tmp = 1;
   End
-  store(tmp, result);
-  //*result = tmp;  // Adds tmuwt to output for v3d, no difference
+  *result = tmp;
 }
 
 
@@ -255,7 +253,7 @@ void noloop_if_andor_kernel(Ptr<Int> result, Int x, Int y) {
   If ((y > 10 && y < 20) || (x > 10 && x < 20))
     tmp = 1;
   End
-  store(tmp, result);
+  *result = tmp;
 }
 
 
@@ -270,8 +268,8 @@ void noloop_multif_kernel(Ptr<Int> result, Int x, Int y) {
   End
   End
   End
-  store(tmp, result);
-  //*result = tmp;  // Adds tmuwt to output for v3d, no difference
+
+  *result = tmp;
 }
 
 
@@ -284,7 +282,7 @@ void andor_where_kernel(Ptr<Float> result, Int width, Int height) {
       Where (y > 10 && y < 20 && x > 10 && x < 20)
         tmp = 0.0;
       End
-      store(tmp, p);
+      *p = tmp;
       p = p + VEC_SIZE;
     End
   End
@@ -300,7 +298,7 @@ void andor_if_kernel(Ptr<Float> result, Int width, Int height) {
       If (y > 10 && y < 20 && x > 10 && x < 20)
         tmp = 0.0;
       End
-      store(tmp, p);
+      *p = tmp;
       p = p + VEC_SIZE;
     End
   End
@@ -322,7 +320,7 @@ void andor_multi_if_kernel(Ptr<Float> result, Int width, Int height) {
       End
       End
       End
-      store(tmp, p);
+      *p = tmp;
       p = p + VEC_SIZE;
     End
   End
@@ -521,7 +519,6 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   // - When run alone, works fine.
   // - code is identical to previous calls, only param's are different
   // - Library code surrounding the qpu call works identically (checked with debugging).
-  // - timeout occurs with or without generated `tmuwt` in store operation (i.e. write back to main memory)
   // - `sleep()` before and after tends to make it better, but not perfect
   //
   // Output in `var/log/kern.log`:

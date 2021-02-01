@@ -138,15 +138,11 @@ void pre_write(Ptr<Float> &dst, Float &src) {
 
   switch (do_loadstore) {
     case DEFAULT:
-      // on vc4, this will use DMA
-      *dst = src;
-      dst += 16;
-      break;
     case USE_TMU:
     case DO_PREFETCH:
-      // on vc4, this should use TMU, but uses DMA anyway
-      // TODO fix this
-      store(src, dst);
+      // on vc4 this uses DMA
+      // on v3d this uses TMU
+      *dst = src;
       dst += 16;
       break;
     case NO_READWRITE:

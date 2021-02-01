@@ -42,10 +42,10 @@ void prefetch_kernel(Ptr<T> result, Ptr<T> in_src) {
   gather(src);
   gather(src + 16);
   receive(input);
-  store(input, dst);
+  *dst = input;
   dst += 16;
   receive(input);
-  store(input, dst);
+  *dst = input;
   dst += 16;
 
 
@@ -63,11 +63,11 @@ void prefetch_kernel(Ptr<T> result, Ptr<T> in_src) {
   T input3 = -6;
   prefetch(input3, src + 0);  // For test of usage PointerExpr
 
-  store(input, dst);
+  *dst = input;
   dst += 16;
-  store(input2, dst);
+  *dst = input2;
   dst += 16;
-  store(input3, dst);
+  *dst = input3;
 }
 
 
@@ -79,7 +79,7 @@ void multi_prefetch_kernel(Ptr<Int> result, Ptr<Int> src) {
 
   for (int i = 0; i < N; ++i) {
     prefetch(a, src);
-    store(2*a, result);
+    *result = 2*a;
     result += 16;
   }
 }
