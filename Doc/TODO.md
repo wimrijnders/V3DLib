@@ -118,7 +118,7 @@ Source code:
   - [x] Add freeing of memory to `SharedArray` heap. This will increase the complexity of the heap code hugely
   - [x] Get rid of AST heap
 	- [x] Fix unfreed elements of `Stmt` (perhaps elsewhere). Made a start with using `std::shared_ptr` for `Expr`
-  - [ ] Verify correct freeing of previous with a memory checker (valgrind?)
+  - [ ] Verify correct freeing of previous with a memory checker (`valgrind`?)
 
 
 ## CmdParameter

@@ -299,7 +299,7 @@ The next section explores how to improve performance by overlapping memory acces
 
 These are all read operations, the write operation can not be optimized.
 
- - On 'vc4' a write operation has to wait for a previous write operation to complete.
+ - On `vc4` a write operation has to wait for a previous write operation to complete.
  - On `v3d`, a write operation does not block and always overlaps with QPU computation.
 
 Between `gather(p)` and `receive(x)` the program is free to perform computation *in parallel*
