@@ -4,7 +4,7 @@
 
 - [ ] Automate loading of new versions external libraries
 - [ ] Complete conversion `Seq<Instr>` to `Instr::List`
-- [ ] Get `Pi 1` running again; fails on qpu_enable call
+- [ ] Get `Pi 1` running again; fails in `qpu_enable()`
 - [ ] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
 - [ ] Make heap memory size configurable (ideally cmldine option)
 - [ ] ! Fix '+ 0' hack for kernel pointers, this is confusing
@@ -112,11 +112,13 @@ Source code:
 
 ## Investigate
 
-- [ ] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
+- [x] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
+      **Answer:** 8 for single threading, less for multi-threading
 - [ ] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
   - [x] Add freeing of memory to `SharedArray` heap. This will increase the complexity of the heap code hugely
   - [x] Get rid of AST heap
-	- [ ] fix unfreed elements of `Stmt` (perhaps elsewhere). Made a start with using `std::shared_ptr` for `Expr`
+	- [x] Fix unfreed elements of `Stmt` (perhaps elsewhere). Made a start with using `std::shared_ptr` for `Expr`
+  - [ ] Verify correct freeing of previous with a memory checker (valgrind?)
 
 
 ## CmdParameter
