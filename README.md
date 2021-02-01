@@ -1,15 +1,16 @@
 # V3DLib
 
-**Version 0.0.16**
+**Version 0.1.0**
 
 -----
 ## Release Notes
 
 * **External library `CmdParameter` has changed**.
   Please run `./script/install.sh` when upgrading from a version <= `0.0.8`.
-* Addition of prefetching is a significant API update and is still in progress.
-  I can't ignore the minor version number now like I did with previous commits to `0.0`.
-  I'll bump the version up to `0.1.0` when prefetch is fully working.
+* `v.0.1.0`: Due to the removal of `store`-functionality , the API has become incompatible with previous.
+  Officially, I should go to `v1.0.0`, but with the project being live for just
+  two weeks and exactly two users, I consider this overkill.
+	Upping the minor version is the compromise.
 
 -----
 
