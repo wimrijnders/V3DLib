@@ -446,18 +446,20 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
  * to ensure that the contents of the double loops work as expected
  */
 TEST_CASE("Test if/where without loop", "[noloop][cond]") {
+  //printf(" Doing test: Test if/where without loop\n");
+
   make_test_dir();
   uint32_t expected_1[VEC_SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
   uint32_t expected_2[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
   auto k1 = compile(noloop_where_kernel);
-  k1.pretty(false,  "obj/test/noloop_where_v3d.txt");  
+  //k1.pretty(false,  "obj/test/noloop_where_v3d.txt");  
   auto k2 = compile(noloop_if_and_kernel);
-  k2.pretty(false,  "obj/test/noloop_if_and_v3d.txt");  
+  //k2.pretty(false,  "obj/test/noloop_if_and_v3d.txt");  
   auto k3 = compile(noloop_multif_kernel);
-  k3.pretty(false,  "obj/test/noloop_multif_v3d.txt");  
+  //k3.pretty(false,  "obj/test/noloop_multif_v3d.txt");  
   auto k4 = compile(noloop_if_andor_kernel);
-  k4.pretty(false,  "obj/test/noloop_if_andor_v3d.txt");  
+  //k4.pretty(false,  "obj/test/noloop_if_andor_v3d.txt");  
 
   V3DLib::SharedArray<int> result(VEC_SIZE);
 
@@ -609,7 +611,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
 
     if (Platform::instance().has_vc4) {
-      std::cout << "Not running the 'where_qpu' test on vc4; this hangs the pi4 (TODO)" << std::endl;
+      std::cout << "Not running the 'where_qpu' test on vc4; this hangs the pi (TODO)" << std::endl;
     } else {
       // v3d: works fine
       reset(result);
@@ -621,7 +623,6 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
     auto k2 = compile(andor_if_kernel);
     k2.load(&result, width, height);
-
     //k2.pretty(true,  "obj/test/andor_if_vc4.txt");  
     //k2.pretty(false, "obj/test/andor_if_v3d.txt");  
 

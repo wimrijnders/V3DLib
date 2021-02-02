@@ -1,6 +1,7 @@
 #include "KernelDriver.h"
 #include <iostream>            // cout
 #include "Support/basics.h"
+#include "Support/Platform.h"
 #include "Source/StmtStack.h"
 #include "Source/Pretty.h"
 #include "Source/Translate.h"
@@ -25,10 +26,11 @@ void print_source_code(FILE *f, Stmt::Ptr body) {
   fprintf(f, "Source code\n");
   fprintf(f, "===========\n\n");
 
-  if (body.get() == nullptr)
-    fprintf(stderr, "<No source code to print>");
-  else
-    fprintf(f, "%s", pretty(body).c_str());
+  if (body.get() == nullptr) {
+    fprintf(f, "<No source code to print>\n");
+  } else {
+    fprintf(f, pretty(body).c_str());
+  }
 
   fprintf(f, "\n");
   fflush(f);
@@ -38,7 +40,11 @@ void print_source_code(FILE *f, Stmt::Ptr body) {
 void print_target_code(FILE *f, Instr::List const &code) {
   fprintf(f, "Target code\n");
   fprintf(f, "===========\n\n");
-  fprintf(f, code.mnemonics(true).c_str());
+  if (code.empty()) {
+    fprintf(f, "<No target code to print>\n");
+  } else {
+    fprintf(f, code.mnemonics(true).c_str());
+  }
   fprintf(f, "\n");
   fflush(f);
 }
