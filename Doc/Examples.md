@@ -15,7 +15,7 @@
 * [Example 2: 3D Rotation](#example-2-3d-rotation)
     * [Scalar version](#scalar-version-1)
     * [Vector version 1](#vector-version-1-1)
-    * [Vector version 2: non-blocking loads and stores](#vector-version-2-non-blocking-loads-and-stores)
+    * [Vector version 2: non-blocking memory access](#vector-version-2-non-blocking-memory-access)
     * [Performance](#performance)
 * [Example 3: 2D Convolution (Heat Transfer)](#example-3-2d-convolution-heat-transfer)
     * [Scalar version](#scalar-version-2)
@@ -279,33 +279,35 @@ void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
 }
 ```
 
-This simple solution will spend a lot of time blocking on the memory subsystem, waiting for vector loads and stores to complete.
-To get good performance on a QPU, it is desirable to overlap memory access with computation;
-the current `V3DLib` version is not good at this yet (TODO!).
-*Non-blocking* load and store operations, however, can be added explicitly.
+This simple solution will spend a lot of time blocking on the memory subsystem, waiting for vector reads and write to complete.
+The next section explores how to improve performance by overlapping memory access with computation.
 
-### Vector version 2: non-blocking loads and stores
 
-`V3DLib` supports non-blocking loads through these functions:
+### Vector version 2: non-blocking memory access 
 
-  * `gather(p)`   - Given a vector of addresses `p`, *request* the value at each address in `p`.
-                    Will block if all corresponding `receive()` calls have not been completed.
-  * `receive(x)`  - Loads values collected by `gather(p)` and stores these in `x`.
-                    Will block if the values are not yet available.
-  * `store(x, p)` - Given vector of addresses `p` and a vector `x`,
-                    write vector `x` to the memory beginning at the first address in `p`.
-                    Will block until a previous `store()` has completed, iotherwise does not block QPU execution.
+`V3DLib` supports explicit non-blocking loads through these functions:
+
+| Operation        | Description                                                                  |
+|------------------|------------------------------------------------------------------------------|
+| `gather(p)`      | Given a vector of addresses `p`, *request* the value at each address in `p`. |
+|                  | A maximum of 8 gather calls can be outstanding at any one time.              |
+|                  | For more than 8, the QPU will block *(TODO verify)*.                         |
+| `receive(x)`     | Loads values collected by `gather(p)` and stores these in `x`.               |
+|                  | Will block if the values are not yet available.                              |
+| `prefetch(x, p)` | Combines `gather` and `receive` in an efficient manner. `gather` is          |
+|                  | performed as early as possible. There are restrictions to its usage *(TODO)* |
+
+These are all read operations, the write operation can not be optimized.
+
+ - On 'vc4' a write operation has to wait for a previous write operation to complete.
+ - On `v3d`, a write operation does not block and always overlaps with QPU computation.
 
 Between `gather(p)` and `receive(x)` the program is free to perform computation *in parallel*
-with the (slow) memory accesses.
+with the memory accesses.
 
-Inside the QPU, an 4-element FIFO is used to hold `gather`
-requests: each call to `gather` will enqueue the FIFO, and each call
-to `receive` will dequeue it.  This means that a maximum of four
-`gather` calls may be issued before a `receive` must be called.
-
-For `vc4`, unlike the statement `*p = x`, the statement `store(p, x)` does not wait until `x` has been written.
-Future improvements to `V3DLib` could allow several outstanding stores instead of just one.
+Inside the QPU, an 8-element FIFO, called the **TMU**, is used to hold `gather` requests:
+each call to `gather` will enqueue the FIFO, and each call to `receive` will dequeue it.
+This means that a maximum of eight `gather` calls may be issued before a `receive` must be called.
 
 A vectorised rotation routine that overlaps memory access with computation might be as follows:
 
@@ -320,8 +322,8 @@ void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) 
   For (Int i = 0, i < n, i = i+inc)
     gather(p+inc); gather(q+inc); 
     receive(xOld); receive(yOld);
-    store(xOld * cosTheta - yOld * sinTheta, p);
-    store(yOld * cosTheta + xOld * sinTheta, q);
+    *p = xOld * cosTheta - yOld * sinTheta;
+    *q = yOld * cosTheta + xOld * sinTheta;
     p = p+inc; q = q+inc;
   End
 
@@ -329,11 +331,14 @@ void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) 
 }
 ```
 
+(**TODO** same example with `prefetch()`)
+
 While the outputs from one iteration are being computed and written to
 memory, the inputs for the *next* iteration are being loaded *in parallel*.
 
 Variable `inc` is there to take into account multiple QPU's running.
 Each QPU will handle a distinct block of 16 elements.
+
 
 ### Performance
 

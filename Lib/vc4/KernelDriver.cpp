@@ -2,10 +2,10 @@
 #include "Source/Lang.h"
 #include "Source/Translate.h"
 #include "Target/RemoveLabels.h"
-#include "Translate.h"
 #include "vc4.h"
 #include "Encode.h"
-#include "DMA.h"
+#include "DMA/Translate.h"
+#include "DMA/Operations.h"
 #include "dump_instr.h"
 
 namespace V3DLib {
@@ -77,7 +77,23 @@ void KernelDriver::compile_intern() {
 
   V3DLib::translate_stmt(m_targetCode, m_body);
 
-  insertInitBlock(m_targetCode);  // TODO init block not used for vc4, remove
+  {
+    // Add final dummy uniform handling
+    // See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
+    using namespace V3DLib::Target::instr;  // for mov()
+
+    int index = m_targetCode.lastUniformOffset();
+    assert(index > 0);
+
+    Instr::List ret;
+
+    ret << mov(freshVar(), Var(UNIFORM));
+    ret.back().comment("Last uniform load is dummy value");
+
+    m_targetCode.insert(index + 1, ret);
+
+    //warning("Added dummy uniform");
+  }
 
   m_targetCode << Instr(END);
 

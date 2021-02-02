@@ -4,32 +4,31 @@
 #include "LoadStore.h"
 
 namespace V3DLib {
-
 namespace {
 
 // ============================================================================
 // Set-stride statements
 // ============================================================================
 
-Seq<Instr> setStrideStmt(StmtTag tag, Expr::Ptr e) {
+Seq<Instr> setStrideStmt(Stmt::Tag tag, Expr::Ptr e) {
   Seq<Instr> ret;
 
   if (e->tag() == Expr::INT_LIT) {
-    if (tag == SET_READ_STRIDE)
+    if (tag == Stmt::SET_READ_STRIDE)
       ret << genSetReadPitch(e->intLit);
     else
       ret << genSetWriteStride(e->intLit);
   } else if (e->tag() == Expr::VAR) {
     Reg reg = srcReg(e->var());
 
-    if (tag == SET_READ_STRIDE)
+    if (tag == Stmt::SET_READ_STRIDE)
       ret << genSetReadPitch(reg);
     else
       ret << genSetWriteStride(reg);
   } else {
     Var v = freshVar();
     ret << varAssign(v, e);
-    if (tag == SET_READ_STRIDE)
+    if (tag == Stmt::SET_READ_STRIDE)
       ret << genSetReadPitch(srcReg(v));
     else
       ret << genSetWriteStride(srcReg(v));
@@ -145,9 +144,9 @@ Seq<Instr> startDMAWriteStmt(Expr::Ptr e) {
 // Semaphores
 // ============================================================================
 
-Instr semaphore(StmtTag tag, int semaId) {
+Instr semaphore(Stmt::Tag tag, int semaId) {
   Instr instr;
-  instr.tag = (tag == SEMA_INC)? SINC : SDEC;
+  instr.tag = (tag == Stmt::SEMA_INC)? SINC : SDEC;
   instr.semaId = semaId;
 
   return instr;
@@ -185,68 +184,42 @@ Seq<Instr> setupVPMWriteStmt(Stmt::Ptr s) {
   return ret;
 }
 
-
-// ============================================================================
-// Store request operation
-// ============================================================================
-
-// A 'store' operation of data to addr is almost the same as
-// *addr = data.  The difference is that a 'store' waits until
-// outstanding DMAs have completed before performing a write rather
-// than after a write.  This enables other operations to happen in
-// parallel with the write.
-
-Seq<Instr> storeRequestOperation(Stmt::Ptr s) {
-  Expr::Ptr data = s->storeReq_data();
-  Expr::Ptr addr = s->storeReq_addr();
-
-  Seq<Instr> ret;
-
-  if (data->tag() != Expr::VAR || addr->tag() != Expr::VAR) {
-    data = putInVar(&ret, data);
-    addr = putInVar(&ret, addr);
-  }
-
-  ret << vc4::StoreRequest(addr->var(), data->var(), true);
-  return ret;
-}
-
 }  // anon namespace
 
 
-namespace vc4 {
+namespace DMA {
 
 /**
  * @return true if statement handled, false otherwise
  */
-bool translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
+bool translate_stmt(Instr::List &seq, Stmt::Ptr s) {
+  bool ret = true;
 
   switch (s->tag) {
-    case STORE_REQUEST:    seq << storeRequestOperation(s);              return true;
-    case SET_READ_STRIDE:
-    case SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    return true;
-    case SEMA_INC:
-    case SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          return true;
-    case SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       return true;
-    case SETUP_VPM_READ:   seq << setupVPMReadStmt(s);                   return true;
-    case SETUP_VPM_WRITE:  seq << setupVPMWriteStmt(s);                  return true;
-    case SETUP_DMA_READ:   seq << setupDMAReadStmt(s);                   return true;
-    case SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  return true;
-    case DMA_READ_WAIT:    seq << genWaitDMALoad();                      return true;
-    case DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     return true;
-    case DMA_START_READ:   seq<< startDMAReadStmt(s->address());         return true;
-    case DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       return true;
+    case Stmt::SET_READ_STRIDE:
+    case Stmt::SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    break;
+    case Stmt::SEMA_INC:
+    case Stmt::SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          break;
+    case Stmt::SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       break;
+    case Stmt::SETUP_VPM_READ:   seq << setupVPMReadStmt(s);                   break;
+    case Stmt::SETUP_VPM_WRITE:  seq << setupVPMWriteStmt(s);                  break;
+    case Stmt::SETUP_DMA_READ:   seq << setupDMAReadStmt(s);                   break;
+    case Stmt::SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  break;
+    case Stmt::DMA_READ_WAIT:    seq << genWaitDMALoad();                      break;
+    case Stmt::DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     break;
+    case Stmt::DMA_START_READ:   seq<< startDMAReadStmt(s->address());         break;
+    case Stmt::DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       break;
 
     default:
-      assertq(false, "translate_stmt(): unexpected stmt tag");
+      ret = false;
       break;
   }
 
-  return false;
+  return ret;
 }
 
 
-Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
+Seq<Instr> StoreRequest(Var addr_var, Var data_var) {
   using namespace V3DLib::Target::instr;
 
   Reg addr      = freshReg();
@@ -254,18 +227,14 @@ Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
 
   Seq<Instr> ret;
 
-  ret << li(addr, 16)                       // Setup VPM
+  ret << li(addr, 16)                                        // Setup VPM
       << add(addr, addr, QPU_ID)
       << genSetupVPMStore(addr, 0, 1)
-      << li(storeAddr, 256)                 // Store address
-      << add(storeAddr, storeAddr, QPU_ID);
+      << li(storeAddr, 256)                                  // Store address
+      << add(storeAddr, storeAddr, QPU_ID)
+      << genWaitDMAStore()                                   // Wait for any previous store to complete
 
-  if (wait) {
-    ret << genWaitDMAStore();                             // Wait for any outstanding store to complete
-  }
-
-  // Setup DMA
-  ret << genSetWriteStride(0)
+      << genSetWriteStride(0)                                // Setup DMA
       << genSetupDMAStore(16, 1, 1, storeAddr)
       << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0)  // Put to VPM
       << genStartDMAStore(srcReg(addr_var));                 // Start DMA
@@ -276,5 +245,5 @@ Seq<Instr> StoreRequest(Var addr_var, Var data_var,  bool wait) {
   return ret;
 }
 
-}  // namespace vc4
+}  // namespace DMA
 }  // namespace V3DLib

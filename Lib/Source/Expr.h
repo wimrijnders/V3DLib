@@ -12,25 +12,25 @@ namespace V3DLib {
 
 
 struct Expr {
-	using Ptr = std::shared_ptr<Expr>;
+  using Ptr = std::shared_ptr<Expr>;
 
-	enum Tag {
-		INT_LIT,
-		FLOAT_LIT,
-		VAR,
-		APPLY,
-		DEREF       // Dereference a pointer
-	};
+  enum Tag {
+    INT_LIT,
+    FLOAT_LIT,
+    VAR,
+    APPLY,
+    DEREF       // Dereference a pointer
+  };
 
-	Expr();
-	Expr(Var in_var);
-	Expr(int in_lit);
-	Expr(float in_lit);
-	Expr(Ptr in_lhs, Op op, Ptr in_rhs);
-	Expr(Ptr ptr);
+  Expr();
+  Expr(Var in_var);
+  Expr(int in_lit);
+  Expr(float in_lit);
+  Expr(Ptr in_lhs, Op op, Ptr in_rhs);
+  Expr(Ptr ptr);
 
-	Tag tag() const { return m_tag; }
-	bool isLit() const { return (tag() == INT_LIT) || (tag() == FLOAT_LIT); }
+  Tag tag() const { return m_tag; }
+  bool isLit() const { return (tag() == INT_LIT) || (tag() == FLOAT_LIT); }
 
   Ptr lhs() const;
   Ptr rhs() const;
@@ -39,10 +39,10 @@ struct Expr {
   void rhs(Ptr p);
   void deref_ptr(Ptr p);
 
-	Var var();
+  Var var();
 
-	std::string pretty() const;
-	std::string dump() const;
+  std::string pretty() const;
+  std::string dump() const;
 
   union {
     int   intLit;   // Integer literal
@@ -51,33 +51,33 @@ struct Expr {
     Op apply_op;    // Application of a binary operator
   };
 
-	bool isSimple() const;
+  bool isSimple() const;
 
 private:
   Tag m_tag;    // What kind of expression is it?
   Ptr m_exp_a;  // lhs for apply, ptr for deref
-	Ptr m_exp_b;  // rhs for apply
+  Ptr m_exp_b;  // rhs for apply
 
-	std::string disp_apply() const;
+  std::string disp_apply() const;
 };
 
 
 
 class BaseExpr {
 public:
-	BaseExpr() {}
+  BaseExpr() {}
 
-	Expr::Ptr expr() const { return m_expr; }
-	std::string dump() const;
+  Expr::Ptr expr() const { return m_expr; }
+  std::string dump() const;
 
 protected:
   Expr::Ptr m_expr;  // Abstract syntax tree
 
-	BaseExpr(Expr::Ptr e, char const *label = "");
-	Expr::Ptr deref_with_index(Expr::Ptr base, Expr::Ptr index_expr);
+  BaseExpr(Expr::Ptr e, char const *label = "");
+  Expr::Ptr deref_with_index(Expr::Ptr base, Expr::Ptr index_expr);
 
 private:
-	char const *m_label = "";
+  char const *m_label = "";
 };
 
 

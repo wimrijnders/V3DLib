@@ -120,7 +120,7 @@ MESA_LIB = obj/mesa/bin/libmesa.a
 
 # Top-level targets
 
-.PHONY: help clean all lib test $(EXAMPLES)
+.PHONY: help clean all lib test $(EXAMPLES) init
 
 # Following prevents deletion of object files after linking
 # Otherwise, deletion happens for targets of the form '%.o'
@@ -152,6 +152,9 @@ all: $(V3DLIB) $(EXAMPLES)
 clean:
 	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug obj/test
 
+init:
+	@./script/detect_tabs.sh
+
 
 #
 # Targets for static library
@@ -166,13 +169,13 @@ $(MESA_LIB):
 
 
 # Rule for creating object files
-$(OBJ_DIR)/%.o: %.cpp
+$(OBJ_DIR)/%.o: %.cpp | init
 	@echo Compiling $<
 	@mkdir -p $(@D)
 	@$(CXX) -std=c++11 -c -o $@ $< $(CXX_FLAGS)
 
 # Same thing for C-files
-$(OBJ_DIR)/%.o: %.c
+$(OBJ_DIR)/%.o: %.c | init
 	@echo Compiling $<
 	@mkdir -p $(@D)
 	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)

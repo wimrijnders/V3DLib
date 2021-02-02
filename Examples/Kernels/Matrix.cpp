@@ -3,17 +3,28 @@
 #include "Support/basics.h"
 
 namespace {
-	int N             = 1;  // Dimension of square matrix in blocks of 16 values.
-  bool do_readwrite = true;
-  bool do_preload   = false;
-}
+
+enum LoadStore {
+  DEFAULT,
+  USE_TMU,
+  DO_PREFETCH,
+  NO_READWRITE
+};
+
+int N = 1;                         // Dimension of square matrix in blocks of 16 values.
+LoadStore do_loadstore = DEFAULT;
+
+}  // anon namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 // Utility functions
 ////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Return a random float value between -1 and 1
+ */ 
 float random_float() {
-	return  (1.0f*(((float) (rand() % 200)) - 100.0f))/100.0f;  // Intention: values between -1 and 1
+  return  (1.0f*(((float) (rand() % 200)) - 100.0f))/100.0f;
 }
 
 
@@ -47,7 +58,6 @@ void set_at(Float &dst, Int n, Float &src) {
  */
 void rotate_sum(Float &input, Float &result) {
   result = input;              comment("rotate_sum");
-
   result += rotate(result, 1);
   result += rotate(result, 2);
   result += rotate(result, 4);
@@ -62,6 +72,7 @@ void rotate_sum(Float &input, Float &result) {
  * Will still be useful in other contexts.
  *
  * ## Usage
+ *
  * Given a loop:
  * 
  *   For (Int b_index = 0, b_index < DIM, b_index++)
@@ -95,41 +106,50 @@ void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
 
 
 void pre_read(Float &dst, Ptr<Float> &src) {
-  if (!do_readwrite) {
-    dst = 0.0f;
-    src += 16;
-    return;
-  }
+  // on v3d, TMU is used always
 
-  if (do_preload) {
-    // on vc4, this will use TMU
-    gather(src);
-    receive(dst);
-    src += 16;
-  } else {
-    // on v3d, this will create the same code as the if-block
-    // on vc4, this will use DMA
-    dst = *src;
-    src += 16;
+  switch (do_loadstore) {
+    case DEFAULT:
+      // on vc4, this will use DMA
+      dst = *src;
+      src += 16;
+      break;
+    case USE_TMU:
+      // on vc4, this will use TMU
+      gather(src);
+      receive(dst);
+      src += 16;
+      break;
+    case DO_PREFETCH:
+      assert(false);  // TODO
+      break;
+    case NO_READWRITE:
+      dst = 0.0f;
+      src += 16;
+      break;
+    default:
+      assert(false);
   }
 }
 
 
 void pre_write(Ptr<Float> &dst, Float &src) {
-  if (!do_readwrite) {
-    dst += 16;
-    return;
-  }
+  // on v3d, TMU is used always
 
-  if (do_preload) {
-    // on vc4, this will use TMU
-    store(src, dst);
-    dst += 16;
-  } else {
-    // on v3d, this will create the same code as the if-block
-    // on vc4, this will use DMA
-    *dst = src;
-    dst += 16;
+  switch (do_loadstore) {
+    case DEFAULT:
+    case USE_TMU:
+    case DO_PREFETCH:
+      // on vc4 this uses DMA
+      // on v3d this uses TMU
+      *dst = src;
+      dst += 16;
+      break;
+    case NO_READWRITE:
+      dst += 16;
+      break;
+    default:
+      assert(false);
   }
 }
 
@@ -228,7 +248,7 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   DotVector vec(N);
   Float result;
 
-  For (Int a_index = 0,  a_index< DIM, a_index++)
+  For (Int a_index = 0,  a_index < DIM, a_index++)
     Ptr<Float> b_in = b + 0;  // Wonky '+ 0' to ensure pointer value is COPIED, not referenced.
     vec.load(a + 0);          // And again, and below again
                              // TODO fix this very NOT intuitive 'feature'. Bitten me >1 times.
@@ -272,15 +292,18 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  *
  * @return  pointer to the actual kernel function
  */
-FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_do_preload) {
-	assert(dimension > 0);
-	assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
+FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_use_tmu) {
+  assert(dimension > 0);
+  assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
 
-	N = dimension >> 4;
-  do_readwrite = in_do_readwrite;
-  do_preload   = in_do_preload;
+  N = dimension >> 4;
+  if (!in_do_readwrite) {
+    do_loadstore = NO_READWRITE;
+  } else if (in_use_tmu) {
+    do_loadstore = USE_TMU;
+  }
 
-	return matrix_mult;
+  return matrix_mult;
 }
 
 }  // namespace kernels

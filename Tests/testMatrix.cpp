@@ -108,7 +108,7 @@ void test_dotvector() {
   run_kernel(k);
 
   for (int i = 0; i < (int) a.size(); i++) {
-		INFO("N: " << N << ", i: " << i);
+    INFO("N: " << N << ", i: " << i);
     REQUIRE(a[i] == b[i]);
   }
 
@@ -137,13 +137,13 @@ void test_dotvector() {
 
 template<typename Kernel>
 void check_matrix_results(
-	int SIZE,
-	int dimension,
-	Kernel &k,
-	SharedArray<float> &a,
-	SharedArray<float> &result,
-	float *a_scalar,
-	float *expected) {
+  int SIZE,
+  int dimension,
+  Kernel &k,
+  SharedArray<float> &a,
+  SharedArray<float> &result,
+  float *a_scalar,
+  float *expected) {
 
   //
   // Multiplication of empty input matrix
@@ -221,13 +221,13 @@ void check_matrix_results(
  *
  */
 void test_matrix_multiplication(int dimension) {
-	REQUIRE(dimension > 1);
-	REQUIRE(dimension % 16 == 0);
+  REQUIRE(dimension > 1);
+  REQUIRE(dimension % 16 == 0);
   int const SIZE = dimension*dimension;
 
   SharedArray<float> a(SIZE);
   SharedArray<float> result(SIZE);
-	result.fill(-1.0f);
+  result.fill(-1.0f);
 
   float a_scalar[SIZE];
   for (int i = 0; i < SIZE; i++) {
@@ -245,25 +245,24 @@ void test_matrix_multiplication(int dimension) {
   }
 
 
-	//
-	// EITHER enable kernel k code OR kernel k2.
-	// Enabling both leads to GPU hang!
-	// Either works fine when run by itself
-	// Confirmed that at this stage, output code is same for both kernels.
-	//
-	// TODO fix
-	//
-  auto k = compile(kernels::matrix_mult_decorator(dimension));
-  k.load(&result, &a, &a);
-	k.pretty(false, "Matrix_code.txt");
-/*
-	check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
-*/
-	// Do the same thing with TMU (different for vc4 only)
-  auto k2 = compile(kernels::matrix_mult_decorator(dimension, true, true));
-	k2.pretty(false, "Matrix_code_preload.txt");
-  k2.load(&result, &a, &a);
-	check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);
+  // Can't have kernels k and k2 in the same context.
+  // One kernel runs but the seconds hangs. Either works fine when run by itself.
+  // Unclear why at this stage, but settings separate contexts works.
+  {
+    auto k = compile(kernels::matrix_mult_decorator(dimension));
+    k.load(&result, &a, &a);
+    k.pretty(true,  "Matrix_code_vc4.txt");
+    k.pretty(false, "Matrix_code.txt");
+    check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
+  }
+
+  {
+    // Do the same thing with TMU (different for vc4 only)
+    auto k2 = compile(kernels::matrix_mult_decorator(dimension, true, true));
+    k2.pretty(false, "Matrix_code_prefetch.txt");
+    k2.load(&result, &a, &a);
+    check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);
+  }
 }
 
 }  // anon namespace
@@ -305,10 +304,10 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     k.load(&vec, &result);
     run_kernel(k);
 
-		float precision = 0.0f;
-		if (Platform::instance().compiling_for_vc4()) {
-			precision = 1e-5f;
-		}
+    float precision = 0.0f;
+    if (Platform::instance().compiling_for_vc4()) {
+      precision = 1e-5f;
+    }
 
     REQUIRE(abs(result[0] - 4.8f) <= precision);
 

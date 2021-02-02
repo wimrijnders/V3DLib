@@ -400,7 +400,6 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
       break;
 
     // Dereferenced pointer
-    // Comparable to execStoreRequest()
     case Expr::DEREF: {
       Vec index = eval(s, lhs->deref_ptr());
       storeToHeap(s, index, val);
@@ -454,17 +453,18 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
   switch (stmt->tag) {
     // No-op
-    case SKIP:
+    case Stmt::GATHER_PREFETCH:
+    case Stmt::SKIP:
       return;
 
     // Sequential composition
-    case SEQ:
+    case Stmt::SEQ:
       execWhere(s, cond, stmt->seq_s0());
       execWhere(s, cond, stmt->seq_s1());
       return;
 
     // Assignment
-    case ASSIGN:
+    case Stmt::ASSIGN:
       if (stmt->assign_lhs()->tag() != Expr::VAR) {
         printf("V3DLib: only var assignments permitted in 'where'\n");
         assert(false);
@@ -473,7 +473,7 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
       return;
 
     // Nested where
-    case WHERE: {
+    case Stmt::WHERE: {
       Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, vecAnd(b, cond), stmt->thenStmt());
       execWhere(s, vecAnd(vecNeg(b), cond), stmt->elseStmt());
@@ -517,9 +517,9 @@ void execPrint(CoreState* s, Stmt::Ptr stmt) {
 // Execute set-stride statements
 // ============================================================================
 
-void execSetStride(CoreState* s, StmtTag tag, Expr::Ptr e) {
+void execSetStride(CoreState* s, Stmt::Tag tag, Expr::Ptr e) {
   Vec v = eval(s, e);
-  if (tag == SET_READ_STRIDE)
+  if (tag == Stmt::SET_READ_STRIDE)
     s->readStride = v[0].intVal;
   else
     s->writeStride = v[0].intVal;
@@ -537,13 +537,6 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
 }
 
 
-void execStoreRequest(CoreState* s, Expr::Ptr data, Expr::Ptr addr) {
-  Vec val = eval(s, data);
-  Vec index = eval(s, addr);
-  storeToHeap(s, index, val);
-}
-
-
 // ============================================================================
 // Execute code
 // ============================================================================
@@ -558,77 +551,62 @@ void exec(InterpreterState* state, CoreState* s) {
   if (stmt == NULL) return;
 
   switch (stmt->tag) {
-    // No-op
-    case SKIP:
+    case Stmt::GATHER_PREFETCH: // Ignore
+    case Stmt::SKIP:
       return;
 
-    // Assignment
-    case ASSIGN:
+    case Stmt::ASSIGN:          // Assignment
       execAssign(s, vecAlways(), stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
-    // Sequential composition
-    case SEQ:
+    case Stmt::SEQ:             // Sequential composition
       s->stack.push(stmt->seq_s1());
       s->stack.push(stmt->seq_s0());
       return;
 
-    // Conditional assignment
-    case WHERE: {
+    case Stmt::WHERE: {         // Conditional assignment
       Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, b, stmt->thenStmt());
       execWhere(s, vecNeg(b), stmt->elseStmt());
       return;
     }
 
-    // If statement
-    case IF:
+    case Stmt::IF:
       if (evalCond(s, stmt->if_cond()))
         s->stack.push(stmt->thenStmt());
       else
         s->stack.push(stmt->elseStmt());
       return;
 
-    // While statement
-    case WHILE:
+    case Stmt::WHILE:
       if (evalCond(s, stmt->loop_cond())) {
         s->stack.push(stmt);
         s->stack.push(stmt->body());
       }
       return;
 
-    // Print statement
-    case PRINT:
+    case Stmt::PRINT:
       execPrint(s, stmt);
       return;
 
-    // Set read stride
-    case SET_READ_STRIDE:
-      execSetStride(s, SET_READ_STRIDE, stmt->stride());
+    case Stmt::SET_READ_STRIDE:
+      execSetStride(s, Stmt::SET_READ_STRIDE, stmt->stride());
       return;
 
-    // Set write stride
-    case SET_WRITE_STRIDE:
-      execSetStride(s, SET_WRITE_STRIDE, stmt->stride());
+    case Stmt::SET_WRITE_STRIDE:
+      execSetStride(s, Stmt::SET_WRITE_STRIDE, stmt->stride());
       return;
 
-    // Load receive
-    case LOAD_RECEIVE:
+    case Stmt::LOAD_RECEIVE:
       execLoadReceive(s, stmt->address());
       return;
 
-    // Store request
-    case STORE_REQUEST:
-      execStoreRequest(s, stmt->storeReq_data(), stmt->storeReq_addr());
-      return;
-
-    // Host IRQ
-    case SEND_IRQ_TO_HOST:
+    case Stmt::SEND_IRQ_TO_HOST:
       return;
 
     // Increment semaphore
     // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
-    case SEMA_INC:
+    case Stmt::SEMA_INC:
       assert(stmt->semaId >= 0 && stmt->semaId < 16);
       if (state->sema[stmt->semaId] == 15) s->stack.push(stmt);
       else state->sema[stmt->semaId]++;
@@ -636,23 +614,23 @@ void exec(InterpreterState* state, CoreState* s) {
  
     // Decrement semaphore
     // Note at SEMA_INC also applies here
-    case SEMA_DEC:
+    case Stmt::SEMA_DEC:
       assert(stmt->semaId >= 0 && stmt->semaId < 16);
       if (state->sema[stmt->semaId] == 0) s->stack.push(stmt);
       else state->sema[stmt->semaId]--;
       return;
 
-    case DMA_READ_WAIT:
-    case DMA_WRITE_WAIT:
-    case SETUP_VPM_READ:
-    case SETUP_VPM_WRITE:
-    case SETUP_DMA_READ:
-    case SETUP_DMA_WRITE:
+    case Stmt::DMA_READ_WAIT:
+    case Stmt::DMA_WRITE_WAIT:
+    case Stmt::SETUP_VPM_READ:
+    case Stmt::SETUP_VPM_WRITE:
+    case Stmt::SETUP_DMA_READ:
+    case Stmt::SETUP_DMA_WRITE:
       // Interpreter ignores these
       return;
 
-    case DMA_START_READ:
-    case DMA_START_WRITE:
+    case Stmt::DMA_START_READ:
+    case Stmt::DMA_START_WRITE:
       fatal("V3DLib: DMA access not supported by interpreter\n");
       break;
 

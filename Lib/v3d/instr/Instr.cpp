@@ -246,8 +246,12 @@ void Instr::init(uint64_t in_code) {
       branch.bdu = (v3d_qpu_branch_dest) ((in_code >> 15) & 0b111);
     }
   }
-
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// End class Instr
+///////////////////////////////////////////////////////////////////////////////
 
 namespace {
 
@@ -1344,7 +1348,12 @@ Instr ffloor(Location const &dst, Location const &srca) {
   instr.alu_add_set_reg_b(r1);  // apparently implicit
 
   instr.alu.add.op = V3D_QPU_A_FFLOOR;
+
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wconversion"
   instr.alu.add.b_unpack = (v3d_qpu_input_unpack) V3D_QPU_A_FFLOOR; // ?? Looks wrong but matches the mesa disasm
+#pragma GCC diagnostic pop
+
 
   return instr;
 }

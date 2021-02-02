@@ -217,6 +217,98 @@ bool Instr::isZero() const {
 
 
 /**
+ * Can't be inlined for debugger
+ */
+std::string Instr::dump() const {
+  return mnemonic(true);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Instr::List
+///////////////////////////////////////////////////////////////////////////////
+
+std::string Instr::List::dump() const {
+  std::string ret;
+
+  for (int i = 0; i < size(); ++i ) {
+    ret << (*this)[i].dump() << "\n";
+  }
+
+  return ret;
+}
+
+
+/**
+ * Generates a string representation of the passed string of instructions.
+ */
+std::string Instr::List::mnemonics(bool with_comments) const {
+  std::string prefix;
+  std::string ret;
+
+  for (int i = 0; i < size(); i++) {
+    auto const &instr = (*this)[i];
+    prefix.clear();
+    prefix << i << ": ";
+
+    ret << instr.mnemonic(with_comments, prefix).c_str() << "\n";
+  }
+
+  return ret;
+}
+
+
+/**
+ * Get the index of the last uniform load
+ */
+int Instr::List::lastUniformOffset() {
+  // Determine the first offset that is not a uniform load
+  int index = 0;
+  for (; index < size(); ++index) {
+    if (!(*this)[index].isUniformLoad()) break; 
+  }
+
+  assertq(index >= 2, "Expecting at least two uniform loads.", true);
+  return index - 1;
+}
+
+
+int Instr::List::tag_count(InstrTag tag) {
+  int count = 0;
+
+  for (int index = 0; index < size(); ++index) {
+    if ((*this)[index].tag == tag) {
+      ++count;
+    }
+  }
+
+  return count;
+}
+
+
+int Instr::List::tag_index(InstrTag tag, bool ensure_one) {
+  // Find the init begin marker
+  int found = -1;
+  int count = 0;
+
+  for (int index = 0; index < size(); ++index) {
+    if ((*this)[index].tag == tag) {
+      if (found == -1) {  // Only remember first
+        found = index;
+      }
+      count++;
+    }
+  }
+
+  assertq(!ensure_one || count == 1, "List::tag_index() Expecting exactly one tag found.");
+  return found;
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// End Class Instr::List
+///////////////////////////////////////////////////////////////////////////////
+
+/**
  * Check if given tag is for the specified platform
  */
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4) {
@@ -279,25 +371,6 @@ std::string Instr::mnemonic(bool with_comments, std::string const &prefix) const
 
   if (with_comments) {
     ret << emit_comment((int) out.size());
-  }
-
-  return ret;
-}
-
-
-/**
- * Generates a string representation of the passed string of instructions.
- */
-std::string mnemonics(Seq<Instr> const &code, bool with_comments) {
-  std::string prefix;
-  std::string ret;
-
-  for (int i = 0; i < code.size(); i++) {
-    auto const &instr = code[i];
-    prefix.clear();
-    prefix << i << ": ";
-
-    ret << instr.mnemonic(with_comments, prefix).c_str() << "\n";
   }
 
   return ret;

@@ -142,7 +142,7 @@ void mandelbrotCore(
     End
   End
 
-  store(count, dst);
+  *dst = count;
 }
 
 

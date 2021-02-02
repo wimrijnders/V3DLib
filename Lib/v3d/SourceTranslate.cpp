@@ -4,6 +4,7 @@
 #include "Source/Stmt.h"  // srcReg()
 #include "Target/Liveness.h"
 #include "Target/Subst.h"
+#include "vc4/DMA/DMA.h"
 
 namespace V3DLib {
 
@@ -17,10 +18,10 @@ namespace {
  *
  * The calculated offset is assumed to be in ACC0
  */
-Seq<Instr> add_uniform_pointer_offset(Seq<Instr> &code) {
+Instr::List add_uniform_pointer_offset(Instr::List &code) {
   using namespace V3DLib::Target::instr;
 
-  Seq<Instr> ret;
+  Instr::List ret;
 
   // add the offset to all the uniform pointers
   for (int index = 0; index < code.size(); ++index) {
@@ -39,23 +40,10 @@ Seq<Instr> add_uniform_pointer_offset(Seq<Instr> &code) {
 }
 
 
-int get_init_begin_marker(Seq<Instr> &code) {
-  // Find the init begin marker
-  int index = 0;
-  for (; index < code.size(); ++index) {
-    if (code[index].tag == INIT_BEGIN) break; 
-  }
-  assertq(index < code.size(), "Expecting INIT_BEGIN marker.");
-  assertq(index >= 2, "Expecting at least two uniform loads.", true);
-
-  return index;
-}
-
-
 /**
  * @param seq  list of generated instructions up till now
- */
-void storeRequest(Seq<Instr> &seq, Expr::Ptr data, Expr::Ptr addr) {
+ * /
+void storeRequest(Instr::List &seq, Expr::Ptr data, Expr::Ptr addr) {
   using namespace V3DLib::Target::instr;
 
   if (addr->tag() != Expr::VAR || data->tag() != Expr::VAR) {
@@ -69,8 +57,9 @@ void storeRequest(Seq<Instr> &seq, Expr::Ptr data, Expr::Ptr addr) {
   seq << mov(TMUD, srcData);
   seq.back().comment("Store request");
   seq << mov(TMUA, srcAddr)
-	    << tmuwt();
+      << tmuwt();
 }
+*/
 
 }  // anon namespace
 
@@ -80,10 +69,10 @@ namespace v3d {
 /**
  * Case: *v := rhs where v is a var and rhs is a var
  */
-Seq<Instr> SourceTranslate::deref_var_var(Var lhs, Var rhs) {
+Instr::List SourceTranslate::deref_var_var(Var lhs, Var rhs) {
   using namespace V3DLib::Target::instr;
 
-  Seq<Instr> ret;
+  Instr::List ret;
 
   Reg srcData = srcReg(lhs);
   Reg srcAddr = srcReg(rhs);
@@ -107,7 +96,7 @@ Seq<Instr> SourceTranslate::deref_var_var(Var lhs, Var rhs) {
 /**
  * Case: v := *w where w is a variable
  */
-void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
+void SourceTranslate::varassign_deref_var(Instr::List* seq, Var &v, Expr &e) {
   using namespace V3DLib::Target::instr;
   assert(seq != nullptr);
 
@@ -127,7 +116,7 @@ void SourceTranslate::varassign_deref_var(Seq<Instr>* seq, Var &v, Expr &e) {
 }
 
 
-void SourceTranslate::regAlloc(CFG* cfg, Seq<Instr>* instrs) {
+void SourceTranslate::regAlloc(CFG* cfg, Instr::List* instrs) {
   int numVars = getFreshVarCount();
 
   // Step 0
@@ -194,11 +183,13 @@ Instr label(Label in_label) {
 /**
  * Add extra initialization code after uniform loads
  */
-void add_init(Seq<Instr> &code) {
+void add_init(Instr::List &code) {
   using namespace V3DLib::Target::instr;
 
-  int insert_index = get_init_begin_marker(code);
-  Seq<Instr> ret;
+  int insert_index = code.tag_index(INIT_BEGIN);
+  assertq(insert_index >= 0, "Expecting init begin marker");
+
+  Instr::List ret;
   Label endifLabel = freshLabel();
 
   // Determine the qpu index for 'current' QPU
@@ -237,31 +228,13 @@ void add_init(Seq<Instr> &code) {
 /**
  * @return true if statement handled, false otherwise
  */
-bool SourceTranslate::stmt(Seq<Instr> &seq, Stmt::Ptr s) {
-  switch (s->tag) {
-    case STORE_REQUEST:
-      storeRequest(seq, s->storeReq_data(), s->storeReq_addr());
-      return true;
-
-    case SET_READ_STRIDE:
-    case SET_WRITE_STRIDE:
-    case SEMA_INC:
-    case SEMA_DEC:
-    case SEND_IRQ_TO_HOST:
-    case SETUP_VPM_READ:
-    case SETUP_VPM_WRITE:
-    case SETUP_DMA_READ:
-    case SETUP_DMA_WRITE:
-    case DMA_READ_WAIT:
-    case DMA_WRITE_WAIT:
-    case DMA_START_READ:
-    case DMA_START_WRITE:
-      fatal("VPM and DMA reads and writes can not be used for v3d");
-      return true;
-
-    default:
-      return false;
+bool SourceTranslate::stmt(Instr::List &seq, Stmt::Ptr s) {
+  if (DMA::is_dma_tag(s->tag)) {
+    fatal("VPM and DMA reads and writes can not be used for v3d");
+    return true;
   }
+
+  return false;
 }
 
 }  // namespace v3d

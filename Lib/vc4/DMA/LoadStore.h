@@ -1,5 +1,5 @@
-#ifndef _V3DLIB_LOADSTORE_H_
-#define _V3DLIB_LOADSTORE_H_
+#ifndef _V3DLIB_VC4_DMA_LOADSTORE_H_
+#define _V3DLIB_VC4_DMA_LOADSTORE_H_
 #include "Common/Seq.h"
 #include "Target/Syntax.h"
 
@@ -29,4 +29,4 @@ Seq<Instr> genSetWriteStride(Reg stride);
 
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_LOADSTORE_H_
+#endif  // _V3DLIB_VC4_DMA_LOADSTORE_H_

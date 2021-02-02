@@ -20,10 +20,10 @@ void kernel(Ptr<Int> p) {
 
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-	int numQpus = 1;
+  int numQpus = 1;
 
   // Construct kernel
   auto k = compile(kernel);
@@ -38,7 +38,7 @@ int main(int argc, const char *argv[]) {
   k.load(&array);
   settings.process(k);
 
-	// Display the result
+  // Display the result
   for (int i = 0; i < numQpus*16; i++)
     printf("%i: %i\n", i, array[i]);
   

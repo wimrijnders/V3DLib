@@ -19,13 +19,6 @@ using namespace V3DLib;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Internal functions - should not be called directly
-////////////////////////////////////////////////////////////////////////////////
-
-void matrix_mult_kernel(int const N, Ptr<Float> &dst, Ptr<Float> &a, Ptr<Float> &b);
-
-
-////////////////////////////////////////////////////////////////////////////////
 // Kernel code, made visible for unit tests
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -50,7 +43,7 @@ public:
 
   void load(Ptr<Float> input);
   void save(Ptr<Float> output);
-	void dot_product(Ptr<Float> rhs, Float &result);
+  void dot_product(Ptr<Float> rhs, Float &result);
 
 private:
   std::vector<Float> elements;
@@ -62,12 +55,11 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 
 void matrix_mult_scalar(int N, float *c, float *a, float *b);
-
 void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b);
 
 using FuncType = decltype(matrix_mult);
 
-FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite = true, bool in_do_preload = false);
+FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite = true, bool in_use_tmu = false);
 
 }  // namespace kernels
 

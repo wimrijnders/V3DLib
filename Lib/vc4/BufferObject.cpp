@@ -6,6 +6,7 @@
 #include "../Support/Platform.h"  // has_vc4() 
 #include "../Support/basics.h"
 #include "../Support/debug.h"
+#include "LibSettings.h"
 
 #define GPU_MEM_FLG 0xC // cached=0xC; direct=0x4
 #define GPU_MEM_MAP 0x0 // cached=0x0; direct=0x20000000
@@ -68,7 +69,7 @@ BufferObject &getHeap() {
 	if (Platform::instance().has_vc4) {
 		if (heap.size() == 0) {
 			//debug("Allocating main heap vc4\n");
-			heap.alloc_mem(BufferObject::DEFAULT_HEAP_SIZE);
+			heap.alloc_mem(LibSettings::heap_size());
 		}
 	}
 

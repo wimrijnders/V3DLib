@@ -4,6 +4,7 @@
 #include <cstdio>
 #include "../Support/basics.h"
 #include "../Support/debug.h"
+#include "LibSettings.h"
 
 namespace V3DLib {
 namespace emu {
@@ -36,7 +37,7 @@ uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start
 BufferObject &getHeap() {
 	if (!emuHeap) {
 		//debug("Allocating emu heap v3d\n");
-		emuHeap.reset(new BufferObject(BufferObject::DEFAULT_HEAP_SIZE));
+		emuHeap.reset(new BufferObject(LibSettings::heap_size()));
 	}
 
 	return *emuHeap;
