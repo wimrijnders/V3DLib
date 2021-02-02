@@ -254,25 +254,25 @@ Instr blog(Location const &dst, Location const &srca);
 using ByteCode = std::vector<uint64_t>; 
 
 class Instructions : public std::vector<instr::Instr> {
-	using Parent = std::vector<instr::Instr>;
+  using Parent = std::vector<instr::Instr>;
 
 public:
-	Instructions() = default;
-	Instructions(Parent const &rhs) : Parent(rhs) {}
+  Instructions() = default;
+  Instructions(Parent const &rhs) : Parent(rhs) {}
 
   Instructions &header(std::string const &msg) { front().header(msg);  return *this; }
 
   Instructions &comment(std::string msg, bool to_front = true) {
-		assert(!empty());
+    assert(!empty());
 
-		if (to_front) {
-			front().comment(msg);
-		} else {
-			back().comment(msg);
-		}
+    if (to_front) {
+      front().comment(msg);
+    } else {
+      back().comment(msg);
+    }
 
-		return *this;
-	}
+    return *this;
+  }
 };
 
 }  // v3d

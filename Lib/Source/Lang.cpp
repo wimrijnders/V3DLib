@@ -36,6 +36,7 @@ void If_(BoolExpr b) {
   If_(any(b));
 }
 
+
 //=============================================================================
 // 'Else' token
 //=============================================================================
@@ -98,6 +99,7 @@ void End_() {
   }
 }
 
+
 //=============================================================================
 // 'While' token
 //=============================================================================
@@ -108,9 +110,11 @@ void While_(Cond c) {
   stmtStack().push(mkSkip());
 }
 
+
 void While_(BoolExpr b) {
   While_(any(b));
 }
+
 
 //=============================================================================
 // 'Where' token
@@ -122,6 +126,7 @@ void Where__(BExpr::Ptr b) {
   stmtStack().push(mkSkip());
 }
 
+
 //=============================================================================
 // 'For' token
 //=============================================================================
@@ -132,15 +137,18 @@ void For_(Cond c) {
   stmtStack().push(mkSkip());
 }
 
+
 void For_(BoolExpr b) {
   For_(any(b));
 }
+
 
 void ForBody_() {
   Stmt::Ptr s = controlStack.top();
   s->inc(stmtStack().pop());
   stmtStack().push(mkSkip());
 }
+
 
 //=============================================================================
 // 'Print' token
@@ -160,14 +168,14 @@ void Print(IntExpr x) {
 
 
 void header(char const *str) {
-   assert(stmtStack().top() != nullptr);
-   stmtStack().top()->seq_s1()->header(str);
+  assert(stmtStack().top() != nullptr);
+  stmtStack().top()->seq_s1()->header(str);
 }
 
 
 void comment(char const *str) {
-   assert(stmtStack().top() != nullptr);
-   stmtStack().top()->seq_s1()->comment(str);
+  assert(stmtStack().top() != nullptr);
+  stmtStack().top()->seq_s1()->comment(str);
 }
 
 

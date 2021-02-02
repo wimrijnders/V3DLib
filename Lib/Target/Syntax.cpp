@@ -65,7 +65,7 @@ Instr::List sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *labe
   Instr::List ret;
 
   std::string cmt = "SFU function ";
-  cmt += label;
+  cmt << label;
 
   ret << mov(sfu_reg, srcA).comment(cmt)
       << nop

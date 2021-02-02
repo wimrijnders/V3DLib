@@ -16,8 +16,7 @@ namespace V3DLib {
 // the relevant overload of operator <<.
 // Adding this solved it. HUH??
 // Also: the << definitions in `basics.h` DID get picked up; the std::string versions did not.
-using ::operator<<;
-
+using ::operator<<; // C++ weirdness
 
 namespace v3d {
 using namespace V3DLib::v3d::instr;

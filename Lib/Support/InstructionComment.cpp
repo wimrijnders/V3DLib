@@ -91,5 +91,4 @@ std::string InstructionComment::emit_comment(int instr_size) const {
   return ret;
 }
 
-
 }  // namespace V3DLib

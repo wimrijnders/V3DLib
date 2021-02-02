@@ -3,8 +3,6 @@
 #include "SourceTranslate.h"
 #include "Source/Stmt.h"
 #include "Target/SmallLiteral.h"
-//#include "Common/Seq.h"
-
 
 namespace V3DLib {
 namespace {
@@ -94,9 +92,9 @@ void assign(Instr::List *seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
     return;
   }
 
-  // This case should not be reachable
-  assert(false);
+  assert(false);  // Should not be reachable
 }
+
 
 // ============================================================================
 // Condition flag helpers
@@ -393,7 +391,6 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
   if (s.get() == nullptr) return ret;
   if (s->tag == Stmt::SKIP) return ret;
 
-
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
@@ -493,8 +490,9 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
       if (s->elseStmt() != nullptr) {
         Var v2   = freshVar();
         Var dummy   = freshVar();
-        ret << bxor(v2, newCondVar, 1);
-        ret << band(dummy, condVar, v2).setCondFlag(Flag::ZC);
+
+        ret << bxor(v2, newCondVar, 1)
+            << band(dummy, condVar, v2).setCondFlag(Flag::ZC);
 
         // Compile 'else' statement
         {
@@ -724,20 +722,12 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       }
 
       switch (e.apply_op.op) {                            // x and y are simple
-      case RECIP:
-        ret << recip(v, e.lhs()->var());
-        break;
-      case RECIPSQRT:
-        ret << recipsqrt(v, e.lhs()->var());
-        break;
-      case EXP:
-        ret << bexp(v, e.lhs()->var());
-        break;
-      case LOG:
-        ret << blog(v, e.lhs()->var());
-        break;
+      case RECIP:     ret << recip(v, e.lhs()->var());     break;
+      case RECIPSQRT: ret << recipsqrt(v, e.lhs()->var()); break;
+      case EXP:       ret << bexp(v, e.lhs()->var());      break;
+      case LOG:       ret << blog(v, e.lhs()->var());      break;
       default:
-        // Everythin else is considered to be a single binary operation
+        // Everything else is considered to be a single binary operation
         Instr instr(ALU);
         instr.ALU.cond       = cond;
         instr.ALU.dest       = dstReg(v);
@@ -757,9 +747,9 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       }
                                                                      // w is a variable
       //
-      // Restriction: we disallow dereferencing in conditional ('where')
-      // assignments for simplicity.  In most (all?) cases it should be
-      // trivial to lift these outside the 'where'.
+      // Restriction:i
+      // dereferencing is disallowed in conditional ('where') assignments for simplicity.
+      // In most (all?) cases it should be trivial to lift these outside the 'where'.
       //
       assertq(cond.is_always(), "V3DLib: dereferencing not yet supported inside 'where'");
       getSourceTranslate().varassign_deref_var(&ret, v, e);
@@ -834,6 +824,5 @@ void loadStorePass(Instr::List &instrs) {
   instrs.clear();
   instrs << newInstrs;
 }
-
 
 }  // namespace V3DLib
