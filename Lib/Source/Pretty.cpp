@@ -79,7 +79,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
           << "receive(" << s->address()->pretty() << ")";
       break;
 
-		case Stmt::GATHER_PREFETCH:
+    case Stmt::GATHER_PREFETCH:
       ret << indentBy(indent) << "Prefetch Tag";
       break;
 

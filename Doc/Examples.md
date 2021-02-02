@@ -343,27 +343,31 @@ Each QPU will handle a distinct block of 16 elements.
 ### Performance
 
 Times taken to rotate an object with 192,000 vertices:
-(**TODO** Make a test case using the actual Example program with supplied inputs)
+
+*(This ran on a Raspberry Pi 3 Model B Rev 1.2)*
 
 ```
   Version  | Number of QPUs | Run-time (s) |
-  ---------| -------------: | -----------: |
-  Scalar   | 0              | 0.018        |
-  Vector 1 | 1              | 0.040        |
-  Vector 2 | 1              | 0.018        |
-  Vector 3 | 1              | 0.018        |
-  Vector 3 | 2              | 0.016        |
+  ---------| -------------- | ------------ |
+  Scalar   |  0             | 0.020532     |
+  Vector 1 |  1             | 0.032531     |
+  Vector 2 |  1             | 0.015441     |
+  Vector 2 |  4             | 0.013367     |
+  Vector 2 |  8             | 0.013368     |
+  Vector 2 | 12             | 0.013386     |
 ```
 
-Non-blocking loads and stores (vector version 2) give a
-significant performance boost: in this case a factor of 2.
+![Rot3D Profiling](./images/rot3d_profiling.png)
+
+
+Non-blocking loads and stores (vector version 2) give a significant performance boost: in this case a factor of 2.
 
 This program does not scale well to multiple QPUs.  
 This is likely becaue the compute-to-memory ratio is too low:
 only 2 arithmetic operations are done for every memory access, perhaps overwhelming the memory subsystem.
 
 Example `Mandelbrot` had a much better compute-to-memory ratio, and is therefore a better candidate for
-measuring performance with respect to scaling.
+measuring computing performance with respect to scaling.
 
 ## Example 3: 2D Convolution (Heat Transfer)
 

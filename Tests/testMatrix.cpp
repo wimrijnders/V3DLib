@@ -221,6 +221,8 @@ void check_matrix_results(
  *
  */
 void test_matrix_multiplication(int dimension) {
+  //printf ("running test_matrix_multiplication() with dim: %d\n", dimension);
+
   REQUIRE(dimension > 1);
   REQUIRE(dimension % 16 == 0);
   int const SIZE = dimension*dimension;
@@ -251,15 +253,15 @@ void test_matrix_multiplication(int dimension) {
   {
     auto k = compile(kernels::matrix_mult_decorator(dimension));
     k.load(&result, &a, &a);
-    k.pretty(true,  "Matrix_code_vc4.txt");
-    k.pretty(false, "Matrix_code.txt");
+    k.pretty(true,  "obj/test/Matrix_code_vc4.txt");
+    k.pretty(false, "obj/test/Matrix_code.txt");
     check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
   }
 
   {
     // Do the same thing with TMU (different for vc4 only)
     auto k2 = compile(kernels::matrix_mult_decorator(dimension, true, true));
-    k2.pretty(false, "Matrix_code_prefetch.txt");
+    k2.pretty(false, "obj/test/Matrix_code_prefetch.txt");
     k2.load(&result, &a, &a);
     check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);
   }
@@ -305,7 +307,7 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     run_kernel(k);
 
     float precision = 0.0f;
-    if (Platform::instance().compiling_for_vc4()) {
+    if (Platform::instance().has_vc4) {
       precision = 1e-5f;
     }
 
