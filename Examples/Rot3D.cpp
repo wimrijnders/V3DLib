@@ -74,9 +74,25 @@ void disp_arrays(Arr &x, Arr &y) {
 }
 
 
-void run_qpu_kernel(KernelType &kernel) {
-	Timer timer;
+void run_scalar_kernel() {
+  // Allocate and initialise
+  float* x = new float[SIZE];
+  float* y = new float[SIZE];
+	init_arrays(x, y);
 
+	if (!settings.compile_only) {
+		Timer timer;  // Time the run only
+	  rot3D(SIZE, cosf(THETA), sinf(THETA), x, y);
+	  timer.end(!settings.silent);
+	}
+
+	disp_arrays(x, y);
+	delete [] x;
+	delete [] y;
+}
+
+
+void run_qpu_kernel(KernelType &kernel) {
   auto k = compile(kernel);  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
@@ -85,29 +101,12 @@ void run_qpu_kernel(KernelType &kernel) {
 	init_arrays(x, y);
 
   k.load(SIZE, cosf(THETA), sinf(THETA), &x, &y);
+
+	Timer timer;  // Time the run only
   settings.process(k);
+	timer.end(!settings.silent);
 
 	disp_arrays(x, y);
-	timer.end(!settings.silent);
-}
-
-
-void run_scalar_kernel() {
-	Timer timer;
-
-  // Allocate and initialise
-  float* x = new float[SIZE];
-  float* y = new float[SIZE];
-	init_arrays(x, y);
-
-	if (!settings.compile_only) {
-	  rot3D(SIZE, cosf(THETA), sinf(THETA), x, y);
-	}
-
-	disp_arrays(x, y);
-	timer.end(!settings.silent);
-	delete [] x;
-	delete [] y;
 }
 
 
