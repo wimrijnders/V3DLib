@@ -4,5 +4,7 @@ obj*
 *.log
 *.pgm
 *.swp
+*.org~
+.~lock.*
 extern
 *_code.txt
