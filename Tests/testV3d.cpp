@@ -89,29 +89,12 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 	// NOTE: Always uses rf(1) as dest ptr
 	auto output = [] (Location const &src) -> Instructions {
 		Instructions ret;
-		ret << mov(tmud, src)          // write result to main mem
+		ret << mov(tmud, src).comment("Output to main mem") // write result to main mem
 		    << mov(tmua, rf(1))
-		    << tmuwt()  // does nothing?
-
-		    << add(rf(1), rf(1), 4);
-
-		ret.front().comment("Output to main mem");
-		ret.back().comment("increment pointer");
+		    << tmuwt()
+		    << add(rf(1), rf(1), 4).comment("increment pointer");
 		return ret;
 	};
-
-/*
-	auto mnemonics = [] (Instructions const &code, bool with_comments = false) -> std::string {
-		std::string ret;
-
-		for (int i = 0; i < (int) code.size(); i++) {
-			auto const &instr = code[i];
-			ret << i << ": " << instr.mnemonic(with_comments) << "\n";
-		}
-
-		return ret;
-	};
-*/
 
 	/**
 	 * Issues here:

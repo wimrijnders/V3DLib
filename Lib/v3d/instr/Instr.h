@@ -41,6 +41,9 @@ public:
   Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
   Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, SmallImm const &immb);
 
+  Instr &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
+  Instr &comment(std::string msg)       { InstructionComment::comment(msg); return *this; }
+
   std::string dump() const; 
   std::string mnemonic(bool with_comments = false) const;
   uint64_t code() const;
@@ -245,10 +248,32 @@ Instr blog(Location const &dst, Location const &srca);
 
 }  // instr
 
-
+//
 // Some type definitions, for better understanding
-using Instructions = std::vector<instr::Instr>; 
+//
 using ByteCode = std::vector<uint64_t>; 
+
+class Instructions : public std::vector<instr::Instr> {
+	using Parent = std::vector<instr::Instr>;
+
+public:
+	Instructions() = default;
+	Instructions(Parent const &rhs) : Parent(rhs) {}
+
+  Instructions &header(std::string const &msg) { front().header(msg);  return *this; }
+
+  Instructions &comment(std::string msg, bool to_front = true) {
+		assert(!empty());
+
+		if (to_front) {
+			front().comment(msg);
+		} else {
+			back().comment(msg);
+		}
+
+		return *this;
+	}
+};
 
 }  // v3d
 }  // V3DLib

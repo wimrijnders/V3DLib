@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sun 31 Jan 2021 09:18:54 AM CET
+# Generated on: Tue 02 Feb 2021 04:47:10 AM CET
 #
 ###############################################################################
 
@@ -16,7 +16,6 @@ OBJ := \
   vc4/DMA/LoadStore.o  \
   vc4/DMA/DMA.o  \
   vc4/DMA/Operations.o  \
-  vc4/DMA/Translate.o  \
   vc4/KernelDriver.o  \
   vc4/Encode.o  \
   vc4/Mailbox.o  \

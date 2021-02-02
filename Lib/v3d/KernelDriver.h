@@ -12,7 +12,7 @@ namespace v3d {
 class KernelDriver : public V3DLib::KernelDriver {
   using Parent       = V3DLib::KernelDriver;
   using Instruction  = V3DLib::v3d::instr::Instr;
-  using Instructions = std::vector<Instruction>;
+  using Instructions = V3DLib::v3d::Instructions;
 
 public:
   KernelDriver();

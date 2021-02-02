@@ -6,8 +6,7 @@
 namespace V3DLib {
 namespace v3d {
 namespace instr {
-
-using Instructions = std::vector<Instr>; 
+//using Instructions = std::vector<Instr>; 
 
 uint8_t get_shift(uint64_t num_qpus);
 Instructions set_qpu_id(uint8_t reg_qpu_id);

@@ -316,11 +316,9 @@ void boolVarExp(Instr::List &seq, BExpr b, Var v) {
   boolExp(&seq, b.rhs(), w);  // idem
 
   if (b.tag() == OR) {
-    seq << bor(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
-    seq.back().comment("Bool var OR");
+    seq << bor(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var OR");
   } else if (b.tag() == AND) {
-    seq << band(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
-    seq.back().comment("Bool var AND");
+    seq << band(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var AND");
   } else {
     assert(false);
   }

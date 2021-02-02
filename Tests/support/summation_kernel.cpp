@@ -779,7 +779,7 @@ Instructions align_code(int code_offset, int target_offset) {
 }
 
 
-Instructions emit_unroll(int unroll, Instructions block) {
+Instructions emit_unroll(int unroll, Instructions const &block) {
   Instructions ret;
 
   for (int j = 0; j < unroll - 1; ++j) {
@@ -859,10 +859,10 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
   ret << mov(tmua, rf(reg_src)).sub(rf(reg_length), rf(reg_length), r1).pushz()  // pushz sets flag for cond na0
       << add(rf(reg_src), rf(reg_src), rf(reg_stride)).ldtmu(r0);
 
-  ret << emit_unroll(unroll, {
+  ret << emit_unroll(unroll, Instructions({
       prefetch,
       sum_and_load
-  });
+  }));
 
   for (int i = 0; i < 5; ++i) {
     ret << sum_and_load;

@@ -8,10 +8,9 @@ namespace instr {
 Instructions set_qpu_id(uint8_t reg_qpu_id) {
 	Instructions ret;
 
-	ret << tidx(r0)
+	ret << tidx(r0).header("Set QPU id")
 			<< bor(rf(reg_qpu_id), r0, r0);  // Actually mov
 
-	ret.front().header("Set QPU id");
 	return ret;
 }
 
@@ -19,16 +18,15 @@ Instructions set_qpu_num(uint8_t num_qpus, uint8_t reg_qpu_num) {
 	Instructions ret;
 
 	if (num_qpus == 1) {
-		ret << mov(rf(reg_qpu_num), 0);
+		ret << mov(rf(reg_qpu_num), 0).comment("Using 1 QPU");
 	} else if (num_qpus == 8) {
-		ret << tidx(r0)
+		ret << tidx(r0).header("Set number of QPUs to 8")
 		    << shr(r0, r0, 2)
 		    << band(rf(reg_qpu_num), r0, 0b1111);
 	} else {
 		assert(false);  // num_qpus must be 1 or 8
 	}
 
-	ret.front().header("Set number of QPU's");
 	return ret;
 }
 
@@ -68,19 +66,16 @@ Instructions get_num_qpus(Register const &reg, uint8_t num_qpus) {
 Instructions calc_offset(uint8_t num_qpus, uint8_t reg_qpu_num) {
 	Instructions ret;
 
-	ret << set_qpu_num(num_qpus, reg_qpu_num);
-
-	ret << shl(r0, rf(reg_qpu_num), 4)
-	    << eidx(r1)
-	    << add(r0, r0, r1)
-	    << shl(r0, r0, 2);
-
-
 	const char *text = 
 		"Determine offset -> r0\n"
 		"addr += 4 * (thread_num + 16 * qpu_num)";
 
-	ret.front().comment(text);
+	ret << set_qpu_num(num_qpus, reg_qpu_num).comment(text)
+	    << shl(r0, rf(reg_qpu_num), 4)
+	    << eidx(r1)
+	    << add(r0, r0, r1)
+	    << shl(r0, r0, 2);
+
 	return ret;
 }
 
@@ -106,16 +101,13 @@ uint8_t get_shift(uint64_t num_qpus) {
  * @param reg_stride rf slot in which to store the stride
  */
 Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
-	Instructions ret;
-
 	uint8_t num_qpus_shift = get_shift(num_qpus);
 
-	const char *text = "stride = 4 * 16 * num_qpus";
+	Instructions ret;
 
-	ret << mov(rf(reg_stride), 1)
+	ret << mov(rf(reg_stride), 1).header("stride = 4 * 16 * num_qpus")
 	    << shl(rf(reg_stride), rf(reg_stride), 6 + num_qpus_shift);
 
-	ret.front().header(text);
 	return ret;
 }
 
@@ -124,15 +116,15 @@ Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
  * An instruction may be passed in to make use of a waiting slot.
  */
 Instructions enable_tmu_read(Instr const *last_slot) {
-	Instructions ret;
-
 	const char *text = 
 		"This single thread switch and two instructions just before the loop are\n"
 		"really important for TMU read to achieve a better performance.\n"
 		"This also enables TMU read requests without the thread switch signal, and\n"
 		"the eight-depth TMU read request queue.";
 
-	ret << nop().thrsw()
+	Instructions ret;
+
+	ret << nop().thrsw().header(text)
 	    << nop();
 
 	if (last_slot != nullptr) {
@@ -141,23 +133,21 @@ Instructions enable_tmu_read(Instr const *last_slot) {
 		ret << nop();
 	}
 
-	ret.front().header(text);
 	return ret;
 }
 
 
 Instructions sync_tmu() {
-	Instructions ret;
-
 	const char *text = 
 		"This synchronization is needed between the last TMU operation and the\n"
 		"program end with the thread switch just before the main body above.";
 
-	ret << barrierid(syncb).thrsw()
+	Instructions ret;
+
+	ret << barrierid(syncb).thrsw().header(text)
 	    << nop()
 	    << nop();
 
-	ret.front().header(text);
 	return ret;
 }
 
@@ -165,7 +155,7 @@ Instructions sync_tmu() {
 Instructions end_program() {
 	Instructions ret;
 
-	ret << nop().thrsw()
+	ret << nop().thrsw().header("Program tail")
 	    << nop().thrsw()
 	    << nop()
 	    << nop()
@@ -174,7 +164,6 @@ Instructions end_program() {
 	    << nop()
 	    << nop();
 
-	ret.front().header("Program tail");
 	return ret;
 }
 

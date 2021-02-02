@@ -90,7 +90,6 @@ void StmtStack::post_prefetch(Ptr assign) {
   assert(assign->size() == 1);  // Not expecting anything else
   assert(prefetch_count <= 8);
 
-
 /*
   std::cout << "===== assign stack =====\n"
             << assign->dump()
@@ -98,23 +97,13 @@ void StmtStack::post_prefetch(Ptr assign) {
             << std::endl;
 */
 
-  //if (prefetch->tag == Stmt::GATHER_PREFETCH) {
   if (m_prefetch_tags.empty()) {
     auto item = assign->first_in_seq();
     assert(item != nullptr);
     item->comment("Start Prefetch");
   }
 
-/*
-  if (prefetch_count < 8) {
-    prefetch->append(assign->top());
-    //std::cout << prefetch->dump() << std::endl;
-
-    prefetch_count++;
-  } else {
-*/
-    m_assigns.push_back(assign);
- // }
+  m_assigns.push_back(assign);
 }
 
 

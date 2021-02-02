@@ -10,6 +10,7 @@ using ByteCode = V3DLib::v3d::ByteCode;
 
 template<typename T>
 using SharedArray =  V3DLib::SharedArray<T>;
+using Instructions = V3DLib::v3d::Instructions;
 
 //
 // Issue: disassembly code in MESA does not output rotate flag
@@ -378,8 +379,7 @@ ByteCode rotate_kernel() {
     << nop().ldtmu(r0);
   ;
 
-  ret << nop();
-  ret.back().comment("required before rotate");
+  ret << nop().comment("required before rotate");
 
   for (int i = -15; i < 16; ++i) {
     ret
@@ -393,10 +393,7 @@ ByteCode rotate_kernel() {
   for (int i = -15; i < 16; ++i) {
     ret << mov(r5, si(i));
 
-    ret << nop();
-    ret.back().comment("required before rotate");
-
-    ret
+    ret << nop().comment("required before rotate")
       << rotate(r1, r0, r5)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, r5)`
       << mov(tmud, r1)
       << mov(tmua, rf(1))

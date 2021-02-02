@@ -18,6 +18,7 @@ namespace V3DLib {
  */
 template<typename Instructions>
 void removeLabels(Instructions &instrs) {
+  using ::operator<<;  // C++ weirdness
   Instructions newInstrs;
 
   // The number of labels in the instruction sequence
@@ -47,9 +48,7 @@ void removeLabels(Instructions &instrs) {
 			last_comment += "Label L";
 			last_comment += std::to_string(instr.label());
     } else {
-      newInstrs << instr;
-
-     	newInstrs.back().comment(last_comment);
+      newInstrs << instr.comment(last_comment);
 			last_comment.clear();
 
       j++;
@@ -72,8 +71,8 @@ void removeLabels(Instructions &instrs) {
 			instr.label_to_target(dest - i);  // pass in offset to label from current instruction
 
 			std::string cmt;
-			cmt += "Jump to label L";
-			cmt += std::to_string(label);
+			cmt << "Jump to label L" << label;
+
 			instr.comment(cmt);
     }
   }

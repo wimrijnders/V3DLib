@@ -174,14 +174,14 @@ std::string Instr::pretty_instr() const {
 std::string Instr::mnemonic(bool with_comments) const {
   std::string ret;
 
-  if (with_comments && !header().empty()) {
-    ret << "\n# " << header() << "\n";
+  if (with_comments && !InstructionComment::header().empty()) {
+    ret << emit_header();
   }
 
   std::string out = pretty_instr();
   ret << out;
 
-  if (with_comments && !comment().empty()) {
+  if (with_comments && !InstructionComment::comment().empty()) {
     ret << emit_comment((int) out.size());
   }
 

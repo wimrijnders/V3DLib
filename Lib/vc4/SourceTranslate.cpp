@@ -3,40 +3,18 @@
 #include "Source/Translate.h"  // srcReg()
 #include "Target/Subst.h"
 #include "DMA/LoadStore.h"
-#include "DMA/Translate.h"
 #include "RegAlloc.h"
 
 namespace V3DLib {
 namespace vc4 {
 
-// TODO: fix this for TMU usage
 Instr::List SourceTranslate::deref_var_var(Var lhs, Var rhs) {
-  Instr::List ret;
-  
-  ret << DMA::StoreRequest(lhs, rhs)
-      << genWaitDMAStore();  // Wait for store to complete
-
-  return ret;
+  return DMA::StoreRequest(lhs, rhs);
 }
 
 
 void SourceTranslate::varassign_deref_var(Instr::List *seq, Var &v, Expr &e) {
-  using namespace V3DLib::Target::instr;
-
-  Reg reg = srcReg(e.deref_ptr()->var());
-  Instr::List ret;
-  
-  ret << genSetReadPitch(4)                           // Setup DMA
-      << genSetupDMALoad(16, 1, 1, 1, QPU_ID)
-      << genStartDMALoad(reg)                         // Start DMA load
-      << genWaitDMALoad(false)                        // Wait for DMA
-      << genSetupVPMLoad(1, QPU_ID, 0, 1)             // Setup VPM
-      << shl(dstReg(v), Target::instr::VPM_READ, 0);  // Get from VPM
-
-  ret.front().comment("Start DMA load var");
-  ret.back().comment("End DMA load var");
-
-  *seq << ret;
+  *seq << DMA::varassign_deref_var(v, e);
 }
 
 

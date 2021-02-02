@@ -275,6 +275,11 @@ struct Instr : public InstructionComment {
   Instr() : tag(NO_OP) {} 
   Instr(InstrTag in_tag);
 
+  std::string header()  const  { return InstructionComment::header();  }  // grumbl hating that this is needed
+  std::string comment() const  { return InstructionComment::comment(); }  // idem
+  Instr &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
+  Instr &comment(std::string msg)       { InstructionComment::comment(msg); return *this; }
+
 
   // ==================================================
   // Helper methods
@@ -410,11 +415,13 @@ Instr branch(Label label);
 Instr branch(BranchCond cond, Label label);
 Instr label(Label in_label);
 
+//
 // SFU functions
-Seq<Instr> recip(Var dst, Var srcA);
-Seq<Instr> recipsqrt(Var dst, Var srcA);
-Seq<Instr> bexp(Var dst, Var srcA);
-Seq<Instr> blog(Var dst, Var srcA);
+//
+Instr::List recip(Var dst, Var srcA);
+Instr::List recipsqrt(Var dst, Var srcA);
+Instr::List bexp(Var dst, Var srcA);
+Instr::List blog(Var dst, Var srcA);
 
 // v3d only
 Instr tmuwt();

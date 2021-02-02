@@ -85,6 +85,9 @@ struct Stmt : public InstructionComment {
 
   ~Stmt() {}
 
+  Stmt &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
+  Stmt &comment(std::string msg)       { InstructionComment::comment(msg); return *this; }
+
   std::string disp() const { return disp_intern(false, 0); }
   std::string dump() const { return disp_intern(true, 0); }
   void append(Ptr rhs);

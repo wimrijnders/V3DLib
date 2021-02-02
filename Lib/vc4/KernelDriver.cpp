@@ -4,7 +4,6 @@
 #include "Target/RemoveLabels.h"
 #include "vc4.h"
 #include "Encode.h"
-#include "DMA/Translate.h"
 #include "DMA/Operations.h"
 #include "dump_instr.h"
 
@@ -26,7 +25,8 @@ void KernelDriver::compile_init(bool set_qpu_uniforms, int numVars) {
  * Note that this emits kernel code.
  */
 void KernelDriver::kernelFinish() {
-  dmaWaitRead();                comment("Ensure outstanding DMAs have completed");
+  dmaWaitRead();                header("Kernel termination");
+                                comment("Ensure outstanding DMAs have completed");
   dmaWaitWrite();
 
   If (me() == 0)
@@ -87,12 +87,9 @@ void KernelDriver::compile_intern() {
 
     Instr::List ret;
 
-    ret << mov(freshVar(), Var(UNIFORM));
-    ret.back().comment("Last uniform load is dummy value");
+    ret << mov(freshVar(), Var(UNIFORM)).comment("Last uniform load is dummy value");
 
     m_targetCode.insert(index + 1, ret);
-
-    //warning("Added dummy uniform");
   }
 
   m_targetCode << Instr(END);

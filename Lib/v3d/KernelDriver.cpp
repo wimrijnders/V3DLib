@@ -21,8 +21,7 @@ using ::operator<<;
 
 namespace v3d {
 using namespace V3DLib::v3d::instr;
-
-using Instructions = std::vector<instr::Instr>;
+using Instructions = V3DLib::v3d::Instructions;
 
 namespace {
 
@@ -513,15 +512,13 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
   auto reg_b = instr.ALU.srcB;                  // reg b is either r5 or small imm
 
   if (src_a->to_mux() != V3D_QPU_MUX_R0) {
-    ret << mov(r0, *src_a);
-    ret.back().comment("moving param 2 of rotate to r0. WARNING: r0 might already be in use, check!");
+    ret << mov(r0, *src_a).comment("moving param 2 of rotate to r0. WARNING: r0 might already be in use, check!");
   }
 
 
   // TODO: the Target source step already adds a nop.
   //       With the addition of previous mov to r0, the 'other' nop becomes useless, remove that one for v3d.
-  ret << nop();
-  ret.back().comment("NOP required for rotate");
+  ret << nop().comment("NOP required for rotate");
 
   if (reg_b.tag == REG) {
     breakpoint
@@ -567,16 +564,14 @@ bool convert_int_powers(Instructions &output, int in_value) {
 
   SmallImm imm(rep_value);
 
-  Instructions ret;
-  ret << mov(r0, imm);
-  ret << shl(r0, r0, SmallImm(left_shift));
-
   std::string cmt;
   cmt << "Load immediate " << in_value;
-  ret.front().comment(cmt);
+
+  Instructions ret;
+  ret << mov(r0, imm).comment(cmt);
+  ret << shl(r0, r0, SmallImm(left_shift));
 
   output << ret;
-
   return true;
 }
 

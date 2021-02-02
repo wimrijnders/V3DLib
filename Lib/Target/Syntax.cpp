@@ -58,20 +58,19 @@ Instr genInstr(ALUOp::Enum op, Reg dst, int n, int m) {
  * This uses acc4 as interim storage.
  * Also 2 NOP's required; TODO see this can be optimized
  */
-Seq<Instr> sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *label) {
+Instr::List sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *label) {
   using namespace V3DLib::Target::instr;
 
   Instr nop;
-  Seq<Instr> ret;
-
-  ret << mov(sfu_reg, srcA)
-      << nop
-      << nop
-      << mov(dst, ACC4);
+  Instr::List ret;
 
   std::string cmt = "SFU function ";
   cmt += label;
-  ret.front().comment(cmt);
+
+  ret << mov(sfu_reg, srcA).comment(cmt)
+      << nop
+      << nop
+      << mov(dst, ACC4);
 
   return ret;
 }
@@ -253,10 +252,10 @@ Instr branch(Label label) {
 }
 
 
-Seq<Instr> recip(Var dst, Var srcA)     { return sfu_function(dst, srcA, SFU_RECIP    , "recip"); }
-Seq<Instr> recipsqrt(Var dst, Var srcA) { return sfu_function(dst, srcA, SFU_RECIPSQRT, "recipsqrt"); }
-Seq<Instr> bexp(Var dst, Var srcA)      { return sfu_function(dst, srcA, SFU_EXP      , "exp"); }
-Seq<Instr> blog(Var dst, Var srcA)      { return sfu_function(dst, srcA, SFU_LOG      , "log"); }
+Instr::List recip(Var dst, Var srcA)     { return sfu_function(dst, srcA, SFU_RECIP    , "recip"); }
+Instr::List recipsqrt(Var dst, Var srcA) { return sfu_function(dst, srcA, SFU_RECIPSQRT, "recipsqrt"); }
+Instr::List bexp(Var dst, Var srcA)      { return sfu_function(dst, srcA, SFU_EXP      , "exp"); }
+Instr::List blog(Var dst, Var srcA)      { return sfu_function(dst, srcA, SFU_LOG      , "log"); }
 
 
 /**
