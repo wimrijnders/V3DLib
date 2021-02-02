@@ -16,8 +16,7 @@ using namespace V3DLib;
 // Scalar version
 // ============================================================================
 
-void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y)
-{
+void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
   for (int i = 0; i < n; i++) {
     float xOld = x[i];
     float yOld = y[i];
@@ -26,12 +25,12 @@ void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y)
   }
 }
 
+
 // ============================================================================
-// Vector version 1
+// Kernel version 1
 // ============================================================================
 
-void rot3D_1(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
-{
+void rot3D_1(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   For (Int i = 0, i < n, i = i+16)
     Float xOld = x[i];
     Float yOld = y[i];
@@ -40,8 +39,9 @@ void rot3D_1(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
   End
 }
 
+
 // ============================================================================
-// Vector version 2
+// Kernel version 2
 // ============================================================================
 
 void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {

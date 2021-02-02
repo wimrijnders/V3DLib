@@ -94,40 +94,31 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     SharedArray<float> x_1(N), y_1(N);
     SharedArray<float> x(N), y(N);
 
-
+    //
     // Compare scalar with QPU output - will not be exact
-    {
-      auto k = compile(rot3D_1);
-      initArrays(x_1, y_1, N);
-      k.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
-      compareResults(x_scalar, y_scalar, x_1, y_1, N, "Rot3D 1", false);  // Last param false: do approximate match
-    }
+    //
+
+    INFO("Running kernel 1 (always 1 QPU)");
+    auto k = compile(rot3D_1);
+    initArrays(x_1, y_1, N);
+    k.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
+    compareResults(x_scalar, y_scalar, x_1, y_1, N, "Rot3D 1", false);  // Last param false: do approximate match
 
 
     // Compare outputs of the kernel versions.
     // These *should* be exact, because kernel 1 output is compared with kernel 2
-     auto k2 = compile(rot3D_2);
+    auto k2 = compile(rot3D_2);
 
-    {
-      initArrays(x, y, N);
-      k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
-      compareResults(x_1, y_1, x, y, N, "Rot3D_2");
-    }
+    INFO("Running kernel 2 with 1 QPU");
+    initArrays(x, y, N);
+    k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+    compareResults(x_1, y_1, x, y, N, "Rot3D_2");
 
-
-    if (Platform::instance().has_vc4) {
-      printf("NB: Rot3D kernel unit test for kernel 2 with `-n=8` not working on vc4 (TODO)\n");
-      // returns something but not complete
-      // e.g. x[16] not filled in
-      // works fine on v3d
-      // Also works fine for cmdline version Rot3D
-    } else {
-      INFO("Running with 8 kernels");
-      k2.setNumQPUs(8);
-      initArrays(x, y, N);
-      k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
-      compareResults(x_1, y_1, x, y, N, "Rot3D_2 8 QPU's");
-    }
+    INFO("Running kernel 2 with 8 QPUs");
+    k2.setNumQPUs(8);
+    initArrays(x, y, N);
+    k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+    compareResults(x_1, y_1, x, y, N, "Rot3D_2 8 QPU's");
 
     delete [] x_scalar;
     delete [] y_scalar;
@@ -143,7 +134,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     auto k_1 = compile(rot3D_1);
     SharedArray<float> x_1(N), y_1(N);
     initArrays(x_1, y_1, N);
-     k_1.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
+    k_1.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
 
     auto k_2 = compile(rot3D_2);
     SharedArray<float> x_2(N), y_2(N);
