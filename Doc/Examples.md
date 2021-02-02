@@ -350,19 +350,19 @@ Times taken to rotate an object with 192,000 vertices:
   Version  | Number of QPUs | Run-time (s) |
   ---------| -------------- | ------------ |
   Scalar   |  0             | 0.020532     |
-  Vector 1 |  1             | 0.032531     |
-  Vector 2 |  1             | 0.015441     |
-  Vector 2 |  4             | 0.013367     |
-  Vector 2 |  8             | 0.013368     |
-  Vector 2 | 12             | 0.013386     |
+  Kernel 1 |  1             | 0.032531     |
+  Kernel 2 |  1             | 0.015441     |
+  Kernel 2 |  4             | 0.013367     |
+  Kernel 2 |  8             | 0.013368     |
+  Kernel 2 | 12             | 0.013386     |
 ```
 
 ![Rot3D Profiling](./images/rot3d_profiling.png)
 
 
-Non-blocking loads and stores (vector version 2) give a significant performance boost: in this case a factor of 2.
+Non-blocking loads (Kernel 2) give a significant performance boost: in this case a factor of 2.
 
-This program does not scale well to multiple QPUs.  
+This program does not scale well to multiple QPUs.
 This is likely becaue the compute-to-memory ratio is too low:
 only 2 arithmetic operations are done for every memory access, perhaps overwhelming the memory subsystem.
 
