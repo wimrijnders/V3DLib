@@ -15,39 +15,39 @@ std::vector<const char *> const kernels = { "multi", "single", "cpu", "all" };  
 
 CmdParameters params = {
   "Mandelbrot Generator\n"
-	"\n"
-	"Calculates Mandelbrot for a given region and outputs the result as a PGM bitmap file.\n"
-	"Because this calculation is purely hardware-bound, it is a good indication of overall speed.\n"
-	"It will therefore be used for performance comparisons of platforms and configurations.\n",
+  "\n"
+  "Calculates Mandelbrot for a given region and outputs the result as a PGM bitmap file.\n"
+  "Because this calculation is purely hardware-bound, it is a good indication of overall speed.\n"
+  "It will therefore be used for performance comparisons of platforms and configurations.\n",
   {{
     "Kernel",
     "-k=",
-		kernels,
+    kernels,
     "Select the kernel to use"
-	}, {
+  }, {
     "Output PGM file",
-		"-pgm",
-		ParamType::NONE,   // Prefix needed to disambiguate
+    "-pgm",
+    ParamType::NONE,   // Prefix needed to disambiguate
     "Output a PGM bitmap of the calculation results.\n"
     "If enabled, a PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
     "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled\n",
-	}, {
-		"Number of steps",
-		"-steps=",
-		ParamType::POSITIVE_INTEGER,
-		"Maximum number of iterations to perform per point",
-		1024
+  }, {
+    "Number of steps",
+    "-steps=",
+    ParamType::POSITIVE_INTEGER,
+    "Maximum number of iterations to perform per point",
+    1024
   }}
 };
 
 
 struct MandSettings : public Settings {
-	const int ALL = 3;
+  const int ALL = 3;
 
-	int    kernel;
-	string kernel_name;
-	bool   output_pgm;
-	int    num_iterations;
+  int    kernel;
+  string kernel_name;
+  bool   output_pgm;
+  int    num_iterations;
 
   // Initialize constants for the kernels
   const int   numStepsWidth   = 1024;
@@ -61,14 +61,14 @@ struct MandSettings : public Settings {
   float offsetX() const { return (bottomRightReal - topLeftReal  )/((float) numStepsWidth  - 1); }
   float offsetY() const { return (topLeftIm       - bottomRightIm)/((float) numStepsHeight - 1); }
 
-	MandSettings() : Settings(&params, true) {}
+  MandSettings() : Settings(&params, true) {}
 
-	void init_params() override {
-		kernel         = params.parameters()["Kernel"]->get_int_value();
-		kernel_name    = params.parameters()["Kernel"]->get_string_value();
-		output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
-		num_iterations = params.parameters()["Number of steps"]->get_int_value();
-	}
+  void init_params() override {
+    kernel         = params.parameters()["Kernel"]->get_int_value();
+    kernel_name    = params.parameters()["Kernel"]->get_string_value();
+    output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
+    num_iterations = params.parameters()["Number of steps"]->get_int_value();
+  }
 } settings;
 
 
@@ -156,7 +156,7 @@ void mandelbrot_single(
   For (Int yStep = 0, yStep < numStepsHeight, yStep++)
     For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
       Int xIndex = xStep + index();
-			Ptr<Int> dst = result + xStep + yStep*numStepsWidth;
+      Ptr<Int> dst = result + xStep + yStep*numStepsWidth;
 
       mandelbrotCore(
         (topLeftReal + offsetX*toFloat(xIndex)),
@@ -178,14 +178,14 @@ void mandelbrot_multi(
   Int numIterations,
   Ptr<Int> result
 ) {
-	result -= me() << 4;  // Correct for per-QPU offset
+  result -= me() << 4;  // Correct for per-QPU offset
 
   For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep = yStep + numQPUs())
     Int yIndex = yStep + me();
 
     For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
       Int xIndex = xStep + index();
-			Ptr<Int> dst = result + xStep + yIndex*numStepsWidth;
+      Ptr<Int> dst = result + xStep + yIndex*numStepsWidth;
 
       mandelbrotCore(
         (topLeftReal + offsetX*toFloat(xIndex)),
@@ -205,13 +205,13 @@ using KernelType = decltype(mandelbrot_single);
 
 template<class Array>
 void output_pgm(Array &result) {
-	if (!settings.output_pgm) return;
+  if (!settings.output_pgm) return;
 
   int width         = settings.numStepsWidth;
-	int height        = settings.numStepsHeight;
-	int numIterations = settings.num_iterations;
+  int height        = settings.numStepsHeight;
+  int numIterations = settings.num_iterations;
 
-	output_pgm_file(result, width, height, numIterations, "mandelbrot.pgm");
+  output_pgm_file(result, width, height, numIterations, "mandelbrot.pgm");
 }
 
 
@@ -221,17 +221,17 @@ void run_qpu_kernel(KernelType &kernel) {
   auto k = compile(kernel);
   k.setNumQPUs(settings.num_qpus);
 
-	SharedArray<int> result(settings.num_items());  // Allocate and initialise
+  SharedArray<int> result(settings.num_items());  // Allocate and initialise
 
   k.load(
-		settings.topLeftReal, settings.topLeftIm,
-		settings.offsetX(), settings.offsetY(),
-		settings.numStepsWidth, settings.numStepsHeight,
-		settings.num_iterations,
-		&result);
+    settings.topLeftReal, settings.topLeftIm,
+    settings.offsetX(), settings.offsetY(),
+    settings.numStepsWidth, settings.numStepsHeight,
+    settings.num_iterations,
+    &result);
 
   settings.process(k);
-	output_pgm(result);
+  output_pgm(result);
 }
 
 
@@ -239,29 +239,29 @@ void run_qpu_kernel(KernelType &kernel) {
  * Run a kernel as specified by the passed kernel index
  */
 void run_kernel(int kernel_index) {
-	Timer timer;
+  Timer timer;
 
-	switch (kernel_index) {
-		case 0: run_qpu_kernel(mandelbrot_multi);  break;	
-		case 1: run_qpu_kernel(mandelbrot_single); break;
-		case 2: {
-  			int *result = new int [settings.num_items()];  // Allocate and initialise
+  switch (kernel_index) {
+    case 0: run_qpu_kernel(mandelbrot_multi);  break;  
+    case 1: run_qpu_kernel(mandelbrot_single); break;
+    case 2: {
+        int *result = new int [settings.num_items()];  // Allocate and initialise
 
-  			mandelbrot_cpu(result);
-				output_pgm(result);
+        mandelbrot_cpu(result);
+        output_pgm(result);
 
-				delete result;
-			}
-			break;
-	}
+        delete result;
+      }
+      break;
+  }
 
-	auto name = kernels[kernel_index];
+  auto name = kernels[kernel_index];
 
-	timer.end(!settings.silent);
+  timer.end(!settings.silent);
 
-	if (!settings.silent) {
-		printf("Ran kernel '%s' with %d QPU's\n", name, settings.num_qpus);
-	}
+  if (!settings.silent) {
+    printf("Ran kernel '%s' with %d QPU's\n", name, settings.num_qpus);
+  }
 }
 
 
@@ -270,23 +270,23 @@ void run_kernel(int kernel_index) {
 // ============================================================================
 
 int main(int argc, const char *argv[]) {
-	//printf("Check pre\n");
-	//RegisterMap::checkThreadErrors();   // TODO: See if it's useful to check this every time after a kernel has run
+  //printf("Check pre\n");
+  //RegisterMap::checkThreadErrors();   // TODO: See if it's useful to check this every time after a kernel has run
 
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-	if (settings.kernel == settings.ALL) {
-		for (int i = 0; i < settings.ALL; ++i ) {
-			run_kernel(i);
-		}
-	} else {
-		run_kernel(settings.kernel);
-	}
+  if (settings.kernel == settings.ALL) {
+    for (int i = 0; i < settings.ALL; ++i ) {
+      run_kernel(i);
+    }
+  } else {
+    run_kernel(settings.kernel);
+  }
 
-	//printf("Check post\n");
-	//RegisterMap::checkThreadErrors();
+  //printf("Check post\n");
+  //RegisterMap::checkThreadErrors();
 
-	printf("\n");
+  printf("\n");
   return 0;
 }

@@ -27,27 +27,27 @@ CmdParameters params = {
   {{
     "Kernel",
     "-k=",
-		kernel_id,
+    kernel_id,
     "Select the kernel to use"
-	}, {
+  }, {
     "Display Results",
     "-d",
-		ParamType::NONE,
+    ParamType::NONE,
     "Show the results of the calculations"
   }}
 };
 
 
 struct Rot3DSettings : public Settings {
-	int    kernel;
-	bool   show_results;
+  int    kernel;
+  bool   show_results;
 
-	Rot3DSettings() : Settings(&params, true) {}
+  Rot3DSettings() : Settings(&params, true) {}
 
-	void init_params() override {
-		kernel              = params.parameters()["Kernel"]->get_int_value();
-		show_results        = params.parameters()["Display Results"]->get_bool_value();
-	}
+  void init_params() override {
+    kernel              = params.parameters()["Kernel"]->get_int_value();
+    show_results        = params.parameters()["Display Results"]->get_bool_value();
+  }
 } settings;
 
 
@@ -67,10 +67,10 @@ void init_arrays(Arr &x, Arr &y) {
 
 template<typename Arr>
 void disp_arrays(Arr &x, Arr &y) {
-	if (settings.show_results) {
-  	for (int i = 0; i < SIZE; i++)
-  		printf("%f %f\n", x[i], y[i]);
-	}
+  if (settings.show_results) {
+    for (int i = 0; i < SIZE; i++)
+      printf("%f %f\n", x[i], y[i]);
+  }
 }
 
 
@@ -78,17 +78,17 @@ void run_scalar_kernel() {
   // Allocate and initialise
   float* x = new float[SIZE];
   float* y = new float[SIZE];
-	init_arrays(x, y);
+  init_arrays(x, y);
 
-	if (!settings.compile_only) {
-		Timer timer;  // Time the run only
-	  rot3D(SIZE, cosf(THETA), sinf(THETA), x, y);
-	  timer.end(!settings.silent);
-	}
+  if (!settings.compile_only) {
+    Timer timer;  // Time the run only
+    rot3D(SIZE, cosf(THETA), sinf(THETA), x, y);
+    timer.end(!settings.silent);
+  }
 
-	disp_arrays(x, y);
-	delete [] x;
-	delete [] y;
+  disp_arrays(x, y);
+  delete [] x;
+  delete [] y;
 }
 
 
@@ -98,15 +98,15 @@ void run_qpu_kernel(KernelType &kernel) {
 
   // Allocate and initialise arrays shared between ARM and GPU
   SharedArray<float> x(SIZE), y(SIZE);
-	init_arrays(x, y);
+  init_arrays(x, y);
 
   k.load(SIZE, cosf(THETA), sinf(THETA), &x, &y);
 
-	Timer timer;  // Time the run only
+  Timer timer;  // Time the run only
   settings.process(k);
-	timer.end(!settings.silent);
+  timer.end(!settings.silent);
 
-	disp_arrays(x, y);
+  disp_arrays(x, y);
 }
 
 
@@ -114,17 +114,17 @@ void run_qpu_kernel(KernelType &kernel) {
  * Run a kernel as specified by the passed kernel index
  */
 void run_kernel(int kernel_index) {
-	switch (kernel_index) {
-		case 0: run_qpu_kernel(rot3D_2);  break;	
-		case 1: run_qpu_kernel(rot3D_1);  break;	
-		case 2: run_scalar_kernel(); break;
-	}
+  switch (kernel_index) {
+    case 0: run_qpu_kernel(rot3D_2);  break;  
+    case 1: run_qpu_kernel(rot3D_1);  break;  
+    case 2: run_scalar_kernel(); break;
+  }
 
-	auto name = kernel_id[kernel_index];
+  auto name = kernel_id[kernel_index];
 
-	if (!settings.silent) {
-		printf("Ran kernel '%s' with %d QPU's.\n", name, settings.num_qpus);
-	}
+  if (!settings.silent) {
+    printf("Ran kernel '%s' with %d QPU's.\n", name, settings.num_qpus);
+  }
 }
 
 
@@ -133,10 +133,10 @@ void run_kernel(int kernel_index) {
 // ============================================================================
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-	run_kernel(settings.kernel);
+  run_kernel(settings.kernel);
 
   return 0;
 }
