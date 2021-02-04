@@ -63,9 +63,9 @@ void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expec
 
 template<typename T>
 void check_vectors(SharedArray<T> &result, std::vector<std::vector<T>> const &expected) {
-	for (int index = 0; index < (int) expected.size(); ++index) {
+  for (int index = 0; index < (int) expected.size(); ++index) {
     check_vector(result, index, expected[index]);
-	}
+  }
 }
 
 }  // namespace
@@ -398,10 +398,10 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
 void int_ops_kernel(Ptr<Int> result) {
   using namespace V3DLib::functions;
 
-	auto store = [&result] (IntExpr const &val) {
+  auto store = [&result] (IntExpr const &val) {
     *result = val;
     result += 16;
-	};
+  };
 
   Int a = index();
   a += 3;

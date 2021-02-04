@@ -29,7 +29,7 @@ const char* specialStr(RegId rid) {
 
   // Unreachable
   assert(false);
-	return "";
+  return "";
 }
 }  //  anon namespace
 
@@ -38,12 +38,12 @@ const char* specialStr(RegId rid) {
  * Obtain a register for a fresh variable
  */
 Reg freshReg() {
-	Var v = freshVar();
-	Reg r;
+  Var v = freshVar();
+  Reg r;
 
-	r.tag = REG_A;
-	r.regId = v.id();
-	return r;
+  r.tag = REG_A;
+  r.regId = v.id();
+  return r;
 }
 
 
@@ -52,45 +52,45 @@ Reg freshReg() {
  */
 Reg srcReg(Var v) {
   Reg r;
-	r.isUniformPtr = false;
+  r.isUniformPtr = false;
 
   switch (v.tag()) {
     case UNIFORM:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_UNIFORM;
-			r.isUniformPtr = v.isUniformPtr();
-			break;
+      r.isUniformPtr = v.isUniformPtr();
+      break;
     case QPU_NUM:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_QPU_NUM;
-			break;
+      break;
     case ELEM_NUM:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_ELEM_NUM;
-			break;
+      break;
     case VPM_READ:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_VPM_READ;
-			break;
+      break;
     case STANDARD:
       r.tag   = REG_A;
       r.regId = v.id();
-			break;
+      break;
     case VPM_WRITE:
     case TMU0_ADDR:
       printf("V3DLib: Reading from write-only special register is forbidden\n");
       assert(false);
-			break;
+      break;
     case DUMMY:
       r.tag   = NONE;
       r.regId = v.id();
-			break;
-		default:
-			assert(false);
-			break;
+      break;
+    default:
+      assert(false);
+      break;
   }
 
-	return r;
+  return r;
 }
 
 
@@ -98,7 +98,7 @@ Reg srcReg(Var v) {
  * Translate variable to target register.
  */
 Reg dstReg(Var v) {
-	using namespace V3DLib::Target::instr;
+  using namespace V3DLib::Target::instr;
 
   switch (v.tag()) {
     case UNIFORM:
@@ -106,24 +106,24 @@ Reg dstReg(Var v) {
     case ELEM_NUM:
     case VarTag::VPM_READ:
       fatal("V3DLib: writing to read-only special register is forbidden");
-			return Reg();  // Return anything
+      return Reg();  // Return anything
 
     case STANDARD:
-			return Reg(REG_A, v.id());
+      return Reg(REG_A, v.id());
     case VarTag::VPM_WRITE:
-			return Target::instr::VPM_WRITE;
+      return Target::instr::VPM_WRITE;
     case TMU0_ADDR:
-			return TMU0_S;
+      return TMU0_S;
 
-		default:
-			fatal("Unhandled case in dstReg()");
-			return Reg();  // Return anything
+    default:
+      fatal("Unhandled case in dstReg()");
+      return Reg();  // Return anything
   }
 }
 
 
 std::string Reg::pretty() const {
-	std::string ret;
+  std::string ret;
 
   switch (tag) {
     case REG_A:   ret <<   "A" << regId; break;
@@ -131,10 +131,10 @@ std::string Reg::pretty() const {
     case ACC:     ret << "ACC" << regId; break;
     case SPECIAL: ret <<  "S[" << specialStr(regId) << "]"; break;
     case NONE:    ret <<   "_"; break;
-		default: assert(false); break;
+    default: assert(false); break;
   }
 
-	return ret;
+  return ret;
 }
 
 }  // namespace V3DLib

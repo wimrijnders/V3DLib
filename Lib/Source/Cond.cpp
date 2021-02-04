@@ -7,7 +7,7 @@ namespace {
  * Generic 'Float' comparison
  */
 BoolExpr mkFloatCmp(FloatExpr a, CmpOp::Id cond, FloatExpr b) {
-	return BoolExpr(mkCmp(a.expr(), CmpOp(cond, FLOAT), b.expr()));
+  return BoolExpr(mkCmp(a.expr(), CmpOp(cond, FLOAT), b.expr()));
 }
 
 
@@ -15,7 +15,7 @@ BoolExpr mkFloatCmp(FloatExpr a, CmpOp::Id cond, FloatExpr b) {
  * Generic 'Int' comparison
  */
 BoolExpr mkIntCmp(IntExpr a, CmpOp::Id cond, IntExpr b) {
-	return BoolExpr(mkCmp(a.expr(), CmpOp(cond, INT32), b.expr()));
+  return BoolExpr(mkCmp(a.expr(), CmpOp(cond, INT32), b.expr()));
 }
 
 }  // anon namespace

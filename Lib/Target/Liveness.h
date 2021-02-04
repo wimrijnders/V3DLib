@@ -42,22 +42,22 @@ using LiveSet = SmallSeq<RegId>;
  */
 class Liveness {
 public:
-	Liveness(CFG &cfg) : m_cfg(cfg) {}
+  Liveness(CFG &cfg) : m_cfg(cfg) {}
 
-	void compute(Seq<Instr> &instrs);
-	void computeLiveOut(InstrId i, LiveSet &liveOut);
+  void compute(Seq<Instr> &instrs);
+  void computeLiveOut(InstrId i, LiveSet &liveOut);
 
-	void setSize(int size);
-	int size() const { return m_set.size(); }
-	bool insert(int index, RegId item);
-	LiveSet &operator[](int index) { return get(index); }
+  void setSize(int size);
+  int size() const { return m_set.size(); }
+  bool insert(int index, RegId item);
+  LiveSet &operator[](int index) { return get(index); }
 
 private:
-	CFG &m_cfg;
-	Seq<LiveSet> m_set;
+  CFG &m_cfg;
+  Seq<LiveSet> m_set;
 
-	std::string dump();
-	LiveSet &get(int index) { return m_set[index]; }
+  std::string dump();
+  LiveSet &get(int index) { return m_set[index]; }
 };
 
 
@@ -65,19 +65,19 @@ class LiveSets {
 public:
   UseDef useDefSet;
 
-	LiveSets(int size);
-	~LiveSets();
+  LiveSets(int size);
+  ~LiveSets();
 
-	void init(Seq<Instr> &instrs, Liveness &live);
-	LiveSet &operator[](int index);
-	std::vector<bool> possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag = REG_A);
+  void init(Seq<Instr> &instrs, Liveness &live);
+  LiveSet &operator[](int index);
+  std::vector<bool> possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag = REG_A);
 
-	static RegId choose_register(std::vector<bool> &possible, bool check_limit = true);	
-	static void  dump_possible(std::vector<bool> &possible, int index = -1);
+  static RegId choose_register(std::vector<bool> &possible, bool check_limit = true);  
+  static void  dump_possible(std::vector<bool> &possible, int index = -1);
 
 private:
-	int m_size = 0;
-	LiveSet *m_sets = nullptr;
+  int m_size = 0;
+  LiveSet *m_sets = nullptr;
 };
 
 }  // namespace V3DLib

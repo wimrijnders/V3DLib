@@ -9,41 +9,41 @@ namespace instr {
 
 class Register : public Location {
 public: 
-	Register(const char *name, v3d_qpu_waddr waddr_val);
-	Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val, bool is_dest_acc = false);
+  Register(const char *name, v3d_qpu_waddr waddr_val);
+  Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val, bool is_dest_acc = false);
 
-	v3d_qpu_waddr to_waddr() const override { return m_waddr_val; }
-	v3d_qpu_mux to_mux() const override;
+  v3d_qpu_waddr to_waddr() const override { return m_waddr_val; }
+  v3d_qpu_mux to_mux() const override;
 
-	Register l() const;
-	Register ll() const;
-	Register hh() const;
-	Register h() const;
-	Register abs() const;
-	Register swp() const;
+  Register l() const;
+  Register ll() const;
+  Register hh() const;
+  Register h() const;
+  Register abs() const;
+  Register swp() const;
 
-	bool is_dest_acc() const { return m_is_dest_acc; }
-	std::string const &name() const { return m_name; }
+  bool is_dest_acc() const { return m_is_dest_acc; }
+  std::string const &name() const { return m_name; }
 
 private:
-	std::string   m_name;
-	v3d_qpu_waddr m_waddr_val;
-	v3d_qpu_mux   m_mux_val;
-	bool          m_mux_is_set  = false;
-	bool          m_is_dest_acc = false;
+  std::string   m_name;
+  v3d_qpu_waddr m_waddr_val;
+  v3d_qpu_mux   m_mux_val;
+  bool          m_mux_is_set  = false;
+  bool          m_is_dest_acc = false;
 };
 
 
 class BranchDest : public Location {
 public: 
-	BranchDest(const char *name, v3d_qpu_waddr dest) : m_name(name), m_dest(dest) {}
+  BranchDest(const char *name, v3d_qpu_waddr dest) : m_name(name), m_dest(dest) {}
 
-	v3d_qpu_waddr to_waddr() const override { return m_dest; }
-	v3d_qpu_mux to_mux() const override;
+  v3d_qpu_waddr to_waddr() const override { return m_dest; }
+  v3d_qpu_mux to_mux() const override;
 
 private:
-	std::string   m_name;
-	v3d_qpu_waddr m_dest;
+  std::string   m_name;
+  v3d_qpu_waddr m_dest;
 };
 
 

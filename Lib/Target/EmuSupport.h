@@ -21,17 +21,17 @@ union Word {
 
 // Vector values
 struct Vec {
-	Word &get(int index) {
-		assert(0 <= index && index < NUM_LANES);
-		return elems[index];
-	}
+  Word &get(int index) {
+    assert(0 <= index && index < NUM_LANES);
+    return elems[index];
+  }
 
-	Word &operator[](int index) {
-		return get(index);
-	}
+  Word &operator[](int index) {
+    return get(index);
+  }
 
 private:
- 	Word elems[NUM_LANES];
+   Word elems[NUM_LANES];
 };
 
 // In-flight DMA request

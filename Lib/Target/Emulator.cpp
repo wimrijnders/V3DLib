@@ -16,69 +16,69 @@ namespace {
 class SFU {
 public:
 
-	/**
-	 * @return true if input handled, false otherwise
-	 */
-	bool writeReg(Reg dest, Vec v) {
-  	if (dest.tag != SPECIAL) return false;
-		bool handled = true;
+  /**
+   * @return true if input handled, false otherwise
+   */
+  bool writeReg(Reg dest, Vec v) {
+    if (dest.tag != SPECIAL) return false;
+    bool handled = true;
 
-  	switch (dest.regId) {
-		case SPECIAL_SFU_RECIP:
-			for (int i = 0; i < NUM_LANES; i++) {
-				float a = v[i].floatVal;
-				value[i] = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
-			}
-			break;
-		case SPECIAL_SFU_RECIPSQRT:
-			for (int i = 0; i < NUM_LANES; i++) {
-				float a = (float) ::sqrt(v[i].floatVal);
-				value[i] = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
-			}
-			break;
-		case SPECIAL_SFU_EXP:
-			for (int i = 0; i < NUM_LANES; i++) {
-				float a = v[i].floatVal;
-				value[i] = (float) ::exp2(a);
-			}
-			break;
-		case SPECIAL_SFU_LOG:
-			for (int i = 0; i < NUM_LANES; i++) {
-				float a = v[i].floatVal;
-				value[i] = (float) ::log2(a);  // TODO what would lg2(0) return?
-			}
-			break;
-		default:
-			handled = false;
-			break;
-		}
+    switch (dest.regId) {
+    case SPECIAL_SFU_RECIP:
+      for (int i = 0; i < NUM_LANES; i++) {
+        float a = v[i].floatVal;
+        value[i] = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
+      }
+      break;
+    case SPECIAL_SFU_RECIPSQRT:
+      for (int i = 0; i < NUM_LANES; i++) {
+        float a = (float) ::sqrt(v[i].floatVal);
+        value[i] = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
+      }
+      break;
+    case SPECIAL_SFU_EXP:
+      for (int i = 0; i < NUM_LANES; i++) {
+        float a = v[i].floatVal;
+        value[i] = (float) ::exp2(a);
+      }
+      break;
+    case SPECIAL_SFU_LOG:
+      for (int i = 0; i < NUM_LANES; i++) {
+        float a = v[i].floatVal;
+        value[i] = (float) ::log2(a);  // TODO what would lg2(0) return?
+      }
+      break;
+    default:
+      handled = false;
+      break;
+    }
 
-		if (handled) {
-			assertq(timer == -1, "SFU is running on SFU function call", true);
-			timer = 3;
-		}
+    if (handled) {
+      assertq(timer == -1, "SFU is running on SFU function call", true);
+      timer = 3;
+    }
 
-		return handled;
-	}
+    return handled;
+  }
 
 
-	void upkeep(Vec &r4) {
-		if (timer > 0) {
-			timer--;
-		}
+  void upkeep(Vec &r4) {
+    if (timer > 0) {
+      timer--;
+    }
 
-		if (timer == 0) {
-			// finish pending SFU function
-			for (int i = 0; i < NUM_LANES; i++) {
-				r4[i].floatVal = value[i];
-			}
-			timer = -1;
-		}
-	}
+    if (timer == 0) {
+      // finish pending SFU function
+      for (int i = 0; i < NUM_LANES; i++) {
+        r4[i].floatVal = value[i];
+      }
+      timer = -1;
+    }
+  }
 
 private:
-	float value[NUM_LANES];              // Last result of SFU unit call
-	int timer = -1;                      // Number of cycles to wait for SFU result.
+  float value[NUM_LANES];              // Last result of SFU unit call
+  int timer = -1;                      // Number of cycles to wait for SFU result.
 };
 
 
@@ -86,7 +86,7 @@ private:
 struct QPUState {
   int id = 0;                          // QPU id
   int numQPUs = 0;                     // QPU count
-	bool running = false;                // Is QPU active, or has it halted?
+  bool running = false;                // Is QPU active, or has it halted?
   int pc = 0;                          // Program counter
   Vec* regFileA = nullptr;             // Register file A
   int sizeRegFileA = 0;                // (and size)
@@ -106,32 +106,32 @@ struct QPUState {
   int writeStride = 0;                 // Write stride
   SmallSeq<Vec> loadBuffer;            // Load buffer for loads via TMU
 
-	SFU sfu;
+  SFU sfu;
 
-	QPUState() {
+  QPUState() {
     dmaLoad.active     = false;
     dmaStore.active    = false;
-  	for (int i = 0; i < NUM_LANES; i++) negFlags[i] = false;
-  	for (int i = 0; i < NUM_LANES; i++) zeroFlags[i] = false;
-	}
+    for (int i = 0; i < NUM_LANES; i++) negFlags[i] = false;
+    for (int i = 0; i < NUM_LANES; i++) zeroFlags[i] = false;
+  }
 
 
-	~QPUState() {
+  ~QPUState() {
     delete [] regFileA;
     delete [] regFileB;
-	}
+  }
 
-	void init(int maxReg) {
+  void init(int maxReg) {
     running            = true;
     regFileA           = new Vec [maxReg+1];
     sizeRegFileA       = maxReg+1;
     regFileB           = new Vec [maxReg+1];
     sizeRegFileB       = maxReg+1;
-	}
+  }
 
-	void upkeep() {
-		sfu.upkeep(accum[4]);
-	}
+  void upkeep() {
+    sfu.upkeep(accum[4]);
+  }
 };
 
 
@@ -144,12 +144,12 @@ struct State {
   Word vpm[VPM_SIZE];      // Shared VPM memory
   Seq<char>* output;       // Output for print statements
   int sema[16];            // Semaphores
-	SharedArray<uint32_t> emuHeap;
+  SharedArray<uint32_t> emuHeap;
 
-	State() {
-  	// Initialise semaphores
-	  for (int i = 0; i < 16; i++) sema[i] = 0;
-	}
+  State() {
+    // Initialise semaphores
+    for (int i = 0; i < 16; i++) sema[i] = 0;
+  }
 };
 
 }
@@ -162,9 +162,9 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
   int r = reg.regId;
   Vec v;
 
-	// Initialize v to prevent warnings on uninitialized errors
-	for (int i = 0; i < NUM_LANES; i++)
-		v[i].intVal = 0;
+  // Initialize v to prevent warnings on uninitialized errors
+  for (int i = 0; i < NUM_LANES; i++)
+    v[i].intVal = 0;
 
   switch (reg.tag) {
     case REG_A:
@@ -300,13 +300,13 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
       fatal("V3DLib: can't read special register");
     case NONE:
       return v;
-		default:
-			break;  // Should not happen
+    default:
+      break;  // Should not happen
   }
 
   // Unreachable
   assert(false);
-	return v;
+  return v;
 }
 
 // ============================================================================
@@ -317,7 +317,7 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
 // condition is true at that index using the implicit condition flags.
 
 inline bool checkAssignCond(QPUState* s, AssignCond cond, int i) {
-	using Tag = AssignCond::Tag;
+  using Tag = AssignCond::Tag;
 
   switch (cond.tag) {
     case Tag::NEVER:  return false;
@@ -333,7 +333,7 @@ inline bool checkAssignCond(QPUState* s, AssignCond cond, int i) {
 
   // Unreachable
   assert(false);
-	return false;
+  return false;
 }
 
 
@@ -367,9 +367,9 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond) {
           if (bools[i]) return true;
         return false;
       }
-		default:
-			assertq(false, "checkBranchCond(): unexpected value");
-			return false;
+    default:
+      assertq(false, "checkBranchCond(): unexpected value");
+      return false;
   }
 }
 
@@ -531,18 +531,18 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           return;
         }
         default:
-					if (s->sfu.writeReg(dest, v)) {
-						return;
-					}
+          if (s->sfu.writeReg(dest, v)) {
+            return;
+          }
           break;
       }
 
       assertq(false, "emulator: can not write to special register", true);
       return;
 
-		default:
+    default:
       assertq(false, "emulator: unexpected dest tag");
-			break;
+      break;
   }
 }
 
@@ -569,7 +569,7 @@ Vec evalImm(Imm imm) {
 
   // Unreachable
   assert(false);
-	return v;
+  return v;
 }
 
 // ============================================================================
@@ -595,7 +595,7 @@ Vec evalSmallImm(QPUState* s, SmallImm imm)
 
   // Unreachable
   assert(false);
-	return v;
+  return v;
 }
 
 Vec readRegOrImm(QPUState* s, State* g, RegOrImm src)
@@ -607,7 +607,7 @@ Vec readRegOrImm(QPUState* s, State* g, RegOrImm src)
 
   // Unreachable
   assert(false);
-	return Vec();
+  return Vec();
 }
 
 // ============================================================================
@@ -647,7 +647,7 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
     b = a;
   } else {
     b = readRegOrImm(s, g, srcB);
-	}
+  }
 
   // Now evaluate the operation
   switch (op.value()) {
@@ -788,10 +788,10 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
     case ALUOp::M_V8ADDS:
     case ALUOp::M_V8SUBS:
     default: {
-			char buf[64];
+      char buf[64];
       sprintf(buf, "V3DLib: unsupported operator %i", op.value());
       fatal(buf);
-		}
+    }
   }
 
   return c;
@@ -802,22 +802,22 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
 // ============================================================================
 
 void emulate(
-	int numQPUs,
-	Seq<Instr>* instrs,
-	int maxReg,
-	Seq<int32_t> &uniforms,
-	BufferObject &heap,
-	Seq<char>* output
+  int numQPUs,
+  Seq<Instr>* instrs,
+  int maxReg,
+  Seq<int32_t> &uniforms,
+  BufferObject &heap,
+  Seq<char>* output
 ) {
   State state;
   state.output = output;
 
   state.uniforms = uniforms;
-	// Add final dummy uniform
-	// See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
-	state.uniforms << 0;
+  // Add final dummy uniform
+  // See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
+  state.uniforms << 0;
 
-	state.emuHeap.heap_view(heap);
+  state.emuHeap.heap_view(heap);
 
   // Initialise state
   for (int i = 0; i < numQPUs; i++) {
@@ -825,17 +825,17 @@ void emulate(
 
     q.id                 = i;
     q.numQPUs            = numQPUs;
-		q.init(maxReg);
+    q.init(maxReg);
   }
 
-	// Protection against locks due to semaphore waiting
-	int const MAX_SEMAPHORE_WAIT = 1024;
-	int semaphore_wait_count = 0;
+  // Protection against locks due to semaphore waiting
+  int const MAX_SEMAPHORE_WAIT = 1024;
+  int semaphore_wait_count = 0;
 
   bool anyRunning = true;
 
   while (anyRunning) {
-		auto ALWAYS = AssignCond::Tag::ALWAYS;
+    auto ALWAYS = AssignCond::Tag::ALWAYS;
 
     anyRunning = false;
 
@@ -847,11 +847,11 @@ void emulate(
         anyRunning = true;
         assert(s->pc < instrs->size());
 
-				s->upkeep();
+        s->upkeep();
 
-				//
-				// Run next instruction
-				//
+        //
+        // Run next instruction
+        //
         Instr const instr = instrs->get(s->pc++);
         switch (instr.tag) {
           // Load immediate
@@ -938,32 +938,32 @@ void emulate(
           case SINC: {
             assert(instr.semaId >= 0 && instr.semaId <= 15);
             if (state.sema[instr.semaId] == 15) {
-							semaphore_wait_count++;
-							assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SINC appears to be stuck");
-							s->pc--;
+              semaphore_wait_count++;
+              assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SINC appears to be stuck");
+              s->pc--;
             } else {
-							semaphore_wait_count = 0;
-							state.sema[instr.semaId]++;
-						}
+              semaphore_wait_count = 0;
+              state.sema[instr.semaId]++;
+            }
             break;
           }
           // Semaphore decrement
           case SDEC: {
             assert(instr.semaId >= 0 && instr.semaId <= 15);
             if (state.sema[instr.semaId] == 0) {
-							semaphore_wait_count++;
-							assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SDEC appears to be stuck");
-							s->pc--;
+              semaphore_wait_count++;
+              assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SDEC appears to be stuck");
+              s->pc--;
             } else {
-							semaphore_wait_count = 0;
-							state.sema[instr.semaId]--;
-						}
+              semaphore_wait_count = 0;
+              state.sema[instr.semaId]--;
+            }
             break;
           }
 
-					case INIT_BEGIN:
-					case INIT_END:
-						break;  // ignore
+          case INIT_BEGIN:
+          case INIT_END:
+            break;  // ignore
 
           // Should not be reached
           default: assert(false);

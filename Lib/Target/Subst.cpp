@@ -30,7 +30,7 @@ void renameDest(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
         instr->RECV.dest.regId = w;
       }
       return;
-		default:
+    default:
       return;
   }
 }
@@ -71,7 +71,7 @@ void renameUses(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
         instr->PRF.regId = w;
       }
       return;
-		default:
+    default:
       return;
   }
 }
@@ -115,7 +115,7 @@ void substRegTag(Instr* instr, RegTag vt, RegTag wt) {
       if (instr->RECV.dest.tag == vt)
         instr->RECV.dest.tag = wt;
       return;
-		default:
+    default:
       return;
   }
 }

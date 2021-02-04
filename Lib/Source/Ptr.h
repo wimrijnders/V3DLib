@@ -32,7 +32,7 @@ protected:
   PointerExpr add(IntExpr b);
 
 private:
-	PointerExpr &me();
+  PointerExpr &me();
 };
 
 

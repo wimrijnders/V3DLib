@@ -11,12 +11,12 @@ template<typename T>
 class Seq;
 
 void interpreter(
-	int numCores,
-	Stmt::Ptr stmt,
-	int numVars,
-	Seq<int32_t> &uniforms,
-	BufferObject &heap,
-	Seq<char> *output = nullptr
+  int numCores,
+  Stmt::Ptr stmt,
+  int numVars,
+  Seq<int32_t> &uniforms,
+  BufferObject &heap,
+  Seq<char> *output = nullptr
 );
 
 }  // namespace V3DLib

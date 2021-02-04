@@ -4,37 +4,37 @@
 namespace V3DLib {
 
 const char *Op::to_string() const {
-	switch (op) {
-		case ADD:    return "+";
-		case SUB:    return "-";
-		case MUL:    return "*";
-		case MIN:    return " min ";
-		case MAX:    return " max ";
-		case ROTATE: return " rotate ";
-		case SHL:    return " << ";
-		case SHR:    return " >> ";
-		case USHR:   return " _>> ";
-		case ROR:    return " ror ";
-		case BOR:    return " | ";
-		case BAND:   return " & ";
-		case BXOR:   return " ^ ";
-		case BNOT:   return "~";
-		case ItoF:   return "(Float) ";
-		case FtoI:   return "(Int) ";
+  switch (op) {
+    case ADD:    return "+";
+    case SUB:    return "-";
+    case MUL:    return "*";
+    case MIN:    return " min ";
+    case MAX:    return " max ";
+    case ROTATE: return " rotate ";
+    case SHL:    return " << ";
+    case SHR:    return " >> ";
+    case USHR:   return " _>> ";
+    case ROR:    return " ror ";
+    case BOR:    return " | ";
+    case BAND:   return " & ";
+    case BXOR:   return " ^ ";
+    case BNOT:   return "~";
+    case ItoF:   return "(Float) ";
+    case FtoI:   return "(Int) ";
 
-		// SFU functions
-		case RECIP:  return "recip";
-		case RECIPSQRT: return "recipsqrt";
-		case EXP:    return "exp";
-		case LOG:    return "log";
+    // SFU functions
+    case RECIP:  return "recip";
+    case RECIPSQRT: return "recipsqrt";
+    case EXP:    return "exp";
+    case LOG:    return "log";
 
-		// v3d-specific
-		case TIDX:   return "tidx";
-		case EIDX:   return "eidx";
-	}
+    // v3d-specific
+    case TIDX:   return "tidx";
+    case EIDX:   return "eidx";
+  }
 
-	assertq(false, "opToString(): unknown opcode", true);
-	return nullptr;
+  assertq(false, "opToString(): unknown opcode", true);
+  return nullptr;
 }
 
 

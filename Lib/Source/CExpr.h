@@ -14,14 +14,14 @@ namespace V3DLib {
 enum CExprTag { ALL, ANY };
 
 struct CExpr {
-	using Ptr = std::shared_ptr<CExpr>;
+  using Ptr = std::shared_ptr<CExpr>;
 
-	CExpr(CExprTag tag, BExpr::Ptr bexpr) : m_tag(tag), m_bexpr(bexpr)  {}
+  CExpr(CExprTag tag, BExpr::Ptr bexpr) : m_tag(tag), m_bexpr(bexpr)  {}
 
   BExpr::Ptr bexpr() const { return m_bexpr; }
   CExprTag tag() const { return m_tag; }
 
-	std::string dump() const;
+  std::string dump() const;
 
 private:
 

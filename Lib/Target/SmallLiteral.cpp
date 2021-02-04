@@ -78,21 +78,21 @@ Word decodeSmallLit(int x) {
 
   // Unreachable
   assert(false);
-	return w;
+  return w;
 }
 
 
 std::string printSmallLit(int x) {
-	std::string ret;
+  std::string ret;
 
   if (x >= 32)
     ret << smallFloats[x - 32];
   else if (x >= 16)
-		ret << (x - 32);
+    ret << (x - 32);
   else if (x >= 0)
-		ret << x;
+    ret << x;
 
-	return ret;
+  return ret;
 }
 
 }  // namespace V3DLib
