@@ -344,9 +344,9 @@ Each QPU will handle a distinct block of 16 elements.
 
 Times taken to rotate an object with 192,000 vertices:
 
-*(This ran on a Raspberry Pi 3 Model B Rev 1.2)*
-
 ```
+Raspberry Pi 3 Model B Rev 1.2 (vc4):
+
   Version  | Number of QPUs | Run-time (s) |
   ---------| -------------- | ------------ |
   Scalar   |  0             | 0.020532     |
@@ -355,6 +355,16 @@ Times taken to rotate an object with 192,000 vertices:
   Kernel 2 |  4             | 0.013367     |
   Kernel 2 |  8             | 0.013368     |
   Kernel 2 | 12             | 0.013386     |
+
+Raspberry Pi 4 Model B Rev 1.1 (64-bits, v3d):
+
+  Version  | Number of QPUs | Run-time (s) |
+  ---------| -------------- | ------------ |
+  Scalar   |  0             | 0.008814     |
+  Kernel 1 |  1             | 0.008867     |
+  Kernel 2 |  1             | 0.00566      |
+  Kernel 2 |  8             | 0.001803     |
+
 ```
 
 ![Rot3D Profiling](./images/rot3d_profiling.png)
@@ -362,12 +372,17 @@ Times taken to rotate an object with 192,000 vertices:
 
 Non-blocking loads (Kernel 2) give a significant performance boost: in this case a factor of 2.
 
-This program does not scale well to multiple QPUs.
-This is likely becaue the compute-to-memory ratio is too low:
-only 2 arithmetic operations are done for every memory access, perhaps overwhelming the memory subsystem.
+On `vc4`, this program does not scale well to multiple QPUs.
+This is likely because the compute-to-memory ratio is too low:
+only 3 arithmetic operations (2 multiplications, 1 addition/substraction)
+are done for every memory access, perhaps overwhelming the memory subsystem.
 
 Example `Mandelbrot` had a much better compute-to-memory ratio, and is therefore a better candidate for
 measuring computing performance with respect to scaling.
+
+On `v3d`, this *does* scale with the QPUs. This is a good indication that the memory handling has been improved in this model.
+In addition, it is significantly faster overall.
+
 
 ## Example 3: 2D Convolution (Heat Transfer)
 
