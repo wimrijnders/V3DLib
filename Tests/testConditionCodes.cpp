@@ -457,7 +457,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   auto k2 = compile(noloop_if_and_kernel);
   //k2.pretty(false,  "obj/test/noloop_if_and_v3d.txt");  
   auto k3 = compile(noloop_multif_kernel);
-  //k3.pretty(false,  "obj/test/noloop_multif_v3d.txt");  
+  k3.pretty(false,  "obj/test/noloop_multif_v3d.txt");  // Keep enabled to avoid failing assertions, see below
   auto k4 = compile(noloop_if_andor_kernel);
   //k4.pretty(false,  "obj/test/noloop_if_andor_v3d.txt");  
 
@@ -550,10 +550,12 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
     k2.load(&result, 21, 15); run_qpu(k2, 5, expected_1);
   }
 
-  // multi-if's don't have the problem mentioned above, always work.
-  k3.load(&result, 0, 0);   run_qpu(k3, 6, expected_1);  // Fickle! Sometimes asserts during label removal
-                                                         // Works if k3.pretty(false...) called above
-                                                         // TODO examine this
+  // multi-if's should not have the problem mentioned above, and should always work.
+
+  // Fickle! Works always if k3.pretty(false...) called above, otherwise *may* assert
+  // TODO examine this
+  k3.load(&result, 0, 0);   run_qpu(k3, 6, expected_1);
+
   k3.load(&result, 12, 15); run_qpu(k3, 7, expected_2);
   k3.load(&result, 21, 15); run_qpu(k3, 8, expected_1);
 }

@@ -75,11 +75,12 @@ struct HeatMapSettings : public Settings {
 
 	HeatMapSettings() : Settings(&params, true) {}
 
-	void init_params() override {
+	bool init_params() override {
 		kernel      = params.parameters()["Kernel"]->get_int_value();
 		kernel_name = params.parameters()["Kernel"]->get_string_value();
 		num_steps   = params.parameters()["Number of steps"]->get_int_value();
 		num_points  = params.parameters()["Number of points"]->get_int_value();
+    return true;
 	}
 } settings;
 

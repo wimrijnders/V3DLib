@@ -52,10 +52,11 @@ struct MatrixSettings : public Settings {
 
   MatrixSettings() : Settings(&params, true) {}
 
-  void init_params() override {
+  bool init_params() override {
     kernel    = params.parameters()["Kernel"           ]->get_int_value();
     dimension = params.parameters()["Matrix dimension" ]->get_int_value();
     repeats   = params.parameters()["Number of repeats"]->get_int_value();
+    return true;
   }
 } settings;
 

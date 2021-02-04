@@ -76,6 +76,17 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
    *
    * If the code is compiled for emulator only (QPU_MODE=0), this
    * test will fail.
+   *
+   * vc4: No problem at all when all kernels loaded in same BO.
+   * v3d: rot3D_1 and rot3D_2 can be loaded together, adding the 3-kernels
+   *      leads to persistent timeout:
+   *
+   *    ERROR: v3d_wait_bo() ioctl: Timer expired
+   *
+   * Running the test multiple times leads to the unit tests hanging (and eventually losing contact with the Pi4.
+   *
+   * For this reason, separate contexts are used for each kernel. This results in the BO being completely
+   * cleared for the next kernel.
    */
   SECTION("All kernel versions should return the same") {
     //
@@ -89,54 +100,76 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 
     rot3D(N, cosf(THETA), sinf(THETA), x_scalar, y_scalar);
 
-    // Allocate and arrays shared between ARM and GPU
-    SharedArray<float> x_1(N), y_1(N);
-    SharedArray<float> x(N), y(N);
+    // Storage for first kernel results
+    float* x_1 = new float [N];
+    float* y_1 = new float [N];
 
-    //
-    // Compare scalar with QPU output - will not be exact
-    //
+    {
+      // Compare scalar with output kernel 1 - will not be exact
+      INFO("Running kernel 1 (always 1 QPU)");
+      SharedArray<float> x(N), y(N);
+      initArrays(x, y, N);
 
-    INFO("Running kernel 1 (always 1 QPU)");
-    auto k = compile(rot3D_1);
-    initArrays(x_1, y_1, N);
-    k.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
-    compareResults(x_scalar, y_scalar, x_1, y_1, N, "Rot3D 1", false);  // Last param false: do approximate match
+      auto k = compile(rot3D_1);
+      k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+      compareResults(x_scalar, y_scalar, x, y, N, "Rot3D 1", false);  // Last param false: do approximate match
+
+      // Save results for compare with other kernels 
+      for (int i = 0; i < N; ++i) {
+        x_1[i] = x[i];
+        y_1[i] = y[i];
+      }
+    }
+
 
     //
     // Compare outputs of the kernel versions.
     // The output of kernel 1 output is compared with the output of other kernels 
     // The matches should be exact.
     //
-    auto k2 = compile(rot3D_2);
 
-    INFO("Running kernel 2 with 1 QPU");
-    initArrays(x, y, N);
-    k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
-    compareResults(x_1, y_1, x, y, N, "Rot3D_2");
+    {
+      SharedArray<float> x(N), y(N);
 
-    INFO("Running kernel 2 with 8 QPUs");
-    k2.setNumQPUs(8);
-    initArrays(x, y, N);
-    k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
-    compareResults(x_1, y_1, x, y, N, "Rot3D_2 8 QPU's");
+      auto k = compile(rot3D_2);
 
-    INFO("Running kernel 3 with 1 QPU");
-    auto k3 = compile(rot3D_3_decorator(N));
-    //k3.pretty(true, "kernel3_prefetch.txt");
-    initArrays(x, y, N);
-    k3.load(cosf(THETA), sinf(THETA), &x, &y).call();
-    compareResults(x_1, y_1, x, y, N, "Rot3D_3");
+      INFO("Running kernel 2 with 1 QPU");
+      initArrays(x, y, N);
+      k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+      compareResults(x_1, y_1, x, y, N, "Rot3D_2");
 
-    INFO("Running kernel 3 with 8 QPUs");
-    auto k3a = compile(rot3D_3_decorator(N, 8));
-    k3a.setNumQPUs(8);
-    //k3a.pretty(true);
-    initArrays(x, y, N);
-    k3a.load(cosf(THETA), sinf(THETA), &x, &y).call();
-    compareResults(x_1, y_1, x, y, N, "Rot3D_3");
+      INFO("Running kernel 2 with 8 QPUs");
+      k.setNumQPUs(8);
+      initArrays(x, y, N);
+      k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+      compareResults(x_1, y_1, x, y, N, "Rot3D_2 8 QPUs");
+    }
 
+    {
+      INFO("Running kernel 3 with 1 QPU");
+      SharedArray<float> x(N), y(N);
+      initArrays(x, y, N);
 
+      auto k = compile(rot3D_3_decorator(N));
+      //k.pretty(true, "kernel3_prefetch.txt");
+      k.load(cosf(THETA), sinf(THETA), &x, &y).call();
+      compareResults(x_1, y_1, x, y, N, "Rot3D_3");
+    }
+
+    {
+      INFO("Running kernel 3 with 8 QPUs");
+      SharedArray<float> x(N), y(N);
+      initArrays(x, y, N);
+
+      auto k = compile(rot3D_3_decorator(N, 8));
+      k.setNumQPUs(8);
+      //k.pretty(true);
+      k.load(cosf(THETA), sinf(THETA), &x, &y).call();
+      compareResults(x_1, y_1, x, y, N, "Rot3D_3 8 QPUs");
+    }
+
+    delete [] x_1;
+    delete [] y_1;
     delete [] x_scalar;
     delete [] y_scalar;
   }

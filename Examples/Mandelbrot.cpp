@@ -64,11 +64,12 @@ struct MandSettings : public Settings {
 
   MandSettings() : Settings(&params, true) {}
 
-  void init_params() override {
+  bool init_params() override {
     kernel         = params.parameters()["Kernel"]->get_int_value();
     kernel_name    = params.parameters()["Kernel"]->get_string_value();
     output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
     num_iterations = params.parameters()["Number of steps"]->get_int_value();
+    return true;
   }
 } settings;
 

@@ -60,7 +60,7 @@ void removeLabels(Instructions &instrs) {
 
     if (instr.is_branch_label()) {
       Label label = instr.branch_label();
-      assert(0 <= label && label < numLabels);
+      assertq(0 <= label && label < numLabels, "Unexpected number of labels", true);
 
       // Convert branch-to-label to branch-to-target
       int dest = labels[label];
