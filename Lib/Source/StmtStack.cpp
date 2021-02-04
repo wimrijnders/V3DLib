@@ -6,6 +6,8 @@
 namespace V3DLib {
 namespace {
 
+int const MAX_NUM_PREFETCHES = 4;  // Confirmed 4 for vc4. TODO check 8 for v3d
+
 StmtStack *p_stmtStack = nullptr;
 
 StmtStack::Ptr tempStack(StackCallback f) {
@@ -75,7 +77,7 @@ std::string StmtStack::dump() const {
 }
 
 
-void StmtStack::init_prefetch() {
+void StmtStack::add_prefetch_label() {
   auto pre = Stmt::create(Stmt::GATHER_PREFETCH);
   append(pre);
   m_prefetch_tags.push_back(pre);
@@ -84,14 +86,14 @@ void StmtStack::init_prefetch() {
 
 void StmtStack::first_prefetch() {
   if (!m_prefetch_tags.empty()) return;
-  init_prefetch();
+  add_prefetch_label();
 }
 
 
 void StmtStack::post_prefetch(Ptr assign) {
   assert(assign.get() != nullptr);
   assert(assign->size() == 1);  // Not expecting anything else
-  assert(prefetch_count <= 8);
+  assert(prefetch_count <= MAX_NUM_PREFETCHES);
 
 /*
   std::cout << "===== assign stack =====\n"
@@ -119,7 +121,7 @@ void StmtStack::post_prefetch(Ptr assign) {
  *         false otherwise (prefetch list is full)
  */
 void StmtStack::add_prefetch(PointerExpr const &exp) {
-  init_prefetch();
+  add_prefetch_label();
 
   Ptr assign = tempStack([&exp] {
     Pointer ptr = exp;
@@ -131,7 +133,7 @@ void StmtStack::add_prefetch(PointerExpr const &exp) {
 
 
 void StmtStack::add_prefetch(Pointer &exp) {
-  init_prefetch();
+  add_prefetch_label();
 
   Ptr assign = tempStack([&exp] {
     gatherBaseExpr(exp);
@@ -148,8 +150,8 @@ void StmtStack::resolve_prefetches() {
   }
   assert(m_prefetch_tags.size() == m_assigns.size() + 1);  // One extra for the initial prefetch tag
 
-  // first 8 prefetches go to first tag
-  for (int i = 0; i < 8 &&  i < (int) m_assigns.size(); ++i) {
+  // first prefetches go to first tag
+  for (int i = 0; i < MAX_NUM_PREFETCHES &&  i < (int) m_assigns.size(); ++i) {
     auto assign = m_assigns[i];
 
 /*
@@ -164,7 +166,7 @@ void StmtStack::resolve_prefetches() {
   }
 
   for (int i = 1; i < (int) m_prefetch_tags.size(); ++i) {
-    int assign_index = i + (8 - 1);
+    int assign_index = i + (MAX_NUM_PREFETCHES - 1);
 
     if (assign_index >= (int) m_assigns.size()) {
       break;

@@ -127,15 +127,33 @@ void run_qpu_kernel(KernelType &kernel) {
 }
 
 
+void run_qpu_kernel_3() {
+  auto k = compile(rot3D_3_decorator(settings.num_vertices, settings.num_qpus));
+  k.setNumQPUs(settings.num_qpus);
+
+  // Allocate and initialise arrays shared between ARM and GPU
+  SharedArray<float> x(settings.num_vertices), y(settings.num_vertices);
+  init_arrays(x, y);
+
+  k.load(cosf(settings.THETA), sinf(settings.THETA), &x, &y);
+
+  Timer timer;  // Time the run only
+  settings.process(k);
+  timer.end(!settings.silent);
+
+  disp_arrays(x, y);
+}
+
+
 /**
  * Run a kernel as specified by the passed kernel index
  */
 void run_kernel(int kernel_index) {
   switch (kernel_index) {
     case 0: run_qpu_kernel(rot3D_2);  break;  
-    case 1: run_qpu_kernel(rot3D_3);  break;  
+    case 1: run_qpu_kernel_3();       break;  
     case 2: run_qpu_kernel(rot3D_1);  break;  
-    case 3: run_scalar_kernel(); break;
+    case 3: run_scalar_kernel();      break;
   }
 
   auto name = kernel_id[kernel_index];

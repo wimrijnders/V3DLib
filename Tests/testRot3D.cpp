@@ -63,7 +63,7 @@ void compareResults(
 
 TEST_CASE("Test working of Rot3D example", "[rot3d]") {
   // Number of vertices and angle of rotation
-  const int N = 1920;
+  const int N = 16*12*10;  // 1920
   const float THETA = (float) 3.14159;
 
   /**
@@ -121,11 +121,21 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     k2.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
     compareResults(x_1, y_1, x, y, N, "Rot3D_2 8 QPU's");
 
-    auto k3 = compile(rot3D_3);
     INFO("Running kernel 3 with 1 QPU");
+    auto k3 = compile(rot3D_3_decorator(N));
+    k3.pretty(true, "kernel3_prefetch.txt");
     initArrays(x, y, N);
-    k3.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+    k3.load(cosf(THETA), sinf(THETA), &x, &y).call();
     compareResults(x_1, y_1, x, y, N, "Rot3D_3");
+
+    INFO("Running kernel 3 with 8 QPUs");
+    auto k3a = compile(rot3D_3_decorator(N, 8));
+    k3a.setNumQPUs(8);
+    //k3a.pretty(true);
+    initArrays(x, y, N);
+    k3a.load(cosf(THETA), sinf(THETA), &x, &y).call();
+    compareResults(x_1, y_1, x, y, N, "Rot3D_3");
+
 
     delete [] x_scalar;
     delete [] y_scalar;

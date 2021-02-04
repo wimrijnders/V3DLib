@@ -39,7 +39,7 @@ private:
   std::vector<Stmt::Ptr> m_prefetch_tags;
   std::vector<Ptr>       m_assigns;
 
-  void init_prefetch();
+  void add_prefetch_label();
   void post_prefetch(Ptr assign);
 };
 
@@ -47,6 +47,10 @@ private:
 StmtStack &stmtStack();
 void clearStack();
 void initStack(StmtStack &stmtStack);
+
+inline void prefetch() {
+  stmtStack().first_prefetch();
+}
 
 template<typename T>
 void prefetch(T &dst, PointerExpr src) {
