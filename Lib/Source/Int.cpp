@@ -92,6 +92,12 @@ Int &Int::operator+=(IntExpr rhs){
 }
 
 
+Int &Int::operator-=(IntExpr rhs){
+  *this = *this - rhs;
+  return *this;
+}
+
+
 void Int::operator++(int) { *this = *this + 1; }
 
 

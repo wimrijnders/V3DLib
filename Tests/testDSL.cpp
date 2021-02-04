@@ -8,6 +8,7 @@
 using namespace V3DLib;
 using namespace std;
 
+namespace {
 
 //=============================================================================
 // Helper methods
@@ -39,6 +40,35 @@ string showExpected(const std::vector<T> &expected) {
 
   return buf.str();
 }
+
+
+template<typename T>
+void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expected) {
+  REQUIRE(expected.size() == 16);
+
+  bool passed = true;
+  int j = 0;
+  for (; j < 16; ++j) {
+    if (result[16*index + j] != expected[j]) {
+      passed = false;
+      break;
+    }
+  }
+
+  INFO("j: " << j);
+  INFO(showResult(result, index) << showExpected(expected));
+  REQUIRE(passed);
+}
+
+
+template<typename T>
+void check_vectors(SharedArray<T> &result, std::vector<std::vector<T>> const &expected) {
+	for (int index = 0; index < (int) expected.size(); ++index) {
+    check_vector(result, index, expected[index]);
+	}
+}
+
+}  // namespace
 
 
 //=============================================================================
@@ -148,25 +178,6 @@ void kernelIfWhen(Ptr<Int> result) {
   res = -1;
   Where (a > 32) res = 1; Else res = 0; End
   out(res, result);
-}
-
-
-template<typename T>
-void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expected) {
-  REQUIRE(expected.size() == 16);
-
-  bool passed = true;
-  int j = 0;
-  for (; j < 16; ++j) {
-    if (result[16*index + j] != expected[j]) {
-      passed = false;
-      break;
-    }
-  }
-
-  INFO("j: " << j);
-  INFO(showResult(result, index) << showExpected(expected));
-  REQUIRE(passed);
 }
 
 
@@ -385,10 +396,27 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
 //-----------------------------------------------------------------------------
 
 void int_ops_kernel(Ptr<Int> result) {
+  using namespace V3DLib::functions;
+
+	auto store = [&result] (IntExpr const &val) {
+    *result = val;
+    result += 16;
+	};
+
   Int a = index();
   a += 3;
+  store(a);
 
-  *result = a;
+  a -= 11;
+  store(a);
+
+  store(abs(index() - 8));
+  store(two_complement(index() - 8));       // 2's complement, library call
+
+  store(16*16/index());
+  store((-16*16)/(-index()));
+  store((-16*16)/index());
+  store(16*16/(-index()));
 }
 
 
@@ -403,16 +431,33 @@ void float_ops_kernel(Ptr<Float> result) {
 
 TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
   SECTION("Test integer operations") {
-    int const N = 1;  // Number of expected results
+    int const N = 8;  // Number of expected results
 
     auto k = compile(int_ops_kernel);
+    k.pretty(true);
 
     SharedArray<int> result(16*N);
 
-    k.load(&result).call();
+    k.load(&result);
+    //k.interpret();
+    //k.emu();
+    k.call();
+    dump_array(result, 16);
 
-    vector<int> expected = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18};
-    check_vector(result, 0, expected);
+    vector<vector<int>> expected = {
+      {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},                    // +=
+      {-8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7},                     // -=
+      {8, 7, 6, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7},                             // abs
+      {8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7},                      // 2-s complement
+
+      // integer division
+      {2147483647, 256, 128, 85, 64, 51, 42, 36, 32, 28, 25, 23, 21, 19, 18, 17},   // First value is 'infinity'
+      {-2147483647, 256, 128, 85, 64, 51, 42, 36, 32, 28, 25, 23, 21, 19, 18, 17},  // NB -0 == 0
+      {-2147483647, -256, -128, -85, -64, -51, -42, -36, -32, -28, -25, -23, -21, -19, -18, -17},
+      {2147483647, -256, -128, -85, -64, -51, -42, -36, -32, -28, -25, -23, -21, -19, -18, -17},
+    };
+
+    check_vectors(result, expected);
   }
 
 

@@ -62,6 +62,9 @@ void prefetch(T &dst, Pointer &src) {
   stmtStack().add_prefetch(src);
 }
 
+using StackCallback = std::function<void()>;
+Stmt::Ptr tempStmt(StackCallback f);
+
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_SOURCE_STMTSTACK_H_

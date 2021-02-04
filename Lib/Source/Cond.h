@@ -66,6 +66,7 @@ BoolExpr operator>=(FloatExpr a, FloatExpr b);
 BoolExpr operator!(BoolExpr a);
 BoolExpr operator&&(BoolExpr a, BoolExpr b);
 BoolExpr operator||(BoolExpr a, BoolExpr b);
+BoolExpr operator!=(BoolExpr a, BoolExpr b);
 
 Cond any(BoolExpr a);
 Cond all(BoolExpr a);

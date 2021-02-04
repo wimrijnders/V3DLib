@@ -147,7 +147,7 @@ Stmt::Ptr Stmt::seq_s0() const {
 
 
 Stmt::Ptr Stmt::seq_s1() const {
-  assert(tag == SEQ);
+  assertq(tag == SEQ, "Expecting SEQ", true);
   assert(m_stmt_b.get() != nullptr);
   return m_stmt_b;
 }
@@ -492,6 +492,18 @@ Stmt *Stmt::first_in_seq() const {
   }
 
   return seq_s1()->first_in_seq();
+}
+
+
+Stmt *Stmt::last_in_seq() const {
+  if (tag == SEQ) {
+    return seq_s1()->last_in_seq();
+  }
+
+  assert(tag != SKIP);                   // paranoia
+  assert(tag != Stmt::GATHER_PREFETCH);  // paranoia
+
+  return const_cast<Stmt *>(this);
 }
 
 

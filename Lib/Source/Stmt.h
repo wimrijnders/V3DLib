@@ -107,6 +107,7 @@ struct Stmt : public InstructionComment {
   Expr::Ptr address();
   Expr::Ptr print_expr() const;
   Stmt *first_in_seq() const;
+  Stmt *last_in_seq() const;
 
   Ptr seq_s0() const;
   Ptr seq_s1() const;

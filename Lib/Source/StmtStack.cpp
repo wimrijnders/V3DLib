@@ -4,9 +4,6 @@
 #include "Source/gather.h"
 
 namespace V3DLib {
-
-using StackCallback = std::function<void()>;
-
 namespace {
 
 StmtStack *p_stmtStack = nullptr;
@@ -28,6 +25,12 @@ StmtStack::Ptr tempStack(StackCallback f) {
 
 } // anon namespace
 
+
+Stmt::Ptr tempStmt(StackCallback f) {
+  StmtStack::Ptr assign = tempStack(f);
+  assert(assign->size() == 1);
+  return assign->top();
+}
 
 void StmtStack::reset() {
   clear();

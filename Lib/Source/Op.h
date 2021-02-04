@@ -53,5 +53,4 @@ struct Op {
 
 }  // namespace V3DLib
 
-
 #endif  //  _V3DLIB_SOURCE_OP_H_

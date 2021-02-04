@@ -58,6 +58,10 @@ BoolExpr operator!(BoolExpr a)              { return BoolExpr(a.bexpr()->Not());
 BoolExpr operator&&(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr()->And(b.bexpr())); }
 BoolExpr operator||(BoolExpr a, BoolExpr b) { return BoolExpr(a.bexpr()->Or(b.bexpr())); }
 
+// Crappy! This should just be XOR
+// TODO Implement actual XOR
+BoolExpr operator!=(BoolExpr a, BoolExpr b) { return !(a && b) && (a||b); }
+
 Cond any(BoolExpr a) { return Cond(mkAny(a.bexpr())); }
 Cond all(BoolExpr a) { return Cond(mkAll(a.bexpr())); }
 
