@@ -39,7 +39,7 @@ CmdParameters params = {
     {"-v=", "-vertices="},
     ParamType::POSITIVE_INTEGER,
     "Number of vertices to rotate",
-    192000
+    1920  // was 192000 but kernel 3 segfaults on it and takes ages to assemble with 19200 (but works)
   }}
 };
 

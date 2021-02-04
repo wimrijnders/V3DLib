@@ -123,7 +123,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 
     INFO("Running kernel 3 with 1 QPU");
     auto k3 = compile(rot3D_3_decorator(N));
-    k3.pretty(true, "kernel3_prefetch.txt");
+    //k3.pretty(true, "kernel3_prefetch.txt");
     initArrays(x, y, N);
     k3.load(cosf(THETA), sinf(THETA), &x, &y).call();
     compareResults(x_1, y_1, x, y, N, "Rot3D_3");
