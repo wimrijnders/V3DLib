@@ -442,7 +442,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
     //k.interpret();
     //k.emu();
     k.call();
-    dump_array(result, 16);
+    //dump_array(result, 16);
 
     vector<vector<int>> expected = {
       {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},                    // +=

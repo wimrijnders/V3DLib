@@ -10,20 +10,20 @@ using namespace V3DLib;
 using namespace kernels;
 using KernelType = decltype(rot3D_1);  // All kernel functions except scalar have same prototype
 
-// Number of vertices and angle of rotation
-const int SIZE = 192000;
-const float THETA = (float) 3.14159;
-
 
 // ============================================================================
 // Command line handling
 // ============================================================================
 
-std::vector<const char *> const kernel_id = { "2", "1", "cpu" };  // First is default
-
+std::vector<const char *> const kernel_id = { "2", "3", "1", "cpu" };  // First is default
 
 CmdParameters params = {
-  "Rot3D\n",
+  "Rot3D\n"
+  "\n"
+  "Rotates a number of vectors by a given angle.\n"
+  "The kernel is IO-bound, the data transfer time dominates over the calculation during execution.\n"
+  "It is therefore an indicator of data transfer speed, "
+  "and is used for performance comparisons of platforms and configurations.\n",
   {{
     "Kernel",
     "-k=",
@@ -34,19 +34,36 @@ CmdParameters params = {
     "-d",
     ParamType::NONE,
     "Show the results of the calculations"
+  }, {
+    "Number of vertices",
+    {"-v=", "-vertices="},
+    ParamType::POSITIVE_INTEGER,
+    "Number of vertices to rotate",
+    192000
   }}
 };
 
 
 struct Rot3DSettings : public Settings {
-  int    kernel;
-  bool   show_results;
+  const float THETA = (float) 3.14159;  // Rotation angle in radians
+
+  int  kernel;
+  bool show_results;
+  int  num_vertices;
 
   Rot3DSettings() : Settings(&params, true) {}
 
-  void init_params() override {
-    kernel              = params.parameters()["Kernel"]->get_int_value();
-    show_results        = params.parameters()["Display Results"]->get_bool_value();
+  bool init_params() override {
+    kernel       = params.parameters()["Kernel"]->get_int_value();
+    show_results = params.parameters()["Display Results"]->get_bool_value();
+    num_vertices = params.parameters()["Number of vertices"]->get_int_value();
+
+    if (num_vertices % 16 != 0) {
+      printf("ERROR: Number of vertices must be a multiple of 16.\n");
+      return false;
+    }
+
+    return true;
   }
 } settings;
 
@@ -58,7 +75,7 @@ struct Rot3DSettings : public Settings {
 
 template<typename Arr>
 void init_arrays(Arr &x, Arr &y) {
-  for (int i = 0; i < SIZE; i++) {
+  for (int i = 0; i < settings.num_vertices; i++) {
     x[i] = (float) i;
     y[i] = (float) i;
   }
@@ -68,7 +85,7 @@ void init_arrays(Arr &x, Arr &y) {
 template<typename Arr>
 void disp_arrays(Arr &x, Arr &y) {
   if (settings.show_results) {
-    for (int i = 0; i < SIZE; i++)
+    for (int i = 0; i < settings.num_vertices; i++)
       printf("%f %f\n", x[i], y[i]);
   }
 }
@@ -76,13 +93,13 @@ void disp_arrays(Arr &x, Arr &y) {
 
 void run_scalar_kernel() {
   // Allocate and initialise
-  float* x = new float[SIZE];
-  float* y = new float[SIZE];
+  float* x = new float[settings.num_vertices];
+  float* y = new float[settings.num_vertices];
   init_arrays(x, y);
 
   if (!settings.compile_only) {
     Timer timer;  // Time the run only
-    rot3D(SIZE, cosf(THETA), sinf(THETA), x, y);
+    rot3D(settings.num_vertices, cosf(settings.THETA), sinf(settings.THETA), x, y);
     timer.end(!settings.silent);
   }
 
@@ -97,10 +114,10 @@ void run_qpu_kernel(KernelType &kernel) {
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> x(SIZE), y(SIZE);
+  SharedArray<float> x(settings.num_vertices), y(settings.num_vertices);
   init_arrays(x, y);
 
-  k.load(SIZE, cosf(THETA), sinf(THETA), &x, &y);
+  k.load(settings.num_vertices, cosf(settings.THETA), sinf(settings.THETA), &x, &y);
 
   Timer timer;  // Time the run only
   settings.process(k);
@@ -116,8 +133,9 @@ void run_qpu_kernel(KernelType &kernel) {
 void run_kernel(int kernel_index) {
   switch (kernel_index) {
     case 0: run_qpu_kernel(rot3D_2);  break;  
-    case 1: run_qpu_kernel(rot3D_1);  break;  
-    case 2: run_scalar_kernel(); break;
+    case 1: run_qpu_kernel(rot3D_3);  break;  
+    case 2: run_qpu_kernel(rot3D_1);  break;  
+    case 3: run_scalar_kernel(); break;
   }
 
   auto name = kernel_id[kernel_index];

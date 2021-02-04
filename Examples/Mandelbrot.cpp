@@ -17,8 +17,9 @@ CmdParameters params = {
   "Mandelbrot Generator\n"
   "\n"
   "Calculates Mandelbrot for a given region and outputs the result as a PGM bitmap file.\n"
-  "Because this calculation is purely hardware-bound, it is a good indication of overall speed.\n"
-  "It will therefore be used for performance comparisons of platforms and configurations.\n",
+  "The kernel is computate-bound, the calculation time dominates over the data transfer during execution.\n"
+  "It is therefore an indicator of compute speed, "
+  "and is used for performance comparisons of platforms and configurations.\n",
   {{
     "Kernel",
     "-k=",

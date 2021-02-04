@@ -171,9 +171,8 @@ int Settings::init(int argc, const char *argv[]) {
     ret = params->handle_commandline(argc, argv, false);
 
     if (ret == CmdParameters::ALL_IS_WELL) {
-      if (process(*params)) {
-        init_params();  // Set derived param's , if present
-      } else {
+      bool success = process(*params) && init_params();
+      if (!success) {
         ret = CmdParameters::EXIT_ERROR;
       }
     }

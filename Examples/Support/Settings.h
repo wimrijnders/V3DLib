@@ -24,7 +24,7 @@ struct Settings {
 
   int init(int argc, const char *argv[]);
   void process(KernelBase &k);
-  virtual void init_params() {}
+  virtual bool init_params() { return true; }
 
 private:
   CmdParameters * const m_derived_params;

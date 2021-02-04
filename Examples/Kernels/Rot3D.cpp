@@ -6,6 +6,7 @@
 //
 // ============================================================================
 #include "Rot3D.h"
+#include "Source/Functions.h"
 
 namespace kernels { 
 
@@ -57,6 +58,37 @@ void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) 
     *p = xOld * cosTheta - yOld * sinTheta;
     *q = yOld * cosTheta + xOld * sinTheta;
     p = p+inc; q = q+inc;
+  End
+
+  receive(xOld); receive(yOld);
+}
+
+
+// ============================================================================
+// Kernel version 3
+// ============================================================================
+
+void rot3D_3(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
+  using V3DLib::functions::operator/;
+
+  Int inc = numQPUs() << 4;
+  Int size = n/numQPUs();
+
+  Ptr<Float> p_src = x - me()*inc + me()*size;
+  Ptr<Float> q_src = y - me()*inc + me()*size;
+  Ptr<Float> p_dst = x - me()*inc + me()*size;
+  Ptr<Float> q_dst = y - me()*inc + me()*size;
+
+  gather(p_src); gather(q_src);
+ 
+  Float xOld, yOld;
+  For (Int i = 0, i < size, i++)
+    gather(p_src+16); gather(q_src+16); 
+    receive(xOld); receive(yOld);
+    *p_dst = xOld * cosTheta - yOld * sinTheta;
+    *q_dst = yOld * cosTheta + xOld * sinTheta;
+    p_src = p_src+16; q_src = q_src+16;
+    p_dst = p_dst+16; q_dst = q_dst+16;
   End
 
   receive(xOld); receive(yOld);
