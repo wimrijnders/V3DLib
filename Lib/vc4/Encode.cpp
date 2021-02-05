@@ -27,9 +27,9 @@ uint32_t encodeAssignCond(AssignCond cond) {
         case NC: return 5;
      }
 
-		default:
-  		fatal("V3DLib: missing case in encodeAssignCond");
-			return 0;
+    default:
+      fatal("V3DLib: missing case in encodeAssignCond");
+      return 0;
   }
 }
 
@@ -60,9 +60,9 @@ uint32_t encodeBranchCond(BranchCond cond) {
         default: break;
       }
 
-		default:
-		  fatal("V3DLib: missing case in encodeBranchCond");
-			return 0;
+    default:
+      fatal("V3DLib: missing case in encodeBranchCond");
+      return 0;
   }
 }
 
@@ -133,9 +133,9 @@ uint32_t encodeDestReg(Reg reg, RegTag* file) {
       // NONE maps to 'NOP' in regfile.
       *file = AorB; return 39;
 
-		default:
-  		fatal("V3DLib: missing case in encodeDestReg");
-			return 0;
+    default:
+      fatal("V3DLib: missing case in encodeDestReg");
+      return 0;
   }
 }
 
@@ -214,9 +214,9 @@ uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux) {
         case SPECIAL_DMA_ST_WAIT: assert(file == REG_B); *mux = 7; return 50;
       }
 
-		default:
-  		fatal("V3DLib: missing case in encodeSrcReg");
-			return 0;
+    default:
+      fatal("V3DLib: missing case in encodeSrcReg");
+      return 0;
   }
 }
 
@@ -255,22 +255,22 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       break;
     }
 
-		default:
-			break;  // rest passes through
+    default:
+      break;  // rest passes through
   }
 
   // Encode core instruction
   switch (instr.tag) {
-		// Not expecting these any more after previous step
+    // Not expecting these any more after previous step
     case IRQ:
     case DMA_LOAD_WAIT:
     case DMA_STORE_WAIT:
-			assertq(false, "encodeInstr(): intermediate instruction can not be handled as core instruction");
-			return;
+      assertq(false, "encodeInstr(): intermediate instruction can not be handled as core instruction");
+      return;
 
     // Load immediate
     case LI: {
-			auto &li = instr.LI;
+      auto &li = instr.LI;
 
       RegTag file;
       uint32_t cond = encodeAssignCond(li.cond) << 17;
@@ -299,7 +299,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 
     // ALU
     case ALU: {
-			auto &alu = instr.ALU;
+      auto &alu = instr.ALU;
 
       RegTag file;
       uint32_t sig   = ((instr.hasImm() || alu.op.isRot()) ? 13 : 1) << 28;
@@ -423,18 +423,18 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
     case PRI:
     case PRS:
     case PRF:
-		case INIT_BEGIN:
-		case INIT_END: {
+    case INIT_BEGIN:
+    case INIT_END: {
       uint32_t waddr_add = 39 << 6;
       uint32_t waddr_mul = 39;
       *high  = 0xe0000000 | waddr_add | waddr_mul;
       *low   = 0;
       return;
-		}
+    }
 
-		default:
-  		fatal("V3DLib: missing case in vc4 encodeInstr");
-			return;
+    default:
+      fatal("V3DLib: missing case in vc4 encodeInstr");
+      return;
   }
 }
 
@@ -445,26 +445,26 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 // =================
 
 uint64_t encode(Instr instr) {
-	uint64_t ret;
-	uint32_t low;
-	uint32_t high;
+  uint64_t ret;
+  uint32_t low;
+  uint32_t high;
 
-	encodeInstr(instr, &high, &low);
+  encodeInstr(instr, &high, &low);
 
-	ret = (((uint64_t) high) << 32) + low;
+  ret = (((uint64_t) high) << 32) + low;
 
-	return ret;
+  return ret;
 }
 
 void encode(Seq<Instr>* instrs, Seq<uint32_t>* code) {
   uint32_t high, low;
   for (int i = 0; i < instrs->size(); i++) {
     Instr instr = instrs->get(i);
-		check_instruction_tag_for_platform(instr.tag, true);
+    check_instruction_tag_for_platform(instr.tag, true);
 
-		if (instr.tag == INIT_BEGIN || instr.tag == INIT_END) {
-			continue;  // Don't encode these block markers
-		}
+    if (instr.tag == INIT_BEGIN || instr.tag == INIT_END) {
+      continue;  // Don't encode these block markers
+    }
 
     encodeInstr(instr, &high, &low);
     *code << low << high;

@@ -39,23 +39,23 @@ ENABLE_COMPILE_TIME_WARNINGS
  * TODO Consider using memory streams: https://linux.die.net/man/3/open_memstream
  */
 static int redirect(FILE *f, const uint64_t *instructions, int num_instructions) {
-	// Start redirect
-	int save_err = dup(fileno(stderr));
-	int err = dup2(fileno(f), fileno(stderr));
-	assert(err != -1);
+  // Start redirect
+  int save_err = dup(fileno(stderr));
+  int err = dup2(fileno(f), fileno(stderr));
+  assert(err != -1);
 
-	// Do the thing you want to do
-	vc4_qpu_disasm(instructions, num_instructions);
+  // Do the thing you want to do
+  vc4_qpu_disasm(instructions, num_instructions);
 
-	// End redirect	
-	fflush(stderr); close(err);
-	dup2(save_err, fileno(stderr));
-	close(save_err);
+  // End redirect  
+  fflush(stderr); close(err);
+  dup2(save_err, fileno(stderr));
+  close(save_err);
 
-	return 0;
+  return 0;
 }
 
 
 void dump_instr(FILE * f,const uint64_t *instructions, int num_instructions) {
-	redirect(f, instructions, num_instructions);
+  redirect(f, instructions, num_instructions);
 }
