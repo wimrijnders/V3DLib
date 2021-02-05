@@ -6,8 +6,6 @@
 namespace V3DLib {
 namespace {
 
-int const MAX_NUM_PREFETCHES = 4;  // Confirmed 4 for vc4. TODO check 8 for v3d
-
 StmtStack *p_stmtStack = nullptr;
 
 StmtStack::Ptr tempStack(StackCallback f) {
@@ -34,14 +32,135 @@ Stmt::Ptr tempStmt(StackCallback f) {
   return assign->top();
 }
 
-void StmtStack::reset() {
-  clear();
-  push(mkSkip());
 
+///////////////////////////////////////////////////////////////////////////////
+// Class StmtStack::PrefetchContext
+///////////////////////////////////////////////////////////////////////////////
+
+void StmtStack::PrefetchContext::reset() {
   assert(m_assigns.empty());  // Should have been emptied beforehand
   m_assigns.clear();
   prefetch_count = 0;
 }
+
+
+void StmtStack::PrefetchContext::resolve_prefetches() {
+  if (m_prefetch_tags.empty()) {
+    return;  // nothing to do
+  }
+  assert(m_prefetch_tags.size() == m_assigns.size() + 1);  // One extra for the initial prefetch tag
+
+  // first prefetches go to first tag
+  for (int i = 0; i < Platform::gather_limit() &&  i < (int) m_assigns.size(); ++i) {
+    auto assign = m_assigns[i];
+
+/*
+  std::cout << "===== assign stack =====\n"
+            << assign->dump()
+            << "========================\n"
+            << std::endl;
+*/
+
+    assert(assign->size() == 1);
+    m_prefetch_tags[0]->append(assign->top());
+  }
+
+  for (int i = 1; i < (int) m_prefetch_tags.size(); ++i) {
+    int assign_index = i + (Platform::gather_limit() - 1);
+
+    if (assign_index >= (int) m_assigns.size()) {
+      break;
+    }
+
+    assert(m_assigns[assign_index]->size() == 1);
+    m_prefetch_tags[i]->append(m_assigns[assign_index]->top());
+  }
+
+  m_prefetch_tags.clear();
+  m_assigns.clear();
+
+  assertq(empty(), "Still prefetch assigns present after compile");
+}
+
+
+void StmtStack::PrefetchContext::post_prefetch(Ptr assign) {
+  assert(assign.get() != nullptr);
+  assert(assign->size() == 1);  // Not expecting anything else
+  assert(prefetch_count <= Platform::gather_limit());
+
+/*
+  std::cout << "===== assign stack =====\n"
+            << assign->dump()
+            << "========================\n"
+            << std::endl;
+*/
+
+  if (m_prefetch_tags.empty()) {
+    auto item = assign->first_in_seq();
+    assert(item != nullptr);
+    item->comment("Start Prefetch");
+  }
+
+  m_assigns.push_back(assign);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class StmtStack
+///////////////////////////////////////////////////////////////////////////////
+
+
+void StmtStack::add_prefetch_label() {
+  auto pre = Stmt::create(Stmt::GATHER_PREFETCH);
+  append(pre);
+  prefetch.add_prefetch_label(pre);
+}
+
+
+void StmtStack::first_prefetch(int prefetch_label) {
+  if (!prefetch.m_prefetch_tags.empty()) return;
+  add_prefetch_label();
+}
+
+
+/**
+ * Technically, the param should be a pointer in some form.
+ * This is not enforced right now.
+ * TODO find a way to enforce this
+ *
+ * @return true if param added to prefetch list,
+ *         false otherwise (prefetch list is full)
+ */
+void StmtStack::add_prefetch(PointerExpr const &exp, int prefetch_label) {
+  add_prefetch_label();
+
+  Ptr assign = tempStack([&exp] {
+    Pointer ptr = exp;
+    gatherBaseExpr(exp);
+  });
+
+  prefetch.post_prefetch(assign);
+}
+
+
+void StmtStack::add_prefetch(Pointer &exp, int prefetch_label) {
+  add_prefetch_label();
+
+  Ptr assign = tempStack([&exp] {
+    gatherBaseExpr(exp);
+    exp += 16;
+  });
+
+  prefetch.post_prefetch(assign);
+}
+
+
+void StmtStack::reset() {
+  clear();
+  push(mkSkip());
+  prefetch.reset();
+}
+
 
 /**
  * Add passed statement to the end of the current instructions
@@ -77,110 +196,6 @@ std::string StmtStack::dump() const {
 }
 
 
-void StmtStack::add_prefetch_label() {
-  auto pre = Stmt::create(Stmt::GATHER_PREFETCH);
-  append(pre);
-  m_prefetch_tags.push_back(pre);
-}
-
-
-void StmtStack::first_prefetch() {
-  if (!m_prefetch_tags.empty()) return;
-  add_prefetch_label();
-}
-
-
-void StmtStack::post_prefetch(Ptr assign) {
-  assert(assign.get() != nullptr);
-  assert(assign->size() == 1);  // Not expecting anything else
-  assert(prefetch_count <= MAX_NUM_PREFETCHES);
-
-/*
-  std::cout << "===== assign stack =====\n"
-            << assign->dump()
-            << "========================\n"
-            << std::endl;
-*/
-
-  if (m_prefetch_tags.empty()) {
-    auto item = assign->first_in_seq();
-    assert(item != nullptr);
-    item->comment("Start Prefetch");
-  }
-
-  m_assigns.push_back(assign);
-}
-
-
-/**
- * Technically, the param should be a pointer in some form.
- * This is not enforced right now.
- * TODO find a way to enforce this
- *
- * @return true if param added to prefetch list,
- *         false otherwise (prefetch list is full)
- */
-void StmtStack::add_prefetch(PointerExpr const &exp) {
-  add_prefetch_label();
-
-  Ptr assign = tempStack([&exp] {
-    Pointer ptr = exp;
-    gatherBaseExpr(exp);
-  });
-
-  post_prefetch(assign);
-}
-
-
-void StmtStack::add_prefetch(Pointer &exp) {
-  add_prefetch_label();
-
-  Ptr assign = tempStack([&exp] {
-    gatherBaseExpr(exp);
-    exp += 16;
-  });
-
-  post_prefetch(assign);
-}
-
-
-void StmtStack::resolve_prefetches() {
-  if (m_prefetch_tags.empty()) {
-    return;  // nothing to do
-  }
-  assert(m_prefetch_tags.size() == m_assigns.size() + 1);  // One extra for the initial prefetch tag
-
-  // first prefetches go to first tag
-  for (int i = 0; i < MAX_NUM_PREFETCHES &&  i < (int) m_assigns.size(); ++i) {
-    auto assign = m_assigns[i];
-
-/*
-  std::cout << "===== assign stack =====\n"
-            << assign->dump()
-            << "========================\n"
-            << std::endl;
-*/
-
-    assert(assign->size() == 1);
-    m_prefetch_tags[0]->append(assign->top());
-  }
-
-  for (int i = 1; i < (int) m_prefetch_tags.size(); ++i) {
-    int assign_index = i + (MAX_NUM_PREFETCHES - 1);
-
-    if (assign_index >= (int) m_assigns.size()) {
-      break;
-    }
-
-    assert(m_assigns[assign_index]->size() == 1);
-    m_prefetch_tags[i]->append(m_assigns[assign_index]->top());
-  }
-
-  m_prefetch_tags.clear();
-  m_assigns.clear();
-}
-
-
 /**
  * Only first item on stack is checked
  */
@@ -204,7 +219,6 @@ void clearStack() {
   assert(p_stmtStack != nullptr);
 
   p_stmtStack->resolve_prefetches();
-  assertq(p_stmtStack->prefetch_empty(), "Still prefetch assigns present after compile");
   p_stmtStack = nullptr;
 }
 
@@ -215,7 +229,7 @@ void initStack(StmtStack &stmtStack) {
   p_stmtStack = &stmtStack;
 }
 
-
+/*
 void prefetch(PointerExpr addr) {
   stmtStack().add_prefetch(addr);
 }
@@ -223,5 +237,6 @@ void prefetch(PointerExpr addr) {
 void prefetch(Pointer &addr) {
   stmtStack().add_prefetch(addr);
 }
+*/
 
 }  // namespace V3DLib

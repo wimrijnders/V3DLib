@@ -260,7 +260,7 @@ void test_matrix_multiplication(int dimension) {
 
   {
     // Do the same thing with TMU (different for vc4 only)
-    auto k2 = compile(kernels::matrix_mult_decorator(dimension, true, true));
+    auto k2 = compile(kernels::matrix_mult_decorator(dimension, kernels::USE_TMU));
     k2.pretty(false, "obj/test/Matrix_code_prefetch.txt");
     k2.load(&result, &a, &a);
     check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);

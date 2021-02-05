@@ -26,21 +26,28 @@ public:
 
   std::string dump() const;
 
-  void first_prefetch();
-  void add_prefetch(Pointer &exp);
-  void add_prefetch(PointerExpr const &exp);
   Stmt *first_in_seq() const;
-  bool prefetch_empty() const { return m_prefetch_tags.empty() &&  m_assigns.empty(); }
-  void resolve_prefetches();
+
+  void first_prefetch(int prefetch_label);
+  void add_prefetch(Pointer &exp, int prefetch_label);
+  void add_prefetch(PointerExpr const &exp, int prefetch_label);
+  void resolve_prefetches()   { prefetch.resolve_prefetches(); }
 
 private:
-  int prefetch_count = 0;
+  struct PrefetchContext {
+    int prefetch_count = 0;
 
-  std::vector<Stmt::Ptr> m_prefetch_tags;
-  std::vector<Ptr>       m_assigns;
+    std::vector<Stmt::Ptr> m_prefetch_tags;
+    std::vector<Ptr>       m_assigns;
+
+    bool empty() const { return m_prefetch_tags.empty() &&  m_assigns.empty(); }
+    void add_prefetch_label(Stmt::Ptr pre) { m_prefetch_tags.push_back(pre); }
+    void post_prefetch(Ptr assign);
+    void resolve_prefetches();
+    void reset();
+  } prefetch;
 
   void add_prefetch_label();
-  void post_prefetch(Ptr assign);
 };
 
 
@@ -48,23 +55,27 @@ StmtStack &stmtStack();
 void clearStack();
 void initStack(StmtStack &stmtStack);
 
-inline void prefetch() {
-  stmtStack().first_prefetch();
+
+inline void prefetch(int prefetch_label) {
+  stmtStack().first_prefetch(prefetch_label);
 }
 
-template<typename T>
-void prefetch(T &dst, PointerExpr src) {
-  stmtStack().first_prefetch();
-  receive(dst);
-  stmtStack().add_prefetch(src);
-}
 
 template<typename T>
-void prefetch(T &dst, Pointer &src) {
-  stmtStack().first_prefetch();
+void prefetch(T &dst, PointerExpr src, int prefetch_label) {
+  stmtStack().first_prefetch(prefetch_label);
   receive(dst);
-  stmtStack().add_prefetch(src);
+  stmtStack().add_prefetch(src, prefetch_label);
 }
+
+
+template<typename T>
+void prefetch(T &dst, Pointer &src, int prefetch_label) {
+  stmtStack().first_prefetch(prefetch_label);
+  receive(dst);
+  stmtStack().add_prefetch(src, prefetch_label);
+}
+
 
 using StackCallback = std::function<void()>;
 Stmt::Ptr tempStmt(StackCallback f);

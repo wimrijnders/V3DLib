@@ -2,19 +2,6 @@
 #include <functional>
 #include "Support/basics.h"
 
-namespace {
-
-enum LoadStore {
-  DEFAULT,
-  USE_TMU,
-  DO_PREFETCH,
-  NO_READWRITE
-};
-
-int N = 1;                         // Dimension of square matrix in blocks of 16 values.
-LoadStore do_loadstore = DEFAULT;
-
-}  // anon namespace
 
 ////////////////////////////////////////////////////////////////////////////////
 // Utility functions
@@ -31,6 +18,13 @@ float random_float() {
 namespace kernels {
 
 using namespace V3DLib;
+
+namespace {
+
+int N = 1;                                // Dimension of square matrix in blocks of 16 values.
+MatrixReadMethod read_method = DEFAULT;
+
+}  // anon namespace
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -105,10 +99,10 @@ void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
 }
 
 
-void pre_read(Float &dst, Ptr<Float> &src) {
+void pre_read(Float &dst, Ptr<Float> &src, int prefetch_label) {
   // on v3d, TMU is used always
 
-  switch (do_loadstore) {
+  switch (read_method) {
     case DEFAULT:
       // on vc4, this will use DMA
       dst = *src;
@@ -121,7 +115,7 @@ void pre_read(Float &dst, Ptr<Float> &src) {
       src += 16;
       break;
     case DO_PREFETCH:
-      assert(false);  // TODO
+      prefetch(dst, src, prefetch_label);
       break;
     case NO_READWRITE:
       dst = 0.0f;
@@ -136,7 +130,7 @@ void pre_read(Float &dst, Ptr<Float> &src) {
 void pre_write(Ptr<Float> &dst, Float &src) {
   // on v3d, TMU is used always
 
-  switch (do_loadstore) {
+  switch (read_method) {
     case DEFAULT:
     case USE_TMU:
     case DO_PREFETCH:
@@ -166,7 +160,7 @@ DotVector::DotVector(int size) {
 
 void DotVector::load(Ptr<Float> input) {
   for (int i = 0; i < (int) elements.size(); ++i) {
-    pre_read(elements[i], input);
+    pre_read(elements[i], input, 1);
   }
 }
 
@@ -188,7 +182,7 @@ void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
 
   for (int i = 0; i < (int) elements.size(); ++i) {
     Float tmp2;
-    pre_read(tmp2, rhs);
+    pre_read(tmp2, rhs, 2);
     tmp += elements[i]*tmp2;
   }
 
@@ -292,16 +286,12 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  *
  * @return  pointer to the actual kernel function
  */
-FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite, bool in_use_tmu) {
+FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod in_read_method) {
   assert(dimension > 0);
   assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
 
   N = dimension >> 4;
-  if (!in_do_readwrite) {
-    do_loadstore = NO_READWRITE;
-  } else if (in_use_tmu) {
-    do_loadstore = USE_TMU;
-  }
+  read_method = in_read_method;
 
   return matrix_mult;
 }

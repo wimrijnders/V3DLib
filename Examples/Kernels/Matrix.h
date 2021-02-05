@@ -54,12 +54,19 @@ private:
 // API functions
 ////////////////////////////////////////////////////////////////////////////////
 
+enum MatrixReadMethod {
+  DEFAULT,
+  USE_TMU,
+  DO_PREFETCH,
+  NO_READWRITE
+};
+
 void matrix_mult_scalar(int N, float *c, float *a, float *b);
 void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b);
 
 using FuncType = decltype(matrix_mult);
 
-FuncType *matrix_mult_decorator(int dimension, bool in_do_readwrite = true, bool in_use_tmu = false);
+FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod in_read_method = DEFAULT);
 
 }  // namespace kernels
 

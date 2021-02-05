@@ -14,7 +14,7 @@ using namespace kernels;
 // Command line handling
 // ============================================================================
 
-std::vector<const char *> const kernel_id = { "qpu", "cpu", "dummy" };  // First is default
+std::vector<const char *> const kernel_id = { "qpu", "cpu" };  // First is default
 
 
 CmdParameters params = {
@@ -25,7 +25,12 @@ CmdParameters params = {
     "-k=",
     kernel_id,
     "Select the kernel to use\n"
-    "'dummy' is a test-kernel which does all the matrix calculation but does not read or write to main memory"
+  },{
+    "Read method",
+    "-read=",
+    { "default", "tmu", "prefetch", "none"}, 
+    "The way to retrieve data from memory. "
+    "Option 'none' skips all reads and writes, the rest have only effect on reads.\n"
   },{
     "Matrix dimension",
     { "-d=","-dimension="},
@@ -47,15 +52,28 @@ struct MatrixSettings : public Settings {
   int kernel;
   int dimension;
   int repeats;
+  MatrixReadMethod read_method;
 
   int size() const { return dimension*dimension; }
 
   MatrixSettings() : Settings(&params, true) {}
 
   bool init_params() override {
-    kernel    = params.parameters()["Kernel"           ]->get_int_value();
-    dimension = params.parameters()["Matrix dimension" ]->get_int_value();
-    repeats   = params.parameters()["Number of repeats"]->get_int_value();
+    kernel      = params.parameters()["Kernel"           ]->get_int_value();
+    dimension   = params.parameters()["Matrix dimension" ]->get_int_value();
+    repeats     = params.parameters()["Number of repeats"]->get_int_value();
+
+    int in_read_method = params.parameters()["Read method"]->get_int_value();
+
+    switch(in_read_method) {
+      case 0: read_method = DEFAULT;      break;
+      case 1: read_method = USE_TMU;      break;
+      case 2: read_method = DO_PREFETCH;  break;
+      case 3: read_method = NO_READWRITE; break;
+
+      default: assertq(false, "Unknown read method"); return false;
+    }
+
     return true;
   }
 } settings;
@@ -66,8 +84,8 @@ struct MatrixSettings : public Settings {
 // Local functions
 // ============================================================================
 
-void run_qpu_kernel(bool do_readwrite) {
-  auto k = compile(kernels::matrix_mult_decorator(settings.dimension, do_readwrite));  // Construct kernel
+void run_qpu_kernel() {
+  auto k = compile(kernels::matrix_mult_decorator(settings.dimension, settings.read_method));  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
 
@@ -125,9 +143,9 @@ int main(int argc, const char *argv[]) {
 
   // Run a kernel as specified by the passed kernel index
   switch (settings.kernel) {
-    case 0: run_qpu_kernel(true); break;  
+    case 0: run_qpu_kernel();     break;  
     case 1: run_scalar_kernel();  break;
-    case 2: run_qpu_kernel(false); break;  
+    default: assert(false);       break;
   }
 
   if (!settings.silent) {
