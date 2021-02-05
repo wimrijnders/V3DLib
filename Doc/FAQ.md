@@ -84,6 +84,17 @@ This section records differences between the `vc4` and `v3d` QPU hardware and co
 The `vc4`-specific items can be found in the "VideoCore IV Architecture Reference Guide";
 the corresponding `v3d` stuff has mostly been found due to empirical research and hard thinking.
 
+### Gather limit
+
+The gather limit is the number of prefetches from main memory that can de done while executing on the QPU.
+It has been empirically determine that the gather limit is:
+
+- 4 for `vc4`
+- 8 for `v3d`
+
+You will under all circumstances fail to comprehend the effort spent in understanding this.
+On the plus side, the code got vaslty better in the process.
+
 ### Data Transfer
 
 There are two transfer options, **VPM (DMA)** and **TMU**

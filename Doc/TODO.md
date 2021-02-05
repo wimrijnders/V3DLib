@@ -115,7 +115,8 @@ Source code:
 ## Investigate
 
 - [x] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
-      **Answer:** 8 for single threading, less for multi-threading
+  * **Answer:** 8 for single threading, less for multi-threading, but we don't do multi
+  * **Answer:** 4 for `vc4`, 8 for `v3d`
 - [ ] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
   - [x] Add freeing of memory to `SharedArray` heap. This will increase the complexity of the heap code hugely
   - [x] Get rid of AST heap
