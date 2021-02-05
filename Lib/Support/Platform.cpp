@@ -167,9 +167,9 @@ std::string PlatformInfo::output() const {
     ret << "This is a pi platform.\n";
 
     if (has_vc4) {
-      ret << "GPU: vc4\n";
+      ret << "GPU: vc4 (VideoCore IV)\n";
     } else {
-      ret << "GPU: vc6\n";
+      ret << "GPU: v3d (VideoCore VI)\n";
     }
   }
 

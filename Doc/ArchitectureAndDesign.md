@@ -28,7 +28,7 @@ It has been tested on the:
 # VideoCore Background
 
 The
-[VideoCore 4](http://www.broadcom.com/docs/support/videocore/VideoCoreIV-AG100-R.pdf)
+[VideoCore IV](http://www.broadcom.com/docs/support/videocore/VideoCoreIV-AG100-R.pdf)
 is a [vector processor](https://en.wikipedia.org/wiki/Vector_processor)
 developed by [Broadcom](http://www.broadcom.com/) with
 instructions that operate on 16-element vectors of 32-bit integer or
