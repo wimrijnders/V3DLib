@@ -214,7 +214,7 @@ struct Instr : public InstructionComment {
     std::string dump() const;
     std::string mnemonics(bool with_comments = false) const;
     int lastUniformOffset();
-    int tag_index(InstrTag tagi, bool ensure_one = true);
+    int tag_index(InstrTag tag, bool ensure_one = true);
     int tag_count(InstrTag tag);
   };
 
@@ -290,7 +290,7 @@ struct Instr : public InstructionComment {
   bool isCondAssign() const;
   bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
   bool isUniformLoad() const;
-  bool isTMUAWrite() const;
+  bool isTMUAWrite(bool fetch_only = false) const;
   bool isZero() const;
   bool isLast() const;
 

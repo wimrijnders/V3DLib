@@ -50,10 +50,7 @@ struct Settings {
 	 *         any other value if program should abort
    */
 	int init(int argc, const char *argv[]) {
-		auto platform = Platform::instance();
-
-
-		if (!platform.is_pi_platform) {
+		if (!Platform::is_pi_platform()) {
 			return CmdParameters::EXIT_ERROR;
 		}
 
@@ -73,7 +70,7 @@ struct Settings {
 		reset_scheduler = params.parameters()[0]->get_bool_value();
 		reset_gpu       = params.parameters()[1]->get_bool_value();
 
-		platform.output();
+		printf(Platform::platform_info().c_str());
 		output();
 
 		return CmdParameters::ALL_IS_WELL;
@@ -284,7 +281,7 @@ int main(int argc, char const *argv[]) {
 	if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
 #ifdef  QPU_MODE
-	if (Platform::instance().has_vc4) {
+	if (Platform::has_vc4()) {
 		detect_vc4();
 	} else {
 		detect_v3d();

@@ -17,7 +17,7 @@ BufferObject::~BufferObject() {
  *
  */
 void BufferObject::alloc_mem(uint32_t size_in_bytes) {
-  if (Platform::instance().has_vc4) {
+  if (Platform::has_vc4()) {
     fatal("Trying to run v3d code on a vc4");
   }
 
@@ -124,7 +124,7 @@ std::unique_ptr<BufferObject> mainHeap;
 
 
 BufferObject &getMainHeap() {
-  if (!Platform::instance().has_vc4) {
+  if (!Platform::has_vc4()) {
     if (!mainHeap) {
       //debug("Allocating main heap v3d\n");
       mainHeap.reset(new BufferObject(LibSettings::heap_size()));

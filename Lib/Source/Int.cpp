@@ -130,7 +130,7 @@ IntExpr getUniformInt() {
  * On `vc4` this is a special register, on `v3d` this is an instruction.
  */
 IntExpr index() {
-  if (Platform::instance().compiling_for_vc4()) {
+  if (Platform::compiling_for_vc4()) {
     Expr::Ptr e = std::make_shared<Expr>(Var(ELEM_NUM));
     return IntExpr(e);
   } else {

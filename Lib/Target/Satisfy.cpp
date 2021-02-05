@@ -1,7 +1,8 @@
-#include "Target/Satisfy.h"
-#include "Target/Liveness.h"
+#include "Satisfy.h"
 #include <assert.h>
 #include <stdio.h>
+#include "Support/Platform.h"
+#include "Target/Liveness.h"
 
 namespace V3DLib {
 namespace {
@@ -87,7 +88,7 @@ void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.
       newInstrs->append(remapAToAccum(&instr, 0));
-    } else {
+    } else if(Platform::compiling_for_vc4())  {                           // Not an issue for v3d
       // Insert moves for operands that are mapped to the same reg file
       Instr move;
       if (resolveRegFileConflict(&instr, &move))

@@ -1,8 +1,8 @@
 # V3DLib
 
-**Version 0.1.2**
+**Version 0.1.4**
 
-`V3DLib` is a C++ library for creating programs to run on the `VideoCore` GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
+`V3DLib` is a C++ library for creating programs to run on the VideoCore GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 
 Prior to the Pi 4, this meant compiling for just the `VideoCore IV` GPU.
 The Pi 4, however, has a `VideoCore VI` GPU which, although related, is significantly different.
@@ -16,10 +16,10 @@ The kernels are generated inline and offloaded to the GPU's at runtime.
 
 * **External library `CmdParameter` has changed**.
   Please run `./script/install.sh` when upgrading from a version <= `0.0.8`.
-* `v.0.1.0`: Due to the removal of `store`-functionality , the API has become incompatible with previous.
-  Officially, I should go to `v1.0.0`, but with the project being live for just
-  two weeks and exactly two users, I consider this overkill.
-	Upping the minor version is the compromise.
+* **Upping the version** - The API is still a moving target and keeps on breaking.
+  Officially, I should be changing the major version continually, but with the project freshly released 
+  and having exactly two users, I consider this overkill.
+	I'll up the minor version periodically as a compromise.
 
 -----
 
@@ -52,7 +52,7 @@ I fully acknowledge his work for the Videcore 4 and am grateful for what he has 
 up the compilation and assembly.
 
 `QPULib`, however, is no longer under development, and I felt the need to expand it to support
-the VideoCore VI as well. Hence, `V3DLib` was conceived.
+the `VideoCore VI` as well. Hence, `V3DLib` was conceived.
 
 
 ## The Programming Language

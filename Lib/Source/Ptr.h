@@ -101,14 +101,18 @@ public:
   Pointer();
   Pointer(PointerExpr rhs);
 
+  void inc();
   PointerExpr operator=(PointerExpr rhs);
   PointerExpr operator+(int b);
   PointerExpr operator+=(int b);
   PointerExpr operator+(IntExpr b);
   PointerExpr operator-(IntExpr b);
 
+  static void reset_increment();
+
 protected:
   PointerExpr addself(int b);
+  PointerExpr bare_addself(Int &b);
   PointerExpr subself(IntExpr b);
   PointerExpr add(int b);
   PointerExpr add(IntExpr b);

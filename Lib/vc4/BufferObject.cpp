@@ -66,7 +66,7 @@ void BufferObject::dealloc() {
 
 
 BufferObject &getHeap() {
-	if (Platform::instance().has_vc4) {
+	if (Platform::has_vc4()) {
 		if (heap.size() == 0) {
 			//debug("Allocating main heap vc4\n");
 			heap.alloc_mem(LibSettings::heap_size());

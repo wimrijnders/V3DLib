@@ -57,7 +57,7 @@ public:
    */
   T *getPointer() {
 #ifdef QPU_MODE
-    if (Platform::instance().has_vc4) {
+    if (Platform::has_vc4()) {
       return (T *) m_phyaddr;  // TODO fix conversion warning for ARM 64 bits
     } else {
       return (T *) m_usraddr;
