@@ -19,46 +19,46 @@ using RM = RegisterMap;
  * See: "VideoCore® IV 3D Architecture Reference Guide, Table 82: Sources for Performance Counters", page 97.
  */
 const char *PerformanceCounters::Description[PerformanceCounters::NUM_PERF_COUNTERS] = {
-	// FEP Valid primitives for all rendered tiles
+  // FEP Valid primitives for all rendered tiles
   "No rendered pixels                ",   // index 0
-	"Valid primitives                  ",
-	// FEP
-	"Early-Z/Near/Far clipped quads    ",
-	"Valid quads                       ",
-	// TLB Quads pixels
-	"Failing stencil test              ",
-	"Failing Z and stencil tests       ",    // index 5
-	"Any failing Z and stencil tests   ",
-	"All having zero coverage          ",
-	"Any having non-zero coverage      ",
-	"Valid written to color buffer     ",
+  "Valid primitives                  ",
+  // FEP
+  "Early-Z/Near/Far clipped quads    ",
+  "Valid quads                       ",
+  // TLB Quads pixels
+  "Failing stencil test              ",
+  "Failing Z and stencil tests       ",    // index 5
+  "Any failing Z and stencil tests   ",
+  "All having zero coverage          ",
+  "Any having non-zero coverage      ",
+  "Valid written to color buffer     ",
   // PTB Primitives
-	"Outside the viewport              ",    // index 10
-	"Need clipping                     ",
-	// PSE Primitives
-	"Discarded, reversed               ",
-	// QPU Total clock cycles for all QPUs
-	"Idle                              ",
-	"Doing vertex/coordinate shading   ",
-	"Doing fragment shading            ",    // index 15
-	"Executing valid instructions      ",
-	"Stalled waiting for TMUs          ",
-	"Stalled waiting for Scoreboard    ",
-	"Stalled waiting for Varyings      ",
-	// QPU Total, for all slices
-	"QPU Instruction cache hits        ",    // index 20
-	"QPU Instruction cache misses      ",
-	"QPU cache hits                    ",
-	"QPU cache misses                  ",
-	// TMU texture, total
-	"Quads processed                   ",
-	"cache misses                      ",    // index 25 (number of fetches from memory/L2cache)
-	// VPM Total clock cycles
-	"VDW stalled waiting for VPM access",
-	"VCD stalled waiting for VPM access",
-	// L2C Total
-	"Level 2 cache hits                ",
-	"Level 2 cache misses              "     // index 29
+  "Outside the viewport              ",    // index 10
+  "Need clipping                     ",
+  // PSE Primitives
+  "Discarded, reversed               ",
+  // QPU Total clock cycles for all QPUs
+  "Idle                              ",
+  "Doing vertex/coordinate shading   ",
+  "Doing fragment shading            ",    // index 15
+  "Executing valid instructions      ",
+  "Stalled waiting for TMUs          ",
+  "Stalled waiting for Scoreboard    ",
+  "Stalled waiting for Varyings      ",
+  // QPU Total, for all slices
+  "QPU Instruction cache hits        ",    // index 20
+  "QPU Instruction cache misses      ",
+  "QPU cache hits                    ",
+  "QPU cache misses                  ",
+  // TMU texture, total
+  "Quads processed                   ",
+  "cache misses                      ",    // index 25 (number of fetches from memory/L2cache)
+  // VPM Total clock cycles
+  "VDW stalled waiting for VPM access",
+  "VCD stalled waiting for VPM access",
+  // L2C Total
+  "Level 2 cache hits                ",
+  "Level 2 cache misses              "     // index 29
 };
 
 
@@ -72,9 +72,9 @@ const char *PerformanceCounters::Description[PerformanceCounters::NUM_PERF_COUNT
  *                 that index. Default: clear all counter registers.
  */
 void PerformanceCounters::clear(uint32_t bitMask) {
-	//printf("Called PerformanceCounters::clear() with mask %x\n", bitMask);
+  //printf("Called PerformanceCounters::clear() with mask %x\n", bitMask);
   bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
-	RM::writeRegister(RM::V3D_PCTRC, bitMask);
+  RM::writeRegister(RM::V3D_PCTRC, bitMask);
 }
 
 
@@ -84,7 +84,7 @@ void PerformanceCounters::clear(uint32_t bitMask) {
  * @return bitmask; if bit 0 is '1', the performance counter 0 is enabled, etc.
  */
 uint32_t PerformanceCounters::enabled() {
-	return RM::readRegister(RM::V3D_PCTRE);
+  return RM::readRegister(RM::V3D_PCTRE);
 }
 
 
@@ -95,13 +95,13 @@ uint32_t PerformanceCounters::enabled() {
  *
  * Example:
  * ```c++
- *	Init list[] = {
- *		{ 0, PC::L2C_CACHE_HITS },
+ *  Init list[] = {
+ *    { 0, PC::L2C_CACHE_HITS },
  *    // ...
- *		{ PC::END_MARKER, PC::END_MARKER }  // End marker required
- *	};
+ *    { PC::END_MARKER, PC::END_MARKER }  // End marker required
+ *  };
  *
- * 	enable(list);
+ *   enable(list);
  * ```
  *
  * ---------------------------
@@ -115,28 +115,28 @@ uint32_t PerformanceCounters::enabled() {
  *        source register in practise.
  */
 void PerformanceCounters::enable(Init list[]) {
-	// Set enabling bitmask 
-	uint32_t bitMask = 0;
+  // Set enabling bitmask 
+  uint32_t bitMask = 0;
 
-	for (int i = 0; !list[i].isEnd(); ++i) {
-		//printf("enable handling counter %d\n", list[i].counterIndex);
-		bitMask = bitMask | (1 << (list[i].slotIndex));
-	}
-	bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
+  for (int i = 0; !list[i].isEnd(); ++i) {
+    //printf("enable handling counter %d\n", list[i].counterIndex);
+    bitMask = bitMask | (1 << (list[i].slotIndex));
+  }
+  bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
 
-	// Following is NOT documented in the Ref Doc; I got it from the errata.
-	// Top bit of mask must be set for timers to be enabled.
-	bitMask = bitMask | (1 << 31);
+  // Following is NOT documented in the Ref Doc; I got it from the errata.
+  // Top bit of mask must be set for timers to be enabled.
+  bitMask = bitMask | (1 << 31);
 
-	RM::writeRegister(RM::V3D_PCTRE, bitMask);
+  RM::writeRegister(RM::V3D_PCTRE, bitMask);
 
-	// Set the passed registers
-	for (int i = 0; !list[i].isEnd(); ++i) {
-		RM::Index targetIndex = (RM::Index) (RM::V3D_PCTRS0 + 2*list[i].slotIndex);
-		RM::writeRegister(targetIndex, list[i].counterIndex);
-	}
+  // Set the passed registers
+  for (int i = 0; !list[i].isEnd(); ++i) {
+    RM::Index targetIndex = (RM::Index) (RM::V3D_PCTRS0 + 2*list[i].slotIndex);
+    RM::writeRegister(targetIndex, list[i].counterIndex);
+  }
 
-	clear(enabled());  // reset the counters
+  clear(enabled());  // reset the counters
 }
 
 
@@ -146,29 +146,29 @@ void PerformanceCounters::enable(Init list[]) {
  * Source registers are filled consecutively.
  */
 void PerformanceCounters::enable(std::vector<Index> const &srcs) {
-	// Set enabling bitmask 
-	uint32_t bitMask = (srcs.empty())?0:(1 << srcs.size()) - 1;
+  // Set enabling bitmask 
+  uint32_t bitMask = (srcs.empty())?0:(1 << srcs.size()) - 1;
 
-	bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
+  bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
 
-	// Following is NOT documented in the Ref Doc; I got it from the errata.
-	// Top bit of mask must be set for timers to be enabled.
-	bitMask = bitMask | (1 << 31);
+  // Following is NOT documented in the Ref Doc; I got it from the errata.
+  // Top bit of mask must be set for timers to be enabled.
+  bitMask = bitMask | (1 << 31);
 
-	RM::writeRegister(RM::V3D_PCTRE, bitMask);
+  RM::writeRegister(RM::V3D_PCTRE, bitMask);
 
-	// Set the passed registers
-	for (int i = 0; i < (int) srcs.size(); ++i) {
-		RM::Index targetIndex = (RM::Index) (RM::V3D_PCTRS0 + 2*i);
-		RM::writeRegister(targetIndex, srcs[i]);
-	}
+  // Set the passed registers
+  for (int i = 0; i < (int) srcs.size(); ++i) {
+    RM::Index targetIndex = (RM::Index) (RM::V3D_PCTRS0 + 2*i);
+    RM::writeRegister(targetIndex, srcs[i]);
+  }
 
-	clear(enabled());  // reset the counters
+  clear(enabled());  // reset the counters
 
-	// The following will show zeroes for all counters, *except*
-	// for QPU_IDLE, because this was running from the clear statement.
-	// Perhaps there are more counters like that.
-	//printf("enable() post:\n%s", showEnabled().c_str());
+  // The following will show zeroes for all counters, *except*
+  // for QPU_IDLE, because this was running from the clear statement.
+  // Perhaps there are more counters like that.
+  //printf("enable() post:\n%s", showEnabled().c_str());
 }
 
 
@@ -180,17 +180,17 @@ void PerformanceCounters::enable(std::vector<Index> const &srcs) {
  *                 that index. Default: disable all counter registers.
  */
 void PerformanceCounters::disable(uint32_t bitMask) {
-	//printf("Called PerformanceCounters::disable() with mask %x\n", bitMask);
+  //printf("Called PerformanceCounters::disable() with mask %x\n", bitMask);
 
-	bitMask = enabled() & ~bitMask;
-	bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
+  bitMask = enabled() & ~bitMask;
+  bitMask = bitMask & ALL_COUNTERS;   // Top 16 bits should be zero by specification
 
-	if (bitMask != 0) {
-		// Some counters still running, set the top enable bit
-		bitMask = bitMask | (1 << 31);
-	}
+  if (bitMask != 0) {
+    // Some counters still running, set the top enable bit
+    bitMask = bitMask | (1 << 31);
+  }
 
-	RM::writeRegister(RM::V3D_PCTRE, bitMask);
+  RM::writeRegister(RM::V3D_PCTRE, bitMask);
 }
 
 
@@ -198,33 +198,33 @@ void PerformanceCounters::disable(uint32_t bitMask) {
  * @brief Create a string representations of the enabled counters and their values.
  */
 std::string PerformanceCounters::showEnabled() {
-	uint32_t bitMask = enabled();
-	// printf("bitMask: %X\n", bitMask);
-	std::ostringstream os;
+  uint32_t bitMask = enabled();
+  // printf("bitMask: %X\n", bitMask);
+  std::ostringstream os;
 
-	os << "Enabled counters:\n";
+  os << "Enabled counters:\n";
 
-	for (int i = 0; i < SLOT_COUNT; ++i) {
-		bool enabled = (0 != (bitMask & (1 << i)));
-		if (!enabled) {
-			//os << "   Performance counter slot " << i << " not enabled\n";
-			continue;
-		}
+  for (int i = 0; i < SLOT_COUNT; ++i) {
+    bool enabled = (0 != (bitMask & (1 << i)));
+    if (!enabled) {
+      //os << "   Performance counter slot " << i << " not enabled\n";
+      continue;
+    }
 
-		RM::Index sourceIndex = (RM::Index) (RM::V3D_PCTR0 + 2*i);
-		Index counterIndex = (Index) RM::readRegister(sourceIndex + 1);
-		//printf("counterIndex: %d\n", counterIndex);
-		//fflush(stdout);
+    RM::Index sourceIndex = (RM::Index) (RM::V3D_PCTR0 + 2*i);
+    Index counterIndex = (Index) RM::readRegister(sourceIndex + 1);
+    //printf("counterIndex: %d\n", counterIndex);
+    //fflush(stdout);
 
-		if (counterIndex < 0 || counterIndex >= NUM_PERF_COUNTERS) {
-			os << "   WARNING: Performance counter index 0x" << std::hex << counterIndex << std::dec
-			   << " out of bounds for slot index " << i << "\n";
-		} else {
-			os << "  " <<  Description[counterIndex] << ": " << RM::readRegister(sourceIndex) << "\n";
-		}
-	}
+    if (counterIndex < 0 || counterIndex >= NUM_PERF_COUNTERS) {
+      os << "   WARNING: Performance counter index 0x" << std::hex << counterIndex << std::dec
+         << " out of bounds for slot index " << i << "\n";
+    } else {
+      os << "  " <<  Description[counterIndex] << ": " << RM::readRegister(sourceIndex) << "\n";
+    }
+  }
 
-	return os.str();
+  return os.str();
 }
 
 }  // namespace vc4

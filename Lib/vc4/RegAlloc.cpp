@@ -50,7 +50,7 @@ void regalloc_determine_regfileAB(Seq<Instr> &instrs, int *prefA, int *prefB, in
 namespace vc4 {
 
 void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
-	assert(instrs != nullptr);
+  assert(instrs != nullptr);
   int numVars = getFreshVarCount();
 
   // Step 0
@@ -63,12 +63,12 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
   int* prefA = new int [numVars];
   int* prefB = new int [numVars];
 
-	regalloc_determine_regfileAB(*instrs, prefA, prefB, numVars);
+  regalloc_determine_regfileAB(*instrs, prefA, prefB, numVars);
 
   // Step 2
   // For each variable, determine all variables ever live at same time
   LiveSets liveWith(numVars);
-	liveWith.init(*instrs, live);
+  liveWith.init(*instrs, live);
 
   // Step 3
   // Allocate a register to each variable
@@ -77,8 +77,8 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
   for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
 
   for (int i = 0; i < numVars; i++) {
-		auto possibleA = liveWith.possible_registers(i, alloc);
-		auto possibleB = liveWith.possible_registers(i, alloc, REG_B);
+    auto possibleA = liveWith.possible_registers(i, alloc);
+    auto possibleB = liveWith.possible_registers(i, alloc, REG_B);
 
     // Find possible register in each register file
     RegId chosenA = LiveSets::choose_register(possibleA, false);
@@ -106,7 +106,7 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
   // Step 4
   // Apply the allocation to the code
   for (int i = 0; i < instrs->size(); i++) {
-		auto &useDefSet = liveWith.useDefSet;
+    auto &useDefSet = liveWith.useDefSet;
     Instr &instr = instrs->get(i);
 
     useDef(instr, &useDefSet);

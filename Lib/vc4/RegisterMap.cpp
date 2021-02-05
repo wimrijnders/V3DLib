@@ -19,30 +19,30 @@ std::unique_ptr<RegisterMap> _instance;
 
 
 RegisterMap::RegisterMap() {
-	enableQPUs();
+  enableQPUs();
 
-	bcm_host_init();
-	unsigned addr = bcm_host_get_peripheral_address();
-	//printf("Peripheral base: %08X\n", addr);
+  bcm_host_init();
+  unsigned addr = bcm_host_get_peripheral_address();
+  //printf("Peripheral base: %08X\n", addr);
 
-	m_size = bcm_host_get_peripheral_size();
+  m_size = bcm_host_get_peripheral_size();
 
-	check_page_align(addr);
+  check_page_align(addr);
 
-	// Following succeeds if it returns.
-	m_addr = (uint32_t *) mapmem(addr, m_size);
-	assert(m_addr != nullptr);
-	//printf("init address: %08X, size: %u\n", m_addr, m_size);
+  // Following succeeds if it returns.
+  m_addr = (uint32_t *) mapmem(addr, m_size);
+  assert(m_addr != nullptr);
+  //printf("init address: %08X, size: %u\n", m_addr, m_size);
 
-	bcm_host_deinit();
+  bcm_host_deinit();
 }
 
 
 RegisterMap::~RegisterMap() {
-	// printf("Closing down register map\n");
-	unmapmem((void *) m_addr, m_size);
-//	bcm_host_deinit();
-	disableQPUs();
+  // printf("Closing down register map\n");
+  unmapmem((void *) m_addr, m_size);
+//  bcm_host_deinit();
+  disableQPUs();
 }
 
 
@@ -50,7 +50,7 @@ RegisterMap::~RegisterMap() {
  * @brief Get the 32-bit value of the register at the given offset in the map
  */
 uint32_t RegisterMap::read(int offset) const {
-	return m_addr[V3D_BASE + offset];
+  return m_addr[V3D_BASE + offset];
 }
 
 
@@ -58,7 +58,7 @@ uint32_t RegisterMap::read(int offset) const {
  * @brief Set the 32-bit value of the register at the given offset in the map
  */
 void RegisterMap::write(int offset, uint32_t value) {
-	m_addr[V3D_BASE + offset] = value;
+  m_addr[V3D_BASE + offset] = value;
 }
 
 
@@ -68,7 +68,7 @@ void RegisterMap::write(int offset, uint32_t value) {
  * This avoids having to use `instance()->` for every read access.
  */
 uint32_t RegisterMap::readRegister(int offset) {
-	return instance().read(offset);
+  return instance().read(offset);
 }
 
 
@@ -78,89 +78,89 @@ uint32_t RegisterMap::readRegister(int offset) {
  * This avoids having to use `instance()->` for every write access.
  */
 void RegisterMap::writeRegister(int offset, uint32_t value) {
-	return instance().write(offset, value);
+  return instance().write(offset, value);
 }
 
 
 uint32_t *RegisterMap::adress() {
-	return (uint32_t *) instance().m_addr;
+  return (uint32_t *) instance().m_addr;
 }
 
 
 unsigned RegisterMap::size() {
-	return instance().m_size;
+  return instance().m_size;
 }
 
 
 int RegisterMap::TechnologyVersion() {
-	uint32_t reg = readRegister(V3D_IDENT0);
+  uint32_t reg = readRegister(V3D_IDENT0);
 
-	checkVersionString(reg);
+  checkVersionString(reg);
 
-	int ret = (reg >> 24) & 0xf;
-	return ret;
+  int ret = (reg >> 24) & 0xf;
+  return ret;
 }
 
 
 void RegisterMap::checkVersionString(uint32_t  reg) {
-	const char *ident = "V3D";
-	char buf[4];
+  const char *ident = "V3D";
+  char buf[4];
 
-	buf[0] = reg & 0xff;
-	buf[1] = (reg >> 8)  & 0xff;
+  buf[0] = reg & 0xff;
+  buf[1] = (reg >> 8)  & 0xff;
 buf[2] = (reg >> 16)  & 0xff;
-	buf[3] = '\0';
-	
-	if (strncmp(ident, buf, 3)) {
-		printf("Id string is not the expected 'V3D' but '%s'!\n", buf);
-	} else {
-		printf("Id string checks out\n");
-	}
+  buf[3] = '\0';
+  
+  if (strncmp(ident, buf, 3)) {
+    printf("Id string is not the expected 'V3D' but '%s'!\n", buf);
+  } else {
+    printf("Id string checks out\n");
+  }
 
 /*
-	uint32_t buf2 = 0;
-	buf2 |= (ident[0]);
-	buf2 |= (ident[1] <<  8) & 0x00ff00;
-	buf2 |= (ident[2] << 16) & 0xff0000;
+  uint32_t buf2 = 0;
+  buf2 |= (ident[0]);
+  buf2 |= (ident[1] <<  8) & 0x00ff00;
+  buf2 |= (ident[2] << 16) & 0xff0000;
 
 
   // Search the memory area for the given string
-	const unsigned STEP = 1000;
-	const unsigned MAX = 102400;
-	unsigned length = size() >> 2;
-	if (length > MAX) length = MAX;
+  const unsigned STEP = 1000;
+  const unsigned MAX = 102400;
+  unsigned length = size() >> 2;
+  if (length > MAX) length = MAX;
 
-	for (unsigned s = 0; s < length; ++s) {
-		if (s % STEP == 0) {
-			printf("%u,",s);
-		}
+  for (unsigned s = 0; s < length; ++s) {
+    if (s % STEP == 0) {
+      printf("%u,",s);
+    }
 
-		uint32_t val = instance().m_addr[s];
-		if ((val & 0x00ffffff) == buf2) {
-			printf("Found '%s' at register: %08X\n", buf,  s);
-		}
-	}
+    uint32_t val = instance().m_addr[s];
+    if ((val & 0x00ffffff) == buf2) {
+      printf("Found '%s' at register: %08X\n", buf,  s);
+    }
+  }
 
-	printf("\n");
+  printf("\n");
 */
 }
 
 
 int RegisterMap::numSlices() {
-	uint32_t reg = readRegister(V3D_IDENT1);
-	// printf("reg V3D_IDENT1: %08X\n", reg);
+  uint32_t reg = readRegister(V3D_IDENT1);
+  // printf("reg V3D_IDENT1: %08X\n", reg);
 
-	return (reg >> 4) & 0xf;
+  return (reg >> 4) & 0xf;
 }
 
 
 int RegisterMap::numQPUPerSlice() {
-	return (readRegister(V3D_IDENT1) >> 8) & 0xf;
+  return (readRegister(V3D_IDENT1) >> 8) & 0xf;
 }
 
 
 int RegisterMap::numTMUPerSlice() {
-	return (readRegister(V3D_IDENT1) >> 12) & 0xf;
+  return (readRegister(V3D_IDENT1) >> 12) & 0xf;
 }
 
 
@@ -170,16 +170,16 @@ int RegisterMap::numTMUPerSlice() {
  * @return Size of VPM in KB
  */
 int RegisterMap::VPMMemorySize() {
-	uint32_t reg = readRegister(V3D_IDENT1);
-	int value = (reg >> 28) & 0xf;
+  uint32_t reg = readRegister(V3D_IDENT1);
+  int value = (reg >> 28) & 0xf;
 
-	if (value == 0) return 16;  // According to reference doc p.97
-	return value;
+  if (value == 0) return 16;  // According to reference doc p.97
+  return value;
 }
 
 
 int RegisterMap::L2CacheEnabled() {
-	return (readRegister(V3D_L2CACTL) & 0x1);
+  return (readRegister(V3D_L2CACTL) & 0x1);
 }
 
 
@@ -193,30 +193,30 @@ int RegisterMap::L2CacheEnabled() {
  * @return struct with 'do not use' values for all possible values
  */
 SchedulerRegisterValues RegisterMap::SchedulerRegisters() {
-	SchedulerRegisterValues ret;
+  SchedulerRegisterValues ret;
 
-	uint32_t reg0 = readRegister(V3D_SQRSV0);
-	uint32_t reg1 = readRegister(V3D_SQRSV1);
+  uint32_t reg0 = readRegister(V3D_SQRSV0);
+  uint32_t reg1 = readRegister(V3D_SQRSV1);
 
-	ret.qpu[ 0] = reg0       & 0x0f;
-	ret.qpu[ 1] = reg0 >>  4 & 0x0f;
-	ret.qpu[ 2] = reg0 >>  8 & 0x0f;
-	ret.qpu[ 3] = reg0 >> 12 & 0x0f;
-	ret.qpu[ 4] = reg0 >> 16 & 0x0f;
-	ret.qpu[ 5] = reg0 >> 20 & 0x0f;
-	ret.qpu[ 6] = reg0 >> 24 & 0x0f;
-	ret.qpu[ 7] = reg0 >> 28 & 0x0f;
+  ret.qpu[ 0] = reg0       & 0x0f;
+  ret.qpu[ 1] = reg0 >>  4 & 0x0f;
+  ret.qpu[ 2] = reg0 >>  8 & 0x0f;
+  ret.qpu[ 3] = reg0 >> 12 & 0x0f;
+  ret.qpu[ 4] = reg0 >> 16 & 0x0f;
+  ret.qpu[ 5] = reg0 >> 20 & 0x0f;
+  ret.qpu[ 6] = reg0 >> 24 & 0x0f;
+  ret.qpu[ 7] = reg0 >> 28 & 0x0f;
 
-	ret.qpu[ 8] = reg1       & 0x0f;
-	ret.qpu[ 9] = reg1 >>  4 & 0x0f;
-	ret.qpu[10] = reg1 >>  8 & 0x0f;
-	ret.qpu[11] = reg1 >> 12 & 0x0f;
-	ret.qpu[12] = reg1 >> 16 & 0x0f;
-	ret.qpu[13] = reg1 >> 20 & 0x0f;
-	ret.qpu[14] = reg1 >> 24 & 0x0f;
-	ret.qpu[16] = reg1 >> 28 & 0x0f;
+  ret.qpu[ 8] = reg1       & 0x0f;
+  ret.qpu[ 9] = reg1 >>  4 & 0x0f;
+  ret.qpu[10] = reg1 >>  8 & 0x0f;
+  ret.qpu[11] = reg1 >> 12 & 0x0f;
+  ret.qpu[12] = reg1 >> 16 & 0x0f;
+  ret.qpu[13] = reg1 >> 20 & 0x0f;
+  ret.qpu[14] = reg1 >> 24 & 0x0f;
+  ret.qpu[16] = reg1 >> 28 & 0x0f;
 
-	return ret;
+  return ret;
 }
 
 
@@ -230,72 +230,72 @@ SchedulerRegisterValues RegisterMap::SchedulerRegisters() {
  * **TODO:** Not tested yet!
  */
 void RegisterMap::SchedulerRegisters(SchedulerRegisterValues values) {
-	uint32_t reg0 = readRegister(V3D_SQRSV0);
-	uint32_t reg1 = readRegister(V3D_SQRSV1);
-	uint32_t new_reg0 = reg0;
-	uint32_t new_reg1 = reg1;
+  uint32_t reg0 = readRegister(V3D_SQRSV0);
+  uint32_t reg1 = readRegister(V3D_SQRSV1);
+  uint32_t new_reg0 = reg0;
+  uint32_t new_reg1 = reg1;
 
-	for (int i = 0; i < MAX_AVAILABLE_QPUS/2; ++i) {
-		int offset = 4*i;
+  for (int i = 0; i < MAX_AVAILABLE_QPUS/2; ++i) {
+    int offset = 4*i;
 
-		if (values.set_qpu[i]) {
-			//new_reg0 = (reg0 & ~(0x0f << offset)) | (values.qpu[i] << offset);
-			new_reg0 = (0x0f & values.qpu[i]) << offset;
-		}
-	}
+    if (values.set_qpu[i]) {
+      //new_reg0 = (reg0 & ~(0x0f << offset)) | (values.qpu[i] << offset);
+      new_reg0 = (0x0f & values.qpu[i]) << offset;
+    }
+  }
 
-	for (int i = MAX_AVAILABLE_QPUS/2; i < MAX_AVAILABLE_QPUS; ++i) {
-		int offset = 4*i - MAX_AVAILABLE_QPUS/2;
+  for (int i = MAX_AVAILABLE_QPUS/2; i < MAX_AVAILABLE_QPUS; ++i) {
+    int offset = 4*i - MAX_AVAILABLE_QPUS/2;
 
-		if (values.set_qpu[i]) {
-			//new_reg1 = (reg1 & ~(0x0f << offset)) | (values.qpu[i] << offset);
-			new_reg1 = (0x0f & values.qpu[i]) << offset;
-		}
-	}
+    if (values.set_qpu[i]) {
+      //new_reg1 = (reg1 & ~(0x0f << offset)) | (values.qpu[i] << offset);
+      new_reg1 = (0x0f & values.qpu[i]) << offset;
+    }
+  }
 
-	if (reg0 != new_reg0) {  // Value reg0 changed
-		writeRegister(V3D_SQRSV0, new_reg0);
-	}
+  if (reg0 != new_reg0) {  // Value reg0 changed
+    writeRegister(V3D_SQRSV0, new_reg0);
+  }
 
-	if (reg1 != new_reg1) {  // Value reg1 changed
-		writeRegister(V3D_SQRSV1, new_reg1);
-	}
+  if (reg1 != new_reg1) {  // Value reg1 changed
+    writeRegister(V3D_SQRSV1, new_reg1);
+  }
 }
 
 
 void RegisterMap::resetAllSchedulerRegisters() {
-	SchedulerRegisterValues values;
+  SchedulerRegisterValues values;
 
-	for (int i = 0; i < MAX_AVAILABLE_QPUS; ++i) {
-		values.set_qpu[i] = true;   // write for all QPU's
-		values.qpu[i]     = 0;      // allow all program types (eg 0)
-	}
+  for (int i = 0; i < MAX_AVAILABLE_QPUS; ++i) {
+    values.set_qpu[i] = true;   // write for all QPU's
+    values.qpu[i]     = 0;      // allow all program types (eg 0)
+  }
 
-	SchedulerRegisters(values);
+  SchedulerRegisters(values);
 }
 
 
 RegisterMap &RegisterMap::instance() {
-	if (_instance.get() == nullptr) {
-		_instance.reset(new RegisterMap);
-	}
+  if (_instance.get() == nullptr) {
+    _instance.reset(new RegisterMap);
+  }
 
-	return *_instance.get();
+  return *_instance.get();
 }
 
 
 void RegisterMap::check_page_align(unsigned addr) {
-	long pagesize = sysconf(_SC_PAGESIZE);
+  long pagesize = sysconf(_SC_PAGESIZE);
 
-	if (pagesize <= 0) {
-		char buf[64];
-		sprintf(buf, "error: sysconf: %s", strerror(errno));
-		fatal(buf);
-	}
+  if (pagesize <= 0) {
+    char buf[64];
+    sprintf(buf, "error: sysconf: %s", strerror(errno));
+    fatal(buf);
+  }
 
-	if (addr & (((unsigned) pagesize) - 1)) {
-		fatal("error: peripheral address is not aligned to page size");
-	}
+  if (addr & (((unsigned) pagesize) - 1)) {
+    fatal("error: peripheral address is not aligned to page size");
+  }
 }
 
 
@@ -303,24 +303,24 @@ void RegisterMap::check_page_align(unsigned addr) {
  * @return true if errors present, false otherwise
  */
 bool RegisterMap::checkThreadErrors() {
-	uint32_t ERROR_BITMASK = 0x08;	// If set, control thread error
+  uint32_t ERROR_BITMASK = 0x08;  // If set, control thread error
 
-	uint32_t reg0 = readRegister(V3D_CT0CS);
-	uint32_t reg1 = readRegister(V3D_CT1CS);
+  uint32_t reg0 = readRegister(V3D_CT0CS);
+  uint32_t reg1 = readRegister(V3D_CT1CS);
 
-	bool ret = false;
+  bool ret = false;
 
-	if (reg0 & ERROR_BITMASK) {
-		printf("Control thread error for thread 0\n");
-		ret = true;
-	}
+  if (reg0 & ERROR_BITMASK) {
+    printf("Control thread error for thread 0\n");
+    ret = true;
+  }
 
-	if (reg1 & ERROR_BITMASK) {
-		printf("Control thread error for thread 1\n");
-		ret = true;
-	}
+  if (reg1 & ERROR_BITMASK) {
+    printf("Control thread error for thread 1\n");
+    ret = true;
+  }
 
-	return ret;
+  return ret;
 }
 
 

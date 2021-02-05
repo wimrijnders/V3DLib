@@ -14,7 +14,7 @@ public:
 private:
   uint32_t handle = 0;
 
-	void dealloc();
+  void dealloc();
 };
 
 BufferObject &getHeap();
