@@ -42,10 +42,10 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
       case BNOT:   return A_BNOT;
       case ROTATE: return M_ROTATE;
       case TIDX: 
-				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
+				assertq(!Platform::compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
 				return A_TIDX;
       case EIDX: 
-				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
+				assertq(!Platform::compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
 				return A_EIDX;
       default:
 				assertq(false, "Not expecting this op for int in opcode()", true);

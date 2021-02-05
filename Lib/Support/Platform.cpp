@@ -108,11 +108,28 @@ bool get_chip_version(std::string &output) {
   return false;
 }
 
-// Defined like this to delay the creation of the instance after program init,
-// So that other globals get the chance to use it on program init.
-std::unique_ptr<PlatformInfo> local_instance;
 
-}  // anon namespace
+///////////////////////////////////////////////////////////////////////////////
+// Class PlatformInfo
+///////////////////////////////////////////////////////////////////////////////
+
+struct PlatformInfo {
+public:
+  PlatformInfo();
+
+  std::string chip_version;
+  bool has_vc4 = false;
+
+  int size_regfile() const;
+
+  std::string platform_id; 
+
+  bool is_pi_platform;
+  bool m_use_main_memory   = false;
+  bool m_compiling_for_vc4 = true;
+
+  std::string output() const;
+};
 
 
 PlatformInfo::PlatformInfo() {
@@ -133,30 +150,38 @@ PlatformInfo::PlatformInfo() {
 }
 
 
-void PlatformInfo::output() {
+std::string PlatformInfo::output() const {
+  std::string ret;
+
   if (!platform_id.empty()) {
-    printf("Platform: %s\n", platform_id.c_str());
+    ret << "Platform: " << platform_id.c_str() << "\n";
   } else {
-    printf("Platform: %s\n", "Unknown");
+    ret << "Platform: " << "Unknown" << "\n";
   }
 
-  printf("Chip version: %s\n", chip_version.c_str());
+  ret << "Chip version: " << chip_version.c_str() << "\n";
 
   if (!is_pi_platform) {
-    printf("This is NOT a pi platform!\n");
+    ret << "This is NOT a pi platform!\n";
   } else {
-    printf("This is a pi platform.\n");
+    ret << "This is a pi platform.\n";
 
     if (has_vc4) {
-      printf("GPU: vc4\n");
+      ret << "GPU: vc4\n";
     } else {
-      printf("GPU: vc6\n");
+      ret << "GPU: vc6\n";
     }
   }
+
+  return ret;
 }
 
+// Defined like this to delay the creation of the instance after program init,
+// So that other globals get the chance to use it on program init.
+std::unique_ptr<PlatformInfo> local_instance;
 
-PlatformInfo &Platform::instance_local() {
+
+PlatformInfo &instance() {
   if (!local_instance) {
     local_instance.reset(new PlatformInfo);
   }
@@ -164,17 +189,19 @@ PlatformInfo &Platform::instance_local() {
   return *local_instance;
 }
 
+}  // anon namespace
 
-PlatformInfo const  &Platform::instance() {
-  return instance_local();
-}
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Platform
+///////////////////////////////////////////////////////////////////////////////
 
 
 void Platform::use_main_memory(bool val) {
 #ifdef QPU_MODE
-  instance_local().m_use_main_memory = val;
+  instance().m_use_main_memory = val;
 #else
-  assertq(instance_local().m_use_main_memory, "Should only use main memory for emulator and interpreter", true);
+  assertq(instance().m_use_main_memory, "Should only use main memory for emulator and interpreter", true);
 
   if (!val) {
     warning("use_main_memory(): ignoring passed value 'false', because QPU mode is disabled");
@@ -190,8 +217,15 @@ void Platform::use_main_memory(bool val) {
  * The compilation can occur on any platform, including non-pi.
  */
 void Platform::compiling_for_vc4(bool val) {
-  instance_local().m_compiling_for_vc4 = val;
+  instance().m_compiling_for_vc4 = val;
 }
+
+
+std::string Platform::platform_info() { return instance().output(); }
+bool Platform::has_vc4()           { return instance().has_vc4; }
+bool Platform::compiling_for_vc4() { return instance().m_compiling_for_vc4; }
+bool Platform::use_main_memory()   { return instance().m_use_main_memory; }
+bool Platform::is_pi_platform()    { return instance().is_pi_platform; }
 
 
 /**
@@ -213,12 +247,31 @@ void Platform::compiling_for_vc4(bool val) {
  * This all goes to show that something that appears to be exceedingly simple in
  * concept can actually be convoluted as f*** underwater.
  */
-int PlatformInfo::size_regfile() const {
-  if (m_compiling_for_vc4) {
+int Platform::size_regfile() {
+  if (compiling_for_vc4()) {
     return 32;
   } else {
     return 64;
   }
+}
+
+
+int Platform::max_qpus() {
+  if (has_vc4()) {
+    return 12;
+  } else {
+    return 8;
+  }
+}
+
+
+
+int Platform::gather_limit() {
+//  if (compiling_for_vc4()) {
+    return 4;
+//  } else {
+//    return 8;
+//  }
 }
 
 }  // namespace V3DLib

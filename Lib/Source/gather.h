@@ -7,7 +7,7 @@
 namespace V3DLib {
 
 //=============================================================================
-// Receive, request, store operations
+// Gather and receive operations
 //=============================================================================
 
 Stmt::Ptr gatherExpr(Expr::Ptr e);
@@ -32,6 +32,15 @@ void receive(Float &dest);
 
 template <typename T>
 inline void receive(Ptr<T> &dest) { receiveExpr(dest.expr); }
+
+
+//=============================================================================
+// Gather, receive with gather limit
+//=============================================================================
+
+void gather(Ptr<Float> &addr_a, Ptr<Float> &addr_b);
+void receive(Float &dst, Ptr<Float> &src);
+void receive();
 
 }  // namespace V3DLib
 

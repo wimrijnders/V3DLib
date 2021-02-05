@@ -15,7 +15,7 @@ namespace {
 namespace V3DLib {
 
 ISourceTranslate &getSourceTranslate() {
-  if (Platform::instance().compiling_for_vc4()) {
+  if (Platform::compiling_for_vc4()) {
     if (_vc4_source_translate.get() == nullptr) {
       _vc4_source_translate.reset(new vc4::SourceTranslate());
     }

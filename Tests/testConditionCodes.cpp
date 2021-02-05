@@ -538,7 +538,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   // So it appears we just need to wait.
   //
 
-  if (!Platform::instance().has_vc4) {
+  if (!Platform::has_vc4()) {
     std::cout << "Not running the 'noloop' tests on v3d; this causes persistent timeouts (TODO)" << std::endl;
   } else {
     // The timers expire on v3d, and keeps on expiring
@@ -612,7 +612,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
     check_output("where_int");
 
 
-    if (Platform::instance().has_vc4) {
+    if (Platform::has_vc4()) {
       std::cout << "Not running the 'where_qpu' test on vc4; this hangs the pi (TODO)" << std::endl;
     } else {
       // v3d: works fine

@@ -307,7 +307,7 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     run_kernel(k);
 
     float precision = 0.0f;
-    if (Platform::instance().has_vc4) {
+    if (Platform::has_vc4()) {
       precision = 1e-5f;
     }
 
