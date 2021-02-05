@@ -159,7 +159,6 @@ public:
   void pretty(bool output_for_vc4, const char *filename = nullptr);
 
   void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
-  static int maxQPUs();
 
   void emu();
   void interpret();

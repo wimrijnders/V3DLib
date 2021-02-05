@@ -203,7 +203,7 @@ bool Settings::process(CmdParameters &in_params) {
   if (m_use_num_qpus) {
     num_qpus    = in_params.parameters()["Num QPU's"]->get_int_value();
 
-    if (run_type != 0 || Platform::instance().has_vc4) {  // vc4 only
+    if (run_type != 0 || Platform::has_vc4()) {  // vc4 only
       if (num_qpus < 0 || num_qpus > 12) {
         printf("ERROR: For vc4 and emulator, the number of QPU's selected must be between 1 and 12 inclusive.\n");
         return false;
@@ -239,7 +239,7 @@ void Settings::startPerfCounters() {
 
   using PC = V3DLib::vc4::PerformanceCounters;
  
-  if (Platform::instance().has_vc4) {
+  if (Platform::has_vc4()) {
     PC::enable({
       PC::QPU_INSTRUCTIONS,
       PC::QPU_STALLED_TMU,
@@ -281,7 +281,7 @@ void Settings::stopPerfCounters() {
  
   std::string output;
 
-  if (Platform::instance().has_vc4) {
+  if (Platform::has_vc4()) {
     // Show values current counters
     using PC = V3DLib::vc4::PerformanceCounters;
 
@@ -316,7 +316,7 @@ void Settings::process(KernelBase &k) {
       assert(!name.empty());
       std::string code_filename = name + "_code.txt";
 
-      bool output_for_vc4 = Platform::instance().has_vc4 || (run_type != 0);
+      bool output_for_vc4 = Platform::has_vc4() || (run_type != 0);
       k.pretty(output_for_vc4, code_filename.c_str());
     } else if (output_count == 1) {
       warning("Not outputting code more than once");

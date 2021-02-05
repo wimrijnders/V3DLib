@@ -66,7 +66,7 @@ void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
 
     int acc_id =1;
 
-    if (!Platform::instance().compiling_for_vc4()) {
+    if (!Platform::compiling_for_vc4()) {
       // v3d ROT uses ACC1 (r1) internally, don't use it here
       // TODO better selection of subsitution ACC
       if (prev.ALU.op.isRot() || instr.ALU.op.isRot()) {
@@ -317,7 +317,7 @@ LiveSet &LiveSets::operator[](int index) {
  * @param index  index of variable
  */
 std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag) {
-  const int NUM_REGS = Platform::instance().size_regfile();
+  const int NUM_REGS = Platform::size_regfile();
   std::vector<bool> possible(NUM_REGS);
 
   for (int j = 0; j < NUM_REGS; j++)

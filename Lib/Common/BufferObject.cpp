@@ -30,7 +30,7 @@ void BufferObject::dealloc_array(uint32_t in_phyaddr, uint32_t in_size) {
 
 uint32_t BufferObject::getHandle() const {
   breakpoint
-  assertq(!Platform::instance().compiling_for_vc4(), "getHandle(): only use this override when compiling for v3d");
+  assertq(!Platform::compiling_for_vc4(), "getHandle(): only use this override when compiling for v3d");
   return 0;
 }
 
@@ -58,9 +58,9 @@ bool BufferObject::is_cleared() const {
 
 
 BufferObject &getBufferObject() {
-  if (Platform::instance().use_main_memory()) {
+  if (Platform::use_main_memory()) {
     return emu::getHeap();
-  } else if (Platform::instance().has_vc4) {
+  } else if (Platform::has_vc4()) {
     return vc4::getHeap();
   } else {
     return v3d::getMainHeap();

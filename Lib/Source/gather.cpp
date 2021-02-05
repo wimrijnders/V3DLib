@@ -1,7 +1,11 @@
 #include "gather.h"
-
+#include "Support/Platform.h"
 
 namespace V3DLib {
+
+//=============================================================================
+// Old School
+//=============================================================================
 
 Stmt::Ptr gatherExpr(Expr::Ptr e) {
   return Stmt::create_assign(mkVar(Var(TMU0_ADDR)), e);
@@ -12,7 +16,7 @@ Stmt::Ptr gatherExpr(Expr::Ptr e) {
  * Pre: param is pointer type
  */
 void gatherBaseExpr(BaseExpr const &addr) {
-  if (Platform::instance().compiling_for_vc4()) {
+  if (Platform::compiling_for_vc4()) {
     // Intention:
     // Pointer temp = addr + index();
     Int b = index();
@@ -31,5 +35,43 @@ void receiveExpr(Expr::Ptr e) {
 
 void receive(Int &dest)   { receiveExpr(dest.expr()); }
 void receive(Float &dest) { receiveExpr(dest.expr()); }
+
+
+//=============================================================================
+// With gather limit
+//=============================================================================
+
+namespace {
+
+}  // anon namespace
+
+
+void gather(Ptr<Float> &addr_a, Ptr<Float> &addr_b) {
+  int count = Platform::gather_limit()/2;
+
+  for (int i = 0; i < count; ++ i) {
+    gatherBaseExpr(addr_a);
+    addr_a += 16;
+    gatherBaseExpr(addr_b);
+    addr_b += 16;
+  }
+}
+
+
+void receive(Float &dst, Ptr<Float> &src) {
+  receive(dst);
+  gatherBaseExpr(src);
+  src += 16;
+}
+
+
+void receive() {
+  int count = Platform::gather_limit();
+  Int dummy;
+
+  for (int i = 0; i < count; ++ i) {
+    receive(dummy);
+  }
+}
 
 }  // namespace V3DLib

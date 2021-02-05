@@ -15,16 +15,6 @@ std::vector<Ptr<Float>> uniform_float_pointers;
 // Class KernelBase
 // ============================================================================
 
-int KernelBase::maxQPUs() {
-  // TODO: better would be to take the values from Platform
-  if (Platform::instance().has_vc4) {
-    return 12;
-  } else {
-    return 8;
-  }
-}
-
-
 void KernelBase::pretty(bool output_for_vc4, const char *filename) {
   if (output_for_vc4) {
     m_vc4_driver.pretty(numQPUs, filename);
@@ -67,7 +57,7 @@ void KernelBase::interpret() {
 void KernelBase::qpu() {
   assert(uniforms.size() != 0);
 
-  if (Platform::instance().has_vc4) {
+  if (Platform::has_vc4()) {
     m_vc4_driver.invoke(numQPUs, uniforms);
   } else {
     m_v3d_driver.invoke(numQPUs, uniforms);
