@@ -267,11 +267,11 @@ int Platform::max_qpus() {
 
 
 int Platform::gather_limit() {
-//  if (compiling_for_vc4()) {
+  if (compiling_for_vc4()) {
     return 4;
-//  } else {
-//    return 8;
-//  }
+  } else {
+    return 8;
+  }
 }
 
 }  // namespace V3DLib

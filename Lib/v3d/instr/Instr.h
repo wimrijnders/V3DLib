@@ -53,6 +53,11 @@ public:
 
   operator uint64_t() const { return code(); }
 
+  bool add_nop()    const { return alu.add.op == V3D_QPU_A_NOP; }
+  bool mul_nop()    const { return alu.mul.op == V3D_QPU_M_NOP; }
+  bool add_nocond() const { return flags.ac == V3D_QPU_COND_NONE; }
+  bool mul_nocond() const { return flags.mc == V3D_QPU_COND_NONE; }
+
   Instr &pushz();
   Instr &pushc();
   Instr &pushn();

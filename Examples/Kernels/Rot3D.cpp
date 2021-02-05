@@ -78,32 +78,33 @@ void rot3D_3(Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   assert(N != -1);
   assert(numQPUs != -1);
   assertq(N % (16*numQPUs) == 0, "N must be a multiple of '16*numQPUs'");
-  using V3DLib::functions::operator/;
+  //using V3DLib::functions::operator/;
 
   int size = N/numQPUs;
-  int count = size/16;
+  Int count = size >> 4;
 
-  Ptr<Float> p_src = x - me()*16 + me()*size;
-  Ptr<Float> q_src = y - me()*16 + me()*size;
-  Ptr<Float> p_dst = x - me()*16 + me()*size;
-  Ptr<Float> q_dst = y - me()*16 + me()*size;
+  Int adjust = me()*(size - 16);
 
-  prefetch();
+  Ptr<Float> p_src = x + adjust;
+  Ptr<Float> q_src = y + adjust;
+  Ptr<Float> p_dst = x + adjust;
+  Ptr<Float> q_dst = y + adjust;
+
+  gather(p_src, q_src);
  
   Float xOld, yOld;
-  // Can't do this here! For (Int i = 0, i < count, i++)
-  // TODO register why (you know this)
-  for (int i = 0; i < count; i++) {
-    prefetch(xOld, p_src);
-    prefetch(yOld, q_src);
+  For (Int i = 0, i < count, i++)
+    receive(xOld, p_src);
+    receive(yOld, q_src);
 
     *p_dst = xOld * cosTheta - yOld * sinTheta;
     *q_dst = yOld * cosTheta + xOld * sinTheta;
 
-    p_dst = p_dst+16;
-    q_dst = q_dst+16;
-  //End
-  }
+    p_dst.inc();
+    q_dst.inc();
+  End
+
+  receive();
 }
 
 
