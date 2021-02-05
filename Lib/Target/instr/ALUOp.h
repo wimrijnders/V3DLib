@@ -64,6 +64,8 @@ public:
   uint32_t vc4_encodeAddOp() const;
   uint32_t vc4_encodeMulOp() const;
 
+  bool operator==(ALUOp::Enum rhs) const { return m_value == rhs; }
+
 private:
   Enum m_value = NOP;
 

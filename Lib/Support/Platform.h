@@ -15,8 +15,8 @@ public:
   static bool compiling_for_vc4();
   static void use_main_memory(bool val);
   static bool use_main_memory();
-  static int size_regfile();
-  static int max_qpus();
+  static int  size_regfile();
+  static int  max_qpus();
   static int  gather_limit();
 };
 

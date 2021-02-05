@@ -94,6 +94,7 @@ void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
   initStack(m_stmtStack);
   resetFreshVarGen(numVars);
   resetFreshLabelGen();
+  Pointer::reset_increment();
 
   if (set_qpu_uniforms) {
     // Reserved general-purpose variables

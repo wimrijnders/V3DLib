@@ -51,9 +51,9 @@ void gather(Ptr<Float> &addr_a, Ptr<Float> &addr_b) {
 
   for (int i = 0; i < count; ++ i) {
     gatherBaseExpr(addr_a);
-    addr_a += 16;
+    addr_a.inc();
     gatherBaseExpr(addr_b);
-    addr_b += 16;
+    addr_b.inc();
   }
 }
 
@@ -61,7 +61,7 @@ void gather(Ptr<Float> &addr_a, Ptr<Float> &addr_b) {
 void receive(Float &dst, Ptr<Float> &src) {
   receive(dst);
   gatherBaseExpr(src);
-  src += 16;
+  src.inc();
 }
 
 

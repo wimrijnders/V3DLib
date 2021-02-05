@@ -986,12 +986,79 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
 
 
 /**
+ * Criteria are intentional extremely strict.
+ * These will be relaxed when further cases for optimization are encountered.
+ *
+ * Note that index can change!
+ */
+bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs, int &index) {
+  if (index + 1 == instrs.size()) return false;
+
+  auto const &instr = instrs[index];
+  auto const &next_instr = instrs[index + 1];
+  if (instr.isCondAssign()) return false;
+  if (next_instr.isCondAssign()) return false;
+
+  //
+  // If possible, combine a TMU gather with the next statement
+  // Currently, only add as next statement allowed
+  //
+  if (instr.isTMUAWrite(true)) {
+    bool simple_int_add = (next_instr.tag == ALU && next_instr.ALU.op == ALUOp::A_ADD);
+    if (!simple_int_add) return false; 
+
+    // Can combine if there are at most two different source values
+    int unique_src_count = 1;  // for instr src A
+
+    // Don't feel like making this pretty right now
+    if (instr.ALU.srcA != instr.ALU.srcB) ++unique_src_count;
+    if (instr.ALU.srcA != next_instr.ALU.srcA && instr.ALU.srcB != next_instr.ALU.srcA) ++unique_src_count;
+
+    if (instr.ALU.srcA      != next_instr.ALU.srcB
+     && instr.ALU.srcB      != next_instr.ALU.srcB
+     && next_instr.ALU.srcA != next_instr.ALU.srcB) ++unique_src_count;
+
+    if (unique_src_count > 2) {
+      std::string msg = "unique_src_count: ";
+      assertq(false, msg << unique_src_count); // Warn me if this happens, will need unit test
+      return false;
+    }
+
+    //
+    // Can combine!
+    //
+    //std::cout << "Target instr is TMU fetch: " << instr.dump() << std::endl;
+    //std::cout << "Next target instr is add: " << next_instr.dump() << std::endl;
+
+    Instructions tmp;
+    assertq(translateOpcode(instr, tmp), "translateOpcode() failed");
+    assert(tmp.size() == 1);
+
+    auto dst   = encodeDestReg(next_instr);
+    assert(dst);
+    auto reg_a = next_instr.ALU.srcA;
+    auto reg_b = next_instr.ALU.srcB;
+    auto src_a = encodeSrcReg(reg_a.reg);
+    auto src_b = encodeSrcReg(reg_b.reg);
+    assert(src_a && src_b);
+    tmp[0].add(*dst, *src_a, *src_b);
+    tmp[0].comment(instr.comment());
+    tmp[0].comment(next_instr.comment());
+
+    //std::cout << "result: " << tmp[0].mnemonic(true) << std::endl;
+    index++;
+    ret << tmp;
+    return true;
+  }
+
+  return false;
+}
+
+
+/**
  * Translate instructions from target to v3d
  */
 void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &instructions) {
-  //breakpoint
-  //std::cout << instrs.dump();
-
   assert(checkUniformAtTop(instrs));
   bool prev_was_init_begin = false;
   bool prev_was_init_end    = false;
@@ -1008,8 +1075,22 @@ void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &i
       instructions << encode_init(numQPUs);
       prev_was_init_end = true;
     } else {
-      auto ret = v3d::encodeInstr(instr);
+      Instructions ret;
+      if (!handle_target_specials(ret, instrs, i)) {
+        ret = v3d::encodeInstr(instr);
+      }
+/*
+      // Tryout, kept for reference
 
+      if (ret.size() == 1) {
+        auto &instr = ret[0];
+        if (instr.add_nocond() && instr.mul_nocond()) {
+          if (instr.add_nop() && instr.mul_nop()) {
+            std::cout << "add/mul nop for: " << instr.mnemonic(true)  << std::endl;
+          }
+        }
+      }
+*/
       if (prev_was_init_begin) {
         ret.front().header("Init block");
         prev_was_init_begin = false;
