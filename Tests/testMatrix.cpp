@@ -7,6 +7,7 @@
 #include <string>
 #include <V3DLib.h>
 #include "Support/basics.h"
+#include "support/support.h"
 #include "../Examples/Kernels/Matrix.h"
 
 namespace {
@@ -106,6 +107,11 @@ void test_dotvector() {
   auto k = compile(check_dotvector<N>);
   k.load(&b, &a, &result);
   run_kernel(k);
+  //k.emu();
+
+  if (N <= 2) {
+    dump_array(result, 16);
+  }
 
   for (int i = 0; i < (int) a.size(); i++) {
     INFO("N: " << N << ", i: " << i);
