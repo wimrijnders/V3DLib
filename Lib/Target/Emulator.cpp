@@ -181,8 +181,7 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
         for (int i = 0; i < NUM_LANES; i++)
           v[i].intVal = i;
         return v;
-      }
-      else if (reg.regId == SPECIAL_UNIFORM) {
+      } else if (reg.regId == SPECIAL_UNIFORM) {
         assert(s->nextUniform < g->uniforms.size());
         for (int i = 0; i < NUM_LANES; i++)
           if (s->nextUniform == -2)
@@ -193,13 +192,11 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
             v[i].intVal = g->uniforms[s->nextUniform];
         s->nextUniform++;
         return v;
-      }
-      else if (reg.regId == SPECIAL_QPU_NUM) {
+      } else if (reg.regId == SPECIAL_QPU_NUM) {
         for (int i = 0; i < NUM_LANES; i++)
           v[i].intVal = s->id;
         return v;
-      }
-      else if (reg.regId == SPECIAL_VPM_READ) {
+      } else if (reg.regId == SPECIAL_VPM_READ) {
         // Make sure there's a VPM load request waiting
         assert(! s->vpmLoadQueue.isEmpty());
         VPMLoadReq* req = s->vpmLoadQueue.first();
@@ -211,8 +208,7 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
             assert(index < VPM_SIZE);
             v[i] = g->vpm[index];
           }
-        }
-        else {
+        } else {
           // Vertical load
           for (int i = 0; i < NUM_LANES; i++) {
             uint32_t x = req->addr & 0xf;
@@ -243,8 +239,7 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
             }
             y = (y+1) % 64;
           }
-        }
-        else {
+        } else {
           // Vertical access
           uint32_t x = req->vpmAddr & 0xf;
           for (int r = 0; r < req->numRows; r++) {
@@ -259,8 +254,7 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
         }
         s->dmaLoad.active = false;
         return v; // Return value unspecified
-      }
-      else if (reg.regId == SPECIAL_DMA_ST_WAIT) {
+      } else if (reg.regId == SPECIAL_DMA_ST_WAIT) {
         // Perform DMA store to completion
         if (s->dmaStore.active == false) return v;
         DMAStoreReq* req = &s->dmaStoreSetup;
@@ -279,8 +273,7 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
             y = (y+1) % 64;
             memAddr += s->writeStride;
           }
-        }
-        else {
+        } else {
           // Vertical access
           uint32_t x = req->vpmAddr & 0xf;
           for (int r = 0; r < req->numRows; r++) {
@@ -308,6 +301,7 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
   assert(false);
   return v;
 }
+
 
 // ============================================================================
 // Check condition flags
@@ -361,8 +355,7 @@ inline bool checkBranchCond(QPUState* s, BranchCond cond) {
         for (int i = 0; i < NUM_LANES; i++)
           if (! bools[i]) return false;
         return true;
-      }
-      else if (cond.tag == COND_ANY) {
+      } else if (cond.tag == COND_ANY) {
         for (int i = 0; i < NUM_LANES; i++)
           if (bools[i]) return true;
         return false;
@@ -388,12 +381,10 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
       if (dest.tag == REG_A) {
         assert(dest.regId >= 0 && dest.regId < s->sizeRegFileA);
         w = &s->regFileA[dest.regId];
-      }
-      else if (dest.tag == REG_B) {
+      } else if (dest.tag == REG_B) {
         assert(dest.regId >= 0 && dest.regId < s->sizeRegFileB);
         w = &s->regFileB[dest.regId];
-      }
-      else if (dest.tag == ACC) {
+      } else if (dest.tag == ACC) {
         assert(dest.regId >= 0 && dest.regId <= 5);
         w = &s->accum[dest.regId];
       }
@@ -402,6 +393,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
         if (checkAssignCond(s, cond, i)) {
           Word x = v[i];
           if (dest.tag != NONE) w->get(i) = x;
+
           if (setFlags) {
             s->zeroFlags[i] = x.intVal == 0;
             s->negFlags[i]  = x.intVal < 0;
@@ -419,8 +411,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
             int pitch = (setup & 0x1fff);
             s->readPitch = pitch;
             return;
-          }
-          else if ((setup & 0xc0000000) == 0) {
+          } else if ((setup & 0xc0000000) == 0) {
             // QPU only allows two VPM loads queued at a time
             assert(! s->vpmLoadQueue.isFull());
             // Create VPM load request
@@ -434,8 +425,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
             // Add VPM load request to queue
             s->vpmLoadQueue.enq(req);
             return;
-          }
-          else if (setup & 0x80000000) {
+          } else if (setup & 0x80000000) {
             // DMA load setup
             DMALoadReq* req = &s->dmaLoadSetup;
             req->rowLen = (setup >> 20) & 0xf;
@@ -450,6 +440,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           }
           break;
         }
+
         case SPECIAL_WR_SETUP: {
           int setup = v[0].intVal;
           if ((setup & 0xc0000000) == 0xc0000000) {
@@ -457,8 +448,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
             int stride = setup & 0x1fff;
             s->writeStride = stride;
             return;
-          }
-          else if ((setup & 0xc0000000) == 0x80000000) {
+          } else if ((setup & 0xc0000000) == 0x80000000) {
             // DMA write setup
             DMAStoreReq* req = &s->dmaStoreSetup;
             req->rowLen = (setup >> 16) & 0x7f;
@@ -468,8 +458,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
             req->hor = (setup & 0x4000);
             req->vpmAddr = (setup >> 3) & 0x7ff;
             return;
-          }
-          else if ((setup & 0xc0000000) == 0) {
+          } else if ((setup & 0xc0000000) == 0) {
             VPMStoreReq req;
             req.hor = (setup >> 11) & 1;
             req.addr = setup & 0xff;
@@ -480,6 +469,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           }
           break;
         }
+
         case SPECIAL_VPM_WRITE: {
           VPMStoreReq* req = &s->vpmStoreSetup;
           if (req->hor) {
@@ -489,8 +479,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
               assert(index < VPM_SIZE);
               g->vpm[index] = v[i];
             }
-          }
-          else {
+          } else {
             // Vertical store
             uint32_t x = req->addr & 0xf;
             uint32_t y = req->addr >> 4;
@@ -503,6 +492,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           req->addr = req->addr + req->stride;
           return;
         }
+
         case SPECIAL_DMA_LD_ADDR: {
           // Initiate DMA load
           assert(!s->dmaLoad.active);
@@ -510,6 +500,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           s->dmaLoad.addr   = v[0];
           return;
         }
+
         case SPECIAL_DMA_ST_ADDR: {
           // Initiate DMA store
           assert(!s->dmaStore.active);
@@ -517,9 +508,11 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           s->dmaStore.addr   = v[0];
           return;
         }
+
         case SPECIAL_HOST_INT: {
           return;
         }
+
         case SPECIAL_TMU0_S: {
           assert(s->loadBuffer.size() < 4);
           Vec val;
@@ -530,6 +523,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
           s->loadBuffer.append(val);
           return;
         }
+
         default:
           if (s->sfu.writeReg(dest, v)) {
             return;
@@ -572,12 +566,12 @@ Vec evalImm(Imm imm) {
   return v;
 }
 
+
 // ============================================================================
 // Interpret a small immediate operand
 // ============================================================================
 
-Vec evalSmallImm(QPUState* s, SmallImm imm)
-{
+Vec evalSmallImm(QPUState* s, SmallImm imm) {
   Vec v;
   switch (imm.tag) {
     case SMALL_IMM: {
@@ -586,6 +580,7 @@ Vec evalSmallImm(QPUState* s, SmallImm imm)
         v[i] = w;
       return v;
     }
+
     case ROT_ACC:
     case ROT_IMM:
       int amount = (imm.tag == ROT_IMM)
@@ -598,8 +593,8 @@ Vec evalSmallImm(QPUState* s, SmallImm imm)
   return v;
 }
 
-Vec readRegOrImm(QPUState* s, State* g, RegOrImm src)
-{
+
+Vec readRegOrImm(QPUState* s, State* g, RegOrImm src) {
   switch (src.tag) {
     case REG: return readReg(s, g, src.reg);
     case IMM: return evalSmallImm(s, src.smallImm);
@@ -610,20 +605,20 @@ Vec readRegOrImm(QPUState* s, State* g, RegOrImm src)
   return Vec();
 }
 
+
 // ============================================================================
 // ALU helpers
 // ============================================================================
 
 // Rotate right
-inline int32_t rotRight(int32_t x, int32_t n)
-{
+inline int32_t rotRight(int32_t x, int32_t n) {
   uint32_t ux = (uint32_t) x;
   return (ux >> n) | (x << (32-n));
 }
 
+
 // Count leading zeros
-inline int32_t clz(int32_t x)
-{
+inline int32_t clz(int32_t x) {
   int32_t count = 0;
   int32_t n = (int32_t) (sizeof(int)*8);
   for (int32_t i = 0; i < n; i++) {
@@ -631,8 +626,10 @@ inline int32_t clz(int32_t x)
     else count++;
     x <<= 1;
   }
+
   return count;
 }
+
 
 // ============================================================================
 // ALU
@@ -797,6 +794,7 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
   return c;
 }
 
+
 // ============================================================================
 // Emulator
 // ============================================================================
@@ -836,13 +834,12 @@ void emulate(
 
   while (anyRunning) {
     auto ALWAYS = AssignCond::Tag::ALWAYS;
-
     anyRunning = false;
 
     // Execute an instruction in each active QPU
     for (int i = 0; i < numQPUs; i++) {
-
       QPUState* s = &state.qpu[i];
+
       if (s->running) {
         anyRunning = true;
         assert(s->pc < instrs->size());
@@ -878,40 +875,33 @@ void emulate(
               BranchTarget t = instr.BR.target;
               if (t.relative && !t.useRegOffset) {
                 s->pc += 3+t.immOffset;
-              }
-              else {
+              } else {
                 fatal("V3DLib: found unsupported form of branch target");
               }
             }
             break;
           }
-          // Branch to label
-          case BRL:
-          // Label
-          case LAB:
+
+          case BRL:                                // Branch to label
+          case LAB:                                // Label
             fatal("V3DLib: emulator does not support labels");
-          // No-op
           case NO_OP:
             break;
-          // PRS: print string
-          case PRS: {
+          case PRS: {                              // print string
             emitStr(state.output, instr.PRS);
             break;
           }
-          // PRI: print integer
-          case PRI: {
+          case PRI: {                              // print integer
             Vec x = readReg(s, &state, instr.PRI);
             printIntVec(state.output, x);
             break;
           }
-          // PRF: print integer
-          case PRF: {
+          case PRF: {                              // print float
             Vec x = readReg(s, &state, instr.PRF);
             printFloatVec(state.output, x);
             break;
           }
-          // RECV: receive load-via-TMU response
-          case RECV: {
+          case RECV: {                             // receive load-via-TMU response
             assert(s->loadBuffer.size() > 0);
             Vec val = s->loadBuffer.remove(0);
             AssignCond always;
@@ -919,8 +909,7 @@ void emulate(
             writeReg(s, &state, false, always, instr.RECV.dest, val);
             break;
           }
-          // Read from TMU0 into accumulator 4
-          case TMU0_TO_ACC4: {
+          case TMU0_TO_ACC4: {                     // Read from TMU0 into accumulator 4
             assert(s->loadBuffer.size() > 0);
             Vec val = s->loadBuffer.remove(0);
             AssignCond always;
@@ -931,11 +920,9 @@ void emulate(
             writeReg(s, &state, false, always, dest, val);
             break;
           }
-          // Host IRQ
-          case IRQ:
+          case IRQ:                                 // Host IRQ
             break;
-          // Semaphore increment
-          case SINC: {
+          case SINC: {                              // Semaphore increment
             assert(instr.semaId >= 0 && instr.semaId <= 15);
             if (state.sema[instr.semaId] == 15) {
               semaphore_wait_count++;
@@ -947,8 +934,7 @@ void emulate(
             }
             break;
           }
-          // Semaphore decrement
-          case SDEC: {
+          case SDEC: {                              // Semaphore decrement
             assert(instr.semaId >= 0 && instr.semaId <= 15);
             if (state.sema[instr.semaId] == 0) {
               semaphore_wait_count++;
