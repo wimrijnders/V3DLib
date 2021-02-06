@@ -116,4 +116,50 @@ IntExpr operator/(IntExpr in_a, IntExpr in_b) {
 }
 
 }  // namespace functions
+
+
+/**
+ * Sum up all the vector elements of a register.
+ *
+ * All vector elements of register result will contain the same value.
+ */
+void rotate_sum(Int &input, Int &result) {
+  result = input;              comment("rotate_sum");
+  result += rotate(result, 1);
+  result += rotate(result, 2);
+  result += rotate(result, 4);
+  result += rotate(result, 8);
+}
+
+
+void rotate_sum(Float &input, Float &result) {
+  result = input;              comment("rotate_sum");
+  result += rotate(result, 1);
+  result += rotate(result, 2);
+  result += rotate(result, 4);
+  result += rotate(result, 8);
+}
+
+
+/**
+ * Set value of src to vector element 'n' of dst
+ *
+ * All other values in dst are untouched.
+ *
+ * @param n  index of vector element to set. Must be in range 0..15 inclusive
+ */
+void set_at(Int &dst, Int n, Int &src) {
+  Where(index() == n)
+    dst = src;
+  End 
+}
+
+
+void set_at(Float &dst, Int n, Float &src) {
+  Where(index() == n)
+    dst = src;
+  End 
+}
+
+
 }  // namespace V3DLib

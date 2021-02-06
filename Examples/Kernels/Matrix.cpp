@@ -32,34 +32,6 @@ MatrixReadMethod read_method = DEFAULT;
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Set value of src to vector element 'n' of dst
- *
- * All other values in dst are untouched.
- *
- * @param n  index of vector element to set. Must be in range 0..15 inclusive
- */
-void set_at(Float &dst, Int n, Float &src) {
-  Where(index() == n)
-    dst = src;
-  End 
-}
-
-
-/**
- * Sum up all the vector elements of a register.
- *
- * All vector elements of register result will contain the same value.
- */
-void rotate_sum(Float &input, Float &result) {
-  result = input;              comment("rotate_sum");
-  result += rotate(result, 1);
-  result += rotate(result, 2);
-  result += rotate(result, 4);
-  result += rotate(result, 8);
-}
-
-
-/**
  * Works, but does not improve the performance of matrix in any way.
  * The reason for this is that the dotvector product is already unrolled.
  *

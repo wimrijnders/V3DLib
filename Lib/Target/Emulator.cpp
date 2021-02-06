@@ -583,8 +583,8 @@ Vec evalSmallImm(QPUState* s, SmallImm imm) {
 
     case ROT_ACC:
     case ROT_IMM:
-      int amount = (imm.tag == ROT_IMM)
-                 ? imm.val : (int) s->accum[4][0].intVal;
+      // TODO How and when is this ever called???
+      int amount = (imm.tag == ROT_IMM)? imm.val : (int) s->accum[4][0].intVal;
       return rotate(v, amount);
   }
 

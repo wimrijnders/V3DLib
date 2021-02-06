@@ -15,14 +15,14 @@ std::vector<Ptr<Float>> uniform_float_pointers;
 // Class KernelBase
 // ============================================================================
 
-void KernelBase::pretty(bool output_for_vc4, const char *filename) {
+void KernelBase::pretty(bool output_for_vc4, const char *filename, bool output_qpu_code) {
   if (output_for_vc4) {
-    m_vc4_driver.pretty(numQPUs, filename);
+    m_vc4_driver.pretty(numQPUs, filename, output_qpu_code);
   } else {
 #ifdef QPU_MODE
-    m_v3d_driver.pretty(numQPUs, filename);
+    m_v3d_driver.pretty(numQPUs, filename, output_qpu_code);
 #else
-    fatal("KernelBase::pretty(): v3d code not generated for this platform.");
+    warning("KernelBase::pretty(): v3d code not generated for this platform.");
 #endif
   }
 }
