@@ -24,8 +24,8 @@ using namespace V3DLib;
 template<typename Kernel>
 void run_kernel(Kernel &k) {
   //k.interpret();
-  k.emu();
-  //k.call();  // k.qpu() is the intention, but is not compiled on non-arm
+  //k.emu();
+  k.call();  // k.qpu() is the intention, but is not compiled on non-arm
 }
 
 
@@ -126,8 +126,10 @@ void test_dotvector() {
     expected += a[i]*a[i];
   }
 
+/*
   dump_array(a);
   dump_array(result);
+*/
 
   for (int i = 0; i < (int) result.size(); i++) {
     if (i == 0) {
@@ -161,6 +163,7 @@ void check_matrix_results(
   //
   a.fill(0);
   result.fill(-1);
+  k.setNumQPUs(8);
   run_kernel(k);
 
   for (int i = 0; i < SIZE; i++) {
@@ -173,9 +176,11 @@ void check_matrix_results(
   //
   a.fill(1);
   result.fill(-1);
+//  k.setNumQPUs(8);
   run_kernel(k);
 
   for (int i = 0; i < SIZE; i++) {
+    INFO("Dimension: " << dimension);
     INFO("Index " << i << ", [x,y] = [" << (i % dimension) << ", " << (i / dimension) << "]");
     REQUIRE(result[i] == (float) dimension);
   }

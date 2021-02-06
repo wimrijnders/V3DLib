@@ -62,6 +62,7 @@ void Pointer::inc() {
 
 
 PointerExpr Pointer::operator+(int b)     { return add(b); }
+PointerExpr Pointer::operator+=(Int &b)   { return addself(b); }
 PointerExpr Pointer::operator+=(int b)    { return addself(b); }
 PointerExpr Pointer::operator+(IntExpr b) { return add(b); }
 PointerExpr Pointer::operator-(IntExpr b) { return sub(b); }
@@ -80,6 +81,11 @@ PointerExpr Pointer::addself(int b) {
 
 PointerExpr Pointer::bare_addself(Int &b) {
   return mkApply(expr(), Op(ADD, INT32), b.expr());
+}
+
+
+PointerExpr Pointer::addself(IntExpr b) {
+  return (me() = me() + b);
 }
 
 
