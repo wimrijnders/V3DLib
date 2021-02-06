@@ -8,10 +8,10 @@ namespace V3DLib {
  */
 class LibSettings {
 public:
-	static int qpu_timeout();
-	static void qpu_timeout(int val);
-	static int heap_size();
-	static void heap_size(int val);
+  static int qpu_timeout();
+  static void qpu_timeout(int val);
+  static int heap_size();
+  static void heap_size(int val);
 };
 
 }  // namespace V3DLib

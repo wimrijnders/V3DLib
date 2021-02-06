@@ -42,18 +42,18 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
       case BNOT:   return A_BNOT;
       case ROTATE: return M_ROTATE;
       case TIDX: 
-				assertq(!Platform::compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
-				return A_TIDX;
+        assertq(!Platform::compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
+        return A_TIDX;
       case EIDX: 
-				assertq(!Platform::compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
-				return A_EIDX;
+        assertq(!Platform::compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
+        return A_EIDX;
       default:
-				assertq(false, "Not expecting this op for int in opcode()", true);
-				break;
+        assertq(false, "Not expecting this op for int in opcode()", true);
+        break;
     }
   }
 
-	return NOP;
+  return NOP;
 }
 
 
@@ -63,22 +63,22 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
  * TODO: Examine if this is still true for v3d
  */
 bool ALUOp::isMul() const {
-	auto op = m_value;
+  auto op = m_value;
 
   bool ret =
-		op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
+    op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
     op == M_V8MIN  || op == M_V8MAX || op == M_V8ADDS ||
     op == M_V8SUBS || op == M_ROTATE;
 
-	return ret;
+  return ret;
 }
 
 
 std::string ALUOp::pretty() const {
-	std::string ret;
+  std::string ret;
 
-	ret << pretty_op();
-	return ret;
+  ret << pretty_op();
+  return ret;
 }
 
 
@@ -116,12 +116,12 @@ char const *ALUOp::pretty_op() const {
     case M_V8ADDS:  return "m_addsatb";
     case M_V8SUBS:  return "m_subsatb";
     case M_ROTATE:  return "rotate";
-		// v3d-specific
+    // v3d-specific
     case A_TIDX:    return "tidx";
     case A_EIDX:    return "eidx";
-		default:
-			assertq(false, "pretty_op(): Unknown alu opcode", true);
-			return "";
+    default:
+      assertq(false, "pretty_op(): Unknown alu opcode", true);
+      return "";
   }
 }
 
@@ -153,9 +153,9 @@ uint32_t ALUOp::vc4_encodeAddOp() const {
     case A_V8ADDS:  return 30;
     case A_V8SUBS:  return 31;
 
-		default:
-  		fatal("V3DLib: unknown add op");
-			return 0;
+    default:
+      fatal("V3DLib: unknown add op");
+      return 0;
   }
 }
 
@@ -171,9 +171,9 @@ uint32_t ALUOp::vc4_encodeMulOp() const {
     case M_V8ADDS: return 6;
     case M_V8SUBS: return 7;
 
-		default:
-  		fatal("V3DLib: unknown mul op");
-			return 0;
+    default:
+      fatal("V3DLib: unknown mul op");
+      return 0;
   }
 }
 

@@ -14,7 +14,7 @@ Stmt::Ptr vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride) {
   s->setupVPMRead.stride = stride;
   s->setupVPMRead.hor = hor;
 
-	return s;
+  return s;
 }
 
 Stmt::Ptr vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
@@ -22,7 +22,7 @@ Stmt::Ptr vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
   s->setupVPMWrite.stride = stride;
   s->setupVPMWrite.hor = hor;
 
-	return s;
+  return s;
 }
 
 }  // anon namespace

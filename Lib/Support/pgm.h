@@ -22,22 +22,22 @@
  */
 template<class Array>
 void output_pgm_file(Array &arr, int width, int height, int maxGray, const char *filename) {
-	const int GrayLimit = 65536;
-	float factor = -1.0f;
+  const int GrayLimit = 65536;
+  float factor = -1.0f;
 
-	if (maxGray > GrayLimit) {
-		// printf ("output_pgm adjust max gray\n");
-		factor = ((float) GrayLimit)/((float) maxGray);
-		maxGray = GrayLimit;
-	}
+  if (maxGray > GrayLimit) {
+    // printf ("output_pgm adjust max gray\n");
+    factor = ((float) GrayLimit)/((float) maxGray);
+    maxGray = GrayLimit;
+  }
 
-	auto scale = [factor, maxGray] (float value) -> int {
-		if (value < 0.0f) value = 0;
-		if (factor == -1.0f) return (int) value;
-		int ret = (int) (factor*((float) value));
-		if (ret > maxGray) ret = maxGray;
-		return ret;
-	};
+  auto scale = [factor, maxGray] (float value) -> int {
+    if (value < 0.0f) value = 0;
+    if (factor == -1.0f) return (int) value;
+    int ret = (int) (factor*((float) value));
+    if (ret > maxGray) ret = maxGray;
+    return ret;
+  };
 
 
   FILE *fd = fopen(filename, "w") ;

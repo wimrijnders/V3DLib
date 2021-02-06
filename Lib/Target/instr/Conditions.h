@@ -31,33 +31,33 @@ struct BranchCond {
   BranchCondTag tag;  // ALL or ANY reduction?
   Flag flag;          // Condition flag
 
-	BranchCond negate() const;
-	std::string to_string() const;
+  BranchCond negate() const;
+  std::string to_string() const;
 };
 
 
 // v3d only
 struct SetCond {
-	enum Tag {
-		NO_COND,
-		Z,
-		N,
-		C
-	};
+  enum Tag {
+    NO_COND,
+    Z,
+    N,
+    C
+  };
 
-	SetCond() : m_tag(NO_COND) {}
+  SetCond() : m_tag(NO_COND) {}
 
-	bool flags_set() const { return m_tag != NO_COND; }
-	void tag(Tag tag) { m_tag = tag; }
-	Tag tag() const { return m_tag; }
-	void clear() { tag(NO_COND); }
-	std::string pretty() const;
-	void setFlag(Flag flag);
+  bool flags_set() const { return m_tag != NO_COND; }
+  void tag(Tag tag) { m_tag = tag; }
+  Tag tag() const { return m_tag; }
+  void clear() { tag(NO_COND); }
+  std::string pretty() const;
+  void setFlag(Flag flag);
 
 private:
-	Tag m_tag = NO_COND;
+  Tag m_tag = NO_COND;
 
-	const char *to_string() const;
+  const char *to_string() const;
 };
 
 
@@ -65,25 +65,25 @@ private:
  * Assignment conditions
  */
 struct AssignCond {
-	enum Tag {
-		NEVER,
-		ALWAYS,
-		FLAG
-	};
+  enum Tag {
+    NEVER,
+    ALWAYS,
+    FLAG
+  };
 
   Tag tag;    // Kind of assignment condition
   Flag flag;  // Condition flag
 
-	AssignCond() = default;
-	AssignCond(CmpOp const &cmp_op);
-	AssignCond(Tag in_tag) : tag(in_tag) {}
+  AssignCond() = default;
+  AssignCond(CmpOp const &cmp_op);
+  AssignCond(Tag in_tag) : tag(in_tag) {}
 
-	bool is_always() const { return tag == ALWAYS; }
-	bool is_never()  const { return tag == NEVER; }
-	AssignCond negate() const;
+  bool is_always() const { return tag == ALWAYS; }
+  bool is_never()  const { return tag == NEVER; }
+  AssignCond negate() const;
 
-	std::string to_string() const;
-	BranchCond to_branch_cond(bool do_all) const;
+  std::string to_string() const;
+  BranchCond to_branch_cond(bool do_all) const;
 };
 
 extern AssignCond always;  // Is a global to reduce eyestrain in gdb

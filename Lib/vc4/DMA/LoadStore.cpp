@@ -49,7 +49,7 @@ static int vpmSetupWriteCode(int hor, int stride) {
 // Generate instructions to setup VPM load.
 
 Seq<Instr> genSetupVPMLoad(int n, int addr, int hor, int stride) {
-	Seq<Instr> ret;
+  Seq<Instr> ret;
   assert(addr < 256);
 
   int setup = vpmSetupReadCode(n, hor, stride) | (addr & 0xff);
@@ -59,12 +59,12 @@ Seq<Instr> genSetupVPMLoad(int n, int addr, int hor, int stride) {
   ret << li(RD_SETUP, setup)
       << instr;
 
-	return ret;
+  return ret;
 }
 
 
 Seq<Instr> genSetupVPMLoad(int n, Reg addr, int hor, int stride) {
-	Seq<Instr> ret;
+  Seq<Instr> ret;
   Reg tmp = freshReg();
   int setup = vpmSetupReadCode(n, hor, stride);
 
@@ -75,7 +75,7 @@ Seq<Instr> genSetupVPMLoad(int n, Reg addr, int hor, int stride) {
       << bor(RD_SETUP, addr, tmp)
       << instr;
 
-	return ret;
+  return ret;
 }
 
 // Generate instructions to setup VPM store.
@@ -89,13 +89,13 @@ Instr genSetupVPMStore(int addr, int hor, int stride) {
 
 
 Seq<Instr> genSetupVPMStore(Reg addr, int hor, int stride) {
-	Seq<Instr> ret;
+  Seq<Instr> ret;
   Reg tmp = freshReg();
   int setup = vpmSetupWriteCode(hor, stride);
 
   ret << li(tmp, setup)
       << bor(WR_SETUP, addr, tmp);
-	return ret;
+  return ret;
 }
 
 // =============================================================================
@@ -148,15 +148,15 @@ Instr genSetupDMALoad(int numRows, int rowLen, int hor, int vpitch, int vpmAddr)
 
 
 Seq<Instr> genSetupDMALoad(int numRows, int rowLen, int hor, int vpitch, Reg vpmAddr) {
-	Seq<Instr> ret;
+  Seq<Instr> ret;
 
   int setup = dmaSetupLoadCode(numRows, rowLen, hor, vpitch);
   Reg tmp = freshReg();
 
   ret << li(tmp, setup)
-	    << bor(RD_SETUP, vpmAddr, tmp);
+      << bor(RD_SETUP, vpmAddr, tmp);
 
-	return ret;
+  return ret;
 }
 
 
@@ -167,13 +167,13 @@ Instr genStartDMALoad(Reg memAddr) {
 
 // TODO change var naming
 Instr genWaitDMALoad(bool might_be_end = false) {
-	Instr instr = mov(None, DMA_LD_WAIT).cond(never);
+  Instr instr = mov(None, DMA_LD_WAIT).cond(never);
 
-	if (might_be_end) {
-		instr.comment("DMA load wait (likely start of program end)");
-	}
+  if (might_be_end) {
+    instr.comment("DMA load wait (likely start of program end)");
+  }
 
-	return instr;
+  return instr;
 }
 
 // Generate instructions to do DMA store.
@@ -193,13 +193,13 @@ Seq<Instr> genSetupDMAStore(int numRows, int rowLen, int hor, Reg vpmAddr) {
   Reg tmp0 = freshReg();
   Reg tmp1 = freshReg();
 
-	Seq<Instr> ret;
+  Seq<Instr> ret;
 
   ret << li(tmp0, setup)
       << shl(tmp1, vpmAddr, 3)
       << bor(WR_SETUP, tmp0, tmp1);
 
-	return ret;
+  return ret;
 }
 
 
@@ -209,7 +209,7 @@ Instr genStartDMAStore(Reg memAddr) {
 
 
 Instr genWaitDMAStore() {
-	return mov(None, DMA_ST_WAIT).cond(AssignCond::NEVER);
+  return mov(None, DMA_ST_WAIT).cond(AssignCond::NEVER);
 }
 
 
@@ -228,13 +228,13 @@ Instr genSetReadPitch(int pitch) {
 
 
 Seq<Instr> genSetReadPitch(Reg pitch) {
-	Seq<Instr> ret;
+  Seq<Instr> ret;
   Reg tmp = freshReg();
 
   ret << li(tmp, 0x90000000)
       << bor(RD_SETUP, tmp, pitch);
 
-	return ret;
+  return ret;
 }
 
 
@@ -245,18 +245,18 @@ Instr genSetWriteStride(int stride) {
   assert(stride < 8192);
   int setup = 0xc0000000 | stride;
 
-	return li(WR_SETUP, setup);
+  return li(WR_SETUP, setup);
 }
 
 
 Seq<Instr> genSetWriteStride(Reg stride) {
   Reg tmp = freshReg();
 
-	Seq<Instr> ret;
+  Seq<Instr> ret;
   ret << li(tmp, 0xc0000000)
       << bor(WR_SETUP, tmp, stride);
 
-	return ret;
+  return ret;
 }
 
 

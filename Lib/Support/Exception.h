@@ -5,14 +5,14 @@
 namespace V3DLib {
 
 struct Exception : public std::exception {
-	Exception(std::string ss) : s(ss) {}
-	~Exception() throw () {}
+  Exception(std::string ss) : s(ss) {}
+  ~Exception() throw () {}
 
-	const char *what() const throw() override { return s.c_str(); }
-	std::string const &msg() const throw() { return s; }
+  const char *what() const throw() override { return s.c_str(); }
+  std::string const &msg() const throw() { return s; }
 
 private:
-	std::string s;
+  std::string s;
 };
 
 }  // namespace V3DLib
