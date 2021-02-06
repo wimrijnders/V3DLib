@@ -156,7 +156,7 @@ public:
   KernelBase() {}
   KernelBase(KernelBase &&k) = default;
 
-  void pretty(bool output_for_vc4, const char *filename = nullptr);
+  void pretty(bool output_for_vc4, const char *filename = nullptr, bool output_qpu_code = true);
 
   void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
 

@@ -32,34 +32,6 @@ MatrixReadMethod read_method = DEFAULT;
 ////////////////////////////////////////////////////////////////////////////////
 
 /**
- * Set value of src to vector element 'n' of dst
- *
- * All other values in dst are untouched.
- *
- * @param n  index of vector element to set. Must be in range 0..15 inclusive
- */
-void set_at(Float &dst, Int n, Float &src) {
-  Where(index() == n)
-    dst = src;
-  End 
-}
-
-
-/**
- * Sum up all the vector elements of a register.
- *
- * All vector elements of register result will contain the same value.
- */
-void rotate_sum(Float &input, Float &result) {
-  result = input;              comment("rotate_sum");
-  result += rotate(result, 1);
-  result += rotate(result, 2);
-  result += rotate(result, 4);
-  result += rotate(result, 8);
-}
-
-
-/**
  * Works, but does not improve the performance of matrix in any way.
  * The reason for this is that the dotvector product is already unrolled.
  *
@@ -236,13 +208,21 @@ void matrix_mult_scalar(int N, float *c, float *a, float *b) {
  * - All QPU's iterate over b together -> increase cache hits
  * - Maybe utilize wait slots in branches (TODO)
  */
-void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
+void matrix_mult(Ptr<Float> in_dst, Ptr<Float> a, Ptr<Float> b) {
   int const DIM = 16*N;  // N is global static
+  Int STEP = DIM*numQPUs();
+
+  a -= me()*16;
+  b -= me()*16;
+  in_dst -= me()*16;
+
+  a += me()*DIM;
 
   DotVector vec(N);
   Float result;
 
-  For (Int a_index = 0,  a_index < DIM, a_index++)
+  For (Int a_index = 0,  a_index < DIM, /* a_index++ */ a_index += numQPUs())
+    Ptr<Float> dst = in_dst + (a_index + me())*DIM;
     Ptr<Float> b_in = b + 0;  // Wonky '+ 0' to ensure pointer value is COPIED, not referenced.
     vec.load(a + 0);          // And again, and below again
                              // TODO fix this very NOT intuitive 'feature'. Bitten me >1 times.
@@ -260,7 +240,8 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
       b_in += DIM;
     End  // IDIOT }  - never forget
 
-    a += DIM;
+    //a += DIM;
+    a += STEP;
   End
 }
 

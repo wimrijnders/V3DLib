@@ -17,7 +17,7 @@ public:
 
   void compile();
   void invoke(int numQPUs, Seq<int32_t> &params);
-  void pretty(int numQPUs, const char *filename = nullptr);
+  void pretty(int numQPUs, const char *filename = nullptr, bool output_qpu_code = true);
 
   /**
    * @return AST representing the source code

@@ -159,7 +159,7 @@ bool KernelDriver::handle_errors() {
 *
 * @param filename  if specified, print the output to this file. Otherwise, print to stdout
 */
-void KernelDriver::pretty(int numQPUs, const char *filename) {
+void KernelDriver::pretty(int numQPUs, const char *filename, bool output_qpu_code) {
   FILE *f = nullptr;
 
   if (filename == nullptr)
@@ -182,10 +182,12 @@ void KernelDriver::pretty(int numQPUs, const char *filename) {
   print_source_code(f, sourceCode());
   print_target_code(f, m_targetCode);
 
-  if (!has_errors()) {
-    encode(numQPUs);  // generate opcodes if not already done
+  if (output_qpu_code) {
+    if (!has_errors()) {
+      encode(numQPUs);  // generate opcodes if not already done
+    }
+    emit_opcodes(f);
   }
-  emit_opcodes(f);
 
   if (filename != nullptr) {
     assert(f != nullptr);

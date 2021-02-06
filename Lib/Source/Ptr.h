@@ -104,6 +104,7 @@ public:
   void inc();
   PointerExpr operator=(PointerExpr rhs);
   PointerExpr operator+(int b);
+  PointerExpr operator+=(Int &b);
   PointerExpr operator+=(int b);
   PointerExpr operator+(IntExpr b);
   PointerExpr operator-(IntExpr b);
@@ -113,6 +114,7 @@ public:
 protected:
   PointerExpr addself(int b);
   PointerExpr bare_addself(Int &b);
+  PointerExpr addself(IntExpr b);
   PointerExpr subself(IntExpr b);
   PointerExpr add(int b);
   PointerExpr add(IntExpr b);
@@ -195,6 +197,11 @@ public:
   }
 
   PtrExpr<T> operator+=(int b) {
+    Expr::Ptr e = addself(b).expr();
+    return PtrExpr<T>(e);
+  }
+
+  PtrExpr<T> operator+=(IntExpr b) {
     Expr::Ptr e = addself(b).expr();
     return PtrExpr<T>(e);
   }

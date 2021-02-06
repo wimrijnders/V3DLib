@@ -310,7 +310,7 @@ void Settings::process(KernelBase &k) {
   stopPerfCounters();
 
   // NOTE: For multiple calls here (entirely possible, HeatMap does this),
-  //       this will dump the v3d code (mnemonics, actually) on every call.
+  //       this will prevent dumpng the v3d code (mnemonics, actually) on every call.
   if (output_code) {
     if (output_count == 0) {
       assert(!name.empty());

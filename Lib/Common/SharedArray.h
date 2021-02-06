@@ -193,6 +193,17 @@ public:
   }
 
 
+  bool operator==(SharedArray const &rhs) const { 
+    if (size() != rhs.size()) return false;
+
+    for (int i = 0; i < (int) size(); ++i) {
+      if ((*this)[i] != rhs[i]) return false;
+    }
+
+    return true;
+  }
+
+
 private:
   // Disallow copy assignment
   void operator=(SharedArray a);
