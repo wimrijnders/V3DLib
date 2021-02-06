@@ -209,11 +209,11 @@ void KernelDriver::invoke(int numQPUs, Seq<int32_t> &params) {
 }
 
 
-#ifdef DEBUG
-// Only here for autotest
+/**
+ * Only here for autotest
+ */
 void KernelDriver::add_stmt(Stmt::Ptr stmt) {
   m_stmtStack << stmt;
 }
-#endif
 
 }  // namespace V3DLib

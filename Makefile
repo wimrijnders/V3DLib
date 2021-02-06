@@ -154,6 +154,7 @@ clean:
 
 init:
 	@./script/detect_tabs.sh
+	@mkdir -p ./obj/test
 
 
 #

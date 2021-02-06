@@ -28,10 +28,7 @@ public:
 
   BufferType const buffer_type;
 
-#ifdef DEBUG
-  // Only here for autotest
-  void add_stmt(Stmt::Ptr stmt);
-#endif
+  void add_stmt(Stmt::Ptr stmt);  // exposed for autotest
 
 
 protected:

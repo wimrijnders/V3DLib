@@ -106,20 +106,20 @@ void pre_read(Float &dst, Ptr<Float> &src, int prefetch_label) {
     case DEFAULT:
       // on vc4, this will use DMA
       dst = *src;
-      src += 16;
+      src.inc();
       break;
     case USE_TMU:
       // on vc4, this will use TMU
       gather(src);
       receive(dst);
-      src += 16;
+      src.inc();
       break;
     case DO_PREFETCH:
       prefetch(dst, src, prefetch_label);
       break;
     case NO_READWRITE:
       dst = 0.0f;
-      src += 16;
+      src.inc();
       break;
     default:
       assert(false);
@@ -137,10 +137,10 @@ void pre_write(Ptr<Float> &dst, Float &src) {
       // on vc4 this uses DMA
       // on v3d this uses TMU
       *dst = src;
-      dst += 16;
+      dst.inc();
       break;
     case NO_READWRITE:
-      dst += 16;
+      dst.inc();
       break;
     default:
       assert(false);

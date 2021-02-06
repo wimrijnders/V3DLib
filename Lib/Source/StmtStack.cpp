@@ -37,13 +37,6 @@ Stmt::Ptr tempStmt(StackCallback f) {
 // Class StmtStack::PrefetchContext
 ///////////////////////////////////////////////////////////////////////////////
 
-void StmtStack::PrefetchContext::reset() {
-  assert(m_assigns.empty());  // Should have been emptied beforehand
-  m_assigns.clear();
-  prefetch_count = 0;
-}
-
-
 void StmtStack::PrefetchContext::resolve_prefetches() {
   if (m_prefetch_tags.empty()) {
     return;  // nothing to do
@@ -110,16 +103,16 @@ void StmtStack::PrefetchContext::post_prefetch(Ptr assign) {
 ///////////////////////////////////////////////////////////////////////////////
 
 
-void StmtStack::add_prefetch_label() {
+void StmtStack::add_prefetch_label(int prefetch_label) {
   auto pre = Stmt::create(Stmt::GATHER_PREFETCH);
   append(pre);
-  prefetch.add_prefetch_label(pre);
+  prefetches[prefetch_label].add_prefetch_label(pre);
 }
 
 
 void StmtStack::first_prefetch(int prefetch_label) {
-  if (!prefetch.m_prefetch_tags.empty()) return;
-  add_prefetch_label();
+  if (!prefetches[prefetch_label].tags_empty()) return;
+  add_prefetch_label(prefetch_label);
 }
 
 
@@ -132,33 +125,40 @@ void StmtStack::first_prefetch(int prefetch_label) {
  *         false otherwise (prefetch list is full)
  */
 void StmtStack::add_prefetch(PointerExpr const &exp, int prefetch_label) {
-  add_prefetch_label();
+  add_prefetch_label(prefetch_label);
 
   Ptr assign = tempStack([&exp] {
     Pointer ptr = exp;
     gatherBaseExpr(exp);
   });
 
-  prefetch.post_prefetch(assign);
+  prefetches[prefetch_label].post_prefetch(assign);
 }
 
 
 void StmtStack::add_prefetch(Pointer &exp, int prefetch_label) {
-  add_prefetch_label();
+  add_prefetch_label(prefetch_label);
 
   Ptr assign = tempStack([&exp] {
     gatherBaseExpr(exp);
-    exp += 16;
+    exp.inc();
   });
 
-  prefetch.post_prefetch(assign);
+  prefetches[prefetch_label].post_prefetch(assign);
+}
+
+
+void StmtStack::resolve_prefetches() {
+  for (auto &item : prefetches) {
+    item.second.resolve_prefetches();
+  }
 }
 
 
 void StmtStack::reset() {
   clear();
   push(mkSkip());
-  prefetch.reset();
+  prefetches.clear();
 }
 
 
@@ -228,15 +228,5 @@ void initStack(StmtStack &stmtStack) {
   stmtStack.reset();
   p_stmtStack = &stmtStack;
 }
-
-/*
-void prefetch(PointerExpr addr) {
-  stmtStack().add_prefetch(addr);
-}
-
-void prefetch(Pointer &addr) {
-  stmtStack().add_prefetch(addr);
-}
-*/
 
 }  // namespace V3DLib

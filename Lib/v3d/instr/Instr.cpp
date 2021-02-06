@@ -255,6 +255,7 @@ void Instr::init(uint64_t in_code) {
 
 namespace {
 
+#ifdef DEBUG
 std::string binaryValue(uint64_t num) {
   const int size = sizeof(num)*8;
   std::string result; 
@@ -275,6 +276,7 @@ std::string binaryValue(uint64_t num) {
 
   return result;
 }
+#endif
 
 }  // anon namespace
 

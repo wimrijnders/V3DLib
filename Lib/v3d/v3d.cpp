@@ -113,8 +113,11 @@ bool alloc_intern(
 
 void fd_close(int fd) {
   if (fd > 0 ) {
-    int ret = close(fd);
-    assert(ret >= 0);
+#ifdef DEBUG
+    assert(close(fd) >= 0);
+#else
+    close(fd);
+#endif
   }
 }
 

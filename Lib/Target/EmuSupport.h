@@ -15,9 +15,10 @@ const int VPM_SIZE  = 1024;
 
 // This is a type for representing the values in a vector
 union Word {
-  int32_t intVal;
+  int32_t intVal = 0;
   float floatVal; 
 };
+
 
 // Vector values
 struct Vec {

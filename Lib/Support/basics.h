@@ -87,5 +87,4 @@ inline std::string &operator<<(std::string &a, float val) {
   return a;
 }
 
-
 #endif  // _V3DLIB_SUPPORT_BASICS_H

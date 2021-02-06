@@ -156,7 +156,9 @@ bool Instr::isUniformLoad() const {
   }
 
   Reg aReg  = ALU.srcA.reg;
+#ifdef DEBUG
   Reg bReg  = ALU.srcB.reg;
+#endif
 
   if (aReg.tag == SPECIAL && aReg.regId == SPECIAL_UNIFORM) {
     assert(aReg == bReg);  // Apparently, this holds (NOT TRUE)
@@ -174,6 +176,9 @@ bool Instr::isTMUAWrite(bool fetch_only) const {
   }
 
   Reg reg = ALU.dest;
+  if (reg.tag != SPECIAL) {
+    return false;
+  }
 
   bool ret = (!fetch_only && reg.regId == SPECIAL_DMA_ST_ADDR)
           || (reg.regId == SPECIAL_TMU0_S);

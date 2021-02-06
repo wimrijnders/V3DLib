@@ -60,24 +60,21 @@ int encodeSmallLit(Expr const &e) {
 }
 
 
-// Decode a small literal.
+/**
+ * Decode a small literal.
+ */
 Word decodeSmallLit(int x) {
+  assert(x >= 0);
   Word w;
+
   if (x >= 32) {
-    w.floatVal = smallFloats[x-32];
-    return w;
-  }
-  else if (x >= 16) {
-    w.intVal = x-32;
-    return w;
-  }
-  else if (x >= 0) {
+    w.floatVal = smallFloats[x - 32];
+  } else if (x >= 16) {
+    w.intVal = x - 32;
+  } else {
     w.intVal = x;
-    return w;
   }
 
-  // Unreachable
-  assert(false);
   return w;
 }
 
