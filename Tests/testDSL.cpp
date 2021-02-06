@@ -518,3 +518,65 @@ TEST_CASE("Test For-loops", "[dsl][for]") {
 
   Platform::use_main_memory(false);
 } 
+
+
+template<typename T>
+void rot_kernel(Ptr<T> result, Ptr<T> a) {
+  T val = *a;
+  T val2 = *a;
+
+  val2 = rotate(val, 1);
+  *result = val2; result.inc();
+
+  val2 += rotate(val, 1);
+  *result = val2; result.inc();
+
+  rotate_sum(val, val2);
+  *result = val2; result.inc();
+
+  T val3 = val;
+  set_at(val3, 0, val2);
+  *result = val3;
+}
+
+
+// This went wrong at some point
+TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
+  Platform::use_main_memory(true);
+  int const N = 4;
+
+  SharedArray<int> a(16);
+  SharedArray<int> result1(N*16);
+  result1.fill(-1);
+  SharedArray<int> result2(N*16);
+  result2.fill(-1);
+
+  auto reset = [&a] () {
+    for (int i = 0; i < (int) a.size(); i++) {
+      a[i] = (i + 1);
+      //a[i] = (float) (i + 1);
+    }
+  };
+
+  auto k = compile(rot_kernel<Int>);
+  k.pretty(true, "obj/test/rot_kernel.txt", false);
+  k.load(&result1, &a);
+
+  // Interpreter works fine, used here to compare emulator output
+  reset();
+  k.interpret();
+  dump_array(a);
+  dump_array(result1, 16);
+
+  std::cout << "\n";
+
+  reset();
+  k.load(&result2, &a);
+  k.emu();
+  dump_array(a);
+  dump_array(result2, 16);
+
+  REQUIRE(result1 == result2);
+
+  Platform::use_main_memory(false);
+}

@@ -6,6 +6,7 @@
 #include "catch.hpp"
 #include <string>
 #include <V3DLib.h>
+#include "support/support.h"
 #include "Support/basics.h"
 #include "../Examples/Kernels/Matrix.h"
 
@@ -22,8 +23,8 @@ using namespace V3DLib;
 template<typename Kernel>
 void run_kernel(Kernel &k) {
   //k.interpret();
-  //k.emu();
-  k.call();  // k.qpu() is the intention, but is not compiled on non-arm
+  k.emu();
+  //k.call();  // k.qpu() is the intention, but is not compiled on non-arm
 }
 
 
@@ -77,8 +78,8 @@ void check_dotvector(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> result) {
   Float tmp = -2;  // Silly value for detection in unit test
   Float tmp2;
 
-  vec.dot_product(a, tmp2);
-  kernels::set_at(tmp, 0, tmp2);
+  vec.dot_product(a, tmp2);       comment("check_dotvector end dot_product");
+  kernels::set_at(tmp, 0, tmp2);  comment("check_dotvector end kernel set_at");
   *result = tmp;
 }
 
@@ -104,6 +105,7 @@ void test_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_dotvector<N>);
+  k.pretty(true, "obj/test/check_dotvector.txt", false);
   k.load(&b, &a, &result);
   run_kernel(k);
 
@@ -118,9 +120,12 @@ void test_dotvector() {
     expected += a[i]*a[i];
   }
 
+  dump_array(a);
+  dump_array(result);
+
   for (int i = 0; i < (int) result.size(); i++) {
     if (i == 0) {
-      INFO("result[0]: " << result[i]);
+      INFO("N: " << N);
       REQUIRE(result[i] == expected);
     } else {
       REQUIRE(result[i] == -2);
@@ -201,12 +206,8 @@ void check_matrix_results(
   matrix_copy_transposed(b, a, dimension);
 
   kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
-
   k.load(&result, &a, &b);
-
-  //printf("Running kernel\n");
   run_kernel(k);
-  //printf("Done running kernel\n");
 
   float precision = 2.5e-4f;  // Empirically determined - the bigger the matrices, the less precise
                               // This value works for 640x640 matrices
@@ -276,20 +277,21 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
 
 
   SECTION("Check scalar matrix multiplication") {
-    const int N = 16;  // Dimension of square matrix
+    int const N = 16;  // Dimension of square matrix
+    int const SIZE = N*N;
 
-    float a[N*N];
-    float b[N*N];
-    float c[N*N];
+    float a[SIZE];
+    float b[SIZE];
+    float c[SIZE];
 
     // Init matrices
-    for (int i = 0; i < N*N; i++) { a[i] =  1; }
-    for (int i = 0; i < N*N; i++) { b[i] =  2; }
-    for (int i = 0; i < N*N; i++) { c[i] = -1; }
+    for (int i = 0; i < SIZE; i++) { a[i] =  1; }
+    for (int i = 0; i < SIZE; i++) { b[i] =  2; }
+    for (int i = 0; i < SIZE; i++) { c[i] = -1; }
 
     kernels::matrix_mult_scalar(N, c, a, b);
     
-    for (int i = 0; i < N*N; i++) {
+    for (int i = 0; i < SIZE; i++) {
       REQUIRE(c[i] == 32);
     }
   }
@@ -359,6 +361,7 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
 
 
   SECTION("Check correct working dotvector") {
+    test_dotvector<1>();
     test_dotvector<2>();
     test_dotvector<4>();
     test_dotvector<10>();

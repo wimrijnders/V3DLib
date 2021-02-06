@@ -19,12 +19,8 @@ using namespace V3DLib;
 
 
 ////////////////////////////////////////////////////////////////////////////////
-// Kernel code, made visible for unit tests
+// Class DotVector
 ////////////////////////////////////////////////////////////////////////////////
-
-void set_at(Float &dst, Int n, Float &src);
-void rotate_sum(Float &input, Float &result);
-
 
 /**
  * Kernel helper class for loading in a sequence of values into QPU registers
