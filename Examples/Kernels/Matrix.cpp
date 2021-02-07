@@ -202,45 +202,41 @@ void matrix_mult_scalar(int N, float *c, float *a, float *b) {
  * =============
  *
  * - Load one entire row of a into the QPU for fetching one single time
- * - Use prefetching on the TMU (TODO)
- * - unroll the internal loop (does not help, not implemented here)
- * - Use all QPU's (TODO)
+ * - Use prefetching on the TMU
+ * - unroll the internal loop (tried it but does not help, not added)
+ * - Use all QPU's
  * - All QPU's iterate over b together -> increase cache hits
  * - Maybe utilize wait slots in branches (TODO)
  */
-void matrix_mult(Ptr<Float> in_dst, Ptr<Float> a, Ptr<Float> b) {
+void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   int const DIM = 16*N;  // N is global static
   Int STEP = DIM*numQPUs();
-
-  a -= me()*16;
-  b -= me()*16;
-  in_dst -= me()*16;
 
   a += me()*DIM;
 
   DotVector vec(N);
   Float result;
 
-  For (Int a_index = 0,  a_index < DIM, /* a_index++ */ a_index += numQPUs())
-    Ptr<Float> dst = in_dst + (a_index + me())*DIM;
-    Ptr<Float> b_in = b + 0;  // Wonky '+ 0' to ensure pointer value is COPIED, not referenced.
-    vec.load(a + 0);          // And again, and below again
-                             // TODO fix this very NOT intuitive 'feature'. Bitten me >1 times.
+  For (Int a_index = 0,  a_index < DIM, a_index += numQPUs())
+    Ptr<Float> dst_local = dst + (a_index + me())*DIM;
+
+    Ptr<Float> b_local = b + 0;  // Wonky '+ 0' to ensure pointer value is COPIED, not referenced.
+    vec.load(a + 0);             // And again, and below again
+                                 // TODO fix this very NOT intuitive 'feature'. Bitten me >1 times.
 
     For (Int b_index = 0, b_index < DIM, b_index++)
       Float tmp;
-      vec.dot_product(b_in + 0, tmp);
+      vec.dot_product(b_local + 0, tmp);
 
       set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
 
       If ((b_index & 0xf) == 15)
-        pre_write(dst, result);
+        pre_write(dst_local, result);
       End
 
-      b_in += DIM;
+      b_local += DIM;
     End  // IDIOT }  - never forget
 
-    //a += DIM;
     a += STEP;
   End
 }

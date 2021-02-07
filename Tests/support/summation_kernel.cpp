@@ -30,6 +30,52 @@ void check_returned_registers(SharedArray<uint32_t> &Y) {
 }
 */
 
+
+using Instructions = V3DLib::v3d::Instructions;
+
+/**
+ * Determine address offset for address registers.
+ *
+ * The offset is put in r0.
+ * A register file location is also used as a temp storage location.
+ *
+ * @param reg_qpu_num index in the register file for location to put the qpu num in
+ */
+Instructions calc_offset(uint8_t num_qpus, uint8_t reg_qpu_num) {
+  using namespace V3DLib::v3d::instr;
+  Instructions ret;
+
+  const char *text = 
+    "Determine offset -> r0\n"
+    "addr += 4 * (thread_num + 16 * qpu_num)";
+
+  ret << set_qpu_num(num_qpus, reg_qpu_num).comment(text)
+      << shl(r0, rf(reg_qpu_num), 4)
+      << eidx(r1)
+      << add(r0, r0, r1)
+      << shl(r0, r0, 2);
+
+  return ret;
+}
+
+
+/**
+ * Calculates stride and start address per QPU
+ *
+ * @param reg_stride rf slot in which to store the stride
+ */
+Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
+  using namespace V3DLib::v3d::instr;
+  Instructions ret;
+
+  uint8_t num_qpus_shift = get_shift(num_qpus);
+
+  ret << mov(rf(reg_stride), 1).header("stride = 4 * 16 * num_qpus")
+      << shl(rf(reg_stride), rf(reg_stride), 6 + num_qpus_shift);
+
+  return ret;
+}
+
 }  // anon namespace
 
 

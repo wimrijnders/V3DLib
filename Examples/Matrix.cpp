@@ -84,30 +84,6 @@ struct MatrixSettings : public Settings {
 // Local functions
 // ============================================================================
 
-void run_qpu_kernel() {
-  auto k = compile(kernels::matrix_mult_decorator(settings.dimension, settings.read_method));  // Construct kernel
-  k.setNumQPUs(settings.num_qpus);
-
-
-  // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> a(settings.size());
-  SharedArray<float> b(settings.size());
-  SharedArray<float> result(settings.size());
-
-  for (int i = 0; i < settings.size(); i++) {
-    a[i] = random_float();
-    b[i] = random_float();
-  }
-
-  Timer timer;
-  k.load(&result, &a, &b);
-  for (int i = 0; i < settings.repeats; ++i) {
-    settings.process(k);
-  }
-  timer.end(!settings.silent);
-}
-
-
 void run_scalar_kernel() {
   if (settings.compile_only) return;
  
@@ -130,6 +106,30 @@ void run_scalar_kernel() {
   delete [] a;
   delete [] b;
   delete [] result;
+}
+
+
+void run_qpu_kernel() {
+  auto k = compile(kernels::matrix_mult_decorator(settings.dimension, settings.read_method));  // Construct kernel
+  k.setNumQPUs(settings.num_qpus);
+
+
+  // Allocate and initialise arrays shared between ARM and GPU
+  SharedArray<float> a(settings.size());
+  SharedArray<float> b(settings.size());
+  SharedArray<float> result(settings.size());
+
+  for (int i = 0; i < settings.size(); i++) {
+    a[i] = random_float();
+    b[i] = random_float();
+  }
+
+  Timer timer;
+  k.load(&result, &a, &b);
+  for (int i = 0; i < settings.repeats; ++i) {
+    settings.process(k);
+  }
+  timer.end(!settings.silent);
 }
 
 

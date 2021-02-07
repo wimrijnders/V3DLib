@@ -1,22 +1,3 @@
-/**
- * HeatMap Example
- *
- * NOTES
- * =====
- *
- * 1. Uniform pointers passed into a kernel are always implicitly initialized with an offset for the QPU ID, i.e.:
- *
- *          p = p + 16*me() + index();  // Default initialization for all uniform pointers
- *
- *    This is based on the assumption that kernels will process the incoming data sequentially, and will also
- *    output it as such. This is almost always true; the HeatMap example, however, is an exception.
- *    Here, each QPU gets assigned an input row, which it handles by itself.
- *
- *    The kernel thus has to correct the default pointer initialization before executing.
- *    This is an unfortunate consequence of a design decision that I thought was pretty nifty at the time,
- *    and in the majority of cases, it's a good thing to do. Will leave this decision in until I (or you)
- *    can think of something better.
- */
 #include <V3DLib.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -106,9 +87,10 @@ void inject_hotspots(Arr &arr) {
 // Scalar version
 // ============================================================================
 
-// One time step
-void scalar_step(float** map, float** mapOut, int width, int height)
-{
+/**
+ * One time step for the scalar kernel
+ */
+void scalar_step(float** map, float** mapOut, int width, int height) {
   for (int y = 1; y < height-1; y++) {
     for (int x = 1; x < width-1; x++) {
       float surroundings =
@@ -123,7 +105,6 @@ void scalar_step(float** map, float** mapOut, int width, int height)
 
 
 void run_scalar() {
-  // Allocate
   float* map       = new float [settings.SIZE];
   float* mapOut    = new float [settings.SIZE];
   float** map2D    = new float* [settings.HEIGHT];
@@ -139,7 +120,6 @@ void run_scalar() {
     mapOut2D[i] = &mapOut[i*settings.WIDTH];
   }
 
-  // Inject hot spots
 	inject_hotspots(map);
 
   // Simulate
@@ -202,11 +182,10 @@ struct Cursor {
 };
 
 
-void step(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
-	// Correct for per-QPU offset; see Note 1 at top
-	map    -= me() << 4;
-	mapOut -= me() << 4;
-
+/**
+ * Performs a single step for the heat transfer
+ */
+void heatmap_kernel(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
   Cursor row[3];
 
   For (Int y = 1, y < height - 1 - numQPUs(), y = y + numQPUs())
@@ -268,7 +247,7 @@ void run_kernel() {
 	inject_hotspots(mapA);
 
   // Compile kernel
-  auto k = compile(step);
+  auto k = compile(heatmap_kernel);
   k.setNumQPUs(settings.num_qpus);
 
   for (int i = 0; i < settings.num_steps; i++) {

@@ -35,6 +35,8 @@ struct TriSettings : public Settings {
 ///////////////////////////////////////////
 
 void tri_int(Ptr<Int> p) {
+  p += me()*16;
+
   Int n = *p;
   Int sum = 0;
   While (any(n > 0))
@@ -48,6 +50,8 @@ void tri_int(Ptr<Int> p) {
 
 
 void tri_float(Ptr<Float> p) {
+  p += me()*16;
+
   Int n = toInt(*p);
   Int sum = 0;
   While (any(n > 0))

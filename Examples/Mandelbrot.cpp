@@ -180,8 +180,6 @@ void mandelbrot_multi(
   Int numIterations,
   Ptr<Int> result
 ) {
-  result -= me() << 4;  // Correct for per-QPU offset
-
   For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep = yStep + numQPUs())
     Int yIndex = yStep + me();
 

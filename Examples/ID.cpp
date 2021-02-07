@@ -5,9 +5,10 @@ using namespace V3DLib;
 
 V3DLib::Settings settings;
 
-// Define function that runs on the GPU.
-
 void id_kernel(Ptr<Int> p, Ptr<Int> q) {
+  p += 16*me();
+  q += 16*me();
+
   *p = me();
   *q = index();
 }

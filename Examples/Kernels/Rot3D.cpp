@@ -47,8 +47,9 @@ void rot3D_1(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) 
 
 void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   Int inc = numQPUs() << 4;
-  Ptr<Float> p = x;
-  Ptr<Float> q = y;
+  Ptr<Float> p = x + me()*16;
+  Ptr<Float> q = y + me()*16;
+
   gather(p); gather(q);
  
   Float xOld, yOld;
@@ -78,12 +79,11 @@ void rot3D_3(Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
   assert(N != -1);
   assert(numQPUs != -1);
   assertq(N % (16*numQPUs) == 0, "N must be a multiple of '16*numQPUs'");
-  //using V3DLib::functions::operator/;
 
   int size = N/numQPUs;
   Int count = size >> 4;
 
-  Int adjust = me()*(size - 16);
+  Int adjust = me()*size;
 
   Ptr<Float> p_src = x + adjust;
   Ptr<Float> q_src = y + adjust;

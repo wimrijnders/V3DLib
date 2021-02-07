@@ -922,37 +922,7 @@ Instructions encodeInstr(V3DLib::Instr instr) {
  */
 Instructions encode_init(uint8_t numQPUs) {
   Instructions ret;
-
-/*
-      ret << calc_offset(numQPUs, slots.get_temp_slot());  // offset in r0
-
-      // Add offset to uniforms that are addresses
-      if (!tmu_regs.empty()) {  // Theoretically possible, not gonna happen IRL
-                                // If there would be no addresses, we also wouln't need to calc offset and stride
-
-        const char *text = "# Set offsets for uniform addresses";
-
-        // For multiple adds here, it would be possible to use alu and mul in parallel,
-        // as happens in the summation kernel.
-
-        bool is_first = true;
-        for (auto n : tmu_regs) {
-          auto instr = add(rf(n), rf(n), r0);
-
-          if (is_first) {
-            instr.comment(text);
-            is_first = false;
-          }
-
-          ret << instr;
-        }
-      }
-
-      ret << calc_stride(numQPUs, slots.get_slot());
-*/
-  ret //<< set_qpu_id(0)           - done in target code
-      //<< set_qpu_num(numQPUs, 1) - passed in
-      << instr::enable_tmu_read();
+  ret << instr::enable_tmu_read();
 
   return ret;
 }
@@ -1080,21 +1050,11 @@ void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &i
       prev_was_init_end = true;
     } else {
       Instructions ret;
+
       if (!handle_target_specials(ret, instrs, i)) {
         ret = v3d::encodeInstr(instr);
       }
-/*
-      // Tryout, kept for reference
 
-      if (ret.size() == 1) {
-        auto &instr = ret[0];
-        if (instr.add_nocond() && instr.mul_nocond()) {
-          if (instr.add_nop() && instr.mul_nop()) {
-            std::cout << "add/mul nop for: " << instr.mnemonic(true)  << std::endl;
-          }
-        }
-      }
-*/
       if (prev_was_init_begin) {
         ret.front().header("Init block");
         prev_was_init_begin = false;

@@ -226,6 +226,7 @@ public:
       //
       // Add offsets to the uniform pointers
       //
+/*
       Int offset = me() << 4;
 
       for (auto &expr : uniform_int_pointers) {
@@ -234,6 +235,7 @@ public:
       for (auto &expr : uniform_float_pointers) {
         expr = expr + offset;
       }
+*/
 
       // Construct the AST for vc4
       apply(f, args);

@@ -39,28 +39,6 @@ Instr::List add_uniform_pointer_offset(Instr::List &code) {
   return ret;
 }
 
-
-/**
- * @param seq  list of generated instructions up till now
- * /
-void storeRequest(Instr::List &seq, Expr::Ptr data, Expr::Ptr addr) {
-  using namespace V3DLib::Target::instr;
-
-  if (addr->tag() != Expr::VAR || data->tag() != Expr::VAR) {
-    addr = putInVar(&seq, addr);
-    data = putInVar(&seq, data);
-  }
-
-  Reg srcAddr = srcReg(addr->var());
-  Reg srcData = srcReg(data->var());
-
-  seq << mov(TMUD, srcData);
-  seq.back().comment("Store request");
-  seq << mov(TMUA, srcAddr)
-      << tmuwt();
-}
-*/
-
 }  // anon namespace
 
 
@@ -211,14 +189,20 @@ void add_init(Instr::List &code) {
       << mov(ACC0, QPU_ID)
       << shr(ACC0, ACC0, 2)
       << band(rf(RSV_QPU_ID), ACC0, 15)
-      << label(endifLabel)
-  ;
+      << label(endifLabel);
 
-  // offset = 4 * (thread_num + 16 * qpu_num);
+/*
+  // offset = 4 * (vector_id + 16 * qpu_num);
   ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID (next stmt)
       << mov(ACC0, ELEM_ID)
       << add(ACC1, ACC1, ACC0)
       << shl(ACC0, ACC1, 2)           // Post: offset now in ACC0
+      << add_uniform_pointer_offset(code);
+*/
+
+  // offset = 4 * vector_id;
+  ret << mov(ACC0, ELEM_ID)
+      << shl(ACC0, ACC0, 2)           // offset now in ACC0
       << add_uniform_pointer_offset(code);
 
   code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker

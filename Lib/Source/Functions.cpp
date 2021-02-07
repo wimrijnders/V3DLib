@@ -65,10 +65,14 @@ IntExpr abs(IntExpr a) {
 }
 
 
+/**
+ * Adjusted from: https://www.geeksforgeeks.org/divide-two-integers-without-using-multiplication-division-mod-operator/
+ *
+ * TODO: See if special cases (like division by one can be sanely handled
+ */
 IntExpr operator/(IntExpr in_a, IntExpr in_b) {
 
   Stmt::Ptr stmt = tempStmt([in_a, in_b] {
-    // Adjusted from: https://www.geeksforgeeks.org/divide-two-integers-without-using-multiplication-division-mod-operator/
     Int a = in_a;  comment("Start integer divide - Warning: inefficient!");
     Int b = in_b;
     Int sign;

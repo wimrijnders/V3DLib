@@ -565,16 +565,16 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
   // Interpreter works fine, used here to compare emulator output
   reset();
   k.interpret();
-  dump_array(a);
-  dump_array(result1, 16);
+  //dump_array(a);
+  //dump_array(result1, 16);
 
   std::cout << "\n";
 
   reset();
   k.load(&result2, &a);
   k.emu();
-  dump_array(a);
-  dump_array(result2, 16);
+  //dump_array(a);
+  //dump_array(result2, 16);
 
   REQUIRE(result1 == result2);
 

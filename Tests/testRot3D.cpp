@@ -1,6 +1,5 @@
 #include "catch.hpp"
 #include <math.h>
-//#include <cmath>  // frexp()
 #include "../Examples/Kernels/Rot3D.h"
 
 using namespace kernels;
@@ -36,18 +35,6 @@ void compareResults(
     if (compare_exact) {
       INFO("y2[" << i << "]: " << y2[i]);
       REQUIRE(x1[i] == x2[i]);
-
-/*
-      int exp;  // To avoid 0.0f == -0.0f (rhs is extremely small)
-      frexp(y2[i], &exp);
-
-      float rhs = y2[i];
-      if (exp != 0 && exp <= -100) {  // -126 <= exponent values <= 127
-        printf("rhs: %f, exp: %d \n", rhs, exp);
-        rhs = 0.0f;
-      }
-      REQUIRE(y1[i] == rhs);
-*/
       REQUIRE(y1[i] == y2[i]);
     } else {
       REQUIRE(x1[i] == Approx(x2[i]).epsilon(0.001));
