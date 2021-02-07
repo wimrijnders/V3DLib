@@ -120,6 +120,17 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 
       auto k = compile(rot3D_2);
 
+      INFO("Running kernel 1a with 1 QPU");
+      initArrays(x, y, N);
+      k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+      compareResults(x_1, y_1, x, y, N, "Rot3D_1a");
+
+      INFO("Running kernel 1a with 8 QPUs");
+      k.setNumQPUs(8);
+      initArrays(x, y, N);
+      k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+      compareResults(x_1, y_1, x, y, N, "Rot3D_1a");
+
       INFO("Running kernel 2 with 1 QPU");
       initArrays(x, y, N);
       k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();

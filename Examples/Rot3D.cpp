@@ -15,7 +15,7 @@ using KernelType = decltype(rot3D_1);  // All kernel functions except scalar hav
 // Command line handling
 // ============================================================================
 
-std::vector<const char *> const kernel_id = { "2", "3", "1", "cpu" };  // First is default
+std::vector<const char *> const kernel_id = { "2", "3", "1", "1a", "cpu" };  // First is default
 
 CmdParameters params = {
   "Rot3D\n"
@@ -153,7 +153,8 @@ void run_kernel(int kernel_index) {
     case 0: run_qpu_kernel(rot3D_2);  break;  
     case 1: run_qpu_kernel_3();       break;  
     case 2: run_qpu_kernel(rot3D_1);  break;  
-    case 3: run_scalar_kernel();      break;
+    case 3: run_qpu_kernel(rot3D_1a); break;  
+    case 4: run_scalar_kernel();      break;
   }
 
   auto name = kernel_id[kernel_index];

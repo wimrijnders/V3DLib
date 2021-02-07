@@ -32,11 +32,39 @@ void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
 // ============================================================================
 
 void rot3D_1(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
-  For (Int i = 0, i < n, i = i+16)
+  For (Int i = 0, i < n, i += 16)
     Float xOld = x[i];
     Float yOld = y[i];
     x[i] = xOld * cosTheta - yOld * sinTheta;
     y[i] = yOld * cosTheta + xOld * sinTheta;
+  End
+}
+
+
+void rot3D_1a(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
+
+  Int step = numQPUs() << 4;
+  x += me()*16;
+  y += me()*16;
+
+  auto read = [] (Float &dst, Ptr<Float> &src) {
+    dst = *src;
+    //gather(src);
+    //receive(dst);
+  };
+
+  For (Int i = 0, i < n, i += step)
+    Float xOld;
+    Float yOld;
+
+    read(xOld, x);
+    read(yOld, y);
+
+    *x = xOld * cosTheta - yOld * sinTheta;
+    *y = yOld * cosTheta + xOld * sinTheta;
+
+    x += step;
+    y += step;
   End
 }
 
@@ -53,12 +81,13 @@ void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) 
   gather(p); gather(q);
  
   Float xOld, yOld;
-  For (Int i = 0, i < n, i = i+inc)
+  For (Int i = 0, i < n, i += inc)
     gather(p+inc); gather(q+inc); 
     receive(xOld); receive(yOld);
+
     *p = xOld * cosTheta - yOld * sinTheta;
     *q = yOld * cosTheta + xOld * sinTheta;
-    p = p+inc; q = q+inc;
+    p += inc; q += inc;
   End
 
   receive(xOld); receive(yOld);

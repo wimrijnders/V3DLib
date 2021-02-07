@@ -153,7 +153,7 @@ struct Cursor {
   }
 
   void advance() {
-    addr = addr + 16; comment("Cursor advance");
+    addr.inc();     comment("Cursor advance");
     prev = current;
     gather(addr);
     current = next;
@@ -223,7 +223,7 @@ void heatmap_kernel(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
 			End
 
      	*p = output;
-      p = p + 16;
+      p.inc();
     End
 
     // Cursors are finished for this row
