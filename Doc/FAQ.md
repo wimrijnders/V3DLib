@@ -90,7 +90,7 @@ the corresponding `v3d` stuff has mostly been found due to empirical research an
 There are two transfer options, **VPM (DMA)** and **TMU**
 
 - `vc4` has VPM for read/write and *read-only* TMU 
-- `v3d` has *no* VPM<sup>[I]</sup>, but uses TMU for read/write
+- `v3d` has *no* VPM<sup>[I]</sup>, and uses TMU for read/write
 
 **VPM** can execute one read and on write in parallel, but multiple reads and multiple writes block each other.
 The QPU will stall if a read has to wait on a read, or a write has to wait on a write.
@@ -103,7 +103,7 @@ The read/write can perform in parallel with the QPU execution.
 The QPU does not need to stall at all (but it *is* possible).
 However, only one 16-vector is handled per go.
 
-**[I]**: *However, the VPM IS mentioned in the QPU registers, so it might be that I never encountered*
+**[I]**: *VPM IS mentioned in the QPU registers though, so it might be that I just never encountered*
        *its usage for `v3d`. This might be something I may investigate when bored and nothing else to do.*
 
 #### Comparing VPM and TMU
@@ -118,7 +118,7 @@ On `vc4`, VPM was used for this by default.
 I have lived under the assumption that VPM is faster than TMU, due to online hearsay,
 but I have now taken the time to check it.
 
-I took two of the IO-intensive kernels and changed the memory access to TMU while keeping
+I took two IO-intensive kernels and changed the memory access to TMU while keeping
 the rest of the logic intact. This is the result:
 
 
@@ -126,15 +126,18 @@ the rest of the logic intact. This is the result:
 
 It turns out that TMU usage is actually faster.
 
-I examine further combinations as well with multiple QPU's (in graph `Rot3D` is used):
+I examined further combinations as well with multiple QPU's:
 
 ![VPM vs TMU multi-QPU](./images/vpm_tmu_compare_multi_qpu.png)
+*Various execution combinations for kernel Rot3D*
 
 To be honest, I was expecting more of a difference here between VPM and TMU.
-Of special note is that with kernels not optimized for multi-QPU usage, performance actually gets
-worse if more QPUs are added. I was expected TMU to be vastly better here.
+I was expected TMU to be vastly better here.
 
-However, the conclusion is inescapable:
+Of special note is that with kernels not optimized for multi-QPU usage, performance actually gets
+worse if more QPUs are added.
+
+In any case, the conclusion is inescapable:
 
 -----
 
