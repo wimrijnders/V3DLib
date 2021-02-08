@@ -90,7 +90,7 @@ the corresponding `v3d` stuff has mostly been found due to empirical research an
 There are two transfer options, **VPM (DMA)** and **TMU**
 
 - `vc4` has VPM for read/write and *read-only* TMU 
-- `v3d` has *no* VPM<sup>\*</sup>, but uses TMU for read/write
+- `v3d` has *no* VPM<sup>[I]</sup>, but uses TMU for read/write
 
 **VPM** can execute one read and on write in parallel, but multiple reads and multiple writes block each other.
 The QPU will stall if a read has to wait on a read, or a write has to wait on a write.
@@ -103,13 +103,13 @@ The read/write can perform in parallel with the QPU execution.
 The QPU does not need to stall at all (but it *is* possible).
 However, only one 16-vector is handled per go.
 
-**\**: *However, the VPM IS mentioned in the QPU registers, so it might be that I never encountered*
+**[I]**: *However, the VPM IS mentioned in the QPU registers, so it might be that I never encountered*
        *its usage for `v3d`. This might be something I may investigate when bored and nothing else to do.*
 
 #### Comparing VPM and TMU
 
-The following statements are the standard syntax used for reading/writing blocks of 16 values (64 bytes)
-to a QPU and main memory:
+The following statements are the standard syntax used for transferring a 16-vector
+(a block of 16 float or int values, size 64 bytes) between QPU and main memory:
 
     a = *ptr;
     *ptr = a;
@@ -122,27 +122,27 @@ I took two of the IO-intensive kernels and changed the memory access to TMU whil
 the rest of the logic intact. This is the result:
 
 
-![VPM vs TMU](./images/vmp_tmu_compare.png)
+![VPM vs TMU](./images/vpm_tmu_compare.png)
 
 It turns out that TMU usage is actually faster.
 
 I examine further combinations as well with multiple QPU's (in graph `Rot3D` is used):
 
-![VPM vs TMU multi-QPU](./images/vmp_tmu_compare_multi_qpu.png)
+![VPM vs TMU multi-QPU](./images/vpm_tmu_compare_multi_qpu.png)
 
 To be honest, I was expecting more of a difference here between VPM and TMU.
-If special note is that with kernels not optimized for multi-QPU usage, performance actually gets
-worse if more QPUs are added.
+Of special note is that with kernels not optimized for multi-QPU usage, performance actually gets
+worse if more QPUs are added. I was expected TMU to be vastly better here.
 
-However, even here the conclusion is inescapable:
-
------
-
-**For regular usage, TMU is faster than VPM**
+However, the conclusion is inescapable:
 
 -----
 
-It might be the case that TMU is still faster if more than one 16-vector is loaded per instruction,
+**For regular usage, TMU is always faster than VPM**
+
+-----
+
+It might be the case that TMU is still faster if more than one 16-vector is loaded per go,
 but I'm not going there.
 
 Based on this, I am making TMU usage the default for `vc4`. DMA will still be supported and checked in
