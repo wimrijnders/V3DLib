@@ -129,10 +129,11 @@ It turns out that TMU usage is actually faster.
 I examined further combinations as well with multiple QPU's:
 
 ![VPM vs TMU multi-QPU](./images/vpm_tmu_compare_multi_qpu.png)
+
 *Various execution combinations for kernel Rot3D*
 
 To be honest, I was expecting more of a difference here between VPM and TMU.
-I was expected TMU to be vastly better here.
+I expected TMU to be vastly better here.
 
 Of special note is that with kernels not optimized for multi-QPU usage, performance actually gets
 worse if more QPUs are added.
