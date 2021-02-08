@@ -32,18 +32,19 @@ The strategy appears to be to investigate the available open source drivers.
 
 Here is an overview for the easily comparable stuff:
 
-| Item                | vc4             | v3d              | Comment |
-|---------------------|-----------------|------------------|-|
-| **Clock Speed :**   | 400MHz (Pi3+)   | 500MHz           | |
-| **Num QPU's:**      | 12              | 8                | |
-| **Threads per QPU** |                 |                  | *Shows num available registers in register file per thread* |
-| 1 thread            | 64 registers    |  *not supported* | |
-| 2 threads           | 32 registers    | 64 registers     | |
-| 4 threads           | *not supported* | 32 registers     | |
-| **Data Transfer**   |                 |                  | |
-| DMA                 | read/write      | *not supported*  | |
-| VPM                 | read only       | read/write       | |
-| **Register File**   | 2x32 registers  | 1x64 registers   | |
+| Item                 | vc4             | v3d              | Comment |
+|----------------------|-----------------|------------------|-|
+| **Clock Speed :**    | 400MHz (Pi3+)   | 500MHz           | |
+| **Num QPU's:**       | 12              | 8                | |
+| **TMU gather limit:**|  4              | 8                | The maximum number of concurrent prefetches before QPU execution blocks |
+| **Threads per QPU**  |                 |                  | *Shows num available registers in register file per thread* |
+| 1 thread             | 64 registers    |  *not supported* | |
+| 2 threads            | 32 registers    | 64 registers     | |
+| 4 threads            | *not supported* | 32 registers     | |
+| **Data Transfer**    |                 |                  | |
+| DMA                  | read/write      | *not supported*  | |
+| VPM                  | read only       | read/write       | |
+| **Register File**    | 2x32 registers  | 1x64 registers   | |
 
 - There was also a 'VideoCore V' (let's call it `vc5`), which was skipped in the Pis.
 - `vc5` added a four thread per QPU mode, with 16 registers per thread.
@@ -84,32 +85,68 @@ This section records differences between the `vc4` and `v3d` QPU hardware and co
 The `vc4`-specific items can be found in the "VideoCore IV Architecture Reference Guide";
 the corresponding `v3d` stuff has mostly been found due to empirical research and hard thinking.
 
-### Gather limit
-
-The gather limit is the number of prefetches from main memory that can de done while executing on the QPU.
-It has been empirically determine that the gather limit is:
-
-- 4 for `vc4`
-- 8 for `v3d`
-
-You will under all circumstances fail to comprehend the effort spent in understanding this.
-On the plus side, the code got vaslty better in the process.
-
 ### Data Transfer
 
 There are two transfer options, **VPM (DMA)** and **TMU**
 
 - `vc4` has VPM for read/write and *read-only* TMU 
-- `v3d` has *no* VPM, but uses TMU for read/write
+- `v3d` has *no* VPM<sup>\*</sup>, but uses TMU for read/write
 
-**VPM** is apparently faster (online hearsay, haven't bothered to measure it yet).
-It can execute a single read and write in parallel, but multiple reads and multiple writes block each other.
+**VPM** can execute one read and on write in parallel, but multiple reads and multiple writes block each other.
 The QPU will stall if a read has to wait on a read, or a write has to wait on a write.
+It has the advantage of being able to handle multiple 16-vectors in one go.
 
-**TMU** has the advantage that it does not block *and* operations can overlap.
-Up to 8 read operations can be performed together, and (apparently) an unlimited number of writes.
+**TMU** does not block *and* operations can overlap, up to a limit.
+Up to 4 (`vc4`) or 8 (`v3d`) read operations can be performed together,
+and (apparently) an unlimited number of writes.
 The read/write can perform in parallel with the QPU execution.
 The QPU does not need to stall at all (but it *is* possible).
+However, only one 16-vector is handled per go.
+
+**\**: *However, the VPM IS mentioned in the QPU registers, so it might be that I never encountered*
+       *its usage for `v3d`. This might be something I may investigate when bored and nothing else to do.*
+
+#### Comparing VPM and TMU
+
+The following statements are the standard syntax used for reading/writing blocks of 16 values (64 bytes)
+to a QPU and main memory:
+
+    a = *ptr;
+    *ptr = a;
+
+On `vc4`, VPM was used for this by default. 
+I have lived under the assumption that VPM is faster than TMU, due to online hearsay,
+but I have now taken the time to check it.
+
+I took two of the IO-intensive kernels and changed the memory access to TMU while keeping
+the rest of the logic intact. This is the result:
+
+
+![VPM vs TMU](./images/vmp_tmu_compare.png)
+
+It turns out that TMU usage is actually faster.
+
+I examine further combinations as well with multiple QPU's (in graph `Rot3D` is used):
+
+![VPM vs TMU multi-QPU](./images/vmp_tmu_compare_multi_qpu.png)
+
+To be honest, I was expecting more of a difference here between VPM and TMU.
+If special note is that with kernels not optimized for multi-QPU usage, performance actually gets
+worse if more QPUs are added.
+
+However, even here the conclusion is inescapable:
+
+-----
+
+**For regular usage, TMU is faster than VPM**
+
+-----
+
+It might be the case that TMU is still faster if more than one 16-vector is loaded per instruction,
+but I'm not going there.
+
+Based on this, I am making TMU usage the default for `vc4`. DMA will still be supported and checked in
+the unit tests.
 
 
 ### Setting of condition flags
