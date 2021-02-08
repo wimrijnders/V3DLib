@@ -184,7 +184,7 @@ I'm retaining it to preserve the insights encountered along the way, should I ev
 This places the initialization code in the INIT-block, after translation of source to target.
 The INIT-block therefore needs to be added first.
 
-This did not work for DMA, because DMA add the offset itself.
+This did not work for DMA, because DMA adds the offset itself internally.
 
 ```
 void SourceTranslate::add_init(Seq<Instr> &code) {
