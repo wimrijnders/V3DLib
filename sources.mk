@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Wed 03 Feb 2021 04:25:45 AM CET
+# Generated on: Mon 08 Feb 2021 06:53:08 AM CET
 #
 ###############################################################################
 
@@ -68,6 +68,7 @@ OBJ := \
   vc4/Invoke.o  \
   vc4/RegisterMap.o  \
   vc4/Encode.o  \
+  vc4/DMA/Helpers.o  \
   vc4/DMA/DMA.o  \
   vc4/DMA/LoadStore.o  \
   vc4/DMA/Operations.o  \

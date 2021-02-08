@@ -2,6 +2,7 @@
 #include "Support/debug.h" 
 #include "Source/Translate.h"
 #include "Target/Syntax.h"
+#include "Helpers.h"
 
 namespace V3DLib {
 namespace DMA {
@@ -264,25 +265,25 @@ Seq<Instr> genSetWriteStride(Reg stride) {
 // Set-stride statements
 // ============================================================================
 
-Seq<Instr> setStrideStmt(Stmt::Tag tag, Expr::Ptr e) {
+Seq<Instr> setStrideStmt(bool is_read, Expr::Ptr e) {
   Seq<Instr> ret;
 
   if (e->tag() == Expr::INT_LIT) {
-    if (tag == Stmt::SET_READ_STRIDE)
+    if (is_read)
       ret << genSetReadPitch(e->intLit);
     else
       ret << genSetWriteStride(e->intLit);
   } else if (e->tag() == Expr::VAR) {
     Reg reg = srcReg(e->var());
 
-    if (tag == Stmt::SET_READ_STRIDE)
+    if (is_read)
       ret << genSetReadPitch(reg);
     else
       ret << genSetWriteStride(reg);
   } else {
     Var v = freshVar();
     ret << varAssign(v, e);
-    if (tag == Stmt::SET_READ_STRIDE)
+    if (is_read)
       ret << genSetReadPitch(srcReg(v));
     else
       ret << genSetWriteStride(srcReg(v));
@@ -291,17 +292,19 @@ Seq<Instr> setStrideStmt(Stmt::Tag tag, Expr::Ptr e) {
   return ret;
 }
 
+}  // anon namespace
+
 // ============================================================================
 // VPM setup statements
 // ============================================================================
 
-Seq<Instr> setupVPMReadStmt(Stmt::Ptr s) {
+Seq<Instr> Stmt::setupVPMRead() {
   Seq<Instr> ret;
 
-  int n       = s->setupVPMRead.numVecs;
-  Expr::Ptr e = s->address();
-  int hor     = s->setupVPMRead.hor;
-  int stride  = s->setupVPMRead.stride;
+  int n       = m_setupVPMRead.numVecs;
+  Expr::Ptr e = address_internal();
+  int hor     = m_setupVPMRead.hor;
+  int stride  = m_setupVPMRead.stride;
 
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupVPMLoad(n, e->intLit, hor, stride);
@@ -321,12 +324,12 @@ Seq<Instr> setupVPMReadStmt(Stmt::Ptr s) {
 // DMA statements
 // ============================================================================
 
-Seq<Instr> setupDMAReadStmt(Stmt::Ptr s) {
-  int numRows = s->setupDMARead.numRows;
-  int rowLen  = s->setupDMARead.rowLen;
-  int hor     = s->setupDMARead.hor;
-  Expr::Ptr e = s->address();
-  int vpitch  = s->setupDMARead.vpitch;
+Seq<Instr> Stmt::setupDMARead() {
+  int numRows = m_setupDMARead.numRows;
+  int rowLen  = m_setupDMARead.rowLen;
+  int hor     = m_setupDMARead.hor;
+  Expr::Ptr e = address_internal();
+  int vpitch  = m_setupDMARead.vpitch;
 
   Seq<Instr> ret;
 
@@ -345,11 +348,11 @@ Seq<Instr> setupDMAReadStmt(Stmt::Ptr s) {
 }
 
 
-Seq<Instr> setupDMAWriteStmt(Stmt::Ptr s) {
-  int numRows = s->setupDMAWrite.numRows;
-  int rowLen  = s->setupDMAWrite.rowLen;
-  int hor     = s->setupDMAWrite.hor;
-  Expr::Ptr e = s->address();
+Seq<Instr> Stmt::setupDMAWrite() {
+  int numRows = m_setupDMAWrite.numRows;
+  int rowLen  = m_setupDMAWrite.rowLen;
+  int hor     = m_setupDMAWrite.hor;
+  Expr::Ptr e = address_internal();
 
   Seq<Instr> ret;
 
@@ -367,6 +370,29 @@ Seq<Instr> setupDMAWriteStmt(Stmt::Ptr s) {
   return ret;
 }
 
+
+Seq<Instr> Stmt::setupVPMWrite() {
+  Seq<Instr> ret;
+
+  Expr::Ptr e = address_internal();
+  int hor     = m_setupVPMWrite.hor;
+  int stride  = m_setupVPMWrite.stride;
+
+  if (e->tag() == Expr::INT_LIT)
+    ret << genSetupVPMStore(e->intLit, hor, stride);
+  else if (e->tag() == Expr::VAR)
+    ret << genSetupVPMStore(srcReg(e->var()), hor, stride);
+  else {
+    Var v = freshVar();
+    ret << varAssign(v, e)
+        << genSetupVPMStore(srcReg(v), hor, stride);
+  }
+
+  return ret;
+}
+
+
+namespace {
 
 Seq<Instr> startDMAReadStmt(Expr::Ptr e) {
   Seq<Instr> ret;
@@ -398,9 +424,9 @@ Seq<Instr> startDMAWriteStmt(Expr::Ptr e) {
 // Semaphores
 // ============================================================================
 
-Instr semaphore(Stmt::Tag tag, int semaId) {
+Instr semaphore(bool is_inc, int semaId) {
   Instr instr;
-  instr.tag = (tag == Stmt::SEMA_INC)? SINC : SDEC;
+  instr.tag = (is_inc)? SINC : SDEC;
   instr.semaId = semaId;
 
   return instr;
@@ -415,27 +441,6 @@ Instr sendIRQToHost() {
   Instr instr;
   instr.tag = IRQ;
   return instr;
-}
-
-
-Seq<Instr> setupVPMWriteStmt(Stmt::Ptr s) {
-  Seq<Instr> ret;
-
-  Expr::Ptr e = s->address();
-  int hor     = s->setupVPMWrite.hor;
-  int stride  = s->setupVPMWrite.stride;
-
-  if (e->tag() == Expr::INT_LIT)
-    ret << genSetupVPMStore(e->intLit, hor, stride);
-  else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMStore(srcReg(e->var()), hor, stride);
-  else {
-    Var v = freshVar();
-    ret << varAssign(v, e)
-        << genSetupVPMStore(srcReg(v), hor, stride);
-  }
-
-  return ret;
 }
 
 }  // anon namespace
@@ -461,23 +466,24 @@ Instr::List varassign_deref_var(Var &v, Expr &e) {
 /**
  * @return true if statement handled, false otherwise
  */
-bool translate_stmt(Instr::List &seq, Stmt::Ptr s) {
+bool translate_stmt(Instr::List &seq, int in_tag, Stmt &s) {
+  auto tag = to_tag(in_tag);
   bool ret = true;
 
-  switch (s->tag) {
-    case Stmt::SET_READ_STRIDE:
-    case Stmt::SET_WRITE_STRIDE: seq << setStrideStmt(s->tag, s->stride());    break;
-    case Stmt::SEMA_INC:
-    case Stmt::SEMA_DEC:         seq << semaphore(s->tag, s->semaId);          break;
-    case Stmt::SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       break;
-    case Stmt::SETUP_VPM_READ:   seq << setupVPMReadStmt(s);                   break;
-    case Stmt::SETUP_VPM_WRITE:  seq << setupVPMWriteStmt(s);                  break;
-    case Stmt::SETUP_DMA_READ:   seq << setupDMAReadStmt(s);                   break;
-    case Stmt::SETUP_DMA_WRITE:  seq << setupDMAWriteStmt(s);                  break;
-    case Stmt::DMA_READ_WAIT:    seq << genWaitDMALoad();                      break;
-    case Stmt::DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     break;
-    case Stmt::DMA_START_READ:   seq<< startDMAReadStmt(s->address());         break;
-    case Stmt::DMA_START_WRITE:  seq << startDMAWriteStmt(s->address());       break;
+  switch (tag) {
+    case V3DLib::Stmt::SET_READ_STRIDE:  seq << setStrideStmt(true,  s.stride_internal()); break;
+    case V3DLib::Stmt::SET_WRITE_STRIDE: seq << setStrideStmt(false, s.stride_internal()); break;
+    case V3DLib::Stmt::SEMA_INC:         seq << semaphore(true,  s.semaId());              break;
+    case V3DLib::Stmt::SEMA_DEC:         seq << semaphore(false, s.semaId());              break;
+    case V3DLib::Stmt::SEND_IRQ_TO_HOST: seq << sendIRQToHost();                       break;
+    case V3DLib::Stmt::SETUP_VPM_READ:   seq << s.setupVPMRead();                      break;
+    case V3DLib::Stmt::SETUP_VPM_WRITE:  seq << s.setupVPMWrite();                     break;
+    case V3DLib::Stmt::SETUP_DMA_READ:   seq << s.setupDMARead();                      break;
+    case V3DLib::Stmt::SETUP_DMA_WRITE:  seq << s.setupDMAWrite();                     break;
+    case V3DLib::Stmt::DMA_READ_WAIT:    seq << genWaitDMALoad();                      break;
+    case V3DLib::Stmt::DMA_WRITE_WAIT:   seq << genWaitDMAStore();                     break;
+    case V3DLib::Stmt::DMA_START_READ:   seq << startDMAReadStmt(s.address_internal());  break;
+    case V3DLib::Stmt::DMA_START_WRITE:  seq << startDMAWriteStmt(s.address_internal()); break;
 
     default:
       ret = false;

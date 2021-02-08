@@ -84,7 +84,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
       break;
 
     default: {
-        std::string tmp = DMA::pretty(indent, s);
+        std::string tmp = s->dma.pretty(indent, s->tag);
         if (tmp.empty()) {
           assertq(false, "Unknown statement tag in Source::pretty()");
         }

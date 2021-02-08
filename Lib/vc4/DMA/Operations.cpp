@@ -9,19 +9,15 @@ namespace  {
 //=============================================================================
 
 Stmt::Ptr vpmSetupReadCore(int n, IntExpr addr, bool hor, int stride) {
-  Stmt::Ptr s = Stmt::create(Stmt::SETUP_VPM_READ, addr.expr(), nullptr);
-  s->setupVPMRead.numVecs = n;
-  s->setupVPMRead.stride = stride;
-  s->setupVPMRead.hor = hor;
-
+  Stmt::Ptr s = Stmt::create(Stmt::SETUP_VPM_READ);
+  s->dma.setupVPMRead(n, addr.expr(), hor, stride);
   return s;
 }
 
-Stmt::Ptr vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
-  Stmt::Ptr s = Stmt::create(Stmt::SETUP_VPM_WRITE, addr.expr(), nullptr);
-  s->setupVPMWrite.stride = stride;
-  s->setupVPMWrite.hor = hor;
 
+Stmt::Ptr vpmSetupWriteCore(IntExpr addr, bool hor, int stride) {
+  Stmt::Ptr s = Stmt::create(Stmt::SETUP_VPM_WRITE);
+  s->dma.setupVPMWrite(addr.expr(), hor, stride);
   return s;
 }
 
@@ -70,22 +66,15 @@ void dmaSetWriteStride(IntExpr stride) {
 
 
 void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr, int rowLen, int vpitch) {
-  Stmt::Ptr s = Stmt::create(Stmt::SETUP_DMA_READ, vpmAddr.expr(), nullptr);
-  s->setupDMARead.hor = dir == HORIZ ? 1 : 0;
-  s->setupDMARead.numRows = numRows;
-  s->setupDMARead.rowLen = rowLen;
-  s->setupDMARead.vpitch = vpitch;
-
+  Stmt::Ptr s = Stmt::create(Stmt::SETUP_DMA_READ);
+  s->dma.setupDMARead(dir == HORIZ, numRows, vpmAddr.expr(), rowLen, vpitch);
   stmtStack() << s;
 }
 
 
 void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen) {
-  Stmt::Ptr s = Stmt::create(Stmt::SETUP_DMA_WRITE, vpmAddr.expr(), nullptr);
-  s->setupDMAWrite.hor = dir == HORIZ ? 1 : 0;
-  s->setupDMAWrite.numRows = numRows;
-  s->setupDMAWrite.rowLen = rowLen;
-
+  Stmt::Ptr s = Stmt::create(Stmt::SETUP_DMA_WRITE);
+  s->dma.setupDMAWrite(dir == HORIZ, numRows, vpmAddr.expr(), rowLen);
   stmtStack() << s;
 }
 
@@ -106,13 +95,13 @@ void dmaWaitWrite() {
 
 void semaInc(int semaId) {
   Stmt::Ptr s = Stmt::create(Stmt::SEMA_INC);
-  s->semaId = semaId;
+  s->dma.semaId(semaId);
   stmtStack() << s;
 }
 
 void semaDec(int semaId) {
   Stmt::Ptr s = Stmt::create(Stmt::SEMA_DEC);
-  s->semaId = semaId;
+  s->dma.semaId(semaId);
   stmtStack() << s;
 }
 

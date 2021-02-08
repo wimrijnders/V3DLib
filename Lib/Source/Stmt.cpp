@@ -60,6 +60,8 @@ std::string PrintStmt::disp() const {
 /**
  * Replacement initializer for this class,
  * because a class with unions can not have a ctor.
+ *
+ * TODO union has been removed, dissolve this method
  */
 void Stmt::init(Tag in_tag) {
   clear_comments();  // TODO prob not necessary, check
@@ -106,24 +108,8 @@ Expr::Ptr Stmt::assign_rhs() const {
 }
 
 
-Expr::Ptr Stmt::stride() {
-  assert(tag == SET_READ_STRIDE || tag == SET_WRITE_STRIDE);
-  assert(m_exp_a.get() != nullptr);
-  assert(m_exp_b.get() == nullptr);
-  return m_exp_a;
-}
-
-
 Expr::Ptr Stmt::address() {
-  assert(
-    tag == LOAD_RECEIVE    ||
-    tag == SETUP_VPM_READ  ||
-    tag == SETUP_VPM_WRITE ||
-    tag == SETUP_DMA_READ  ||
-    tag == SETUP_DMA_WRITE ||
-    tag == DMA_START_READ  ||
-    tag == DMA_START_WRITE);
-
+  assert(tag == LOAD_RECEIVE);
   assert(m_exp_a.get() != nullptr);
   assert(m_exp_b.get() == nullptr);
   return m_exp_a;
@@ -313,9 +299,9 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
           std::string msg;
           msg << "Unknown tag '" << tag << "' in Stmt::disp_intern()";
 
-        if (tag < 0 || tag > DMA_START_WRITE) {
-          msg << "; tag out of range";
-        }
+          if (tag < 0 || tag > DMA_START_WRITE) {
+            msg << "; tag out of range";
+          }
 
           assertq(false, msg);
         }
@@ -336,6 +322,7 @@ Stmt::Ptr Stmt::create(Tag in_tag) {
 
 
 Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
+  // Intention: assert(!DMA::Stmt::is_dma_tag(in_tag);  - and change default below
   Ptr ret(new Stmt());
   ret->init(in_tag);
 
@@ -348,14 +335,6 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 
     case PRINT:
     case LOAD_RECEIVE:
-    case SET_READ_STRIDE:
-    case SET_WRITE_STRIDE:
-    case SETUP_VPM_READ:
-    case SETUP_VPM_WRITE:
-    case SETUP_DMA_READ:
-    case SETUP_DMA_WRITE:
-    case DMA_START_READ:
-    case DMA_START_WRITE:
       assertq(e0 != nullptr && e1 == nullptr, "create 2");
       ret->m_exp_a = e0;
     break;
@@ -363,8 +342,11 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
     case GATHER_PREFETCH:
       // Nothing to do
     break;
+
     default:
-      fatal("create(Expr,Expr): Tag not handled");
+      if (!ret->dma.address(in_tag, e0)) {
+        fatal("create(Expr,Expr): Tag not handled");
+      }
     break;
   }
 

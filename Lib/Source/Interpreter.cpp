@@ -541,6 +541,51 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
 // Execute code
 // ============================================================================
 
+bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
+  bool ret = true;
+
+  int semaId = stmt->dma.semaId();
+
+  switch (stmt->tag) {
+    // Increment semaphore
+    // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
+    case Stmt::SEMA_INC:
+      assert(semaId >= 0 && semaId < 16);
+      if (state->sema[semaId] == 15) s->stack.push(stmt);
+      else state->sema[semaId]++;
+      break;
+ 
+    // Decrement semaphore
+    // Note at SEMA_INC also applies here
+    case Stmt::SEMA_DEC:
+      assert(semaId >= 0 && semaId < 16);
+      if (state->sema[semaId] == 0) s->stack.push(stmt);
+      else state->sema[semaId]--;
+      break;
+
+    case Stmt::DMA_READ_WAIT:
+    case Stmt::DMA_WRITE_WAIT:
+    case Stmt::SETUP_VPM_READ:
+    case Stmt::SETUP_VPM_WRITE:
+    case Stmt::SETUP_DMA_READ:
+    case Stmt::SETUP_DMA_WRITE:
+      // Interpreter ignores these
+      break;
+
+    case Stmt::DMA_START_READ:
+    case Stmt::DMA_START_WRITE:
+      fatal("V3DLib: DMA access not supported by interpreter\n");
+      break;
+
+    default:
+      ret = false;
+      break;
+  }
+
+  return ret;
+}
+
+
 void exec(InterpreterState* state, CoreState* s) {
   // Control stack must be non-empty
   assert(s->stack.size() > 0);
@@ -590,11 +635,11 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     case Stmt::SET_READ_STRIDE:
-      execSetStride(s, Stmt::SET_READ_STRIDE, stmt->stride());
+      execSetStride(s, Stmt::SET_READ_STRIDE, stmt->dma.stride_internal());
       return;
 
     case Stmt::SET_WRITE_STRIDE:
-      execSetStride(s, Stmt::SET_WRITE_STRIDE, stmt->stride());
+      execSetStride(s, Stmt::SET_WRITE_STRIDE, stmt->dma.stride_internal());
       return;
 
     case Stmt::LOAD_RECEIVE:
@@ -604,38 +649,10 @@ void exec(InterpreterState* state, CoreState* s) {
     case Stmt::SEND_IRQ_TO_HOST:
       return;
 
-    // Increment semaphore
-    // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
-    case Stmt::SEMA_INC:
-      assert(stmt->semaId >= 0 && stmt->semaId < 16);
-      if (state->sema[stmt->semaId] == 15) s->stack.push(stmt);
-      else state->sema[stmt->semaId]++;
-      return;
- 
-    // Decrement semaphore
-    // Note at SEMA_INC also applies here
-    case Stmt::SEMA_DEC:
-      assert(stmt->semaId >= 0 && stmt->semaId < 16);
-      if (state->sema[stmt->semaId] == 0) s->stack.push(stmt);
-      else state->sema[stmt->semaId]--;
-      return;
-
-    case Stmt::DMA_READ_WAIT:
-    case Stmt::DMA_WRITE_WAIT:
-    case Stmt::SETUP_VPM_READ:
-    case Stmt::SETUP_VPM_WRITE:
-    case Stmt::SETUP_DMA_READ:
-    case Stmt::SETUP_DMA_WRITE:
-      // Interpreter ignores these
-      return;
-
-    case Stmt::DMA_START_READ:
-    case Stmt::DMA_START_WRITE:
-      fatal("V3DLib: DMA access not supported by interpreter\n");
-      break;
-
     default:
-      assertq(false, "interpreter: unexpected stmt-tag in exec()");
+      if (!dma_exec(state, s, stmt)) {
+        assertq(false, "interpreter: unexpected stmt-tag in exec()");
+      }
       break;
   }
 }

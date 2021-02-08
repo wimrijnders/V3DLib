@@ -213,7 +213,7 @@ void add_init(Instr::List &code) {
  * @return true if statement handled, false otherwise
  */
 bool SourceTranslate::stmt(Instr::List &seq, Stmt::Ptr s) {
-  if (DMA::is_dma_tag(s->tag)) {
+  if (DMA::Stmt::is_dma_tag(s->tag)) {
     fatal("VPM and DMA reads and writes can not be used for v3d");
     return true;
   }

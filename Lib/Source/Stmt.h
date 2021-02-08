@@ -4,6 +4,7 @@
 #include "Int.h"
 #include "Expr.h"
 #include "CExpr.h"
+#include "vc4/DMA/DMA.h"
 
 namespace V3DLib {
 
@@ -31,8 +32,6 @@ private:
 // ============================================================================
 // Class Stmt
 // ============================================================================
-
-
 
 /**
  * An instance is actually a tree of statements, due to having SEQ as 
@@ -80,7 +79,9 @@ struct Stmt : public InstructionComment {
     DMA_READ_WAIT,
     DMA_WRITE_WAIT,
     DMA_START_READ,
-    DMA_START_WRITE
+    DMA_START_WRITE,
+
+    NUM_TAGS
   };
 
   ~Stmt() {}
@@ -103,7 +104,6 @@ struct Stmt : public InstructionComment {
 
   Expr::Ptr assign_lhs() const;
   Expr::Ptr assign_rhs() const;
-  Expr::Ptr stride();
   Expr::Ptr address();
   Expr::Ptr print_expr() const;
   Stmt *first_in_seq() const;
@@ -142,34 +142,8 @@ struct Stmt : public InstructionComment {
 
   Tag tag;  // What kind of statement is it?
 
-  union {
-    // Print
-    PrintStmt print;
-
-    // Semaphore id for increment / decrement
-    int semaId;
-
-    // VPM read setup
-    struct { int numVecs; int hor; int stride; } setupVPMRead;
-
-    // VPM write setup
-    struct { int hor; int stride; } setupVPMWrite;
-
-    // DMA read setup
-    struct {
-      int numRows;
-      int rowLen;
-      int hor;
-      int vpitch;
-    } setupDMARead;
-
-    // DMA write setup
-    struct {
-      int numRows;
-      int rowLen;
-      int hor;
-    } setupDMAWrite;
-  };
+  PrintStmt print;
+  DMA::Stmt dma;
 
 private:
   BExpr::Ptr m_where_cond;

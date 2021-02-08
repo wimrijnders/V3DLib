@@ -7,7 +7,7 @@ namespace V3DLib {
 namespace DMA {
 
 Instr::List varassign_deref_var(Var &v, Expr &e);
-bool translate_stmt(Instr::List &seq, Stmt::Ptr s);
+bool translate_stmt(Instr::List &seq, int in_tag, Stmt &s);
 Instr::List StoreRequest(Var addr_var, Var data_var);
 
 }  // namespace DMA

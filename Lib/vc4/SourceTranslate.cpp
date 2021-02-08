@@ -33,7 +33,7 @@ bool SourceTranslate::stmt(Instr::List &seq, Stmt::Ptr s) {
     // Add tag handling here as required
 
     default:
-      if (!DMA::translate_stmt(seq, s)) {
+      if (!DMA::translate_stmt(seq, s->tag, s->dma)) {
         assertq(false, "translate_stmt(): unexpected stmt tag", true);
         ret = false;
       }
