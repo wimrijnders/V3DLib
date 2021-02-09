@@ -2,7 +2,7 @@
 
 ## General
 
-- [ ] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it).
+- [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it).
 - [ ] Automate loading of new versions external libraries
 - [ ] Complete conversion `Seq<Instr>` to `Instr::List`
 - [ ] Get `Pi 1` running again; fails in `qpu_enable()`
@@ -15,11 +15,15 @@
 - [ ] Tone down mesa library, compile takes long.
       Tried this but gave up after it became evident nothing could be removed.
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
-- [ ] Consider adding **Navier-Stokes** as an example.
+
+## Consider these
+
+- [ ] Adding **Navier-Stokes** as an example.
       [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
       looks promising.
-- [ ] Consider implementing [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
-- [ ] Consider making an [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
+- [ ] Implement [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
+- [ ] Make [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
+- [ ] [Use inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
 
 
 ## v3d
@@ -174,7 +178,7 @@ Pointers are initialized on kernel startup to contain offsets.
 For all intents and purposes, they are redefined as follows:
 
 ```
-    p = p + 4*(index() + 16*me());
+    p = p + 4*index();
 ```
 
 For `vc4` when doing DMA writes, this works a little differently;
@@ -206,16 +210,4 @@ As far as I'm concerned, DMA writes are old-school, and relevant only to `vc4` a
 If it works, it works.
 
 I much prefer to focus on `v3d`, which uses only TMU for main memory access.
-Maybe one day I'll rewrite the `vc4` assembly to do the same *(hereby noted as TODO)*.
-
------
-
-# Stuff to Consider
-
-## Measure performance in various ways
-
-E.g. compare between:
-
-  - different iterations of a program
-  - number of QPUs used
-  - RPi versions
+Maybe one day I'll rewrite the `vc4` assembly to do the same *(DONE)*.
