@@ -44,18 +44,40 @@ Instr::List add_uniform_pointer_offset(Instr::List &code) {
 
 namespace v3d {
 
-/**
- * Case: *v := rhs where v is a var and rhs is a var
- */
-Instr::List SourceTranslate::deref_var_var(Var lhs, Var rhs) {
+Instr::List SourceTranslate::load_var(Var &dst, Expr &e) {
+  using namespace V3DLib::Target::instr;
+
+  Instr::List ret;
+  Instr ldtmu_r4;
+  ldtmu_r4.tag = TMU0_TO_ACC4;
+
+  Reg src = srcReg(e.deref_ptr()->var());
+  ret << mov(TMU0_S, src)
+
+      // TODO: Do we need NOP's here?
+      // TODO: Check if more fields need to be set
+      // TODO is r4 safe? Do we need to select an accumulator in some way?
+      << Instr::nop()
+      << Instr::nop()
+      << ldtmu_r4
+      << mov(dstReg(dst), ACC4);
+
+  return ret;
+}
+
+
+Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
   using namespace V3DLib::Target::instr;
 
   Instr::List ret;
 
-  Reg srcData = srcReg(lhs);
-  Reg srcAddr = srcReg(rhs);
+  Reg srcData = srcReg(dst_addr);
+  Reg srcAddr = srcReg(src);
 
-  if (rhs.tag() == ELEM_NUM) {
+  if (src.tag() == ELEM_NUM) {
+    // Why would you ever do this?
+    breakpoint  // check if ever used
+
     //TODO: is ACC0 safe here?
     assert(srcAddr == ELEM_ID);
     ret << mov(ACC0, ELEM_ID)
@@ -68,29 +90,6 @@ Instr::List SourceTranslate::deref_var_var(Var lhs, Var rhs) {
       << tmuwt();
 
   return ret;
-}
-
-
-/**
- * Case: v := *w where w is a variable
- */
-void SourceTranslate::varassign_deref_var(Instr::List* seq, Var &v, Expr &e) {
-  using namespace V3DLib::Target::instr;
-  assert(seq != nullptr);
-
-  Instr ldtmu_r4;
-  ldtmu_r4.tag = TMU0_TO_ACC4;
-
-  Reg src = srcReg(e.deref_ptr()->var());
-  *seq << mov(TMU0_S, src)
-
-       // TODO: Do we need NOP's here?
-       // TODO: Check if more fields need to be set
-       // TODO is r4 safe? Do we need to select an accumulator in some way?
-       << Instr::nop()
-       << Instr::nop()
-       << ldtmu_r4
-       << mov(dstReg(v), ACC4);
 }
 
 

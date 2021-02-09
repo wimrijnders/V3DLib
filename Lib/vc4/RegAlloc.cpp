@@ -72,9 +72,10 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
 
   // Step 3
   // Allocate a register to each variable
-  RegTag prevChosenRegFile = REG_B;
   std::vector<Reg> alloc(numVars);
   for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
+
+  RegTag prevChosenRegFile = REG_B;
 
   for (int i = 0; i < numVars; i++) {
     auto possibleA = liveWith.possible_registers(i, alloc);

@@ -88,7 +88,7 @@ void assign(Instr::List *seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   // (According to previous code, that is)
   bool handle_case = (lhs.tag() == Expr::DEREF && (lhs.deref_ptr()->tag() == Expr::VAR || rhs->tag() == Expr::VAR));
   if (handle_case) {
-    *seq << getSourceTranslate().deref_var_var(lhs.deref_ptr()->var(), rhs->var());
+    *seq << getSourceTranslate().store_var(lhs.deref_ptr()->var(), rhs->var());
     return;
   }
 
@@ -752,7 +752,7 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       // In most (all?) cases it should be trivial to lift these outside the 'where'.
       //
       assertq(cond.is_always(), "V3DLib: dereferencing not yet supported inside 'where'");
-      getSourceTranslate().varassign_deref_var(&ret, v, e);
+      ret << getSourceTranslate().load_var(v, e);
       break;
     default:
       assertq(false, "This case should not be reachable");

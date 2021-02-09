@@ -180,8 +180,8 @@ std::string BaseExpr::dump() const {
 // Functions on expressions
 // ============================================================================
 
-Expr::Ptr mkIntLit(int lit) { return std::make_shared<Expr>(lit); }
-Expr::Ptr mkVar(Var var) { return std::make_shared<Expr>(var); }
+Expr::Ptr mkIntLit(int lit)      { return std::make_shared<Expr>(lit); }
+Expr::Ptr mkVar(Var var)         { return std::make_shared<Expr>(var); }
 Expr::Ptr mkDeref(Expr::Ptr ptr) { return std::make_shared<Expr>(ptr); }
 
 

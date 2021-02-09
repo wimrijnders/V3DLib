@@ -8,13 +8,13 @@
 namespace V3DLib {
 namespace vc4 {
 
-Instr::List SourceTranslate::deref_var_var(Var lhs, Var rhs) {
-  return DMA::StoreRequest(lhs, rhs);
+Instr::List SourceTranslate::load_var(Var &dst, Expr &e) {
+  return DMA::loadRequest(dst, e);
 }
 
 
-void SourceTranslate::varassign_deref_var(Instr::List *seq, Var &v, Expr &e) {
-  *seq << DMA::varassign_deref_var(v, e);
+Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
+  return DMA::storeRequest(dst_addr, src);
 }
 
 

@@ -6,8 +6,9 @@
 #include "v3d/SourceTranslate.h"
 
 namespace {
-  std::unique_ptr<V3DLib::ISourceTranslate> _vc4_source_translate;
-  std::unique_ptr<V3DLib::ISourceTranslate> _v3d_source_translate;
+
+std::unique_ptr<V3DLib::ISourceTranslate> _vc4_source_translate;
+std::unique_ptr<V3DLib::ISourceTranslate> _v3d_source_translate;
 
 }  // anon namespace
 

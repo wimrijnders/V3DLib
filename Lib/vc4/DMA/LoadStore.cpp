@@ -446,18 +446,48 @@ Instr sendIRQToHost() {
 }  // anon namespace
 
 
-Instr::List varassign_deref_var(Var &v, Expr &e) {
+/**
+ * Load vector `dst` from address in main memory as specified by `e`
+ */
+Instr::List loadRequest(Var &dst, Expr &e) {
   using namespace V3DLib::Target::instr;
 
   Reg reg = srcReg(e.deref_ptr()->var());
   Instr::List ret;
   
-  ret << genSetReadPitch(4).comment("Start DMA load var")                        // Setup DMA
+  ret << genSetReadPitch(4).comment("Start DMA load var")                          // Setup DMA
       << genSetupDMALoad(16, 1, 1, 1, QPU_ID)
-      << genStartDMALoad(reg)                                                    // Start DMA load
-      << genWaitDMALoad(false)                                                   // Wait for DMA
-      << genSetupVPMLoad(1, QPU_ID, 0, 1)                                        // Setup VPM
-      << shl(dstReg(v), Target::instr::VPM_READ, 0).comment("End DMA load var"); // Get from VPM
+      << genStartDMALoad(reg)                                                      // Start DMA load
+      << genWaitDMALoad(false)                                                     // Wait for DMA
+      << genSetupVPMLoad(1, QPU_ID, 0, 1)                                          // Setup VPM
+      << shl(dstReg(dst), Target::instr::VPM_READ, 0).comment("End DMA load var"); // Get from VPM
+
+  return ret;
+}
+
+
+/**
+ * Save vector `src` to destination addres in main memory
+ */
+Instr::List storeRequest(Var dst_addr, Var src) {
+  using namespace V3DLib::Target::instr;
+
+  Reg addr      = freshReg();
+  Reg storeAddr = freshReg();
+
+  Instr::List ret;
+
+  ret << li(addr, 16).comment("Start DMA store request")                       // Setup VPM
+      << add(addr, addr, QPU_ID)
+      << genSetupVPMStore(addr, 0, 1)
+      << li(storeAddr, 256)                                                    // Store address
+      << add(storeAddr, storeAddr, QPU_ID)
+      << genWaitDMAStore()                                                  // Wait for any previous store to complete
+
+      << genSetWriteStride(0)                                                  // Setup DMA
+      << genSetupDMAStore(16, 1, 1, storeAddr)
+      << shl(Target::instr::VPM_WRITE, srcReg(src), 0)                         // Put to VPM
+      << genStartDMAStore(srcReg(dst_addr)).comment("End DMA store request");  // Start DMA
 
   return ret;
 }
@@ -489,30 +519,6 @@ bool translate_stmt(Instr::List &seq, int in_tag, Stmt &s) {
       ret = false;
       break;
   }
-
-  return ret;
-}
-
-
-Instr::List StoreRequest(Var addr_var, Var data_var) {
-  using namespace V3DLib::Target::instr;
-
-  Reg addr      = freshReg();
-  Reg storeAddr = freshReg();
-
-  Instr::List ret;
-
-  ret << li(addr, 16).comment("Start DMA store request")                       // Setup VPM
-      << add(addr, addr, QPU_ID)
-      << genSetupVPMStore(addr, 0, 1)
-      << li(storeAddr, 256)                                                    // Store address
-      << add(storeAddr, storeAddr, QPU_ID)
-      << genWaitDMAStore()                                                  // Wait for any previous store to complete
-
-      << genSetWriteStride(0)                                                  // Setup DMA
-      << genSetupDMAStore(16, 1, 1, storeAddr)
-      << shl(Target::instr::VPM_WRITE, srcReg(data_var), 0)                    // Put to VPM
-      << genStartDMAStore(srcReg(addr_var)).comment("End DMA store request");  // Start DMA
 
   return ret;
 }
