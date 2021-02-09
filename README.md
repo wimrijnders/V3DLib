@@ -131,7 +131,7 @@ The following works were *very* helpful in the development.
 * The [documentation, demos, and assembler](https://github.com/hermanhermitage/videocoreiv-qpu)
   by Herman Hermitage.
 * The [FFT implementation](http://www.aholme.co.uk/GPU_FFT/Main.htm)
-  by Andrew Holme. [Blog](https://www.raspberrypi.org/blog/accelerating-fourier-transforms-using-the-gpu/]
+  by Andrew Holme. [Blog](https://www.raspberrypi.org/blog/accelerating-fourier-transforms-using-the-gpu/)
 
 #### VideoCore VI 
 * [v3d driver code in the linux kernel repository] - of special interest: [v3d_gem.c],

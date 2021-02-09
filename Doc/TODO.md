@@ -24,6 +24,7 @@
 - [ ] Implement [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
 - [ ] Make [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
 - [ ] [Use inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
+- [ ] Implement DFT (and then FFT) - consider [sliding windows](https://github.com/glidernet/ogn-rf/issues/36#issuecomment-775688969)
 
 
 ## v3d
