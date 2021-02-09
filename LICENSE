@@ -10,6 +10,8 @@ in the V3DLib repository, except for:
   * Everything under mesa/src
   * Everything under mesa/include
   * docs/VideoCoreIV-AG100-R.pdf
+  * Tests/support/qpu_disasm.c
+  * Tests/support/qpu_disasm.h
 
 MIT License
 
