@@ -41,11 +41,6 @@ void receive(Float &dest) { receiveExpr(dest.expr()); }
 // With gather limit
 //=============================================================================
 
-namespace {
-
-}  // anon namespace
-
-
 void gather(Ptr<Float> &addr_a, Ptr<Float> &addr_b) {
   int count = Platform::gather_limit()/2;
 

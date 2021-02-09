@@ -21,6 +21,7 @@ Instr::Instr(InstrTag in_tag) {
     LI.m_setCond.clear();
     LI.cond      = always;
     break;
+
   case InstrTag::INIT_BEGIN:
   case InstrTag::INIT_END:
   case InstrTag::RECV:

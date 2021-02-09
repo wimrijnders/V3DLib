@@ -26,26 +26,33 @@ inline bool isRegAorB(RegTag rt)
 
 // Special registers
 enum Special {
-    // Read-only
-    SPECIAL_UNIFORM
-  , SPECIAL_ELEM_NUM
-  , SPECIAL_QPU_NUM
-  , SPECIAL_VPM_READ
-  , SPECIAL_DMA_ST_WAIT
-  , SPECIAL_DMA_LD_WAIT
+  // Read-only
+  SPECIAL_UNIFORM,
+  SPECIAL_ELEM_NUM,
+  SPECIAL_QPU_NUM,
 
-    // Write-only
-  , SPECIAL_RD_SETUP
-  , SPECIAL_WR_SETUP
-  , SPECIAL_DMA_ST_ADDR
-  , SPECIAL_DMA_LD_ADDR
-  , SPECIAL_VPM_WRITE
-  , SPECIAL_HOST_INT
-  , SPECIAL_TMU0_S
-  , SPECIAL_SFU_RECIP
-  , SPECIAL_SFU_RECIPSQRT
-  , SPECIAL_SFU_EXP
-  , SPECIAL_SFU_LOG
+  // DMA Read-only
+  SPECIAL_VPM_READ,
+  SPECIAL_DMA_ST_WAIT,
+  SPECIAL_DMA_LD_WAIT,
+
+  // DMA Write-only
+  SPECIAL_RD_SETUP,
+  SPECIAL_WR_SETUP,
+  SPECIAL_HOST_INT,
+  SPECIAL_DMA_LD_ADDR,
+
+  // DMA registers reused for v3d TMU
+  // Write-only
+  SPECIAL_DMA_ST_ADDR,
+  SPECIAL_VPM_WRITE,
+  SPECIAL_TMU0_S,
+
+  // SFU registers
+  SPECIAL_SFU_RECIP,
+  SPECIAL_SFU_RECIPSQRT,
+  SPECIAL_SFU_EXP,
+  SPECIAL_SFU_LOG
 };
 
 
@@ -73,6 +80,8 @@ struct Reg {
 Reg freshReg();
 Reg srcReg(Var v);
 Reg dstReg(Var v);
+
+bool is_dma_only_register(Reg const &reg);
 
 }  // namespace V3DLib
 

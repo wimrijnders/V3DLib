@@ -74,6 +74,7 @@ std::string pretty_instr(Instr const &instr) {
           << pretty(instr.LI.imm);
     }
     break;
+
     case ALU: {
       buf << instr.ALU.cond.to_string()
           << instr.ALU.dest.pretty()
@@ -87,6 +88,7 @@ std::string pretty_instr(Instr const &instr) {
       }
     }
     break;
+
     case BR:   buf << "if " << instr.BR.cond.to_string() << " goto " << instr.BR.target.to_string(); break;
     case BRL:  buf << "if " << instr.BRL.cond.to_string() << " goto L" << instr.BRL.label;           break;
     case LAB:  buf << "L" << instr.label();                                                          break;

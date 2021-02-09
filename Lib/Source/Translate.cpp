@@ -808,9 +808,9 @@ void loadStorePass(Instr::List &instrs) {
 
     switch (instr.tag) {
       case RECV: {
-        newInstrs << Instr(TMU0_TO_ACC4);
-        newInstrs.back().transfer_comments(instr);
-        newInstrs << mov(instr.RECV.dest, ACC4);
+        newInstrs << Instr(TMU0_TO_ACC4)
+                  << mov(instr.RECV.dest, ACC4);
+        newInstrs.front().transfer_comments(instr);
         break;
       }
       default:

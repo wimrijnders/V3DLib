@@ -44,23 +44,22 @@ Instr::List add_uniform_pointer_offset(Instr::List &code) {
 
 namespace v3d {
 
-Instr::List SourceTranslate::load_var(Var &dst, Expr &e) {
+Instr::List SourceTranslate::load_var(Var &in_dst, Expr &e) {
   using namespace V3DLib::Target::instr;
 
   Instr::List ret;
-  Instr ldtmu_r4;
-  ldtmu_r4.tag = TMU0_TO_ACC4;
 
   Reg src = srcReg(e.deref_ptr()->var());
+  Reg dst = dstReg(in_dst);
+
   ret << mov(TMU0_S, src)
 
       // TODO: Do we need NOP's here?
-      // TODO: Check if more fields need to be set
       // TODO is r4 safe? Do we need to select an accumulator in some way?
       << Instr::nop()
       << Instr::nop()
-      << ldtmu_r4
-      << mov(dstReg(dst), ACC4);
+      << Instr(TMU0_TO_ACC4)
+      << mov(dst, ACC4);
 
   return ret;
 }

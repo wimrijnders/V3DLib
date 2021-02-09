@@ -137,4 +137,22 @@ std::string Reg::pretty() const {
   return ret;
 }
 
+
+bool is_dma_only_register(Reg const &reg) {
+  if (reg.tag != SPECIAL) return false;
+
+  switch (reg.regId) {
+    case SPECIAL_VPM_READ:
+    case SPECIAL_DMA_ST_WAIT:
+    case SPECIAL_DMA_LD_WAIT:
+    case SPECIAL_RD_SETUP:
+    case SPECIAL_WR_SETUP:
+    case SPECIAL_HOST_INT:
+    case SPECIAL_DMA_LD_ADDR:
+      return true;
+  }
+
+  return false;
+}
+
 }  // namespace V3DLib

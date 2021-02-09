@@ -74,51 +74,100 @@ SmallImm encodeSmallImm(RegOrImm const &src_reg) {
 }
 
 
+std::unique_ptr<Location> loc_ptr(Register const &reg) {
+  std::unique_ptr<Location> ret;
+  ret.reset(new Register(reg));
+  return ret;
+}
+
+
+std::unique_ptr<Location> loc_acc(RegId regId, int max_id) {
+  assert(regId >= 0 && regId <= max_id);
+  std::unique_ptr<Location> ret;
+
+  switch(regId) {
+    case 0: ret = loc_ptr(r0); break;
+    case 1: ret = loc_ptr(r1); break;
+    case 2: ret = loc_ptr(r2); break;
+    case 3: ret = loc_ptr(r3); break;
+    case 4: ret = loc_ptr(r4); break;
+    case 5: ret = loc_ptr(r5); break;
+  }
+
+  assert(ret.get() != nullptr);
+  return ret;
+}
+
+
+void check_unhandled_registers(Reg reg, bool do_src_regs) {
+  if (do_src_regs) {
+    switch (reg.tag) {
+      case REG_B:
+        debug_break("encodeSrcReg(): Not expecting REG_B any more, examine");
+      break;
+
+    case SPECIAL:
+      if (is_dma_only_register(reg)) {
+        throw Exception("The code uses DMA source registers. These are not supported for v3d.");
+      }
+
+      switch (reg.regId) {
+        case SPECIAL_UNIFORM:
+        case SPECIAL_ELEM_NUM:
+        case SPECIAL_QPU_NUM:
+          assertq(false, "encodeSrcReg(): Not expecting this SPECIAL regId, should be handled before call()", true);
+        break;
+
+        default:
+          breakpoint // TODO examine what happens on fall-through
+        break;
+      }
+      break;
+
+      default: break;
+    }
+
+    return;
+  }
+
+  // Do dst regs
+  switch (reg.tag) {
+    case REG_B:
+      debug_break("encodeDestReg(): Not expecting REG_B any more, examine");
+      break;
+    case SPECIAL:
+      if (is_dma_only_register(reg)) {
+        throw Exception("The code uses DMA destination registers. These are not supported for v3d.");
+      }
+      break;
+
+    default:
+      break;
+  }
+}
+
+
 /**
  *
  * TODO this does not appear to be called any more, or at least not used fully
  */
 std::unique_ptr<Location> encodeSrcReg(Reg reg) {
+  check_unhandled_registers(reg, true);
+
   bool is_none = false;
   std::unique_ptr<Location> ret;
 
   switch (reg.tag) {
-    case REG_B:
-      debug_break("encodeSrcReg(): Not expecting REG_B any more, examine");
-      // Fall-thru
     case REG_A:
       check_reg(reg);
       ret.reset(new RFAddress(to_waddr(reg)));
       break;
     case ACC:
-      assert(reg.regId >= 0 && reg.regId <= 4); // !!! Apparently, r5 not allowed here
-      switch(reg.regId) {
-        case 0: ret.reset(new Register(r0)); break;
-        case 1: ret.reset(new Register(r1)); break;
-        case 2: ret.reset(new Register(r2)); break;
-        case 3: ret.reset(new Register(r3)); break;
-        case 4: ret.reset(new Register(r4)); break;
-      }
-      break;
-    case SPECIAL:
-      switch (reg.regId) {
-        case SPECIAL_QPU_NUM:
-        case SPECIAL_ELEM_NUM:
-        case SPECIAL_UNIFORM:
-          assertq(false, "encodeSrcReg(): Not expecting this SPECIAL regId, should be handled before call()", true);
-        break;
-
-        // Not handled (yet)
-        case SPECIAL_VPM_READ:
-        case SPECIAL_DMA_LD_WAIT:
-        case SPECIAL_DMA_ST_WAIT:
-          breakpoint
-        break;
-      }
+      ret = loc_acc(reg.regId, 4);  // r5 not allowed here (?)
       break;
     case NONE:
       is_none = true;
-      breakpoint
+      breakpoint  // Apparently never reached
       break;
 
     default:
@@ -147,55 +196,38 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
     reg = src_instr.LI.dest;
   }
 
+  check_unhandled_registers(reg, false);
+
   switch (reg.tag) {
-    case REG_B:
-      debug_break("encodeDestReg(): Not expecting REG_B any more, examine");
-      // fall-thru
     case REG_A:
       check_reg(reg);
       ret.reset(new RFAddress(to_waddr(reg)));
       break;
+
     case ACC:
-      assert(reg.regId >= 0 && reg.regId <= 5);
-      switch(reg.regId) {
-        case 0: ret.reset(new Register(r0)); break;
-        case 1: ret.reset(new Register(r1)); break;
-        case 2: ret.reset(new Register(r2)); break;
-        case 3: ret.reset(new Register(r3)); break;
-        case 4: ret.reset(new Register(r4)); break;
-        case 5: ret.reset(new Register(r5)); break;
-      }
+      ret = loc_acc(reg.regId, 5);
       break;
+
     case SPECIAL:
       switch (reg.regId) {
-        // These values should never be generated for v3d
-        case SPECIAL_RD_SETUP:            // value 6
-        case SPECIAL_WR_SETUP:            // value 7
-        case SPECIAL_HOST_INT:            // value 11
-          assertq(false, "Regid's should not be generated for v3d", true);
-          break;
-
-        case SPECIAL_DMA_LD_ADDR:         // value 9
-          throw Exception("The source code uses DMA instructions. These are not supported for v3d.");
-          break;
-
-        // These values *are* generated and handled
-        // Note that they get translated to the v3d registers, though
+        // These DMA registers *are* handled
+        // They get translated to the corresponding v3d registers
+        // TODO get VPM/DMA out of sight
         case SPECIAL_VPM_WRITE:           // Write TMU, to set data to write
-          ret.reset(new Register(tmud));
+          ret = loc_ptr(tmud);
           break;
         case SPECIAL_DMA_ST_ADDR:         // Write TMU, to set memory address to write to
-          ret.reset(new Register(tmua));
+          ret = loc_ptr(tmua);
           break;
         case SPECIAL_TMU0_S:              // Read TMU
-          ret.reset(new Register(tmua));
+          ret = loc_ptr(tmua);
           break;
 
         // SFU registers
-        case SPECIAL_SFU_RECIP    : ret.reset(new Register(recip));     break;
-        case SPECIAL_SFU_RECIPSQRT: ret.reset(new Register(rsqrt));     break;  // Alternative: register rsqrt2
-        case SPECIAL_SFU_EXP      : ret.reset(new Register(exp));       break;
-        case SPECIAL_SFU_LOG      : ret.reset(new Register(log));       break;
+        case SPECIAL_SFU_RECIP    : ret = loc_ptr(recip);     break;
+        case SPECIAL_SFU_RECIPSQRT: ret = loc_ptr(rsqrt);     break;  // Alternative: register rsqrt2
+        case SPECIAL_SFU_EXP      : ret = loc_ptr(exp);       break;
+        case SPECIAL_SFU_LOG      : ret = loc_ptr(log);       break;
 
         default:
           assertq(false, "encodeDestReg(): not expecting reg tag", true);
