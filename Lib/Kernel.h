@@ -11,8 +11,8 @@
 #include "vc4/vc4.h"
 #include "Support/Platform.h"
 #include "Support/assign.h"
-#include  "vc4/KernelDriver.h"
-#include  "v3d/KernelDriver.h"
+#include "vc4/KernelDriver.h"
+#include "v3d/KernelDriver.h"
 
 namespace V3DLib {
 
@@ -158,7 +158,7 @@ public:
 
   void pretty(bool output_for_vc4, const char *filename = nullptr, bool output_qpu_code = true);
 
-  void setNumQPUs(int n) { numQPUs = n; }  // Set number of QPUs to use
+  KernelBase &setNumQPUs(int n)       { numQPUs = n;           return *this; }
 
   void emu();
   void interpret();

@@ -1,6 +1,7 @@
 #include "catch.hpp"
 #include <math.h>
 #include "../Examples/Kernels/Rot3D.h"
+#include "LibSettings.h"
 
 using namespace kernels;
 
@@ -116,9 +117,21 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     //
 
     {
+      // This is to check if DMA is still working for load var
+      LibSettings::use_tmu_for_load(false);
       SharedArray<float> x(N), y(N);
+      auto k = compile(rot3D_1);
 
-      auto k = compile(rot3D_2);
+      INFO("Running kernel 1 with DMA");
+      initArrays(x, y, N);
+      k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
+      compareResults(x_1, y_1, x, y, N, "Rot3D_1 DMA");
+      LibSettings::use_tmu_for_load(true);
+    }
+
+    {
+      SharedArray<float> x(N), y(N);
+      auto k = compile(rot3D_1a);
 
       INFO("Running kernel 1a with 1 QPU");
       initArrays(x, y, N);
@@ -130,6 +143,11 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
       initArrays(x, y, N);
       k.load(N, cosf(THETA), sinf(THETA), &x, &y).call();
       compareResults(x_1, y_1, x, y, N, "Rot3D_1a");
+    }
+
+    {
+      SharedArray<float> x(N), y(N);
+      auto k = compile(rot3D_2);
 
       INFO("Running kernel 2 with 1 QPU");
       initArrays(x, y, N);

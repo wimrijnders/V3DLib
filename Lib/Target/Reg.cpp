@@ -8,23 +8,23 @@ namespace {
 const char* specialStr(RegId rid) {
   Special s = (Special) rid;
   switch (s) {
-    case SPECIAL_UNIFORM:      return "UNIFORM";
-    case SPECIAL_ELEM_NUM:     return "ELEM_NUM";
-    case SPECIAL_QPU_NUM:      return "QPU_NUM";
-    case SPECIAL_RD_SETUP:     return "RD_SETUP";
-    case SPECIAL_WR_SETUP:     return "WR_SETUP";
-    case SPECIAL_DMA_ST_ADDR:  return "DMA_ST_ADDR";
-    case SPECIAL_DMA_LD_ADDR:  return "DMA_LD_ADDR";
-    case SPECIAL_DMA_ST_WAIT:  return "DMA_ST_WAIT";
-    case SPECIAL_DMA_LD_WAIT:  return "DMA_LD_WAIT";
-    case SPECIAL_VPM_READ:     return "VPM_READ";
-    case SPECIAL_VPM_WRITE:    return "VPM_WRITE";
-    case SPECIAL_HOST_INT:     return "HOST_INT";
-    case SPECIAL_TMU0_S:       return "TMU0_S";
+    case SPECIAL_UNIFORM:       return "UNIFORM";
+    case SPECIAL_ELEM_NUM:      return "ELEM_NUM";
+    case SPECIAL_QPU_NUM:       return "QPU_NUM";
+    case SPECIAL_RD_SETUP:      return "RD_SETUP";
+    case SPECIAL_WR_SETUP:      return "WR_SETUP";
+    case SPECIAL_DMA_ST_ADDR:   return "DMA_ST_ADDR";
+    case SPECIAL_DMA_LD_ADDR:   return "DMA_LD_ADDR";
+    case SPECIAL_DMA_ST_WAIT:   return "DMA_ST_WAIT";
+    case SPECIAL_DMA_LD_WAIT:   return "DMA_LD_WAIT";
+    case SPECIAL_VPM_READ:      return "VPM_READ";
+    case SPECIAL_VPM_WRITE:     return "VPM_WRITE";
+    case SPECIAL_HOST_INT:      return "HOST_INT";
+    case SPECIAL_TMU0_S:        return "TMU0_S";
     case SPECIAL_SFU_RECIP:     return "SFU_RECIP";
     case SPECIAL_SFU_RECIPSQRT: return "SFU_RECIPSQRT";
-    case SPECIAL_SFU_EXP:      return "SFU_EXP";
-    case SPECIAL_SFU_LOG:      return "SFU_LOG";
+    case SPECIAL_SFU_EXP:       return "SFU_EXP";
+    case SPECIAL_SFU_LOG:       return "SFU_LOG";
   }
 
   // Unreachable
@@ -108,12 +108,9 @@ Reg dstReg(Var v) {
       fatal("V3DLib: writing to read-only special register is forbidden");
       return Reg();  // Return anything
 
-    case STANDARD:
-      return Reg(REG_A, v.id());
-    case VarTag::VPM_WRITE:
-      return Target::instr::VPM_WRITE;
-    case TMU0_ADDR:
-      return TMU0_S;
+    case STANDARD:          return Reg(REG_A, v.id());
+    case VarTag::VPM_WRITE: return Target::instr::VPM_WRITE;
+    case TMU0_ADDR:         return TMU0_S;
 
     default:
       fatal("Unhandled case in dstReg()");

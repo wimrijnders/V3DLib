@@ -747,7 +747,7 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       }
                                                                      // w is a variable
       //
-      // Restriction:i
+      // Restriction:
       // dereferencing is disallowed in conditional ('where') assignments for simplicity.
       // In most (all?) cases it should be trivial to lift these outside the 'where'.
       //

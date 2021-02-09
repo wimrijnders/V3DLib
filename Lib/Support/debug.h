@@ -15,6 +15,7 @@
 
 void debug(const char *str);
 void warning(const char *str);
+inline void warning(std::string const &str) { return warning(str.c_str()); }
 void debug_break(const char *str);
 
 #else

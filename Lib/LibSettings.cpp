@@ -1,5 +1,5 @@
 #include "LibSettings.h"
-#include "Support/debug.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 namespace {
@@ -7,8 +7,9 @@ int const DEFAULT_HEAP_SIZE = 8*1024*1024;
 int const QPU_TIMEOUT = 10;
 
 struct SettingsInternal {
-  int heap_size   = -1;  // bytes, size of shared (CPU-GPU) memory
-  int qpu_timeout = -1;  // seconds, time to wait for response from QPU
+  int  heap_size   = -1;        // bytes, size of shared (CPU-GPU) memory
+  int  qpu_timeout = -1;        // seconds, time to wait for response from QPU
+  bool use_tmu_for_load = true; // vc4 only, ignored for v3d. If false, use DMA
 } settings;
 
 }  // anon namespace
@@ -46,6 +47,20 @@ void LibSettings::heap_size(int val) {
   assert(val > 0);
   assert(settings.heap_size == -1); // For now, allow setting it only once
   settings.heap_size = val;
+}
+
+
+bool LibSettings::use_tmu_for_load() {
+  return settings.use_tmu_for_load;
+}
+
+
+void LibSettings::use_tmu_for_load(bool val) {
+  //std::string cmt;
+  //cmt << "LibSettings::use_tmu_for_load(" << val << ")";
+  //warning(cmt);
+  
+  settings.use_tmu_for_load = val;
 }
 
 }  // namespace V3DLib
