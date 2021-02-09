@@ -1,6 +1,6 @@
 # V3DLib
 
-**Version 0.2.0**
+**Version 0.2.1**
 
 `V3DLib` is a C++ library for creating programs to run on the VideoCore GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 
@@ -131,7 +131,7 @@ The following works were *very* helpful in the development.
 * The [documentation, demos, and assembler](https://github.com/hermanhermitage/videocoreiv-qpu)
   by Herman Hermitage.
 * The [FFT implementation](http://www.aholme.co.uk/GPU_FFT/Main.htm)
-  by Andrew Holme.
+  by Andrew Holme. [Blog](https://www.raspberrypi.org/blog/accelerating-fourier-transforms-using-the-gpu/)
 
 #### VideoCore VI 
 * [v3d driver code in the linux kernel repository] - of special interest: [v3d_gem.c],
