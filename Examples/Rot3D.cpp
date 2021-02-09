@@ -5,7 +5,6 @@
 #include "Support/Timer.h"
 #include "Support/debug.h"
 #include "Kernels/Rot3D.h"
-#include "LibSettings.h"
 
 using namespace V3DLib;
 using namespace kernels;
@@ -111,7 +110,6 @@ void run_scalar_kernel() {
 
 
 void run_qpu_kernel(KernelType &kernel) {
-  LibSettings::use_tmu_for_load(false);
   auto k = compile(kernel);  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
