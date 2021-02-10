@@ -151,21 +151,50 @@ void kernel(Ptr<Float> x) {
 ## Automatic uniform pointer initialization
 
 The uniform pointers are initialized with vector offsets on the execution of a kernel.
-The stride is added implicitly to all uniform pointers on initialization.
+In effect, all uniform pointers get adjusted as follows:
+
+    ptr += 4*index()
+
 There is therefore no need to explicitly do this yourself.
-
-It is, however, useful to be aware of this pointer adjustment, and it is conceivable
-that you might need to use it in your own code.
-
-This adjustment has been integrated in the pointer usage, because it is so frequently
-recurring that I consider it to be the standard way of dealing with pointers.
+It is useful to be aware of this pointer adjustment, as it is conceivable
+that you might need to adjust it in your own code.
+For most purposes, however, the adjustment is useful and recurs frequently - almost always,
+I have not encountered a counter-example yet.
 
 Automatic uniform pointer initialization places restrictions on pointer usage:
 
-- All accessed memory blocks should have a number of elements which is a multiple of 16.
+- All accessed memory blocks must a number of elements which is a multiple of 16.
 
 Not adhering to this will lead to reads and writes outside the memory blocks.
 This is not necessarily fatal, but you can expect wild and unexpected results.
+
+## vc4 DMA write: destination pointer is impervious to offset changes
+
+For `vc4`, when doing DMA writes, the index offset is taken into account
+in the DMA setup, therefore there is no need to add it.
+In fact, the added offset is completely disregarded.
+
+This came to light in a previous version of the `DSL` unit test.
+The following was done before a write (kernel source code):
+
+```
+  outIndex = index();
+  ...
+  result[outIndex] = res;
+  outIndex = outIndex + 16;
+```
+
+I would expect DMA to write to wrong locations, **But it doesn't**.
+The DMA write ignores this offset and writes to the correct location, i.e. just like:
+
+```
+  ...
+  *result = res;
+  ...
+```
+
+My working hypothesis is that only the pointer value for vector index 0 is used to
+initialize DMA.
 
 ### Previous Attempts
 
@@ -190,7 +219,7 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 
 /*
     // Previous version, adding an offset for multiple QPUs
-	// This was silly idea and has been removed. Kept here for reference
+    // This was silly idea and has been removed. Kept here for reference
     // offset = 4 * (vector_id + 16 * qpu_num);
     ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID (next stmt)
         << mov(ACC0, ELEM_ID)
