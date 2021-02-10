@@ -560,7 +560,7 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
 
   auto k = compile(rot_kernel<Int>);
   k.pretty(true, "obj/test/rot_kernel.txt", false);
-  k.load(&result1, &a);
+  //k.load(&result1, &a);
 
   // Interpreter works fine, used here to compare emulator output
   reset();
@@ -577,6 +577,73 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
   //dump_array(result2, 16);
 
   REQUIRE(result1 == result2);
+
+  Platform::use_main_memory(false);
+}
+
+
+/**
+ * This should try out all the possible ways of reading and writing
+ * main memory.
+ */
+template<typename T>
+void offsets_kernel(Ptr<T> result, Ptr<T> src) {
+  Int a = index();
+  *result = a; result.inc();
+
+  T val = *src;
+  *result = val;
+}
+
+
+/**
+ * Created in order to test init uniforms pointers with index() for vc4
+ */
+TEST_CASE("Initialization with index() on uniform pointers should work as expected", "[dsl][offsets]") {
+  Platform::use_main_memory(true);
+  int const N = 2;
+
+  SharedArray<int> a(2*16);
+  SharedArray<int> result(N*16);
+
+  std::vector<int> expected = {
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
+    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+
+  REQUIRE(expected.size() == N*16);
+  REQUIRE(result.size() == expected.size());
+
+  auto reset = [&a, &result] () {
+    for (int i = 0; i < (int) a.size(); i++) {
+      a[i] = (i + 1);
+    }
+
+    result.fill(-1);
+  };
+
+  auto check = [&result, &expected] (char const *label) {
+    for (int i = 0; i < (int) result.size(); i++) {
+      INFO("label: " << label << ", row: " << (i/16) << ", index: " << (i %16));
+      REQUIRE(result[i] == expected[i]);
+    }
+  };
+
+
+  auto k = compile(offsets_kernel<Int>);
+  k.pretty(true, nullptr, false);
+  k.load(&result, &a);
+
+  reset();
+  k.interpret();
+  dump_array(result, 16);
+  check("1");  // !!! Passes, even if ptr offset wrong!
+
+  reset();
+  k.emu();
+  dump_array(result, 16);
+  check("2");
+
+  // TODO test DMA as well
 
   Platform::use_main_memory(false);
 }

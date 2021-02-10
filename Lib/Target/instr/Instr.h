@@ -250,6 +250,7 @@ struct Instr : public InstructionComment {
   bool isCondAssign() const;
   bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
   bool isUniformLoad() const;
+  bool isUniformPtrLoad() const;
   bool isTMUAWrite(bool fetch_only = false) const;
   bool isZero() const;
   bool isLast() const;

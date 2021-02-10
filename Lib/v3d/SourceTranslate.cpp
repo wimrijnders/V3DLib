@@ -11,38 +11,6 @@ namespace V3DLib {
 
 using ::operator<<;  // C++ weirdness
 
-namespace {
-
-
-/**
- * Generate code to add an offset to the uniforms which are pointers.
- *
- * The calculated offset is assumed to be in ACC0
- */
-Instr::List add_uniform_pointer_offset(Instr::List &code) {
-  using namespace V3DLib::Target::instr;
-
-  Instr::List ret;
-
-  // add the offset to all the uniform pointers
-  for (int index = 0; index < code.size(); ++index) {
-    auto &instr = code[index];
-
-    if (!instr.isUniformLoad()) {  // Assumption: uniform loads always at top
-      break;
-    }
-
-    if (instr.ALU.srcA.tag == REG && instr.ALU.srcA.reg.isUniformPtr) {
-      ret << add(rf((uint8_t) index), rf((uint8_t) index), ACC0);
-    }
-  }
-
-  return ret;
-}
-
-}  // anon namespace
-
-
 namespace v3d {
 
 Instr::List SourceTranslate::load_var(Var &in_dst, Expr &e) {
@@ -188,11 +156,8 @@ void add_init(Instr::List &code) {
       << mov(ACC0, QPU_ID)
       << shr(ACC0, ACC0, 2)
       << band(rf(RSV_QPU_ID), ACC0, 15)
-      << label(endifLabel);
+      << label(endifLabel)
 
-  // offset = 4 * vector_id;
-  ret << mov(ACC0, ELEM_ID)
-      << shl(ACC0, ACC0, 2)           // offset now in ACC0
       << add_uniform_pointer_offset(code);
 
   code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker

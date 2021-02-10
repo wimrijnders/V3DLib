@@ -1,6 +1,7 @@
 #include "EmuSupport.h"
 #include <cstdio>
 #include <cstring>  // strlen()
+#include "Support/basics.h"
 
 namespace V3DLib {
 
@@ -8,8 +9,7 @@ namespace V3DLib {
 // Rotate a vector
 // ============================================================================
 
-Vec rotate(Vec v, int n)
-{
+Vec rotate(Vec v, int n) {
   Vec w;
   for (int i = 0; i < NUM_LANES; i++)
     w[(i+n) % NUM_LANES] = v[i];
@@ -63,6 +63,19 @@ void printFloatVec(Seq<char>* out, Vec x) {
     if (i != NUM_LANES-1) emitChar(out, ',');
   }
   emitChar(out, '>');
+}
+
+
+std::string Vec::dump() const {
+  std::string ret;
+  ret << "<";
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    ret << elems[i].intVal << ", ";
+  }
+
+  ret << ">";
+  return ret;
 }
 
 }  // namespace V3DLib

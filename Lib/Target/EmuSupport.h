@@ -31,9 +31,12 @@ struct Vec {
     return get(index);
   }
 
+  std::string dump() const;
+
 private:
    Word elems[NUM_LANES];
 };
+
 
 // In-flight DMA request
 struct DMAAddr {

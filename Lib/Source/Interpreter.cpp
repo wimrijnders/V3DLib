@@ -45,10 +45,23 @@ struct InterpreterState {
 
 
 void storeToHeap(CoreState *s, Vec &index, Vec &val) {
+  printf("Called storeToHeap\n");  // WRI DEBUG
+  printf("index: %s\n", index.dump().c_str());
+  printf("val: %s\n", val.dump().c_str());
+
+/*
+  // Previous way of storing - relevant for DMA
   uint32_t hp = (uint32_t) index[0].intVal;
   for (int i = 0; i < NUM_LANES; i++) {
     s->emuHeap.phy(hp>>2) = val[i].intVal;
     hp += 4 + s->writeStride;
+  }
+*/
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    uint32_t hp = (uint32_t) index[i].intVal;
+
+    s->emuHeap.phy(hp>>2) = val[i].intVal;
   }
 }
 
@@ -205,6 +218,9 @@ Vec eval(CoreState* s, Expr::Ptr e) {
 
     // Dereference pointer
     case Expr::DEREF:
+/*
+      // Version probably relevant for DMA
+
       Vec a = eval(s, e->deref_ptr());
       uint32_t hp = (uint32_t) a[0].intVal;
 
@@ -216,6 +232,15 @@ Vec eval(CoreState* s, Expr::Ptr e) {
       for (int i = 0; i < NUM_LANES; i++) {
         v[i].intVal = s->emuHeap.phy((hp >> 2) + i); // WRI added '+ i'
         hp += s->readStride;
+      }
+      return v;
+*/
+      Vec a = eval(s, e->deref_ptr());
+
+      Vec v;
+      for (int i = 0; i < NUM_LANES; i++) {
+        uint32_t hp = (uint32_t) a[i].intVal;
+        v[i].intVal = s->emuHeap.phy((hp >> 2));
       }
       return v;
   }
@@ -417,27 +442,32 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
 // Condition vector auxiliaries
 // ============================================================================
 
-// Condition vector containing all trues
-Vec vecAlways()
-{
+/**
+ * Condition vector containing all trues
+ */
+Vec vecAlways() {
   Vec always;
   for (int i = 0; i < NUM_LANES; i++)
     always[i].intVal = 1;
   return always;
 }
 
-// Negate a condition vector
-Vec vecNeg(Vec cond)
-{
+
+/**
+ * Negate a condition vector
+ */
+Vec vecNeg(Vec cond) {
   Vec v;
   for (int i = 0; i < NUM_LANES; i++)
     v[i].intVal = !cond[i].intVal;
   return v;
 }
 
-// And two condition vectors
-Vec vecAnd(Vec x, Vec y)
-{
+
+/**
+ * And two condition vectors
+ */
+Vec vecAnd(Vec x, Vec y) {
   Vec v;
   for (int i = 0; i < NUM_LANES; i++)
     v[i].intVal = x[i].intVal && y[i].intVal;
@@ -643,6 +673,7 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     case Stmt::LOAD_RECEIVE:
+      printf("Doing LOAD_RECEIVE\n");  // WRI DEBUG
       execLoadReceive(s, stmt->address());
       return;
 

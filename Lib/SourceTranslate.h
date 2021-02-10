@@ -17,6 +17,7 @@ public:
 };
 
 ISourceTranslate &getSourceTranslate();
+Instr::List add_uniform_pointer_offset(Instr::List &code);
 
 }  // namespace V3DLib
 
