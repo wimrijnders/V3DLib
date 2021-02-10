@@ -7,25 +7,25 @@ using namespace V3DLib;
 std::vector<const char *> const kernels = { "integer", "float" };  // First is default
 
 CmdParameters params = {
-	"Tri - Calculate triangular numbers\n",
+  "Tri - Calculate triangular numbers\n",
   {{
     "Kernel",
     "-k=",
-		kernels,
+    kernels,
     "Select the kernel to use"
-	}}
+  }}
 };
 
 
 struct TriSettings : public Settings {
-	int kernel;
+  int kernel;
 
-	TriSettings() : Settings(&params, true) {}
+  TriSettings() : Settings(&params, true) {}
 
-	bool init_params() override {
-		kernel = params.parameters()[0]->get_int_value();
+  bool init_params() override {
+    kernel = params.parameters()[0]->get_int_value();
     return true;
-	}
+  }
 
 } settings;
 
@@ -69,7 +69,7 @@ void tri_float(Ptr<Float> p) {
 ///////////////////////////////////////////
 
 void run_int() {
-	printf("Running integer kernel.\n");
+  printf("Running integer kernel.\n");
 
   // Construct kernel
   auto k = compile(tri_int);
@@ -91,7 +91,7 @@ void run_int() {
 
 
 void run_float() {
-	printf("Running float kernel.\n");
+  printf("Running float kernel.\n");
 
   // Construct kernel
   auto k = compile(tri_float);
@@ -117,13 +117,13 @@ void run_float() {
 ///////////////////////////////////////////
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-	switch (settings.kernel) {
-		case 0: run_int(); break;
-		case 1: run_float(); break;
-	}
+  switch (settings.kernel) {
+    case 0: run_int(); break;
+    case 1: run_float(); break;
+  }
   
   return 0;
 }

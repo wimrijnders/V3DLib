@@ -14,55 +14,55 @@ const float K = 0.25;   // Heat dissipation constant
 
 CmdParameters params = {
   "HeatMap Example\n"
-	"\n"
-	"This example models the heat flow across a 2D surface.\n"
-	"The output is a pgm-bitmap with the final state of the surface.\n"
-	"\n"
-	"The edges are set at zero temperature, and a number of hot points are placed randomly over the surface.\n"
-	"The lower border can be broader than 1 pixel, depending on the number of QPU's running. This is due to\n"
+  "\n"
+  "This example models the heat flow across a 2D surface.\n"
+  "The output is a pgm-bitmap with the final state of the surface.\n"
+  "\n"
+  "The edges are set at zero temperature, and a number of hot points are placed randomly over the surface.\n"
+  "The lower border can be broader than 1 pixel, depending on the number of QPU's running. This is due to\n"
   "preventing image overrun."
-	"\n",
+  "\n",
   {{
     "Kernel",
     "-k=",
-		{"vector", "scalar"},  // First is default
+    {"vector", "scalar"},  // First is default
     "Select the kernel to use"
-	}, {
+  }, {
     "Number of steps",
     "-steps=",
-		POSITIVE_INTEGER,
+    POSITIVE_INTEGER,
     "Set the number of steps to execute in the calculation",
-		1500
-	}, {
+    1500
+  }, {
     "Number of points",
     "-points=",
-		POSITIVE_INTEGER,
+    POSITIVE_INTEGER,
     "Set the number of randomly distributed hot points to start with",
-		10
+    10
   }}
 };
 
 
 struct HeatMapSettings : public Settings {
-	// Parameters
+  // Parameters
   const int WIDTH  = 512;           // Should be a multiple of 16 for QPU
   const int HEIGHT = 506;           // Should be a multiple of num_qpus for QPU
   const int SIZE   = WIDTH*HEIGHT;  // Size of 2D heat map
 
-	int    kernel;
-	string kernel_name;
-	int    num_steps;
-	int    num_points;
+  int    kernel;
+  string kernel_name;
+  int    num_steps;
+  int    num_points;
 
-	HeatMapSettings() : Settings(&params, true) {}
+  HeatMapSettings() : Settings(&params, true) {}
 
-	bool init_params() override {
-		kernel      = params.parameters()["Kernel"]->get_int_value();
-		kernel_name = params.parameters()["Kernel"]->get_string_value();
-		num_steps   = params.parameters()["Number of steps"]->get_int_value();
-		num_points  = params.parameters()["Number of points"]->get_int_value();
+  bool init_params() override {
+    kernel      = params.parameters()["Kernel"]->get_int_value();
+    kernel_name = params.parameters()["Kernel"]->get_string_value();
+    num_steps   = params.parameters()["Number of steps"]->get_int_value();
+    num_points  = params.parameters()["Number of points"]->get_int_value();
     return true;
-	}
+  }
 } settings;
 
 
@@ -112,15 +112,15 @@ void run_scalar() {
 
   // Initialise
   for (int i = 0; i < settings.SIZE; i++) {
-		map[i] = mapOut[i] = 0.0;
-	}
+    map[i] = mapOut[i] = 0.0;
+  }
 
   for (int i = 0; i < settings.HEIGHT; i++) {
     map2D[i]    = &map[i*settings.WIDTH];
     mapOut2D[i] = &mapOut[i*settings.WIDTH];
   }
 
-	inject_hotspots(map);
+  inject_hotspots(map);
 
   // Simulate
   for (int i = 0; i < settings.num_steps; i++) {
@@ -129,7 +129,7 @@ void run_scalar() {
   }
 
   // Display results
-	output_pgm_file(mapOut, settings.WIDTH, settings.HEIGHT, 255, "heatmap.pgm");
+  output_pgm_file(mapOut, settings.WIDTH, settings.HEIGHT, 255, "heatmap.pgm");
 }
 
 
@@ -189,7 +189,7 @@ void heatmap_kernel(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
   Cursor row[3];
 
   For (Int y = 1, y < height - 1 - numQPUs(), y = y + numQPUs())
-		// Point p to the in- and output row
+    // Point p to the in- and output row
     Ptr<Float> p_in = map    + (y + me())*width;
     Ptr<Float> p    = mapOut + (y + me())*width;
 
@@ -211,18 +211,18 @@ void heatmap_kernel(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
                   left[1] +                  right[1] +
                   left[2] + row[2].current + right[2];
 
-     	Float output = row[1].current - K * (row[1].current - sum * 0.125);
+       Float output = row[1].current - K * (row[1].current - sum * 0.125);
 
-			// Ensure left and right borders are zero
-			Int actual_x = x + index();
-			Where (actual_x == 0)
-				output = 0.0f;
-			End
-			Where (actual_x == width - 1)
-				output = 0.0f;
-			End
+      // Ensure left and right borders are zero
+      Int actual_x = x + index();
+      Where (actual_x == 0)
+        output = 0.0f;
+      End
+      Where (actual_x == width - 1)
+        output = 0.0f;
+      End
 
-     	*p = output;
+       *p = output;
       p.inc();
     End
 
@@ -240,11 +240,11 @@ void run_kernel() {
   // Allocate and initialise input and output maps
   SharedArray<float> mapA(settings.SIZE);
   SharedArray<float> mapB(settings.SIZE);
-	mapA.fill(0.0f);
-	mapB.fill(0.0f);
+  mapA.fill(0.0f);
+  mapB.fill(0.0f);
 
   // Inject hot spots
-	inject_hotspots(mapA);
+  inject_hotspots(mapA);
 
   // Compile kernel
   auto k = compile(heatmap_kernel);
@@ -255,14 +255,14 @@ void run_kernel() {
       k.load(&mapB, &mapA, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
     } else {
       k.load(&mapA, &mapB, settings.HEIGHT, settings.WIDTH);  // Load the uniforms
-		}
+    }
 
-		// Invoke the kernel
-		settings.process(k);
+    // Invoke the kernel
+    settings.process(k);
   }
 
   // Output results
-	output_pgm_file(mapB, settings.WIDTH, settings.HEIGHT, 255, "heatmap.pgm");
+  output_pgm_file(mapB, settings.WIDTH, settings.HEIGHT, 255, "heatmap.pgm");
 }
 
 
@@ -271,20 +271,20 @@ void run_kernel() {
 // ============================================================================
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-	Timer timer;
+  Timer timer;
 
-	switch (settings.kernel) {
-		case 0: run_kernel();  break;	
-		case 1: run_scalar(); break;
-	}
+  switch (settings.kernel) {
+    case 0: run_kernel();  break;  
+    case 1: run_scalar(); break;
+  }
 
-	if (!settings.silent) {
-		printf("Ran kernel '%s' with %d QPU's\n", settings.kernel_name.c_str(), settings.num_qpus);
-	}
-	timer.end(!settings.silent);
+  if (!settings.silent) {
+    printf("Ran kernel '%s' with %d QPU's\n", settings.kernel_name.c_str(), settings.num_qpus);
+  }
+  timer.end(!settings.silent);
 
   return 0;
 }

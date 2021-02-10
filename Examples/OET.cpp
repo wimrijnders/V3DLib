@@ -36,8 +36,8 @@ void oet(Ptr<Int> p) {
 
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
   // Construct kernel
   auto k = compile(oet);
@@ -47,10 +47,10 @@ int main(int argc, const char *argv[]) {
   for (int i = 0; i < (int) a.size(); i++)
     a[i] = 100 - i;
 
-	k.load(&a);           // Load the uniforms
-	settings.process(k);  // Invoke the kernel
+  k.load(&a);           // Load the uniforms
+  settings.process(k);  // Invoke the kernel
 
-	// Display the result
+  // Display the result
   for (int i = 0; i < (int) a.size(); i++)
     printf("%i: %i\n", i, (i & 1) ? a[16+(i>>1)] : a[i>>1]);
   

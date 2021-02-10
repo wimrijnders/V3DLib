@@ -10,8 +10,8 @@ namespace V3DLib {
  */
 class Timer {
 public:
-	Timer();
-	void end(bool show_output = true);
+  Timer();
+  void end(bool show_output = true);
 
 private:
   timeval tvStart;
