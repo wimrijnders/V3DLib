@@ -184,7 +184,7 @@ The following was done before a write (kernel source code):
   outIndex = outIndex + 16;
 ```
 
-I would expect DMA to write to wrong locations, **But it doesn't**.
+I would expect DMA to write to wrong locations, **but it doesn't**.
 The DMA write ignores this offset and writes to the correct location, i.e. just like:
 
 ```
