@@ -1,5 +1,5 @@
-#ifndef _V3DLIB_TARGET_REG_H_
-#define _V3DLIB_TARGET_REG_H_
+#ifndef _V3DLIB_TARGET_INSTR_REG_H_
+#define _V3DLIB_TARGET_INSTR_REG_H_
 #include "Source/Var.h"
 
 namespace V3DLib {
@@ -86,4 +86,4 @@ bool is_dma_only_register(Reg const &reg);
 }  // namespace V3DLib
 
 
-#endif  // _V3DLIB_TARGET_REG_H_
+#endif  // _V3DLIB_TARGET_INSTR_REG_H_

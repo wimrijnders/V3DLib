@@ -1,7 +1,7 @@
 #ifndef _V3DLIB_SOURCE_TRANSLATE_H_
 #define _V3DLIB_SOURCE_TRANSLATE_H_
 #include "Source/Stmt.h"
-#include "Target/Syntax.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 

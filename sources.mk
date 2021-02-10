@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Mon 08 Feb 2021 06:53:08 AM CET
+# Generated on: Wed 10 Feb 2021 05:37:18 AM CET
 #
 ###############################################################################
 
@@ -12,15 +12,16 @@ OBJ := \
   Target/Pretty.o  \
   Target/instr/ALUOp.o  \
   Target/instr/Conditions.o  \
-  Target/Reg.o  \
+  Target/instr/Reg.o  \
+  Target/instr/Instructions.o  \
+  Target/instr/Instr.o  \
+  Target/instr/Label.o  \
   Target/SmallLiteral.o  \
   Target/EmuSupport.o  \
   Target/Liveness.o  \
   Target/Emulator.o  \
   Target/Satisfy.o  \
-  Target/Instr.o  \
   Target/CFG.o  \
-  Target/Syntax.o  \
   Source/Lang.o  \
   Source/Cond.o  \
   Source/Interpreter.o  \

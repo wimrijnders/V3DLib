@@ -1,8 +1,8 @@
 #include "Translate.h"
 #include "Support/Platform.h"
 #include "SourceTranslate.h"
-#include "Source/Stmt.h"
 #include "Target/SmallLiteral.h"
+#include "Target/instr/Instructions.h"
 
 namespace V3DLib {
 namespace {

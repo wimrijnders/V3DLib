@@ -1,8 +1,28 @@
-#include "Syntax.h"         // Location of definition struct Instr
+#include "Instr.h"         // Location of definition struct Instr
 #include "Target/Pretty.h"  // pretty_instr_tag()
 #include "Support/basics.h" // fatal()
+#include "Source/BExpr.h"   // class CmpOp
 
 namespace V3DLib {
+
+// ============================================================================
+// Class BranchTarget
+// ============================================================================
+
+std::string BranchTarget::to_string() const {
+  std::string ret;
+
+  if (relative) ret << "PC+1+";
+  if (useRegOffset) ret << "A" << regOffset << "+";
+  ret << immOffset;
+
+  return ret;
+}
+
+
+// ============================================================================
+// Class Instr - QPU instructions
+// ============================================================================
 
 /**
  * Initialize the fields per selected instruction tag.

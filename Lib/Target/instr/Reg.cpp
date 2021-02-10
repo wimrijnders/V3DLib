@@ -1,6 +1,6 @@
 #include "Reg.h"
-#include "Syntax.h"
 #include "Support/basics.h"
+#include "Target/instr/Instructions.h"
 
 namespace V3DLib {
 namespace {

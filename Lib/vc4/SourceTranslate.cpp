@@ -1,6 +1,6 @@
 #include "SourceTranslate.h"
 #include "Support/debug.h"
-#include "Target/Syntax.h"
+#include "Target/instr/Instructions.h"
 #include "Target/Subst.h"
 #include "DMA/LoadStore.h"
 #include "RegAlloc.h"

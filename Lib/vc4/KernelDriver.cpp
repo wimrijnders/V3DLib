@@ -6,6 +6,7 @@
 #include "Encode.h"
 #include "DMA/Operations.h"
 #include "dump_instr.h"
+#include "Target/instr/Instructions.h"
 
 namespace V3DLib {
 namespace vc4 {

@@ -1,8 +1,5 @@
-// Control-flow graphs (CFGs)
-
+#include "CFG.h"
 #include <assert.h>
-#include "Target/CFG.h"
-#include "Target/Syntax.h"
 
 namespace V3DLib {
 

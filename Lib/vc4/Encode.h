@@ -1,8 +1,7 @@
 #ifndef _V3DLIB_ENCODE_H_
 #define _V3DLIB_ENCODE_H_
 #include <stdint.h>
-#include "Target/Syntax.h"
-#include "Common/Seq.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 namespace vc4 {

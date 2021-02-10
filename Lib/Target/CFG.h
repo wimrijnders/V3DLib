@@ -1,18 +1,20 @@
+//
 // Control-flow graphs (CFGs)
-
+//
+// ============================================================================
 #ifndef _V3DLIB_CFG_H_
 #define _V3DLIB_CFG_H_
-
-#include "Common/Seq.h"
-#include "Target/Syntax.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 
+typedef int InstrId;  // Index of instruction in instruction list
+
 // A set of successors.
-typedef SmallSeq<InstrId> Succs;
+using Succs =  SmallSeq<InstrId>;
 
 // A CFG is a set of successors for each instruction.
-typedef Seq<Succs> CFG;
+using CFG =  Seq<Succs>;
 
 // Function to construct a CFG.
 void buildCFG(Seq<Instr> &instrs, CFG &cfg);

@@ -1,15 +1,11 @@
-#include "Syntax.h"
-#include "Source/BExpr.h"
+#include "Instructions.h"
 #include "Support/basics.h"
 
 namespace V3DLib {
 
-using ::operator<<;  // C++ weirdness
+//using ::operator<<;  // C++ weirdness
 
 namespace {
-
-int globalLabelId = 0;  // Used for fresh label generation
-
 
 Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, Reg srcB) {
   Instr instr(ALU);
@@ -76,51 +72,6 @@ Instr::List sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *labe
 }
 
 }  // anon namespace
-
-///////////////////////////////////////////////////////////////////////////////
-// Class BranchTarget
-///////////////////////////////////////////////////////////////////////////////
-
-std::string BranchTarget::to_string() const {
-  std::string ret;
-
-  if (relative) ret << "PC+1+";
-  if (useRegOffset) ret << "A" << regOffset << "+";
-  ret << immOffset;
-
-  return ret;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Handy syntax functions
-///////////////////////////////////////////////////////////////////////////////
-
-// =========================
-// Label generation
-// =========================
-
-// Obtain a fresh label
-Label freshLabel() {
-  return globalLabelId++;
-}
-
-
-// Number of fresh labels
-int getFreshLabelCount() {
-  return globalLabelId;
-}
-
-// Reset fresh label generator
-void resetFreshLabelGen() {
-  globalLabelId = 0;
-}
-
-// Reset fresh label generator to specified value
-void resetFreshLabelGen(int val) {
-  globalLabelId = val;
-}
-
 
 namespace Target {
 namespace instr {
@@ -297,3 +248,4 @@ Instr tmuwt() {
 }  // namespace instr
 }  // namespace Target
 }  // namespace V3DLib
+

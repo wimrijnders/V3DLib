@@ -23,7 +23,7 @@
 #include "v3d/instr/Instr.h"
 #include "v3d/instr/Snippets.h"
 #include "Support/Platform.h"
-#include "Target/Syntax.h"   // mnemonics()
+#include "Target/instr/Instr.h"  // mnemonics()
 #include "support/support.h"
 #include "support/summation_kernel.h"
 #include "support/rotate_kernel.h"

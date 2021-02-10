@@ -2,10 +2,9 @@
 #include <cmath>
 #include "Support/basics.h"  // fatal()
 #include "EmuSupport.h"
-#include "Common/Seq.h"
 #include "Common/Queue.h"
 #include "Common/SharedArray.h"
-#include "Target/Syntax.h"
+#include "Target/instr/Instr.h"
 #include "Target/SmallLiteral.h"
 #include "BufferObject.h"
 

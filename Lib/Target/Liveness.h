@@ -6,9 +6,7 @@
 #define _V3DLIB_LIVENESS_H_
 #include <string>
 #include <vector>
-#include "Common/Seq.h"
-#include "Target/Syntax.h"
-#include "Target/CFG.h"
+#include "CFG.h"
 
 namespace V3DLib {
 

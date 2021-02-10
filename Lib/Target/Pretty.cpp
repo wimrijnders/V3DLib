@@ -1,12 +1,9 @@
 #include "Pretty.h"
 #include "Support/basics.h"
-#include "Target/Syntax.h"
 #include "Target/SmallLiteral.h"
-
 
 namespace V3DLib {
 namespace {
-
 
 std::string pretty(Imm imm) {
   std::string ret;

@@ -1,10 +1,11 @@
 #include "SourceTranslate.h"
 #include "Support/basics.h"
-#include "Source/Translate.h"  // srcReg()
-#include "Source/Stmt.h"  // srcReg()
+#include "Source/Translate.h"
+#include "Source/Stmt.h"
 #include "Target/Liveness.h"
 #include "Target/Subst.h"
 #include "vc4/DMA/DMA.h"
+#include "Target/instr/Instructions.h"
 
 namespace V3DLib {
 
@@ -188,15 +189,6 @@ void add_init(Instr::List &code) {
       << shr(ACC0, ACC0, 2)
       << band(rf(RSV_QPU_ID), ACC0, 15)
       << label(endifLabel);
-
-/*
-  // offset = 4 * (vector_id + 16 * qpu_num);
-  ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID (next stmt)
-      << mov(ACC0, ELEM_ID)
-      << add(ACC1, ACC1, ACC0)
-      << shl(ACC0, ACC1, 2)           // Post: offset now in ACC0
-      << add_uniform_pointer_offset(code);
-*/
 
   // offset = 4 * vector_id;
   ret << mov(ACC0, ELEM_ID)

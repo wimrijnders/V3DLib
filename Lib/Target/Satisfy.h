@@ -1,8 +1,6 @@
 #ifndef _V3DLIB_SATISFY_H_
 #define _V3DLIB_SATISFY_H_
-
-#include "Target/Syntax.h"
-#include "Target/CFG.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 

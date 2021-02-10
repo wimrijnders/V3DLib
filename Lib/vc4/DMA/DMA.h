@@ -3,7 +3,7 @@
 #include <string>
 #include "Source/Expr.h"
 #include "Source/Int.h"
-#include "Target/Syntax.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 namespace DMA {

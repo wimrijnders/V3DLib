@@ -1,7 +1,7 @@
 #ifndef _V3DLIB_TARGET_PRETTY_H_
 #define _V3DLIB_TARGET_PRETTY_H_
 #include <string>
-#include "Target/Syntax.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 

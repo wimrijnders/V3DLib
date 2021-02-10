@@ -1,37 +1,15 @@
-#ifndef _V3DLIB_TARGET_SYNTAX_H_
-#define _V3DLIB_TARGET_SYNTAX_H_
-#include <stdint.h>
-#include <string>
-#include "Common/Seq.h"  // for check_zeroes()
+#ifndef _V3DLIB_TARGET_INSTR_INSTR_H_
+#define _V3DLIB_TARGET_INSTR_INSTR_H_
 #include "Support/InstructionComment.h"
-#include "Support/debug.h"
-#include "Source/Var.h"
-#include "Source/BExpr.h"
+#include "Common/Seq.h"
 #include "Reg.h"
-#include "instr/ALUOp.h"
-#include "instr/Conditions.h"
+#include "Label.h"
+#include "Conditions.h"
+#include "ALUOp.h"
 
 namespace V3DLib {
 
-// Syntax of the QPU target language.
-
-// This abstract syntax is a balance between a strict and relaxed
-// definition of the target language:
-// 
-//   a "strict" definition would allow only instructions that can run on
-//   the target machine to be expressed, whereas a "relaxed" one allows
-//   instructions that have no direct mapping to machine instructions.
-// 
-// A relaxed definition allows the compilation process to be incremental:
-// after each pass, the target code gets closer to being executable, by
-// transforming away constructs that do not have a direct mapping to
-// hardware.  However, we do not want to be too relaxed, otherwise we
-// loose scope for the type checker to help us.
-// 
-// For example, the definition below allows an instruction to read two
-// operands from the *same* register file.  In fact, two operands must be
-// taken from different register files in the target language. It is the
-// job of a compiler pass to enforce such a constraint.
+class CmpOp;
 
 // ============================================================================
 // Immediates
@@ -108,7 +86,7 @@ struct RegOrImm {
 
 
 // ============================================================================
-// Branch targets
+// Class BranchTarget
 // ============================================================================
 
 struct BranchTarget {
@@ -123,32 +101,10 @@ struct BranchTarget {
 };
 
 
-// We allow labels for branching, represented by integer identifiers.  These
-// will be translated to actual branch targets in a linking phase.
-
-typedef int Label;
-
-
-
-// ======================
-// Fresh label generation
-// ======================
-
-// Obtain a fresh label
-Label freshLabel();
-
-// Number of fresh labels used
-int getFreshLabelCount();
-
-// Reset fresh label generator
-void resetFreshLabelGen();
-void resetFreshLabelGen(int val);
-
 // ============================================================================
-// Instructions
-// ============================================================================
-
 // QPU instruction tags
+// ============================================================================
+
 enum InstrTag {
   LI,             // Load immediate
   ALU,            // ALU operation
@@ -202,7 +158,11 @@ enum InstrTag {
 
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4);
 
-// QPU instructions
+
+// ============================================================================
+// Class Instr - QPU instructions
+// ============================================================================
+
 struct Instr : public InstructionComment {
 
   class List : public Seq<Instr> {
@@ -348,87 +308,8 @@ private:
 };
 
 
-// Instruction id: also the index of an instruction
-// in the main instruction sequence
-typedef int InstrId;
-
-
-// ============================================================================
-// Handy functions
-// ============================================================================
-
 void check_zeroes(Seq<Instr> const &instrs);
-
-namespace Target {
-namespace instr {
-
-extern Reg const None;
-extern Reg const ACC0;
-extern Reg const ACC1;
-extern Reg const ACC2;
-extern Reg const ACC3;
-extern Reg const ACC4;
-extern Reg const QPU_ID;
-extern Reg const ELEM_ID;
-extern Reg const TMU0_S;
-extern Reg const VPM_WRITE;
-extern Reg const VPM_READ;
-extern Reg const WR_SETUP;
-extern Reg const RD_SETUP;
-extern Reg const DMA_LD_WAIT;
-extern Reg const DMA_ST_WAIT;
-extern Reg const DMA_LD_ADDR;
-extern Reg const DMA_ST_ADDR;
-extern Reg const SFU_RECIP;
-extern Reg const SFU_RECIPSQRT;
-extern Reg const SFU_EXP;
-extern Reg const SFU_LOG;
-
-// Following registers are synonyms for v3d code generation,
-// to better indicate the intent. Definitions of vc4 concepts
-// are reused here, in order to prevent the code getting into a mess.
-extern Reg const TMUD;
-extern Reg const TMUA;
-
-Reg rf(uint8_t index);
-
-Instr bor(Reg dst, Reg srcA, Reg srcB);
-Instr band(Reg dst, Reg srcA, Reg srcB);
-Instr band(Var dst, Var srcA, Var srcB);
-Instr band(Reg dst, Reg srcA, int n);
-Instr bxor(Var dst, Var srcA, int n);
-Instr mov(Var dst, Var src);
-Instr mov(Var dst, Reg src);
-Instr mov(Var dst, int n);
-Instr mov(Reg dst, Var src);
-Instr mov(Reg dst, int n);
-Instr mov(Reg dst, Reg src);
-Instr shl(Reg dst, Reg srcA, int val);
-Instr add(Reg dst, Reg srcA, Reg srcB);
-Instr add(Reg dst, Reg srcA, int n);
-Instr sub(Reg dst, Reg srcA, int n);
-Instr shr(Reg dst, Reg srcA, int n);
-Instr li(Reg dst, int i);
-Instr li(Var v, int i);
-Instr li(Var v, float f);
-Instr branch(Label label);
-Instr branch(BranchCond cond, Label label);
-Instr label(Label in_label);
-
-//
-// SFU functions
-//
-Instr::List recip(Var dst, Var srcA);
-Instr::List recipsqrt(Var dst, Var srcA);
-Instr::List bexp(Var dst, Var srcA);
-Instr::List blog(Var dst, Var srcA);
-
-// v3d only
-Instr tmuwt();
-
-}  // namespace instr
-}  // namespace Target
 
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_TARGET_SYNTAX_H_
+#endif  // _V3DLIB_TARGET_INSTR_INSTRUCTIONS_H_
