@@ -11,7 +11,7 @@
 - [ ] ! Fix '+ 0' hack for kernel pointers, this is confusing
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
-- [ ] Fix indentation tabs/spaces - ongoing
+- [x] Fix indentation tabs/spaces
 - [ ] Tone down mesa library, compile takes long.
       Tried this but gave up after it became evident nothing could be removed.
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
@@ -23,7 +23,7 @@
       looks promising.
 - [ ] Implement [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
 - [ ] Make [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
-- [ ] [Use inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
+- [ ] Use [inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
 - [ ] Implement DFT (and then FFT) - consider [sliding windows](https://github.com/glidernet/ogn-rf/issues/36#issuecomment-775688969)
 
 
@@ -145,7 +145,7 @@ Error(s) on command line:
 ```
 
 ## Library Code
-- [ ] Add check in emulator for too many `gather()` calls
+- [ ] Add check in emulator for too many `gather()` calls. Or not enough `receive()` calls, same thing
 - [x] Determine num QPUs from hardware
 - [x] Add method to determine RPi hardware revision number via mailbox
 - [x] Add code for using the `Special Functions Unit (SFU)`, operations: `RECIP`, `RECIPSQRT`, `LOG`, `EXP`
