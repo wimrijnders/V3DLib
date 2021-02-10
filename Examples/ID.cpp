@@ -15,10 +15,10 @@ void id_kernel(Ptr<Int> p, Ptr<Int> q) {
 
 
 int main(int argc, const char *argv[]) {
-	int numQPUs = 8;
+  int numQPUs = 8;
 
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
   // Construct kernel
   auto k = compile(id_kernel);
@@ -26,15 +26,15 @@ int main(int argc, const char *argv[]) {
 
   // Allocate and initialise array shared between ARM and GPU
   SharedArray<int> id_array(16*numQPUs);
-	id_array.fill(0);
+  id_array.fill(0);
 
   SharedArray<int> index_array(16*numQPUs);
-	index_array.fill(0);
+  index_array.fill(0);
 
-	k.load(&id_array, &index_array);  // Load the uniforms
-	settings.process(k);              // Invoke the kernel
+  k.load(&id_array, &index_array);  // Load the uniforms
+  settings.process(k);              // Invoke the kernel
 
-	// Display the result
+  // Display the result
   for (int i = 0; i < (int) id_array.size(); i++) {
     printf("%3i: %2i, %2i\n", i, id_array[i], index_array[i]);
   }

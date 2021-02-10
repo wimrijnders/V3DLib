@@ -24,8 +24,8 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
 
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
   // Construct kernel
   auto k = compile(gcd);
@@ -39,10 +39,10 @@ int main(int argc, const char *argv[]) {
   }
 
   // Invoke the kernel
-	k.load(&a, &b, &r);
-	settings.process(k);
+  k.load(&a, &b, &r);
+  settings.process(k);
 
-	// Display the result
+  // Display the result
   for (int i = 0; i < 16; i++)
     printf("gcd(%i, %i) = %i\n", a[i], b[i], r[i]);
   

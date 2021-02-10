@@ -15,9 +15,9 @@ void Timer::end(bool show_output) {
   gettimeofday(&tvEnd, NULL);
   timersub(&tvEnd, &tvStart, &tvDiff);
 
-	if (show_output) {
-	  printf("Run time: %ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
-	}
+  if (show_output) {
+    printf("Run time: %ld.%06lds\n", tvDiff.tv_sec, tvDiff.tv_usec);
+  }
 }
 
 }  // namespace
