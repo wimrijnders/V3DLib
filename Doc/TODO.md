@@ -18,6 +18,8 @@
 
 ## Consider these
 
+- [ ] Option for disabling L2 cache, for decent cooperation with `OpenGL`.
+      **TODO** profile this!
 - [ ] Adding **Navier-Stokes** as an example.
       [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
       looks promising.
