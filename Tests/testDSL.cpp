@@ -3,6 +3,7 @@
 #include <string>
 #include <sstream>
 #include <V3DLib.h>
+#include "LibSettings.h"
 #include "support/support.h"
 
 using namespace V3DLib;
@@ -589,10 +590,30 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
 template<typename T>
 void offsets_kernel(Ptr<T> result, Ptr<T> src) {
   Int a = index();
-  *result = a; result.inc();
+  *result = a;
+  result.inc();
 
   T val = *src;
   *result = val;
+
+  T val2 = *(src + 32);
+  *(result + 16) = val2;
+
+  val2 = src[32];
+  result[32] = val2;
+
+  src.inc();
+  result.inc();
+  result.inc();
+  result.inc();
+
+  val = *src;
+  *result = val;
+  result.inc();
+
+  gather(src);  comment("Start gather test");
+  receive(a);
+  *result = a;
 }
 
 
@@ -600,20 +621,24 @@ void offsets_kernel(Ptr<T> result, Ptr<T> src) {
  * Created in order to test init uniforms pointers with index() for vc4
  */
 TEST_CASE("Initialization with index() on uniform pointers should work as expected", "[dsl][offsets]") {
-  Platform::use_main_memory(true);
-  int const N = 2;
+  int const N = 6;
 
-  SharedArray<int> a(2*16);
+  SharedArray<int> a(3*16);
   SharedArray<int> result(N*16);
 
   std::vector<int> expected = {
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16};
+     0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 
+     1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 16,
+    33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+    33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
+    17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32,
+    17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32};
 
   REQUIRE(expected.size() == N*16);
   REQUIRE(result.size() == expected.size());
 
   auto reset = [&a, &result] () {
+    // Not necessary at this point, a does not change
     for (int i = 0; i < (int) a.size(); i++) {
       a[i] = (i + 1);
     }
@@ -629,21 +654,44 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
   };
 
 
-  auto k = compile(offsets_kernel<Int>);
-  k.pretty(true, nullptr, false);
-  k.load(&result, &a);
+  SECTION("Test with TMU") {
+    auto k = compile(offsets_kernel<Int>);
+    k.load(&result, &a);
 
-  reset();
-  k.interpret();
-  dump_array(result, 16);
-  check("1");  // !!! Passes, even if ptr offset wrong!
+    reset();
+    k.interpret();
+    check("tmu interpeter");
 
-  reset();
-  k.emu();
-  dump_array(result, 16);
-  check("2");
+    reset();
+    k.emu();
+    check("tmu emulator");
 
-  // TODO test DMA as well
+    reset();
+    k.call();
+    check("tmu qpu");
+  }
 
-  Platform::use_main_memory(false);
+
+  SECTION("Test with DMA") {
+    LibSettings::use_tmu_for_load(false);
+
+    auto k = compile(offsets_kernel<Int>);
+    //k.pretty(true, nullptr, false);
+    k.load(&result, &a);
+
+    reset();
+    k.interpret();
+    check("dma interpreter");
+
+    reset();
+    k.emu();
+    check("dma emulator");
+
+    reset();
+    k.call();
+    //dump_array(result, 16);
+    check("dma qpu");
+
+    LibSettings::use_tmu_for_load(false);
+  }
 }

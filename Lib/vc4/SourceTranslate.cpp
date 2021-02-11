@@ -23,11 +23,16 @@ Instr::List SourceTranslate::load_var(Var &in_dst, Expr &e) {
     // - loadStorePass(),
     // - gather/receive
     // - SourceTranslate::load_var(0 for v3d
+/*
     ret << mov(ACC0, ELEM_ID)
         << shl(ACC0, ACC0, 2)
         << add(ACC0, ACC0, src)
-
         << mov(TMU0_S, ACC0)
+        << Instr(TMU0_TO_ACC4)
+        << mov(dst, ACC4);
+*/
+
+    ret << mov(TMU0_S, src)
         << Instr(TMU0_TO_ACC4)
         << mov(dst, ACC4);
 

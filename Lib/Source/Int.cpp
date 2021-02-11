@@ -63,22 +63,16 @@ Int::operator IntExpr() { return IntExpr(m_expr); }
 
 // Assignment
 
-/*
-// Adding 'const' makes this ambiguous with next '='
+Int &Int::operator=(int x) {
+  Int tmp(x);
+  (*this) = tmp;
+  return *this; //rhs;
+}
+
 Int &Int::operator=(Int const &rhs) {
   assign(m_expr, rhs.expr());
   return *this; //rhs;
 }
-*/
-
-// TODO: Fix 'Value as reference' issue for passed types
-// Would much rather prefer passing ref's in,
-// but the logic+compiler makes a mess of it.
-Int &Int::operator=(Int &rhs) {
-  assign(m_expr, rhs.expr());
-  return *this; //rhs;
-}
-
 
 IntExpr Int::operator=(IntExpr rhs) {
   assign(m_expr, rhs.expr());

@@ -44,8 +44,9 @@ struct Int : public BaseExpr {
   // Cast to an IntExpr
   operator IntExpr();
 
-  //Int& operator=(Int const &rhs);
-  Int& operator=(Int &rhs);
+  Int& operator=(int x);
+  Int& operator=(Int const &rhs);
+  //Int& operator=(Int &rhs);
   IntExpr operator=(IntExpr rhs);
 
   void operator++(int);

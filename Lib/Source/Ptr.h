@@ -152,7 +152,7 @@ public:
   Ptr<T>(PtrExpr<T> rhs) : Pointer(rhs) {}
 
   // Assignment
-  Ptr<T>& operator=(Ptr<T> &rhs) {
+  Ptr<T>& operator=(Ptr<T> const &rhs) {
     assign(expr(), rhs.expr());
     return *this; //rhs;
   }

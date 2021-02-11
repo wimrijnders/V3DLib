@@ -534,8 +534,8 @@ void exec(InterpreterState* state, CoreState* s) {
   // Pop the statement at the top of the stack
   Stmt::Ptr stmt = s->stack.pop();
 
-  if (stmt == NULL) {
-    assertq(false, " Interpreter: not expecting nullptr for stmt");
+  if (stmt == NULL) { // Apparently this happens
+    //assertq(false, " Interpreter: not expecting nullptr for stmt");
     return;
   }
 
