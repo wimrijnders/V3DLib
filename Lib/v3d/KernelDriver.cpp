@@ -874,7 +874,6 @@ v3d::instr::Instr encodeBranchLabel(V3DLib::Instr src_instr) {
  */
 Instructions encodeInstr(V3DLib::Instr instr) {
   Instructions ret;
-  bool no_output = false;
 
   // Encode core instruction
   switch (instr.tag) {
@@ -882,20 +881,13 @@ Instructions encodeInstr(V3DLib::Instr instr) {
     // Unhandled tags - ignored or should have been handled beforehand
     //
     case BR:
-       assertq(false, "Not expecting BR any more, branch creation now goes with BRL", true);
+      assertq(false, "Not expecting BR any more, branch creation now goes with BRL", true);
     break;
 
     case INIT_BEGIN:
     case INIT_END:
     case END:         // vc4 end program marker
       assertq(false, "Not expecting INIT or END tag here", true);
-    break;
-
-    // Print instructions - ignored
-    case PRI:
-    case PRS:
-    case PRF:
-      no_output = true;
     break;
 
     //
@@ -930,7 +922,7 @@ Instructions encodeInstr(V3DLib::Instr instr) {
       fatal("v3d: missing case in encodeInstr");
   }
 
-  assert(no_output || !ret.empty());
+  assert(!ret.empty());
 
   if (!ret.empty()) {
     ret.front().transfer_comments(instr);

@@ -7,53 +7,6 @@ namespace V3DLib {
 using ::operator<<;  // C++ weirdness
 
 // ============================================================================
-// Class PrintStmt
-// ============================================================================
-
-char const *PrintStmt::str() const {
-  assert(m_tag == PRINT_STR && m_str != nullptr);
-  return m_str;
-}
-
-
-void PrintStmt::str(char const *str) {
-  assert(m_str == nullptr);
-  m_tag = PRINT_STR;
-  m_str = str;
-}
-
-
-/**
- * NOTE: The expr for int and float is stored external to this class, in `Stmt`
- *       For a full representation, this needs to be added in stmt::dsp()`
- */
-std::string PrintStmt::disp() const {
-  std::string ret;
-
-  switch (m_tag) {
-  case PRINT_INT:
-    ret << "Print Int";
-  break;
-  case PRINT_FLOAT:
-    ret << "Print Float";
-  break;
-  case PRINT_STR:
-    ret << "Print String";
-    if (m_str == nullptr) {
-      ret << " <nullptr>";
-    } else {
-      ret << " '" << m_str << "'";
-    }
-  break;
-  default:
-    assert(false);
-  }
-
-  return ret;
-}
-
-
-// ============================================================================
 // Class Stmt
 // ============================================================================
 
@@ -110,15 +63,6 @@ Expr::Ptr Stmt::assign_rhs() const {
 
 Expr::Ptr Stmt::address() {
   assert(tag == LOAD_RECEIVE);
-  assert(m_exp_a.get() != nullptr);
-  assert(m_exp_b.get() == nullptr);
-  return m_exp_a;
-}
-
-
-Expr::Ptr Stmt::print_expr() const {
-  assert(tag == PRINT);
-  assert(print.tag() == PRINT_INT || print.tag() == PRINT_FLOAT);
   assert(m_exp_a.get() != nullptr);
   assert(m_exp_b.get() == nullptr);
   return m_exp_a;
@@ -278,16 +222,6 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
       ret << "WHILE (" << m_cond->dump() << ") " << thenStmt()->dump();
       // There is no ELSE for while
     break;
-    case PRINT:
-      ret << print.disp();
-      if (print.tag() != PRINT_STR) {
-        if (m_exp_a.get() == nullptr) {
-          ret << " <no expr>";
-        } else {
-          ret << m_exp_a->dump();
-        }
-      }
-    break;
 
     case GATHER_PREFETCH:  ret << "GATHER_PREFETCH";  break;
     case FOR:              ret << "FOR";              break;
@@ -333,7 +267,6 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
       ret->m_exp_b = e1;
     break;
 
-    case PRINT:
     case LOAD_RECEIVE:
       assertq(e0 != nullptr && e1 == nullptr, "create 2");
       ret->m_exp_a = e0;
@@ -521,13 +454,6 @@ Stmt::Ptr Stmt::mkWhile(CExpr::Ptr cond, Ptr body) {
 Stmt::Ptr Stmt::mkFor(CExpr::Ptr cond, Ptr inc, Ptr body) {
   Stmt::Ptr s = Stmt::create(Stmt::FOR, inc, body);
   s->m_cond   = cond;
-  return s;
-}
-
-
-Stmt::Ptr mkPrint(PrintTag t, Expr::Ptr e) {
-  Stmt::Ptr s = Stmt::create(Stmt::PRINT, e, nullptr);
-  s->print.tag(t);
   return s;
 }
 

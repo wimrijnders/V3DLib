@@ -41,8 +41,7 @@ void renameDest(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
  */
 void renameUses(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
   switch (instr->tag) {
-    // ALU operation
-    case ALU:
+    case ALU:   // ALU operation
       if (instr->ALU.srcA.tag == REG && instr->ALU.srcA.reg.tag == vt &&
           instr->ALU.srcA.reg.regId == v) {
         instr->ALU.srcA.reg.tag = wt;
@@ -56,21 +55,6 @@ void renameUses(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
       }
       return;
 
-    // Print integer instruction
-    case PRI:
-      if (instr->PRI.tag == vt && instr->PRI.regId == v) {
-        instr->PRI.tag = wt;
-        instr->PRI.regId = w;
-      }
-      return;
-
-    // Print float instruction
-    case PRF:
-      if (instr->PRF.tag == vt && instr->PRF.regId == v) {
-        instr->PRF.tag = wt;
-        instr->PRF.regId = w;
-      }
-      return;
     default:
       return;
   }
@@ -82,13 +66,11 @@ void renameUses(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
  */
 void substRegTag(Instr* instr, RegTag vt, RegTag wt) {
   switch (instr->tag) {
-    // Load immediate
-    case LI:
+    case LI:  // Load immediate
       if (instr->LI.dest.tag == vt)
         instr->LI.dest.tag = wt;
       return;
 
-    // ALU operation
     case ALU:
       if (instr->ALU.dest.tag == vt)
         instr->ALU.dest.tag = wt;
@@ -98,19 +80,6 @@ void substRegTag(Instr* instr, RegTag vt, RegTag wt) {
         instr->ALU.srcB.reg.tag = wt;
       return;
 
-    // Print integer instruction
-    case PRI:
-      if (instr->PRI.tag == vt)
-        instr->PRI.tag = wt;
-      return;
-
-    // Print float instruction
-    case PRF:
-      if (instr->PRF.tag == vt)
-        instr->PRF.tag = wt;
-      return;
-
-    // RECV instruction
     case RECV:
       if (instr->RECV.dest.tag == vt)
         instr->RECV.dest.tag = wt;

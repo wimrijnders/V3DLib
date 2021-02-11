@@ -9,27 +9,6 @@
 namespace V3DLib {
 
 // ============================================================================
-// Class PrintStmt
-// ============================================================================
-
-// For displaying values in emulation
-enum PrintTag { PRINT_INT, PRINT_FLOAT, PRINT_STR };
-
-struct PrintStmt {
-  PrintTag tag() const { return m_tag;}
-  void tag(PrintTag tag) { m_tag = tag;}
-
-  char const *str() const;
-  void str(char const *str);
-  std::string disp() const;
-
-private:
-  PrintTag    m_tag;
-  const char *m_str;
-};
-
-
-// ============================================================================
 // Class Stmt
 // ============================================================================
 
@@ -52,7 +31,6 @@ private:
 struct Stmt : public InstructionComment {
   using Ptr = std::shared_ptr<Stmt>;
 
-  // What kind of statement is it?
   enum Tag {
     SKIP,
     ASSIGN,
@@ -60,7 +38,6 @@ struct Stmt : public InstructionComment {
     WHERE,
     IF,
     WHILE,
-    PRINT,
     FOR,
     LOAD_RECEIVE,
 
@@ -105,7 +82,6 @@ struct Stmt : public InstructionComment {
   Expr::Ptr assign_lhs() const;
   Expr::Ptr assign_rhs() const;
   Expr::Ptr address();
-  Expr::Ptr print_expr() const;
   Stmt *first_in_seq() const;
   Stmt *last_in_seq() const;
 
@@ -142,7 +118,6 @@ struct Stmt : public InstructionComment {
 
   Tag tag;  // What kind of statement is it?
 
-  PrintStmt print;
   DMA::Stmt dma;
 
   void break_point() { m_break_point = true; }
@@ -169,7 +144,6 @@ private:
 // Functions to construct statements
 Stmt::Ptr mkSkip();
 Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
-Stmt::Ptr mkPrint(PrintTag t, Expr::Ptr e);
 
 }  // namespace V3DLib
 

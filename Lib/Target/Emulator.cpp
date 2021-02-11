@@ -894,20 +894,6 @@ void emulate(
             fatal("V3DLib: emulator does not support labels");
           case NO_OP:
             break;
-          case PRS: {                              // print string
-            emitStr(state.output, instr.PRS);
-            break;
-          }
-          case PRI: {                              // print integer
-            Vec x = readReg(s, &state, instr.PRI);
-            printIntVec(state.output, x);
-            break;
-          }
-          case PRF: {                              // print float
-            Vec x = readReg(s, &state, instr.PRF);
-            printFloatVec(state.output, x);
-            break;
-          }
           case RECV: {                             // receive load-via-TMU response
             assert(s->loadBuffer.size() > 0);
             Vec val = s->loadBuffer.remove(0);

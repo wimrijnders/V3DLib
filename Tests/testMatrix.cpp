@@ -109,11 +109,10 @@ void test_dotvector() {
   k.pretty(true, "obj/test/check_dotvector.txt", false);
   k.load(&b, &a, &result);
   run_kernel(k);
-  //k.emu();
 
-  if (N <= 2) {
-    dump_array(result, 16);
-  }
+//  if (N <= 2) {
+//    dump_array(result, 16);
+//  }
 
   for (int i = 0; i < (int) a.size(); i++) {
     INFO("N: " << N << ", i: " << i);

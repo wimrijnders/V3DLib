@@ -15,8 +15,7 @@ void interpreter(
   Stmt::Ptr stmt,
   int numVars,
   Seq<int32_t> &uniforms,
-  BufferObject &heap,
-  Seq<char> *output = nullptr
+  BufferObject &heap
 );
 
 }  // namespace V3DLib

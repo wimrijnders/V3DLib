@@ -515,47 +515,6 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 }
 
 
-// ============================================================================
-// Print statements
-// ============================================================================
-
-Instr::List printStmt(Stmt::Ptr stmt) {
-  Instr::List ret;
-  Instr instr;
-
-  auto expr_to_reg = [&ret] (Expr::Ptr expr) -> Reg {
-    if (expr ->tag() == Expr::VAR) {
-       return srcReg(expr->var());
-    } else {
-      Var tmpVar = freshVar();
-      ret << varAssign(tmpVar, expr);
-      return srcReg(tmpVar);
-    }
-  };
-
-  switch (stmt->print.tag()) {
-    case PRINT_INT:
-      instr.tag = PRI;
-      instr.PRI = expr_to_reg(stmt->print_expr());
-      break;
-    case PRINT_FLOAT:
-      instr.tag = PRF;
-      instr.PRI = expr_to_reg(stmt->print_expr());
-      break;
-    case PRINT_STR:
-      instr.tag = PRS;
-      instr.PRS = stmt->print.str();
-    break;
-    default:
-      assert(false);
-      break;
-  }
-
-  ret << instr;
-  return ret;
-}
-
-
 Instr loadReceive(Expr::Ptr dest) {
   assert(dest->tag() == Expr::VAR);
 
@@ -566,6 +525,7 @@ Instr loadReceive(Expr::Ptr dest) {
 
 
 void stmt(Instr::List *seq, Stmt::Ptr s);  // Forward declaration
+
 
 /**
  * Translate if-then-else statement to target code
@@ -643,9 +603,6 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
         Var condVar = freshVar();        // This is the top-level definition of condVar
         *seq << whereStmt(s, condVar, always, false);
       }
-      break;
-    case Stmt::PRINT:                    // 'print(e)', where e is an expr or a string
-      *seq << printStmt(s);
       break;
     case Stmt::LOAD_RECEIVE:             // 'receive(e)', where e is an expr
       *seq << loadReceive(s->address());

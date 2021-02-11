@@ -61,19 +61,6 @@ std::string pretty(int indent, Stmt::Ptr s) {
           << indentBy(indent) << "End";
       break;
 
-    case Stmt::PRINT:
-      ret << indentBy(indent)
-          << "Print (";
-
-      if (s->print.tag() == PRINT_STR) {
-        ret << s->print.str();
-      } else {
-        ret << s->print_expr()->pretty();
-      }
-
-      ret << ")\n";
-      break;
-
     case Stmt::LOAD_RECEIVE:
       ret << indentBy(indent)
           << "receive(" << s->address()->pretty() << ")";

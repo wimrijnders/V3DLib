@@ -18,7 +18,6 @@ struct CoreState {
   int writeStride = 0;           // Write stride
   Vec* env = nullptr;            // Environment mapping vars to values
   int sizeEnv;                   // Size of the environment
-  Seq<char>* output = nullptr;   // Output from print statements
   Seq<Stmt::Ptr> stack;          // Control stack
   Seq<Vec> loadBuffer;           // Load buffer
   SharedArray<uint32_t> emuHeap;
@@ -406,10 +405,7 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
     // Assignment
     case Stmt::ASSIGN:
-      if (stmt->assign_lhs()->tag() != Expr::VAR) {
-        printf("V3DLib: only var assignments permitted in 'where'\n");
-        assert(false);
-      }
+      assertq(stmt->assign_lhs()->tag() == Expr::VAR, "V3DLib: only var assignments permitted in 'where'");
       execAssign(s, cond, stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
@@ -427,32 +423,6 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
   }
 }
 
-// ============================================================================
-// Execute print statement
-// ============================================================================
-
-void execPrint(CoreState* s, Stmt::Ptr stmt) {
-  switch (stmt->print.tag()) {
-    // Integer
-    case PRINT_INT: {
-      Vec x = eval(s, stmt->print_expr());
-      printIntVec(s->output, x);
-      return;
-    }
-
-    // Float
-    case PRINT_FLOAT: {
-      Vec x = eval(s, stmt->print_expr());
-      printFloatVec(s->output, x);
-      return;
-    }
-
-    // String
-    case PRINT_STR:
-      emitStr(s->output, stmt->print.str());
-      return;
-  }
-}
 
 // ============================================================================
 // Execute set-stride statements
@@ -581,10 +551,6 @@ void exec(InterpreterState* state, CoreState* s) {
       }
       return;
 
-    case Stmt::PRINT:
-      execPrint(s, stmt);
-      return;
-
     case Stmt::SET_READ_STRIDE:
       execSetStride(s, Stmt::SET_READ_STRIDE, stmt->dma.stride_internal());
       return;
@@ -630,8 +596,7 @@ void interpreter(
   Stmt::Ptr stmt,
   int numVars,
   Seq<int32_t> &uniforms,
-  BufferObject &heap,
-  Seq<char>* output
+  BufferObject &heap
 ) {
   InterpreterState state;
 
@@ -644,7 +609,6 @@ void interpreter(
     s.uniforms    = uniforms;
     s.env         = new Vec [numVars + 1];
     s.sizeEnv     = numVars + 1;
-    s.output      = output;
     s.emuHeap.heap_view(heap);
   }
 

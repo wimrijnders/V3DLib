@@ -150,23 +150,6 @@ void ForBody_() {
 }
 
 
-//=============================================================================
-// 'Print' token
-//=============================================================================
-
-void Print(const char *str) {
-  Stmt::Ptr s = Stmt::create(Stmt::PRINT);
-  s->print.str(str);
-  stmtStack().append(s);
-}
-
-
-void Print(IntExpr x) {
-  Stmt::Ptr s = Stmt::create(Stmt::PRINT, x.expr(), nullptr);
-  stmtStack().append(s);
-}
-
-
 void header(char const *str) {
   assert(stmtStack().top() != nullptr);
   stmtStack().top()->seq_s1()->header(str);

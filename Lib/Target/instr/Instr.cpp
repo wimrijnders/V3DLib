@@ -45,7 +45,6 @@ Instr::Instr(InstrTag in_tag) {
   case InstrTag::INIT_BEGIN:
   case InstrTag::INIT_END:
   case InstrTag::RECV:
-  case InstrTag::PRI:
   case InstrTag::END:
   case InstrTag::TMU0_TO_ACC4:
     tag = in_tag;

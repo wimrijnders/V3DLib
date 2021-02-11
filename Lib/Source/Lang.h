@@ -39,9 +39,6 @@ void For_(Cond c);
 void For_(BoolExpr b);
 void ForBody_();
 
-void Print(const char *);
-void Print(IntExpr x);
-
 void header(char const *str);
 inline void header(std::string const &str) { header(str.c_str()); }
 void comment(char const *str);

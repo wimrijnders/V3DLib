@@ -139,18 +139,6 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
         useDef->use.insert(instr.ALU.srcB.reg);
       return;
 
-    // Print integer instruction
-    case PRI:
-      // Add source reg to 'use' set
-      useDef->use.insert(instr.PRI);
-      return;
-
-    // Print float instruction
-    case PRF:
-      // Add source reg to 'use' set
-      useDef->use.insert(instr.PRF);
-      return;
-
     // Load receive instruction
     case RECV:
       // Add dest reg to 'def' set

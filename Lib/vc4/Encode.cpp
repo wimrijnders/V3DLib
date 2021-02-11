@@ -420,9 +420,6 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 
     // No-op & ignored instructions
     case NO_OP:
-    case PRI:
-    case PRS:
-    case PRF:
     case INIT_BEGIN:
     case INIT_END: {
       uint32_t waddr_add = 39 << 6;

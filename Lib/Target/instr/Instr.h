@@ -127,11 +127,6 @@ enum InstrTag {
   SDEC,           // Decrement semaphore
   IRQ,            // Send IRQ to host
 
-  // Print instructions
-  PRS,            // Print string
-  PRI,            // Print integer
-  PRF,            // Print float
-
   VPM_STALL,      // Marker for VPM read setup
 
   END_VC4_ONLY,
@@ -224,11 +219,6 @@ struct Instr : public InstructionComment {
 
     // Load receive via TMU
     struct { Reg dest; } RECV;  // Destination register for load receive
-
-    // Print instructions
-    const char* PRS;            // Print string
-    Reg PRI;                    // Print integer
-    Reg PRF;                    // Print float
   };
 
 
