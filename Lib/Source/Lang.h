@@ -38,12 +38,17 @@ inline void Where_(BoolExpr b) { Where__(b.bexpr()); }
 void For_(Cond c);
 void For_(BoolExpr b);
 void ForBody_();
+
 void Print(const char *);
 void Print(IntExpr x);
+
 void header(char const *str);
 inline void header(std::string const &str) { header(str.c_str()); }
 void comment(char const *str);
 inline void comment(std::string const &str) { comment(str.c_str()); }
+
+void break_point(bool val = true);
+
 void initStmt();
 
 }  // namespace V3DLib

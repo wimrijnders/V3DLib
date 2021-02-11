@@ -849,6 +849,14 @@ void emulate(
         // Run next instruction
         //
         Instr const instr = instrs->get(s->pc++);
+
+        if (instr.break_point()) {
+#ifdef DEBUG
+          printf("Emulator: hit breakpoint\n");
+          breakpoint
+#endif
+        }
+
         switch (instr.tag) {
           // Load immediate
           case LI: {

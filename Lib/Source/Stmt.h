@@ -145,6 +145,9 @@ struct Stmt : public InstructionComment {
   PrintStmt print;
   DMA::Stmt dma;
 
+  void break_point() { m_break_point = true; }
+  bool do_break_point() const { return m_break_point; }
+
 private:
   BExpr::Ptr m_where_cond;
 
@@ -155,6 +158,8 @@ private:
   Ptr m_stmt_b;
 
   CExpr::Ptr m_cond;
+
+  bool m_break_point = false;
 
   void init(Tag in_tag);
   std::string disp_intern(bool with_linebreaks, int seq_depth) const;

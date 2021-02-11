@@ -43,6 +43,7 @@ void Pointer::reset_increment() {
   increment.reset(nullptr);
 }
 
+
 Pointer::Pointer() : BaseExpr(mkVar(freshVar()), "Ptr") {}
 
 
