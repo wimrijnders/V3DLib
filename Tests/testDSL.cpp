@@ -561,7 +561,7 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
 
   auto k = compile(rot_kernel<Int>);
   k.pretty(true, "obj/test/rot_kernel.txt", false);
-  //k.load(&result1, &a);
+  k.load(&result1, &a);
 
   // Interpreter works fine, used here to compare emulator output
   reset();
