@@ -7,6 +7,7 @@
 #include "DMA/Operations.h"
 #include "dump_instr.h"
 #include "Target/instr/Instructions.h"
+#include "SourceTranslate.h"  // add_uniform_pointer_offset()
 
 namespace V3DLib {
 namespace vc4 {
@@ -79,17 +80,18 @@ void KernelDriver::compile_intern() {
   V3DLib::translate_stmt(m_targetCode, m_body);
 
   {
-    // Add final dummy uniform handling
-    // See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
     using namespace V3DLib::Target::instr;  // for mov()
-
-    int index = m_targetCode.lastUniformOffset();
-    assert(index > 0);
+    // Add final dummy uniform handling - See Note 1, function `invoke()` in `vc4/Invoke.cpp`,
+    // and uniform ptr index offsets
 
     Instr::List ret;
 
-    ret << mov(freshVar(), Var(UNIFORM)).comment("Last uniform load is dummy value");
+    ret << mov(freshVar(), Var(UNIFORM)).comment("Last uniform load is dummy value")
+        << add_uniform_pointer_offset(m_targetCode);  // !!! NOTE: doesn't take dummy in previous into account
+                                                      // This should not be a problem
 
+    int index = m_targetCode.lastUniformOffset();
+    assert(index > 0);
     m_targetCode.insert(index + 1, ret);
   }
 

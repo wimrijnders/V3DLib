@@ -179,6 +179,14 @@ void comment(char const *str) {
 }
 
 
+void break_point(bool val) {
+  if (val) {
+    assert(stmtStack().top() != nullptr);
+    stmtStack().top()->seq_s1()->break_point();
+  }
+}
+
+
 void initStmt() {
   controlStack.clear();
 }

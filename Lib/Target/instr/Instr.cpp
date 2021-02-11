@@ -191,6 +191,12 @@ bool Instr::isUniformLoad() const {
 }
 
 
+bool Instr::isUniformPtrLoad() const {
+ return isUniformLoad()
+     && (ALU.srcA.tag == REG && ALU.srcA.reg.isUniformPtr);
+}
+
+
 bool Instr::isTMUAWrite(bool fetch_only) const {
    if (tag != InstrTag::ALU) {
     return false;

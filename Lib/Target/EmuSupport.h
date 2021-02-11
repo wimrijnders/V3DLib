@@ -2,6 +2,7 @@
 #define _V3DLIB_TARGET_EMUSUPPORT_H_
 #include <stdint.h>
 #include "Common/Seq.h"
+#include "Source/Op.h"
 
 
 /**
@@ -22,6 +23,9 @@ union Word {
 
 // Vector values
 struct Vec {
+  Vec() = default;
+  Vec(int val);
+
   Word &get(int index) {
     assert(0 <= index && index < NUM_LANES);
     return elems[index];
@@ -31,9 +35,22 @@ struct Vec {
     return get(index);
   }
 
+  Word operator[](int index) const {
+    assert(0 <= index && index < NUM_LANES);
+    return elems[index];
+  }
+
+  std::string dump() const;
+  Vec negate() const;
+  bool apply(Op op, Vec a, Vec b);
+  bool is_uniform() const;
+
+  static Vec Always;
+
 private:
    Word elems[NUM_LANES];
 };
+
 
 // In-flight DMA request
 struct DMAAddr {

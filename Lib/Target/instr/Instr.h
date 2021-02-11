@@ -240,6 +240,8 @@ struct Instr : public InstructionComment {
   Instr &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
   Instr &comment(std::string msg)       { InstructionComment::comment(msg); return *this; }
 
+  void break_point() { m_break_point = true; }
+  bool break_point() const { return m_break_point; }
 
   // ==================================================
   // Helper methods
@@ -250,6 +252,7 @@ struct Instr : public InstructionComment {
   bool isCondAssign() const;
   bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
   bool isUniformLoad() const;
+  bool isUniformPtrLoad() const;
   bool isTMUAWrite(bool fetch_only = false) const;
   bool isZero() const;
   bool isLast() const;
@@ -305,6 +308,8 @@ struct Instr : public InstructionComment {
 
 private:
   SetCond &setCond();
+
+  bool m_break_point = false;
 };
 
 

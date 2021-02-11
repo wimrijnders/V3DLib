@@ -4,6 +4,7 @@
 #include "Support/Platform.h"
 #include "vc4/SourceTranslate.h"
 #include "v3d/SourceTranslate.h"
+#include "Target/instr/Instructions.h"
 
 namespace {
 
@@ -14,6 +15,35 @@ std::unique_ptr<V3DLib::ISourceTranslate> _v3d_source_translate;
 
 
 namespace V3DLib {
+
+
+/**
+ * Generate code to add an offset to the uniforms which are pointers.
+ *
+ * The calculated offset is assumed to be in ACC0
+ */
+Instr::List add_uniform_pointer_offset(Instr::List &code) {
+  using namespace V3DLib::Target::instr;
+
+  Instr::List ret;
+
+  // offset = 4 * vector_id;
+  ret << mov(ACC0, ELEM_ID).comment("Initialize uniform ptr offsets")
+      << shl(ACC0, ACC0, 2);            // offset now in ACC0
+
+  // add the offset to all the uniform pointers
+  for (int index = 0; index < code.size(); ++index) {
+    auto &instr = code[index];
+
+    if (!instr.isUniformLoad()) break;  // Assumption: uniform loads always at top
+
+    if (instr.isUniformPtrLoad()) {
+      ret << add(rf((uint8_t) index), rf((uint8_t) index), ACC0);
+    }
+  }
+
+  return ret;
+}
 
 ISourceTranslate &getSourceTranslate() {
   if (Platform::compiling_for_vc4()) {

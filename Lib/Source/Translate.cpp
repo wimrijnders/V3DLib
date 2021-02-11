@@ -660,6 +660,10 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
   if (!seq->empty()) {
     seq->back().transfer_comments(*s);
   }
+
+  if (s->do_break_point()) {
+    seq->back().break_point();
+  }
 }
 
 }  // anon namespace

@@ -1,5 +1,4 @@
 #include "Source/Interpreter.h"
-#include <cmath>
 #include "Common/SharedArray.h"
 #include "Source/Stmt.h"
 #include "Common/BufferObject.h"
@@ -24,12 +23,15 @@ struct CoreState {
   Seq<Vec> loadBuffer;           // Load buffer
   SharedArray<uint32_t> emuHeap;
 
-
   ~CoreState() {
     // Don't delete uniform and output here, these are used as references
     delete [] env;
   }
+
+  void store_to_heap(Vec const &index, Vec &val);
+  Vec  load_from_heap(Vec const &index);
 };
+
 
 // State of the Interpreter.
 struct InterpreterState {
@@ -44,12 +46,33 @@ struct InterpreterState {
 };
 
 
-void storeToHeap(CoreState *s, Vec &index, Vec &val) {
-  uint32_t hp = (uint32_t) index[0].intVal;
+void CoreState::store_to_heap(Vec const &index, Vec &val) {
+  assertq(index.is_uniform(), "store_to_heap(): index does not have all same values");
+  assert(writeStride == 0);  // usage of writeStride is probably wrong!
+
+  uint32_t hp = (uint32_t) index[0].intVal;  // NOTE: only first value used
+
   for (int i = 0; i < NUM_LANES; i++) {
-    s->emuHeap.phy(hp>>2) = val[i].intVal;
-    hp += 4 + s->writeStride;
+    emuHeap.phy(hp>>2) = val[i].intVal;
+    hp += 4 + writeStride;  // writeStride only relevant for DMA
   }
+}
+
+
+Vec CoreState::load_from_heap(Vec const &index) {
+  assertq(index.is_uniform(), "load_from_heap(): index does not have all same values");
+  assert(readStride == 0);  // Usage of readStride is probably wrong!
+
+  uint32_t hp = (uint32_t) index[0].intVal;  // NOTE: only first value used
+
+  Vec v;
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    v[i].intVal = emuHeap.phy((hp >> 2));
+    hp += 4 + readStride;  // readStride only relevant for DMA
+  }
+
+  return v;
 }
 
 
@@ -108,13 +131,6 @@ Vec evalVar(CoreState* s, Var v) {
   return Vec();
 }
 
-
-// Bitwise rotate-right
-inline int32_t rotRight(int32_t x, int32_t n) {
-  uint32_t ux = (uint32_t) x;
-  return (ux >> n) | (x << (32-n));
-}
-
 }  // anon namespace
 
 
@@ -150,73 +166,18 @@ Vec eval(CoreState* s, Expr::Ptr e) {
       if (e->apply_op.op == ROTATE) {
         // Vector rotation
         v = rotate(a, b[0].intVal);
-      } else if (e->apply_op.type == FLOAT) {
-        // Floating-point operation
-        for (int i = 0; i < NUM_LANES; i++) {
-          float  x = a[i].floatVal;
-          float  y = b[i].floatVal;
-          float &d = v[i].floatVal;
-
-          switch (e->apply_op.op) {
-            case ADD      : d = x+y;                   break;
-            case SUB      : d = x-y;                   break;
-            case MUL      : d = x*y;                   break;
-            case ItoF     : d = (float) a[i].intVal;   break;
-            case FtoI     : v[i].intVal   = (int) x;   break;
-            case MIN      : d = x<y?x:y;               break;
-            case MAX      : d = x>y?x:y;               break;
-            case RECIP    : d = 1/x;                   break; // TODO guard against zero?
-            case RECIPSQRT: d = (float) (1/::sqrt(x)); break; // TODO idem
-            case EXP      : d = (float) ::exp2(x);     break;
-            case LOG      : d = (float) ::log2(x);     break; // TODO idem
-            default: assert(false);
-          }
-        }
+      } else {
+        bool did_something = v.apply(e->apply_op, a, b);
+        assert(did_something);
       }
-      else {
-        // Integer operation
-        for (int i = 0; i < NUM_LANES; i++) {
-          int32_t x   = a[i].intVal;
-          int32_t y   = b[i].intVal;
-          uint32_t ux = (uint32_t) x;
 
-          switch (e->apply_op.op) {
-            case ADD:  v[i].intVal = x+y; break;
-            case SUB:  v[i].intVal = x-y; break;
-            case MUL:  v[i].intVal = (x&0xffffff)*(y&0xffffff); break;
-            case SHL:  v[i].intVal = x<<y; break;
-            case SHR:  v[i].intVal = x>>y; break;
-            case USHR: v[i].intVal = (int32_t) (ux >> y); break;
-            case ItoF: v[i].floatVal = (float) a[i].intVal; break;
-            case FtoI: v[i].intVal   = (int) a[i].floatVal; break;
-            case MIN:  v[i].intVal = x<y?x:y; break;
-            case MAX:  v[i].intVal = x>y?x:y; break;
-            case BOR:  v[i].intVal = x|y; break;
-            case BAND: v[i].intVal = x&y; break;
-            case BXOR: v[i].intVal = x^y; break;
-            case BNOT: v[i].intVal = ~x; break;
-            case ROR:  v[i].intVal = rotRight(x, y);
-            default: assert(false);
-          }
-        }
-      }
       return v;
     }
 
     // Dereference pointer
     case Expr::DEREF:
-      Vec a = eval(s, e->deref_ptr());
-      uint32_t hp = (uint32_t) a[0].intVal;
-
-      // NOTE: `hp` is the same for all lanes.
-      //       This has been tested and verified.
-      //       So, all we need to do here is add the index number to the pointer.
-
-      Vec v;
-      for (int i = 0; i < NUM_LANES; i++) {
-        v[i].intVal = s->emuHeap.phy((hp >> 2) + i); // WRI added '+ i'
-        hp += s->readStride;
-      }
+      Vec index = eval(s, e->deref_ptr());
+      v = s->load_from_heap(index);
       return v;
   }
 
@@ -358,11 +319,7 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
 
     case TMU0_ADDR: {  // Load via TMU
       assert(s->loadBuffer.size() < 8);
-      Vec w;
-      for (int i = 0; i < NUM_LANES; i++) {
-        uint32_t addr = (uint32_t) x[i].intVal;
-        w[i].intVal = s->emuHeap.phy(addr>>2);
-      }
+      Vec w =  s->load_from_heap(x);
       s->loadBuffer.append(w);
       break;
     }
@@ -402,7 +359,7 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
     // Dereferenced pointer
     case Expr::DEREF: {
       Vec index = eval(s, lhs->deref_ptr());
-      storeToHeap(s, index, val);
+      s->store_to_heap(index, val);
     }
     break;
 
@@ -417,27 +374,11 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
 // Condition vector auxiliaries
 // ============================================================================
 
-// Condition vector containing all trues
-Vec vecAlways()
-{
-  Vec always;
-  for (int i = 0; i < NUM_LANES; i++)
-    always[i].intVal = 1;
-  return always;
-}
 
-// Negate a condition vector
-Vec vecNeg(Vec cond)
-{
-  Vec v;
-  for (int i = 0; i < NUM_LANES; i++)
-    v[i].intVal = !cond[i].intVal;
-  return v;
-}
-
-// And two condition vectors
-Vec vecAnd(Vec x, Vec y)
-{
+/**
+ * And two condition vectors
+ */
+Vec vecAnd(Vec x, Vec y) {
   Vec v;
   for (int i = 0; i < NUM_LANES; i++)
     v[i].intVal = x[i].intVal && y[i].intVal;
@@ -476,7 +417,7 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
     case Stmt::WHERE: {
       Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, vecAnd(b, cond), stmt->thenStmt());
-      execWhere(s, vecAnd(vecNeg(b), cond), stmt->elseStmt());
+      execWhere(s, vecAnd(b.negate(), cond), stmt->elseStmt());
       return;
     }
 
@@ -533,7 +474,7 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
   assert(s->loadBuffer.size() > 0);
   assert(e->tag() == Expr::VAR);
   Vec val = s->loadBuffer.remove(0);
-  assignToVar(s, vecAlways(), e->var(), val);
+  assignToVar(s, Vec::Always, e->var(), val);
 }
 
 
@@ -593,7 +534,17 @@ void exec(InterpreterState* state, CoreState* s) {
   // Pop the statement at the top of the stack
   Stmt::Ptr stmt = s->stack.pop();
 
-  if (stmt == NULL) return;
+  if (stmt == NULL) { // Apparently this happens
+    //assertq(false, " Interpreter: not expecting nullptr for stmt");
+    return;
+  }
+
+  if (stmt->do_break_point()) {
+#ifdef DEBUG
+    printf("Interpreter: hit breakpoint for stmt: %s\n", stmt->dump().c_str());
+    breakpoint
+#endif
+  }
 
   switch (stmt->tag) {
     case Stmt::GATHER_PREFETCH: // Ignore
@@ -601,7 +552,7 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     case Stmt::ASSIGN:          // Assignment
-      execAssign(s, vecAlways(), stmt->assign_lhs(), stmt->assign_rhs());
+      execAssign(s, Vec::Always, stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
     case Stmt::SEQ:             // Sequential composition
@@ -612,7 +563,7 @@ void exec(InterpreterState* state, CoreState* s) {
     case Stmt::WHERE: {         // Conditional assignment
       Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, b, stmt->thenStmt());
-      execWhere(s, vecNeg(b), stmt->elseStmt());
+      execWhere(s, b.negate(), stmt->elseStmt());
       return;
     }
 
