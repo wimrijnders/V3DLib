@@ -57,6 +57,12 @@ struct MandSettings : public Settings {
   const float topLeftIm       = 2.0f;
   const float bottomRightReal = 1.5f;
   const float bottomRightIm   = -2.0f;
+/*
+  const float topLeftReal     = -2.0f;
+  const float topLeftIm       = 0.75f;
+  const float bottomRightReal = -1.0f;
+  const float bottomRightIm   = -0.25f;
+*/
 
   int num_items() const { return numStepsWidth*numStepsHeight; }
   float offsetX() const { return (bottomRightReal - topLeftReal  )/((float) numStepsWidth  - 1); }
@@ -211,7 +217,8 @@ void output_pgm(Array &result) {
   int height        = settings.numStepsHeight;
   int numIterations = settings.num_iterations;
 
-  output_pgm_file(result, width, height, numIterations, "mandelbrot.pgm");
+  //output_pgm_file(result, width, height, numIterations, "mandelbrot.pgm");
+  output_ppm_file(result, width, height, numIterations, "mandelbrot.ppm");
 }
 
 
