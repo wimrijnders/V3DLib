@@ -13,27 +13,6 @@ using ::operator<<;  // C++ weirdness
 
 namespace v3d {
 
-Instr::List SourceTranslate::load_var(Var &in_dst, Expr &e) {
-  using namespace V3DLib::Target::instr;
-
-  Instr::List ret;
-
-  Reg src = srcReg(e.deref_ptr()->var());
-  Reg dst = dstReg(in_dst);
-
-  ret << mov(TMU0_S, src)
-
-      // TODO: Do we need NOP's here?
-      // TODO is r4 safe? Do we need to select an accumulator in some way?
-      << Instr::nop()
-      << Instr::nop()
-      << Instr(TMU0_TO_ACC4)
-      << mov(dst, ACC4);
-
-  return ret;
-}
-
-
 Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
   using namespace V3DLib::Target::instr;
 

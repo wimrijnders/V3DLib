@@ -14,29 +14,7 @@ Instr::List SourceTranslate::load_var(Var &in_dst, Expr &e) {
 
   if (LibSettings::use_tmu_for_load()) {
     //warning("Using TMU for var load");
-    Instr::List ret;
-
-    Reg src = srcReg(e.deref_ptr()->var());
-    Reg dst = dstReg(in_dst);
-
-    // Compare with RECV handling in:
-    // - loadStorePass(),
-    // - gather/receive
-    // - SourceTranslate::load_var(0 for v3d
-/*
-    ret << mov(ACC0, ELEM_ID)
-        << shl(ACC0, ACC0, 2)
-        << add(ACC0, ACC0, src)
-        << mov(TMU0_S, ACC0)
-        << Instr(TMU0_TO_ACC4)
-        << mov(dst, ACC4);
-*/
-
-    ret << mov(TMU0_S, src)
-        << Instr(TMU0_TO_ACC4)
-        << mov(dst, ACC4);
-
-    return ret;
+    return Parent::load_var(in_dst, e);
   } else {
     //warning("Using DMA for var load");
     return DMA::loadRequest(in_dst, e);

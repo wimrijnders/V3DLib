@@ -16,6 +16,33 @@ std::unique_ptr<V3DLib::ISourceTranslate> _v3d_source_translate;
 
 namespace V3DLib {
 
+/**
+ * Used by both v3d and vc4
+ *
+ * Compare with RECV handling in:
+ *   - loadStorePass()
+ *   - gather/receive
+ */
+Instr::List ISourceTranslate::load_var(Var &in_dst, Expr &e) {
+  warning("Called ISourceTranslate::load_var()");
+  using namespace V3DLib::Target::instr;
+
+  Instr::List ret;
+
+  Reg src = srcReg(e.deref_ptr()->var());
+  Reg dst = dstReg(in_dst);
+
+  ret << mov(TMU0_S, src)
+
+      // TODO: Do we need NOP's here?
+      // TODO is r4 safe? Do we need to select an accumulator in some way?
+//      << Instr::nop()
+//      << Instr::nop()
+      << Instr(TMU0_TO_ACC4)
+      << mov(dst, ACC4);
+
+  return ret;
+}
 
 /**
  * Generate code to add an offset to the uniforms which are pointers.
@@ -44,6 +71,7 @@ Instr::List add_uniform_pointer_offset(Instr::List &code) {
 
   return ret;
 }
+
 
 ISourceTranslate &getSourceTranslate() {
   if (Platform::compiling_for_vc4()) {

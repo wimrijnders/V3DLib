@@ -6,6 +6,8 @@ namespace V3DLib {
 namespace vc4 {
 
 class SourceTranslate : public ISourceTranslate {
+  using Parent = ISourceTranslate;
+
 public:
   Instr::List load_var(Var &dst, Expr &e) override;
   Instr::List store_var(Var dst_addr, Var src) override;
