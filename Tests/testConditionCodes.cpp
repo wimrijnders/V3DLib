@@ -274,32 +274,32 @@ void noloop_multif_kernel(Ptr<Int> result, Int x, Int y) {
 
 
 void andor_where_kernel(Ptr<Float> result, Int width, Int height) {
-  For (Int y = 0, y < height, y = y + 1)
+  For (Int y = 0, y < height, y += 1)
     Ptr<Float> p = result + y*width;  // Point p to the output row
 
-    For (Int x = 0, x < width, x = x + VEC_SIZE)
+    For (Int x = 0, x < width, x += VEC_SIZE)
       Float tmp = toFloat(1024);
       Where (y > 10 && y < 20 && x > 10 && x < 20)
         tmp = 0.0;
       End
       *p = tmp;
-      p = p + VEC_SIZE;
+      p += VEC_SIZE;
     End
   End
 }
 
 
 void andor_if_kernel(Ptr<Float> result, Int width, Int height) {
-  For (Int y = 0, y < height, y = y + 1)
+  For (Int y = 0, y < height, y += 1)
     Ptr<Float> p = result + y*width;  // Point p to the output row
 
-    For (Int x = 0, x < width, x = x + VEC_SIZE)
+    For (Int x = 0, x < width, x += VEC_SIZE)
       Float tmp = toFloat(1024);
       If (y > 10 && y < 20 && x > 10 && x < 20)
         tmp = 0.0;
       End
       *p = tmp;
-      p = p + VEC_SIZE;
+      p += VEC_SIZE;
     End
   End
 }
@@ -564,21 +564,30 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 TEST_CASE("Test multiple and/or", "[andor][cond]") {
   make_test_dir();
 
+  int const width  = 48;
+  int const height = 32;
+
+  auto check_output = [width, height] (V3DLib::SharedArray<float> &result, char const *label) {
+    std::string filename;
+    filename <<  "obj/test/andor_" << label << "_output.pgm";
+    output_pgm_file(result, width, height, 255, filename.c_str());
+    check_pgm(filename.c_str());
+  };
+
+
   SECTION("Test Where blocks with and/or") {
     const int NUM_TESTS = 9;
-
-    auto k = compile(andor_kernel);
-
     V3DLib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
 
+    auto k = compile(andor_kernel);
     k.load(&result);
 
     reset(result);
-    k.emu();
+    k.interpret();
     check_andor_result(result);
 
     reset(result);
-    k.interpret();
+    k.emu();
     check_andor_result(result);
 
     reset(result);
@@ -586,46 +595,29 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
     check_andor_result(result);
   }
 
-  SECTION("Test Where blocks with multiple and/or") {
-    make_test_dir();
-    int const width  = 48;
-    int const height = 32;
 
+  SECTION("Test andor_where_kernel") {
     V3DLib::SharedArray<float> result(width*height);
-
-    auto check_output = [width, height, &result] (char const *label) {
-      std::string filename;
-      filename <<  "obj/test/andor_" << label << "_output.pgm";
-      output_pgm_file(result, width, height, 255, filename.c_str());
-      check_pgm(filename.c_str());
-    };
 
     auto k1 = compile(andor_where_kernel);
     k1.load(&result, width, height);
 
     reset(result);
-    k1.emu();
-    check_output("where_emu");
+    k1.interpret();
+    check_output(result, "where_int");
 
     reset(result);
-    k1.interpret();
-    check_output("where_int");
+    k1.emu();
+    check_output(result, "where_emu");
+
+    reset(result);
+    k1.call();
+    check_output(result, "where_qpu");
+  }
 
 
-    if (Platform::has_vc4()) {
-      std::cout << "Not running the 'where_qpu' test on vc4; this hangs the pi (TODO)" << std::endl;
-
-      reset(result);
-      k1.emu();
-      check_output("where_qpu_vc4");
-    } else {
-      // v3d: works fine
-      reset(result);
-      k1.call();
-      check_output("where_qpu_v3d");
-    }
-
-    //k1.pretty(false,  "obj/test/andor_where_v3d.txt");  
+  SECTION("Test andor_if_kernel") {
+    V3DLib::SharedArray<float> result(width*height);
 
     auto k2 = compile(andor_if_kernel);
     k2.load(&result, width, height);
@@ -633,44 +625,46 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
     //k2.pretty(false, "obj/test/andor_if_v3d.txt");  
 
     reset(result);
-    k2.emu();
-    check_output("if_emu");
-
-    reset(result);
     k2.interpret();
-    check_output("if_int");
+    check_output(result, "if_int");
 
-    std::cout << "Not running the 'if_qpu' test; this hangs the pi4 and locks up the videocore on pi3 (TODO)" << std::endl;
-/*
-    // vc4: hangs the pi4
-    // v3d: fails, no output. Locks the videocore, needs reset
     reset(result);
-    k2.call();
-    check_output("if_qpu");
-*/
+    k2.emu();
+    check_output(result, "if_emu");
 
+    if (Platform::has_vc4()) {
+      reset(result);
+      k2.call();
+      check_output(result, "if_qpu");
+    } else {
+      // v3d: fails, no output. Locks the videocore, needs reset
+      std::cout << "Not running the 'if_qpu' test on v3d; this hangs the pi (TODO)" << std::endl;
+    }
+  }
+
+
+  SECTION("Test andor_multi_if_kernel") {
+    V3DLib::SharedArray<float> result(width*height);
 
     auto k3 = compile(andor_multi_if_kernel);
     k3.load(&result, width, height);
 
     reset(result);
-    k3.emu();
-    check_output("multi_if_emu");
-
-    reset(result);
     k3.interpret();
-    check_output("multi_if_int");
+    check_output(result, "multi_if_int");
 
-    //k3.pretty(false, "obj/test/andor_multi_if_v3d.txt");  
-
-    std::cout << "Not running the 'multi_if_qpu' test; this hangs the pi4 and locks up the videocore on pi3 (TODO)" << std::endl;
-/*
-    // vc4: hangs the pi4
-    // v3d: fails, no output. Locks the videocore, needs reset
     reset(result);
-    k2.call();
-    check_output("multi_if_qpu");
-*/
+    k3.emu();
+    check_output(result, "multi_if_emu");
+
+    if (Platform::has_vc4()) {
+      reset(result);
+      k3.call();
+      check_output(result, "multi_if_qpu");
+    } else {
+      // v3d: fails, no output. Locks the videocore, needs reset
+      std::cout << "Not running the 'multi_if_qpu' test on v3d; this hangs the pi (TODO)" << std::endl;
+    }
   }
 }
 
