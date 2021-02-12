@@ -52,7 +52,6 @@ private:
 
 enum MatrixReadMethod {
   DEFAULT,
-  USE_TMU,
   DO_PREFETCH,
   NO_READWRITE
 };

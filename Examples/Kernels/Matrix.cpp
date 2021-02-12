@@ -76,14 +76,8 @@ void pre_read(Float &dst, Ptr<Float> &src, int prefetch_label) {
 
   switch (read_method) {
     case DEFAULT:
-      // on vc4, this will use DMA
+      // on vc4, either TMU (default) or DMA
       dst = *src;
-      src.inc();
-      break;
-    case USE_TMU:
-      // on vc4, this will use TMU
-      gather(src);
-      receive(dst);
       src.inc();
       break;
     case DO_PREFETCH:
@@ -104,7 +98,6 @@ void pre_write(Ptr<Float> &dst, Float &src) {
 
   switch (read_method) {
     case DEFAULT:
-    case USE_TMU:
     case DO_PREFETCH:
       // on vc4 this uses DMA
       // on v3d this uses TMU
@@ -206,7 +199,6 @@ void matrix_mult_scalar(int N, float *c, float *a, float *b) {
  * - unroll the internal loop (tried it but does not help, not added)
  * - Use all QPU's
  * - All QPU's iterate over b together -> increase cache hits
- * - Maybe utilize wait slots in branches (TODO)
  */
 void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   int const DIM = 16*N;  // N is global static

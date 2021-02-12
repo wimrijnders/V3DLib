@@ -28,7 +28,7 @@ CmdParameters params = {
   },{
     "Read method",
     "-read=",
-    { "default", "tmu", "prefetch", "none"}, 
+    { "default", "prefetch", "none"}, 
     "The way to retrieve data from memory. "
     "Option 'none' skips all reads and writes, the rest have only effect on reads.\n"
   },{
@@ -67,9 +67,8 @@ struct MatrixSettings : public Settings {
 
     switch(in_read_method) {
       case 0: read_method = DEFAULT;      break;
-      case 1: read_method = USE_TMU;      break;
-      case 2: read_method = DO_PREFETCH;  break;
-      case 3: read_method = NO_READWRITE; break;
+      case 1: read_method = DO_PREFETCH;  break;
+      case 2: read_method = NO_READWRITE; break;
 
       default: assertq(false, "Unknown read method"); return false;
     }
