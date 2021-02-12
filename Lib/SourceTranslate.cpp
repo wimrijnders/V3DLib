@@ -32,12 +32,7 @@ Instr::List ISourceTranslate::load_var(Var &in_dst, Expr &e) {
   Reg dst = dstReg(in_dst);
 
   ret << mov(TMU0_S, src)
-
-      // TODO: Do we need NOP's here?
-      // TODO is r4 safe? Do we need to select an accumulator in some way?
-//      << Instr::nop()
-//      << Instr::nop()
-      << Instr(TMU0_TO_ACC4)
+      << Instr(TMU0_TO_ACC4)  // TODO is r4 safe? Do we need to select an accumulator in some way?
       << mov(dst, ACC4);
 
   return ret;
