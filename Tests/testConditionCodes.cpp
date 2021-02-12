@@ -614,11 +614,15 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
     if (Platform::has_vc4()) {
       std::cout << "Not running the 'where_qpu' test on vc4; this hangs the pi (TODO)" << std::endl;
+
+      reset(result);
+      k1.emu();
+      check_output("where_qpu_vc4");
     } else {
       // v3d: works fine
       reset(result);
       k1.call();
-      check_output("where_qpu");
+      check_output("where_qpu_v3d");
     }
 
     //k1.pretty(false,  "obj/test/andor_where_v3d.txt");  
