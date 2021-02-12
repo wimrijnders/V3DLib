@@ -1,6 +1,5 @@
 #include "Pretty.h"
 #include "Support/basics.h"
-#include "Target/SmallLiteral.h"
 
 namespace V3DLib {
 namespace {
@@ -27,29 +26,6 @@ std::string pretty(Imm imm) {
   }
 
   return ret;
-}
-
-
-std::string pretty(SmallImm imm) {
-  switch (imm.tag) {
-    case SMALL_IMM: return printSmallLit(imm.val);
-    case ROT_ACC:   return "ROT(ACC5)";
-    case ROT_IMM: {
-      std::string ret;
-      ret << "ROT(" << imm.val << ")";
-      return ret;
-    }
-    default: assert(false); return "";
-  }
-}
-
-
-std::string pretty(RegOrImm r) {
-  switch (r.tag) {
-    case REG: return r.reg.pretty();
-    case IMM: return pretty(r.smallImm);
-    default: assert(false); return "";
-  }
 }
 
 }  // anon namespace
@@ -81,7 +57,7 @@ std::string pretty_instr(Instr const &instr) {
       if (instr.ALU.op.noOperands()) {
         buf << "()";
       } else {
-        buf << "(" << pretty(instr.ALU.srcA) << ", " << pretty(instr.ALU.srcB) << ")";
+        buf << "(" << instr.ALU.srcA.disp() << ", " << instr.ALU.srcB.disp() << ")";
       }
     }
     break;

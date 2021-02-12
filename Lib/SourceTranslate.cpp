@@ -24,7 +24,6 @@ namespace V3DLib {
  *   - gather/receive
  */
 Instr::List ISourceTranslate::load_var(Var &in_dst, Expr &e) {
-  warning("Called ISourceTranslate::load_var()");
   using namespace V3DLib::Target::instr;
 
   Instr::List ret;

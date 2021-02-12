@@ -3,6 +3,8 @@
 #include <cstdio>
 #include <cstring>  // strlen()
 #include "Support/basics.h"
+#include "Target/instr/ALUOp.h"
+#include "Source/Op.h"
 
 namespace V3DLib {
 namespace {
@@ -13,12 +15,24 @@ inline int32_t rotRight(int32_t x, int32_t n) {
   return (ux >> n) | (x << (32-n));
 }
 
-}  // anon namespace
 
-// ============================================================================
-// Rotate a vector
-// ============================================================================
+// Count leading zeros
+inline int32_t clz(int32_t x) {
+  int32_t count = 0;
+  int32_t n = (int32_t) (sizeof(int)*8);
+  for (int32_t i = 0; i < n; i++) {
+    if (x & (1 << (n-1))) break;
+    else count++;
+    x <<= 1;
+  }
 
+  return count;
+}
+
+
+/**
+ * Rotate a vector
+ */
 Vec rotate(Vec v, int n) {
   Vec w;
   for (int i = 0; i < NUM_LANES; i++)
@@ -26,55 +40,7 @@ Vec rotate(Vec v, int n) {
   return w;
 }
 
-
-// ============================================================================
-// Printing routines
-// ============================================================================
-
-namespace {
-
-void emitChar(Seq<char>* out, char c) {
-  if (out == nullptr) printf("%c", c);
-  else *out << c;
-}
-
 }  // anon namespace
-
-
-void emitStr(Seq<char>* out, const char* s) {
-  if (out == nullptr)
-    printf("%s", s);
-  else
-    for (int i = 0; i < (int) strlen(s); i++)
-      *out << s[i];
-}
-
-
-void printIntVec(Seq<char>* out, Vec x) {
-  char buffer[1024];
-  emitChar(out, '<');
-  for (int i = 0; i < NUM_LANES; i++) {
-    snprintf(buffer, sizeof(buffer), "%i", x[i].intVal);
-
-    for (int j = 0; j < (int) strlen(buffer); j++) emitChar(out, buffer[j]);
-    if (i != NUM_LANES-1) emitChar(out, ',');
-  }
-  emitChar(out, '>');
-}
-
-
-
-void printFloatVec(Seq<char>* out, Vec x) {
-  char buffer[1024];
-  emitChar(out, '<');
-  for (int i = 0; i < NUM_LANES; i++) {
-    snprintf(buffer, sizeof(buffer), "%f", x[i].floatVal);
-
-    for (int j = 0; j < (int) strlen(buffer); j++) emitChar(out, buffer[j]);
-    if (i != NUM_LANES-1) emitChar(out, ',');
-  }
-  emitChar(out, '>');
-}
 
 
 // ============================================================================
@@ -114,64 +80,118 @@ Vec Vec::negate() const {
 }
 
 
-bool Vec::apply(Op op, Vec a, Vec b) {
-  bool did_something = true;
+bool Vec::apply(Op const &op, Vec a, Vec b) {
+  bool handled = true;
 
-  if (op.type == FLOAT) {
-    // Floating-point operation
-    for (int i = 0; i < NUM_LANES; i++) {
-      float  x = a[i].floatVal;
-      float  y = b[i].floatVal;
-      float &d = elems[i].floatVal;
+  for (int i = 0; i < NUM_LANES; i++) {
+    float  x = a[i].floatVal;
+    float &d = elems[i].floatVal;
 
-      switch (op.op) {
-        case ADD      : d = x+y;                   break;
-        case SUB      : d = x-y;                   break;
-        case MUL      : d = x*y;                   break;
-        case ItoF     : d = (float) a[i].intVal;   break;
-        case FtoI     : elems[i].intVal = (int) x; break;
-        case MIN      : d = x<y?x:y;               break;
-        case MAX      : d = x>y?x:y;               break;
-        case RECIP    : d = 1/x;                   break; // TODO guard against zero?
-        case RECIPSQRT: d = (float) (1/::sqrt(x)); break; // TODO idem
-        case EXP      : d = (float) ::exp2(x);     break;
-        case LOG      : d = (float) ::log2(x);     break; // TODO idem
-        default: assert(false);
-      }
+    switch (op.op) {
+      case RECIP    : d = 1/x;                   break; // TODO guard against zero?
+      case RECIPSQRT: d = (float) (1/::sqrt(x)); break; // TODO idem
+      case EXP      : d = (float) ::exp2(x);     break;
+      case LOG      : d = (float) ::log2(x);     break; // TODO idem
+      default: handled = false;;
     }
-  } else if (op.type == INT32) {
-    // Integer operation
-    for (int i = 0; i < NUM_LANES; i++) {
-      int32_t x   = a[i].intVal;
-      int32_t y   = b[i].intVal;
-      int32_t &d  = elems[i].intVal;
-      uint32_t ux = (uint32_t) x;
-
-      switch (op.op) {
-        case ADD:  d = x+y; break;
-        case SUB:  d = x-y; break;
-        case MUL:  d = (x&0xffffff)*(y&0xffffff); break;
-        case SHL:  d = x<<y; break;
-        case SHR:  d = x>>y; break;
-        case USHR: d = (int32_t) (ux >> y); break;
-        case ItoF: elems[i].floatVal = (float) a[i].intVal; break;
-        case FtoI: d = (int) a[i].floatVal; break;
-        case MIN:  d = x<y?x:y; break;
-        case MAX:  d = x>y?x:y; break;
-        case BOR:  d = x|y; break;
-        case BAND: d = x&y; break;
-        case BXOR: d = x^y; break;
-        case BNOT: d = ~x; break;
-        case ROR:  d = rotRight(x, y);
-
-        default: assert(false);
-      }
-    }
-  } else {
-    did_something = false;
   }
 
-  return did_something;
+  if (handled) return true;
+
+  return apply(ALUOp(op), a, b);
+}
+
+
+bool Vec::apply(ALUOp const &op, Vec a, Vec b) {
+  bool handled = true;
+
+  // Floating-point operations
+  for (int i = 0; i < NUM_LANES; i++) {
+    float  x = a[i].floatVal;
+    float  y = b[i].floatVal;
+    float &d = elems[i].floatVal;
+
+    switch (op.value()) {
+    case ALUOp::A_FADD:    d = x+y;                       break;
+    case ALUOp::A_FSUB:    d = x-y;                       break;
+    case ALUOp::A_FMIN:    d = x<y?x:y;                   break;
+    case ALUOp::A_FMAX:    d = x>y?x:y;                   break;
+    case ALUOp::A_FMINABS: d = fabs(x) < fabs(y) ? x : y; break; // min of absolute values
+    case ALUOp::A_FMAXABS: d = fabs(x) > fabs(y) ? x : y; break; // max of absolute values
+    case ALUOp::A_FtoI:    elems[i].intVal = (int) x;     break;
+    case ALUOp::A_ItoF:    d = (float) a[i].intVal;       break;
+    case ALUOp::M_FMUL:    d = x*y;                       break;
+
+    default:
+      handled = false;
+      break;
+    }
+  }
+
+  if (handled) return handled;
+  handled = true;
+
+  // Integer operations
+  for (int i = 0; i < NUM_LANES; i++) {
+    int  x = a[i].intVal;
+    int  y = b[i].intVal;
+    int &d = elems[i].intVal;
+
+    switch (op.value()) {
+    case ALUOp::A_ADD:   d = x+y;            break;
+    case ALUOp::A_SUB:   d = x-y;            break;
+    case ALUOp::A_ROR:   d = rotRight(x, y); break;
+    case ALUOp::A_SHL:   d = x<<y;           break;
+    case ALUOp::A_SHR:   d = (int32_t) (((uint32_t) x) >> y); break;
+    case ALUOp::A_ASR:   d = x >> y; break;
+    case ALUOp::A_MIN:   d = x<y?x:y;        break;
+    case ALUOp::A_MAX:   d = x>y?x:y;        break;
+    case ALUOp::A_BAND:  d = x&y;            break;
+    case ALUOp::A_BOR:   d = x|y;            break;
+    case ALUOp::A_BXOR:  d = x^y;            break;
+    case ALUOp::A_BNOT:  d = ~x; break;
+    case ALUOp::M_MUL24: d = (x&0xffffff)*(y&0xffffff); break; // Integer multiply (24-bit)
+
+    case ALUOp::A_CLZ:    d = clz(x);         break; // Count leading zeros
+
+    case ALUOp::A_V8ADDS:
+    case ALUOp::A_V8SUBS:
+    case ALUOp::M_V8MUL:
+    case ALUOp::M_V8MIN:
+    case ALUOp::M_V8MAX:
+    case ALUOp::M_V8ADDS:
+    case ALUOp::M_V8SUBS: {
+      std::string buf;
+      buf << "V3DLib: unsupported operator " << op.value();
+      assertq(false, buf);
+    }
+    break;
+
+    default:
+      handled = false;
+      break;
+    }
+  }
+
+  if (handled) return handled;
+  handled = true;
+
+  // Other operations
+  switch (op.value()) {
+    case ALUOp::M_ROTATE: { // Vector rotation
+      assert(b.is_uniform());
+      int n = b[0].intVal;
+
+      assign(rotate(a,n));
+    }
+    break;
+
+    default:
+      handled = false;
+    break;
+  }
+
+  return handled;
 }
 
 
@@ -183,6 +203,13 @@ bool Vec::is_uniform() const {
   }
 
   return true;
+}
+
+
+void Vec::assign(Vec const &rhs) {
+  for (int i = 0; i < NUM_LANES; i++) {
+    elems[i] = rhs[i];
+  }
 }
 
 

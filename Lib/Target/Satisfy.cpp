@@ -16,7 +16,7 @@ namespace {
  * instruction to the given accumulator.
  */
 Instr remapAToAccum(Instr* instr, RegId acc) {
-  assert(instr->ALU.srcA.tag == REG);
+  assert(instr->ALU.srcA.is_reg());
 
   Reg src = instr->ALU.srcA.reg;
   instr->ALU.srcA.reg.tag    = ACC;
@@ -30,7 +30,7 @@ Instr remapAToAccum(Instr* instr, RegId acc) {
  * Remap register B to accumulator
  */
 Instr remapBToAccum(Instr* instr, RegId acc) {
-  assert(instr->ALU.srcB.tag == REG);
+  assert(instr->ALU.srcB.is_reg());
 
   Reg src = instr->ALU.srcB.reg;
   instr->ALU.srcB.reg.tag   = ACC;
@@ -45,7 +45,7 @@ Instr remapBToAccum(Instr* instr, RegId acc) {
  * to the same register file, then remap one of them to an accumulator.
  */
 bool resolveRegFileConflict(Instr* instr, Instr* newInstr) {
-  if (instr->tag == ALU && instr->ALU.srcA.tag == REG && instr->ALU.srcB.tag == REG) {
+  if (instr->tag == ALU && instr->ALU.srcA.is_reg() && instr->ALU.srcB.is_reg()) {
     int rfa = regFileOf(instr->ALU.srcA.reg);
     int rfb = regFileOf(instr->ALU.srcB.reg);
 
@@ -73,18 +73,18 @@ void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
       // Insert moves for horizontal rotate operations
       *newInstrs << remapAToAccum(&instr, 0);
 
-      if (instr.ALU.srcB.tag == REG)
+      if (instr.ALU.srcB.is_reg())
         *newInstrs << remapBToAccum(&instr, 5);
 
       *newInstrs << Instr::nop();
-    } else if (instr.tag == ALU && instr.ALU.srcA.tag == IMM &&
-             instr.ALU.srcB.tag == REG &&
+    } else if (instr.tag == ALU && instr.ALU.srcA.is_imm() &&
+             instr.ALU.srcB.is_reg() &&
              regFileOf(instr.ALU.srcB.reg) == REG_B) {
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.
       *newInstrs << remapBToAccum(&instr, 0);
-    } else if (instr.tag == ALU && instr.ALU.srcB.tag == IMM &&
-             instr.ALU.srcA.tag == REG &&
+    } else if (instr.tag == ALU && instr.ALU.srcB.is_imm() &&
+             instr.ALU.srcA.is_reg() &&
              regFileOf(instr.ALU.srcA.reg) == REG_B) {
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.

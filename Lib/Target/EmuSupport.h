@@ -2,13 +2,15 @@
 #define _V3DLIB_TARGET_EMUSUPPORT_H_
 #include <stdint.h>
 #include "Common/Seq.h"
-#include "Source/Op.h"
 
 
 /**
  * Definitions which are used in both the emulator and the interpreter.
  */
 namespace V3DLib {
+
+class Op;
+class ALUOp;
 
 const int NUM_LANES =   16;
 const int MAX_QPUS  =   12;
@@ -42,13 +44,18 @@ struct Vec {
 
   std::string dump() const;
   Vec negate() const;
-  bool apply(Op op, Vec a, Vec b);
+  bool apply(Op const &op, Vec a, Vec b);
+  bool apply(ALUOp const &op, Vec a, Vec b);
   bool is_uniform() const;
+
+  Vec &operator=(Vec const &rhs) { assign(rhs); return *this; }
 
   static Vec Always;
 
 private:
-   Word elems[NUM_LANES];
+  Word elems[NUM_LANES];
+
+  void assign(Vec const &rhs);
 };
 
 
@@ -89,15 +96,6 @@ struct DMAStoreReq {
   int rowLen;   // Length of each row in memory
   int vpmAddr;  // VPM address to load from
 };
-
-
-// Rotate a vector
-Vec rotate(Vec v, int n);
-
-// Printing routines
-void emitStr(Seq<char>* out, const char* s);
-void printIntVec(Seq<char>* out, Vec x);
-void printFloatVec(Seq<char>* out, Vec x);
 
 }  // namespace V3DLib
 

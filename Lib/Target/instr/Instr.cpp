@@ -2,8 +2,51 @@
 #include "Target/Pretty.h"  // pretty_instr_tag()
 #include "Support/basics.h" // fatal()
 #include "Source/BExpr.h"   // class CmpOp
+#include "Target/SmallLiteral.h"
 
 namespace V3DLib {
+
+// ============================================================================
+// Class RegOrImm
+// ============================================================================
+
+void RegOrImm::set_imm(int rhs) {
+  m_is_reg  = false;
+  smallImm.val = rhs;
+}
+
+
+void RegOrImm::set_reg(RegTag tag, RegId id) {
+  m_is_reg  = true;
+  reg.tag   = tag;
+  reg.regId = id;
+}
+
+
+void RegOrImm::set_reg(Reg const &rhs) {
+  m_is_reg  = true;
+  reg = rhs;
+}
+
+bool RegOrImm::operator==(RegOrImm const &rhs) const {
+  if (m_is_reg != rhs.m_is_reg) return false;
+
+  if (m_is_reg) {
+    return reg == rhs.reg;
+  } else {
+    return smallImm == rhs.smallImm;
+  }
+}
+
+
+std::string RegOrImm::disp() const {
+  if (m_is_reg) {
+    return reg.pretty();
+  } else {
+    return printSmallLit(smallImm.val);
+  }
+}
+
 
 // ============================================================================
 // Class BranchTarget
@@ -171,7 +214,7 @@ bool Instr::isUniformLoad() const {
     return false;
   }
 
-  if (ALU.srcA.tag != REG || ALU.srcB.tag != REG) {
+  if (!ALU.srcA.is_reg() || !ALU.srcB.is_reg()) {
     return false;  // Both operands must be regs
   }
 
@@ -191,8 +234,7 @@ bool Instr::isUniformLoad() const {
 
 
 bool Instr::isUniformPtrLoad() const {
- return isUniformLoad()
-     && (ALU.srcA.tag == REG && ALU.srcA.reg.isUniformPtr);
+ return isUniformLoad() && (ALU.srcA.is_reg() && ALU.srcA.reg.isUniformPtr);
 }
 
 

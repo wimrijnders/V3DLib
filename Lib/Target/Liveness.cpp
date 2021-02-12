@@ -131,11 +131,11 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
         useDef->use.insert(instr.ALU.dest);
 
       // Add source reg A to 'use' set
-      if (instr.ALU.srcA.tag == REG)
+      if (instr.ALU.srcA.is_reg())
         useDef->use.insert(instr.ALU.srcA.reg);
 
       // Add source reg B to 'use' set
-      if (instr.ALU.srcB.tag == REG)
+      if (instr.ALU.srcB.is_reg())
         useDef->use.insert(instr.ALU.srcB.reg);
       return;
 
@@ -189,8 +189,8 @@ void useSetOfSuccs(Seq<Instr>* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use
 
 bool getTwoUses(Instr instr, Reg* r1, Reg* r2)
 {
-  if (instr.tag == ALU && instr.ALU.srcA.tag == REG
-                       && instr.ALU.srcB.tag == REG) {
+  if (instr.tag == ALU && instr.ALU.srcA.is_reg()
+                       && instr.ALU.srcB.is_reg()) {
     *r1 = instr.ALU.srcA.reg;
     *r2 = instr.ALU.srcB.reg;
     return true;

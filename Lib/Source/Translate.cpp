@@ -18,16 +18,13 @@ RegOrImm operand(Expr::Ptr e) {
   RegOrImm x;
 
   if (e->tag() == Expr::VAR) {
-    x.tag = REG;
-    x.reg = srcReg(e->var());
+    x.set_reg(srcReg(e->var()));
     return x;
   }
 
   int enc = encodeSmallLit(*e);
   assert(enc >= 0);
-  x.tag          = IMM;
-  x.smallImm.tag = SMALL_IMM;
-  x.smallImm.val = enc;
+  x.set_imm(enc);
   return x;
 }
 

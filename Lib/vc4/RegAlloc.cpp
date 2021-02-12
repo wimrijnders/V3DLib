@@ -26,15 +26,15 @@ void regalloc_determine_regfileAB(Seq<Instr> &instrs, int *prefA, int *prefB, in
         { prefA[y]++; prefB[x]++; }
     }
     else if (instr.tag == ALU &&
-             instr.ALU.srcA.tag == REG &&
+             instr.ALU.srcA.is_reg() &&
              instr.ALU.srcA.reg.tag == REG_A &&
-             instr.ALU.srcB.tag == IMM) {
+             instr.ALU.srcB.is_imm()) {
       prefA[instr.ALU.srcA.reg.regId]++;
     }
     else if (instr.tag == ALU &&
-             instr.ALU.srcB.tag == REG &&
+             instr.ALU.srcB.is_reg() &&
              instr.ALU.srcB.reg.tag == REG_A &&
-             instr.ALU.srcA.tag == IMM) {
+             instr.ALU.srcA.is_imm()) {
       prefA[instr.ALU.srcB.reg.regId]++;
     }
   }

@@ -1,21 +1,17 @@
 #include "Instructions.h"
 #include "Support/basics.h"
+#include "Support/Platform.h"
 
 namespace V3DLib {
-
-//using ::operator<<;  // C++ weirdness
-
 namespace {
 
 Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, Reg srcB) {
   Instr instr(ALU);
   instr.ALU.cond      = always;
   instr.ALU.dest      = dst;
-  instr.ALU.srcA.tag  = REG;
-  instr.ALU.srcA.reg  = srcA;
+  instr.ALU.srcA.set_reg(srcA);
   instr.ALU.op        = ALUOp(op);
-  instr.ALU.srcB.tag  = REG;
-  instr.ALU.srcB.reg  = srcB;
+  instr.ALU.srcB.set_reg(srcB);
 
   return instr;
 }
@@ -24,12 +20,9 @@ Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, Reg srcB) {
 Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, int n) {
   Instr instr(ALU);
   instr.ALU.dest              = dst;
-  instr.ALU.srcA.tag          = REG;
-  instr.ALU.srcA.reg          = srcA;
+  instr.ALU.srcA.set_reg(srcA);
   instr.ALU.op                = ALUOp(op);
-  instr.ALU.srcB.tag          = IMM;
-  instr.ALU.srcB.smallImm.tag = SMALL_IMM;
-  instr.ALU.srcB.smallImm.val = n;
+  instr.ALU.srcB.set_imm(n);
 
   return instr;
 }
@@ -38,13 +31,9 @@ Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, int n) {
 Instr genInstr(ALUOp::Enum op, Reg dst, int n, int m) {
   Instr instr(ALU);
   instr.ALU.dest              = dst;
-  instr.ALU.srcA.tag          = IMM;
-  instr.ALU.srcA.smallImm.tag = SMALL_IMM;
-  instr.ALU.srcA.smallImm.val = n;
+  instr.ALU.srcA.set_imm(n);
   instr.ALU.op                = ALUOp(op);
-  instr.ALU.srcB.tag          = IMM;
-  instr.ALU.srcB.smallImm.tag = SMALL_IMM;
-  instr.ALU.srcB.smallImm.val = m;
+  instr.ALU.srcB.set_imm(m);
 
   return instr;
 }
@@ -109,10 +98,20 @@ Reg rf(uint8_t index) {
 
 Instr mov(Var dst, Var src) { return mov(dstReg(dst), srcReg(src)); }
 Instr mov(Var dst, Reg src) { return mov(dstReg(dst), src); }
-Instr mov(Var dst, int n)   { return mov(dstReg(dst), n); }
 Instr mov(Reg dst, Var src) { return mov(dst, srcReg(src)); }
-Instr mov(Reg dst, int n)   { return genInstr(ALUOp::A_BOR, dst, n, n); }
 Instr mov(Reg dst, Reg src) { return bor(dst, src, src); }
+
+Instr mov(Reg dst, int n)   {
+  if (Platform::compiling_for_vc4()) {
+    // Hereby assuming that two imm's for vc4 are not allowed
+    // (assert in encode)
+    return li(dst, n);
+  } else {
+    return genInstr(ALUOp::A_BOR, dst, n, n);
+  }
+}
+
+Instr mov(Var dst, int n)   { return mov(dstReg(dst), n); }
 
 
 // Generation of bitwise instructions

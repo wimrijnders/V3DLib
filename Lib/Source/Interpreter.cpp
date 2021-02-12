@@ -162,13 +162,8 @@ Vec eval(CoreState* s, Expr::Ptr e) {
       Vec a = eval(s, e->lhs());
       Vec b = eval(s, e->rhs());
 
-      if (e->apply_op.op == ROTATE) {
-        // Vector rotation
-        v = rotate(a, b[0].intVal);
-      } else {
-        bool did_something = v.apply(e->apply_op, a, b);
-        assert(did_something);
-      }
+      bool did_something = v.apply(e->apply_op, a, b);
+      assert(did_something);
 
       return v;
     }

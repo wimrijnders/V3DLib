@@ -572,61 +572,22 @@ Vec evalImm(Imm imm) {
 
 Vec evalSmallImm(QPUState* s, SmallImm imm) {
   Vec v;
-  switch (imm.tag) {
-    case SMALL_IMM: {
-      Word w = decodeSmallLit(imm.val);
-      for (int i = 0; i < NUM_LANES; i++)
-        v[i] = w;
-      return v;
-    }
+  Word w = decodeSmallLit(imm.val);
 
-    case ROT_ACC:
-    case ROT_IMM:
-      // TODO How and when is this ever called???
-      int amount = (imm.tag == ROT_IMM)? imm.val : (int) s->accum[4][0].intVal;
-      return rotate(v, amount);
+  for (int i = 0; i < NUM_LANES; i++) {
+    v[i] = w;
   }
 
-  // Unreachable
-  assert(false);
   return v;
 }
 
 
 Vec readRegOrImm(QPUState* s, State* g, RegOrImm src) {
-  switch (src.tag) {
-    case REG: return readReg(s, g, src.reg);
-    case IMM: return evalSmallImm(s, src.smallImm);
+  if (src.is_reg()) {
+    return readReg(s, g, src.reg);
+  } else {
+    return evalSmallImm(s, src.smallImm);
   }
-
-  // Unreachable
-  assert(false);
-  return Vec();
-}
-
-
-// ============================================================================
-// ALU helpers
-// ============================================================================
-
-// Rotate right
-inline int32_t rotRight(int32_t x, int32_t n) {
-  uint32_t ux = (uint32_t) x;
-  return (ux >> n) | (x << (32-n));
-}
-
-
-// Count leading zeros
-inline int32_t clz(int32_t x) {
-  int32_t count = 0;
-  int32_t n = (int32_t) (sizeof(int)*8);
-  for (int32_t i = 0; i < n; i++) {
-    if (x & (1 << (n-1))) break;
-    else count++;
-    x <<= 1;
-  }
-
-  return count;
 }
 
 
@@ -635,160 +596,22 @@ inline int32_t clz(int32_t x) {
 // ============================================================================
 
 Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
-  // First, obtain vector operands
-  Vec a, b, c;
+  Vec c;
+  if (op.value() == ALUOp::NOP) return c;
+
+  // Obtain vector operands
+  Vec a, b;
   a = readRegOrImm(s, g, srcA);
 
-  if (srcA.tag == REG && srcB.tag == REG && srcA.reg == srcB.reg) {
+  if (srcA.is_reg() && srcB.is_reg() && srcA.reg == srcB.reg) {
     b = a;
   } else {
     b = readRegOrImm(s, g, srcB);
   }
 
-  // Now evaluate the operation
-  switch (op.value()) {
-    case ALUOp::NOP:
-      // No-op
-      break;
-    case ALUOp::A_FADD:
-      // Floating-point add
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].floatVal = a[i].floatVal + b[i].floatVal;
-      break;
-    case ALUOp::A_FSUB:
-      // Floating-point subtract
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].floatVal = a[i].floatVal - b[i].floatVal;
-      break;
-    case ALUOp::A_FMIN:
-      // Floating-point min
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].floatVal = a[i].floatVal < b[i].floatVal
-                      ? a[i].floatVal : b[i].floatVal;
-      break;
-    case ALUOp::A_FMAX:
-      // Floating-point max
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].floatVal = a[i].floatVal > b[i].floatVal
-                      ? a[i].floatVal : b[i].floatVal;
-      break;
-    case ALUOp::A_FMINABS:
-      // Floating-point min of absolute values
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].floatVal = fabs(a[i].floatVal) < fabs(b[i].floatVal)
-                      ? a[i].floatVal : b[i].floatVal;
-      break;
-    case ALUOp::A_FMAXABS:
-      // Floating-point max of absolute values
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].floatVal = fabs(a[i].floatVal) > fabs(b[i].floatVal)
-                      ? a[i].floatVal : b[i].floatVal;
-      break;
-    case ALUOp::A_FtoI:
-      // Float to signed integer
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = (int) a[i].floatVal;
-      break;
-    case ALUOp::A_ItoF:
-      // Signed integer to float
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].floatVal = (float) a[i].intVal;
-      break;
-    case ALUOp::A_ADD:
-      // Integer add
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal + b[i].intVal;
-      break;
-    case ALUOp::A_SUB:
-      // Integer subtract
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal - b[i].intVal;
-      break;
-    case ALUOp::A_SHR:
-      // Integer shift right
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = (int32_t) ((uint32_t) a[i].intVal >> b[i].intVal);
-      break;
-    case ALUOp::A_ASR:
-      // Integer arithmetic shift right
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal >> b[i].intVal;
-      break;
-     case ALUOp::A_ROR:
-      // Integer rotate right
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = rotRight(a[i].intVal, b[i].intVal);
-      break;
-     case ALUOp::A_SHL:
-      // Integer shift left
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal << b[i].intVal;
-      break;
-    case ALUOp::A_MIN:
-      // Integer min
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal < b[i].intVal
-                    ? a[i].intVal : b[i].intVal;
-      break;
-    case ALUOp::A_MAX:
-      // Integer max
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal > b[i].intVal
-                    ? a[i].intVal : b[i].intVal;
-      break;
-    case ALUOp::A_BAND:
-      // Bitwise and
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal & b[i].intVal;
-      break;
-    case ALUOp::A_BOR:
-      // Bitwise or
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal | b[i].intVal;
-      break;
-    case ALUOp::A_BXOR:
-      // Bitwise xor
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = a[i].intVal ^ b[i].intVal;
-      break;
-    case ALUOp::A_BNOT:
-      // Bitwise not
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = ~a[i].intVal;
-      break;
-    case ALUOp::A_CLZ:
-      // Count leading zeros
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = clz(a[i].intVal);
-      break;
-    case ALUOp::M_FMUL:
-      // Floating-point multiply
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].floatVal = a[i].floatVal * b[i].floatVal;
-      break;
-    case ALUOp::M_MUL24:
-      // Integer multiply (24-bit)
-      for (int i = 0; i < NUM_LANES; i++)
-        c[i].intVal = (a[i].intVal & 0xffffff) * (b[i].intVal & 0xffffff);
-      break;
-    case ALUOp::M_ROTATE:
-      // Vector rotation
-      c = rotate(a, (int) b[0].intVal);
-      break;
-
-    case ALUOp::A_V8ADDS:
-    case ALUOp::A_V8SUBS:
-    case ALUOp::M_V8MUL:
-    case ALUOp::M_V8MIN:
-    case ALUOp::M_V8MAX:
-    case ALUOp::M_V8ADDS:
-    case ALUOp::M_V8SUBS:
-    default: {
-      char buf[64];
-      sprintf(buf, "V3DLib: unsupported operator %i", op.value());
-      fatal(buf);
-    }
-  }
+  // Evaluate the operation
+  bool handled = c.apply(op, a, b);
+  assert(handled);
 
   return c;
 }
@@ -894,6 +717,7 @@ void emulate(
             fatal("V3DLib: emulator does not support labels");
           case NO_OP:
             break;
+
           case RECV: {                             // receive load-via-TMU response
             assert(s->loadBuffer.size() > 0);
             Vec val = s->loadBuffer.remove(0);

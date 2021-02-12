@@ -247,11 +247,9 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
       instr.ALU.op                = ALUOp(ALUOp::A_BOR);
       instr.ALU.dest.tag          = NONE;
-      instr.ALU.srcA.tag          = REG;
-      instr.ALU.srcA.reg.tag      = SPECIAL;
-      instr.ALU.srcA.reg.regId    = src;
-      instr.ALU.srcB.tag          = REG;
-      instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
+
+      instr.ALU.srcA.set_reg(SPECIAL, src);  // srcA is same as srcB
+      instr.ALU.srcB.set_reg(SPECIAL, src);
       break;
     }
 
@@ -321,12 +319,12 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
 
       if (alu.op.isRot()) {
-        assert(alu.srcA.tag == REG && alu.srcA.reg.tag == ACC && alu.srcA.reg.regId == 0);
-        assert(alu.srcB.tag == REG ?  alu.srcB.reg.tag == ACC && alu.srcB.reg.regId == 5 : true);
+        assert(alu.srcA.is_reg() && alu.srcA.reg.tag == ACC && alu.srcA.reg.regId == 0);
+        assert(alu.srcB.is_reg() ?  alu.srcB.reg.tag == ACC && alu.srcB.reg.regId == 5 : true);
         uint32_t mulOp = ALUOp(ALUOp::M_V8MIN).vc4_encodeMulOp() << 29;
         uint32_t raddrb;
 
-        if (alu.srcB.tag == REG) {
+        if (alu.srcB.is_reg()) {
           raddrb = 48;
         } else {
           uint32_t n = (uint32_t) alu.srcB.smallImm.val;
@@ -344,8 +342,9 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
         uint32_t muxa, muxb;
         uint32_t raddra, raddrb;
 
-        // Both operands are registers
-        if (alu.srcA.tag == REG && alu.srcB.tag == REG) {
+        if (alu.srcA.is_imm() && alu.srcB.is_imm()) {
+          assertq(false, "srcA and srcB can not both be (small) immediates", true);
+        } else if (alu.srcA.is_reg() && alu.srcB.is_reg()) { // Both operands are registers
           RegTag aFile = regFileOf(alu.srcA.reg);
           RegTag bFile = regFileOf(alu.srcB.reg);
           RegTag aTag  = alu.srcA.reg.tag;
@@ -371,19 +370,18 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
               raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
             }
           }
-        } else if (alu.srcB.tag == IMM) {
+        } else if (alu.srcB.is_imm()) {
           // Second operand is a small immediate
           raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
           raddrb = (uint32_t) alu.srcB.smallImm.val;
           muxb   = 7;
-        } else if (alu.srcA.tag == IMM) {
+        } else if (alu.srcA.is_imm()) {
           // First operand is a small immediate
           raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
           raddrb = (uint32_t) alu.srcA.smallImm.val;
           muxa   = 7;
         } else {
-          // Both operands are small immediates
-          assert(false);
+          assert(false);  // Not expecting this
         }
 
         *low = mulOp | addOp | (raddra << 18) | (raddrb << 12)

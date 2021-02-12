@@ -31,36 +31,15 @@ struct Imm {
   };
 };
 
-// Different kinds of small immediates
-enum SmallImmTag {
-    SMALL_IMM  // Small immediate
-  , ROT_ACC    // Rotation amount taken from accumulator 5
-  , ROT_IMM    // Rotation amount 1..15
-};
 
 struct SmallImm {
-  // What kind of small immediate is it?
-  SmallImmTag tag;
-  
-  // Immediate value
   int val;
 
-  bool operator==(SmallImm const &rhs) const {
-    return tag == rhs.tag && val == rhs.val;
-  }
-
-  bool operator!=(SmallImm const &rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator==(SmallImm const &rhs) const { return val == rhs.val;  }
+  bool operator!=(SmallImm const &rhs) const { return !(*this == rhs); }
 };
 
-// A register or a small immediate operand?
-enum RegOrImmTag { REG, IMM };
-
 struct RegOrImm {
-  // Register id or small immediate?
-  RegOrImmTag tag;
-
   union {
     // A register
     Reg reg;
@@ -69,19 +48,19 @@ struct RegOrImm {
     SmallImm smallImm;
   };
 
-  bool operator==(RegOrImm const &rhs) const {
-    if (tag != rhs.tag) return false;
+  void set_imm(int rhs);
+  void set_reg(RegTag tag, RegId id);
+  void set_reg(Reg const &rhs);
 
-    if (tag == REG) {
-      return reg == rhs.reg;
-    } else {
-      return smallImm == rhs.smallImm;
-    }
-  }
+  bool operator==(RegOrImm const &rhs) const;
+  bool operator!=(RegOrImm const &rhs) const { return !(*this == rhs); }
 
-  bool operator!=(RegOrImm const &rhs) const {
-    return !(*this == rhs);
-  }
+  bool is_reg() const { return m_is_reg;  }
+  bool is_imm() const { return !m_is_reg; }
+  std::string disp() const;
+
+private:
+  bool m_is_reg;  // if false, is an imm
 };
 
 
@@ -240,7 +219,7 @@ struct Instr : public InstructionComment {
   Instr &setCondOp(CmpOp const &cmp_op);
   Instr &cond(AssignCond in_cond);
   bool isCondAssign() const;
-  bool hasImm() const { return ALU.srcA.tag == IMM || ALU.srcB.tag == IMM; }
+  bool hasImm() const { return ALU.srcA.is_imm() || ALU.srcB.is_imm(); }
   bool isUniformLoad() const;
   bool isUniformPtrLoad() const;
   bool isTMUAWrite(bool fetch_only = false) const;
