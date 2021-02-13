@@ -17,7 +17,7 @@ CmdParameters params = {
   "Mandelbrot Generator\n"
   "\n"
   "Calculates Mandelbrot for a given region and outputs the result as a PGM bitmap file.\n"
-  "The kernel is computate-bound, the calculation time dominates over the data transfer during execution.\n"
+  "The kernel is compute-bound, the calculation time dominates over the data transfer during execution.\n"
   "It is therefore an indicator of compute speed, "
   "and is used for performance comparisons of platforms and configurations.\n",
   {{
@@ -29,9 +29,16 @@ CmdParameters params = {
     "Output PGM file",
     "-pgm",
     ParamType::NONE,   // Prefix needed to disambiguate
-    "Output a PGM bitmap of the calculation results.\n"
-    "If enabled, a PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
-    "Note that creating the PGM-file takes significant time, and will skew the performance results if enabled\n",
+    "Output a (grayscale) PGM bitmap of the calculation results.\n"
+    "A PGM bitmap named 'mandelbrot.pgm' will be created in the current working directory.\n"
+    "Creating a bitmap takes significant time, and will skew the performance results\n",
+  }, {
+    "Output PPM file",
+    "-ppm",
+    ParamType::NONE,
+    "Output a (color) PPM bitmap of the calculation results.\n"
+    "A PPM bitmap named 'mandelbrot.ppm' will be created in the current working directory.\n"
+    "Creating a bitmap takes significant time, and will skew the performance results\n",
   }, {
     "Number of steps",
     "-steps=",
@@ -48,16 +55,19 @@ struct MandSettings : public Settings {
   int    kernel;
   string kernel_name;
   bool   output_pgm;
+  bool   output_ppm;
   int    num_iterations;
 
   // Initialize constants for the kernels
   const int   numStepsWidth   = 1024;
   const int   numStepsHeight  = 1024;
+
   const float topLeftReal     = -2.5f;
   const float topLeftIm       = 2.0f;
   const float bottomRightReal = 1.5f;
   const float bottomRightIm   = -2.0f;
 /*
+  // Nice zoom-in range, used for testing
   const float topLeftReal     = -2.0f;
   const float topLeftIm       = 0.75f;
   const float bottomRightReal = -1.0f;
@@ -74,6 +84,7 @@ struct MandSettings : public Settings {
     kernel         = params.parameters()["Kernel"]->get_int_value();
     kernel_name    = params.parameters()["Kernel"]->get_string_value();
     output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
+    output_ppm     = params.parameters()["Output PPM file"]->get_bool_value();
     num_iterations = params.parameters()["Number of steps"]->get_int_value();
     return true;
   }
@@ -211,14 +222,16 @@ using KernelType = decltype(mandelbrot_single);
 
 template<class Array>
 void output_pgm(Array &result) {
-  if (!settings.output_pgm) return;
-
   int width         = settings.numStepsWidth;
   int height        = settings.numStepsHeight;
   int numIterations = settings.num_iterations;
 
-  //output_pgm_file(result, width, height, numIterations, "mandelbrot.pgm");
-  output_ppm_file(result, width, height, numIterations, "mandelbrot.ppm");
+  if (settings.output_pgm) {
+    output_pgm_file(result, width, height, numIterations, "mandelbrot.pgm");
+  }
+  if (settings.output_ppm) {
+    output_ppm_file(result, width, height, numIterations, "mandelbrot.ppm");
+  }
 }
 
 

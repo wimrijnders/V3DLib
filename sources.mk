@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Thu 11 Feb 2021 06:38:19 AM CET
+# Generated on: Fri 12 Feb 2021 03:51:58 PM CET
 #
 ###############################################################################
 
@@ -27,6 +27,7 @@ OBJ := \
   Support/InstructionComment.o  \
   Support/basics.o  \
   Support/Helpers.o  \
+  Support/pgm.o  \
   Support/HeapManager.o  \
   SourceTranslate.o  \
   Kernel.o  \
