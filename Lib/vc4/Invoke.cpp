@@ -35,7 +35,7 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
 #endif
 
   // Pointer to start of code
-  uint32_t* qpuCodePtr = codeMem.getPointer();
+  uint32_t *qpuCodePtr = codeMem.getPointer();
 
   // Copy parameters to instruction memory
   int offset = qpuCodeMemOffset;

@@ -76,7 +76,7 @@ void pre_read(Float &dst, Ptr<Float> &src, int prefetch_label) {
 
   switch (read_method) {
     case DEFAULT:
-      // on vc4, either TMU (default) or DMA
+      // on vc4, either TMU (default) or DMA (option)
       dst = *src;
       src.inc();
       break;

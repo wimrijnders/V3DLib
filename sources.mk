@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Fri 12 Feb 2021 03:51:58 PM CET
+# Generated on: Sat 13 Feb 2021 07:47:23 AM CET
 #
 ###############################################################################
 
@@ -62,6 +62,7 @@ OBJ := \
   v3d/instr/Instr.o  \
   v3d/instr/SmallImm.o  \
   v3d/PerformanceCounters.o  \
+  Common/SharedArray.o  \
   Common/BufferObject.o  \
   Target/Satisfy.o  \
   Target/CFG.o  \

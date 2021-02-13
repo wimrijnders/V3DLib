@@ -61,7 +61,7 @@ template<class Array>
 void output_pgm_file(Array &arr, int width, int height, int in_max_value, const char *filename) {
   assert(in_max_value >= 1);
 
-  int const GrayLimit    = 65536 - 1;  // largest allowed value in pgm file
+  int const GrayLimit    = 1024;       // largest allowed value in pgm file is 65536 (-1?)
   int const LINEAR_LIMIT = 128;        // Use log scale above this number of iterations
   float factor           = 1.0f;
   bool do_log            = (in_max_value > LINEAR_LIMIT);
@@ -74,11 +74,9 @@ void output_pgm_file(Array &arr, int width, int height, int in_max_value, const 
 
   factor = ((float) GrayLimit)/max_value;
 
-  auto scale = [factor, do_log, in_max_value] (int in_value) -> int {
-    if (in_value  <= 0) return 0;
-    if (in_value  == in_max_value) return 0;
-
-    float value = (float) in_value;
+  auto scale = [factor, do_log, in_max_value] (float value) -> int {
+    if (value  <= 0) return 0;
+    if (value  == (float) in_max_value) return 0;
 
     if (do_log) {
       value = (float) log2(value);
@@ -99,7 +97,7 @@ void output_pgm_file(Array &arr, int width, int height, int in_max_value, const 
 
   output_ppm_file(header, width, height, filename, [scale, &arr] (int index) -> std::string {
     std::string ret;
-    ret << scale(arr[index]);
+    ret << scale((float) arr[index]);
     return ret;
   });
 }

@@ -69,11 +69,6 @@ namespace V3DLib {
 
 // Construct an argument of QPU type 't'.
 
-// This usage is freaking ugly, but I don't have a better solution yet
-extern std::vector<Ptr<Int>>   uniform_int_pointers;
-extern std::vector<Ptr<Float>> uniform_float_pointers;
-
-
 template <typename t> inline t mkArg();
 
 template <> inline Int mkArg<Int>() {
@@ -91,14 +86,12 @@ template <> inline Float mkArg<Float>() {
 template <> inline Ptr<Int> mkArg< Ptr<Int> >() {
   Ptr<Int> x;
   x = getUniformPtr<Int>();
-  uniform_int_pointers.push_back(x);
   return x;
 }
 
 template <> inline Ptr<Float> mkArg< Ptr<Float> >() {
   Ptr<Float> x;
   x = getUniformPtr<Float>();
-  uniform_float_pointers.push_back(x);
   return x;
 }
 
@@ -131,7 +124,15 @@ inline bool passParam<Float, float> (Seq<int32_t>* uniforms, float x) {
 }
 
 
-// Pass a SharedArray<int>*
+/*
+template <>
+inline bool passParam(Seq<int32_t>* uniforms, BaseSharedArray *p) {
+  uniforms->append(p->getAddress());
+  return true;
+}
+*/
+
+// Pass a SharedArray<imt>*
 template <>
 inline bool passParam< Ptr<Int>, SharedArray<int>* > (Seq<int32_t>* uniforms, SharedArray<int>* p) {
   uniforms->append(p->getAddress());
@@ -142,6 +143,20 @@ inline bool passParam< Ptr<Int>, SharedArray<int>* > (Seq<int32_t>* uniforms, Sh
 // Pass a SharedArray<float>*
 template <>
 inline bool passParam< Ptr<Float>, SharedArray<float>* > (Seq<int32_t>* uniforms, SharedArray<float>* p) {
+  uniforms->append(p->getAddress());
+  return true;
+}
+
+template <>
+inline bool passParam< Ptr<Int>, Shared2DArray<int>* > (Seq<int32_t>* uniforms, Shared2DArray<int>* p) {
+  uniforms->append(p->getAddress());
+  return true;
+}
+
+
+// Pass a SharedArray<float>*
+template <>
+inline bool passParam< Ptr<Float>, Shared2DArray<float>* > (Seq<int32_t>* uniforms, Shared2DArray<float>* p) {
   uniforms->append(p->getAddress());
   return true;
 }
@@ -216,26 +231,9 @@ public:
    */
   Kernel(KernelFunction f, bool vc4_only = false) {
     {
-      uniform_int_pointers.clear();
-      uniform_float_pointers.clear();
-
       m_vc4_driver.compile_init();
 
       auto args = std::make_tuple(mkArg<ts>()...);
-
-      //
-      // Add offsets to the uniform pointers
-      //
-/*
-      Int offset = me() << 4;
-
-      for (auto &expr : uniform_int_pointers) {
-        expr = expr + offset;
-      }
-      for (auto &expr : uniform_float_pointers) {
-        expr = expr + offset;
-      }
-*/
 
       // Construct the AST for vc4
       apply(f, args);
