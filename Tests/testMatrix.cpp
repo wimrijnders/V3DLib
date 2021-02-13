@@ -60,7 +60,7 @@ void check_set_at(Ptr<Float> input, Ptr<Float> result, Int index) {
 template<int const N>
 void check_dotvector(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> result) {
   kernels::DotVector vec(N);
-  vec.load(a);
+  vec.load(a + 0);  // Wonky '+0' again. WHEN WILL YOU FIX THIS? --> TODO
   vec.save(dst);
 
   Float tmp = -2;  // Silly value for detection in unit test
@@ -93,7 +93,7 @@ void test_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_dotvector<N>);
-  k.pretty(true, "obj/test/check_dotvector.txt", false);
+  //k.pretty(true, "obj/test/check_dotvector.txt", false);
   k.load(&b, &a, &result);
   run_kernel(k);
 
@@ -109,8 +109,8 @@ void test_dotvector() {
   }
 
   for (int i = 0; i < (int) result.size(); i++) {
+    INFO("N: " << N << ", i: " << i);
     if (i == 0) {
-      INFO("N: " << N);
       REQUIRE(result[i] == expected);
     } else {
       REQUIRE(result[i] == -2);
