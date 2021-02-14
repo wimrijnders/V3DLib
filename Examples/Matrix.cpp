@@ -114,13 +114,15 @@ void run_qpu_kernel() {
 
 
   // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> a(settings.size());
-  SharedArray<float> b(settings.size());
-  SharedArray<float> result(settings.size());
+  Shared2DArray<float> a(settings.dimension);
+  Shared2DArray<float> b(settings.dimension);
+  Shared2DArray<float> result(settings.dimension);
 
-  for (int i = 0; i < settings.size(); i++) {
-    a[i] = random_float();
-    b[i] = random_float();
+  for (int r = 0; r < settings.dimension; r++) {
+    for (int c = 0; c < settings.dimension; c++) {
+      a[r][c] = random_float();
+      b[r][c] = random_float();
+    }
   }
 
   Timer timer;

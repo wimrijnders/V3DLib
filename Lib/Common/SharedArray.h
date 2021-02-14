@@ -12,39 +12,40 @@ public:
   BaseSharedArray(BaseSharedArray &&a) = default;
   BaseSharedArray &operator=(BaseSharedArray &&a) = default; 
 
+  void alloc(uint32_t n);
+  void dealloc();
   bool allocated() const;
   uint32_t getAddress() { return m_phyaddr; }
   uint32_t size() const { return m_size; }
+  uint32_t *getPointer();
 
-  void heap_view(BufferObject &heap) {
-    assert(!allocated());
-    assert(m_heap == nullptr);
-
-    m_heap = &heap;
-    m_is_heap_view = true;
-    m_size = m_heap->size();
-    assert(m_size > 0);
-    m_usraddr = m_heap->usr_address();
-    m_phyaddr = m_heap->phy_address();
-  }
+  void heap_view(BufferObject &heap);
 
 protected:
-  BaseSharedArray() {}
-  BaseSharedArray(BufferObject &heap) : m_heap(&heap) {}
+  uint8_t *m_usraddr = nullptr;  // Start of the heap in main memory, as seen by the CPU
 
-  // TODO make member var's as private as possible
+  BaseSharedArray(BufferObject *heap, uint32_t element_size);
+  BaseSharedArray(uint32_t element_size) : BaseSharedArray(nullptr, element_size) {}
+
+ /**
+  * Get actual offset within the heap for given index of current shared array.
+  */
+  uint32_t phy(uint32_t i) {
+    assert(m_phyaddr % m_element_size == 0);
+    int index = (int) (i - ((uint32_t) m_phyaddr/m_element_size));
+    assert(index >= 0);
+    return (uint32_t) index;
+  }
+
+private:
   BufferObject *m_heap = nullptr;  // Reference to used heap
-  uint8_t *m_usraddr   = nullptr;  // Start of the heap in main memory, as seen by the CPU
+  uint32_t const m_element_size;
   uint32_t m_phyaddr   = 0;        // Starting index of memory in GPU space
   uint32_t m_size      = 0;        // Number of contained elements (not memory size!)
   bool     m_is_heap_view = false;
 
-  void alloc(uint32_t n, uint32_t element_size);
-  void dealloc(uint32_t element_size);
-  void *getPointer();
-
-private:
   BaseSharedArray(BaseSharedArray const &a) = delete;  // Disallow copy
+
 };
 
 
@@ -62,30 +63,27 @@ class SharedArray : public BaseSharedArray {
   using Parent = BaseSharedArray;
 
 public:
-  SharedArray() {}
-  SharedArray(uint32_t n) { Parent::alloc(n, sizeof(T)); }
-  SharedArray(uint32_t n, BufferObject &heap) : BaseSharedArray(heap) { Parent::alloc(n, sizeof(T)); }
+  SharedArray() : BaseSharedArray(sizeof(T)) {}
+  SharedArray(uint32_t n) : SharedArray() { Parent::alloc(n); }
+  SharedArray(uint32_t n, BufferObject &heap) : BaseSharedArray(&heap, sizeof(T)) { Parent::alloc(n); }
+
   SharedArray(SharedArray &&a) = default;
   SharedArray &operator=(SharedArray &&a) = default; 
 
-  ~SharedArray() { Parent::dealloc(sizeof(T)); }
-
-  void alloc(uint32_t n) { Parent::alloc(n, (uint32_t) sizeof(T)); }
+  ~SharedArray() { Parent::dealloc(); }
 
   void fill(T val) {
     for (int i = 0; i < (int) size(); i++)
       (*this)[i] = val;
   }
 
-  T *getPointer() { return (T *) Parent::getPointer(); }
-  void dealloc() { Parent::dealloc(sizeof(T)); }
-  T& operator[] (int i) { return access(i); }
 
+  T& operator[] (int i) { return access(i); }
 
   T operator[] (int i) const {
     assert(allocated());
     assert(i >= 0);
-    assert(i < (int) m_size);
+    assert(i < (int) size());
 
     T* base = (T *) m_usraddr;
     return (T) base[i];
@@ -98,25 +96,23 @@ public:
    * Needed by interpreter and emulator.
    */
   inline T& phy(uint32_t i) {
-    assert(m_phyaddr % sizeof(T) == 0);
-    int index = (int) (i - ((uint32_t) m_phyaddr/sizeof(T)));
-    return (*this)[index];
+    return (*this)[Parent::phy(i)];
   }
 
 
-  void copyFrom(T const *src, uint32_t size) {
+  void copyFrom(T const *src, uint32_t in_size) {
     assert(src != nullptr);
-    assert(size <= m_size);
+    assert(in_size <= size());
 
     // TODO: consider using memcpy() instead
-    for (uint32_t offset = 0; offset < size; ++offset) {
+    for (uint32_t offset = 0; offset < in_size; ++offset) {
       (*this)[offset] = src[offset];
     }
   }
 
   void copyFrom(std::vector<T> const &src) {
     assert(!src.empty());
-    assert(src.size() <= m_size);
+    assert(src.size() <= size());
 
     // TODO: consider using memcpy() instead
     for (uint32_t offset = 0; offset < src.size(); ++offset) {
@@ -157,7 +153,7 @@ protected:
 
   T& access(int i) { 
     assert(allocated());
-    assertq(i >= 0 && i < (int) m_size, "SharedArray::[]: index outside of possible range", true);
+    assertq(i >= 0 && i < (int) size(), "SharedArray::[]: index outside of possible range", true);
 
     T* base = (T *) m_usraddr;
     return (T&) base[i];
@@ -184,6 +180,7 @@ class Shared2DArray : private SharedArray<T> {
   };
 
 public:
+
   Shared2DArray(int rows, int columns) : SharedArray<T>(rows*columns),  m_rows(rows), m_columns(columns) {
     assert(rows > 0);
     assert(columns > 0);
@@ -191,6 +188,8 @@ public:
     assertq(rows    % 16 == 0, "Shared2DArray: row dimension must be a multiple of 16");
     assertq(columns % 16 == 0, "Shared2DArray: column dimension must be a multiple of 16"); // TODO you sure? Check!
   }
+
+  Shared2DArray(int dimension) : Shared2DArray(dimension, dimension) {}  // for square array
 
   using Parent::fill;
   using Parent::getAddress;

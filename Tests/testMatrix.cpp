@@ -60,7 +60,7 @@ void check_set_at(Ptr<Float> input, Ptr<Float> result, Int index) {
 template<int const N>
 void check_dotvector(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> result) {
   kernels::DotVector vec(N);
-  vec.load(a + 0);  // Wonky '+0' again. WHEN WILL YOU FIX THIS? --> TODO
+  vec.load(a);
   vec.save(dst);
 
   Float tmp = -2;  // Silly value for detection in unit test
@@ -93,7 +93,7 @@ void test_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_dotvector<N>);
-  //k.pretty(true, "obj/test/check_dotvector.txt", false);
+  k.pretty(true, "obj/test/check_dotvector.txt", false);
   k.load(&b, &a, &result);
   run_kernel(k);
 
@@ -109,8 +109,8 @@ void test_dotvector() {
   }
 
   for (int i = 0; i < (int) result.size(); i++) {
-    INFO("N: " << N << ", i: " << i);
     if (i == 0) {
+      INFO("N: " << N);
       REQUIRE(result[i] == expected);
     } else {
       REQUIRE(result[i] == -2);
@@ -127,7 +127,6 @@ void test_dotvector() {
 
 template<typename Kernel>
 void check_matrix_results(
-  int SIZE,
   int dimension,
   Kernel &k,
   Shared2DArray<float> &a,
@@ -204,7 +203,7 @@ void check_matrix_results(
     }
   }
 
-  Shared2DArray<float> b(dimension, dimension);
+  Shared2DArray<float> b(dimension);
   b.copy_transposed(a);
 
   kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
@@ -232,8 +231,8 @@ void test_matrix_multiplication(int dimension) {
   REQUIRE(dimension % 16 == 0);
   int const SIZE = dimension*dimension;
 
-  Shared2DArray<float> a(dimension, dimension);
-  Shared2DArray<float> result(dimension, dimension);
+  Shared2DArray<float> a(dimension);
+  Shared2DArray<float> result(dimension);
   result.fill(-1.0f);
 
   float a_scalar[SIZE];
@@ -258,7 +257,7 @@ void test_matrix_multiplication(int dimension) {
   {
     auto k = compile(kernels::matrix_mult_decorator(dimension));
     k.load(&result, &a, &a);
-    check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
+    check_matrix_results(dimension, k, a, result, a_scalar, expected);
   }
 
   {
@@ -268,7 +267,7 @@ void test_matrix_multiplication(int dimension) {
     auto k2 = compile(kernels::matrix_mult_decorator(dimension));
     k2.pretty(false, "obj/test/Matrix_code_prefetch_dma.txt");  // TODO check on vc4
     k2.load(&result, &a, &a);
-    check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);
+    check_matrix_results(dimension, k2, a, result, a_scalar, expected);
 
     LibSettings::use_tmu_for_load(true);
   }
