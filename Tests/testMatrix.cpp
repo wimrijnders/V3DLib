@@ -430,7 +430,7 @@ TEST_CASE("Test matrix algebra", "[matrix][mult]") {
 }
 
 
-TEST_CASE("Test matrix algebra with varying sizes", "[matrix][mult]i[varying]") {
+TEST_CASE("Test matrix algebra with varying sizes", "[matrix][mult][varying]") {
   //Platform::use_main_memory(true);
 
   SECTION("Check matrix multiplication") {
