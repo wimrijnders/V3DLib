@@ -73,6 +73,9 @@ public:
   ~SharedArray() { Parent::dealloc(); }
 
   void fill(T val) {
+    assert(allocated());
+    //assertq(allocated(), "Can not fill unallocated array");
+
     for (int i = 0; i < (int) size(); i++)
       (*this)[i] = val;
   }
@@ -180,19 +183,25 @@ class Shared2DArray : private SharedArray<T> {
   };
 
 public:
+  Shared2DArray() = default;
 
   Shared2DArray(int rows, int columns) : SharedArray<T>(rows*columns),  m_rows(rows), m_columns(columns) {
-    assert(rows > 0);
-    assert(columns > 0);
-
-    assertq(rows    % 16 == 0, "Shared2DArray: row dimension must be a multiple of 16");
-    assertq(columns % 16 == 0, "Shared2DArray: column dimension must be a multiple of 16"); // TODO you sure? Check!
+    validate();
   }
 
   Shared2DArray(int dimension) : Shared2DArray(dimension, dimension) {}  // for square array
 
+  void alloc(uint32_t rows, uint32_t columns) {
+    m_rows = rows;
+    m_columns = columns;
+    validate();
+
+    Parent::alloc(rows*columns);
+  }
+
   using Parent::fill;
   using Parent::getAddress;
+  using Parent::allocated;
 
   Parent const &get_parent() { return (Parent const &) *this; }  // explicit cast
 
@@ -242,8 +251,16 @@ public:
   }
 
 private:
-  int m_rows;
-  int m_columns;
+  int m_rows    = -1;  // init to illegal value
+  int m_columns = -1;
+
+  void validate() {
+    assert(m_rows > 0);
+    assert(m_columns > 0);
+
+    // TODO you sure about next? Check!
+    assertq((m_rows*m_columns) % 16 == 0, "Shared2DArray: array size must be a multiple of 16");
+  }
 };
 
 }  // namespace V3DLib
