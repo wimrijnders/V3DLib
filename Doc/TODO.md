@@ -8,7 +8,7 @@
 - [ ] Get `Pi 1` running again; fails in `qpu_enable()`
 - [ ] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
 - [ ] Make heap memory size configurable (ideally cmldine option)
-- [ ] ! Fix '+ 0' hack for kernel pointers, this is confusing
+- [x] ! Fix '+ 0' hack for kernel pointers, this is confusing
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
 - [x] Fix indentation tabs/spaces
