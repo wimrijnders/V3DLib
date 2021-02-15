@@ -138,16 +138,12 @@ class Ptr : public Pointer {
 public:
   Ptr() = default;
 
-/*
-  // TODO get rid of ctor acting as reference
+  /**
+   * Gets rid of ctor acting as reference
+   */
   Ptr<T>(Ptr<T> const &rhs) : Ptr<T>() {
     assign(expr(), rhs.expr());
   }
-
-  Ptr<T>(PtrExpr<T> rhs) : Ptr<T>() {
-    assign(expr(), rhs.expr());
-  }
-*/
 
   Ptr<T>(PtrExpr<T> rhs) : Pointer(rhs) {}
 

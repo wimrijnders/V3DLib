@@ -231,15 +231,14 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
     Ptr<Float> dst_local = dst + (a_index + me())*settings.cols_result();
 
-    Ptr<Float> b_local = b + 0;  // Wonky '+ 0' to ensure pointer value is COPIED, not referenced.
-    vec.load(a + 0);             // And again, and below again
-                                 // TODO fix this very NOT intuitive 'feature'. Bitten me >1 times.
+    Ptr<Float> b_local = b;
+    vec.load(a);
 
     Int b_index;
 
     For (b_index = 0, b_index < settings.columns, b_index++)
       Float tmp;
-      vec.dot_product(b_local + 0, tmp);
+      vec.dot_product(b_local, tmp);
 
       set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
 
