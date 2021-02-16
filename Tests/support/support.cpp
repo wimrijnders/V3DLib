@@ -91,17 +91,21 @@ void make_test_dir() {
 namespace {
 
 template<typename T>
-void dump_array_template(T const &a, int size,  int linesize) {
+void dump_array_template(T const &a, int size,  int linesize, bool as_int = false) {
   std::string str("<");
 
   for (int i = 0; i < (int) size; i++) {
-
     if (linesize != -1) {
       if (i % linesize == 0) {
         str << "\n";
       }
     }
-    str << a[i] << ", " ;
+
+    if (as_int) {
+      str << (int) a[i] << ", " ;
+    } else {
+      str << a[i] << ", " ;
+    }
   }
 
   str << ">";
@@ -121,7 +125,15 @@ void dump_array(float *a, int size,  int linesize) {
  * Show contents of SharedArray instance
  */
 void dump_array(V3DLib::SharedArray<float> const &a, int linesize) {
-  dump_array_template(a, a.size(), linesize);
+  bool no_fractions = true;
+  for (int i = 0; i < (int) a.size(); i++) {
+    if (a[i] != (float) ((int) a[i])) {
+      no_fractions = false;
+      break;
+    }  
+  }
+
+  dump_array_template(a, a.size(), linesize, no_fractions);
 }
 
 

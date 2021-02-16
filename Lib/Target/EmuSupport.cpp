@@ -195,6 +195,11 @@ bool Vec::apply(ALUOp const &op, Vec a, Vec b) {
 }
 
 
+/**
+ * Check if all vector elements of current have the same value
+ *
+ * @return true if all elements same value, false otherwise
+ */
 bool Vec::is_uniform() const {
   int val = elems[0].intVal;
 

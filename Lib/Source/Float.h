@@ -1,7 +1,9 @@
+///////////////////////////////////////////////////////////////////////////////
 // This module defines type 'Float' for a vector of 16 x 32-bit floats.
-
+///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_FLOAT_H_
 #define _V3DLIB_SOURCE_FLOAT_H_
+#include "Common/Seq.h"
 #include "Source/Expr.h"
 
 namespace V3DLib {
@@ -36,13 +38,22 @@ struct Float : public BaseExpr {
   Float(Float& x);
   Float(Float const &x);
 
+  static Float mkArg();
+  static bool passParam(Seq<int32_t> *uniforms, float val);
+
   // Cast to an FloatExpr
   operator FloatExpr();
 
   // Assignment
-  Float &operator=(Float& rhs);
+  Float &operator=(float rhs);
+  Float &operator=(Float &rhs);
+  Float &operator=(Float const &rhs);
   FloatExpr operator=(FloatExpr rhs);
+  Float &operator=(Deref<Float> d);
   Float &operator+=(FloatExpr rhs);
+
+private:
+  Float &self();  // NB: 'me()' as name didn't work here, global me() got used instead in .cpp
 };
 
 
@@ -50,7 +61,6 @@ struct Float : public BaseExpr {
 // Operations
 // ============================================================================
 
-FloatExpr getUniformFloat();
 FloatExpr vpmGetFloat();
 
 FloatExpr operator+(FloatExpr a, FloatExpr b);

@@ -69,31 +69,15 @@ namespace V3DLib {
 
 // Construct an argument of QPU type 't'.
 
-template <typename t> inline t mkArg();
+template <typename T> inline T mkArg() { return T::mkArg(); }
 
-template <> inline Int mkArg<Int>() {
-  Int x;
-  x = getUniformInt();
-  return x;
-}
+/*
+template <> inline Int      mkArg<Int>()            { return Int::mkArg(); }
+template <> inline Float    mkArg<Float>()          { return Float::mkArg(); }
+template <> inline Ptr<Int> mkArg< Ptr<Int> >()     { return Ptr<Int>::mkArg(); }
+template <> inline Ptr<Float> mkArg< Ptr<Float> >() { return Ptr<Float>::mkArg(); }
+*/
 
-template <> inline Float mkArg<Float>() {
-  Float x;
-  x = getUniformFloat();
-  return x;
-}
-
-template <> inline Ptr<Int> mkArg< Ptr<Int> >() {
-  Ptr<Int> x;
-  x = getUniformPtr<Int>();
-  return x;
-}
-
-template <> inline Ptr<Float> mkArg< Ptr<Float> >() {
-  Ptr<Float> x;
-  x = getUniformPtr<Float>();
-  return x;
-}
 
 // ============================================================================
 // Parameter passing
@@ -101,53 +85,21 @@ template <> inline Ptr<Float> mkArg< Ptr<Float> >() {
 
 template <typename... ts> inline void nothing(ts... args) {}
 
+template <typename T, typename t> inline bool passParam(Seq<int32_t>* uniforms, t x) {
+  return T::passParam(uniforms, x);
+}
+
 /**
- * Pass argument of ARM type 'u' as parameter of QPU type 't'.
+ * Grumbl still need special override for 2D shared array.
+ * Sort of patched this, will sort it out another time.
+ *
+ * You can not possibly have any idea how long it took me * to implement and use this correctly.
+ *
+ * Even so, I'm probably doing it wrong.
  */
-template <typename t, typename u>
-inline bool passParam(Seq<int32_t>* uniforms, u x);
-
-
-template <>
-inline bool passParam<Int, int> (Seq<int32_t>* uniforms, int x) {
-  uniforms->append((int32_t) x);
-  return true;
-}
-
-
-template <>
-inline bool passParam<Float, float> (Seq<int32_t>* uniforms, float x) {
-  int32_t* bits = (int32_t*) &x;
-  uniforms->append(*bits);
-  return true;
-}
-
-
-template <>
-inline bool passParam< Ptr<Int>, SharedArray<int>* > (Seq<int32_t>* uniforms, SharedArray<int>* p) {
-  uniforms->append(p->getAddress());
-  return true;
-}
-
-
-template <>
-inline bool passParam< Ptr<Float>, SharedArray<float>* > (Seq<int32_t>* uniforms, SharedArray<float>* p) {
-  uniforms->append(p->getAddress());
-  return true;
-}
-
-template <>
-inline bool passParam< Ptr<Int>, Shared2DArray<int>* > (Seq<int32_t>* uniforms, Shared2DArray<int>* p) {
-  uniforms->append(p->getAddress());
-  return true;
-}
-
-
-// Pass a SharedArray<float>*
 template <>
 inline bool passParam< Ptr<Float>, Shared2DArray<float>* > (Seq<int32_t>* uniforms, Shared2DArray<float>* p) {
-  uniforms->append(p->getAddress());
-  return true;
+  return Ptr<Float>::passParam(uniforms, &((BaseSharedArray const &) p->get_parent()));
 }
 
 

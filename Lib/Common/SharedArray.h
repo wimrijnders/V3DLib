@@ -15,7 +15,7 @@ public:
   void alloc(uint32_t n);
   void dealloc();
   bool allocated() const;
-  uint32_t getAddress() { return m_phyaddr; }
+  uint32_t getAddress() const { return m_phyaddr; }
   uint32_t size() const { return m_size; }
   uint32_t *getPointer();
 
@@ -190,6 +190,14 @@ public:
   }
 
   Shared2DArray(int dimension) : Shared2DArray(dimension, dimension) {}  // for square array
+
+  /**
+   * You can not possibly have any idea how long it took to realize I needed something like this, and
+   * then how long it took to implement and use correctly.
+   *
+   * Even so, I'm probably doing it wrong.
+   */
+  //operator BaseSharedArray const &() { return (BaseSharedArray const &) get_parent(); }
 
   void alloc(uint32_t rows, uint32_t columns) {
     m_rows = rows;

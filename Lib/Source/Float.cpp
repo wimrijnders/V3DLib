@@ -38,6 +38,12 @@ Float::Float(FloatExpr e) {
   assign(m_expr, e.expr());
 }
 
+bool Float::passParam(Seq<int32_t> *uniforms, float val) {
+  int32_t* bits = (int32_t*) &val;
+  uniforms->append(*bits);
+  return true;
+}
+
 
 Float::Float(Deref<Float> d) {
   Var v    = freshVar();
@@ -71,15 +77,40 @@ Float::operator FloatExpr() { return FloatExpr(m_expr); }
 /**
  * Assignment
  */
+
+Float &Float::operator=(float rhs) {
+  Float tmp(rhs);
+  assign(m_expr, tmp.expr());
+  return self();
+}
+
+
 Float &Float::operator=(Float &rhs) {
   assign(m_expr, rhs.expr());
   return rhs;
 }
 
+Float &Float::operator=(Float const &rhs) {
+  assign(m_expr, rhs.expr());
+  return self();
+}
+
 
 FloatExpr Float::operator=(FloatExpr rhs) {
   assign(m_expr, rhs.expr());
-  return rhs;
+  return self();
+}
+
+
+Float &Float::operator=(Deref<Float> d) {
+  Float tmp = d;
+  assign(m_expr, tmp.expr());
+  return self();
+}
+
+
+Float &Float::self() {
+  return *(const_cast<Float *>(this));
 }
 
 
@@ -105,16 +136,20 @@ inline FloatExpr mkFloatApply(FloatExpr rhs, Op op) {
 }
 
 
+/**
+ * Read an Float from the UNIFORM FIFO.
+ */
+Float Float::mkArg() {
+  Expr::Ptr e = mkVar(UNIFORM);
+  Float x;
+  x = FloatExpr(e);
+  return x;
+}
+
+
 // ============================================================================
 // Specific operations
 // ============================================================================
-
-// Read an Float from the UNIFORM FIFO.
-FloatExpr getUniformFloat() {
-  Expr::Ptr e = mkVar(UNIFORM);
-  return FloatExpr(e);
-}
-
 
 // Read vector from VPM
 FloatExpr vpmGetFloat() {

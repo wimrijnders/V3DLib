@@ -1,7 +1,9 @@
+///////////////////////////////////////////////////////////////////////////////
 // This module defines type 'Int' for a vector of 16 x 32-bit integers.
-
+///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_INT_H_
 #define _V3DLIB_SOURCE_INT_H_
+#include "Common/Seq.h"
 #include "Source/Expr.h"
 #include "Source/Float.h"
 
@@ -40,6 +42,9 @@ struct Int : public BaseExpr {
   // Copy constructors
   Int(Int& x);
   Int(const Int& x);
+
+  static Int mkArg();
+  static bool passParam(Seq<int32_t> *uniforms, int val);
 
   // Cast to an IntExpr
   operator IntExpr();

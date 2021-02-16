@@ -118,6 +118,19 @@ IntExpr getUniformInt() {
 }
 
 
+Int Int::mkArg() {
+  Int x;
+  x = getUniformInt();
+  return x;
+}
+
+
+bool Int::passParam(Seq<int32_t> *uniforms, int val) {
+  uniforms->append((int32_t) val);
+  return true;
+}
+
+
 /**
  * A vector containing integers 0..15
  *
