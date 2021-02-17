@@ -113,6 +113,7 @@ public:
 
   static void reset_increment();
   static bool passParam(Seq<int32_t> *uniforms, BaseSharedArray const *p);
+  static Expr::Ptr getUniformPtr();
 
 protected:
   PointerExpr addself(int b);
@@ -122,8 +123,6 @@ protected:
   PointerExpr add(int b);
   PointerExpr add(IntExpr b);
   PointerExpr sub(IntExpr b);
-
-  static Expr::Ptr getUniformPtr();
 
 private:
   Pointer &self();

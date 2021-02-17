@@ -148,12 +148,39 @@ Float Float::mkArg() {
 
 
 // ============================================================================
-// Specific operations
+// Operations
 // ============================================================================
 
 // Read vector from VPM
 FloatExpr vpmGetFloat() {
   Expr::Ptr e = mkVar(VPM_READ);
+  return FloatExpr(e);
+}
+
+
+/**
+ * Vector rotation for float values
+ */
+FloatExpr rotate(FloatExpr a, IntExpr b) {
+  Expr::Ptr e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
+  return FloatExpr(e);
+}
+
+
+/**
+ * Conversion to Int
+ */
+IntExpr toInt(FloatExpr a) {
+  Expr::Ptr e = mkApply(a.expr(), Op(FtoI, INT32));
+  return IntExpr(e);
+}
+
+
+/**
+ * Conversion to Float
+ */
+FloatExpr toFloat(IntExpr a) {
+  Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT));
   return FloatExpr(e);
 }
 

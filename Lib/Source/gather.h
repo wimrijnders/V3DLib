@@ -3,6 +3,7 @@
 #include "Support/Platform.h"
 #include "StmtStack.h"
 #include "Ptr.h"
+#include "Float.h"
 
 namespace V3DLib {
 

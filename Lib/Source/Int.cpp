@@ -173,16 +173,10 @@ IntExpr vpmGetInt() {
 
 
 /**
- * Vector rotation
+ * Vector rotation for int values
  */
 IntExpr rotate(IntExpr a, IntExpr b) {
   return mkIntApply(a, Op(ROTATE, INT32), b);
-}
-
-
-FloatExpr rotate(FloatExpr a, IntExpr b) {
-  Expr::Ptr e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
-  return FloatExpr(e);
 }
 
 
@@ -199,23 +193,5 @@ IntExpr operator^(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(BXOR, INT32),
 IntExpr operator~(IntExpr a)             { return mkIntApply(a, Op(BNOT, INT32), a); }
 IntExpr shr(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(USHR, INT32), b); }
 IntExpr ror(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(ROR,  INT32), b); }
-
-
-/**
- * Conversion to Int
- */
-IntExpr toInt(FloatExpr a) {
-  Expr::Ptr e = mkApply(a.expr(), Op(FtoI, INT32));
-  return IntExpr(e);
-}
-
-
-/**
- * Conversion to Float
- */
-FloatExpr toFloat(IntExpr a) {
-  Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT));
-  return FloatExpr(e);
-}
 
 }  // namespace V3DLib

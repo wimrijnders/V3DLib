@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_VC4_DMA_OPERATIONS_H_
 #define _V3DLIB_VC4_DMA_OPERATIONS_H_
 #include "Source/Int.h"     // IntExpr
+#include "Source/Float.h"   // FloatExpr
 #include "Source/Ptr.h"
 #include "Source/Stmt.h"    // stmtStack()
 

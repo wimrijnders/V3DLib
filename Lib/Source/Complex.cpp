@@ -3,12 +3,30 @@
 
 namespace V3DLib {
 
+///////////////////////////////////////////////////////////////////////////////
+// Class Complex
+///////////////////////////////////////////////////////////////////////////////
+
+ComplexExpr::ComplexExpr(Complex const &rhs) {
+  assertq("Not implemented yet");  // TODO
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Complex
+///////////////////////////////////////////////////////////////////////////////
+
+Complex::Complex(Float re, Float im) : Re(re), Im(im) {}
+
 Complex::Complex(const Complex &rhs) : Re(rhs.Re), Im(rhs.Im) {}
 
-Complex::Complex(PtrExpr<Float> input) {
-  assert(false);  // WRONG
-  Re = *input;
-  Im = *(input + 1);
+Complex::Complex(ComplexExpr input) {
+  assertq("Not implemented yet");  // TODO
+}
+
+
+Complex::Complex(Ptr::Deref d) {
+  assertq("Not implemented yet");  // TODO
 }
 
 
@@ -37,11 +55,84 @@ void Complex::operator=(Complex const &rhs) {
 }
 
 
-Complex::Ptr Complex::Ptr::mkArg() {
-  Expr::Ptr e = getUniformPtr();
+///////////////////////////////////////////////////////////////////////////////
+// Class Complex::Ptr
+///////////////////////////////////////////////////////////////////////////////
 
-  Ptr x = PtrExpr<Complex>(e);
+Complex::Ptr::Ptr(ComplexExpr rhs) {
+  assertq("Not implemented yet");  // TODO
+}
+
+
+Complex::Ptr::Deref &Complex::Ptr::Deref::operator=(Complex const &rhs) {
+  assertq("Not implemented yet");  // TODO
+  return *this;
+}
+
+
+// TODO prob not needded, think about it
+Complex::Ptr::Deref::Deref(Complex const &rhs) {
+  assertq("Not implemented yet");  // TODO
+}
+
+
+Complex::Ptr::Deref Complex::Ptr::operator*() {
+  assertq("Not implemented yet");  // TODO
+  return Deref(Complex(-1,-1));  // Dummy return
+}
+
+
+Complex::Ptr Complex::Ptr::mkArg() {
+  assertq("Not implemented yet");  // TODO
+
+  Expr::Ptr re_e = Pointer::getUniformPtr();
+  Expr::Ptr im_e = Pointer::getUniformPtr();
+
+  Complex::Ptr x = ComplexExpr(re_e, im_e);
   return x;
+}
+
+
+bool Complex::Ptr::passParam(Seq<int32_t> *uniforms, Complex::Array *p) {
+  assertq("Not implemented yet");  // TODO
+  return true;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Complex::Ptr
+///////////////////////////////////////////////////////////////////////////////
+
+Complex::Array::ref &Complex::Array::ref::operator=(complex const &rhs) {
+  assertq("Not implemented yet");  // TODO
+  return *this;
+}
+
+
+bool Complex::Array::ref::operator==(complex const &rhs) const {
+  assertq("Not implemented yet");  // TODO
+  return true;
+}
+
+
+Complex::Array::Array(int size) {
+  assertq("Not implemented yet");  // TODO
+}
+
+
+void Complex::Array::dump() const {
+  assertq("Not implemented yet");  // TODO
+}
+
+
+void Complex::Array::fill(complex const &rhs) {
+  assertq("Not implemented yet");  // TODO
+}
+
+
+Complex::Array::ref Complex::Array::operator[] (int i) {
+  assertq("Not implemented yet");  // TODO
+  return ref();  // Dummy return
 }
 
 }  // namespace V3DLib

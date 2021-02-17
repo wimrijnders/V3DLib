@@ -4,7 +4,8 @@
 #ifndef _V3DLIB_SOURCE_FLOAT_H_
 #define _V3DLIB_SOURCE_FLOAT_H_
 #include "Common/Seq.h"
-#include "Source/Expr.h"
+#include "Expr.h"
+#include "Ptr.h"
 
 namespace V3DLib {
 
@@ -29,6 +30,8 @@ struct FloatExpr :public BaseExpr {
 // both the LHS and RHS of an assignment.
 
 struct Float : public BaseExpr {
+  using Ptr = V3DLib::Ptr<Float>;
+
   Float();
   Float(float x);
   Float(FloatExpr e);
@@ -62,6 +65,10 @@ private:
 // ============================================================================
 
 FloatExpr vpmGetFloat();
+
+FloatExpr rotate(FloatExpr a, IntExpr b);
+IntExpr toInt(FloatExpr a);
+FloatExpr toFloat(IntExpr a);
 
 FloatExpr operator+(FloatExpr a, FloatExpr b);
 FloatExpr operator-(FloatExpr a, FloatExpr b);

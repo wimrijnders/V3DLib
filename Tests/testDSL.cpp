@@ -225,6 +225,7 @@ void check_conditionals(SharedArray<int> &result, int N) {
 }
 
 
+/*
 void kernelComplex(Ptr<Float> input_re, Ptr<Float> input_im, Ptr<Float> result_re, Ptr<Float> result_im) {
   Complex a;
   Complex b;
@@ -234,6 +235,20 @@ void kernelComplex(Ptr<Float> input_re, Ptr<Float> input_im, Ptr<Float> result_r
   b = a*a;
   *result_re = b.Re;
   *result_im = b.Im;
+}
+*/
+void kernelComplex(Complex::Ptr input, Complex::Ptr result) {
+  Complex a;
+  Complex b;
+
+  a = *input;
+//  a.Re = *input_re;  comment("Complex mult");
+//  a.Im = *input_im;
+
+  b = a*a;
+  *result = b;
+//  *result_re = b.Re;
+//  *result_im = b.Im;
 }
 
 
@@ -300,13 +315,10 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 
 
 TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
-
+/*
   SECTION("Test Complex composed type") {
-    // TODO: No assertion in this part, need any?
-
     const int N = 1;  // Number Complex items in vectors
 
-    // Construct kernel
     auto k = compile(kernelComplex);
     //k.pretty(true, nullptr, false);
 
@@ -332,6 +344,31 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
     REQUIRE(result_re[0] ==  1); REQUIRE(result_im[0] ==  0);
     REQUIRE(result_re[1] == -1); REQUIRE(result_im[1] ==  0);
     REQUIRE(result_re[2] ==  0); REQUIRE(result_im[2] ==  2);
+  }
+*/
+  SECTION("Test Complex composed type") {
+    const int N = 1;  // Number Complex items in vectors
+
+    auto k = compile(kernelComplex);
+    //k.pretty(true, nullptr, false);
+
+    // Allocate and array for input and result values
+    Complex::Array input(16*N);
+    input.fill({0,0});
+    input[0] = { 1, 0};
+    input[1] = { 0, 1};
+    input[2] = { 1, 1};
+
+    Complex::Array result(16*N);
+
+    // Run kernel
+    k.load(&input, &result).call();  //call();
+
+    input.dump();
+    result.dump();
+    REQUIRE(result[0] ==  complex(1, 0));
+    REQUIRE(result[1] ==  complex(-1, 0));
+    REQUIRE(result[2] ==  complex(0, 2));
   }
 }
 
