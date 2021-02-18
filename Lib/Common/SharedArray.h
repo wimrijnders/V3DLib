@@ -271,6 +271,20 @@ private:
   }
 };
 
+
+inline bool no_fractions(V3DLib::SharedArray<float> const &a) {
+  bool ret = true;
+
+  for (int i = 0; i < (int) a.size(); i++) {
+    if (a[i] != (float) ((int) a[i])) {
+      ret = false;
+      break;
+    }  
+  }
+
+  return ret;
+}
+
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_COMMON_SHAREDARRAY_H_

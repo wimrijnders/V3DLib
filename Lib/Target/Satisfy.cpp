@@ -65,47 +65,74 @@ bool resolveRegFileConflict(Instr* instr, Instr* newInstr) {
 /**
  * First pass for satisfy constraints: insert move-to-accumulator instructions
  */
-void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
+Seq<Instr> insertMoves_vc4(Seq<Instr> &instrs) {
+  if (!Platform::compiling_for_vc4())  {                           // Not an issue for v3d
+    return instrs;
+  }
+
+  Seq<Instr> newInstrs(instrs.size() * 2);
+
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
 
-    if (instr.tag == ALU && instr.ALU.op.value() == ALUOp::M_ROTATE) {
-      // Insert moves for horizontal rotate operations
-      *newInstrs << remapAToAccum(&instr, 0);
-
-      if (instr.ALU.srcB.is_reg())
-        *newInstrs << remapBToAccum(&instr, 5);
-
-      *newInstrs << Instr::nop();
-    } else if (instr.tag == ALU && instr.ALU.srcA.is_imm() &&
-             instr.ALU.srcB.is_reg() &&
-             regFileOf(instr.ALU.srcB.reg) == REG_B) {
+    if (instr.tag == ALU && instr.ALU.srcA.is_imm() &&
+        instr.ALU.srcB.is_reg() &&
+        regFileOf(instr.ALU.srcB.reg) == REG_B) {
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.
-      *newInstrs << remapBToAccum(&instr, 0);
+      newInstrs << remapBToAccum(&instr, 0);
     } else if (instr.tag == ALU && instr.ALU.srcB.is_imm() &&
              instr.ALU.srcA.is_reg() &&
              regFileOf(instr.ALU.srcA.reg) == REG_B) {
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.
-      newInstrs->append(remapAToAccum(&instr, 0));
-    } else if(Platform::compiling_for_vc4())  {                           // Not an issue for v3d
+      newInstrs << remapAToAccum(&instr, 0);
+    } else {
       // Insert moves for operands that are mapped to the same reg file
       Instr move;
-      if (resolveRegFileConflict(&instr, &move))
-        newInstrs->append(move);
+      if (resolveRegFileConflict(&instr, &move)) {
+        newInstrs << move;
+      }
     }
     
     // Put current instruction into the new sequence
-    newInstrs->append(instr);
+    newInstrs << instr;
   }
+
+  return newInstrs;
+}
+
+
+Seq<Instr> insertMoves(Seq<Instr> &instrs) {
+  Seq<Instr> newInstrs(instrs.size() * 2);
+
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
+
+    if (instr.tag == ALU && instr.ALU.op.value() == ALUOp::M_ROTATE) {
+      // Insert moves for horizontal rotate operations
+      newInstrs << remapAToAccum(&instr, 0);
+
+      if (instr.ALU.srcB.is_reg())
+        newInstrs << remapBToAccum(&instr, 5);
+
+      newInstrs << Instr::nop();
+    }
+    
+    // Put current instruction into the new sequence
+    newInstrs << instr;
+  }
+
+  return newInstrs;
 }
 
 
 /**
  * Second pass satisfy constraints: insert NOPs
  */
-void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
+Seq<Instr> insertNops(Seq<Instr> &instrs) {
+  Seq<Instr> newInstrs(instrs.size() * 2);
+
   // Use/def sets
   UseDefReg mySet, prevSet;
 
@@ -142,6 +169,8 @@ void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
     // Update previous instruction
     if (instr.tag != LAB) prev = instr;
   }
+
+  return newInstrs;
 }
 
 
@@ -165,7 +194,9 @@ bool notVPMGet(Instr instr) {
 /**
  * Insert NOPs between VPM setup and VPM read, if needed
  */
-void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
+Seq<Instr> removeVPMStall(Seq<Instr> &instrs) {
+  Seq<Instr> newInstrs(instrs.size() * 2);
+
   // Use/def sets
   UseDefReg useDef;
 
@@ -186,6 +217,8 @@ void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
         newInstrs << Instr::nop();
     }
   }
+
+  return newInstrs;
 }
 
 }  // anon namespace
@@ -244,15 +277,11 @@ RegTag regFileOf(Reg r) {
 void satisfy(Seq<Instr>* instrs) {
   assert(instrs != nullptr);
 
-  // New instruction sequence
-  Seq<Instr> newInstrs0(instrs->size() * 2);
-  Seq<Instr> newInstrs1(instrs->size() * 2);
-
   // Apply passes
-  insertMoves(*instrs, &newInstrs0);
-  insertNops(newInstrs0, newInstrs1);
-  instrs->clear();
-  removeVPMStall(newInstrs1, *instrs);
+  Seq<Instr> newInstrs = insertMoves(*instrs);
+  newInstrs = insertMoves_vc4(newInstrs);
+  newInstrs = insertNops(newInstrs);
+  *instrs = removeVPMStall(newInstrs);
 }
 
 }  // namespace V3DLib

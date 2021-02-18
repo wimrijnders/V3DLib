@@ -11,54 +11,21 @@ namespace V3DLib {
 
 IntExpr::IntExpr(int x) { m_expr = mkIntLit(x); }
 
+
 // ============================================================================
-// Type 'Int'
+// class Int
 // ============================================================================
 
-// Constructors
-
-Int::Int() {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-}
-
-Int::Int(int x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, mkIntLit(x));
-}
-
-Int::Int(IntExpr e) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, e.expr());
-}
+Int::Int()             { assign_intern(); }
+Int::Int(IntExpr e)    { assign_intern(e.expr()); }
+Int::Int(Deref<Int> d) { assign_intern(d.expr()); }
+Int::Int(Int const &x) { assign_intern(x.expr()); }
+Int::Int(int x)        { assign_intern(mkIntLit(x)); }
 
 
-Int::Int(Deref<Int> d) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, d.expr());
-}
-
-// Copy constructors
-
-Int::Int(Int &x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, x.expr());
-}
-
-
-Int::Int(Int const &x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, x.expr());
-}
-
-
-// Cast to an IntExpr
-
+/**
+ * Cast to an IntExpr
+ */
 Int::operator IntExpr() { return IntExpr(m_expr); }
 
 // Assignment

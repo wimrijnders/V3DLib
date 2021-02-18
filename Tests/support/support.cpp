@@ -125,15 +125,7 @@ void dump_array(float *a, int size,  int linesize) {
  * Show contents of SharedArray instance
  */
 void dump_array(V3DLib::SharedArray<float> const &a, int linesize) {
-  bool no_fractions = true;
-  for (int i = 0; i < (int) a.size(); i++) {
-    if (a[i] != (float) ((int) a[i])) {
-      no_fractions = false;
-      break;
-    }  
-  }
-
-  dump_array_template(a, a.size(), linesize, no_fractions);
+  dump_array_template(a, a.size(), linesize, no_fractions(a));
 }
 
 

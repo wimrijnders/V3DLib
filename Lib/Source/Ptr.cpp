@@ -45,7 +45,7 @@ void Pointer::reset_increment() {
 }
 
 
-Pointer::Pointer() : BaseExpr(mkVar(freshVar()), "Ptr") {}
+Pointer::Pointer() : BaseExpr("Ptr") {}
 
 
 Pointer &Pointer::self() {
@@ -112,14 +112,12 @@ PointerExpr Pointer::sub(IntExpr b) {
 
 
 Expr::Ptr Pointer::getUniformPtr() {
-  Var v = Var(UNIFORM);
-  v.setUniformPtr();
-  Expr::Ptr e = std::make_shared<Expr>(v);
+  Expr::Ptr e = std::make_shared<Expr>(Var(UNIFORM, true));
   return e;
 }
 
 
-bool Pointer::passParam(Seq<int32_t> *uniforms, const BaseSharedArray *p) {
+bool Pointer::passParam(Seq<int32_t> *uniforms, BaseSharedArray const *p) {
   uniforms->append(p->getAddress());
   return true;
 }

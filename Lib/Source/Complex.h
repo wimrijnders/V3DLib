@@ -14,6 +14,9 @@ public:
   ComplexExpr(Complex const &rhs);
   ComplexExpr(Expr::Ptr re, Expr::Ptr im) : re_e(re), im_e(im) {}
 
+  Expr::Ptr re() { return re_e; }
+  Expr::Ptr im() { return im_e; }
+
 private:
   Expr::Ptr re_e = nullptr;   // Abstract syntax tree
   Expr::Ptr im_e = nullptr;   // TODO prob necessary to combine in single expr
@@ -26,6 +29,10 @@ private:
 class complex {
 public:
   complex(float re, float im) : m_re(re), m_im(im) {}
+
+  float re() const { return m_re; }
+  float im() const { return m_im; }
+  std::string dump() const;
 
 private:
   float m_re;
@@ -42,30 +49,52 @@ public:
     size = 2  // Size of instance in 32-bit values
   };
 
+
+  /**
+   * Encapsulates two disticnt shared float arrays for real and imaginary values
+   */
   class Array {
+
     class ref {
     public:
-      ref() {}  // TODO define other ctors and delete this one
+      ref(float &re_ref, float &im_ref);
 
       ref &operator=(complex const &rhs);
       bool operator==(complex const &rhs) const;
+      std::string dump() const;
+
+    private:
+      float &m_re_ref;
+      float &m_im_ref;
     };
 
   public:
     Array(int size);
 
     void fill(complex const &rhs);
-    void dump() const;
+    std::string dump() const;
+
+    SharedArray<float> &re() { return  m_re; }
+    SharedArray<float> &im() { return  m_im; }
 
     ref operator[] (int i);
+
+  private:
+    SharedArray<float> m_re;
+    SharedArray<float> m_im;
   };
+
 
   class Ptr {
   public:
     class Deref {
     public:
-      Deref(Complex const &rhs);
+      Deref(Expr::Ptr re, Expr::Ptr im);
+
       Deref &operator=(Complex const &rhs);
+
+      V3DLib::Deref<Float> m_re;
+      V3DLib::Deref<Float> m_im;
     };
 
     Ptr(ComplexExpr rhs);
@@ -79,6 +108,7 @@ public:
     Float::Ptr re;
     Float::Ptr im;
   };
+
 
   Complex() {}
   Complex(Float re, Float im);

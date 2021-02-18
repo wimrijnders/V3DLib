@@ -217,10 +217,8 @@ public:
 
 template <typename T>
 Ptr<T> Ptr<T>::mkArg() {
-  Expr::Ptr e = getUniformPtr();
-
   Ptr<T> x;
-  x = PtrExpr<T>(e);
+  x = PtrExpr<T>(getUniformPtr());
   return x;
 }
 

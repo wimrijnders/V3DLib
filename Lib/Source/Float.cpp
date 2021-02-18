@@ -7,10 +7,7 @@ namespace V3DLib {
 // Class FloatExpr
 // ============================================================================
 
-FloatExpr::FloatExpr(float x) {
-  m_expr = std::make_shared<Expr>(x);
-}
-
+FloatExpr::FloatExpr(float x) { m_expr = std::make_shared<Expr>(x); }
 FloatExpr::FloatExpr(Deref<Float> d) : BaseExpr(d.expr()) {}
 
 
@@ -18,53 +15,21 @@ FloatExpr::FloatExpr(Deref<Float> d) : BaseExpr(d.expr()) {}
 // Class Float
 // ============================================================================
 
-Float::Float() {
-  Var v  = freshVar();
-  m_expr = mkVar(v);
-}
-
+Float::Float()               { assign_intern(); }
+Float::Float(FloatExpr e)    { assign_intern(e.expr()); }
+Float::Float(Deref<Float> d) { assign_intern(d.expr()); }
+Float::Float(Float const &x) { assign_intern(x.expr()); }
 
 Float::Float(float x) {
-  Var v  = freshVar();
-  m_expr = mkVar(v);
   auto a = std::make_shared<Expr>(x);
-  assign(m_expr, a);
+  assign_intern(a);
 }
 
-
-Float::Float(FloatExpr e) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, e.expr());
-}
 
 bool Float::passParam(Seq<int32_t> *uniforms, float val) {
   int32_t* bits = (int32_t*) &val;
   uniforms->append(*bits);
   return true;
-}
-
-
-Float::Float(Deref<Float> d) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, d.expr());
-}
-
-
-// Copy constructors
-
-Float::Float(Float &x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, x.expr());
-}
-
-
-Float::Float(Float const &x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, x.expr());
 }
 
 

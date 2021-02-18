@@ -36,9 +36,6 @@ struct Float : public BaseExpr {
   Float(float x);
   Float(FloatExpr e);
   Float(Deref<Float> d);
-
-  // Copy constructors
-  Float(Float& x);
   Float(Float const &x);
 
   static Float mkArg();

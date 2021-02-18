@@ -226,7 +226,7 @@ void check_conditionals(SharedArray<int> &result, int N) {
 
 
 /*
-void kernelComplex(Ptr<Float> input_re, Ptr<Float> input_im, Ptr<Float> result_re, Ptr<Float> result_im) {
+void complex_kernel(Ptr<Float> input_re, Ptr<Float> input_im, Ptr<Float> result_re, Ptr<Float> result_im) {
   Complex a;
   Complex b;
 
@@ -237,7 +237,7 @@ void kernelComplex(Ptr<Float> input_re, Ptr<Float> input_im, Ptr<Float> result_r
   *result_im = b.Im;
 }
 */
-void kernelComplex(Complex::Ptr input, Complex::Ptr result) {
+void complex_kernel(Complex::Ptr input, Complex::Ptr result) {
   Complex a;
   Complex b;
 
@@ -315,11 +315,13 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 
 
 TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
+  Platform::use_main_memory(true);
+
 /*
   SECTION("Test Complex composed type") {
     const int N = 1;  // Number Complex items in vectors
 
-    auto k = compile(kernelComplex);
+    auto k = compile(complex_kernel);
     //k.pretty(true, nullptr, false);
 
     // Allocate and array for input and result values
@@ -349,8 +351,8 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
   SECTION("Test Complex composed type") {
     const int N = 1;  // Number Complex items in vectors
 
-    auto k = compile(kernelComplex);
-    //k.pretty(true, nullptr, false);
+    auto k = compile(complex_kernel);
+    k.pretty(true, nullptr, false);
 
     // Allocate and array for input and result values
     Complex::Array input(16*N);
@@ -362,14 +364,21 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
     Complex::Array result(16*N);
 
     // Run kernel
-    k.load(&input, &result).call();  //call();
+    k.load(&input, &result).interpret(); // emu();  //call();
 
-    input.dump();
-    result.dump();
+    std::cout << input.dump();
+    std::cout << result.dump();
+
+    std::cout << result[0].dump()     << "\n";
+    std::cout << complex(1, 0).dump();
+    std::cout << std::endl;
+
     REQUIRE(result[0] ==  complex(1, 0));
     REQUIRE(result[1] ==  complex(-1, 0));
     REQUIRE(result[2] ==  complex(0, 2));
   }
+
+  Platform::use_main_memory(false);
 }
 
 

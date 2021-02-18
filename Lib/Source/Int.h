@@ -37,10 +37,7 @@ struct Int : public BaseExpr {
   Int(int x);
   Int(IntExpr e);
   Int(Deref<Int> d);
-
-  // Copy constructors
-  Int(Int& x);
-  Int(const Int& x);
+  Int(Int const &x);
 
   static Int mkArg();
   static bool passParam(Seq<int32_t> *uniforms, int val);
