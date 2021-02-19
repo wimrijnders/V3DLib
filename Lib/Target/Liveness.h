@@ -42,7 +42,7 @@ class Liveness {
 public:
   Liveness(CFG &cfg) : m_cfg(cfg) {}
 
-  void compute(Seq<Instr> &instrs);
+  void compute(Instr::List &instrs);
   void computeLiveOut(InstrId i, LiveSet &liveOut);
 
   void setSize(int size);
@@ -66,7 +66,7 @@ public:
   LiveSets(int size);
   ~LiveSets();
 
-  void init(Seq<Instr> &instrs, Liveness &live);
+  void init(Instr::List &instrs, Liveness &live);
   LiveSet &operator[](int index);
   std::vector<bool> possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag = REG_A);
 

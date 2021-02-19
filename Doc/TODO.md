@@ -14,7 +14,7 @@
 	  
 ## Optimization and Cleanup
 
-- [ ] Complete conversion `Seq<Instr>` to `Instr::List`
+- [x] Complete conversion `Seq<Instr>` to `Instr::List`
 - [ ] Tone down mesa library, compile takes long.
       Tried this but gave up after it became evident nothing could be removed.
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.

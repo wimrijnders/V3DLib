@@ -49,7 +49,7 @@ void KernelDriver::kernelFinish() {
 void KernelDriver::encode(int numQPUs) {
   if (code.size() > 0) return;  // Don't bother if already encoded
 
-  V3DLib::vc4::encode(&m_targetCode, &code);
+  V3DLib::vc4::encode(m_targetCode, &code);
 }
 
 

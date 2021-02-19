@@ -8,7 +8,7 @@ namespace v3d {
 class SourceTranslate : public ISourceTranslate {
 public:
   Instr::List store_var(Var dst_addr, Var src) override;
-  void regAlloc(CFG* cfg, Instr::List* instrs) override;
+  void regAlloc(CFG *cfg, Instr::List &instrs) override;
   bool stmt(Instr::List &seq, Stmt::Ptr s) override; 
 };
 

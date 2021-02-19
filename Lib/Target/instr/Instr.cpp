@@ -415,7 +415,7 @@ void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4) {
  * Debug function - check for presence of zero-instructions in instruction sequence
  *
  */
-void check_zeroes(Seq<Instr> const &instrs) {
+void check_zeroes(Instr::List const &instrs) {
   bool success = true;
 
   for (int i = 0; i < instrs.size(); ++i ) {

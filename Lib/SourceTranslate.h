@@ -12,7 +12,7 @@ public:
 
   virtual Instr::List load_var(Var &dst, Expr &e);
   virtual Instr::List store_var(Var dst_addr, Var src) = 0;
-  virtual void regAlloc(CFG *cfg, Instr::List *instrs) = 0;
+  virtual void regAlloc(CFG *cfg, Instr::List &instrs) = 0;
   virtual bool stmt(Instr::List &seq, Stmt::Ptr s) = 0;
 };
 

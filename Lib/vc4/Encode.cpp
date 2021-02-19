@@ -435,26 +435,28 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 
 }  // anon namespace
 
-// =================
+
+// ============================================================================
 // Top-level encoder
-// =================
+// ============================================================================
 
 uint64_t encode(Instr instr) {
-  uint64_t ret;
   uint32_t low;
   uint32_t high;
 
   encodeInstr(instr, &high, &low);
 
-  ret = (((uint64_t) high) << 32) + low;
-
+  uint64_t ret = (((uint64_t) high) << 32) + low;
   return ret;
 }
 
-void encode(Seq<Instr>* instrs, Seq<uint32_t>* code) {
+
+void encode(Instr::List &instrs, Seq<uint32_t>* code) {
+  assert(code != nullptr);
   uint32_t high, low;
-  for (int i = 0; i < instrs->size(); i++) {
-    Instr instr = instrs->get(i);
+
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs.get(i);
     check_instruction_tag_for_platform(instr.tag, true);
 
     if (instr.tag == INIT_BEGIN || instr.tag == INIT_END) {

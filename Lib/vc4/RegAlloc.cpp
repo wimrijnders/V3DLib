@@ -11,7 +11,7 @@ namespace {
 /**
  * For each variable, determine a preference for register file A or B.
  */
-void regalloc_determine_regfileAB(Seq<Instr> &instrs, int *prefA, int *prefB, int n) {
+void regalloc_determine_regfileAB(Instr::List &instrs, int *prefA, int *prefB, int n) {
   for (int i = 0; i < n; i++) prefA[i] = prefB[i] = 0;
 
   for (int i = 0; i < instrs.size(); i++) {
@@ -20,21 +20,18 @@ void regalloc_determine_regfileAB(Seq<Instr> &instrs, int *prefA, int *prefB, in
     if (getTwoUses(instr, &ra, &rb) && ra.tag == REG_A && rb.tag == REG_A) {
       RegId x = ra.regId;
       RegId y = rb.regId;
-      if (prefA[x] > prefA[y] || prefB[y] > prefB[x])
-        { prefA[x]++; prefB[y]++; }
-      else
-        { prefA[y]++; prefB[x]++; }
-    }
-    else if (instr.tag == ALU &&
-             instr.ALU.srcA.is_reg() &&
-             instr.ALU.srcA.reg.tag == REG_A &&
-             instr.ALU.srcB.is_imm()) {
+      if (prefA[x] > prefA[y] || prefB[y] > prefB[x]) {
+        prefA[x]++; prefB[y]++;
+      } else {
+        prefA[y]++; prefB[x]++;
+      }
+    } else if (instr.tag == ALU &&
+               instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg.tag == REG_A &&
+               instr.ALU.srcB.is_imm()) {
       prefA[instr.ALU.srcA.reg.regId]++;
-    }
-    else if (instr.tag == ALU &&
-             instr.ALU.srcB.is_reg() &&
-             instr.ALU.srcB.reg.tag == REG_A &&
-             instr.ALU.srcA.is_imm()) {
+    } else if (instr.tag == ALU &&
+               instr.ALU.srcB.is_reg() && instr.ALU.srcB.reg.tag == REG_A &&
+               instr.ALU.srcA.is_imm()) {
       prefA[instr.ALU.srcB.reg.regId]++;
     }
   }
@@ -42,35 +39,32 @@ void regalloc_determine_regfileAB(Seq<Instr> &instrs, int *prefA, int *prefB, in
 
 }  // anon namespace
 
+
 // ============================================================================
 // Register allocation
 // ============================================================================
 
 namespace vc4 {
 
-void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
-  assert(instrs != nullptr);
+void regAlloc(CFG *cfg, Instr::List &instrs) {
+  assert(cfg != nullptr);
   int numVars = getFreshVarCount();
 
-  // Step 0
-  // Perform liveness analysis
+  // Step 0 - Perform liveness analysis
   Liveness live(*cfg);
-  live.compute(*instrs);
+  live.compute(instrs);
 
-  // Step 1
-  // For each variable, determine a preference for register file A or B.
+  // Step 1 - For each variable, determine a preference for register file A or B.
   int* prefA = new int [numVars];
   int* prefB = new int [numVars];
 
-  regalloc_determine_regfileAB(*instrs, prefA, prefB, numVars);
+  regalloc_determine_regfileAB(instrs, prefA, prefB, numVars);
 
-  // Step 2
-  // For each variable, determine all variables ever live at same time
+  // Step 2 - For each variable, determine all variables ever live at same time
   LiveSets liveWith(numVars);
-  liveWith.init(*instrs, live);
+  liveWith.init(instrs, live);
 
-  // Step 3
-  // Allocate a register to each variable
+  // Step 3 - Allocate a register to each variable
   std::vector<Reg> alloc(numVars);
   for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
 
@@ -103,11 +97,10 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
     alloc[i].regId = chosenRegFile == REG_A ? chosenA : chosenB;
   }
 
-  // Step 4
-  // Apply the allocation to the code
-  for (int i = 0; i < instrs->size(); i++) {
+  // Step 4 - Apply the allocation to the code
+  for (int i = 0; i < instrs.size(); i++) {
     auto &useDefSet = liveWith.useDefSet;
-    Instr &instr = instrs->get(i);
+    Instr &instr = instrs.get(i);
 
     useDef(instr, &useDefSet);
     for (int j = 0; j < useDefSet.def.size(); j++) {

@@ -65,12 +65,12 @@ bool resolveRegFileConflict(Instr* instr, Instr* newInstr) {
 /**
  * First pass for satisfy constraints: insert move-to-accumulator instructions
  */
-Seq<Instr> insertMoves_vc4(Seq<Instr> &instrs) {
+Instr::List insertMoves_vc4(Instr::List &instrs) {
   if (!Platform::compiling_for_vc4())  {                           // Not an issue for v3d
     return instrs;
   }
 
-  Seq<Instr> newInstrs(instrs.size() * 2);
+  Instr::List newInstrs(instrs.size() * 2);
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
@@ -103,8 +103,8 @@ Seq<Instr> insertMoves_vc4(Seq<Instr> &instrs) {
 }
 
 
-Seq<Instr> insertMoves(Seq<Instr> &instrs) {
-  Seq<Instr> newInstrs(instrs.size() * 2);
+Instr::List insertMoves(Instr::List &instrs) {
+  Instr::List newInstrs(instrs.size() * 2);
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
@@ -130,8 +130,8 @@ Seq<Instr> insertMoves(Seq<Instr> &instrs) {
 /**
  * Second pass satisfy constraints: insert NOPs
  */
-Seq<Instr> insertNops(Seq<Instr> &instrs) {
-  Seq<Instr> newInstrs(instrs.size() * 2);
+Instr::List insertNops(Instr::List &instrs) {
+  Instr::List newInstrs(instrs.size() * 2);
 
   // Use/def sets
   UseDefReg mySet, prevSet;
@@ -194,8 +194,8 @@ bool notVPMGet(Instr instr) {
 /**
  * Insert NOPs between VPM setup and VPM read, if needed
  */
-Seq<Instr> removeVPMStall(Seq<Instr> &instrs) {
-  Seq<Instr> newInstrs(instrs.size() * 2);
+Instr::List removeVPMStall(Instr::List &instrs) {
+  Instr::List newInstrs(instrs.size() * 2);
 
   // Use/def sets
   UseDefReg useDef;
@@ -224,12 +224,8 @@ Seq<Instr> removeVPMStall(Seq<Instr> &instrs) {
 }  // anon namespace
 
 
-// ==============================
-// Resolve register file conflict
-// ==============================
-
 /**
- * Determine reg file of given register.
+ * Determine reg file of given register
  */
 RegTag regFileOf(Reg r) {
   if (r.tag == REG_A) return REG_A;
@@ -256,32 +252,29 @@ RegTag regFileOf(Reg r) {
 }
 
 
-// =============================
-// Satisfy VideoCore constraints
-// =============================
-
-// Transform an instruction sequence to satisfy various VideoCore
-// constraints, including:
-//
-//   1. fill branch delay slots with NOPs;
-//
-//   2. introduce accumulators for operands mapped to the same
-//      register file;
-//
-//   3. introduce accumulators for horizontal rotation operands;
-//
-//   4. insert NOPs to account for data hazards: a destination
-//      register (assuming it's not an accumulator) cannot be read by
-//      the next instruction.
-
-void satisfy(Seq<Instr>* instrs) {
-  assert(instrs != nullptr);
-
+/**
+ * Satisfy VideoCore constraints
+ *
+ * Transform an instruction sequence to satisfy various VideoCore
+ * constraints, including:
+ *
+ *   1. fill branch delay slots with NOPs;
+ *
+ *   2. introduce accumulators for operands mapped to the same
+ *      register file;
+ *
+ *   3. introduce accumulators for horizontal rotation operands;
+ *
+ *   4. insert NOPs to account for data hazards: a destination
+ *      register (assuming it's not an accumulator) cannot be read by
+ *      the next instruction.
+ */
+void satisfy(Instr::List &instrs) {
   // Apply passes
-  Seq<Instr> newInstrs = insertMoves(*instrs);
+  Instr::List newInstrs = insertMoves(instrs);
   newInstrs = insertMoves_vc4(newInstrs);
   newInstrs = insertNops(newInstrs);
-  *instrs = removeVPMStall(newInstrs);
+  instrs = removeVPMStall(newInstrs);
 }
 
 }  // namespace V3DLib

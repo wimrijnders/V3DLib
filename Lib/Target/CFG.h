@@ -17,7 +17,7 @@ using Succs =  SmallSeq<InstrId>;
 using CFG =  Seq<Succs>;
 
 // Function to construct a CFG.
-void buildCFG(Seq<Instr> &instrs, CFG &cfg);
+void buildCFG(Instr::List &instrs, CFG &cfg);
 
 }  // namespace V3DLib
 

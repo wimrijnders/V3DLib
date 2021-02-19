@@ -30,7 +30,7 @@ namespace {
  *     i:  acc <- f(...)
  *     j:  g(..., acc, ...)
  */
-void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
+void introduceAccum(Liveness &live, Instr::List &instrs) {
   auto ALWAYS = AssignCond::Tag::ALWAYS;
   UseDef  useDefPrev;
   UseDef  useDefCurrent;
@@ -173,7 +173,7 @@ void useDef(Instr const &instr, UseDef* out) {
 // Compute the union of the 'use' sets of the successors of a given
 // instruction.
 
-void useSetOfSuccs(Seq<Instr>* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
+void useSetOfSuccs(Instr::List* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
   use->clear();
   Succs* s = &cfg->elems[i];
   for (int j = 0; j < s->size(); j++) {
@@ -204,7 +204,7 @@ namespace {
 /**
  * Determine the liveness sets for each instruction.
  */
-void liveness(Seq<Instr> &instrs, Liveness &live) {
+void liveness(Instr::List &instrs, Liveness &live) {
   // Initialise live mapping to have one entry per instruction
   live.setSize(instrs.size());
 
@@ -266,7 +266,7 @@ LiveSets::~LiveSets() {
 }
 
 
-void LiveSets::init(Seq<Instr> &instrs, Liveness &live) {
+void LiveSets::init(Instr::List &instrs, Liveness &live) {
   LiveSet liveOut;
 
   for (int i = 0; i < instrs.size(); i++) {
@@ -370,9 +370,8 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 }  
 
 
-void Liveness::compute(Seq<Instr> &instrs) {
+void Liveness::compute(Instr::List &instrs) {
   liveness(instrs, *this);
-  //printf("%s", dump().c_str());
 
   // Optimisation pass that introduces accumulators
   introduceAccum(*this, instrs);

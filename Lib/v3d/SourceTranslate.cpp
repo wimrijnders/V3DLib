@@ -40,19 +40,19 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
 }
 
 
-void SourceTranslate::regAlloc(CFG* cfg, Instr::List* instrs) {
+void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
   int numVars = getFreshVarCount();
 
   // Step 0
   // Perform liveness analysis
   Liveness live(*cfg);
-  live.compute(*instrs);
-  assert(instrs->size() == live.size());
+  live.compute(instrs);
+  assert(instrs.size() == live.size());
 
   // Step 2
   // For each variable, determine all variables ever live at the same time
   LiveSets liveWith(numVars);
-  liveWith.init(*instrs, live);
+  liveWith.init(instrs, live);
 
   // Step 3
   // Allocate a register to each variable
@@ -68,7 +68,7 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List* instrs) {
 
     if (regId < 0) {
       std::string buf = "v3d regAlloc(): register allocation failed for target instruction ";
-      buf << i << ": " << (*instrs)[i].mnemonic();
+      buf << i << ": " << instrs[i].mnemonic();
       error(buf, true);
     } else {
       alloc[i].regId = regId;
@@ -77,9 +77,9 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List* instrs) {
 
   // Step 4
   // Apply the allocation to the code
-  for (int i = 0; i < instrs->size(); i++) {
+  for (int i = 0; i < instrs.size(); i++) {
     auto &useDefSet = liveWith.useDefSet;
-    Instr &instr = instrs->get(i);
+    Instr &instr = instrs.get(i);
 
     useDef(instr, &useDefSet);
     for (int j = 0; j < useDefSet.def.size(); j++) {

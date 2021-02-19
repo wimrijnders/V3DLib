@@ -4,8 +4,9 @@
 #include "Target/instr/Instr.h"
 
 namespace V3DLib {
-namespace vc4 { 
-void regAlloc(CFG* cfg, Seq<Instr>* instrs);
+namespace vc4 {
+
+void regAlloc(CFG* cfg, Instr::List &instrs);
 
 }  // namespace vc4; 
 }  // namespace V3DLib

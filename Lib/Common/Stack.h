@@ -10,7 +10,7 @@ namespace V3DLib {
 /**
  * TODO: Perhaps replace this with `Seq` as underlying base class
  */
-template <class T> class Stack {
+template <typename T> class Stack {
   using Ptr = std::shared_ptr<T>;
 
 protected:

@@ -28,10 +28,10 @@ public:
   void semaId(int val) { m_semaId = val; }
 
   // Following methods defined in LoadStore.cpp
-  Seq<Instr> setupVPMRead();
-  Seq<Instr> setupDMARead();
-  Seq<Instr> setupDMAWrite();
-  Seq<Instr> setupVPMWrite();
+  Instr::List setupVPMRead();
+  Instr::List setupDMARead();
+  Instr::List setupDMAWrite();
+  Instr::List setupVPMWrite();
 
   static bool is_dma_readwrite_tag(int in_tag);
   static bool is_dma_tag(int in_tag);

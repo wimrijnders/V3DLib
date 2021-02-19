@@ -141,6 +141,7 @@ struct Instr : public InstructionComment {
 
   class List : public Seq<Instr> {
     using Parent = Seq<Instr>;
+
   public:
     List() = default;
     List(int size) : Parent(size) {}
@@ -282,7 +283,7 @@ private:
 };
 
 
-void check_zeroes(Seq<Instr> const &instrs);
+void check_zeroes(Instr::List const &instrs);
 
 }  // namespace V3DLib
 

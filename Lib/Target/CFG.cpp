@@ -10,7 +10,7 @@ namespace V3DLib {
 /**
  * Build a CFG for a given instruction sequence.
  */
-void buildCFG(Seq<Instr> &instrs, CFG &cfg) {
+void buildCFG(Instr::List &instrs, CFG &cfg) {
   assert(cfg.empty());
   cfg.set_size(instrs.size());
 

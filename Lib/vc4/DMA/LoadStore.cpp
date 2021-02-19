@@ -49,8 +49,8 @@ static int vpmSetupWriteCode(int hor, int stride) {
 
 // Generate instructions to setup VPM load.
 
-Seq<Instr> genSetupVPMLoad(int n, int addr, int hor, int stride) {
-  Seq<Instr> ret;
+Instr::List genSetupVPMLoad(int n, int addr, int hor, int stride) {
+  Instr::List ret;
   assert(addr < 256);
 
   int setup = vpmSetupReadCode(n, hor, stride) | (addr & 0xff);
@@ -64,8 +64,8 @@ Seq<Instr> genSetupVPMLoad(int n, int addr, int hor, int stride) {
 }
 
 
-Seq<Instr> genSetupVPMLoad(int n, Reg addr, int hor, int stride) {
-  Seq<Instr> ret;
+Instr::List genSetupVPMLoad(int n, Reg addr, int hor, int stride) {
+  Instr::List ret;
   Reg tmp = freshReg();
   int setup = vpmSetupReadCode(n, hor, stride);
 
@@ -89,8 +89,8 @@ Instr genSetupVPMStore(int addr, int hor, int stride) {
 }
 
 
-Seq<Instr> genSetupVPMStore(Reg addr, int hor, int stride) {
-  Seq<Instr> ret;
+Instr::List genSetupVPMStore(Reg addr, int hor, int stride) {
+  Instr::List ret;
   Reg tmp = freshReg();
   int setup = vpmSetupWriteCode(hor, stride);
 
@@ -148,8 +148,8 @@ Instr genSetupDMALoad(int numRows, int rowLen, int hor, int vpitch, int vpmAddr)
 }
 
 
-Seq<Instr> genSetupDMALoad(int numRows, int rowLen, int hor, int vpitch, Reg vpmAddr) {
-  Seq<Instr> ret;
+Instr::List genSetupDMALoad(int numRows, int rowLen, int hor, int vpitch, Reg vpmAddr) {
+  Instr::List ret;
 
   int setup = dmaSetupLoadCode(numRows, rowLen, hor, vpitch);
   Reg tmp = freshReg();
@@ -188,13 +188,13 @@ Instr genSetupDMAStore(int numRows, int rowLen, int hor, int vpmAddr) {
 }
 
 
-Seq<Instr> genSetupDMAStore(int numRows, int rowLen, int hor, Reg vpmAddr) {
+Instr::List genSetupDMAStore(int numRows, int rowLen, int hor, Reg vpmAddr) {
   int setup = dmaSetupStoreCode(numRows, rowLen, hor);
 
   Reg tmp0 = freshReg();
   Reg tmp1 = freshReg();
 
-  Seq<Instr> ret;
+  Instr::List ret;
 
   ret << li(tmp0, setup)
       << shl(tmp1, vpmAddr, 3)
@@ -228,8 +228,8 @@ Instr genSetReadPitch(int pitch) {
 }
 
 
-Seq<Instr> genSetReadPitch(Reg pitch) {
-  Seq<Instr> ret;
+Instr::List genSetReadPitch(Reg pitch) {
+  Instr::List ret;
   Reg tmp = freshReg();
 
   ret << li(tmp, 0x90000000)
@@ -250,10 +250,10 @@ Instr genSetWriteStride(int stride) {
 }
 
 
-Seq<Instr> genSetWriteStride(Reg stride) {
+Instr::List genSetWriteStride(Reg stride) {
   Reg tmp = freshReg();
 
-  Seq<Instr> ret;
+  Instr::List ret;
   ret << li(tmp, 0xc0000000)
       << bor(WR_SETUP, tmp, stride);
 
@@ -265,8 +265,8 @@ Seq<Instr> genSetWriteStride(Reg stride) {
 // Set-stride statements
 // ============================================================================
 
-Seq<Instr> setStrideStmt(bool is_read, Expr::Ptr e) {
-  Seq<Instr> ret;
+Instr::List setStrideStmt(bool is_read, Expr::Ptr e) {
+  Instr::List ret;
 
   if (e->tag() == Expr::INT_LIT) {
     if (is_read)
@@ -292,110 +292,9 @@ Seq<Instr> setStrideStmt(bool is_read, Expr::Ptr e) {
   return ret;
 }
 
-}  // anon namespace
 
-// ============================================================================
-// VPM setup statements
-// ============================================================================
-
-Seq<Instr> Stmt::setupVPMRead() {
-  Seq<Instr> ret;
-
-  int n       = m_setupVPMRead.numVecs;
-  Expr::Ptr e = address_internal();
-  int hor     = m_setupVPMRead.hor;
-  int stride  = m_setupVPMRead.stride;
-
-  if (e->tag() == Expr::INT_LIT)
-    ret << genSetupVPMLoad(n, e->intLit, hor, stride);
-  else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMLoad(n, srcReg(e->var()), hor, stride);
-  else {
-    Var v = freshVar();
-    ret << varAssign(v, e)
-        << genSetupVPMLoad(n, srcReg(v), hor, stride);
-  }
-
-  return ret;
-}
-
-
-// ============================================================================
-// DMA statements
-// ============================================================================
-
-Seq<Instr> Stmt::setupDMARead() {
-  int numRows = m_setupDMARead.numRows;
-  int rowLen  = m_setupDMARead.rowLen;
-  int hor     = m_setupDMARead.hor;
-  Expr::Ptr e = address_internal();
-  int vpitch  = m_setupDMARead.vpitch;
-
-  Seq<Instr> ret;
-
-  if (e->tag() == Expr::INT_LIT)
-    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->intLit);
-  else if (e->tag() == Expr::VAR)
-    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var()));
-  else {
-    Var v = freshVar();
-
-    ret << varAssign(v, e)
-        << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(v));
-  }
-
-  return ret;
-}
-
-
-Seq<Instr> Stmt::setupDMAWrite() {
-  int numRows = m_setupDMAWrite.numRows;
-  int rowLen  = m_setupDMAWrite.rowLen;
-  int hor     = m_setupDMAWrite.hor;
-  Expr::Ptr e = address_internal();
-
-  Seq<Instr> ret;
-
-  if (e->tag() == Expr::INT_LIT) {
-    ret << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
-  } else if (e->tag() == Expr::VAR) {
-    ret << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var()));
-  } else {
-    Var v = freshVar();
-
-    ret << varAssign(v, e)
-        << genSetupDMAStore(numRows, rowLen, hor, srcReg(v));
-  }
-
-  return ret;
-}
-
-
-Seq<Instr> Stmt::setupVPMWrite() {
-  Seq<Instr> ret;
-
-  Expr::Ptr e = address_internal();
-  int hor     = m_setupVPMWrite.hor;
-  int stride  = m_setupVPMWrite.stride;
-
-  if (e->tag() == Expr::INT_LIT)
-    ret << genSetupVPMStore(e->intLit, hor, stride);
-  else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMStore(srcReg(e->var()), hor, stride);
-  else {
-    Var v = freshVar();
-    ret << varAssign(v, e)
-        << genSetupVPMStore(srcReg(v), hor, stride);
-  }
-
-  return ret;
-}
-
-
-namespace {
-
-Seq<Instr> startDMAReadStmt(Expr::Ptr e) {
-  Seq<Instr> ret;
+Instr::List startDMAReadStmt(Expr::Ptr e) {
+  Instr::List ret;
 
   if (e->tag() != Expr::VAR) {
     Var v = freshVar();
@@ -407,8 +306,8 @@ Seq<Instr> startDMAReadStmt(Expr::Ptr e) {
 }
 
 
-Seq<Instr> startDMAWriteStmt(Expr::Ptr e) {
-  Seq<Instr> ret;
+Instr::List startDMAWriteStmt(Expr::Ptr e) {
+  Instr::List ret;
 
   if (e->tag() != Expr::VAR) {
     Var v = freshVar();
@@ -444,6 +343,104 @@ Instr sendIRQToHost() {
 }
 
 }  // anon namespace
+
+
+// ============================================================================
+// VPM setup statements
+// ============================================================================
+
+Instr::List Stmt::setupVPMRead() {
+  Instr::List ret;
+
+  int n       = m_setupVPMRead.numVecs;
+  Expr::Ptr e = address_internal();
+  int hor     = m_setupVPMRead.hor;
+  int stride  = m_setupVPMRead.stride;
+
+  if (e->tag() == Expr::INT_LIT)
+    ret << genSetupVPMLoad(n, e->intLit, hor, stride);
+  else if (e->tag() == Expr::VAR)
+    ret << genSetupVPMLoad(n, srcReg(e->var()), hor, stride);
+  else {
+    Var v = freshVar();
+    ret << varAssign(v, e)
+        << genSetupVPMLoad(n, srcReg(v), hor, stride);
+  }
+
+  return ret;
+}
+
+
+// ============================================================================
+// DMA statements
+// ============================================================================
+
+Instr::List Stmt::setupDMARead() {
+  int numRows = m_setupDMARead.numRows;
+  int rowLen  = m_setupDMARead.rowLen;
+  int hor     = m_setupDMARead.hor;
+  Expr::Ptr e = address_internal();
+  int vpitch  = m_setupDMARead.vpitch;
+
+  Instr::List ret;
+
+  if (e->tag() == Expr::INT_LIT)
+    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->intLit);
+  else if (e->tag() == Expr::VAR)
+    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var()));
+  else {
+    Var v = freshVar();
+
+    ret << varAssign(v, e)
+        << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(v));
+  }
+
+  return ret;
+}
+
+
+Instr::List Stmt::setupDMAWrite() {
+  int numRows = m_setupDMAWrite.numRows;
+  int rowLen  = m_setupDMAWrite.rowLen;
+  int hor     = m_setupDMAWrite.hor;
+  Expr::Ptr e = address_internal();
+
+  Instr::List ret;
+
+  if (e->tag() == Expr::INT_LIT) {
+    ret << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
+  } else if (e->tag() == Expr::VAR) {
+    ret << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var()));
+  } else {
+    Var v = freshVar();
+
+    ret << varAssign(v, e)
+        << genSetupDMAStore(numRows, rowLen, hor, srcReg(v));
+  }
+
+  return ret;
+}
+
+
+Instr::List Stmt::setupVPMWrite() {
+  Instr::List ret;
+
+  Expr::Ptr e = address_internal();
+  int hor     = m_setupVPMWrite.hor;
+  int stride  = m_setupVPMWrite.stride;
+
+  if (e->tag() == Expr::INT_LIT)
+    ret << genSetupVPMStore(e->intLit, hor, stride);
+  else if (e->tag() == Expr::VAR)
+    ret << genSetupVPMStore(srcReg(e->var()), hor, stride);
+  else {
+    Var v = freshVar();
+    ret << varAssign(v, e)
+        << genSetupVPMStore(srcReg(v), hor, stride);
+  }
+
+  return ret;
+}
 
 
 /**

@@ -20,8 +20,9 @@ class BaseSharedArray;
 //          
 void assign(Expr::Ptr lhs, Expr::Ptr rhs);
 
+
 ///////////////////////////////////////////////////////////////////////////////
-// Non-templated base class
+// Non-templated base classes
 ///////////////////////////////////////////////////////////////////////////////
 
 class PointerExpr : public BaseExpr {
@@ -147,7 +148,7 @@ public:
   static Ptr<T> mkArg();
 
   // Assignments
-  Ptr<T>&    operator=(Ptr<T> const &rhs) { assign(expr(), rhs.expr()); return *this; //rhs; }
+  Ptr<T>&    operator=(Ptr<T> const &rhs) { assign(expr(), rhs.expr()); return *this; /* rhs; */ }
   PtrExpr<T> operator=(PtrExpr<T> rhs)    { assign(expr(), rhs.expr()); return rhs; }
 
 

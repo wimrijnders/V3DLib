@@ -17,12 +17,12 @@
 
 namespace V3DLib {
 
-
-
-
 // ============================================================================
 // Parameter passing
 // ============================================================================
+
+template <typename... ts> inline void nothing(ts... args) {}
+
 
 template <typename T, typename t> inline bool passParam(Seq<int32_t>* uniforms, t x) {
   return T::passParam(uniforms, x);
@@ -133,8 +133,6 @@ protected:
  */
 template <typename... ts> struct Kernel : public KernelBase {
   using KernelFunction = void (*)(ts... params);
-
-  template <typename... ts> inline void nothing(ts... args) {}
 
   // Construct an argument of QPU type 't'.
   template <typename T> inline T mkArg() { return T::mkArg(); }

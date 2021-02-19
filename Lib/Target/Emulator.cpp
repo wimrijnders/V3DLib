@@ -4,7 +4,6 @@
 #include "EmuSupport.h"
 #include "Common/Queue.h"
 #include "Common/SharedArray.h"
-#include "Target/instr/Instr.h"
 #include "Target/SmallLiteral.h"
 #include "BufferObject.h"
 
@@ -141,7 +140,6 @@ struct State {
   QPUState qpu[MAX_QPUS];  // State of each QPU
   Seq<int32_t> uniforms;   // Kernel parameters
   Word vpm[VPM_SIZE];      // Shared VPM memory
-  Seq<char>* output;       // Output for print statements
   int sema[16];            // Semaphores
   SharedArray<uint32_t> emuHeap;
 
@@ -623,14 +621,12 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
 
 void emulate(
   int numQPUs,
-  Seq<Instr>* instrs,
+  Instr::List &instrs,
   int maxReg,
   Seq<int32_t> &uniforms,
-  BufferObject &heap,
-  Seq<char>* output
+  BufferObject &heap
 ) {
   State state;
-  state.output = output;
 
   state.uniforms = uniforms;
   // Add final dummy uniform
@@ -664,14 +660,14 @@ void emulate(
 
       if (s->running) {
         anyRunning = true;
-        assert(s->pc < instrs->size());
+        assert(s->pc < instrs.size());
 
         s->upkeep();
 
         //
         // Run next instruction
         //
-        Instr const instr = instrs->get(s->pc++);
+        Instr const instr = instrs.get(s->pc++);
 
         if (instr.break_point()) {
 #ifdef DEBUG

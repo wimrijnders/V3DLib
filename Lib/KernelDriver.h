@@ -24,7 +24,7 @@ public:
    */
   Stmt::Ptr sourceCode() { return m_body; }
 
-  Seq<Instr> &targetCode() { return m_targetCode; }
+  Instr::List &targetCode() { return m_targetCode; }
 
   BufferType const buffer_type;
 

@@ -69,17 +69,18 @@ void compile_postprocess(Instr::List &targetCode) {
   buildCFG(targetCode, cfg);
 
   // Perform register allocation
-  getSourceTranslate().regAlloc(&cfg, &targetCode);
+  getSourceTranslate().regAlloc(&cfg, targetCode);
 
   // Satisfy target code constraints
-  satisfy(&targetCode);
+  satisfy(targetCode);
 }
 
 
 /**
- * Don't clean up `body` here, it's a pointer to the top of the AST.
+ * NOTE: Don't clean up `body` here, it's a pointer to the top of the AST.
  */
 KernelDriver::~KernelDriver() {}
+
 
 /**
  * Reset the state for compilation
@@ -97,7 +98,7 @@ void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
   Pointer::reset_increment();
 
   if (set_qpu_uniforms) {
-    // Reserved general-purpose variables
+    // Initialize reserved general-purpose variables
     Int qpuId, qpuCount;
     qpuId    = getUniformInt();
     qpuCount = getUniformInt();

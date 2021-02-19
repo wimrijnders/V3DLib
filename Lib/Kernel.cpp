@@ -31,7 +31,7 @@ void KernelBase::pretty(bool output_for_vc4, const char *filename, bool output_q
  */
 void KernelBase::emu() {
   assert(uniforms.size() != 0);
-  emulate(numQPUs, &m_vc4_driver.targetCode(), numVars, uniforms, getBufferObject());
+  emulate(numQPUs, m_vc4_driver.targetCode(), numVars, uniforms, getBufferObject());
 }
 
 
