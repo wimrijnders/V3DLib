@@ -29,7 +29,8 @@ void BufferObject::dealloc_array(uint32_t in_phyaddr, uint32_t in_size) {
 
 
 uint32_t BufferObject::getHandle() const {
-  assertq(false, "getHandle(): the base version of this method should never be called, it is v3d only", true);
+  assertq(false, "getHandle(): the base version of this method should never be called, only the v3d override.\n"
+                 "Perhaps you are using main memory for the buffer object?", true);
   return 0;
 }
 

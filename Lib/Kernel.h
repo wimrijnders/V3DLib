@@ -65,22 +65,6 @@ namespace V3DLib {
 
 
 // ============================================================================
-// Kernel arguments
-// ============================================================================
-
-// Construct an argument of QPU type 't'.
-
-template <typename T> inline T mkArg() { return T::mkArg(); }
-
-/*
-template <> inline Int      mkArg<Int>()            { return Int::mkArg(); }
-template <> inline Float    mkArg<Float>()          { return Float::mkArg(); }
-template <> inline Ptr<Int> mkArg< Ptr<Int> >()     { return Ptr<Int>::mkArg(); }
-template <> inline Ptr<Float> mkArg< Ptr<Float> >() { return Ptr<Float>::mkArg(); }
-*/
-
-
-// ============================================================================
 // Parameter passing
 // ============================================================================
 
@@ -163,6 +147,9 @@ protected:
  */
 template <typename... ts> struct Kernel : public KernelBase {
   using KernelFunction = void (*)(ts... params);
+
+  // Construct an argument of QPU type 't'.
+  template <typename T> inline T mkArg() { return T::mkArg(); }
 
 public:
   Kernel(Kernel const &k) = delete;

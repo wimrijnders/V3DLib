@@ -205,13 +205,13 @@ bool v3d_open() {
   int fd1 = open_card("/dev/dri/card1");
 
   if (fd0 == 0) {
-    assert(fd1 != 0);
+    assertq(fd1 != 0, "Could not open v3d device, did you forget 'sudo'?");
     fd = fd1;
   } else if (fd1 == 0) {
-    assert(fd0 != 0);
+    assertq(fd0 != 0, "Could not open v3d device, did you forget 'sudo'?");
     fd = fd0;
   } else {
-    V3DLib::fatal("FATAL: could not open card device");
+    V3DLib::fatal("FATAL: could not open v3d device");
   }
 
   return (fd > 0);

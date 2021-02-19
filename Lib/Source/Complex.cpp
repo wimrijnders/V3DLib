@@ -83,8 +83,8 @@ void Complex::operator=(Complex const &rhs) {
 ///////////////////////////////////////////////////////////////////////////////
 
 Complex::Ptr::Ptr(ComplexExpr rhs) {
-  re = Float::Ptr(rhs.re());
-  im = Float::Ptr(rhs.im());
+  re = rhs.re();
+  im = rhs.im();
 }
 
 

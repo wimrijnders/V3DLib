@@ -225,30 +225,10 @@ void check_conditionals(SharedArray<int> &result, int N) {
 }
 
 
-/*
-void complex_kernel(Ptr<Float> input_re, Ptr<Float> input_im, Ptr<Float> result_re, Ptr<Float> result_im) {
-  Complex a;
-  Complex b;
-
-  a.Re = *input_re;  comment("Complex mult");
-  a.Im = *input_im;
-  b = a*a;
-  *result_re = b.Re;
-  *result_im = b.Im;
-}
-*/
 void complex_kernel(Complex::Ptr input, Complex::Ptr result) {
-  Complex a;
-  Complex b;
-
-  a = *input;
-//  a.Re = *input_re;  comment("Complex mult");
-//  a.Im = *input_im;
-
-  b = a*a;
+  Complex a = *input;
+  Complex b = a*a;
   *result = b;
-//  *result_re = b.Re;
-//  *result_im = b.Im;
 }
 
 
@@ -315,44 +295,13 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 
 
 TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
-  Platform::use_main_memory(true);
+  //Platform::use_main_memory(true);
 
-/*
   SECTION("Test Complex composed type") {
     const int N = 1;  // Number Complex items in vectors
 
     auto k = compile(complex_kernel);
     //k.pretty(true, nullptr, false);
-
-    // Allocate and array for input and result values
-    SharedArray<float> input_re(16*N);
-    input_re.fill(0);
-    SharedArray<float> input_im(16*N);
-    input_im.fill(0);
-    input_re[0] = 1; input_im[0] = 0;
-    input_re[1] = 0; input_im[1] = 1;
-    input_re[2] = 1; input_im[2] = 1;
-
-    SharedArray<float> result_re(16*N);
-    SharedArray<float> result_im(16*N);
-
-    // Run kernel
-    k.load(&input_re, &input_im, &result_re, &result_im).call();  //call();
-
-    dump_array(input_re, 16);
-    dump_array(input_im, 16);
-    dump_array(result_re, 16);
-    dump_array(result_im, 16);
-    REQUIRE(result_re[0] ==  1); REQUIRE(result_im[0] ==  0);
-    REQUIRE(result_re[1] == -1); REQUIRE(result_im[1] ==  0);
-    REQUIRE(result_re[2] ==  0); REQUIRE(result_im[2] ==  2);
-  }
-*/
-  SECTION("Test Complex composed type") {
-    const int N = 1;  // Number Complex items in vectors
-
-    auto k = compile(complex_kernel);
-    k.pretty(true, nullptr, false);
 
     // Allocate and array for input and result values
     Complex::Array input(16*N);
@@ -363,22 +312,22 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
 
     Complex::Array result(16*N);
 
-    // Run kernel
-    k.load(&input, &result).interpret(); // emu();  //call();
-
+    k.load(&input, &result).call();
+/*
     std::cout << input.dump();
     std::cout << result.dump();
 
     std::cout << result[0].dump()     << "\n";
     std::cout << complex(1, 0).dump();
     std::cout << std::endl;
+*/
 
     REQUIRE(result[0] ==  complex(1, 0));
     REQUIRE(result[1] ==  complex(-1, 0));
     REQUIRE(result[2] ==  complex(0, 2));
   }
 
-  Platform::use_main_memory(false);
+  //Platform::use_main_memory(false);
 }
 
 
