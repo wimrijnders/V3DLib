@@ -4,17 +4,32 @@
 
 - [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it).
 - [ ] Automate loading of new versions external libraries
-- [ ] Complete conversion `Seq<Instr>` to `Instr::List`
 - [ ] Get `Pi 1` running again; fails in `qpu_enable()`
 - [ ] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
 - [ ] Make heap memory size configurable (ideally cmldine option)
-- [ ] ! Fix '+ 0' hack for kernel pointers, this is confusing
+- [x] ! Fix '+ 0' hack for kernel pointers, this is confusing
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
 - [x] Fix indentation tabs/spaces
+	  
+## Optimization and Cleanup
+
+- [ ] Complete conversion `Seq<Instr>` to `Instr::List`
 - [ ] Tone down mesa library, compile takes long.
       Tried this but gave up after it became evident nothing could be removed.
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
+- [ ] Get rid of senseless variable reassignment in source language.
+      For example, this happens in `complex_kernel`, right after uniform load:
+```
+v6 = v4;
+v7 = v5;
+v8 = v2;
+v9 = v3;
+v10 = v8;
+v11 = v9;
+v12 = v6;
+v13 = v7;
+```
 
 ## Consider these
 
