@@ -40,17 +40,7 @@ Int &get_increment() {
 }  // anon namespace
 
 
-void Pointer::reset_increment() {
-  increment.reset(nullptr);
-}
-
-
 Pointer::Pointer() : BaseExpr("Ptr") {}
-
-
-Pointer &Pointer::self() {
-  return *(const_cast<Pointer *>(this));
-}
 
 
 Pointer::Pointer(PointerExpr rhs) : Pointer() {
@@ -58,10 +48,7 @@ Pointer::Pointer(PointerExpr rhs) : Pointer() {
 }
 
 
-void Pointer::inc() {
-  self() = bare_addself(get_increment());  comment("increment pointer");
-}
-
+PointerExpr Pointer::operator=(PointerExpr rhs) { assign(expr(), rhs.expr()); return rhs; }
 
 PointerExpr Pointer::operator+(int b)     { return add(b); }
 PointerExpr Pointer::operator+=(Int &b)   { return addself(b); }
@@ -69,45 +56,27 @@ PointerExpr Pointer::operator+=(int b)    { return addself(b); }
 PointerExpr Pointer::operator+(IntExpr b) { return add(b); }
 PointerExpr Pointer::operator-(IntExpr b) { return sub(b); }
 
+PointerExpr Pointer::add(int b)           { return mkApply(expr(), Op(ADD, INT32), mkIntLit(4*b)); }
+PointerExpr Pointer::add(IntExpr b)       { return mkApply(expr(), Op(ADD, INT32), (b << 2).expr()); }
+PointerExpr Pointer::sub(IntExpr b)       { return mkApply(expr(), Op(SUB, INT32), (b << 2).expr()); }
+PointerExpr Pointer::addself(int b)       { return (self() = self() + b); }
+PointerExpr Pointer::addself(IntExpr b)   { return (self() = self() + b); }
+PointerExpr Pointer::subself(IntExpr b)   { return (self() = self() - b); }
+PointerExpr Pointer::bare_addself(Int &b) { return mkApply(expr(), Op(ADD, INT32), b.expr()); }
 
-PointerExpr Pointer::operator=(PointerExpr rhs) {
-  assign(expr(), rhs.expr());
-  return rhs;
+
+Pointer &Pointer::self() {
+  return *(const_cast<Pointer *>(this));
 }
 
 
-PointerExpr Pointer::addself(int b) {
-  return (self() = self() + b);
+void Pointer::reset_increment() {
+  increment.reset(nullptr);
 }
 
 
-PointerExpr Pointer::bare_addself(Int &b) {
-  return mkApply(expr(), Op(ADD, INT32), b.expr());
-}
-
-
-PointerExpr Pointer::addself(IntExpr b) {
-  return (self() = self() + b);
-}
-
-
-PointerExpr Pointer::subself(IntExpr b) {
-  return (self() = self() - b);
-}
-
-
-PointerExpr Pointer::add(int b) {
-  return mkApply(expr(), Op(ADD, INT32), mkIntLit(4*b));
-}
-
-
-PointerExpr Pointer::add(IntExpr b) {
-  return mkApply(expr(), Op(ADD, INT32), (b << 2).expr());
-}
-
-
-PointerExpr Pointer::sub(IntExpr b) {
-  return mkApply(expr(), Op(SUB, INT32), (b << 2).expr());
+void Pointer::inc() {
+  self() = bare_addself(get_increment());  comment("increment pointer");
 }
 
 

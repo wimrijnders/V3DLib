@@ -17,69 +17,23 @@
 
 namespace V3DLib {
 
-// ============================================================================
-// Modes of operation
-// ============================================================================
 
-/**
- * The interpreter and emulator are always available. However, these run only
- * vc4 code. These will run on any architecture.
- *
- * The compile-time option `-D QPU_MODE` enables the execution of code on
- * the VideoCore. This will work only on the Rasberry Pi.
- * This macro is optional.
- *
- * We will define 'emulation mode' as a build without QPU_MODE defined.
- *
- * The memory pool management depend on this macro and on which 
- * Pi platform is run:
- *
- * 1. Pure emulation mode (QPU_MODE not defined): 
- *    Main memory is used.
- * 2. QPU-mode on Pi4 (and lateri, v3d):
- *    Uses the `v3d` memory allocation scheme, also for
- *    emulation mode. This addresses the gpu-device for
- *    allocating.
- * 3. QPU-mode before Pi4 (vc4):
- *    Uses the `v3d` memory allocation scheme, also for
- *    emulation mode. A ox interface to the
- *    vc4 is used to allocate memory.
- *
- * The memory pool implementations are in source files
- * called `BufferObject.cpp` (Under `Target`, `v3d` and `vc4`).
- */
-
-// The 'Kernel' class provides various ways to invoke a kernel:
-//
-//   * qpu(...)        invoke kernel on physical QPUs
-//                     (only available in QPU_MODE)
-//   * emulate(...)    invoke kernel using target code emulator
-//   * interpret(...)  invoke kernel using source code interpreter
-//   * call(...)       in emulation mode, same as emulate(...)
-//                     with QPU_MODE, same as qpu(...)
-//
-// Emulation mode calls are provided for doing equivalence
-// testing between the physical QPU and the QPU emulator.  However,
-// emulation mode introduces a performance penalty and should be used
-// only for testing and debugging purposes.
 
 
 // ============================================================================
 // Parameter passing
 // ============================================================================
 
-template <typename... ts> inline void nothing(ts... args) {}
-
 template <typename T, typename t> inline bool passParam(Seq<int32_t>* uniforms, t x) {
   return T::passParam(uniforms, x);
 }
+
 
 /**
  * Grumbl still need special override for 2D shared array.
  * Sort of patched this, will sort it out another time.
  *
  * You can not possibly have any idea how long it took me * to implement and use this correctly.
- *
  * Even so, I'm probably doing it wrong.
  */
 template <>
@@ -92,6 +46,51 @@ inline bool passParam< Ptr<Float>, Shared2DArray<float>* > (Seq<int32_t>* unifor
 // Kernels
 // ============================================================================
 
+/**
+ * -------------------------
+ * NOTES
+ * =====
+ *
+ * 1. A kernel can be invoked with the following methods of `Kernel`:
+ *
+ *     - interpret(...)  - run on source code interpreter
+ *     - emu(...)        - run on the target code emulator (`vc4` code only)
+ *     - qpu(...)        - run on physical QPUs (only when QPU_MODE enabled))
+ *     - call(...)       - depending on QPU_MODE, call `qpu()` or `emu()`
+ *                      This is useful for cross-platform compatibility
+ *
+ *    The interpreter and emulator are useful for development/debugging and 
+ *    for equivalence testing for the hardware QPU.
+ *
+ *    Just keep in mind that the interpreter and emulator are really slow
+ *    in comparison to the hardware.
+ *
+ *
+ * 2. The interpreter and emulator will run on any architecture.
+ *
+ *    The compile-time option `-D QPU_MODE` enables the execution of code on
+ *    the physical VideoCore. This will work only on the Rasberry Pi.
+ *    This define is disabled in the makefile for non-Pi platforms.
+ *
+ *    There are three possible shared memory allocation schemes:
+ *
+ *    1. Using main memory - selectable in code, will not work for hardware GPU
+ *    2. `vc4` memory allocation - used when communicating with hardware GPU on
+ *       all Pi's prior to Pi4
+ *    3. `v3d` memory allocation - used when communicating with hardware GPU on the Pi4 
+ *
+ *    The memory pool implementations are in source files
+ *    called `BufferObject.cpp` (Under `Target`, `v3d` and `vc4`).
+ *
+ *
+ * 3. The code generation for v3d and vc4 has diverged, even at the level of
+ *    source code. To handle this, the code generation for both cases is 
+ *    isolated in 'kernel drivers'. This encapsulates the differences
+ *    for the kernel.
+ *
+ *    Because the interpreter and emulator work with vc4 code,
+ *    the vc4 kernel driver is always used, even if only assembling for v3d.
+ */
 class KernelBase {
 public:
   KernelBase() {}
@@ -122,31 +121,20 @@ protected:
 
 
 /**
- *
- * ----------------------------------------------------------------------------
+ * -------------------------
  * NOTES
  * =====
  *
- * * A kernel is parameterised by a list of QPU types 'ts' representing
- *   the types of the parameters that the kernel takes.
+ * 1. A kernel is parameterised by a list of QPU types 'ts' representing
+ *    the types of the parameters that the kernel takes.
  *
- *   The kernel constructor takes a function with parameters of QPU
- *   types 'ts'.  It applies the function to constuct an AST.
- *
- *
- * * The code generation for v3d and vc4 is diverging, even at the level of
- *   source code. To handle this, the code generation for both cases is 
- *   isolated in 'kernel drivers'. This encapsulates the differences
- *   for the kernel.
- *
- *   At time of writing (20200818), for the source code it is notably the end
- *   program sequence (see `KernelDriver::kernelFinish()`).
- *
- *   The interpreter and emulator, however, work with vc4 code. For this reason
- *   it is necessary to have the vc4 kernel driver in use in all build cases.
+ *    The kernel constructor takes a function with parameters of QPU
+ *    types 'ts'.  It applies the function to constuct an AST.
  */
 template <typename... ts> struct Kernel : public KernelBase {
   using KernelFunction = void (*)(ts... params);
+
+  template <typename... ts> inline void nothing(ts... args) {}
 
   // Construct an argument of QPU type 't'.
   template <typename T> inline T mkArg() { return T::mkArg(); }
