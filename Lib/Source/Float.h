@@ -16,9 +16,10 @@ template <typename T> struct Deref; // Forward declaration template class
 // Types                   
 // ============================================================================
 
-// An 'FloatExpr' defines an float vector expression which can
-// only be used on the RHS of assignment statements.
-
+/**
+ * A 'FloatExpr' defines an float vector expression which can
+ * only be used on the RHS of assignment statements.
+ */
 struct FloatExpr :public BaseExpr {
   FloatExpr(float x);
   FloatExpr(Expr::Ptr e) : BaseExpr(e) {}
@@ -42,13 +43,13 @@ struct Float : public BaseExpr {
   static bool passParam(Seq<int32_t> *uniforms, float val);
 
   // Cast to an FloatExpr
-  operator FloatExpr();
+  operator FloatExpr() const;
 
   // Assignment
   Float &operator=(float rhs);
   Float &operator=(Float &rhs);
   Float &operator=(Float const &rhs);
-  FloatExpr operator=(FloatExpr rhs);
+  FloatExpr operator=(FloatExpr const &rhs);
   Float &operator=(Deref<Float> d);
   Float &operator+=(FloatExpr rhs);
 

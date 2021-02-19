@@ -36,7 +36,7 @@ bool Float::passParam(Seq<int32_t> *uniforms, float val) {
 /**
  * Cast to an FloatExpr
  */
-Float::operator FloatExpr() { return FloatExpr(m_expr); }
+Float::operator FloatExpr() const { return FloatExpr(m_expr); }
 
 
 /**
@@ -61,7 +61,7 @@ Float &Float::operator=(Float const &rhs) {
 }
 
 
-FloatExpr Float::operator=(FloatExpr rhs) {
+FloatExpr Float::operator=(FloatExpr const &rhs) {
   assign(m_expr, rhs.expr());
   return self();
 }

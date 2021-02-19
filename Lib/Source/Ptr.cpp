@@ -11,9 +11,7 @@ namespace V3DLib {
 PointerExpr::PointerExpr(Expr::Ptr e) : BaseExpr(e, "PointerExpr") {}
 PointerExpr::PointerExpr(BaseExpr const &e) : BaseExpr(e.expr(), "PointerExpr") {}
 
-PointerExpr &PointerExpr::self() {
-  return *(const_cast<PointerExpr *>(this));
-}
+PointerExpr &PointerExpr::self() { return *(const_cast<PointerExpr *>(this)); }
 
 PointerExpr PointerExpr::add(IntExpr b) {
   Expr::Ptr e = mkApply(expr(), Op(ADD, INT32), (b << 2).expr());

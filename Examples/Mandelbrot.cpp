@@ -5,6 +5,7 @@
 #include "Support/Settings.h"
 #include "Support/pgm.h"
 #include "vc4/RegisterMap.h"
+#include "Source/Complex.h"
 
 
 using namespace V3DLib;
@@ -131,32 +132,29 @@ void mandelbrot_cpu(int *result) {
  * Common part of the QPU kernels
  */
 void mandelbrotCore(
-  Float reC, Float imC,
+  Complex c,
   Int &numIterations,
   Ptr<Int> &dst
 ) {
-  Float re = reC;
-  Float im = imC;
   Int count = 0;
-
-  Float reSquare = re*re;
-  Float imSquare = im*im;
+  Complex x = c;
+  Float reSquare = x.re()*x.re();
+  Float imSquare = x.im()*x.im();
+  Float mag = x.magnitude();
 
   // Following is a float version of boolean expression: ((reSquare + imSquare) < 4 && count < numIterations)
   // It works because `count` increments monotonically.
-  FloatExpr condition = (4.0f - (reSquare + imSquare))*toFloat(numIterations - count);
+  FloatExpr condition = (4.0f - mag*toFloat(numIterations - count));
   Float checkvar = condition;
 
   While (any(checkvar > 0.0f))
     Where (checkvar > 0.0f)
-      Float imTmp = 2*re*im;
-      re = (reSquare - imSquare) + reC;
-      im = imTmp  + imC;
+      x = (x*x) + c;
 
-      reSquare = re*re;
-      imSquare = im*im;
+      //reSquare = x.re()*x.re();
+      //imSquare = x.im()*x.im();
+      mag = x.magnitude();
       count++;
-
       checkvar = condition; 
     End
   End
@@ -178,8 +176,7 @@ void mandelbrot_single(
       Ptr<Int> dst = result + xStep + yStep*numStepsWidth;
 
       mandelbrotCore(
-        (topLeftReal + offsetX*toFloat(xIndex)),
-        (topLeftIm   - offsetY*toFloat(yStep)),
+        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm   - offsetY*toFloat(yStep)),
         numIterations,
         dst);
     End
@@ -205,8 +202,7 @@ void mandelbrot_multi(
       Ptr<Int> dst = result + xStep + yIndex*numStepsWidth;
 
       mandelbrotCore(
-        (topLeftReal + offsetX*toFloat(xIndex)),
-        (topLeftIm   - offsetY*toFloat(yIndex)),
+        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm   - offsetY*toFloat(yIndex)),
         numIterations,
         dst);
     End

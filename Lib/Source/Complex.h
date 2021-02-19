@@ -111,17 +111,28 @@ public:
 
 
   Complex() {}
-  Complex(Float re, Float im);
+  Complex(FloatExpr const &e_re, Float const &e_im);
   Complex(Complex const &rhs);
   Complex(ComplexExpr input);
   Complex(Ptr::Deref d);
 
-  Complex operator*(Complex rhs);
-  Complex operator*=(Complex rhs);
+  Float const &re() const { return m_re; }
+  Float const &im() const { return m_im; }
+  void re(FloatExpr const &e) { m_re = e; }
+  void im(FloatExpr const &e) { m_im = e; }
+
+  Float magnitude() const;
+
+  Complex operator+(Complex rhs) const;
+  Complex operator*(Complex rhs) const;
+  Complex &operator*=(Complex rhs);
   void operator=(Complex const &rhs);
 
-  Float Re;
-  Float Im;
+private:
+  Float m_re;
+  Float m_im;
+
+  Complex &self();
 };
 
 }  // namespace V3DLib

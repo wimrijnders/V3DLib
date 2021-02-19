@@ -38,9 +38,9 @@ std::string complex::dump() const {
 // Class Complex
 ///////////////////////////////////////////////////////////////////////////////
 
-Complex::Complex(Float re, Float im) : Re(re), Im(im) {}
+Complex::Complex(FloatExpr const &e_re, Float const &e_im) : m_re(e_re), m_im(e_im) {}
 
-Complex::Complex(const Complex &rhs) : Re(rhs.Re), Im(rhs.Im) {}
+Complex::Complex(Complex const &rhs) : m_re(rhs.m_re), m_im(rhs.m_im) {}
 
 Complex::Complex(ComplexExpr input) {
   assertq("Not implemented yet", true);  // TODO
@@ -48,33 +48,48 @@ Complex::Complex(ComplexExpr input) {
 
 
 Complex::Complex(Ptr::Deref d) {
-  Re = Float(d.m_re);
-  Im = Float(d.m_im);
+  //m_re = Float(d.m_re);
+  //m_im = Float(d.m_im);
+  m_re = d.m_re;
+  m_im = d.m_im;
 }
 
 
-Complex Complex::operator *(Complex rhs) {
+Complex &Complex::self() { return *(const_cast<Complex *>(this)); }
+
+
+Float Complex::magnitude() const {
+  return (m_re*m_re + m_im*m_im); 
+}
+
+
+Complex Complex::operator+(Complex rhs) const {
   Complex tmp;
-  tmp.Re = Re*rhs.Re - Im*rhs.Im;
-  tmp.Im = Re*rhs.Im + Im*rhs.Re;
+  tmp.m_re = m_re + rhs.m_re;
+  tmp.m_im = m_im + rhs.m_im;
 
   return tmp;
 }
 
 
-Complex Complex::operator *=(Complex rhs) {
+Complex Complex::operator*(Complex rhs) const {
   Complex tmp;
-
-  tmp.Re = Re*rhs.Re - Im*rhs.Im;
-  tmp.Im = Re*rhs.Im + Im*rhs.Re;
+  tmp.m_re = m_re*rhs.m_re - m_im*rhs.m_im;
+  tmp.m_im = m_re*rhs.m_im + m_im*rhs.m_re;
 
   return tmp;
+}
+
+
+Complex &Complex::operator*=(Complex rhs) {
+  *this = (*this)*rhs;
+  return *this;
 }
 
 
 void Complex::operator=(Complex const &rhs) {
-  Re = rhs.Re;
-  Im = rhs.Im;
+  m_re = rhs.m_re;
+  m_im = rhs.m_im;
 }
 
 
@@ -95,8 +110,8 @@ Complex::Ptr::Deref::Deref(Expr::Ptr re, Expr::Ptr im) : m_re(re), m_im(im) {}
  * NOTE: return value differen from `Deref<T>`, which return `T [const] &` for rhs
  */
 Complex::Ptr::Deref &Complex::Ptr::Deref::operator=(Complex const &rhs) {
-  m_re = rhs.Re;
-  m_im = rhs.Im;
+  m_re = rhs.m_re;
+  m_im = rhs.m_im;
   return *this;
 }
 
