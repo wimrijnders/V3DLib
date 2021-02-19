@@ -48,8 +48,6 @@ Complex::Complex(ComplexExpr input) {
 
 
 Complex::Complex(Ptr::Deref d) {
-  //m_re = Float(d.m_re);
-  //m_im = Float(d.m_im);
   m_re = d.m_re;
   m_im = d.m_im;
 }
@@ -58,7 +56,10 @@ Complex::Complex(Ptr::Deref d) {
 Complex &Complex::self() { return *(const_cast<Complex *>(this)); }
 
 
-Float Complex::magnitude() const {
+/**
+ * Returns square of magnitude
+ */
+Float Complex::mag_square() const {
   return (m_re*m_re + m_im*m_im); 
 }
 

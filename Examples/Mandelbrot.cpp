@@ -46,6 +46,12 @@ CmdParameters params = {
     ParamType::POSITIVE_INTEGER,
     "Maximum number of iterations to perform per point",
     1024
+  }, {
+    "Dimension",
+    "-dim=",
+    ParamType::POSITIVE_INTEGER,
+    "Number of steps (or i'pixels') in horizontal and vertical direction",
+    1024
   }}
 };
 
@@ -59,10 +65,10 @@ struct MandSettings : public Settings {
   bool   output_ppm;
   int    num_iterations;
 
-  // Initialize constants for the kernels
-  const int   numStepsWidth   = 1024;
-  const int   numStepsHeight  = 1024;
+  int numStepsWidth;
+  int numStepsHeight;
 
+  // Initialize constants for the kernels
   const float topLeftReal     = -2.5f;
   const float topLeftIm       = 2.0f;
   const float bottomRightReal = 1.5f;
@@ -87,6 +93,8 @@ struct MandSettings : public Settings {
     output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
     output_ppm     = params.parameters()["Output PPM file"]->get_bool_value();
     num_iterations = params.parameters()["Number of steps"]->get_int_value();
+    numStepsWidth  = params.parameters()["Dimension"]->get_int_value();
+    numStepsHeight = params.parameters()["Dimension"]->get_int_value();
     return true;
   }
 } settings;
@@ -138,22 +146,18 @@ void mandelbrotCore(
 ) {
   Int count = 0;
   Complex x = c;
-  Float reSquare = x.re()*x.re();
-  Float imSquare = x.im()*x.im();
-  Float mag = x.magnitude();
+  Float mag = x.mag_square(); // Putting this in condition doesn't work
 
   // Following is a float version of boolean expression: ((reSquare + imSquare) < 4 && count < numIterations)
   // It works because `count` increments monotonically.
-  FloatExpr condition = (4.0f - mag*toFloat(numIterations - count));
+  FloatExpr condition = (4.0f - mag)*toFloat(numIterations - count);
   Float checkvar = condition;
 
   While (any(checkvar > 0.0f))
     Where (checkvar > 0.0f)
-      x = (x*x) + c;
+      x = x*x + c;
 
-      //reSquare = x.re()*x.re();
-      //imSquare = x.im()*x.im();
-      mag = x.magnitude();
+      mag = x.mag_square();
       count++;
       checkvar = condition; 
     End

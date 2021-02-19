@@ -41,7 +41,7 @@ private:
 
 
 /**
- * qPU-side complex definition
+ * QPU-side complex definition
  */
 class Complex {
 public:
@@ -121,7 +121,7 @@ public:
   void re(FloatExpr const &e) { m_re = e; }
   void im(FloatExpr const &e) { m_im = e; }
 
-  Float magnitude() const;
+  Float mag_square() const;
 
   Complex operator+(Complex rhs) const;
   Complex operator*(Complex rhs) const;
