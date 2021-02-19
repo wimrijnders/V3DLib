@@ -22,10 +22,6 @@ public:
     m_bo_handles.push_back(bo.getHandle());
   }
 
-  void add_bo(uint32_t bo_handle) {
-    m_bo_handles.push_back(bo_handle);
-  }
-
   bool execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms = nullptr, uint32_t thread = 1);
 
 private:

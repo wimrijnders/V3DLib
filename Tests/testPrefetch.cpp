@@ -15,7 +15,6 @@ void prefetch_kernel(Ptr<T> result, Ptr<T> in_src) {
   // The usual way of doing things
   //
 
-//  Int input = -2;  comment("Start regular fetch/store");
 //  input = *src; //cannot bind non-const lvalue reference of type ‘V3DLib::Int&’ to an rvalue of type ‘V3DLib::Int’
   T input = *src;  comment("Start regular fetch/store");
 
@@ -36,8 +35,7 @@ void prefetch_kernel(Ptr<T> result, Ptr<T> in_src) {
   //
   // With regular gather
   //
-  //input = (Int) -2; comment("Start regular gather");  // TODO silly that the case is required
-  input = -2; comment("Start regular gather");  // TODO silly that the case is required
+  input = -2.0f; comment("Start regular gather");
 
   gather(src);
   gather(src + 16);

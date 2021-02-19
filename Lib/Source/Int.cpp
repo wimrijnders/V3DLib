@@ -11,54 +11,21 @@ namespace V3DLib {
 
 IntExpr::IntExpr(int x) { m_expr = mkIntLit(x); }
 
+
 // ============================================================================
-// Type 'Int'
+// class Int
 // ============================================================================
 
-// Constructors
-
-Int::Int() {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-}
-
-Int::Int(int x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, mkIntLit(x));
-}
-
-Int::Int(IntExpr e) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, e.expr());
-}
+Int::Int()             { assign_intern(); }
+Int::Int(IntExpr e)    { assign_intern(e.expr()); }
+Int::Int(Deref<Int> d) { assign_intern(d.expr()); }
+Int::Int(Int const &x) { assign_intern(x.expr()); }
+Int::Int(int x)        { assign_intern(mkIntLit(x)); }
 
 
-Int::Int(Deref<Int> d) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, d.expr());
-}
-
-// Copy constructors
-
-Int::Int(Int &x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, x.expr());
-}
-
-
-Int::Int(Int const &x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, x.expr());
-}
-
-
-// Cast to an IntExpr
-
+/**
+ * Cast to an IntExpr
+ */
 Int::operator IntExpr() { return IntExpr(m_expr); }
 
 // Assignment
@@ -118,6 +85,19 @@ IntExpr getUniformInt() {
 }
 
 
+Int Int::mkArg() {
+  Int x;
+  x = getUniformInt();
+  return x;
+}
+
+
+bool Int::passParam(Seq<int32_t> *uniforms, int val) {
+  uniforms->append((int32_t) val);
+  return true;
+}
+
+
 /**
  * A vector containing integers 0..15
  *
@@ -160,16 +140,10 @@ IntExpr vpmGetInt() {
 
 
 /**
- * Vector rotation
+ * Vector rotation for int values
  */
 IntExpr rotate(IntExpr a, IntExpr b) {
   return mkIntApply(a, Op(ROTATE, INT32), b);
-}
-
-
-FloatExpr rotate(FloatExpr a, IntExpr b) {
-  Expr::Ptr e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
-  return FloatExpr(e);
 }
 
 
@@ -186,23 +160,5 @@ IntExpr operator^(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(BXOR, INT32),
 IntExpr operator~(IntExpr a)             { return mkIntApply(a, Op(BNOT, INT32), a); }
 IntExpr shr(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(USHR, INT32), b); }
 IntExpr ror(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(ROR,  INT32), b); }
-
-
-/**
- * Conversion to Int
- */
-IntExpr toInt(FloatExpr a) {
-  Expr::Ptr e = mkApply(a.expr(), Op(FtoI, INT32));
-  return IntExpr(e);
-}
-
-
-/**
- * Conversion to Float
- */
-FloatExpr toFloat(IntExpr a) {
-  Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT));
-  return FloatExpr(e);
-}
 
 }  // namespace V3DLib

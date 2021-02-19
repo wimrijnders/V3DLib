@@ -10,6 +10,8 @@
 
 namespace V3DLib {
 
+class BaseSharedArray;
+
 //
 // Extra declaration to prevent error:
 //
@@ -17,6 +19,26 @@ namespace V3DLib {
 //          so a declaration of ‘assign’ must be available [-fpermissive]
 //          
 void assign(Expr::Ptr lhs, Expr::Ptr rhs);
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Deref
+///////////////////////////////////////////////////////////////////////////////
+
+template <typename T>
+struct Deref : public BaseExpr {
+  explicit Deref(Expr::Ptr e) : BaseExpr(e) {}
+
+  T &operator=(T &rhs) {
+    assign(m_expr, rhs.expr());
+    return rhs;
+  }
+
+  T const &operator=(T const &rhs) {
+    assign(m_expr, rhs.expr());
+    return rhs;
+  }
+};
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -32,7 +54,7 @@ protected:
   PointerExpr add(IntExpr b);
 
 private:
-  PointerExpr &me();
+  PointerExpr &self();
 };
 
 
@@ -73,26 +95,6 @@ struct PtrExpr : public PointerExpr {
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Class Deref
-///////////////////////////////////////////////////////////////////////////////
-
-template <typename T>
-struct Deref : public BaseExpr {
-  explicit Deref(Expr::Ptr e) : BaseExpr(e) {}
-
-  T &operator=(T &rhs) {
-    assign(m_expr, rhs.expr());
-    return rhs;
-  }
-
-  T const &operator=(T const &rhs) {
-    assign(m_expr, rhs.expr());
-    return rhs;
-  }
-};
-
-
-///////////////////////////////////////////////////////////////////////////////
 // Class Pointer and derivatives
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -110,6 +112,8 @@ public:
   PointerExpr operator-(IntExpr b);
 
   static void reset_increment();
+  static bool passParam(Seq<int32_t> *uniforms, BaseSharedArray const *p);
+  static Expr::Ptr getUniformPtr();
 
 protected:
   PointerExpr addself(int b);
@@ -121,7 +125,7 @@ protected:
   PointerExpr sub(IntExpr b);
 
 private:
-  Pointer &me();
+  Pointer &self();
 };
 
 
@@ -138,18 +142,16 @@ class Ptr : public Pointer {
 public:
   Ptr() = default;
 
-/*
-  // TODO get rid of ctor acting as reference
+  /**
+   * Gets rid of ctor acting as reference
+   */
   Ptr<T>(Ptr<T> const &rhs) : Ptr<T>() {
     assign(expr(), rhs.expr());
   }
 
-  Ptr<T>(PtrExpr<T> rhs) : Ptr<T>() {
-    assign(expr(), rhs.expr());
-  }
-*/
-
   Ptr<T>(PtrExpr<T> rhs) : Pointer(rhs) {}
+
+  static Ptr<T> mkArg();
 
   // Assignment
   Ptr<T>& operator=(Ptr<T> const &rhs) {
@@ -213,16 +215,11 @@ public:
 };
 
 
-///////////////////////////////////////////////////////////////////////////////
-// Specific operations (which I want to get rid of)
-///////////////////////////////////////////////////////////////////////////////
-
 template <typename T>
-inline PtrExpr<T> getUniformPtr() {
-  Var v = Var(UNIFORM);
-  v.setUniformPtr();
-  Expr::Ptr e = std::make_shared<Expr>(v);
-  return PtrExpr<T>(e);
+Ptr<T> Ptr<T>::mkArg() {
+  Ptr<T> x;
+  x = PtrExpr<T>(getUniformPtr());
+  return x;
 }
 
 }  // namespace V3DLib

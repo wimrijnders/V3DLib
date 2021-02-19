@@ -441,29 +441,10 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 }
 
 
-/**
- * This is meant as a precursor for the following test,
- * to ensure that the contents of the double loops work as expected
- */
-TEST_CASE("Test if/where without loop", "[noloop][cond]") {
-  //printf(" Doing test: Test if/where without loop\n");
+namespace {
 
-  make_test_dir();
-  uint32_t expected_1[VEC_SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-  uint32_t expected_2[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
-
-  auto k1 = compile(noloop_where_kernel);
-  //k1.pretty(false,  "obj/test/noloop_where_v3d.txt");  
-  auto k2 = compile(noloop_if_and_kernel);
-  //k2.pretty(false,  "obj/test/noloop_if_and_v3d.txt");  
-  auto k3 = compile(noloop_multif_kernel);
-  k3.pretty(false,  "obj/test/noloop_multif_v3d.txt");  // Keep enabled to avoid failing assertions, see below
-  auto k4 = compile(noloop_if_andor_kernel);
-  //k4.pretty(false,  "obj/test/noloop_if_andor_v3d.txt");  
-
-  V3DLib::SharedArray<int> result(VEC_SIZE);
-
-  auto run_cpu = [&result] (decltype(k1) &k, uint32_t *expected, int index = -1) {
+  template<typename KernelType>
+  void run_cpu(V3DLib::SharedArray<int> &result, KernelType &k, uint32_t *expected, int index = -1) {
     // INFO NOT DISPLAYING
     //printf("Testing cpu run %d\n", index);
     if (index == -1 ) {
@@ -481,83 +462,91 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
     check(result, 0, expected);
   };
 
-  auto run_qpu = [&result] (decltype(k1) &k, int index, uint32_t *expected) {
+
+  template<typename KernelType>
+  void run_qpu(V3DLib::SharedArray<int> &result, KernelType &k, int index, uint32_t *expected) {
     INFO("Testing qpu run index: " << index);
     reset(result, -1);
     k.call();
     check(result, 0, expected);
   };
 
+}  // anon namespace
 
-  k1.load(&result, 0, 0);   run_cpu(k1, expected_1);
-  k1.load(&result, 12, 15); run_cpu(k1, expected_2);
-  k1.load(&result, 21, 15); run_cpu(k1, expected_1);
 
-  k2.load(&result, 0, 0);   run_cpu(k2, expected_1);
-  k2.load(&result, 12, 15); run_cpu(k2, expected_2);
-  k2.load(&result, 21, 15); run_cpu(k2, expected_1);
+/**
+ * This is meant as a precursor for the following test,
+ * to ensure that the contents of the double loops work as expected
+ */
+TEST_CASE("Test if/where without loop", "[noloop][cond]") {
+  //printf(" Doing test: Test if/where without loop\n");
 
-  k3.load(&result,  0,  0); run_cpu(k3, expected_1);
-  k3.load(&result, 12, 15); run_cpu(k3, expected_2);
-  k3.load(&result, 21, 15); run_cpu(k3, expected_1);
+  make_test_dir();
+  uint32_t expected_1[VEC_SIZE]  = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
+  uint32_t expected_2[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
-  k4.load(&result,  0,  0); run_cpu(k4, expected_1, 41);
-  k4.load(&result,  0, 15); run_cpu(k4, expected_2, 42);
-  k4.load(&result,  0, 22); run_cpu(k4, expected_1, 43);
-  k4.load(&result, 12,  0); run_cpu(k4, expected_2, 44);
-  k4.load(&result, 12, 15); run_cpu(k4, expected_2, 45);
-  k4.load(&result, 12, 22); run_cpu(k4, expected_2, 46);
-  k4.load(&result, 21,  0); run_cpu(k4, expected_1, 47);
-  k4.load(&result, 21, 15); run_cpu(k4, expected_2, 48);
-  k4.load(&result, 21, 22); run_cpu(k4, expected_1, 49);
 
-  //
-  // When run in combination with other qpu calls, can *usually* generate lingering timeouts
-  // (lingering as in all subsequent calls time out as well, also in other processes).
-  //
-  // This is a total mystery to me.
-  //
-  // - Running everything except this and related call with if, works fine
-  // - When run alone, works fine.
-  // - code is identical to previous calls, only param's are different
-  // - Library code surrounding the qpu call works identically (checked with debugging).
-  // - `sleep()` before and after tends to make it better, but not perfect
-  //
-  // Output in `var/log/kern.log`:
-  // ```
-  // Nov  7 07:28:01 pi4-3 kernel: [87665.616719] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* Resetting GPU for hang.
-  // Nov  7 07:28:01 pi4-3 kernel: [87665.616757] v3d fec00000.v3d: [drm:v3d_reset [v3d]] *ERROR* V3D_ERR_STAT: 0x00001000
-  // ... ad infinitum
+  SECTION("Testing noloop_where_kernel") {
+    V3DLib::SharedArray<int> result(VEC_SIZE);
 
-  //
-  // ```
-  //
-  // **NOTE:**  This appears to be a know bug in the kerner driver! 
-  //            Issue: https://github.com/raspberrypi/linux/pull/3816
-  //            Fix pending: https://github.com/raspberrypi/linux/pull/3816/commits/803f25eb03d2698c79eea495be7dee47c3bb86c2
-  // So it appears we just need to wait.
-  //
+    auto k1 = compile(noloop_where_kernel);
 
-  if (!Platform::has_vc4()) {
-    std::cout << "Not running the 'noloop' tests on v3d; this causes persistent timeouts (TODO)" << std::endl;
-  } else {
-    // The timers expire on v3d, and keeps on expiring
-    k1.load(&result, 0, 0);   run_qpu(k1, 0, expected_1);
-    k1.load(&result, 12, 15); run_qpu(k1, 1, expected_2);
-
-    k1.load(&result, 21, 15); run_qpu(k1, 2, expected_1);
-    k2.load(&result, 0, 0);   run_qpu(k2, 3, expected_1);
-    k2.load(&result, 21, 15); run_qpu(k2, 5, expected_1);
+    k1.load(&result, 0, 0);   run_cpu(result, k1, expected_1);
+    k1.load(&result, 12, 15); run_cpu(result, k1, expected_2);
+    k1.load(&result, 21, 15); run_cpu(result, k1, expected_1);
+    k1.load(&result, 0, 0);   run_qpu(result, k1, 0, expected_1);
+    k1.load(&result, 12, 15); run_qpu(result, k1, 1, expected_2);
+    k1.load(&result, 21, 15); run_qpu(result, k1, 2, expected_1);
   }
 
-  // multi-if's should not have the problem mentioned above, and should always work.
 
-  // Fickle! Works always if k3.pretty(false...) called above, otherwise *may* assert
-  // TODO examine this
-  k3.load(&result, 0, 0);   run_qpu(k3, 6, expected_1);
+  SECTION("Testing noloop_if_and_where_kernel") {
+    V3DLib::SharedArray<int> result(VEC_SIZE);
 
-  k3.load(&result, 12, 15); run_qpu(k3, 7, expected_2);
-  k3.load(&result, 21, 15); run_qpu(k3, 8, expected_1);
+    auto k2 = compile(noloop_if_and_kernel);
+
+    k2.load(&result, 0, 0);   run_cpu(result, k2, expected_1);
+    k2.load(&result, 12, 15); run_cpu(result, k2, expected_2);
+    k2.load(&result, 21, 15); run_cpu(result, k2, expected_1);
+    k2.load(&result, 0, 0);   run_qpu(result, k2, 3, expected_1);
+    k2.load(&result, 21, 15); run_qpu(result, k2, 5, expected_1);
+  }
+
+
+  SECTION("Testing noloop_multif_kernel") {
+    V3DLib::SharedArray<int> result(VEC_SIZE);
+
+    auto k3 = compile(noloop_multif_kernel);
+    k3.pretty(false,  "obj/test/noloop_multif_v3d.txt");  // Keep enabled to avoid failing assertions, see below
+
+    k3.load(&result,  0,  0); run_cpu(result, k3, expected_1);
+    k3.load(&result, 12, 15); run_cpu(result, k3, expected_2);
+    k3.load(&result, 21, 15); run_cpu(result, k3, expected_1);
+
+    // Fickle! Works always if k3.pretty(false...) called above, otherwise *may* assert
+    // TODO examine this
+    k3.load(&result, 0, 0);   run_qpu(result, k3, 6, expected_1);
+
+    k3.load(&result, 12, 15); run_qpu(result, k3, 7, expected_2);
+    k3.load(&result, 21, 15); run_qpu(result, k3, 8, expected_1);
+  }
+
+
+  SECTION("Testing noloop_if_andor_kernel") {
+    V3DLib::SharedArray<int> result(VEC_SIZE);
+
+    auto k4 = compile(noloop_if_andor_kernel);
+
+    k4.load(&result,  0,  0); run_cpu(result, k4, expected_1, 41);
+    k4.load(&result,  0, 15); run_cpu(result, k4, expected_2, 42);
+    k4.load(&result,  0, 22); run_cpu(result, k4, expected_1, 43);
+    k4.load(&result, 12,  0); run_cpu(result, k4, expected_2, 44);
+    k4.load(&result, 12, 15); run_cpu(result, k4, expected_2, 45);
+    k4.load(&result, 12, 22); run_cpu(result, k4, expected_2, 46);
+    k4.load(&result, 21,  0); run_cpu(result, k4, expected_1, 47);
+    k4.load(&result, 21, 15); run_cpu(result, k4, expected_2, 48);
+    k4.load(&result, 21, 22); run_cpu(result, k4, expected_1, 49);
+  }
 }
 
 
@@ -621,8 +610,6 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
     auto k2 = compile(andor_if_kernel);
     k2.load(&result, width, height);
-    //k2.pretty(true,  "obj/test/andor_if_vc4.txt");  
-    //k2.pretty(false, "obj/test/andor_if_v3d.txt");  
 
     reset(result);
     k2.interpret();
@@ -632,14 +619,9 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
     k2.emu();
     check_output(result, "if_emu");
 
-    if (Platform::has_vc4()) {
-      reset(result);
-      k2.call();
-      check_output(result, "if_qpu");
-    } else {
-      // v3d: fails, no output. Locks the videocore, needs reset
-      std::cout << "Not running the 'if_qpu' test on v3d; this hangs the pi (TODO)" << std::endl;
-    }
+    reset(result);
+    k2.call();
+    check_output(result, "if_qpu");
   }
 
 
@@ -657,14 +639,9 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
     k3.emu();
     check_output(result, "multi_if_emu");
 
-    if (Platform::has_vc4()) {
-      reset(result);
-      k3.call();
-      check_output(result, "multi_if_qpu");
-    } else {
-      // v3d: fails, no output. Locks the videocore, needs reset
-      std::cout << "Not running the 'multi_if_qpu' test on v3d; this hangs the pi (TODO)" << std::endl;
-    }
+    reset(result);
+    k3.call();
+    check_output(result, "multi_if_qpu");
   }
 }
 

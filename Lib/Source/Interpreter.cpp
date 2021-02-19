@@ -6,6 +6,9 @@
 #include "Support/basics.h"
 
 namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
+
 namespace {
 
 // State of a single core.
@@ -29,6 +32,10 @@ struct CoreState {
 
   void store_to_heap(Vec const &index, Vec &val);
   Vec  load_from_heap(Vec const &index);
+
+private:
+  int load_show_count = 0;
+  int store_show_count = 0;
 };
 
 
@@ -46,29 +53,68 @@ struct InterpreterState {
 
 
 void CoreState::store_to_heap(Vec const &index, Vec &val) {
-  assertq(index.is_uniform(), "store_to_heap(): index does not have all same values");
   assert(writeStride == 0);  // usage of writeStride is probably wrong!
 
-  uint32_t hp = (uint32_t) index[0].intVal;  // NOTE: only first value used
+  if (!index.is_uniform()) {
+    // NOTE: This part will not work for vc4 DMA output!
+    //       Better to get rid of it
 
-  for (int i = 0; i < NUM_LANES; i++) {
-    emuHeap.phy(hp>>2) = val[i].intVal;
-    hp += 4 + writeStride;  // writeStride only relevant for DMA
+    std::string msg;
+    msg << "store_to_heap(): index does not have all same values" << index.dump();
+
+    if (store_show_count == 1) {
+      msg << "\n(this message not shown any more for more occurences)";
+    }
+    if (store_show_count < 2) {
+      warning(msg);
+    }
+    store_show_count ++;
+    // The human has been warned, assume that she knows what she's doing
+
+    for (int i = 0; i < NUM_LANES; i++) {
+      uint32_t hp = (uint32_t) index[i].intVal + 4*i;
+      emuHeap.phy(hp>>2) = val[i].intVal;
+    }
+  } else {
+
+    uint32_t hp = (uint32_t) index[0].intVal;  // NOTE: only first value used
+
+    for (int i = 0; i < NUM_LANES; i++) {
+      emuHeap.phy(hp>>2) = val[i].intVal;
+      hp += 4 + writeStride;  // writeStride only relevant for DMA
+    }
   }
 }
 
 
 Vec CoreState::load_from_heap(Vec const &index) {
-  assertq(index.is_uniform(), "load_from_heap(): index does not have all same values");
   assert(readStride == 0);  // Usage of readStride is probably wrong!
-
-  uint32_t hp = (uint32_t) index[0].intVal;  // NOTE: only first value used
-
   Vec v;
 
-  for (int i = 0; i < NUM_LANES; i++) {
-    v[i].intVal = emuHeap.phy((hp >> 2));
-    hp += 4 + readStride;  // readStride only relevant for DMA
+  if (!index.is_uniform()) {
+    std::string msg;
+    msg << "load_from_heap(): index does not have all same values: " << index.dump();
+
+    if (load_show_count == 1) {
+      msg << "\n(this message not shown any more for more occurences)";
+    }
+    if (load_show_count < 2) {
+      warning(msg);
+    }
+    load_show_count ++;
+    // The human has been warned, assume that she knows what she's doing
+
+    for (int i = 0; i < NUM_LANES; i++) {
+      uint32_t hp = (uint32_t) index[i].intVal + 4*i;
+      v[i].intVal = emuHeap.phy((hp >> 2));
+    }
+  } else {
+    uint32_t hp = (uint32_t) index[0].intVal;  // NOTE: only first value used
+
+    for (int i = 0; i < NUM_LANES; i++) {
+      v[i].intVal = emuHeap.phy((hp >> 2));
+      hp += 4 + readStride;  // readStride only relevant for DMA
+    }
   }
 
   return v;

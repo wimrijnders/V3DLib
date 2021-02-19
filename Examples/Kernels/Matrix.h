@@ -52,17 +52,25 @@ private:
 
 enum MatrixReadMethod {
   DEFAULT,
-  USE_TMU,
   DO_PREFETCH,
   NO_READWRITE
 };
 
-void matrix_mult_scalar(int N, float *c, float *a, float *b);
+void square_matrix_mult_scalar(int N, float *c, float *a, float *b);
 void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b);
 
 using FuncType = decltype(matrix_mult);
 
-FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod in_read_method = DEFAULT);
+//FuncType *matrix_mult_decorator(int rows, int inner, int columns, MatrixReadMethod read_method = DEFAULT);
+
+FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method = DEFAULT);
+
+
+FuncType *matrix_mult_decorator(
+  Shared2DArray<float> &a,
+  Shared2DArray<float> &b,
+  Shared2DArray<float> &result,
+  MatrixReadMethod read_method = DEFAULT);
 
 }  // namespace kernels
 

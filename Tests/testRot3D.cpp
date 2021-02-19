@@ -193,7 +193,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 
   SECTION("Multiple kernel definitions should be possible") {
     if (!Platform::has_vc4()) {
-      printf("NB: Rot3D kernel unit test not working on v3d, timeout hang (TODO)\n");
+      printf("NB: Rot3D unit test multiple kernels  not working on v3d, timeout hang (TODO)\n");
       return;
     }
 
@@ -202,6 +202,8 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     initArrays(x_1, y_1, N);
     k_1.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
 
+    // Next kernel intentionally defined in the same shared array as previous kernel
+    // That's the goal of this test.
     auto k_2 = compile(rot3D_2);
     SharedArray<float> x_2(N), y_2(N);
     initArrays(x_2, y_2, N);

@@ -28,7 +28,7 @@ CmdParameters params = {
   },{
     "Read method",
     "-read=",
-    { "default", "tmu", "prefetch", "none"}, 
+    { "default", "prefetch", "none"}, 
     "The way to retrieve data from memory. "
     "Option 'none' skips all reads and writes, the rest have only effect on reads.\n"
   },{
@@ -67,9 +67,8 @@ struct MatrixSettings : public Settings {
 
     switch(in_read_method) {
       case 0: read_method = DEFAULT;      break;
-      case 1: read_method = USE_TMU;      break;
-      case 2: read_method = DO_PREFETCH;  break;
-      case 3: read_method = NO_READWRITE; break;
+      case 1: read_method = DO_PREFETCH;  break;
+      case 2: read_method = NO_READWRITE; break;
 
       default: assertq(false, "Unknown read method"); return false;
     }
@@ -99,7 +98,7 @@ void run_scalar_kernel() {
 
   Timer timer;
   for (int i = 0; i < settings.repeats; ++i) {
-    kernels::matrix_mult_scalar(settings.dimension, result, a, b);
+    kernels::square_matrix_mult_scalar(settings.dimension, result, a, b);
   }
   timer.end(!settings.silent);
 
@@ -115,13 +114,15 @@ void run_qpu_kernel() {
 
 
   // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> a(settings.size());
-  SharedArray<float> b(settings.size());
-  SharedArray<float> result(settings.size());
+  Shared2DArray<float> a(settings.dimension);
+  Shared2DArray<float> b(settings.dimension);
+  Shared2DArray<float> result(settings.dimension);
 
-  for (int i = 0; i < settings.size(); i++) {
-    a[i] = random_float();
-    b[i] = random_float();
+  for (int r = 0; r < settings.dimension; r++) {
+    for (int c = 0; c < settings.dimension; c++) {
+      a[r][c] = random_float();
+      b[r][c] = random_float();
+    }
   }
 
   Timer timer;

@@ -7,10 +7,6 @@
 
 namespace V3DLib {
 
-std::vector<Ptr<Int>>   uniform_int_pointers;
-std::vector<Ptr<Float>> uniform_float_pointers;
-
-
 // ============================================================================
 // Class KernelBase
 // ============================================================================

@@ -29,8 +29,7 @@ void BufferObject::dealloc_array(uint32_t in_phyaddr, uint32_t in_size) {
 
 
 uint32_t BufferObject::getHandle() const {
-  breakpoint
-  assertq(!Platform::compiling_for_vc4(), "getHandle(): only use this override when compiling for v3d");
+  assertq(false, "getHandle(): the base version of this method should never be called, it is v3d only", true);
   return 0;
 }
 

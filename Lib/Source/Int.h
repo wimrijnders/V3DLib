@@ -1,9 +1,10 @@
+///////////////////////////////////////////////////////////////////////////////
 // This module defines type 'Int' for a vector of 16 x 32-bit integers.
-
+///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_INT_H_
 #define _V3DLIB_SOURCE_INT_H_
-#include "Source/Expr.h"
-#include "Source/Float.h"
+#include "Common/Seq.h"
+#include "Expr.h"
 
 namespace V3DLib {
 
@@ -36,10 +37,10 @@ struct Int : public BaseExpr {
   Int(int x);
   Int(IntExpr e);
   Int(Deref<Int> d);
+  Int(Int const &x);
 
-  // Copy constructors
-  Int(Int& x);
-  Int(const Int& x);
+  static Int mkArg();
+  static bool passParam(Seq<int32_t> *uniforms, int val);
 
   // Cast to an IntExpr
   operator IntExpr();
@@ -66,7 +67,6 @@ IntExpr numQPUs();
 IntExpr vpmGetInt();
 
 IntExpr rotate(IntExpr a, IntExpr b);
-FloatExpr rotate(FloatExpr a, IntExpr b);
 
 IntExpr operator+(IntExpr a, IntExpr b);
 IntExpr operator-(IntExpr a, IntExpr b);
@@ -81,8 +81,6 @@ IntExpr operator^(IntExpr a, IntExpr b);
 IntExpr operator~(IntExpr a);
 IntExpr shr(IntExpr a, IntExpr b);
 IntExpr ror(IntExpr a, IntExpr b);
-IntExpr toInt(FloatExpr a);
-FloatExpr toFloat(IntExpr a);
 
 }  // namespace V3DLib
 

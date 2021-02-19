@@ -65,7 +65,7 @@ private:
 
 class BaseExpr {
 public:
-  BaseExpr() {}
+  BaseExpr();
 
   Expr::Ptr expr() const { return m_expr; }
   std::string dump() const;
@@ -73,7 +73,11 @@ public:
 protected:
   Expr::Ptr m_expr;  // Abstract syntax tree
 
+  BaseExpr(char const *label);
   BaseExpr(Expr::Ptr e, char const *label = "");
+
+  void assign_intern();
+  void assign_intern(Expr::Ptr expr);
   Expr::Ptr deref_with_index(Expr::Ptr base, Expr::Ptr index_expr);
 
 private:

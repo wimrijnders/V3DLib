@@ -153,9 +153,32 @@ bool Expr::isSimple() const {
 // Class BaseExpr
 // ============================================================================
 
+BaseExpr::BaseExpr() {
+}
+
+
+BaseExpr::BaseExpr(char const *label) : m_label(label) {
+  assert(label != nullptr);
+  assign_intern();
+}
+
+
 BaseExpr::BaseExpr(Expr::Ptr e, char const *label) : m_label(label) {
   assert(e != nullptr);
   m_expr = e;
+}
+
+
+void BaseExpr::assign_intern() {
+  Var v  = freshVar();
+  m_expr = mkVar(v);
+}
+
+
+void BaseExpr::assign_intern(Expr::Ptr expr) {
+  Var v  = freshVar();
+  m_expr = mkVar(v);
+  assign(m_expr, expr);
 }
 
 

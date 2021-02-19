@@ -1,4 +1,5 @@
 #include "Ptr.h"
+#include "Common/SharedArray.h"
 #include "Lang.h"  // comment()
 
 namespace V3DLib {
@@ -10,7 +11,7 @@ namespace V3DLib {
 PointerExpr::PointerExpr(Expr::Ptr e) : BaseExpr(e, "PointerExpr") {}
 PointerExpr::PointerExpr(BaseExpr const &e) : BaseExpr(e.expr(), "PointerExpr") {}
 
-PointerExpr &PointerExpr::me() {
+PointerExpr &PointerExpr::self() {
   return *(const_cast<PointerExpr *>(this));
 }
 
@@ -44,10 +45,10 @@ void Pointer::reset_increment() {
 }
 
 
-Pointer::Pointer() : BaseExpr(mkVar(freshVar()), "Ptr") {}
+Pointer::Pointer() : BaseExpr("Ptr") {}
 
 
-Pointer &Pointer::me() {
+Pointer &Pointer::self() {
   return *(const_cast<Pointer *>(this));
 }
 
@@ -58,7 +59,7 @@ Pointer::Pointer(PointerExpr rhs) : Pointer() {
 
 
 void Pointer::inc() {
-  me() = bare_addself(get_increment());  comment("increment pointer");
+  self() = bare_addself(get_increment());  comment("increment pointer");
 }
 
 
@@ -76,7 +77,7 @@ PointerExpr Pointer::operator=(PointerExpr rhs) {
 
 
 PointerExpr Pointer::addself(int b) {
-  return (me() = me() + b);
+  return (self() = self() + b);
 }
 
 
@@ -86,12 +87,12 @@ PointerExpr Pointer::bare_addself(Int &b) {
 
 
 PointerExpr Pointer::addself(IntExpr b) {
-  return (me() = me() + b);
+  return (self() = self() + b);
 }
 
 
 PointerExpr Pointer::subself(IntExpr b) {
-  return (me() = me() - b);
+  return (self() = self() - b);
 }
 
 
@@ -107,6 +108,18 @@ PointerExpr Pointer::add(IntExpr b) {
 
 PointerExpr Pointer::sub(IntExpr b) {
   return mkApply(expr(), Op(SUB, INT32), (b << 2).expr());
+}
+
+
+Expr::Ptr Pointer::getUniformPtr() {
+  Expr::Ptr e = std::make_shared<Expr>(Var(UNIFORM, true));
+  return e;
+}
+
+
+bool Pointer::passParam(Seq<int32_t> *uniforms, BaseSharedArray const *p) {
+  uniforms->append(p->getAddress());
+  return true;
 }
 
 }  // namespace V3DLib

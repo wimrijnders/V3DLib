@@ -5,6 +5,7 @@
 #include <V3DLib.h>
 #include "LibSettings.h"
 #include "support/support.h"
+#include "Source/Complex.h"
 
 using namespace V3DLib;
 using namespace std;
@@ -224,83 +225,30 @@ void check_conditionals(SharedArray<int> &result, int N) {
 }
 
 
-class Complex;
-
-namespace V3DLib {
-
-struct ComplexExpr {
-  // Abstract syntax tree
-  Expr* expr;
-  // Constructors
-  ComplexExpr();
-  //Complex(float x);
-};
-
-template <> inline Ptr<Complex> mkArg< Ptr<Complex> >() {
-  Ptr<Complex> x;
-  x = getUniformPtr<Complex>();
-  return x;
-}
-
-template <> inline bool passParam< Ptr<Complex>, SharedArray<Complex>* >
-  (Seq<int32_t>* uniforms, SharedArray<Complex>* p)
-{
-  uniforms->append(p->getAddress());
-  return true;
-}
-
-}
-
-
-class Complex {
-public:
-  enum {
-    size = 2  // Size of instance in 32-bit values
-  };
-
-  Complex() {}
-
-  Complex(const Complex &rhs) : Re(rhs.Re), Im(rhs.Im) {}
-
-  Complex(PtrExpr<Float> input) {
-    Re = *input;
-    Im = *(input + 1);
-  }
-
-  Complex operator *(Complex rhs) {
-    Complex tmp;
-    tmp.Re = Re*rhs.Re - Im*rhs.Im;
-    tmp.Im = Re*rhs.Im + Im*rhs.Re;
-
-    return tmp;
-  }
-
-  Complex operator *=(Complex rhs) {
-    Complex tmp;
-
-    //FloatExpr tmpRe = Re*rhs.Re - Im*rhs.Im;
-    tmp.Re = Re*rhs.Re - Im*rhs.Im;
-    tmp.Im = Re*rhs.Im + Im*rhs.Re;
-
-    return tmp;
-  }
-
-  Float Re;
-  Float Im;
-};
-
-
-void kernelComplex(Ptr<Float> input, Ptr<Float> result) {
-  auto inp = input + 2*index();
-  auto out = result + 2*index();
-
-  //Complex a(input + 2*index());
+/*
+void complex_kernel(Ptr<Float> input_re, Ptr<Float> input_im, Ptr<Float> result_re, Ptr<Float> result_im) {
   Complex a;
-  a.Re = *inp;
-  a.Im = *(inp + 1);
-  Complex b = a*a;
-  *out = b.Re;
-  *(out + 1) = b.Im;
+  Complex b;
+
+  a.Re = *input_re;  comment("Complex mult");
+  a.Im = *input_im;
+  b = a*a;
+  *result_re = b.Re;
+  *result_im = b.Im;
+}
+*/
+void complex_kernel(Complex::Ptr input, Complex::Ptr result) {
+  Complex a;
+  Complex b;
+
+  a = *input;
+//  a.Re = *input_re;  comment("Complex mult");
+//  a.Im = *input_im;
+
+  b = a*a;
+  *result = b;
+//  *result_re = b.Re;
+//  *result_im = b.Im;
 }
 
 
@@ -366,29 +314,71 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 }
 
 
-TEST_CASE("Test construction of composed types in DSL", "[dsl]") {
+TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
+  Platform::use_main_memory(true);
 
+/*
   SECTION("Test Complex composed type") {
-    // TODO: No assertion in this part, need any?
-
     const int N = 1;  // Number Complex items in vectors
 
-    // Construct kernel
-    auto k = compile(kernelComplex);
+    auto k = compile(complex_kernel);
+    //k.pretty(true, nullptr, false);
 
     // Allocate and array for input and result values
-    SharedArray<float> input(2*16*N);
-    input[ 0] = 1; input[ 1] = 0;
-    input[ 2] = 0; input[ 3] = 1;
-    input[ 3] = 1; input[ 4] = 1;
+    SharedArray<float> input_re(16*N);
+    input_re.fill(0);
+    SharedArray<float> input_im(16*N);
+    input_im.fill(0);
+    input_re[0] = 1; input_im[0] = 0;
+    input_re[1] = 0; input_im[1] = 1;
+    input_re[2] = 1; input_im[2] = 1;
 
-    SharedArray<float> result(2*16*N);
+    SharedArray<float> result_re(16*N);
+    SharedArray<float> result_im(16*N);
 
     // Run kernel
-    k.load(&input, &result).call();
+    k.load(&input_re, &input_im, &result_re, &result_im).call();  //call();
 
-    //cout << showResult(result, 0) << endl;
+    dump_array(input_re, 16);
+    dump_array(input_im, 16);
+    dump_array(result_re, 16);
+    dump_array(result_im, 16);
+    REQUIRE(result_re[0] ==  1); REQUIRE(result_im[0] ==  0);
+    REQUIRE(result_re[1] == -1); REQUIRE(result_im[1] ==  0);
+    REQUIRE(result_re[2] ==  0); REQUIRE(result_im[2] ==  2);
   }
+*/
+  SECTION("Test Complex composed type") {
+    const int N = 1;  // Number Complex items in vectors
+
+    auto k = compile(complex_kernel);
+    k.pretty(true, nullptr, false);
+
+    // Allocate and array for input and result values
+    Complex::Array input(16*N);
+    input.fill({0,0});
+    input[0] = { 1, 0};
+    input[1] = { 0, 1};
+    input[2] = { 1, 1};
+
+    Complex::Array result(16*N);
+
+    // Run kernel
+    k.load(&input, &result).interpret(); // emu();  //call();
+
+    std::cout << input.dump();
+    std::cout << result.dump();
+
+    std::cout << result[0].dump()     << "\n";
+    std::cout << complex(1, 0).dump();
+    std::cout << std::endl;
+
+    REQUIRE(result[0] ==  complex(1, 0));
+    REQUIRE(result[1] ==  complex(-1, 0));
+    REQUIRE(result[2] ==  complex(0, 2));
+  }
+
+  Platform::use_main_memory(false);
 }
 
 
@@ -443,7 +433,6 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
     //k.interpret();
     //k.emu();
     k.call();
-    //dump_array(result, 16);
 
     vector<vector<int>> expected = {
       {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},                    // +=
@@ -473,7 +462,6 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
 
     vector<float> expected = { 3.25,  4.25,  5.25,  6.25,  7.25,  8.25,  9.25, 10.25,
                               11.25, 12.25, 13.25, 14.25, 15.25, 16.25, 17.25, 18.25};
-    //dump_array(result);
     check_vector(result, 0, expected);
   }
 }
@@ -511,7 +499,6 @@ TEST_CASE("Test For-loops", "[dsl][for]") {
 
     SharedArray<int> result(16);
     k.load(&result).emu();
-    //dump_array(result);
 
     vector<int> expected = {18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27};
     check_vector(result, 0, expected);
@@ -566,16 +553,12 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
   // Interpreter works fine, used here to compare emulator output
   reset();
   k.interpret();
-  //dump_array(a);
-  //dump_array(result1, 16);
 
   std::cout << "\n";
 
   reset();
   k.load(&result2, &a);
   k.emu();
-  //dump_array(a);
-  //dump_array(result2, 16);
 
   REQUIRE(result1 == result2);
 
@@ -689,7 +672,6 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
 
     reset();
     k.call();
-    //dump_array(result, 16);
     check("dma qpu");
 
     LibSettings::use_tmu_for_load(false);

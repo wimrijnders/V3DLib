@@ -6,6 +6,7 @@
 #include "catch.hpp"
 #include <string>
 #include <V3DLib.h>
+#include "LibSettings.h"
 #include "support/support.h"
 #include "Support/basics.h"
 #include "support/support.h"
@@ -30,19 +31,6 @@ void run_kernel(Kernel &k) {
 
 
 /**
- * Copy values from square array `a` to array `b`, tranposing the array in the process
- */
-template<typename Arr>
-void matrix_copy_transposed(Arr &b, Arr &a, int dim) {
-  for (int x = 0; x < dim; x++) {
-    for (int y = 0; y < dim; y++) {
-      b[y + dim*x] = a[x + dim*y];
-    }
-  }
-}
-
-
-/**
  * Kernel to test correct working of `rotate_sum`
  */
 void check_sum_kernel(Ptr<Float> input, Ptr<Float> result) {
@@ -62,7 +50,6 @@ void check_set_at(Ptr<Float> input, Ptr<Float> result, Int index) {
   Float b = *result;
 
   kernels::set_at(b, index, a);
-
   *result = b;
 }
 
@@ -110,10 +97,6 @@ void test_dotvector() {
   k.load(&b, &a, &result);
   run_kernel(k);
 
-//  if (N <= 2) {
-//    dump_array(result, 16);
-//  }
-
   for (int i = 0; i < (int) a.size(); i++) {
     INFO("N: " << N << ", i: " << i);
     REQUIRE(a[i] == b[i]);
@@ -124,11 +107,6 @@ void test_dotvector() {
   for (int i = 0; i < (int) a.size(); i++) {
     expected += a[i]*a[i];
   }
-
-/*
-  dump_array(a);
-  dump_array(result);
-*/
 
   for (int i = 0; i < (int) result.size(); i++) {
     if (i == 0) {
@@ -149,11 +127,10 @@ void test_dotvector() {
 
 template<typename Kernel>
 void check_matrix_results(
-  int SIZE,
   int dimension,
   Kernel &k,
-  SharedArray<float> &a,
-  SharedArray<float> &result,
+  Shared2DArray<float> &a,
+  Shared2DArray<float> &result,
   float *a_scalar,
   float *expected) {
 
@@ -162,44 +139,58 @@ void check_matrix_results(
   //
   a.fill(0);
   result.fill(-1);
-  k.setNumQPUs(8);
+//  k.setNumQPUs(8);
   run_kernel(k);
 
-  for (int i = 0; i < SIZE; i++) {
-    INFO("Dimension: " << dimension <<", i: " << i);
-    REQUIRE(result[i] == 0);
+  for (int r = 0; r < result.rows(); r++) {
+    for (int c = 0; c < result.columns(); c++) {
+      INFO("Dimension: " << dimension <<", element: (" << r << ", " << c << ")");
+      REQUIRE(result[r][c] == 0);
+    }
   }
 
   //
   // Square of input matrix containing all ones
   //
   a.fill(1);
+  //dump_array(a.get_parent(), 16);
+
   result.fill(-1);
 //  k.setNumQPUs(8);
   run_kernel(k);
 
-  for (int i = 0; i < SIZE; i++) {
-    INFO("Dimension: " << dimension);
-    INFO("Index " << i << ", [x,y] = [" << (i % dimension) << ", " << (i / dimension) << "]");
-    REQUIRE(result[i] == (float) dimension);
+  for (int r = 0; r < result.rows(); r++) {
+    for (int c = 0; c < result.columns(); c++) {
+      INFO("Dimension: " << dimension <<", element: (" << r << ", " << c << ")");
+      REQUIRE(result[r][c] == (float) dimension);
+    }
   }
 
   //
   // Square of unit matrix
   //
-  a.fill(0);
-  for (int i = 0; i < dimension; i++) {
-    a[i + dimension*i] = 1;
+  a.make_unit_matrix();
+  //dump_array(a.get_parent(), a.columns());
+
+  // Check if indeed unitary
+  for (int r = 0; r < a.rows(); r++) {
+    for (int c = 0; c < a.columns(); c++) {
+      if (r == c) {
+        REQUIRE(a[r][c] == 1);
+      } else {
+        REQUIRE(a[r][c] == 0);
+      }
+    }
   }
 
   run_kernel(k);
 
-  for (int x = 0; x < dimension; x++) {
-    for (int y = 0; y < dimension; y++) {
-      if (x == y) {
-        REQUIRE(result[x + dimension*y] == 1);
+  for (int r = 0; r < result.rows(); r++) {
+    for (int c = 0; c < result.columns(); c++) {
+      if (r == c) {
+        REQUIRE(result[r][c] == 1);
       } else {
-        REQUIRE(result[x + dimension*y] == 0);
+        REQUIRE(result[r][c] == 0);
       }
     }
   }
@@ -208,22 +199,26 @@ void check_matrix_results(
   //
   // Random values in array
   //
-  for (int i = 0; i < SIZE; i++) {
-    a_scalar[i] = a[i] = random_float();
+  for (int r = 0; r < a.rows(); r++) {
+    for (int c = 0; c < a.columns(); c++) {
+      a_scalar[r*a.rows() + c] = a[r][c] = random_float();
+    }
   }
 
-  SharedArray<float> b(SIZE);
-  matrix_copy_transposed(b, a, dimension);
+  Shared2DArray<float> b(dimension);
+  b.copy_transposed(a);
 
-  kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
+  kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
   k.load(&result, &a, &b);
   run_kernel(k);
 
   float precision = 2.5e-4f;  // Empirically determined - the bigger the matrices, the less precise
                               // This value works for 640x640 matrices
 
-  for (int i = 0; i < SIZE; i++) {
-    REQUIRE(abs(result[i] - expected[i]) < precision);
+  for (int r = 0; r < a.rows(); r++) {
+    for (int c = 0; c < a.columns(); c++) {
+      REQUIRE(abs(result[r][c] - expected[r*a.rows() + c]) < precision);
+    }
   }
 }
 
@@ -231,15 +226,15 @@ void check_matrix_results(
 /**
  *
  */
-void test_matrix_multiplication(int dimension) {
-  //printf ("running test_matrix_multiplication() with dim: %d\n", dimension);
+void test_square_matrix_multiplication(int dimension) {
+  //printf ("running test_square_matrix_multiplication() with dim: %d\n", dimension);
 
   REQUIRE(dimension > 1);
   REQUIRE(dimension % 16 == 0);
   int const SIZE = dimension*dimension;
 
-  SharedArray<float> a(SIZE);
-  SharedArray<float> result(SIZE);
+  Shared2DArray<float> a(dimension);
+  Shared2DArray<float> result(dimension);
   result.fill(-1.0f);
 
   float a_scalar[SIZE];
@@ -251,7 +246,7 @@ void test_matrix_multiplication(int dimension) {
   for (int i = 0; i < SIZE; i++) {
     expected[i] = -1;
   }
-  kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
+  kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
 
   for (int i = 0; i < SIZE; i++) {
     REQUIRE(expected[i] == (float) dimension);
@@ -262,19 +257,56 @@ void test_matrix_multiplication(int dimension) {
   // One kernel runs but the seconds hangs. Either works fine when run by itself.
   // Unclear why at this stage, but settings separate contexts works.
   {
+    INFO("Doing TMU");
     auto k = compile(kernels::matrix_mult_decorator(dimension));
     k.load(&result, &a, &a);
-    k.pretty(true,  "obj/test/Matrix_code_vc4.txt");
-    k.pretty(false, "obj/test/Matrix_code.txt");
-    check_matrix_results(SIZE, dimension, k, a, result, a_scalar, expected);
+    check_matrix_results(dimension, k, a, result, a_scalar, expected);
   }
 
   {
-    // Do the same thing with TMU (different for vc4 only)
-    auto k2 = compile(kernels::matrix_mult_decorator(dimension, kernels::USE_TMU));
-    k2.pretty(false, "obj/test/Matrix_code_prefetch.txt");
+    // Do the same thing with DMA (different for vc4 only)
+    LibSettings::use_tmu_for_load(false);  // selects DMA
+    INFO("Doing DMA");
+
+    auto k2 = compile(kernels::matrix_mult_decorator(dimension));
+    k2.pretty(false, "obj/test/Matrix_code_prefetch_dma.txt");  // TODO check on vc4
     k2.load(&result, &a, &a);
-    check_matrix_results(SIZE, dimension, k2, a, result, a_scalar, expected);
+    check_matrix_results(dimension, k2, a, result, a_scalar, expected);
+
+    LibSettings::use_tmu_for_load(true);
+  }
+}
+
+
+
+void test_matrix_multiplication (int rows, int inner, int cols, float init_a = 1, float init_b = 1) {
+  REQUIRE(rows > 0);
+  REQUIRE(inner > 0);
+  REQUIRE(cols > 0);
+  REQUIRE(inner % 16 == 0);
+
+  Shared2DArray<float> a(rows, inner);
+  a.fill(init_a);
+  Shared2DArray<float> b(inner, cols);
+  b.fill(init_b);
+
+  Shared2DArray<float> result;
+
+  REQUIRE(a.columns() == b.rows());
+
+  auto k = compile(kernels::matrix_mult_decorator(a, b, result));
+  result.fill(-1.0f);
+
+  k.load(&result, &a, &b);
+  run_kernel(k);
+  //dump_array(result.get_parent(), cols_result);
+
+  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < cols; ++c) {
+      INFO("r: " << r << ", c: " << c);
+      REQUIRE(result[r][c] == ((float) inner)*init_a*init_b);
+    }
   }
 }
 
@@ -283,8 +315,6 @@ void test_matrix_multiplication(int dimension) {
 
 TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
   using namespace V3DLib;
-  //Platform::use_main_memory(true);  // Run only interpreter and emulator for now
-
 
   SECTION("Check scalar matrix multiplication") {
     int const N = 16;  // Dimension of square matrix
@@ -299,7 +329,7 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     for (int i = 0; i < SIZE; i++) { b[i] =  2; }
     for (int i = 0; i < SIZE; i++) { c[i] = -1; }
 
-    kernels::matrix_mult_scalar(N, c, a, b);
+    kernels::square_matrix_mult_scalar(N, c, a, b);
     
     for (int i = 0; i < SIZE; i++) {
       REQUIRE(c[i] == 32);
@@ -376,19 +406,34 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     test_dotvector<4>();
     test_dotvector<10>();
   }
-
-  //Platform::use_main_memory(false);
 }
 
 
 TEST_CASE("Test matrix algebra", "[matrix][mult]") {
+  SECTION("Check matrix multiplication") {
+    test_square_matrix_multiplication(16);
+    test_square_matrix_multiplication(2*16);
+    test_square_matrix_multiplication(5*16);
+
+    // 640x640 matrices, works! If you don't mind waiting for test to complete.
+    //test_square_matrix_multiplication(40*16);
+  }
+}
+
+
+TEST_CASE("Test matrix algebra with varying sizes", "[matrix][mult][varying]") {
   //Platform::use_main_memory(true);
 
   SECTION("Check matrix multiplication") {
-    test_matrix_multiplication(16);
-    test_matrix_multiplication(2*16);
-    test_matrix_multiplication(5*16);
-    //test_matrix_multiplication(40*16);  // 640x640 matrices, works! If you don't mind waiting for test to complete.
+
+    // TODO same thing with > 1 QPUs
+    //      add warning in matrix mult kernel about this
+
+    test_matrix_multiplication( 1,    16,   1);
+    test_matrix_multiplication( 1,  5*16,   1);
+    test_matrix_multiplication(10,    16,   5);
+    test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f);
+    test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f);  // Going over the top here with big dimensions
   }
 
   //Platform::use_main_memory(false);

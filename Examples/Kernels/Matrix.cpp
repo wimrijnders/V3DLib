@@ -21,8 +21,26 @@ using namespace V3DLib;
 
 namespace {
 
-int N = 1;                                // Dimension of square matrix in blocks of 16 values.
-MatrixReadMethod read_method = DEFAULT;
+struct matrix_settings {
+  int rows;
+  int inner;
+  int columns;
+  MatrixReadMethod read_method = DEFAULT;
+
+  /**
+   * The column size of the result array needs to be a multiple of 16
+   */
+  int cols_result() const {
+    assert(columns > 0);
+    int ret = columns;
+
+    if (columns % 16 != 0) {
+      ret = 16*(columns/16 + 1);
+    }
+
+    return ret;
+  }
+} settings;
 
 }  // anon namespace
 
@@ -74,16 +92,10 @@ void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
 void pre_read(Float &dst, Ptr<Float> &src, int prefetch_label) {
   // on v3d, TMU is used always
 
-  switch (read_method) {
+  switch (settings.read_method) {
     case DEFAULT:
-      // on vc4, this will use DMA
+      // on vc4, either TMU (default) or DMA (option)
       dst = *src;
-      src.inc();
-      break;
-    case USE_TMU:
-      // on vc4, this will use TMU
-      gather(src);
-      receive(dst);
       src.inc();
       break;
     case DO_PREFETCH:
@@ -102,9 +114,8 @@ void pre_read(Float &dst, Ptr<Float> &src, int prefetch_label) {
 void pre_write(Ptr<Float> &dst, Float &src) {
   // on v3d, TMU is used always
 
-  switch (read_method) {
+  switch (settings.read_method) {
     case DEFAULT:
-    case USE_TMU:
     case DO_PREFETCH:
       // on vc4 this uses DMA
       // on v3d this uses TMU
@@ -174,7 +185,7 @@ void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
  * @param N  dimension of square matrices
  * @param c  Pointer to result array
  */
-void matrix_mult_scalar(int N, float *c, float *a, float *b) {
+void square_matrix_mult_scalar(int N, float *c, float *a, float *b) {
   for (int x = 0; x < N; x++) {
     for (int y = 0; y < N; y++) {
       float result = 0;
@@ -206,27 +217,28 @@ void matrix_mult_scalar(int N, float *c, float *a, float *b) {
  * - unroll the internal loop (tried it but does not help, not added)
  * - Use all QPU's
  * - All QPU's iterate over b together -> increase cache hits
- * - Maybe utilize wait slots in branches (TODO)
  */
 void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
-  int const DIM = 16*N;  // N is global static
+  assert(settings.inner > 0 && (settings.inner % 16 == 0));
+  int const DIM = settings.inner;
   Int STEP = DIM*numQPUs();
 
   a += me()*DIM;
 
-  DotVector vec(N);
+  DotVector vec(settings.inner/16);
   Float result;
 
-  For (Int a_index = 0,  a_index < DIM, a_index += numQPUs())
-    Ptr<Float> dst_local = dst + (a_index + me())*DIM;
+  For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
+    Ptr<Float> dst_local = dst + (a_index + me())*settings.cols_result();
 
-    Ptr<Float> b_local = b + 0;  // Wonky '+ 0' to ensure pointer value is COPIED, not referenced.
-    vec.load(a + 0);             // And again, and below again
-                                 // TODO fix this very NOT intuitive 'feature'. Bitten me >1 times.
+    Ptr<Float> b_local = b;
+    vec.load(a);
 
-    For (Int b_index = 0, b_index < DIM, b_index++)
+    Int b_index;
+
+    For (b_index = 0, b_index < settings.columns, b_index++)
       Float tmp;
-      vec.dot_product(b_local + 0, tmp);
+      vec.dot_product(b_local, tmp);
 
       set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
 
@@ -236,6 +248,10 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
 
       b_local += DIM;
     End  // IDIOT }  - never forget
+
+    If ((b_index & 0xf) != 0)
+      pre_write(dst_local, result);
+    End
 
     a += STEP;
   End
@@ -256,21 +272,58 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
  *           Since currently multiple threads are neither used nor supported, 
  *           this is not an issue. 
  *
- * @param dimension       dimension of matrixes used in multiplication,
+ * @param rows            number of rows in first matrix
+ * @param inner           inner dimension of matrixes used in multiplication,
  *                        must be a multiple of 16
+ * @param columns         number of columns in second matrix
  * @param in_do_readwrite if true, read/write to/from main memory (what you
  *                        normally expect). Otherwise, do the kernel operations only.
  *
  * @return  pointer to the actual kernel function
  */
-FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod in_read_method) {
-  assert(dimension > 0);
-  assertq(dimension % 16 == 0, "dimension must be a multiple of 16");
+FuncType *matrix_mult_decorator(int rows, int inner, int columns, MatrixReadMethod read_method) {
+  assert(rows > 0);
+  assert(columns > 0);
+  assertq(inner % 16 == 0, "Inner dimension must be a multiple of 16");
 
-  N = dimension >> 4;
-  read_method = in_read_method;
+  settings.rows        = rows;
+  settings.inner       = inner;
+  settings.columns     = columns;
+  settings.read_method = read_method;
 
   return matrix_mult;
+}
+
+
+FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method) {
+  return matrix_mult_decorator(dimension, dimension, dimension, read_method);
+}
+
+
+/**
+ * Override with extra safety checks of matrix dimensions
+ *
+ * The result array should not have been allocated beforehand, done here.
+ *
+ */
+FuncType *matrix_mult_decorator(
+  Shared2DArray<float> &a,
+  Shared2DArray<float> &b,
+  Shared2DArray<float> &result,
+  MatrixReadMethod read_method
+) {
+  assert(a.allocated());
+  assert(b.allocated());
+  assertq(!result.allocated(), "matrix_mult_decorator(): result array should not be allocated beforehand.");
+
+  auto ret = matrix_mult_decorator(a.rows(), a.columns(), b.columns(), read_method);
+
+  // Result array requires column size which is a multiple of 16
+  // Ensure enough padding for result so that size is multiple of 16
+  // It may become too big but never mind
+  result.alloc(a.rows(), settings.cols_result());
+
+  return ret;
 }
 
 }  // namespace kernels

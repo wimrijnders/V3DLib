@@ -7,6 +7,48 @@
 
 namespace V3DLib {
 
+class BaseSharedArray {
+public:
+  BaseSharedArray(BaseSharedArray &&a) = default;
+  BaseSharedArray &operator=(BaseSharedArray &&a) = default; 
+
+  void alloc(uint32_t n);
+  void dealloc();
+  bool allocated() const;
+  uint32_t getAddress() const { return m_phyaddr; }
+  uint32_t size() const { return m_size; }
+  uint32_t *getPointer();
+
+  void heap_view(BufferObject &heap);
+
+protected:
+  uint8_t *m_usraddr = nullptr;  // Start of the heap in main memory, as seen by the CPU
+
+  BaseSharedArray(BufferObject *heap, uint32_t element_size);
+  BaseSharedArray(uint32_t element_size) : BaseSharedArray(nullptr, element_size) {}
+
+ /**
+  * Get actual offset within the heap for given index of current shared array.
+  */
+  uint32_t phy(uint32_t i) {
+    assert(m_phyaddr % m_element_size == 0);
+    int index = (int) (i - ((uint32_t) m_phyaddr/m_element_size));
+    assert(index >= 0);
+    return (uint32_t) index;
+  }
+
+private:
+  BufferObject *m_heap = nullptr;  // Reference to used heap
+  uint32_t const m_element_size;
+  uint32_t m_phyaddr   = 0;        // Starting index of memory in GPU space
+  uint32_t m_size      = 0;        // Number of contained elements (not memory size!)
+  bool     m_is_heap_view = false;
+
+  BaseSharedArray(BaseSharedArray const &a) = delete;  // Disallow copy
+
+};
+
+
 /**
  * Reserve and access a memory range in the underlying buffer object.
  *
@@ -17,128 +59,37 @@ namespace V3DLib {
  * own BO. Experience will tell if this new setup works
  */
 template <typename T>
-class SharedArray {
+class SharedArray : public BaseSharedArray {
+  using Parent = BaseSharedArray;
+
 public:
-  SharedArray() {}
-  SharedArray(uint32_t n) { alloc(n); }
-  SharedArray(uint32_t n, BufferObject &heap) : m_heap(&heap) { alloc(n); }
-  SharedArray(SharedArray const &a) = delete;  // Disallow copy
+  SharedArray() : BaseSharedArray(sizeof(T)) {}
+  SharedArray(uint32_t n) : SharedArray() { Parent::alloc(n); }
+  SharedArray(uint32_t n, BufferObject &heap) : BaseSharedArray(&heap, sizeof(T)) { Parent::alloc(n); }
 
   SharedArray(SharedArray &&a) = default;
   SharedArray &operator=(SharedArray &&a) = default; 
 
-  ~SharedArray() { dealloc(); }
-
-  void heap_view(BufferObject &heap) {
-    assert(!allocated());
-    assert(m_heap == nullptr);
-
-    m_heap = &heap;
-    m_is_heap_view = true;
-    m_size = m_heap->size();
-    assert(m_size > 0);
-    m_usraddr = m_heap->usr_address();
-    m_phyaddr = m_heap->phy_address();
-  }
-
-
-  uint32_t getAddress() { return m_phyaddr; }
-  uint32_t size() const { return m_size; }
+  ~SharedArray() { Parent::dealloc(); }
 
   void fill(T val) {
+    assert(allocated());
+    //assertq(allocated(), "Can not fill unallocated array");
+
     for (int i = 0; i < (int) size(); i++)
       (*this)[i] = val;
   }
 
-  /**
-   * Get starting address of the section in question
-   *
-   * Needed for vc4, emulator and interpreter mode.
-   */
-  T *getPointer() {
-#ifdef QPU_MODE
-    if (Platform::has_vc4()) {
-      return (T *) m_phyaddr;  // TODO fix conversion warning for ARM 64 bits
-    } else {
-      return (T *) m_usraddr;
-    }
-#else
-    return (T *) m_usraddr;
-#endif
-  }
 
+  T& operator[] (int i) { return access(i); }
 
-  /**
-   * @param n number of 4-byte elements to allocate (so NOT memory size!)
-   */
-  void alloc(uint32_t n) {
-    assert(!allocated());
-    assert(n > 0);
-
-    if (m_heap == nullptr) {
-      m_heap = &getBufferObject();
-    }
-
-    m_phyaddr = m_heap->alloc_array((uint32_t) (sizeof(T)*n), m_usraddr);
-    m_size = n;
-    assert(allocated());
-  }
-
-
-  bool allocated() const {
-    if (m_size > 0) {
-      assert(m_heap != nullptr);
-      // assert(m_phyaddr > 0);  // Can be 0 for emu
-      assert(m_usraddr != nullptr);
-      return true;
-    } else {
-      assert(m_phyaddr == 0);
-      assert(m_usraddr == nullptr);
-      assert(!m_is_heap_view);
-      return false;
-    }
-  }
-
-
-  /**
-   * Forget the allocation and size and notify the underlying heap.
-   */
-  void dealloc() {
-    if (m_size > 0) {
-      assert(allocated());
-      assert(m_heap != nullptr);
-      if (!m_is_heap_view) { 
-        m_heap->dealloc_array(m_phyaddr, (uint32_t) (sizeof(T)*m_size));
-      }
-
-      m_phyaddr = 0;
-      m_size = 0;
-      m_usraddr = nullptr;
-      m_is_heap_view = false;
-    } else {
-      assert(!allocated());
-    }
-  }
-
-
-  // Subscript
-  inline const T operator[] (int i) const {
+  T operator[] (int i) const {
     assert(allocated());
     assert(i >= 0);
-    assert(i < (int) m_size);
+    assert(i < (int) size());
 
     T* base = (T *) m_usraddr;
     return (T) base[i];
-  }
-
-
-  // Subscript
-  inline T& operator[] (int i) {
-    assert(allocated());
-    assertq(i >= 0 && i < (int) m_size, "SharedArray::[]: index outside of possible range", true);
-
-    T* base = (T *) m_usraddr;
-    return (T&) base[i];
   }
 
 
@@ -148,25 +99,23 @@ public:
    * Needed by interpreter and emulator.
    */
   inline T& phy(uint32_t i) {
-    assert(m_phyaddr % sizeof(T) == 0);
-    int index = (int) (i - ((uint32_t) m_phyaddr/sizeof(T)));
-    return (*this)[index];
+    return (*this)[Parent::phy(i)];
   }
 
 
-  void copyFrom(T const *src, uint32_t size) {
+  void copyFrom(T const *src, uint32_t in_size) {
     assert(src != nullptr);
-    assert(size <= m_size);
+    assert(in_size <= size());
 
     // TODO: consider using memcpy() instead
-    for (uint32_t offset = 0; offset < size; ++offset) {
+    for (uint32_t offset = 0; offset < in_size; ++offset) {
       (*this)[offset] = src[offset];
     }
   }
 
   void copyFrom(std::vector<T> const &src) {
     assert(!src.empty());
-    assert(src.size() <= m_size);
+    assert(src.size() <= size());
 
     // TODO: consider using memcpy() instead
     for (uint32_t offset = 0; offset < src.size(); ++offset) {
@@ -203,18 +152,138 @@ public:
     return true;
   }
 
+protected:
+
+  T& access(int i) { 
+    assert(allocated());
+    assertq(i >= 0 && i < (int) size(), "SharedArray::[]: index outside of possible range", true);
+
+    T* base = (T *) m_usraddr;
+    return (T&) base[i];
+  }
+};
+
+
+template <typename T>
+class Shared2DArray : private SharedArray<T> {
+  using Parent = SharedArray<T>;
+
+  struct Row {
+    Row (Parent const *parent, int row, int row_size) :
+      m_parent(const_cast<Parent *>(parent)),
+      m_row(row),
+      m_row_size(row_size) {}
+
+    T operator[] (int col) const { return (*m_parent)[m_row*m_row_size + col]; }
+    T &operator[] (int col)      { return (*m_parent)[m_row*m_row_size + col]; }
+
+    Parent *m_parent;
+    int m_row;
+    int m_row_size;
+  };
+
+public:
+  Shared2DArray() = default;
+
+  Shared2DArray(int rows, int columns) : SharedArray<T>(rows*columns),  m_rows(rows), m_columns(columns) {
+    validate();
+  }
+
+  Shared2DArray(int dimension) : Shared2DArray(dimension, dimension) {}  // for square array
+
+  /**
+   * You can not possibly have any idea how long it took to realize I needed something like this, and
+   * then how long it took to implement and use correctly.
+   *
+   * Even so, I'm probably doing it wrong.
+   */
+  //operator BaseSharedArray const &() { return (BaseSharedArray const &) get_parent(); }
+
+  void alloc(uint32_t rows, uint32_t columns) {
+    m_rows = rows;
+    m_columns = columns;
+    validate();
+
+    Parent::alloc(rows*columns);
+  }
+
+  using Parent::fill;
+  using Parent::getAddress;
+  using Parent::allocated;
+
+  Parent const &get_parent() { return (Parent const &) *this; }  // explicit cast
+
+  int rows()    const { return m_rows; }
+  int columns() const { return m_columns; }
+
+  /**
+   * Copy values from square array `a` to array `b`, tranposing the array in the process
+   */
+  void copy_transposed(Shared2DArray const &rhs) {
+    assertq(is_square() && rhs.is_square(), "copy_transposed(): can only transpose if both arrays are square");
+    assertq(m_rows == rhs.m_rows, "copy_transposed(): can only copy if arrays have same dimension");
+
+    int dim = m_rows;
+
+    for (int r = 0; r < dim; r++) {
+      for (int c = 0; c < dim; c++) {
+        (*this)[c][r] = rhs[r][c];
+      }
+    }
+  }
+
+  bool is_square() const {
+    return m_rows == m_columns;
+  }
+
+  Row operator[] (int row) {
+    assert(0 <= row && row < m_rows);
+    return Row(this, row, m_columns);
+  }
+
+  Row operator[] (int row) const {  // grumbl
+    assert(0 <= row && row < m_rows);
+    return Row(this, row, m_columns);
+  }
+
+  void make_unit_matrix() {
+    assert(m_rows == m_columns);  // square matrices only
+
+    int dim = m_columns;
+
+    for (int r = 0; r < dim; r++) {
+      for (int c = 0; c < dim; c++) {
+        Parent::access(r*dim + c) = (r == c)? 1 : 0;
+      }
+    }
+  }
 
 private:
-  // Disallow copy assignment
-  void operator=(SharedArray a);
-  void operator=(SharedArray const &a);
+  int m_rows    = -1;  // init to illegal value
+  int m_columns = -1;
 
-  BufferObject *m_heap = nullptr;  // Reference to used heap
-  uint8_t *m_usraddr   = nullptr;  // Start of the heap in main memory, as seen by the CPU
-  uint32_t m_phyaddr   = 0;        // Starting index of memory in GPU space
-  uint32_t m_size      = 0;        // Number of contained elements (not memory size!)
-  bool     m_is_heap_view = false;
+  void validate() {
+    assert(m_rows > 0);
+    assert(m_columns > 0);
+
+    // TODO you sure about next? Check!
+    assertq((m_rows*m_columns) % 16 == 0, "Shared2DArray: array size must be a multiple of 16");
+  }
 };
+
+
+inline bool no_fractions(V3DLib::SharedArray<float> const &a) {
+  bool ret = true;
+
+  for (int i = 0; i < (int) a.size(); i++) {
+    if (a[i] != (float) ((int) a[i])) {
+      ret = false;
+      break;
+    }  
+  }
+
+  return ret;
+}
 
 }  // namespace V3DLib
 

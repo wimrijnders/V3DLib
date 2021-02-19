@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Thu 11 Feb 2021 06:38:19 AM CET
+# Generated on: Tue 16 Feb 2021 08:57:21 AM CET
 #
 ###############################################################################
 
@@ -27,6 +27,7 @@ OBJ := \
   Support/InstructionComment.o  \
   Support/basics.o  \
   Support/Helpers.o  \
+  Support/pgm.o  \
   Support/HeapManager.o  \
   SourceTranslate.o  \
   Kernel.o  \
@@ -47,6 +48,7 @@ OBJ := \
   Source/Functions.o  \
   Source/Pretty.o  \
   Source/Translate.o  \
+  Source/Complex.o  \
   Source/Lang.o  \
   v3d/SourceTranslate.o  \
   v3d/Invoke.o  \
@@ -61,6 +63,7 @@ OBJ := \
   v3d/instr/Instr.o  \
   v3d/instr/SmallImm.o  \
   v3d/PerformanceCounters.o  \
+  Common/SharedArray.o  \
   Common/BufferObject.o  \
   Target/Satisfy.o  \
   Target/CFG.o  \

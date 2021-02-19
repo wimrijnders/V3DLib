@@ -5,21 +5,12 @@ namespace V3DLib {
 
 static int globalVarId = 0;  // Used for fresh variable generation
 
-
-bool Var::isUniformPtr() const {
-  if (m_isUniformPtr) {
-    assert(m_tag == UNIFORM);
-  }
-
-  return m_isUniformPtr;
+Var::Var(VarTag tag, bool is_uniform_ptr) : m_tag(tag), m_is_uniform_ptr(is_uniform_ptr)  {
+  assert(!is_uniform_ptr || tag == UNIFORM);
 }
 
 
-void Var::setUniformPtr() {
-  assert(m_tag == UNIFORM);
-  assertq(!m_isUniformPtr, "UniformPtr already set");
-  m_isUniformPtr = true;
-}
+bool Var::is_uniform_ptr() const { return m_is_uniform_ptr; }
 
 
 std::string Var::disp() const {
@@ -31,7 +22,7 @@ std::string Var::disp() const {
     break;
     case UNIFORM:
       ret << "Uniform";
-      if (m_isUniformPtr) {
+      if (m_is_uniform_ptr) {
         ret << " Ptr";
       }
     break;

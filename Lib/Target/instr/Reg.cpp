@@ -58,7 +58,7 @@ Reg srcReg(Var v) {
     case UNIFORM:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_UNIFORM;
-      r.isUniformPtr = v.isUniformPtr();
+      r.isUniformPtr = v.is_uniform_ptr();
       break;
     case QPU_NUM:
       r.tag     = SPECIAL;

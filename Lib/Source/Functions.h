@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_SOURCE_FUNCTIONS_H_
 #define _V3DLIB_SOURCE_FUNCTIONS_H_
 #include "Int.h"
+#include "Float.h"
 
 namespace V3DLib {
 namespace functions {
