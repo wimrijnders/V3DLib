@@ -16,8 +16,8 @@ inline IntExpr operator-(IntExpr a) { return two_complement(a); }
 
 void rotate_sum(Int &input, Int &result);
 void rotate_sum(Float &input, Float &result);
-void set_at(Int &dst, Int n, Int &src);
-void set_at(Float &dst, Int n, Float &src);
+void set_at(Int &dst, Int n, Int const &src);
+void set_at(Float &dst, Int n, Float const &src);
 
 }  // namespace V3DLib
 

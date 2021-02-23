@@ -163,6 +163,8 @@ void DotVector::save(Ptr<Float> output) {
 void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
   Float tmp = 0;  comment("DotVector::dot_product()");
 
+  prefetch(2);
+
   for (int i = 0; i < (int) elements.size(); ++i) {
     Float tmp2;
     pre_read(tmp2, rhs, 2);
@@ -232,6 +234,8 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
     Ptr<Float> dst_local = dst + (a_index + me())*settings.cols_result();
 
     Ptr<Float> b_local = b;
+
+    prefetch(1);
     vec.load(a);
 
     Int b_index;
@@ -325,5 +329,46 @@ FuncType *matrix_mult_decorator(
 
   return ret;
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Complex arrays
+///////////////////////////////////////////////////////////////////////////////
+
+size_t ComplexDotVector::size() const {
+  assert(re.size() == im.size());
+  return re.size();
+}
+
+
+void ComplexDotVector::load(Complex::Ptr input) {
+  prefetch(1);
+
+  re.load(input.re());
+  im.load(input.im());
+}
+
+
+void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
+  assert(re.size() == im.size());
+  Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
+  Ptr<Float> rhs_re = rhs.re();
+  Ptr<Float> rhs_im = rhs.im();
+
+  prefetch(2);
+
+  for (int i = 0; i < (int) size(); ++i) {
+    Complex tmp1(re[i], im[i]);
+    Float re2;
+    Float im2;
+    pre_read(re2, rhs_re, 2);
+    pre_read(im2, rhs_im, 2);
+    tmp += tmp1*Complex(re2, im2);
+  }
+
+  rotate_sum(tmp.re(), result.re());
+  rotate_sum(tmp.im(), result.im());
+}
+
 
 }  // namespace kernels

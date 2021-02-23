@@ -34,6 +34,21 @@ public:
   float im() const { return m_im; }
   std::string dump() const;
 
+  bool operator==(complex const &rhs) const {
+    return m_re == rhs.m_re && m_im == rhs.m_im;
+  }
+
+  complex operator*(complex const &rhs) const {
+    return complex(m_re*rhs.m_re - m_im*rhs.m_im, m_re*rhs.m_im + m_im*rhs.m_re);
+  }
+
+
+  complex &operator+=(complex const &rhs) {
+    m_re += rhs.m_re;
+    m_im += rhs.m_im;
+    return *this;
+  }
+
 private:
   float m_re;
   float m_im;
@@ -61,6 +76,9 @@ public:
 
       ref &operator=(complex const &rhs);
       bool operator==(complex const &rhs) const;
+      bool operator==(ref const &rhs) const;
+      complex operator*(ref const &rhs) const;
+
       std::string dump() const;
 
     private:
@@ -70,6 +88,11 @@ public:
 
   public:
     Array(int size);
+
+    size_t size() const {
+      assert(m_re.size() == m_im.size());
+      return m_re.size();
+    }
 
     void fill(complex const &rhs);
     std::string dump() const;
@@ -101,12 +124,15 @@ public:
 
     Deref operator*();
 
+    Float::Ptr const &re() const  { return  m_re; }
+    Float::Ptr const &im() const  { return  m_im; }
+
     static Ptr mkArg();
     static bool passParam(Seq<int32_t> *uniforms, Complex::Array *p);
 
   private:
-    Float::Ptr re;
-    Float::Ptr im;
+    Float::Ptr m_re;
+    Float::Ptr m_im;
   };
 
 
@@ -116,7 +142,9 @@ public:
   Complex(ComplexExpr input);
   Complex(Ptr::Deref d);
 
+  Float &re() { return m_re; }
   Float const &re() const { return m_re; }
+  Float &im() { return m_im; }
   Float const &im() const { return m_im; }
   void re(FloatExpr const &e) { m_re = e; }
   void im(FloatExpr const &e) { m_im = e; }
@@ -124,9 +152,12 @@ public:
   Float mag_square() const;
 
   Complex operator+(Complex rhs) const;
+  Complex &operator+=(Complex rhs);
   Complex operator*(Complex rhs) const;
   Complex &operator*=(Complex rhs);
   void operator=(Complex const &rhs);
+
+  void set_at(Int n, Complex const &src);
 
 private:
   Float m_re;

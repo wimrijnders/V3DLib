@@ -152,14 +152,14 @@ void rotate_sum(Float &input, Float &result) {
  *
  * @param n  index of vector element to set. Must be in range 0..15 inclusive
  */
-void set_at(Int &dst, Int n, Int &src) {
+void set_at(Int &dst, Int n, Int const &src) {
   Where(index() == n)
     dst = src;
   End 
 }
 
 
-void set_at(Float &dst, Int n, Float &src) {
+void set_at(Float &dst, Int n, Float const &src) {
   Where(index() == n)
     dst = src;
   End 

@@ -1,5 +1,6 @@
 #include "Complex.h"
 #include "Support/basics.h"
+#include "Functions.h"  // ::set_at()
 
 namespace V3DLib {
 
@@ -65,11 +66,14 @@ Float Complex::mag_square() const {
 
 
 Complex Complex::operator+(Complex rhs) const {
-  Complex tmp;
-  tmp.m_re = m_re + rhs.m_re;
-  tmp.m_im = m_im + rhs.m_im;
+  return Complex(m_re + rhs.m_re, m_im + rhs.m_im);
+}
 
-  return tmp;
+
+Complex &Complex::operator+=(Complex rhs) {
+  m_re += rhs.m_re;
+  m_im += rhs.m_im;
+  return *this;
 }
 
 
@@ -94,13 +98,19 @@ void Complex::operator=(Complex const &rhs) {
 }
 
 
+void Complex::set_at(Int n, Complex const &src) {
+  V3DLib::set_at(m_re, n, src.m_re);
+  V3DLib::set_at(m_im, n, src.m_im);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Class Complex::Ptr
 ///////////////////////////////////////////////////////////////////////////////
 
 Complex::Ptr::Ptr(ComplexExpr rhs) {
-  re = rhs.re();
-  im = rhs.im();
+  m_re = rhs.re();
+  m_im = rhs.im();
 }
 
 
@@ -118,8 +128,8 @@ Complex::Ptr::Deref &Complex::Ptr::Deref::operator=(Complex const &rhs) {
 
 
 Complex::Ptr::Deref Complex::Ptr::operator*() {
-  auto re_deref = mkDeref(re.expr());
-  auto im_deref = mkDeref(im.expr());
+  auto re_deref = mkDeref(m_re.expr());
+  auto im_deref = mkDeref(m_im.expr());
 
   return Deref(re_deref, im_deref);
 }
@@ -160,6 +170,16 @@ std::string Complex::Array::ref::dump() const {
 
 bool Complex::Array::ref::operator==(complex const &rhs) const {
   return (m_re_ref == rhs.re() && m_im_ref == rhs.im());
+}
+
+
+bool Complex::Array::ref::operator==(ref const &rhs) const {
+  return (m_re_ref == rhs.m_re_ref && m_im_ref == rhs.m_im_ref);
+}
+
+
+complex Complex::Array::ref::operator*(ref const &rhs) const {
+  return complex(m_re_ref*rhs.m_re_ref - m_im_ref*rhs.m_im_ref, m_re_ref*rhs.m_im_ref + m_im_ref*rhs.m_re_ref);
 }
 
 

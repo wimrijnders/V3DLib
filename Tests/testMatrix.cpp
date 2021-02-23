@@ -4,6 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 #include "catch.hpp"
+#include <iostream>
 #include <string>
 #include <V3DLib.h>
 #include "LibSettings.h"
@@ -93,7 +94,7 @@ void test_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_dotvector<N>);
-  k.pretty(true, "obj/test/check_dotvector.txt", false);
+  //k.pretty(true, "obj/test/check_dotvector.txt", false);
   k.load(&b, &a, &result);
   run_kernel(k);
 
@@ -436,5 +437,100 @@ TEST_CASE("Test matrix algebra with varying sizes", "[matrix][mult][varying]") {
     test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f);  // Going over the top here with big dimensions
   }
 
-  //Platform::use_main_memory(false);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Complex arrays
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * Kernel for unit testing complex dot vectors
+ */
+template<int const N>
+void check_complex_dotvector(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr result) {
+  kernels::ComplexDotVector vec(N);
+  vec.load(a);
+  vec.save(dst);
+
+  Complex tmp(-2, -2);  // Silly value for detection in unit test
+  Complex tmp2;
+
+  vec.dot_product(a, tmp2);       comment("check_complex_dotvector end dot_product");
+  tmp.set_at(0, tmp2);            comment("check_complex_dotvector end kernel set_at");
+  *result = tmp;
+}
+
+
+/**
+ * Template parameter N is the number of 16-value blocks in arrays.
+ * It also sets the number of registers for a dot vector in the kernel.
+ */
+template<int const N>
+void test_complex_dotvector() {
+  Complex::Array a(16*N);
+
+  for (int i = 0; i < (int) a.size(); i++) {
+    a[i] = complex(1.0f*((float ) (i + 1)), 0);
+  }
+
+  Complex::Array b(16*N);
+  b.fill({-1, -1});
+
+  Complex::Array result(16);
+  result.fill({-1.0f, -1.0f});
+
+  REQUIRE(a.size() == b.size());
+
+  auto k = compile(check_complex_dotvector<N>);
+  k.pretty(true, "obj/test/check_complex_dotvector.txt", false);
+  k.load(&b, &a, &result);
+  k.call();
+
+  for (int i = 0; i < (int) a.size(); i++) {
+    INFO("N: " << N << ", i: " << i);
+    REQUIRE(a[i] == b[i]);
+  }
+
+  // Calculate and check expected result of dot product
+  complex expected(0, 0);
+  for (int i = 0; i < (int) a.size(); i++) {
+    expected += a[i]*a[i];
+  }
+
+  for (int i = 0; i < (int) result.size(); i++) {
+    if (i == 0) {
+      INFO("N: " << N);
+      REQUIRE(result[i] == expected);
+    } else {
+      REQUIRE(result[i] == complex(-2, -2));
+    }
+  }
+
+  // Do it again with simpler values for hand calculation
+  a.fill({ 1,  0});
+  k.call();
+  REQUIRE(result[0] == complex(16*N, 0));
+
+  // Do it again with re and im having values
+  a.fill({ 1,  2});
+  k.call();
+  expected = complex(16*N*-3, 16*N*4);
+  INFO("result: "   << result[0].dump());
+  INFO("expected: " << expected.dump());
+  REQUIRE(result[0] == expected);
+}
+
+
+TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex][]") {
+//  Platform::use_main_memory(true);
+
+  SECTION("Check correct working complex dotvector") {
+    test_complex_dotvector<1>();
+    test_complex_dotvector<4>();
+    test_complex_dotvector<10>();
+  }
+
+
+//  Platform::use_main_memory(false);
 }

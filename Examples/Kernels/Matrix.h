@@ -40,6 +40,8 @@ public:
   void load(Ptr<Float> input);
   void save(Ptr<Float> output);
   void dot_product(Ptr<Float> rhs, Float &result);
+  size_t size() const { return elements.size(); }
+  Float const &operator[] (int index) const { return elements[index]; }
 
 private:
   std::vector<Float> elements;
@@ -61,8 +63,6 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b);
 
 using FuncType = decltype(matrix_mult);
 
-//FuncType *matrix_mult_decorator(int rows, int inner, int columns, MatrixReadMethod read_method = DEFAULT);
-
 FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method = DEFAULT);
 
 
@@ -71,6 +71,32 @@ FuncType *matrix_mult_decorator(
   Shared2DArray<float> &b,
   Shared2DArray<float> &result,
   MatrixReadMethod read_method = DEFAULT);
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Complex arrays
+///////////////////////////////////////////////////////////////////////////////
+
+class ComplexDotVector {
+public:
+  ComplexDotVector(int size) : re(size), im(size) {}
+
+  size_t size() const;
+
+  void load(Complex::Ptr input);
+
+  void save(Complex::Ptr output) {
+    re.save(output.re());
+    im.save(output.im());
+  }
+
+  void dot_product(Complex::Ptr rhs, Complex &result);
+
+private:
+  DotVector re;
+  DotVector im;
+};
+
 
 }  // namespace kernels
 
