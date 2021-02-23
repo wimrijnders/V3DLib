@@ -34,7 +34,7 @@ struct TriSettings : public Settings {
 // Kernels
 ///////////////////////////////////////////
 
-void tri_int(Ptr<Int> p) {
+void tri_int(Int::Ptr p) {
   p += me()*16;
 
   Int n = *p;
@@ -49,7 +49,7 @@ void tri_int(Ptr<Int> p) {
 }
 
 
-void tri_float(Ptr<Float> p) {
+void tri_float(Float::Ptr p) {
   p += me()*16;
 
   Int n = toInt(*p);

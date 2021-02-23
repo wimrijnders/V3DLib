@@ -2,7 +2,6 @@
 #define _V3DLIB_VC4_DMA_OPERATIONS_H_
 #include "Source/Int.h"     // IntExpr
 #include "Source/Float.h"   // FloatExpr
-#include "Source/Ptr.h"
 #include "Source/Stmt.h"    // stmtStack()
 
 namespace V3DLib {
@@ -24,20 +23,20 @@ inline void vpmPut(FloatExpr data) { vpmPutExpr(data.expr()); }
 template <typename T>
 inline void vpmPut(PtrExpr<T> data) { vpmPutExpr(data.expr()); }
 
-template <typename T>
-inline void vpmPut(Ptr<T> &data)    { vpmPutExpr(data.expr()); }
+template <typename Ptr>
+inline void vpmPut(Ptr &data)    { vpmPutExpr(data.expr()); }
 
 template <typename T>
 inline void dmaStartRead(PtrExpr<T> memAddr) { dmaStartReadExpr(memAddr.expr()); }
 
-template <typename T>
-inline void dmaStartRead(Ptr<T> &memAddr)    { dmaStartReadExpr(memAddr.expr()); }
+template <typename Ptr>
+inline void dmaStartRead(Ptr &memAddr)    { dmaStartReadExpr(memAddr.expr()); }
 
 template <typename T>
 inline void dmaStartWrite(PtrExpr<T> memAddr) { dmaStartWriteExpr(memAddr.expr()); }
 
-template <typename T>
-inline void dmaStartWrite(Ptr<T> &memAddr)    { dmaStartWriteExpr(memAddr.expr()); }
+template <typename Ptr>
+inline void dmaStartWrite(Ptr &memAddr)    { dmaStartWriteExpr(memAddr.expr()); }
 
 void vpmSetupRead(Dir dir, int n, IntExpr addr, int stride = 1);
 void vpmSetupWrite(Dir dir, IntExpr addr, int stride = 1);

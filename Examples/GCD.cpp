@@ -6,7 +6,7 @@ using namespace V3DLib;
 
 V3DLib::Settings settings;
 
-void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
+void gcd(Int::Ptr p, Int::Ptr q, Int::Ptr r) {
   Int a = *p;
   Int b = *q;
 

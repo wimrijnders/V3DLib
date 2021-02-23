@@ -188,13 +188,13 @@ using namespace V3DLib;
 namespace {
 const int VEC_SIZE = 16;
 
-void next(Ptr<Int> &result, Int &r) {
+void next(Int::Ptr &result, Int &r) {
   *result = r;
   result += VEC_SIZE;
   r = 0;
 }
 
-void where_kernel(Ptr<Int> result) {
+void where_kernel(Int::Ptr result) {
   Int a = index();
   Int r = 0;
 
@@ -209,7 +209,7 @@ void where_kernel(Ptr<Int> result) {
 }
 
 
-void andor_kernel(Ptr<Int> result) {
+void andor_kernel(Int::Ptr result) {
   Int a = index();
   Int r = 0;
 
@@ -230,7 +230,7 @@ void andor_kernel(Ptr<Int> result) {
 }
 
 
-void noloop_where_kernel(Ptr<Int> result, Int x, Int y) {
+void noloop_where_kernel(Int::Ptr result, Int x, Int y) {
   Int tmp = 0;
   Where (y > 10 && y < 20 && x > 10 && x < 20)
     tmp = 1;
@@ -239,7 +239,7 @@ void noloop_where_kernel(Ptr<Int> result, Int x, Int y) {
 }
 
 
-void noloop_if_and_kernel(Ptr<Int> result, Int x, Int y) {
+void noloop_if_and_kernel(Int::Ptr result, Int x, Int y) {
   Int tmp = 0;
   If (y > 10 && y < 20 && x > 10 && x < 20)
     tmp = 1;
@@ -248,7 +248,7 @@ void noloop_if_and_kernel(Ptr<Int> result, Int x, Int y) {
 }
 
 
-void noloop_if_andor_kernel(Ptr<Int> result, Int x, Int y) {
+void noloop_if_andor_kernel(Int::Ptr result, Int x, Int y) {
   Int tmp = 0;
   If ((y > 10 && y < 20) || (x > 10 && x < 20))
     tmp = 1;
@@ -257,7 +257,7 @@ void noloop_if_andor_kernel(Ptr<Int> result, Int x, Int y) {
 }
 
 
-void noloop_multif_kernel(Ptr<Int> result, Int x, Int y) {
+void noloop_multif_kernel(Int::Ptr result, Int x, Int y) {
   Int tmp = 0;
   If (y > 10)
   If (y < 20)
@@ -273,9 +273,9 @@ void noloop_multif_kernel(Ptr<Int> result, Int x, Int y) {
 }
 
 
-void andor_where_kernel(Ptr<Float> result, Int width, Int height) {
+void andor_where_kernel(Float::Ptr result, Int width, Int height) {
   For (Int y = 0, y < height, y += 1)
-    Ptr<Float> p = result + y*width;  // Point p to the output row
+    Float::Ptr p = result + y*width;  // Point p to the output row
 
     For (Int x = 0, x < width, x += VEC_SIZE)
       Float tmp = toFloat(1024);
@@ -289,9 +289,9 @@ void andor_where_kernel(Ptr<Float> result, Int width, Int height) {
 }
 
 
-void andor_if_kernel(Ptr<Float> result, Int width, Int height) {
+void andor_if_kernel(Float::Ptr result, Int width, Int height) {
   For (Int y = 0, y < height, y += 1)
-    Ptr<Float> p = result + y*width;  // Point p to the output row
+    Float::Ptr p = result + y*width;  // Point p to the output row
 
     For (Int x = 0, x < width, x += VEC_SIZE)
       Float tmp = toFloat(1024);
@@ -305,9 +305,9 @@ void andor_if_kernel(Ptr<Float> result, Int width, Int height) {
 }
 
 
-void andor_multi_if_kernel(Ptr<Float> result, Int width, Int height) {
+void andor_multi_if_kernel(Float::Ptr result, Int width, Int height) {
   For (Int y = 0, y < height, y = y + 1)
-    Ptr<Float> p = result + y*width;  // Point p to the output row
+    Float::Ptr p = result + y*width;  // Point p to the output row
 
     For (Int x = 0, x < width, x = x + VEC_SIZE)
       Float tmp = toFloat(1024);

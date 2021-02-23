@@ -45,7 +45,7 @@ void receive(Float &dest) { receiveExpr(dest.expr()); }
 // With gather limit
 //=============================================================================
 
-void gather(Ptr<Float> &addr_a, Ptr<Float> &addr_b) {
+void gather(Float::Ptr &addr_a, Float::Ptr &addr_b) {
   int count = Platform::gather_limit()/2;
 
   for (int i = 0; i < count; ++ i) {
@@ -57,7 +57,7 @@ void gather(Ptr<Float> &addr_a, Ptr<Float> &addr_b) {
 }
 
 
-void receive(Float &dst, Ptr<Float> &src) {
+void receive(Float &dst, Float::Ptr &src) {
   receive(dst);
   gatherBaseExpr(src);
   src.inc();

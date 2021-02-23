@@ -37,9 +37,9 @@ class DotVector {
 public:
   DotVector(int size);
 
-  void load(Ptr<Float> input);
-  void save(Ptr<Float> output);
-  void dot_product(Ptr<Float> rhs, Float &result);
+  void load(Float::Ptr input);
+  void save(Float::Ptr output);
+  void dot_product(Float::Ptr rhs, Float &result);
   size_t size() const { return elements.size(); }
   Float &operator[] (int index) { return elements[index]; }
   Float const &operator[] (int index) const { return elements[index]; }
@@ -60,7 +60,7 @@ enum MatrixReadMethod {
 };
 
 void square_matrix_mult_scalar(int N, float *c, float *a, float *b);
-void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b);
+void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b);
 
 using FuncType = decltype(matrix_mult);
 

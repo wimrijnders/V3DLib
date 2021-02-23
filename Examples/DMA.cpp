@@ -6,7 +6,7 @@ using namespace V3DLib;
 
 V3DLib::Settings settings;
 
-void dma(Ptr<Int> p) {
+void dma(Int::Ptr p) {
   // Setup load of 16 vectors into VPM, starting at word address 0
   dmaSetReadPitch(64);
   dmaSetupRead(HORIZ, 16, 0);

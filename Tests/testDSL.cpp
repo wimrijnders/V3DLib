@@ -77,13 +77,13 @@ void check_vectors(SharedArray<T> &result, std::vector<std::vector<T>> const &ex
 // Kernel definition(s)
 //=============================================================================
 
-void out(Int &res, Ptr<Int> &result) {
+void out(Int &res, Int::Ptr &result) {
   *result = res;
   result = result + 16;
 }
 
 
-void test(Cond cond, Ptr<Int> &result) {
+void test(Cond cond, Int::Ptr &result) {
   Int res = -1;  // temp variable for result of condition, -1 is unexpected value
 
   If (cond)
@@ -101,7 +101,7 @@ void test(Cond cond, Ptr<Int> &result) {
  *
  * TODO: Why is distinction BoolExpr <-> Cond necessary? Almost the same
  */
-void test(BoolExpr cond, Ptr<Int> &result) {
+void test(BoolExpr cond, Int::Ptr &result) {
   Int res = -1;  // temp variable for result of condition, -1 is unexpected value
 
   If (cond)
@@ -114,7 +114,7 @@ void test(BoolExpr cond, Ptr<Int> &result) {
 }
 
 
-void kernel_specific_instructions(Ptr<Int> result) {
+void kernel_specific_instructions(Int::Ptr result) {
   Int a = index();
   Int b = a ^ 1;
   out(b, result);
@@ -124,7 +124,7 @@ void kernel_specific_instructions(Ptr<Int> result) {
 /**
  * @brief Kernel for testing If and When
  */
-void kernelIfWhen(Ptr<Int> result) {
+void kernelIfWhen(Int::Ptr result) {
   Int outIndex = index();
   Int a = index();
 
@@ -335,7 +335,7 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
 // Test for specific DSL operations.
 //-----------------------------------------------------------------------------
 
-void int_ops_kernel(Ptr<Int> result) {
+void int_ops_kernel(Int::Ptr result) {
   using namespace V3DLib::functions;
 
   auto store = [&result] (IntExpr const &val) {
@@ -360,7 +360,7 @@ void int_ops_kernel(Ptr<Int> result) {
 }
 
 
-void float_ops_kernel(Ptr<Float> result) {
+void float_ops_kernel(Float::Ptr result) {
   Float a = toFloat(index());
   a += 3.0f;
   a += 0.25f;
@@ -416,7 +416,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
 }
 
 
-void nested_for_kernel(Ptr<Int> result) {
+void nested_for_kernel(Int::Ptr result) {
   int const COUNT = 3;
   Int x = 0;
 
@@ -457,8 +457,8 @@ TEST_CASE("Test For-loops", "[dsl][for]") {
 } 
 
 
-template<typename T>
-void rot_kernel(Ptr<T> result, Ptr<T> a) {
+template<typename T, typename Ptr>
+void rot_kernel(Ptr result, Ptr a) {
   T val = *a;
   T val2 = *a;
 
@@ -495,7 +495,7 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
     }
   };
 
-  auto k = compile(rot_kernel<Int>);
+  auto k = compile(rot_kernel<Int, Int::Ptr>);
   k.pretty(true, "obj/test/rot_kernel.txt", false);
   k.load(&result1, &a);
 
@@ -519,8 +519,8 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
  * This should try out all the possible ways of reading and writing
  * main memory.
  */
-template<typename T>
-void offsets_kernel(Ptr<T> result, Ptr<T> src) {
+template<typename T, typename Ptr>
+void offsets_kernel(Ptr result, Ptr src) {
   Int a = index();
   *result = a;
   result.inc();
@@ -587,7 +587,7 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
 
 
   SECTION("Test with TMU") {
-    auto k = compile(offsets_kernel<Int>);
+    auto k = compile(offsets_kernel<Int, Int::Ptr>);
     k.load(&result, &a);
 
     reset();
@@ -607,7 +607,7 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
   SECTION("Test with DMA") {
     LibSettings::use_tmu_for_load(false);
 
-    auto k = compile(offsets_kernel<Int>);
+    auto k = compile(offsets_kernel<Int, Int::Ptr>);
     //k.pretty(true, nullptr, false);
     k.load(&result, &a);
 

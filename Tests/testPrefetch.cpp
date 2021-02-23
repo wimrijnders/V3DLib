@@ -6,10 +6,10 @@ namespace {
 
 using namespace V3DLib;
 
-template<typename T>
-void prefetch_kernel(Ptr<T> result, Ptr<T> in_src) {
-  Ptr<T> src = in_src;
-  Ptr<T> dst = result;
+template<typename T, typename Ptr>
+void prefetch_kernel(Ptr result, Ptr in_src) {
+  Ptr src = in_src;
+  Ptr dst = result;
 
   //
   // The usual way of doing things
@@ -70,7 +70,7 @@ void prefetch_kernel(Ptr<T> result, Ptr<T> in_src) {
 
 
 template<int const N>
-void multi_prefetch_kernel(Ptr<Int> result, Ptr<Int> src) {
+void multi_prefetch_kernel(Int::Ptr result, Int::Ptr src) {
   Int a = 234;  // Best to have the receiving var out of the loop,
                 // otherwise it might be recreated in a different register of the rf
                 // (Unproven but probably correct hypothesis)
@@ -97,7 +97,7 @@ TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
     SharedArray<int> result(16*N);
     result.fill(-1);
 
-    auto k = compile(prefetch_kernel<Int>);
+    auto k = compile(prefetch_kernel<Int, Int::Ptr>);
     //k.pretty(true);
     //k.pretty(false);
     k.load(&result, &src);
@@ -122,7 +122,7 @@ TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
     SharedArray<float> result(16*N);
     result.fill(-1);
 
-    auto k = compile(prefetch_kernel<Float>);
+    auto k = compile(prefetch_kernel<Float, Float::Ptr>);
     k.load(&result, &src);
     k.interpret();
 

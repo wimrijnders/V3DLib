@@ -3,6 +3,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_INT_H_
 #define _V3DLIB_SOURCE_INT_H_
+#include "Ptr.h"
 #include "Common/Seq.h"
 #include "Expr.h"
 
@@ -18,21 +19,16 @@ template <typename T> struct Deref; // Forward declaration template class
 
 
 // ============================================================================
-// Types                   
+// Class Int                   
 // ============================================================================
 
-// An 'IntExpr' defines an integer vector expression which can
-// only be used on the RHS of assignment statements.
-
-struct IntExpr : public BaseExpr {
-  IntExpr(int x);
-  IntExpr(Expr::Ptr e) : BaseExpr(e) {}
-};
-
-// An 'Int' defines an integer vector variable which can be used in
-// both the LHS and RHS of an assignment.
-
+/**
+ * An 'Int' defines an integer vector variable which can be used in
+ * both the LHS and RHS of an assignment.
+ */
 struct Int : public BaseExpr {
+  using Ptr = V3DLib::ptr::Ptr<Int>;
+
   Int();
   Int(int x);
   Int(IntExpr e);

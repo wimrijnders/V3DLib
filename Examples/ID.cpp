@@ -5,7 +5,7 @@ using namespace V3DLib;
 
 V3DLib::Settings settings;
 
-void id_kernel(Ptr<Int> p, Ptr<Int> q) {
+void id_kernel(Int::Ptr p, Int::Ptr q) {
   p += 16*me();
   q += 16*me();
 

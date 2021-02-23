@@ -85,6 +85,21 @@ private:
 };
 
 
+// ============================================================================
+// class IntExpr                   
+// ============================================================================
+
+/**
+ * An 'IntExpr' defines an integer vector expression which can
+ * only be used on the RHS of assignment statements.
+ */
+class IntExpr : public BaseExpr {
+public:
+  IntExpr(int x);
+  IntExpr(Expr::Ptr e) : BaseExpr(e) {}
+};
+
+
 // Functions to construct expressions
 Expr::Ptr mkIntLit(int lit);
 Expr::Ptr mkVar(Var var);

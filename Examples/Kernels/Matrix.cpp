@@ -89,7 +89,7 @@ void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
 }
 
 
-void pre_read(Float &dst, Ptr<Float> &src, int prefetch_label) {
+void pre_read(Float &dst, Float::Ptr &src, int prefetch_label) {
   // on v3d, TMU is used always
 
   switch (settings.read_method) {
@@ -111,7 +111,7 @@ void pre_read(Float &dst, Ptr<Float> &src, int prefetch_label) {
 }
 
 
-void pre_write(Ptr<Float> &dst, Float &src) {
+void pre_write(Float::Ptr &dst, Float &src) {
   // on v3d, TMU is used always
 
   switch (settings.read_method) {
@@ -141,14 +141,14 @@ DotVector::DotVector(int size) {
 }
 
 
-void DotVector::load(Ptr<Float> input) {
+void DotVector::load(Float::Ptr input) {
   for (int i = 0; i < (int) elements.size(); ++i) {
     pre_read(elements[i], input, 1);
   }
 }
 
 
-void DotVector::save(Ptr<Float> output) {
+void DotVector::save(Float::Ptr output) {
   for (int i = 0; i < (int) elements.size(); ++i) {
     pre_write(output, elements[i]);
   }
@@ -160,7 +160,7 @@ void DotVector::save(Ptr<Float> output) {
  *
  * All vector elements of the result will contain the same value.
  */
-void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
+void DotVector::dot_product(Float::Ptr rhs, Float &result) {
   Float tmp = 0;  comment("DotVector::dot_product()");
 
   for (int i = 0; i < (int) elements.size(); ++i) {
@@ -218,7 +218,7 @@ void square_matrix_mult_scalar(int N, float *c, float *a, float *b) {
  * - Use all QPU's
  * - All QPU's iterate over b together -> increase cache hits
  */
-void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
+void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
   int const DIM = settings.inner;
   Int STEP = DIM*numQPUs();
@@ -229,9 +229,9 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
   Float result;
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
-    Ptr<Float> dst_local = dst + (a_index + me())*settings.cols_result();
+    Float::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
 
-    Ptr<Float> b_local = b;
+    Float::Ptr b_local = b;
 
     vec.load(a);
 
@@ -339,8 +339,8 @@ size_t ComplexDotVector::size() const {
 
 
 void ComplexDotVector::load(Complex::Ptr const &rhs) {
-  Ptr<Float> rhs_re = rhs.re();
-  Ptr<Float> rhs_im = rhs.im();
+  Float::Ptr rhs_re = rhs.re();  // Need to init ptr's here so that they are initialized before prefetch
+  Float::Ptr rhs_im = rhs.im();
 
   for (int i = 0; i < (int) size(); ++i) {
     pre_read(re[i], rhs_re, 1);
@@ -351,8 +351,8 @@ void ComplexDotVector::load(Complex::Ptr const &rhs) {
 
 void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
   Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
-  Ptr<Float> rhs_re = rhs.re();
-  Ptr<Float> rhs_im = rhs.im();
+  Float::Ptr rhs_re = rhs.re();
+  Float::Ptr rhs_im = rhs.im();
 
   for (int i = 0; i < (int) size(); ++i) {
     Complex tmp1(re[i], im[i]);

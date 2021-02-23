@@ -21,8 +21,7 @@ inline void gather(PtrExpr<T> addr) {
 }
 
 
-template <typename T>
-inline void gather(Ptr<T> &addr) {
+inline void gather(Pointer &addr) {
   gatherBaseExpr(addr);
 }
 
@@ -31,16 +30,15 @@ void receiveExpr(Expr::Ptr e);
 void receive(Int &dest);
 void receive(Float &dest);
 
-template <typename T>
-inline void receive(Ptr<T> &dest) { receiveExpr(dest.expr); }
+inline void receive(BaseExpr &dest) { receiveExpr(dest.expr()); }
 
 
 //=============================================================================
 // Gather, receive with gather limit
 //=============================================================================
 
-void gather(Ptr<Float> &addr_a, Ptr<Float> &addr_b);
-void receive(Float &dst, Ptr<Float> &src);
+void gather(Float::Ptr &addr_a, Float::Ptr &addr_b);
+void receive(Float &dst, Float::Ptr &src);
 void receive();
 
 }  // namespace V3DLib

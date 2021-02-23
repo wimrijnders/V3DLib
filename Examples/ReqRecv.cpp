@@ -5,7 +5,7 @@ using namespace V3DLib;
 
 V3DLib::Settings settings;
 
-void kernel(Ptr<Int> p) {
+void kernel(Int::Ptr p) {
   Int x, y;
 
   gather(p);

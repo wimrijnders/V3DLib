@@ -142,7 +142,7 @@ void mandelbrot_cpu(int *result) {
 void mandelbrotCore(
   Complex c,
   Int &numIterations,
-  Ptr<Int> &dst
+  Int::Ptr &dst
 ) {
   Int count = 0;
   Complex x = c;
@@ -172,12 +172,12 @@ void mandelbrot_single(
   Float offsetX, Float offsetY,
   Int numStepsWidth, Int numStepsHeight,
   Int numIterations,
-  Ptr<Int> result
+  Int::Ptr result
 ) {
   For (Int yStep = 0, yStep < numStepsHeight, yStep++)
     For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
       Int xIndex = xStep + index();
-      Ptr<Int> dst = result + xStep + yStep*numStepsWidth;
+      Int::Ptr dst = result + xStep + yStep*numStepsWidth;
 
       mandelbrotCore(
         Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm   - offsetY*toFloat(yStep)),
@@ -196,14 +196,14 @@ void mandelbrot_multi(
   Float offsetX, Float offsetY,
   Int numStepsWidth, Int numStepsHeight,
   Int numIterations,
-  Ptr<Int> result
+  Int::Ptr result
 ) {
   For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep = yStep + numQPUs())
     Int yIndex = yStep + me();
 
     For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
       Int xIndex = xStep + index();
-      Ptr<Int> dst = result + xStep + yIndex*numStepsWidth;
+      Int::Ptr dst = result + xStep + yIndex*numStepsWidth;
 
       mandelbrotCore(
         Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm   - offsetY*toFloat(yIndex)),

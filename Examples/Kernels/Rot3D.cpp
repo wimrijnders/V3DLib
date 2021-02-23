@@ -31,7 +31,7 @@ void rot3D(int n, float cosTheta, float sinTheta, float* x, float* y) {
 // Kernel version 1
 // ============================================================================
 
-void rot3D_1(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
+void rot3D_1(Int n, Float cosTheta, Float sinTheta, Float::Ptr x, Float::Ptr y) {
   For (Int i = 0, i < n, i += 16)
     Float xOld = x[i];
     Float yOld = y[i];
@@ -41,13 +41,13 @@ void rot3D_1(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) 
 }
 
 
-void rot3D_1a(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
+void rot3D_1a(Int n, Float cosTheta, Float sinTheta, Float::Ptr x, Float::Ptr y) {
 
   Int step = numQPUs() << 4;
   x += me()*16;
   y += me()*16;
 
-  auto read = [] (Float &dst, Ptr<Float> &src) {
+  auto read = [] (Float &dst, Float::Ptr &src) {
     dst = *src;
     //gather(src);
     //receive(dst);
@@ -73,10 +73,10 @@ void rot3D_1a(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y)
 // Kernel version 2
 // ============================================================================
 
-void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
+void rot3D_2(Int n, Float cosTheta, Float sinTheta, Float::Ptr x, Float::Ptr y) {
   Int inc = numQPUs() << 4;
-  Ptr<Float> p = x + me()*16;
-  Ptr<Float> q = y + me()*16;
+  Float::Ptr p = x + me()*16;
+  Float::Ptr q = y + me()*16;
 
   gather(p); gather(q);
  
@@ -104,7 +104,7 @@ namespace {
 }  // anon namespace
 
 
-void rot3D_3(Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
+void rot3D_3(Float cosTheta, Float sinTheta, Float::Ptr x, Float::Ptr y) {
   assert(N != -1);
   assert(numQPUs != -1);
   assertq(N % (16*numQPUs) == 0, "N must be a multiple of '16*numQPUs'");
@@ -114,10 +114,10 @@ void rot3D_3(Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
 
   Int adjust = me()*size;
 
-  Ptr<Float> p_src = x + adjust;
-  Ptr<Float> q_src = y + adjust;
-  Ptr<Float> p_dst = x + adjust;
-  Ptr<Float> q_dst = y + adjust;
+  Float::Ptr p_src = x + adjust;
+  Float::Ptr q_src = y + adjust;
+  Float::Ptr p_dst = x + adjust;
+  Float::Ptr q_dst = y + adjust;
 
   gather(p_src, q_src);
  

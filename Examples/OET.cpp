@@ -8,7 +8,7 @@ V3DLib::Settings settings;
 /**
  * Odd/even transposition sorter for a 32-element array
  */
-void oet(Ptr<Int> p) {
+void oet(Int::Ptr p) {
   Int evens = *p;
   Int odds  = *(p+16);
 

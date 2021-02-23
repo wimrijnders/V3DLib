@@ -7,7 +7,7 @@ V3DLib::Settings settings;
 
 
 // Define function that runs on the GPU.
-void hello(Ptr<Int> p) {
+void hello(Int::Ptr p) {
   *p = 1;
 }
 

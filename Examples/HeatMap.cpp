@@ -138,10 +138,10 @@ void run_scalar() {
 // ============================================================================
 
 struct Cursor {
-  Ptr<Float> addr;
+  Float::Ptr addr;
   Float prev, current, next;
 
-  void init(Ptr<Float> p) {
+  void init(Float::Ptr p) {
     gather(p); comment("Cursor init");
     current = 0.0f;
     addr = p + 16;
@@ -185,13 +185,13 @@ struct Cursor {
 /**
  * Performs a single step for the heat transfer
  */
-void heatmap_kernel(Ptr<Float> map, Ptr<Float> mapOut, Int height, Int width) {
+void heatmap_kernel(Float::Ptr map, Float::Ptr mapOut, Int height, Int width) {
   Cursor row[3];
 
   For (Int y = 1, y < height - 1 - numQPUs(), y = y + numQPUs())
     // Point p to the in- and output row
-    Ptr<Float> p_in = map    + (y + me())*width;
-    Ptr<Float> p    = mapOut + (y + me())*width;
+    Float::Ptr p_in = map    + (y + me())*width;
+    Float::Ptr p    = mapOut + (y + me())*width;
 
     // Initialize three cursors for the three input rows
     for (int i = 0; i < 3; i++) row[i].init(p_in + (i - 1)*width);

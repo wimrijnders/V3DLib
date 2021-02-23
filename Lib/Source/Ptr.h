@@ -4,7 +4,7 @@
 ///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_PTR_H_
 #define _V3DLIB_SOURCE_PTR_H_
-#include "Int.h"
+#include "Common/Seq.h"
 #include "CExpr.h"
 #include "Support/debug.h"
 
@@ -46,7 +46,7 @@ public:
   void inc();
   PointerExpr operator=(PointerExpr rhs);
   PointerExpr operator+(int b);
-  PointerExpr operator+=(Int &b);
+  PointerExpr operator+=(IntExpr b);
   PointerExpr operator+=(int b);
   PointerExpr operator+(IntExpr b);
   PointerExpr operator-(IntExpr b);
@@ -57,7 +57,7 @@ public:
 
 protected:
   PointerExpr addself(int b);
-  PointerExpr bare_addself(Int &b);
+  PointerExpr bare_addself(IntExpr b);
   PointerExpr addself(IntExpr b);
   PointerExpr subself(IntExpr b);
   PointerExpr add(int b);
@@ -125,6 +125,8 @@ struct PtrExpr : public PointerExpr {
 };
 
 
+namespace ptr {  // Used to convert Ptr's to member classes of data types
+
 /**
  * A 'Ptr<T>' defines a pointer variable which can be used in both the lhs and
  * rhs of an assignment.
@@ -185,6 +187,8 @@ Ptr<T> Ptr<T>::mkArg() {
   x = PtrExpr<T>(getUniformPtr());
   return x;
 }
+
+}  // namespace Ptr
 
 }  // namespace V3DLib
 

@@ -3,7 +3,6 @@
 #include <tuple>
 #include <algorithm>  // std::move
 #include "Source/Int.h"
-#include "Source/Ptr.h"
 #include "Source/Complex.h"
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
@@ -37,8 +36,8 @@ template <typename T, typename t> inline bool passParam(Seq<int32_t>* uniforms, 
  * Even so, I'm probably doing it wrong.
  */
 template <>
-inline bool passParam< Ptr<Float>, Shared2DArray<float>* > (Seq<int32_t>* uniforms, Shared2DArray<float> *p) {
-  return Ptr<Float>::passParam(uniforms, &((BaseSharedArray const &) p->get_parent()));
+inline bool passParam< Float::Ptr, Shared2DArray<float>* > (Seq<int32_t>* uniforms, Shared2DArray<float> *p) {
+  return Float::Ptr::passParam(uniforms, &((BaseSharedArray const &) p->get_parent()));
 }
 
 

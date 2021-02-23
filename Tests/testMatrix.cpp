@@ -34,7 +34,7 @@ void run_kernel(Kernel &k) {
 /**
  * Kernel to test correct working of `rotate_sum`
  */
-void check_sum_kernel(Ptr<Float> input, Ptr<Float> result) {
+void check_sum_kernel(Float::Ptr input, Float::Ptr result) {
   Float val = *input;
   Float sum;
 
@@ -46,7 +46,7 @@ void check_sum_kernel(Ptr<Float> input, Ptr<Float> result) {
 /**
  * Kernel to test correct working of `set_at`
  */
-void check_set_at(Ptr<Float> input, Ptr<Float> result, Int index) {
+void check_set_at(Float::Ptr input, Float::Ptr result, Int index) {
   Float a = *input;
   Float b = *result;
 
@@ -59,7 +59,7 @@ void check_set_at(Ptr<Float> input, Ptr<Float> result, Int index) {
  * Kernel for unit testing dot vectors
  */
 template<int const N>
-void check_dotvector(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> result) {
+void check_dotvector(Float::Ptr dst, Float::Ptr a, Float::Ptr result) {
   kernels::DotVector vec(N);
   vec.load(a);
   vec.save(dst);
@@ -280,7 +280,7 @@ void test_square_matrix_multiplication(int dimension) {
 
 
 
-void test_matrix_multiplication (int rows, int inner, int cols, float init_a = 1, float init_b = 1) {
+void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1, float init_b = 1) {
   REQUIRE(rows > 0);
   REQUIRE(inner > 0);
   REQUIRE(cols > 0);

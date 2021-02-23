@@ -18,7 +18,7 @@ namespace {
  * This doesn't appear to do anything useful, but it does.
  * Used to check translation of immediate values.
  */
-void immediate_kernel(Ptr<Int> int_result, Ptr<Float> float_result) {
+void immediate_kernel(Int::Ptr int_result, Float::Ptr float_result) {
   // 25 failed at one time
   *int_result   = 25;     int_result   += 16;
   *int_result   = -25;                         // Negative values should work as well

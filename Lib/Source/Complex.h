@@ -1,7 +1,7 @@
 #ifndef _V3DLIB_SOURCE_COMPLEX_H_
 #define _V3DLIB_SOURCE_COMPLEX_H_
 #include "Common/SharedArray.h"
-#include "Ptr.h"
+#include "Int.h"
 #include "Float.h"
 
 namespace V3DLib {
