@@ -483,12 +483,14 @@ void test_complex_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_complex_dotvector<N>);
-  k.pretty(true, "obj/test/check_complex_dotvector.txt", false);
+  //k.pretty(true, "obj/test/check_complex_dotvector.txt", false);
   k.load(&b, &a, &result);
   k.call();
 
   for (int i = 0; i < (int) a.size(); i++) {
     INFO("N: " << N << ", i: " << i);
+    INFO("a: " << a.dump());
+    INFO("b: " << b.dump());
     REQUIRE(a[i] == b[i]);
   }
 

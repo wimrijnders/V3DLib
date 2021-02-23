@@ -25,7 +25,7 @@ struct matrix_settings {
   int rows;
   int inner;
   int columns;
-  MatrixReadMethod read_method = DEFAULT;
+  MatrixReadMethod read_method = DO_PREFETCH;
 
   /**
    * The column size of the result array needs to be a multiple of 16
@@ -163,8 +163,6 @@ void DotVector::save(Ptr<Float> output) {
 void DotVector::dot_product(Ptr<Float> rhs, Float &result) {
   Float tmp = 0;  comment("DotVector::dot_product()");
 
-  prefetch(2);
-
   for (int i = 0; i < (int) elements.size(); ++i) {
     Float tmp2;
     pre_read(tmp2, rhs, 2);
@@ -235,7 +233,6 @@ void matrix_mult(Ptr<Float> dst, Ptr<Float> a, Ptr<Float> b) {
 
     Ptr<Float> b_local = b;
 
-    prefetch(1);
     vec.load(a);
 
     Int b_index;
@@ -341,21 +338,21 @@ size_t ComplexDotVector::size() const {
 }
 
 
-void ComplexDotVector::load(Complex::Ptr input) {
-  prefetch(1);
+void ComplexDotVector::load(Complex::Ptr const &rhs) {
+  Ptr<Float> rhs_re = rhs.re();
+  Ptr<Float> rhs_im = rhs.im();
 
-  re.load(input.re());
-  im.load(input.im());
+  for (int i = 0; i < (int) size(); ++i) {
+    pre_read(re[i], rhs_re, 1);
+    pre_read(im[i], rhs_im, 1);
+  }
 }
 
 
 void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
-  assert(re.size() == im.size());
   Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
   Ptr<Float> rhs_re = rhs.re();
   Ptr<Float> rhs_im = rhs.im();
-
-  prefetch(2);
 
   for (int i = 0; i < (int) size(); ++i) {
     Complex tmp1(re[i], im[i]);

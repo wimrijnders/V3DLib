@@ -41,6 +41,7 @@ public:
   void save(Ptr<Float> output);
   void dot_product(Ptr<Float> rhs, Float &result);
   size_t size() const { return elements.size(); }
+  Float &operator[] (int index) { return elements[index]; }
   Float const &operator[] (int index) const { return elements[index]; }
 
 private:
@@ -83,7 +84,7 @@ public:
 
   size_t size() const;
 
-  void load(Complex::Ptr input);
+  void load(Complex::Ptr const &rhs);
 
   void save(Complex::Ptr output) {
     re.save(output.re());
