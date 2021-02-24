@@ -108,13 +108,17 @@ void Complex::set_at(Int n, Complex const &src) {
 // Class Complex::Ptr
 ///////////////////////////////////////////////////////////////////////////////
 
+// TODO prob wrong, get rid of this
 Complex::Ptr::Ptr(ComplexExpr rhs) {
   m_re = rhs.re();
   m_im = rhs.im();
 }
 
 
-Complex::Ptr::Deref::Deref(Expr::Ptr re, Expr::Ptr im) : m_re(re), m_im(im) {}
+Complex::Ptr::Ptr(Ptr::Expr rhs) : m_re(rhs.m_re), m_im(rhs.m_im) {}
+
+
+Complex::Ptr::Deref::Deref(V3DLib::Expr::Ptr re, V3DLib::Expr::Ptr im) : m_re(re), m_im(im) {}
 
 
 /**
@@ -135,9 +139,24 @@ Complex::Ptr::Deref Complex::Ptr::operator*() {
 }
 
 
+Complex::Ptr &Complex::Ptr::operator+=(IntExpr rhs) {
+  m_re += rhs;
+  m_im += rhs;
+  return *this;
+}
+
+
+Complex::Ptr::Expr Complex::Ptr::operator+(IntExpr b)  {
+  Expr ret(*this);
+  ret.m_re = m_re + b;
+  ret.m_im = m_im + b;
+  return ret;
+}
+
+
 Complex::Ptr Complex::Ptr::mkArg() {
-  Expr::Ptr re_e = Pointer::getUniformPtr();
-  Expr::Ptr im_e = Pointer::getUniformPtr();
+  V3DLib::Expr::Ptr re_e = Pointer::getUniformPtr();
+  V3DLib::Expr::Ptr im_e = Pointer::getUniformPtr();
 
   Complex::Ptr x = ComplexExpr(re_e, im_e);
   return x;

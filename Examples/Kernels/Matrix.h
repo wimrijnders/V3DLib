@@ -99,6 +99,19 @@ private:
 };
 
 
+void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b);
+
+using ComplexFuncType = decltype(complex_matrix_mult);
+
+
+ComplexFuncType *complex_matrix_mult_decorator(
+  Shared2DArray<complex> &a,
+  Shared2DArray<complex> &b,
+  Shared2DArray<complex> &result,
+  MatrixReadMethod read_method
+);
+
+
 }  // namespace kernels
 
 #endif  // _EXAMPLES_KERNELS_MATRIX_H_

@@ -97,7 +97,7 @@ struct Deref : public BaseExpr {
  */
 template <typename T>
 struct PtrExpr : public PointerExpr {
-  PtrExpr(Expr::Ptr e) : PointerExpr(e) {}
+  PtrExpr(Expr::Ptr const &e) : PointerExpr(e) {}
 
   /**
    * Dereference

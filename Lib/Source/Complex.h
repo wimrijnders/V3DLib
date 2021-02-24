@@ -112,7 +112,7 @@ public:
   public:
     class Deref {
     public:
-      Deref(Expr::Ptr re, Expr::Ptr im);
+      Deref(V3DLib::Expr::Ptr re, V3DLib::Expr::Ptr im);
 
       Deref &operator=(Complex const &rhs);
 
@@ -120,10 +120,23 @@ public:
       V3DLib::Deref<Float> m_im;
     };
 
+    class Expr {
+    public:
+      Expr(Complex::Ptr e) : m_re(e.re().expr()), m_im(e.im().expr()) {}
+
+      V3DLib::PtrExpr<Float> m_re;
+      V3DLib::PtrExpr<Float> m_im;
+    };
+
     Ptr(ComplexExpr rhs);
+    Ptr(Ptr::Expr rhs);
 
     Deref operator*();
+    Ptr::Expr operator+(IntExpr b);
+    Ptr &operator+=(IntExpr rhs);
 
+    Float::Ptr &re() { return  m_re; }
+    Float::Ptr &im() { return  m_im; }
     Float::Ptr const &re() const  { return  m_re; }
     Float::Ptr const &im() const  { return  m_im; }
 

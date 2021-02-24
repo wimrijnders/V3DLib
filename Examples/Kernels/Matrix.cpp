@@ -349,6 +349,12 @@ void ComplexDotVector::load(Complex::Ptr const &rhs) {
 }
 
 
+void pre_write(Complex::Ptr &dst, Complex &src) {
+  pre_write(dst.re(), src.re());
+  pre_write(dst.im(), src.im());
+}
+
+
 void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
   Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
   Float::Ptr rhs_re = rhs.re();
@@ -365,6 +371,68 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
 
   rotate_sum(tmp.re(), result.re());
   rotate_sum(tmp.im(), result.im());
+}
+
+
+void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
+  assert(settings.inner > 0 && (settings.inner % 16 == 0));
+  int const DIM = settings.inner;
+  Int STEP = DIM*numQPUs();
+
+  a += me()*DIM;
+
+  ComplexDotVector vec(settings.inner/16);
+  Complex result;
+
+  For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
+    Complex::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
+
+    Complex::Ptr b_local = b;
+
+    vec.load(a);
+
+    Int b_index;
+
+    For (b_index = 0, b_index < settings.columns, b_index++)
+      Complex tmp;
+      vec.dot_product(b_local, tmp);
+
+      result.set_at(b_index & 0xf, tmp);  // intention: b_index % 16
+
+      If ((b_index & 0xf) == 15)
+        pre_write(dst_local, result);
+      End
+
+      b_local += DIM;
+    End  // IDIOT }  - never forget
+
+    If ((b_index & 0xf) != 0)
+      pre_write(dst_local, result);
+    End
+
+    a += STEP;
+  End
+}
+
+
+ComplexFuncType *complex_matrix_mult_decorator(
+  Shared2DArray<complex> &a,
+  Shared2DArray<complex> &b,
+  Shared2DArray<complex> &result,
+  MatrixReadMethod read_method
+) {
+  assert(a.allocated());
+  assert(b.allocated());
+  assertq(!result.allocated(), "matrix_mult_decorator(): result array should not be allocated beforehand.");
+
+  matrix_mult_decorator(a.rows(), a.columns(), b.columns(), read_method);
+
+  // Result array requires column size which is a multiple of 16
+  // Ensure enough padding for result so that size is multiple of 16
+  // It may become too big but never mind
+  result.alloc(a.rows(), settings.cols_result());
+
+  return complex_matrix_mult;
 }
 
 
