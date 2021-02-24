@@ -1,5 +1,6 @@
 #include "Source/Float.h"
 #include "Lang.h"  // only for assign()!
+#include "Functions.h"  // ::set_at()
 
 namespace V3DLib {
 
@@ -111,6 +112,10 @@ Float Float::mkArg() {
   return x;
 }
 
+
+void Float::set_at(Int n, Float const &src) {
+  V3DLib::set_at(*this, n, src);
+}
 
 // ============================================================================
 // Operations

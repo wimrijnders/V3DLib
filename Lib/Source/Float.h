@@ -6,6 +6,7 @@
 #include "Common/Seq.h"
 #include "Expr.h"
 #include "Ptr.h"
+#include "Int.h"
 
 namespace V3DLib {
 
@@ -52,6 +53,8 @@ struct Float : public BaseExpr {
   FloatExpr operator=(FloatExpr const &rhs);
   Float &operator=(Deref<Float> d);
   Float &operator+=(FloatExpr rhs);
+
+  void set_at(Int n, Float const &src);
 
 private:
   Float &self();  // NB: 'me()' as name didn't work here, global me() got used instead in .cpp

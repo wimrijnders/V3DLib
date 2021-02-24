@@ -41,6 +41,14 @@ inline bool passParam< Float::Ptr, Shared2DArray<float>* > (Seq<int32_t>* unifor
 }
 
 
+template <>
+inline bool passParam< Complex::Ptr, Complex::Array2D * > (Seq<int32_t>* uniforms, Complex::Array2D *p) {
+  passParam< Float::Ptr, Shared2DArray<float>* > (uniforms, &p->re());
+  passParam< Float::Ptr, Shared2DArray<float>* > (uniforms, &p->im());
+  return true;
+}
+
+
 // ============================================================================
 // Kernels
 // ============================================================================

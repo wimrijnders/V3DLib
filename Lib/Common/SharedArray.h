@@ -168,9 +168,12 @@ template <typename T>
 class Shared2DArray : private SharedArray<T> {
   using Parent = SharedArray<T>;
 
+public:
+  // made public for Complex::Array2D. In all other cases should be regarded as private
+  // TODO examine if this can be enforced
   struct Row {
-    Row (Parent const *parent, int row, int row_size) :
-      m_parent(const_cast<Parent *>(parent)),
+    Row(Shared2DArray const *parent, int row, int row_size) :
+      m_parent(const_cast<Parent *>((Parent const *) parent)),
       m_row(row),
       m_row_size(row_size) {}
 
@@ -182,7 +185,6 @@ class Shared2DArray : private SharedArray<T> {
     int m_row_size;
   };
 
-public:
   Shared2DArray() = default;
 
   Shared2DArray(int rows, int columns) : SharedArray<T>(rows*columns),  m_rows(rows), m_columns(columns) {
@@ -190,14 +192,6 @@ public:
   }
 
   Shared2DArray(int dimension) : Shared2DArray(dimension, dimension) {}  // for square array
-
-  /**
-   * You can not possibly have any idea how long it took to realize I needed something like this, and
-   * then how long it took to implement and use correctly.
-   *
-   * Even so, I'm probably doing it wrong.
-   */
-  //operator BaseSharedArray const &() { return (BaseSharedArray const &) get_parent(); }
 
   void alloc(uint32_t rows, uint32_t columns) {
     m_rows = rows;

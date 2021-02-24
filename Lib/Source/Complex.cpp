@@ -171,7 +171,7 @@ bool Complex::Ptr::passParam(Seq<int32_t> *uniforms, Complex::Array *p) {
 
 
 ///////////////////////////////////////////////////////////////////////////////
-// Complex::Array
+// Class Complex::Array
 ///////////////////////////////////////////////////////////////////////////////
 
 Complex::Array::ref &Complex::Array::ref::operator=(complex const &rhs) {
@@ -239,6 +239,30 @@ Complex::Array::ref::ref(float &re_ref, float &im_ref) : m_re_ref(re_ref), m_im_
 
 Complex::Array::ref Complex::Array::operator[] (int i) {
   return ref(m_re[i], m_im[i]);
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Complex::2DArray
+///////////////////////////////////////////////////////////////////////////////
+
+Complex::Array2D::Array2D(int rows, int columns) : m_re(rows, columns),  m_im(rows, columns) {}
+
+void Complex::Array2D::fill(complex val) {
+  m_re.fill(val.re());
+  m_im.fill(val.im());
+}
+
+
+int Complex::Array2D::rows() const {
+  assert(m_re.rows() == m_im.rows());
+  return m_re.rows();
+}
+
+
+int Complex::Array2D::columns() const {
+  assert(m_re.columns() == m_im.columns());
+  return m_re.columns();
 }
 
 }  // namespace V3DLib

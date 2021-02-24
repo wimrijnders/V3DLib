@@ -108,6 +108,46 @@ public:
   };
 
 
+  class Array2D {
+    struct Row {
+      Row(Array2D &parent, int row, int row_size) :
+        m_re(&parent.re(), row, row_size),
+        m_im(&parent.im(), row, row_size)
+        {}
+
+      complex operator[] (int col) const { return complex(m_re[col], m_im[col]); }
+
+    private:
+      Shared2DArray<float>::Row m_re;
+      Shared2DArray<float>::Row m_im;
+    };
+
+  public:
+    Array2D() = default;
+    Array2D(int rows, int columns);
+
+    Shared2DArray<float> &re() { return  m_re; }
+    Shared2DArray<float> &im() { return  m_im; }
+
+    void fill(complex val);
+    int rows() const;
+    int columns() const;
+
+    void alloc(uint32_t rows, uint32_t columns) {
+      m_re.alloc(rows, columns);
+      m_im.alloc(rows, columns);
+    }
+
+    bool allocated() const { return m_re.allocated() && m_im.allocated(); }
+
+    Row operator[] (int row) { return Row(*this, row, columns()); }
+
+  private:
+    Shared2DArray<float> m_re;
+    Shared2DArray<float> m_im;
+  };
+
+
   class Ptr {
   public:
     class Deref {

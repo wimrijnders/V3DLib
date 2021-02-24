@@ -50,7 +50,7 @@ void check_set_at(Float::Ptr input, Float::Ptr result, Int index) {
   Float a = *input;
   Float b = *result;
 
-  kernels::set_at(b, index, a);
+  b.set_at(index, a);
   *result = b;
 }
 
@@ -68,7 +68,7 @@ void check_dotvector(Float::Ptr dst, Float::Ptr a, Float::Ptr result) {
   Float tmp2;
 
   vec.dot_product(a, tmp2);       comment("check_dotvector end dot_product");
-  kernels::set_at(tmp, 0, tmp2);  comment("check_dotvector end kernel set_at");
+  tmp.set_at(0, tmp2);            comment("check_dotvector end kernel set_at");
   *result = tmp;
 }
 
@@ -277,7 +277,6 @@ void test_square_matrix_multiplication(int dimension) {
     LibSettings::use_tmu_for_load(true);
   }
 }
-
 
 
 void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1, float init_b = 1) {
@@ -524,6 +523,42 @@ void test_complex_dotvector() {
 }
 
 
+void test_complex_matrix_multiplication(
+  int rows, int inner, int cols,
+  complex init_a = {1, 0},
+  complex init_b = {1, 0}
+) {
+  REQUIRE(rows > 0);
+  REQUIRE(inner > 0);
+  REQUIRE(cols > 0);
+  REQUIRE(inner % 16 == 0);
+
+  Complex::Array2D a(rows, inner);
+  a.fill(init_a);
+  Complex::Array2D b(inner, cols);
+  b.fill(init_b);
+
+  Complex::Array2D result;
+
+  REQUIRE(a.columns() == b.rows());
+
+  auto k = compile(kernels::complex_matrix_mult_decorator(a, b, result));
+  result.fill({-1.0f, -1.0f});
+
+  k.load(&result, &a, &b);
+  run_kernel(k);
+  //dump_array(result.get_parent(), cols_result);
+
+  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < cols; ++c) {
+      INFO("r: " << r << ", c: " << c);
+      REQUIRE(result[r][c] == init_a*init_b);
+    }
+  }
+}
+
+
 TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex][]") {
 //  Platform::use_main_memory(true);
 
@@ -531,6 +566,14 @@ TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex][]
     test_complex_dotvector<1>();
     test_complex_dotvector<4>();
     test_complex_dotvector<10>();
+  }
+
+  SECTION("Check complex matrix multiplication") {
+
+    // TODO same thing with > 1 QPUs
+    //      add warning in matrix mult kernel about this
+
+    test_complex_matrix_multiplication( 1,    16,   1);
   }
 
 
