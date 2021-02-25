@@ -8,6 +8,11 @@ namespace V3DLib {
 
 class Complex;
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Class ComplexExpr
+///////////////////////////////////////////////////////////////////////////////
+
 class ComplexExpr {
 public:
   ComplexExpr();
@@ -22,6 +27,10 @@ private:
   Expr::Ptr im_e = nullptr;   // TODO prob necessary to combine in single expr
 };
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Class complex
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * CPU-side complex definition
@@ -42,6 +51,11 @@ public:
     return complex(m_re*rhs.m_re - m_im*rhs.m_im, m_re*rhs.m_im + m_im*rhs.m_re);
   }
 
+  complex operator*(float rhs) const {
+    complex tmp(rhs, 0);
+    return complex(m_re*tmp.m_re - m_im*tmp.m_im, m_re*tmp.m_im + m_im*tmp.m_re);
+  }
+
 
   complex &operator+=(complex const &rhs) {
     m_re += rhs.m_re;
@@ -54,6 +68,15 @@ private:
   float m_im;
 };
 
+
+inline complex operator*(float lhs, complex rhs) {
+  return rhs*lhs;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Complex
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * QPU-side complex definition

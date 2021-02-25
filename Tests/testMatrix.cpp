@@ -546,20 +546,22 @@ void test_complex_matrix_multiplication(
   result.fill({-1.0f, -1.0f});
 
   k.load(&result, &a, &b);
-  run_kernel(k);
+  k.qpu();
+  //run_kernel(k);
   //dump_array(result.get_parent(), cols_result);
 
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
       INFO("r: " << r << ", c: " << c);
-      REQUIRE(result[r][c] == init_a*init_b);
+      INFO("result: " << result[r][c].dump() << ", expected: " << (((float) inner)*init_a*init_b).dump());
+      REQUIRE(result[r][c] == ((float) inner)*init_a*init_b);
     }
   }
 }
 
 
-TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex][]") {
+TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]") {
 //  Platform::use_main_memory(true);
 
   SECTION("Check correct working complex dotvector") {
@@ -574,6 +576,8 @@ TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex][]
     //      add warning in matrix mult kernel about this
 
     test_complex_matrix_multiplication( 1,    16,   1);
+    test_complex_matrix_multiplication( 2,  3*16,   2, {-1.0f, 2.0f});
+    test_complex_matrix_multiplication( 2,  3*16,   2, {-1.0f, 2.0f}, { 1.0f, -1.0f });
   }
 
 

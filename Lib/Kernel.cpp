@@ -70,7 +70,12 @@ void KernelBase::call() {
   emu();
 #else
 #ifdef QPU_MODE
-  qpu();
+  if (Platform::use_main_memory()) {
+    warning("Main memory selected in QPU mode, running on emulator instead of QPU.");
+    emu();
+  } else {
+    qpu();
+  }
 #endif
 #endif
 };
