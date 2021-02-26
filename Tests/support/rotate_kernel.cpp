@@ -395,8 +395,8 @@ ByteCode rotate_kernel() {
   ret << end_program();
 
   ByteCode bytecode;
-  for (int i = 0; i < (int) ret.size(); ++i ) {
-    bytecode << ret[i].code(); 
+  for (auto const &instr : ret) {
+    bytecode << instr.code(); 
   }
 
   return bytecode;

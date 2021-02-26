@@ -39,7 +39,7 @@ void findAndReplaceAll(std::string &data, std::string toSearch, std::string repl
 //
 
 template<typename T>
-inline std::vector<T> &operator<<(std::vector<T> &a, T const &val) {
+inline std::vector<T> &operator<<(std::vector<T> &a, T val) {
   a.push_back(val);  
   return a;
 }

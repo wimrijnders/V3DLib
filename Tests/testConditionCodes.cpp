@@ -109,13 +109,10 @@ ByteCode qpu_cond_push_a() {
       << nop()
       << nop();
 
-/*
   ByteCode bytecode;
-  for (int i = 0; i < (int) ret.size(); ++i ) {
-    bytecode << ret[i].code(); 
+  for (auto const &instr : ret) {
+    bytecode << instr.code(); 
   }
-*/
-  ByteCode bytecode = ret.to_bytecode();
 
   return bytecode;
 }

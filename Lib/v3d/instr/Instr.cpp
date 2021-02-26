@@ -1010,6 +1010,7 @@ Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3) {
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
   Instr instr;
   instr.alu_add_set(loc1, imm2, loc3);
+
   instr.alu.add.op    = V3D_QPU_A_FADDNF;
   return instr;
 }
@@ -1017,9 +1018,28 @@ Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3) {
 
 Instr mov(Location const &loc1, SmallImm val) {
   Instr instr;
+
   instr.alu_add_set(loc1, val, val);
   instr.alu.add.op    = V3D_QPU_A_OR;
+
   return instr;
+/*
+  if (loc1.is_rf()) {
+    instr.alu.add.magic_write = false;
+  } else {
+    instr.alu.add.magic_write = true;
+  }
+
+  instr.sig.small_imm = true; 
+
+  instr.raddr_b       = val.to_raddr(); 
+  instr.alu.add.op    = V3D_QPU_A_OR;
+  instr.alu.add.a     = V3D_QPU_MUX_B; // loc2.to_mux();
+  instr.alu.add.b     = V3D_QPU_MUX_B;
+  instr.alu.add.waddr = loc1.to_waddr();
+
+  return instr;
+*/
 }
 
 
