@@ -29,10 +29,8 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
   // - The final two words are the pointer to the parameters per QPU, and
   //   the pointer to the kernel program to execute.
   //
-#ifdef DEBUG
   unsigned numWords = qpuCodeMemOffset + (2 + params->size() + 1)*numQPUs + 2*numQPUs;
   assert(numWords < codeMem.size());
-#endif
 
   // Pointer to start of code
   uint32_t *qpuCodePtr = codeMem.getPointer();

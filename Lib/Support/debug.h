@@ -15,7 +15,6 @@
 
 void debug(const char *str);
 void warning(const char *str);
-inline void warning(std::string const &str) { return warning(str.c_str()); }
 void debug_break(const char *str);
 
 #else
@@ -27,6 +26,8 @@ inline void warning(const char *str) {}
 inline void debug_break(const char *str) {}
 
 #endif  // DEBUG
+
+inline void warning(std::string const &str) { return warning(str.c_str()); }
 
 void error(const char *str, bool do_throw = false);
 inline void error(std::string const &msg, bool do_throw = false) { error(msg.c_str(), do_throw); }

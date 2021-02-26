@@ -608,8 +608,12 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
   }
 
   // Evaluate the operation
+#ifdef DEBUG
   bool handled = c.apply(op, a, b);
   assert(handled);
+#else
+  c.apply(op, a, b);
+#endif  // DEBUG
 
   return c;
 }

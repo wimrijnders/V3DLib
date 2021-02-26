@@ -37,8 +37,12 @@ void get_mask_offset(int source_index, uint32_t &mask, uint32_t &offset) {
  */
 void set_source_field(int core_id, int source_index, int counter_index) {
   using RM = V3DLib::v3d::RegisterMapping;
+
+#ifdef DEBUG
   using PC = V3DLib::v3d::PerformanceCounters;
   assert(source_index < PC::NUM_SRC_REGS);
+#endif  // DEBUG
+
   auto &regmap = RM::instance();
 
   uint32_t offset;
@@ -48,7 +52,6 @@ void set_source_field(int core_id, int source_index, int counter_index) {
   uint32_t src_reg = RM::CORE_PCTR_0_SRC_0 + (source_index >> 2);
   uint32_t val     = regmap.core_read(core_id, src_reg);
   uint32_t newval  = (val & ~mask) | (counter_index << offset);
-  //std::cout << "newval: " << newval << std::endl;
 
   regmap.core_write(core_id, src_reg, newval);
 }
@@ -56,8 +59,12 @@ void set_source_field(int core_id, int source_index, int counter_index) {
 
 uint32_t get_source_field(int core_id, int source_index) {
   using RM = V3DLib::v3d::RegisterMapping;
+
+#ifdef DEBUG
   using PC = V3DLib::v3d::PerformanceCounters;
   assert(source_index < PC::NUM_SRC_REGS);
+#endif  // DEBUG
+
   auto &regmap = RM::instance();
 
   uint32_t offset;
@@ -72,8 +79,12 @@ uint32_t get_source_field(int core_id, int source_index) {
 
 uint32_t get_pctr_value(int core_id, int source_index) {
   using RM = V3DLib::v3d::RegisterMapping;
+
+#ifdef DEBUG
   using PC = V3DLib::v3d::PerformanceCounters;
   assert(source_index < PC::NUM_SRC_REGS);
+#endif  // DEBUG
+
   auto &regmap = RM::instance();
 
   return regmap.core_read(core_id, RM::CORE_PCTR_0_PCTR0 + source_index);
