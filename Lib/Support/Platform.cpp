@@ -1,4 +1,5 @@
 #include "Platform.h"
+#include <sstream>
 #include <fstream>
 #include <memory>
 #include <string.h>  // strstr()
@@ -54,58 +55,98 @@ bool get_platform_string(std::string &content) {
 
 
 /**
+ * Source: https://www.raspberrypi.org/documentation/hardware/raspberrypi/revision-codes/README.md
+ */
+std::string decode_revision(std::string const &revision) {
+  assert(!revision.empty());
+
+  // Convert string hex representation into number
+  uint32_t hex;   
+  std::stringstream ss;
+  ss << std::hex << revision;
+  ss >> hex;
+
+  if (hex <= 15) { // pre-Pi2 have consecutive, non-encoded revisions
+    return "BCM2835";
+  }
+
+  switch ((hex >> 12) & 0xf) {
+    case 1: return "BCM2836"; break;
+    case 2: return "BCM2837"; break;
+    case 3: return "BCM2711"; break;
+
+    case 0:
+    default:
+      return "BCM2835";
+      break;
+  }
+}
+
+
+/**
  * @brief Retrieve the VideoCore chip number.
  *
- * This is the way to detect the Pi platform for older Pi versions/distributions.
+ * Detects if this is a VideoCore. This should also be sufficient for detecting
+ * Pis, since it's the only thing to date(!) using this particular chip version.
  *
- * Detects if this is a VideoCore. This should be sufficient for detecting Pi,
- * since it's the only thing to date(!) using this particular chip version.
+ * @param model     write parameter; receives chip model number
+ * @param revision  write parameter; receives revision number
  *
  * @return true if Pi detected, false otherwise
  *
  * --------------------------------------------------------------------------
  * ## NOTES
  *
- * * The following are valid model numbers:
+ * * `cat /proc/procinfo` is unreliable for kernels >= 4.9, will always
+ *   return 'BCM2835`, although this seems to be corrected for 5.4.
+ *   For this reason, the revision is decoded instead for the model number.
  *
- *  - BCM2708
- *  - BCM2835    - This appears to be returned for all higher BCM versions
+ * * 'BCM2835' is the model number for the oldest Pis.
  *
- * * The following are also valid, but appear to be represented by 'BCM2835'
- *   in `/proc/cpuinfo`:
- *
- *  - BCM2836   // If that's not the case, enable these as well
- *  - BCM2837
- *  - BCM2837B0
+ * * `BCM2837B0` also exists, but is not explicitly represented.
  */
 
-bool get_chip_version(std::string &output) {
-  const char *BCM_VERSION_PREFIX = "BCM2";
+bool get_chip_version(std::string &model, std::string &revision) {
   const char *filename = "/proc/cpuinfo";
 
-  output.clear();
+  model.clear();
+  revision.clear();
 
   std::ifstream t(filename);
   if (!t.is_open()) return false;
 
+  auto read_field = [] (std::string const &line, std::string label) -> std::string {
+    std::string ret;
+
+    if (strstr(line.c_str(), label.c_str()) == nullptr) return ret;
+
+    size_t pos = line.find(": ");
+    assert(pos != line.npos);
+    if (pos == line.npos) return ret;
+
+    ret = line.substr(pos + 2);
+    return ret;
+  };
+
   std::string line;
+  std::string field;
+
   while (getline(t, line)) {
-    if (!strstr(line.c_str(), "Hardware")) continue;
-
-    if (strstr(line.c_str(), BCM_VERSION_PREFIX)) {
-      // For now, don't try to exactly specify the model.
-      // This could be done with field "Revision' in current input.
-
-      size_t pos = line.find(BCM_VERSION_PREFIX);
-      if (pos != line.npos) {
-        output = line.substr(pos);
-      }
-
-      return true;
+ /* 
+    field = read_field(line, "Hardware");
+    if (!field.empty()) { 
+      model = field;
+      continue;
+    }
+*/
+    field = read_field(line, "Revision");
+    if (!field.empty()) {
+      revision = field;
+      model = decode_revision(revision);  // Override previous assigned value of 'model' intentional
     }
   }
 
-  return false;
+  return !model.empty();
 }
 
 
@@ -113,11 +154,12 @@ bool get_chip_version(std::string &output) {
 // Class PlatformInfo
 ///////////////////////////////////////////////////////////////////////////////
 
-struct PlatformInfo {
+class PlatformInfo {
 public:
   PlatformInfo();
 
-  std::string chip_version;
+  std::string model_number;
+  std::string revision;
   bool has_vc4 = false;
 
   int size_regfile() const;
@@ -134,7 +176,7 @@ public:
 
 PlatformInfo::PlatformInfo() {
   is_pi_platform = get_platform_string(platform_id);
-  if (get_chip_version(chip_version)) {
+  if (get_chip_version(model_number, revision)) {
     is_pi_platform = true;
   }
 
@@ -154,12 +196,14 @@ std::string PlatformInfo::output() const {
   std::string ret;
 
   if (!platform_id.empty()) {
-    ret << "Platform: " << platform_id.c_str() << "\n";
+    ret << "Platform    : " << platform_id.c_str() << "\n";
   } else {
-    ret << "Platform: " << "Unknown" << "\n";
+    ret << "Platform    : " << "Unknown" << "\n";
   }
 
-  ret << "Chip version: " << chip_version.c_str() << "\n";
+  ret << "Model Number: " << model_number.c_str() << "\n";
+  ret << "Revision    : " << revision.c_str() << "\n";
+
 
   if (!is_pi_platform) {
     ret << "This is NOT a pi platform!\n";

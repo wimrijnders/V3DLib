@@ -17,6 +17,11 @@ CmdParameters params = {
   "This mostly reads the VideoCore registers to retrieve information about the device\n"
   "There is limited possibility to manipulate these registers.",
   {{
+    "Extended Info",
+    { "-x", "-extended"},
+    ParamType::NONE,
+    "Show more fields for current platform. Only displays when QPU_MODE is enabled."
+  }, {
     "Reset Scheduler Registers",
     "-reset-scheduler",
     ParamType::NONE,
@@ -38,7 +43,7 @@ CmdParameters params = {
  */
 struct Settings {
 
-  // cmdline param's
+  bool extended;
   bool reset_scheduler;
   bool reset_gpu;
 
@@ -67,11 +72,11 @@ struct Settings {
     auto ret = params.handle_commandline(argc, argv, false);
     if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-    reset_scheduler = params.parameters()[0]->get_bool_value();
-    reset_gpu       = params.parameters()[1]->get_bool_value();
+    extended        = params.parameters()["Extended Info"]->get_bool_value();
+    reset_scheduler = params.parameters()["Reset Scheduler Registers"]->get_bool_value();
+    reset_gpu       = params.parameters()["Reset GPU"]->get_bool_value();
 
-    printf(Platform::platform_info().c_str());
-    output();
+//    output();
 
     return CmdParameters::ALL_IS_WELL;
   }
@@ -152,6 +157,8 @@ void showSchedulerRegisters() {
  *    Segmentation fault
  */
 void detect_v3d() {
+  printf("\n");
+
   if (settings.reset_scheduler) {
     printf("WARNING: The reset scheduler flag doesn't do anything for v3d.\n\n");
   }
@@ -280,11 +287,16 @@ int main(int argc, char const *argv[]) {
   int ret = settings.init(argc, argv);
   if (ret != CmdParameters::ALL_IS_WELL) return ret;
 
-#ifdef  QPU_MODE
-  if (Platform::has_vc4()) {
-    detect_vc4();
-  } else {
-    detect_v3d();
+  printf(Platform::platform_info().c_str());
+
+
+#ifdef QPU_MODE
+  if (settings.extended) {
+    if (Platform::has_vc4()) {
+      detect_vc4();
+    } else {
+      detect_v3d();
+    }
   }
 #endif  // QPU_MODE
 
