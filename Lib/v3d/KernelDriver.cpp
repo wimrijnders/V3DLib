@@ -616,9 +616,10 @@ bool convert_int_powers(Instructions &output, int in_value) {
  */
 bool encode_int_immediate(Instructions &output, int in_value) {
   Instructions ret;
+
   uint32_t value = (uint32_t) in_value;
 
-  uint32_t nibbles[7];
+  uint32_t nibbles[8];  // was 7 (idiot)
 
   for (int i = 0; i < 8; ++i) {
     nibbles[i] = (value  >> (4*i)) & 0xf;
