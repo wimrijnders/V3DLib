@@ -157,8 +157,6 @@ void showSchedulerRegisters() {
  *    Segmentation fault
  */
 void detect_v3d() {
-  printf("\n");
-
   if (settings.reset_scheduler) {
     printf("WARNING: The reset scheduler flag doesn't do anything for v3d.\n\n");
   }
@@ -292,6 +290,8 @@ int main(int argc, char const *argv[]) {
 
 #ifdef QPU_MODE
   if (settings.extended) {
+    printf("\n");
+
     if (Platform::has_vc4()) {
       detect_vc4();
     } else {
