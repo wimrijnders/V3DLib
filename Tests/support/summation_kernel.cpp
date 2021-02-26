@@ -905,10 +905,7 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
   ret << mov(tmua, rf(reg_src)).sub(rf(reg_length), rf(reg_length), r1).pushz()  // pushz sets flag for cond na0
       << add(rf(reg_src), rf(reg_src), rf(reg_stride)).ldtmu(r0);
 
-  ret << emit_unroll(unroll, Instructions({
-      prefetch,
-      sum_and_load
-  }));
+  ret << emit_unroll(unroll, Instructions({prefetch, sum_and_load}));
 
   for (int i = 0; i < 5; ++i) {
     ret << sum_and_load;
@@ -926,8 +923,8 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
       << end_program();
 
   ByteCode bytecode;
-  for (auto const &instr : ret) {
-    bytecode << instr.code(); 
+  for (int i = 0; i < (int) ret.size(); ++i ) {
+    bytecode << ret[i].code(); 
   }
 
   return bytecode;

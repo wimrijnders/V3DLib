@@ -546,8 +546,7 @@ void test_complex_matrix_multiplication(
   result.fill({-1.0f, -1.0f});
 
   k.load(&result, &a, &b);
-  k.qpu();
-  //run_kernel(k);
+  run_kernel(k);
   //dump_array(result.get_parent(), cols_result);
 
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);

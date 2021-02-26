@@ -374,8 +374,8 @@ void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
 
 
 void setCondTag(AssignCond cond, Instructions &ret) {
-  for (auto &instr : ret) {
-    setCondTag(cond, instr);
+  for (int i = 0; i < (int) ret.size(); ++i ) {
+    setCondTag(cond, ret[i]);
   }
 }
 
@@ -604,7 +604,7 @@ bool convert_int_powers(Instructions &output, int in_value) {
 
 
 /**
- * Blunt tool for converting all int's.
+ * Blunt tool for converting all integers.
  *
  * **NOTE:** uses r0, r1 and r2 internally, register conflict possible
  *
@@ -628,6 +628,8 @@ bool encode_int_immediate(Instructions &output, int in_value) {
   for (int i = 7; i >= 0; --i) {
     if (nibbles[i] == 0) continue;
 
+// breakpoint
+
     SmallImm imm(nibbles[i]);
 
     // r0 is used as temp value,
@@ -635,7 +637,7 @@ bool encode_int_immediate(Instructions &output, int in_value) {
 
     if (!did_first) {
       ret << mov(r1, imm);  // TODO Gives segfault on p4-3
-                            //      No clue why, works fine on silke (arm64)d$ and pi3
+                            //      No clue why, works fine on silke (arm64) and pi3
 
       if (i > 0) {
         if (convert_int_powers(ret, 4*i)) {
@@ -665,6 +667,7 @@ bool encode_int_immediate(Instructions &output, int in_value) {
     }
   }
 
+  assert(!ret.empty());
   if (ret.empty()) return false;  // Not expected, but you never know
 
   std::string cmt;
@@ -948,6 +951,8 @@ Instructions encode_init(uint8_t numQPUs) {
 }
 
 
+#ifdef DEBUG
+
 /**
  * Check assumption: uniform loads are always at the top of the instruction list.
  */
@@ -973,6 +978,8 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
 
   return true;
 }
+
+#endif  // DEBUG
 
 
 /**
@@ -1139,8 +1146,8 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 
   std::vector<uint64_t> code;  // opcodes for v3d
 
-  for (auto const &inst : instructions) {
-    code << inst.code();
+  for (int i = 0; i < (int) instructions.size(); ++i ) {
+    code << instructions[i].code();
   }
 
   return code;
@@ -1196,8 +1203,8 @@ void KernelDriver::emit_opcodes(FILE *f) {
   if (instructions.empty()) {
     fprintf(f, "<No opcodes to print>\n");
   } else {
-    for (auto const &instr : instructions) {
-      fprintf(f, "%s\n", instr.mnemonic(true).c_str());
+    for (int i = 0; i < (int) instructions.size(); ++i ) {
+      fprintf(f, "%s\n", instructions[i].mnemonic(true).c_str());
     }
   }
 

@@ -258,26 +258,78 @@ Instr blog(Location const &dst, Location const &srca);
 //
 using ByteCode = std::vector<uint64_t>; 
 
-class Instructions : public std::vector<instr::Instr> {
-  using Parent = std::vector<instr::Instr>;
 
+/**
+ * Couldn't get this to work:
+ *
+ * Internal::iterator begin() noexcept { return m_list.begin(); }
+ * Internal::const_iterator begin() const noexcept { return m_list.begin(); }
+ *
+ * Changed the loops instead.
+ */
+class Instructions {
 public:
-  Instructions() = default;
-  Instructions(Parent const &rhs) : Parent(rhs) {}
+  using Internal = std::vector<instr::Instr>;
 
-  Instructions &header(std::string const &msg) { front().header(msg);  return *this; }
+  Instructions() { m_list.resize(10); }
+  Instructions(Internal const &rhs) : m_list(rhs) {}
+
+  uint32_t size() const { return m_list.size(); }
+  bool empty() const { return m_list.empty(); }
+  instr::Instr &front() { assert(!empty()); return m_list.front(); }
+  instr::Instr &back() { assert(!empty()); return m_list.back(); }
+
+  instr::Instr &operator[](int index) { return m_list[index]; }
+  instr::Instr const &operator[](int index) const { return m_list[index]; }
+
+  Instructions &operator<<(instr::Instr const &rhs) {
+    m_list.push_back(rhs);
+    return *this;
+  }
+
+  Instructions &operator<<(Instructions const &rhs) {
+    m_list.insert(m_list.end(), rhs.m_list.begin(), rhs.m_list.end());
+    return *this;
+  }
+
 
   Instructions &comment(std::string msg, bool to_front = true) {
-    assert(!empty());
+    assert(!m_list.empty());
 
     if (to_front) {
-      front().comment(msg);
+      m_list.front().comment(msg);
     } else {
-      back().comment(msg);
+      m_list.back().comment(msg);
     }
 
     return *this;
   }
+
+
+  ByteCode to_bytecode() const {
+    ByteCode bytecode;
+    for (int i = 0; i < (int) m_list.size(); ++i ) {
+      bytecode.push_back(m_list[i].code());
+    }
+
+    return bytecode;
+  }
+
+
+/*
+  using Parent = std::vector<instr::Instr>;
+
+public:
+  //Instructions() = default;
+  Instructions() : Parent() { reserve(10); } 
+  Instructions(Parent const &rhs) : Parent(rhs) {}
+
+  Instructions &header(std::string const &msg) { front().header(msg);  return *this; }
+
+*/
+
+private:
+  std::vector<instr::Instr> m_list;
 };
 
 }  // v3d

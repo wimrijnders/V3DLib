@@ -374,7 +374,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
     int const N = 8;  // Number of expected results
 
     auto k = compile(int_ops_kernel);
-    //k.pretty(true);
+    k.pretty(false);
 
     SharedArray<int> result(16*N);
 

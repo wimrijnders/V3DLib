@@ -185,8 +185,8 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
            << end_program();
 
     ByteCode bytecode;
-    for (auto const &instrs : instrs) {
-      bytecode << instrs.code(); 
+    for (int i = 0; i < (int) instrs.size(); ++i ) {
+      bytecode << instrs[i].code(); 
     }
 
     BufferObject heap(1024);
@@ -248,8 +248,8 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
     //printf("%s\n", mnemonics(instrs, true).c_str());
 
     ByteCode bytecode;
-    for (auto const &instrs : instrs) {
-      bytecode << instrs.code(); 
+    for (int i = 0; i < (int) instrs.size(); ++i ) {
+      bytecode << instrs[i].code(); 
     }
 
     BufferObject heap(1024);
