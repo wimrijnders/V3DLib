@@ -110,3 +110,88 @@ void output_ppm_file(
 
   fclose(fd);
 }
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class PGM
+///////////////////////////////////////////////////////////////////////////////
+
+PGM::PGM(int width, int height) : m_width(width), m_height(height) {
+  assert(m_width  != 0);
+  assert(m_height != 0);
+
+  m_arr = new int [width*height];    
+  for (int x = 0; x < width*height; ++x) {
+    m_arr[x] = 0;
+  }
+}
+
+
+PGM::~PGM() {
+  if (m_arr == nullptr) {
+    assert(m_width  == 0);
+    assert(m_height == 0);
+  } else {
+    assert(m_width  != 0);
+    assert(m_height != 0);
+  }
+
+  delete [] m_arr;
+}
+
+
+PGM &PGM::plot(float const *arr, int size, int color) {
+  assert(arr != nullptr);
+  assert(size > 0);
+  assert(size <= m_width);
+
+  const float MIN_START =  1000.0f;
+  const float MAX_START = -1000.0f;
+
+  // determine min and max
+  float min = MIN_START;
+  float max = MAX_START;
+
+  for (int x = 0; x < size; ++x) {
+    assert(arr[x] < MIN_START);
+    assert(arr[x] > MAX_START);
+
+    if (arr[x] < min) min = arr[x];
+    if (arr[x] > max) max = arr[x];
+  };
+
+  assert(min != MIN_START);
+  assert(max != MAX_START);
+
+  // Do the plot
+  for (int x = 0; x < m_width; ++x) {
+    // NOTE: there is an off by 1 error here somewhere,
+    //       top (y == 0) leaves 1 row open, bottom gets clipped
+    int y =  m_height - (int) ((arr[x] - min)/(max - min)*((float) m_height));
+
+   if (y >= m_height) continue;  // clip if out of bounds
+
+    m_arr[x + y*m_width] = color;
+  }
+
+  return *this;
+}
+
+
+void PGM::save(char const *filename) {
+  assert(filename != nullptr);
+
+  std::string header;
+  header << "P2\n"
+         << m_width << " " << m_height << "\n"
+         << MAX_COLOR << "\n";
+
+
+  int *arr = m_arr;
+
+  output_ppm_file(header, m_width, m_height, filename, [arr] (int index) -> std::string {
+    std::string ret;
+    ret << arr[index];
+    return ret;
+  });
+}

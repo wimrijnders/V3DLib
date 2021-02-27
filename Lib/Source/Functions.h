@@ -12,12 +12,15 @@ IntExpr operator/(IntExpr in_a, IntExpr in_b);
 
 inline IntExpr operator-(IntExpr a) { return two_complement(a); }
 
+float cos(float x_in, bool extra_precision = false) noexcept;
+
 }  // namespace functions
 
 void rotate_sum(Int &input, Int &result);
 void rotate_sum(Float &input, Float &result);
 void set_at(Int &dst, Int n, Int const &src);
 void set_at(Float &dst, Int n, Float const &src);
+
 
 }  // namespace V3DLib
 

@@ -4,6 +4,7 @@
 #include <sstream>
 #include <V3DLib.h>
 #include "LibSettings.h"
+#include "Support/pgm.h"
 #include "support/support.h"
 #include "Source/Complex.h"
 
@@ -624,5 +625,41 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
     check("dma qpu");
 
     LibSettings::use_tmu_for_load(false);
+  }
+}
+
+
+TEST_CASE("Test functions", "[dsl][func]") {
+  SECTION("Test trigonometric functions") {
+    float a = functions::cos(0);
+    REQUIRE(a == 1.0f);
+
+    const int size   = 1000;
+    const int offset = size/2;
+    const float freq = (float) (M_PI*2.0f/((double) size));
+
+    float *arr = new float [size];
+    for (int x = 0; x < size; ++x) {
+      arr[x] = functions::cos(freq*((float) (x - offset)));
+    };
+    //dump_array(arr, size);
+
+    float *arr2 = new float [size];
+    for (int x = 0; x < size; ++x) {
+      arr2[x] = cos(freq*((float) (x - offset)));
+    };
+
+    float max_diff = 0.0f;
+    for (int x = 0; x < size; ++x) {
+      float tmp = std::abs(arr[x] - arr2[x]);
+      if (tmp > max_diff) max_diff = tmp;
+    }
+    printf("Max diff: %f\n", max_diff);
+
+    PGM pgm(size, 400);
+    pgm.plot(arr, size).plot(arr2, size, 64).save("obj/test/cos_plot.pgm");
+
+    delete [] arr2;
+    delete [] arr;
   }
 }

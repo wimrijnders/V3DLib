@@ -7,6 +7,7 @@
  ******************************************************************************/
 #include "Functions.h"
 #include <iostream>
+#include <cmath>        // M_PI
 #include "StmtStack.h"
 #include "Lang.h"
 
@@ -117,6 +118,32 @@ IntExpr operator/(IntExpr in_a, IntExpr in_b) {
   stmtStack() << stmt;
   Stmt *ret = stmt->last_in_seq();
   return ret->assign_rhs();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Trigonometric functions
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * scalar version of cosine
+ *
+ * Source: https://stackoverflow.com/questions/18662261/fastest-implementation-of-sine-cosine-and-square-root-in-c-doesnt-need-to-b/28050328#28050328
+ */
+float cos(float x_in, bool extra_precision) noexcept {
+  constexpr float tp = (float) (1./(2.*M_PI));
+
+  double x = x_in;
+
+  x *= tp;
+  x -= .25 + std::floor(x + .25);
+  x *= 16. * (std::abs(x) - .5);
+
+  if (extra_precision) {
+    x += .225 * x * (std::abs(x) - 1.);
+  }
+
+  return (float) x;
 }
 
 }  // namespace functions

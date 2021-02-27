@@ -121,4 +121,21 @@ void output_ppm_file(Array &arr, int width, int height, int max_value, const cha
   });
 }
 
+
+class PGM {
+public:
+  PGM(int width, int height);
+  ~PGM();
+
+  PGM &plot(float const *arr, int size, int color = MAX_COLOR);
+  void save(char const *filename);
+
+private:
+  static int const MAX_COLOR = 127;
+
+  int m_width  = 0;
+  int m_height = 0;
+  int *m_arr   = nullptr;
+};
+
 #endif  // _EXAMPLE_SUPPORT_PGM_H
