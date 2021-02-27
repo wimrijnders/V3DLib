@@ -146,6 +146,11 @@ float cos(float x_in, bool extra_precision) noexcept {
   return (float) x;
 }
 
+
+float sin(float x_in, bool extra_precision) noexcept {
+  return cos(((float) M_PI/2) - x_in, extra_precision);
+}
+
 }  // namespace functions
 
 

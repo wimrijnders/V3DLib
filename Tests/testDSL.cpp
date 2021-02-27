@@ -656,9 +656,15 @@ TEST_CASE("Test functions", "[dsl][func]") {
     }
     printf("Max diff: %f\n", max_diff);
 
-    PGM pgm(size, 400);
-    pgm.plot(arr, size).plot(arr2, size, 64).save("obj/test/cos_plot.pgm");
+    float *sin_arr = new float [size];
+    for (int x = 0; x < size; ++x) {
+      sin_arr[x] = sin(freq*((float) (x - offset)));
+    };
 
+    PGM pgm(size, 400);
+    pgm.plot(arr, size).plot(arr2, size, 64).plot(sin_arr, size, 48).save("obj/test/cos_plot.pgm");
+
+    delete [] sin_arr;
     delete [] arr2;
     delete [] arr;
   }
