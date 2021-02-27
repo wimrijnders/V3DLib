@@ -74,7 +74,7 @@ void log_error(int ret, char const *prefix = "") {
   if (ret == 0) return;
 
   char buf[256];
-  sprintf(buf, "%sioctl: %s\n", prefix, strerror(errno));
+  sprintf(buf, "ERROR %sioctl: %s\n", prefix, strerror(errno));
   error(buf);
 }
 
