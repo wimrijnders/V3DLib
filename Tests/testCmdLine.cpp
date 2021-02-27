@@ -1,4 +1,6 @@
 #include "catch.hpp"
+#include <unistd.h>           // for geteuid()
+#include <sys/types.h>        // idem
 #include "Support/Platform.h"
 #include "support/support.h"  // running_on_v3d()
 
@@ -35,10 +37,12 @@ void init_msg() {
     static bool showed_msg = false;
     if (showed_msg) return;
 
-    printf("NOTE: test [cmdline] will only work with [v3d][code] and [v3d][driver] "
-           "if `runTest` is run with `sudo`.\n");
+    if (geteuid() != 0) {
+      printf("NOTE: test [cmdline] will only work with [v3d][code] and [v3d][driver] "
+             "if `runTest` is run with `sudo`.\n");
 
-    showed_msg = true;
+      showed_msg = true;
+    }
   }
 }
 
