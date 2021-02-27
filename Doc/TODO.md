@@ -34,6 +34,7 @@ v13 = v7;
 ## Consider these
 
 - [ ] Option for disabling L2 cache, for decent cooperation with `OpenGL`.
+      **NOTE:** Needs kernel built for L2 cache disabled. 
       **TODO** profile this!
 - [ ] Adding **Navier-Stokes** as an example.
       [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
