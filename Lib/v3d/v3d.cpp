@@ -79,8 +79,18 @@ void log_error(int ret, char const *prefix = "") {
 }
 
 
+/**
+ * Allocate and map a buffer object
+ *
+ * This function is also used to check availability of the GPU device
+ * via a given device driver (called 'card' in this code).
+ * Parameter `show_perror` is used to suppress any errors if this check fails.
+ *
+ * @param show_perror  if true, suppress any errors when creating a buffer object
+ */
 bool alloc_intern(
-  int fd, uint32_t size,
+  int fd,
+  uint32_t size,
   uint32_t &handle,
   uint32_t &phyaddr,
   void **usraddr,
@@ -91,23 +101,35 @@ bool alloc_intern(
   create_bo.size = size;
   create_bo.flags = 0;
   {
-    int res = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
-    if (show_perror) log_error(res);  // NOTE: `show_perror` intentionally only used here
-    if (res != 0) return false;
+    int result = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
+    if (show_perror) {
+      log_error(result, "alloc_intern() create bo ");  // `show_perror` intentionally only used here
+    }
+    if (result != 0) return false;
   }
   handle  = create_bo.handle;
   phyaddr = create_bo.offset;
 
   drm_v3d_mmap_bo mmap_bo;
-  mmap_bo.handle = handle;
+  mmap_bo.handle = create_bo.handle;
   mmap_bo.flags = 0;
   {
-    int res = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);
-    log_error(res);
-    if (res != 0) return false;
+    int result = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);
+    log_error(result, "alloc_intern() mmap bo ");
+    if (result != 0) return false;
   }
-  *usraddr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (__off_t) mmap_bo.offset);
-  return (usraddr != MAP_FAILED);
+
+  {
+    void *result = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (__off_t) mmap_bo.offset);
+    if (result == MAP_FAILED) {
+      log_error(1, "alloc_intern() mmap ");
+      return false;
+    }
+
+    *usraddr = result;
+  }
+
+  return true;
 }
 
 
@@ -180,7 +202,7 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
  */
 int v3d_submit_csd(st_v3d_submit_csd &st) {
   int ret = ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &st);
-  log_error(ret);
+  log_error(ret, "v3d_submit_csd() ");
   assert(ret == 0);
   return ret;
 }
