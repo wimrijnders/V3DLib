@@ -31,7 +31,6 @@ namespace {
  *     j:  g(..., acc, ...)
  */
 void introduceAccum(Liveness &live, Instr::List &instrs) {
-  auto ALWAYS = AssignCond::Tag::ALWAYS;
   UseDef  useDefPrev;
   UseDef  useDefCurrent;
   LiveSet liveOut;
@@ -55,11 +54,7 @@ void introduceAccum(Liveness &live, Instr::List &instrs) {
     // Compute vars live-out of instr
     live.computeLiveOut(i, liveOut);
 
-    // Check that write is non-conditional
-    bool always = (prev.tag == LI && prev.LI.cond.tag == ALWAYS)
-               || (prev.tag == ALU && prev.ALU.cond.tag == ALWAYS);
-
-    bool do_it = (always && useDefCurrent.use.member(def) && !liveOut.member(def));
+    bool do_it = (prev.is_always() && useDefCurrent.use.member(def) && !liveOut.member(def));
     if (!do_it) {
       continue;
     }
@@ -69,7 +64,7 @@ void introduceAccum(Liveness &live, Instr::List &instrs) {
     if (!Platform::compiling_for_vc4()) {
       // v3d ROT uses ACC1 (r1) internally, don't use it here
       // TODO better selection of subsitution ACC
-      if (prev.ALU.op.isRot() || instr.ALU.op.isRot()) {
+      if (prev.isRot() || instr.isRot()) {
         //warning("introduceAccum(): subsituting ACC in ROT operation");
         acc_id = 2;
       }

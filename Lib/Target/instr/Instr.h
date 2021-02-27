@@ -220,10 +220,12 @@ struct Instr : public InstructionComment {
   Instr &setCondOp(CmpOp const &cmp_op);
   Instr &cond(AssignCond in_cond);
   bool isCondAssign() const;
+  bool is_always() const;
   bool hasImm() const { return ALU.srcA.is_imm() || ALU.srcB.is_imm(); }
   bool isUniformLoad() const;
   bool isUniformPtrLoad() const;
   bool isTMUAWrite(bool fetch_only = false) const;
+  bool isRot() const;
   bool isZero() const;
   bool isLast() const;
 

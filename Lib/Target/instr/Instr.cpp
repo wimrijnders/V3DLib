@@ -142,6 +142,19 @@ bool Instr::isCondAssign() const {
 
 
 /**
+ * Check that write is non-conditional
+ *
+ * TODO check if this is the exact complement of isCondAssign()
+ */
+bool Instr::is_always() const {
+  bool always = (tag == InstrTag::LI && LI.cond.is_always())
+             || (tag == InstrTag::ALU && ALU.cond.is_always());
+
+  return always;
+}
+
+
+/**
  * Determine if this is the last instruction in a basic block
  *
  * TODO Unused, do we need this?
@@ -273,6 +286,15 @@ bool Instr::isTMUAWrite(bool fetch_only) const {
 #endif
 
   return ret;
+}
+
+
+bool Instr::isRot() const {
+  if (tag != InstrTag::ALU) {
+    return false;
+  }
+
+  return ALU.op.isRot();
 }
 
 

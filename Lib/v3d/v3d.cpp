@@ -18,16 +18,16 @@ namespace {
 int fd = 0;
 
 typedef struct {
-    uint32_t size;
-    uint32_t flags;
-    uint32_t handle;
-    uint32_t offset;
+    uint32_t size   = 0;
+    uint32_t flags  = 0;
+    uint32_t handle = 0;
+    uint32_t offset = 0;
 } drm_v3d_create_bo;
 
 typedef struct {
-    uint32_t handle;
-    uint32_t flags;
-    uint64_t offset;
+    uint32_t handle = 0;
+    uint32_t flags  = 0;
+    uint64_t offset = 0;
 } drm_v3d_mmap_bo;
 
 typedef struct {
