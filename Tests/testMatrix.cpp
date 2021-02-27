@@ -279,7 +279,7 @@ void test_square_matrix_multiplication(int dimension) {
 }
 
 
-void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1, float init_b = 1) {
+void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1, float init_b = 1, int num_qpus = 1) {
   REQUIRE(rows > 0);
   REQUIRE(inner > 0);
   REQUIRE(cols > 0);
@@ -295,6 +295,7 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
   REQUIRE(a.columns() == b.rows());
 
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
+  k.setNumQPUs(num_qpus);
   result.fill(-1.0f);
 
   k.load(&result, &a, &b);
@@ -426,12 +427,16 @@ TEST_CASE("Test matrix algebra with varying sizes", "[matrix][mult][varying]") {
 
   SECTION("Check matrix multiplication") {
 
-    // TODO same thing with > 1 QPUs
-    //      add warning in matrix mult kernel about this
-
     test_matrix_multiplication( 1,    16,   1);
     test_matrix_multiplication( 1,  5*16,   1);
     test_matrix_multiplication(10,    16,   5);
+    test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f);
+    test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f);  // Going over the top here with big dimensions
+
+    // same thing with > 1 QPUs
+    test_matrix_multiplication( 1,    16,   1,  1   , 1, 8);
+    test_matrix_multiplication( 1,  5*16,   1,  1   , 1, 8);
+    test_matrix_multiplication(10,    16,   5,  1   , 1, 8);
     test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f);
     test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f);  // Going over the top here with big dimensions
   }
@@ -525,6 +530,7 @@ void test_complex_dotvector() {
 
 void test_complex_matrix_multiplication(
   int rows, int inner, int cols,
+  int num_qpus = 1,
   complex init_a = {1, 0},
   complex init_b = {1, 0}
 ) {
@@ -543,11 +549,11 @@ void test_complex_matrix_multiplication(
   REQUIRE(a.columns() == b.rows());
 
   auto k = compile(kernels::complex_matrix_mult_decorator(a, b, result));
+  k.setNumQPUs(num_qpus);
   result.fill({-1.0f, -1.0f});
 
   k.load(&result, &a, &b);
-  k.qpu();
-  //run_kernel(k);
+  run_kernel(k);
   //dump_array(result.get_parent(), cols_result);
 
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
@@ -572,14 +578,15 @@ TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]")
 
   SECTION("Check complex matrix multiplication") {
 
-    // TODO same thing with > 1 QPUs
-    //      add warning in matrix mult kernel about this
+    test_complex_matrix_multiplication( 1,    16,   1, 1);
+    test_complex_matrix_multiplication( 2,  3*16,   2, 1, {-1.0f, 2.0f});
+    test_complex_matrix_multiplication( 2,  3*16,   2, 1, {-1.0f, 2.0f}, { 1.0f, -1.0f });
 
-    test_complex_matrix_multiplication( 1,    16,   1);
-    test_complex_matrix_multiplication( 2,  3*16,   2, {-1.0f, 2.0f});
-    test_complex_matrix_multiplication( 2,  3*16,   2, {-1.0f, 2.0f}, { 1.0f, -1.0f });
+    // same thing with > 1 QPUs
+    test_complex_matrix_multiplication( 1,    16,   1, 8);
+    test_complex_matrix_multiplication( 2,  3*16,   2, 8, {-1.0f, 2.0f});
+    test_complex_matrix_multiplication( 2,  3*16,   2, 8, {-1.0f, 2.0f}, { 1.0f, -1.0f });
   }
-
 
 //  Platform::use_main_memory(false);
 }
