@@ -75,8 +75,10 @@ This build step is the reason that the very first build takes a significantly lo
 You need to run the example programs with sudo in the following situations:
 
 - On Pis prior to `Pi 4`
-- On a `Pi 4` when running on Raspbian 64-bits (`aarch64`) - *unfortunately! I was hoping to avoid this*
 - When using command line option `-pc`
+- On a `Pi 4` when running on Raspbian 64-bits (`aarch64`). This can be avoided by running command:
+
+    > sudo setfacl -m u:<your user name>:rw /dev/dri/card*
 
 
 ## Basic Build Instructions
