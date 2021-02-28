@@ -9,9 +9,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdio.h>
-#include <unistd.h>   // close()
+#include <unistd.h>   // close(), sysconf()
 #include "Support/basics.h"
-#include "Support/debug.h"
 
 namespace {
 
@@ -79,12 +78,43 @@ void log_error(int ret, char const *prefix = "") {
 }
 
 
+void log_offset(uint32_t offset) {
+  std::string msg = "create_bo.offset : ";
+  msg << offset
+      << "; multiple page size: ";
+
+  if (offset % sysconf(_SC_PAGE_SIZE) != 0) {
+    msg << "no";
+  } else {
+    msg << "yes";
+  }
+
+  debug(msg);
+}
+
+
+void warn_offset(uint32_t offset) {
+  log_offset(offset);
+
+  if (offset % sysconf(_SC_PAGE_SIZE) != 0) {
+    std::string msg = "alloc_intern(): create_bo.offset ";
+    msg << "(" << offset << ") "
+        << "is not a multiple of pagesize "
+        << "(" << sysconf(_SC_PAGE_SIZE) << "); "
+        << "mmap() may fail";
+    warning(msg);
+  }
+}
+
+
 /**
  * Allocate and map a buffer object
  *
  * This function is also used to check availability of the GPU device
  * via a given device driver (called 'card' in this code).
  * Parameter `show_perror` is used to suppress any errors if this check fails.
+ *
+ * Calls to ioctl will fail if `sudo` not used.
  *
  * @param show_perror  if true, suppress any errors when creating a buffer object
  */
@@ -105,10 +135,17 @@ bool alloc_intern(
     if (show_perror) {
       log_error(result, "alloc_intern() create bo ");  // `show_perror` intentionally only used here
     }
-    if (result != 0) return false;
+
+    if (result != 0) {
+      handle  = 0;
+      phyaddr = 0;
+      return false;
+    }
   }
   handle  = create_bo.handle;
   phyaddr = create_bo.offset;
+
+  warn_offset(create_bo.offset);
 
   drm_v3d_mmap_bo mmap_bo;
   mmap_bo.handle = create_bo.handle;
@@ -144,35 +181,40 @@ void fd_close(int fd) {
 }
 
 
+/**
+ * @return  > 0 if call succeeded,
+ *            0 if call failed,
+ *           -1 if call failed and likely due to sudo
+ */
 int open_card(char const *card) {
-  int fd = open(card , O_RDWR);
-
+  int fd = open(card , O_RDWR);  // This works without sudo
   if (fd == 0) {
-    V3DLib::fatal("FATAL: Can't open card device (sudo?)");
+    return 0;
   }
 
   //
   // Perform an operation on the device: allocate 16 bytes of memory.
   // The 'wrong' card will fail here
   //
-  {
-    const uint32_t ALLOC_SIZE = 16;
+  const uint32_t ALLOC_SIZE = 16;
 
-    // Place a call on it see if it works
-    uint32_t handle = 0;
-    uint32_t phyaddr = 0;
-    void *usraddr = nullptr;
+  // Place a call on ithe card see if it works
+  uint32_t handle = 0;
+  uint32_t phyaddr = 0;
+  void *usraddr = nullptr;
 
-    if (alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr, false)) {
-      // worked! clean up
-      v3d_unmap(ALLOC_SIZE, handle, usraddr);
-      //printf("open_card(): alloc test succeeded for card %s\n", card);
-    } else {
-      // fail
-      fd_close(fd);
-      fd = 0;
-      //printf("open_card(): alloc test FAILED for card %s\n", card);
-    }
+  bool success = alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr, false);
+
+  // Clean up bo
+  if (handle != 0) {
+    assert(phyaddr != 0);
+    v3d_unmap(ALLOC_SIZE, handle, usraddr);
+  }
+
+  if (!success) {
+    fd_close(fd);
+    fd = -1;
+    //printf("open_card(): alloc test FAILED for card %s\n", card);
   }
 
   return fd;
@@ -226,17 +268,19 @@ bool v3d_open() {
   int fd0 = open_card("/dev/dri/card0");
   int fd1 = open_card("/dev/dri/card1");
 
-  if (fd0 == 0) {
-    assertq(fd1 != 0, "Could not open v3d device, did you forget 'sudo'?");
-    fd = fd1;
-  } else if (fd1 == 0) {
-    assertq(fd0 != 0, "Could not open v3d device, did you forget 'sudo'?");
-    fd = fd0;
-  } else {
-    V3DLib::fatal("FATAL: could not open v3d device");
+  if (fd0 <= 0 && fd1 <= 0) {
+    std::string msg = "Could not open v3d device";
+
+    if (fd0 < 0 || fd1 < 0) {
+      msg << ", did you forget 'sudo'?";
+    }
+    assertq(false, msg);
+    return false;
   }
 
-  return (fd > 0);
+  fd = (fd1 <= 0)? fd0: fd1;
+  assert(fd > 0);
+  return true;
 }
 
 
