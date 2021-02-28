@@ -250,7 +250,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
     SharedArray<int> result(16*NUM);
 
     result.fill(-2);  // Initialize to unexpected value
-     k.load(&result).emu();
+    k.load(&result).emu();
     check_vector(result, 0, expected);
 
     result.fill(-2);
@@ -629,6 +629,17 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
 }
 
 
+void floor_kernel(Float::Ptr result, Float::Ptr input, Int numValues) {
+  For (Int n = 0, n < numValues, n += 16)
+    Float tmp = *input;
+    *result = functions::ffloor(tmp);
+    //*result = ffloor(tmp);
+    // *result = *input; // doesn't work
+    result.inc(); input.inc();
+  End
+}
+
+
 TEST_CASE("Test functions", "[dsl][func]") {
   SECTION("Test trigonometric functions") {
     float a = functions::cos(0);
@@ -667,5 +678,62 @@ TEST_CASE("Test functions", "[dsl][func]") {
     delete [] sin_arr;
     delete [] arr2;
     delete [] arr;
+  }
+
+  SECTION("Test floor()") {
+    Platform::use_main_memory(true);
+
+    int const NumValues = 15;
+
+    float input[NumValues];
+
+    int n = 0;
+    input[n] =  1.0f; n++;
+    input[n] =  1.3f; n++;
+    input[n] = -1.0f; n++;
+    input[n] = -1.3f; n++;
+    input[n] =  0.9f; n++;
+    input[n] = -0.9f; n++;
+    input[n] =  1.0e-32f; n++;
+    input[n] = -1.0e-32f; n++;
+    input[n] =  1.1e38f; n++;
+    input[n] = -1.1e38f; n++;
+    input[n] = -1.1e-38f; n++;
+    input[n] =  7.0f; n++;
+    input[n] =  7.1f; n++;
+    input[n] = -7.0f; n++;
+    input[n] = -7.1f; n++;
+
+    float results_scalar[NumValues];
+
+    for (int n = 0; n < NumValues; ++n) {
+     results_scalar[n] = (float) floor(input[n]);
+    }
+
+
+    SharedArray<float> input_qpu((NumValues/16 +1)*16);
+    for (int n = 0; n < NumValues; ++n) {
+     input_qpu[n] = input[n];
+    }
+
+    SharedArray<float> results_qpu((NumValues/16 +1)*16);
+    results_qpu.fill(-1.0f);
+
+    auto k = compile(floor_kernel, true);
+    //k.pretty(true, nullptr, false);
+    k.load(&results_qpu, &input_qpu, NumValues);
+    k.interpret();
+
+
+    dump_array(input_qpu);
+    dump_array(results_scalar, NumValues);
+    dump_array(results_qpu);
+
+    for (int n = 0; n < NumValues; ++n) {
+      INFO("n: " << n);
+      REQUIRE(results_scalar[n] == results_qpu[n]);
+    }
+
+    Platform::use_main_memory(false);
   }
 }

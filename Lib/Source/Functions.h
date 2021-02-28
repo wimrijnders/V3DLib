@@ -15,6 +15,8 @@ inline IntExpr operator-(IntExpr a) { return two_complement(a); }
 float cos(float x_in, bool extra_precision = false) noexcept;
 float sin(float x_in, bool extra_precision = false) noexcept;
 
+FloatExpr ffloor(FloatExpr x);
+
 }  // namespace functions
 
 void rotate_sum(Int &input, Int &result);

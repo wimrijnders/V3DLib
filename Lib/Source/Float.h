@@ -25,6 +25,8 @@ struct FloatExpr :public BaseExpr {
   FloatExpr(float x);
   FloatExpr(Expr::Ptr e) : BaseExpr(e) {}
   FloatExpr(Deref<Float> d);
+
+  IntExpr as_int() { return IntExpr(m_expr); }  //<< Reinterpret the float expression as an int expression
 };
 
 
@@ -42,6 +44,8 @@ struct Float : public BaseExpr {
 
   static Float mkArg();
   static bool passParam(Seq<int32_t> *uniforms, float val);
+
+  void as_float(IntExpr rhs);
 
   // Cast to an FloatExpr
   operator FloatExpr() const;
@@ -70,6 +74,7 @@ FloatExpr vpmGetFloat();
 FloatExpr rotate(FloatExpr a, IntExpr b);
 IntExpr toInt(FloatExpr a);
 FloatExpr toFloat(IntExpr a);
+FloatExpr ffloor(FloatExpr a);
 
 FloatExpr operator+(FloatExpr a, FloatExpr b);
 FloatExpr operator-(FloatExpr a, FloatExpr b);
