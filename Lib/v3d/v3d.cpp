@@ -73,7 +73,7 @@ void log_error(int ret, char const *prefix = "") {
   if (ret == 0) return;
 
   char buf[256];
-  sprintf(buf, "ERROR %sioctl: %s\n", prefix, strerror(errno));
+  sprintf(buf, "ERROR %s: %s\n", prefix, strerror(errno));
   error(buf);
 }
 
@@ -117,6 +117,26 @@ void warn_offset(uint32_t offset) {
  * Calls to ioctl will fail if `sudo` not used.
  *
  * @param show_perror  if true, suppress any errors when creating a buffer object
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * Possible reasons mmap() failing (online research):
+ *
+ *   - running in virtual VM - hypervisor will not allow MAP_SHARED outside of VM boundary
+ *   - EINVAL from man:
+ *     * We don't like addr, length, or offset (e.g., they are too large, or not aligned on a page boundary).
+ *     * length was 0.
+ *     * flags contained none of MAP_PRIVATE, MAP_SHARED or MAP_SHARED_VALIDATE.
+ *     Remedies:
+ *       * addr == NULL, as in mesa v3d_bo_map_unsynchronized(), should be OK
+ *       * flags: MAP_SHARED used, is OK
+ *       * offset checked for page size multiple
+ *       * length? Added warning
+ *   - No memory available, but would then have error ENOMEM
+ *   - VM_SHARED set but open() called with no write permission set.
+ *   - Total number of mapped pages exceeds `/proc/sys/vm/max_map_count`
  */
 bool alloc_intern(
   int fd,
@@ -131,9 +151,10 @@ bool alloc_intern(
   create_bo.size = size;
   create_bo.flags = 0;
   {
+    // Returns handle and offset in create_bo
     int result = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
     if (show_perror) {
-      log_error(result, "alloc_intern() create bo ");  // `show_perror` intentionally only used here
+      log_error(result, "alloc_intern() create bo");  // `show_perror` intentionally only used here
     }
 
     if (result != 0) {
@@ -151,15 +172,21 @@ bool alloc_intern(
   mmap_bo.handle = create_bo.handle;
   mmap_bo.flags = 0;
   {
+    // Returns offset to use for mmap() in mmap_bo
     int result = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);
-    log_error(result, "alloc_intern() mmap bo ");
+    log_error(result, "alloc_intern() mmap bo");
     if (result != 0) return false;
   }
 
   {
     void *result = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (__off_t) mmap_bo.offset);
     if (result == MAP_FAILED) {
-      log_error(1, "alloc_intern() mmap ");
+      log_error(1, "alloc_intern() mmap");
+
+      std::string msg = "mmap() failure, size: ";
+      msg << size << ", offset: " << mmap_bo.offset;
+      error(msg);
+
       return false;
     }
 
@@ -232,7 +259,7 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
   };
 
   int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
-  log_error(ret, "v3d_wait_bo() ");
+  log_error(ret, "v3d_wait_bo()");
   return (ret == 0);
 }
 
@@ -244,7 +271,7 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
  */
 int v3d_submit_csd(st_v3d_submit_csd &st) {
   int ret = ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &st);
-  log_error(ret, "v3d_submit_csd() ");
+  log_error(ret, "v3d_submit_csd()");
   assert(ret == 0);
   return ret;
 }
