@@ -95,6 +95,13 @@ struct MandSettings : public Settings {
     num_iterations = params.parameters()["Number of steps"]->get_int_value();
     numStepsWidth  = params.parameters()["Dimension"]->get_int_value();
     numStepsHeight = params.parameters()["Dimension"]->get_int_value();
+
+#ifdef ARM64
+    printf("\nWARNING: Mandelbrot will run *sometimes* on 64-bit Raspbian when GPU kernels are used "
+           "(-k=multi or -k=single).\n"
+           "Running it has the potential to lock up your Pi. Please use with care\n\n");
+#endif  // ARM64
+
     return true;
   }
 } settings;

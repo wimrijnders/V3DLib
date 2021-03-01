@@ -11,33 +11,77 @@ The Pi 4, however, has a `VideoCore VI` GPU which, although related, is signific
 Kernel programs compile dynamically, so that a given program can run unchanged on any version of the RaspBerry Pi.
 The kernels are generated inline and offloaded to the GPU's at runtime.
 
------
-## Recent Release Notes
-
-* **External library `CmdParameter` has changed**.
-  Please run `./script/install.sh` when upgrading from a version <= `0.0.8`.
-* **Upping the version** - The API is still a moving target and keeps on breaking.
-  Officially, I should be changing the major version continually, but with the project freshly released 
-  and having exactly two users, I consider this overkill.
-	I'll up the minor version periodically as a compromise.
 
 -----
+## NOTE
 
-## First Release
+In this project:
 
-When I started this project, I resolved to release at the point that all examples would compile
-and run on the `VideoCore VI`. I have finally reached this point.
+- `VideoCore IV` is referred to as `vc4`
+- `VideoCore VI` is referred to as `v3d`
+
+This follows the naming convention as used in the linux kernel code and in the `Mesa` library.
+
 
 -----
+## Code Example
 
-**NOTE:** This means that `V3DLib` has reached a level of mimimum viability.
-**It is by no means feature-complete** and can definitely use some refactoring and cleanup.
+`V3DLib` contains a high-level programming language for easing the pain of GPU-programming.
+The following is an example of the language (the 'Hello' program):
+
+```
+#include "V3DLib.h"
+#include "Support/Settings.h"
+
+using namespace V3DLib;
+
+V3DLib::Settings settings;
+
+
+void hello(Int::Ptr p) {                          // The kernel definition
+  *p = 1;
+}
+
+
+int main(int argc, const char *argv[]) {
+  auto ret = settings.init(argc, argv);
+  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+
+  auto k = compile(hello);                        // Construct the kernel
+
+  SharedArray<int> array(16);                     // Allocate and initialise the array shared between ARM and GPU
+  array.fill(100);
+
+  k.load(&array);                                 // Invoke the kernel
+  settings.process(k);  
+
+  for (int i = 0; i < (int) array.size(); i++) {  // Display the result
+    printf("%i: %i\n", i, array[i]);
+  }
+
+  return 0;
+}
+```
+
 
 -----
+## Known Issues
 
-However, **there are caveats**.
+### Not `OpenGL` compatible
 
-There are some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
+`V3DLib` can not work on a Pi4 with `OpenGL` running. You need to run it without a GUI ('headless'),
+except for simple cases such as the `Hello` demo, which only outputs data.
+The issue is that the VideoCore L2 cache can not be shared with other applications when `OpenGL` is hogging it.
+
+It *is* possible to disable the L2 cache. This will affect performance badly, though.
+Also, from what I understand, youi will need a specially compiled linux kernel to deal with a disabled L2 cache.
+
+For `vc4`, there is a workaround for this: use DMA exclusively. For `v3d`, this is not an option.
+
+
+### Some things will not run due to kernel issues
+
+There are still some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
 will run *sometimes* on a `VideoCore VI`, and otherwise hang.
 This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
 There are also some unit tests which have the same problem, these are disabled when running on `VideoCore VI`.
@@ -55,48 +99,6 @@ up the compilation and assembly.
 the `VideoCore VI` as well. Hence, `V3DLib` was conceived.
 
 
-## The Programming Language
-
-`V3DLib` contains a high-level programming language for easing the pain of GPU-programming.
-The following is an example of the language (the 'Hello' example):
-
-```
-#include "V3DLib.h"
-#include "Support/Settings.h"
-
-using namespace V3DLib;
-
-V3DLib::Settings settings;
-
-
-// Define function that runs on the GPU.
-void hello(Ptr<Int> p) {
-  *p = 1;
-}
-
-
-int main(int argc, const char *argv[]) {
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
-
-  // Construct kernel
-  auto k = compile(hello);
-
-  // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(16);
-  array.fill(100);
-
-  // Invoke the kernel
-  k.load(&array);
-  settings.process(k);
-
-  // Display the result
-  for (int i = 0; i < array.size(); i++) {
-    printf("%i: %i\n", i, array[i]);
-  }
-  return 0;
-}
-```
 
 ## Getting Started
 
@@ -108,10 +110,13 @@ For more extensive details on building, see [Build Instructions](Doc/BuildInstru
 See the Build Instructions for details.
 
     > sudo apt-get install git                                       # If not done already
-    > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # get only latest commit
+
+    > sudo apt install libexpat1-dev                                 # You need this for one lousy include file
+
+    > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # Get only latest commit
     > cd V3DLib
     
-    # As long as the files don't change, you need to run this script only once.
+    # As long as the external libraries don't change, you need to run this script only once.
     > script/install.sh                                              # Pull in and build external library
     # After this, it's sufficient to do just the following line for a build
     
@@ -134,8 +139,8 @@ The following works were *very* helpful in the development.
   by Andrew Holme. [Blog](https://www.raspberrypi.org/blog/accelerating-fourier-transforms-using-the-gpu/)
 
 #### VideoCore VI 
-* [v3d driver code in the linux kernel repository] - of special interest: [v3d_gem.c],
-  [v3d_drm.h], `vc4` on same level
+* [v3d driver code in the linux kernel repository] - [v3d in kernel on github].
+  Of special interest: [v3d_gem.c], [v3d_drm.h]. `vc4` code is  on same level
 * [MESA v3d driver] - [github], `vc4` on same level
 * [py-videocore6](https://github.com/Idein/py-videocore6) - Python project hacking the `VideoCore VI`
 * [Broadcom code for v3d] - [relevant part], not sure if this is also for `vc4`, 2010 so probably no
@@ -155,6 +160,7 @@ The following works were *very* helpful in the development.
 [VideoCore IV Reference Manual]: https://docs.broadcom.com/docs-and-downloads/docs/support/videocore/VideoCoreIV-AG100-R.pdf
 [Errata]: https://www.elinux.org/VideoCore_IV_3D_Architecture_Reference_Guide_errata
 [v3d driver code in the linux kernel repository]: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d
+[v3d in kernel on github]: https://github.com/torvalds/linux/tree/master/drivers/gpu/drm/v3d
 [v3d_gem.c]: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/drivers/gpu/drm/v3d/v3d_gem.c
 [v3d_drm.h]: https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/include/uapi/drm/v3d_drm.h
 [MESA v3d driver]: https://gitlab.freedesktop.org/mesa/mesa/-/tree/master/src/gallium/drivers/v3d

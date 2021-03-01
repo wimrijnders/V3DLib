@@ -171,6 +171,14 @@ bool alloc_intern(
   drm_v3d_mmap_bo mmap_bo;
   mmap_bo.handle = create_bo.handle;
   mmap_bo.flags = 0;
+
+// WRI DEBUG
+  printf("size of struct   = %zu\n", sizeof(drm_v3d_mmap_bo));
+  printf("offset of handle = %zu\n", offsetof(drm_v3d_mmap_bo, handle));
+  printf("offset of flags  = %zu\n", offsetof(drm_v3d_mmap_bo, flags));
+  printf("offset of offset = %zu\n", offsetof(drm_v3d_mmap_bo, offset));
+// END WRI DEBUG
+
   {
     // Returns offset to use for mmap() in mmap_bo
     int result = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);

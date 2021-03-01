@@ -9,7 +9,7 @@ Jump straight to the actual [Basic Build Instructions](#basic-build-instructions
 - Indent is two spaces. Not because I want it to (I vastly prefer tabs), but because `github`
   otherwise makes a mess of the source display, especially when tabs and spaces are mixed.
 
-In the code:
+In this project:
 
 - `VideoCore IV` is referred to as `vc4`
 - `VideoCore VI` is referred to as `v3d`
@@ -36,7 +36,7 @@ All platforms mentioned below run `Raspbian Buster 32-bits`, unless otherwise sp
 
 The following platforms are used for unit testing:
 
-- Raspberry Pi 4 Model B Rev 1.1
+- Raspberry Pi 4 Model B Rev 1.1, 32 as well as 64 bits
 - Raspberry Pi 3 Model B Rev 1.2
 - Raspberry Pi 2 - **TODO Set up**
 - Raspberry Pi Model B Rev 2
@@ -79,6 +79,14 @@ You need to run the example programs with sudo in the following situations:
 - On a `Pi 4` when running on Raspbian 64-bits (`aarch64`). This can be avoided by running command:
 
     > sudo setfacl -m u:((your user name here)):rw /dev/dri/card*
+
+
+## Version Numbering
+
+The API is still a moving target and keeps on breaking.
+Officially, I should be changing the major version continually, but with the project still in its infancy
+and having exactly two users (Update 2021027: three!), I consider this overkill.
+I up the minor version periodically as a compromise.
 
 
 ## Basic Build Instructions
