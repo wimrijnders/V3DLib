@@ -148,6 +148,20 @@ float cos(float x_in, bool extra_precision) noexcept {
 }
 
 
+FloatExpr cos(FloatExpr x_in, bool extra_precision) {
+  Float x = x_in;
+
+  x -= 0.25f + functions::ffloor(x + 0.25f);
+  x *= 16.0f * (fabs(x) - 0.5f);
+
+  if (extra_precision) {
+    x += 0.225f * x * (fabs(x) - 1.0f);
+  }
+
+  return x;
+}
+
+
 /**
  * scalar version of sine
  *

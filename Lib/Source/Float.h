@@ -57,6 +57,8 @@ struct Float : public BaseExpr {
   FloatExpr operator=(FloatExpr const &rhs);
   Float &operator=(Deref<Float> d);
   Float &operator+=(FloatExpr rhs);
+  Float &operator-=(FloatExpr rhs);
+  Float &operator*=(FloatExpr rhs);
 
   void set_at(Int n, Float const &src);
 

@@ -88,10 +88,10 @@ Float &Float::self() {
 }
 
 
-Float &Float::operator+=(FloatExpr rhs) {
-  *this = *this + rhs;
-  return *this;
-}
+Float &Float::operator+=(FloatExpr rhs) { *this = *this + rhs; return *this; }
+Float &Float::operator-=(FloatExpr rhs) { *this = *this - rhs; return *this; }
+Float &Float::operator*=(FloatExpr rhs) { *this = *this * rhs; return *this; }
+
 
 
 // ============================================================================
@@ -173,6 +173,7 @@ FloatExpr ffloor(FloatExpr a) {
 FloatExpr operator+(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(ADD, FLOAT), b); }
 FloatExpr operator-(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(SUB, FLOAT), b); }
 FloatExpr operator*(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(MUL, FLOAT), b); }
+
 FloatExpr min(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MIN, FLOAT), b); }
 FloatExpr max(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MAX, FLOAT), b); }
 

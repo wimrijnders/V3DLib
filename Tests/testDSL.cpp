@@ -629,6 +629,15 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
 }
 
 
+void cosine_kernel(Float::Ptr result, Int numValues, Float freq, Int offset) {
+  For (Int n = 0, n < numValues, n += 16)
+    Float x = freq*((x + toFloat(index())) - toFloat(offset));
+    *result = functions::cos(x);
+    result.inc();
+  End
+}
+
+
 void floor_kernel(Float::Ptr result, Float::Ptr input, Int numValues) {
   For (Int n = 0, n < numValues, n += 16)
     *result = functions::ffloor(*input);
@@ -642,6 +651,19 @@ void fabs_kernel(Float::Ptr result, Float::Ptr input, Int numValues) {
     *result = functions::fabs(*input);
     result.inc(); input.inc();
   End
+}
+
+
+template< typename T1, typename T2>
+float calc_max_diff(T1 &arr1, T2 &arr2, int size) { 
+  float max_diff = 0.0f;
+
+  for (int x = 0; x < size; ++x) {
+    float tmp = std::abs(arr1[x] - arr2[x]);
+    if (tmp > max_diff) max_diff = tmp;
+  }
+
+  return max_diff;
 }
 
 
@@ -670,6 +692,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
   input[n] = -7.0f; n++;
   input[n] = -7.1f; n++;
 
+
   SharedArray<float> input_qpu(SharedArraySize);
   for (int n = 0; n < NumValues; ++n) {
    input_qpu[n] = input[n];
@@ -687,35 +710,40 @@ TEST_CASE("Test functions", "[dsl][func]") {
     const int offset = size/2;
     const float freq = (float) (1.0f/((double) size));
 
-    float *arr = new float [size];
+    // icreate CPU version, to compare with
+    float arr[size];
     for (int x = 0; x < size; ++x) {
       arr[x] = functions::cos(freq*((float) (x - offset)));
     };
 
-    float *arr2 = new float [size];
+    // Calc with scalar kernel
+    float arr2[size];
     for (int x = 0; x < size; ++x) {
       arr2[x] = cos((float) (freq*(2*M_PI)*(x - offset)));
     };
 
-    float max_diff = 0.0f;
-    for (int x = 0; x < size; ++x) {
-      float tmp = std::abs(arr[x] - arr2[x]);
-      if (tmp > max_diff) max_diff = tmp;
-    }
+    float max_diff = calc_max_diff(arr, arr2, size); 
     INFO("Max diff: " << max_diff);
     REQUIRE(max_diff < 0.57f);  // Test value for extra_precision == false
 
-    float *sin_arr = new float [size];
+    float sin_arr[size];
     for (int x = 0; x < size; ++x) {
       sin_arr[x] = functions::sin(freq*((float) (x - offset)));
-    };
+    }
+
+    // Calc with QPU kernel
+    SharedArray<float> results_qpu(size);
+
+breakpoint
+
+    auto k = compile(cosine_kernel);
+    k.load(&results_qpu, size, freq, offset);
+    k.interpret();
+
+    dump_array(results_qpu);
 
     PGM pgm(size, 400);
     pgm.plot(arr, size).plot(arr2, size, 64).plot(sin_arr, size, 48).save("obj/test/cos_plot.pgm");
-
-    delete [] sin_arr;
-    delete [] arr2;
-    delete [] arr;
   }
 
 
