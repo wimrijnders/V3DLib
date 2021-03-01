@@ -443,6 +443,18 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
           did_something = false;
         break;
       }
+    } else if (reg_a.reg.tag != NONE && reg_b.reg.tag == NONE) {
+      // 1 input
+      auto src_a = encodeSrcReg(reg_a.reg);
+      assert(src_a);
+
+      switch (src_instr.ALU.op.value()) {
+        case ALUOp::A_FFLOOR:  ret << ffloor(*dst_reg, *src_a); break;
+        default:
+          assertq(false, "unimplemented op, one location input");
+          did_something = false;
+        break;
+      }
     } else {
       auto src_a = encodeSrcReg(reg_a.reg);
       auto src_b = encodeSrcReg(reg_b.reg);
@@ -460,7 +472,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
         case ALUOp::A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
         case ALUOp::A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
         default:
-          breakpoint  // unimplemented op
+          assertq(false, "unimplemented op, two location inputs");
           did_something = false;
         break;
       }
@@ -484,7 +496,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       case ALUOp::A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
       case ALUOp::A_BXOR:  ret << bxor(*dst_reg, *src_a, imm);         break;
       default:
-        breakpoint  // unimplemented op
+        assertq(false, "unimplemented op, reg and imm inputs", true);
         did_something = false;
       break;
     }

@@ -631,17 +631,22 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
 
 void floor_kernel(Float::Ptr result, Float::Ptr input, Int numValues) {
   For (Int n = 0, n < numValues, n += 16)
-    Float tmp = *input;
-    *result = functions::ffloor(tmp);
-    //*result = ffloor(tmp);
-    // *result = *input; // doesn't work
+    *result = functions::ffloor(*input);
+    result.inc(); input.inc();
+  End
+}
+
+
+void fabs_kernel(Float::Ptr result, Float::Ptr input, Int numValues) {
+  For (Int n = 0, n < numValues, n += 16)
+    *result = functions::fabs(*input);
     result.inc(); input.inc();
   End
 }
 
 
 TEST_CASE("Test functions", "[dsl][func]") {
-  Platform::use_main_memory(true);
+  //Platform::use_main_memory(true);
 
   int const NumValues       = 15;
   int const SharedArraySize = (NumValues/16 +1)*16;
@@ -680,18 +685,16 @@ TEST_CASE("Test functions", "[dsl][func]") {
 
     const int size   = 1000;
     const int offset = size/2;
-    //const float freq = (float) (M_PI*2.0f/((double) size));
     const float freq = (float) (1.0f/((double) size));
 
     float *arr = new float [size];
     for (int x = 0; x < size; ++x) {
       arr[x] = functions::cos(freq*((float) (x - offset)));
     };
-    //dump_array(arr, size);
 
     float *arr2 = new float [size];
     for (int x = 0; x < size; ++x) {
-      arr2[x] = cos(freq*((float) (x - offset)));
+      arr2[x] = cos((float) (freq*(2*M_PI)*(x - offset)));
     };
 
     float max_diff = 0.0f;
@@ -699,7 +702,8 @@ TEST_CASE("Test functions", "[dsl][func]") {
       float tmp = std::abs(arr[x] - arr2[x]);
       if (tmp > max_diff) max_diff = tmp;
     }
-    printf("Max diff: %f\n", max_diff);
+    INFO("Max diff: " << max_diff);
+    REQUIRE(max_diff < 0.57f);  // Test value for extra_precision == false
 
     float *sin_arr = new float [size];
     for (int x = 0; x < size; ++x) {
@@ -724,10 +728,10 @@ TEST_CASE("Test functions", "[dsl][func]") {
     SharedArray<float> results_qpu(SharedArraySize);
     results_qpu.fill(-1.0f);
 
-    auto k = compile(floor_kernel, true);
-    //k.pretty(true, nullptr, false);
+    auto k = compile(floor_kernel);
+    //k.pretty(false, nullptr, true);
     k.load(&results_qpu, &input_qpu, NumValues);
-    k.emu();
+    k.call();
 
     for (int n = 0; n < NumValues; ++n) {
       INFO("n: " << n);
@@ -741,10 +745,26 @@ TEST_CASE("Test functions", "[dsl][func]") {
     for (int n = 0; n < NumValues; ++n) {
      results_scalar[n] = (float) abs(input[n]);
     }
-    dump_array(results_scalar, NumValues);
 
+    SharedArray<float> results_qpu(SharedArraySize);
+    results_qpu.fill(-1.0f);
+
+    auto k = compile(fabs_kernel);
+    k.load(&results_qpu, &input_qpu, NumValues);
+    k.call();
+/*
     dump_array(input_qpu);
+    dump_array(results_scalar, NumValues);
+    dump_array(results_qpu);
+*/
+
+    for (int n = 0; n < NumValues; ++n) {
+      INFO("results_scalar: " << dump_array2(results_scalar, NumValues));
+      INFO("results_qpu   : " << dump_array2(results_qpu));
+      INFO("n: " << n);
+      REQUIRE(results_scalar[n] == results_qpu[n]);
+    }
   }
 
-  Platform::use_main_memory(false);
+  //Platform::use_main_memory(false);
 }

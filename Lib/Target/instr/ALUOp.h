@@ -48,7 +48,8 @@ public:
 
     // v3d only
     A_TIDX,
-    A_EIDX
+    A_EIDX,
+    A_FFLOOR
   };
 
   explicit ALUOp(Enum val) : m_value(val) {}

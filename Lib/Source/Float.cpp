@@ -164,7 +164,8 @@ FloatExpr toFloat(IntExpr a) {
 
 
 FloatExpr ffloor(FloatExpr a) {
-  Expr::Ptr e = mkApply(a.expr(), Op(FFLOOR, FLOAT));
+  Expr::Ptr dummy = mkVar(Var(DUMMY));
+  Expr::Ptr e = mkApply(a.expr(), Op(FFLOOR, FLOAT), dummy);
   return FloatExpr(e);
 }
 

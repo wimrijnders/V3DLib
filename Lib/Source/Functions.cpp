@@ -148,8 +148,13 @@ float cos(float x_in, bool extra_precision) noexcept {
 }
 
 
+/**
+ * scalar version of sine
+ *
+ * NB: The input param is normalized on 2*M_PI.
+ */
 float sin(float x_in, bool extra_precision) noexcept {
-  return cos(0.25f - x_in, extra_precision);
+  return functions::cos(0.25f - x_in, extra_precision);
 }
 
 
@@ -159,39 +164,73 @@ float sin(float x_in, bool extra_precision) noexcept {
  * This is meant specifically for vc4; v3d actually has an ffloor operation.
  *
  * Relies on IEEE 754 specs for 32-bit floats.
+ * Special values (Nan's, Inf's) are ignored
  */
 FloatExpr ffloor(FloatExpr x) {
-  assertq(Platform::compiling_for_vc4(), "ffloor(): this version for vc4 only");
+  Float ret;
 
-  int const SIZE_MANTISSA = 23;
+  if (Platform::compiling_for_vc4()) {
+    int const SIZE_MANTISSA = 23;
 
-  Int exp  = ((x.as_int() >> SIZE_MANTISSA) & ((1 << 8) - 1)) - 127;  comment("Calc exponent"); 
-  Int mantissa_mask = (1 << (SIZE_MANTISSA - exp)) - 1;
-  Int frac = x.as_int() & mantissa_mask;                              comment("Calc fraction"); 
+    Int exp           = ((x.as_int() >> SIZE_MANTISSA) & ((1 << 8) - 1)) - 127;  comment("Calc exponent"); 
+    Int fraction_mask = (1 << (SIZE_MANTISSA - exp)) - 1;
+    Int frac          = x.as_int() & fraction_mask;                              comment("Calc fraction"); 
 
-  // Helper for better readability
-  auto zap_mantissa  = [&mantissa_mask] (FloatExpr x) -> FloatExpr {
-    Float ret;
-    ret.as_float(x.as_int() & ~(mantissa_mask + 0));
-    return ret;
-  };
+    //
+    // Clear the fractional part of the mantissa
+    //
+    // Helper for better readability
+    //
+    auto zap_mantissa  = [&fraction_mask] (FloatExpr x) -> FloatExpr {
+      Float ret;
+      ret.as_float(x.as_int() & ~(fraction_mask + 0));
+      return ret;
+    };
 
-  Float ret = x;  // result same as input for exp > 23 bits and whole-integer negative values
+    ret = x;  // result same as input for exp > 23 bits and whole-integer negative values
 
-  Where (exp <= 23)                               // Doesn't work, expecting SEQ: comment("Start ffloor()");
-    Where (x >= 1)
-      ret = zap_mantissa(x);
-    Else Where (x >= 0)
-      ret = 0.0f;
-    Else Where (x >= -1.0f)
-      ret = -1.0f;
-    Else Where (x < -1.0f && (frac != 0))
-      ret = zap_mantissa(x) - 1;
-    End End End End
-  End
+    Where (exp <= 23)                               // Doesn't work, expecting SEQ: comment("Start ffloor()");
+      Where (x >= 1)
+        ret = zap_mantissa(x);
+      Else Where (x >= 0)
+        ret = 0.0f;
+      Else Where (x >= -1.0f)
+        ret = -1.0f;
+      Else Where (x < -1.0f && (frac != 0))
+        ret = zap_mantissa(x) - 1;
+      End End End End
+    End
+  } else {
+    // v3d
+    ret = V3DLib::ffloor(x);  comment("ffloor() v3d");
+  }
 
   return ret;
 }
+
+
+/**
+ * Implementation of fabs() in source language.
+ *
+ * Relies on IEEE 754 specs for 32-bit floats.
+ * Special values (Nan's, Inf's) are ignored
+ */
+FloatExpr fabs(FloatExpr x) {
+  Float ret;
+
+  if(Platform::compiling_for_vc4()) {
+    uint32_t const Mask = ~(((uint32_t) 1) << 31);
+
+    // Just zap the top bit
+    ret.as_float(x.as_int() & Mask);
+  } else {
+    // v3d: The conversion of Mask is really long-winded; make the mask in-place
+    ret.as_float(x.as_int() & shr(Int(-1), 1));
+  }
+
+  return ret;
+}
+
 
 }  // namespace functions
 

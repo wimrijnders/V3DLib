@@ -91,7 +91,7 @@ void make_test_dir() {
 namespace {
 
 template<typename T>
-void dump_array_template(T const &a, int size,  int linesize, bool as_int = false) {
+std::string dump_array_template(T const &a, int size,  int linesize, bool as_int = false) {
   std::string str("<");
 
   for (int i = 0; i < (int) size; i++) {
@@ -108,16 +108,24 @@ void dump_array_template(T const &a, int size,  int linesize, bool as_int = fals
     }
   }
 
+
   str << ">";
-  printf("%s\n", str.c_str());
+  return str;
 }
+
 }  // anon namespace
 
 /**
  * Show contents of main memory array
  */
 void dump_array(float *a, int size,  int linesize) {
-  dump_array_template(a, size, linesize);
+  auto str = dump_array_template(a, size, linesize);
+  printf("%s\n", str.c_str());
+}
+
+
+std::string dump_array2(float *a, int size,  int linesize) {
+  return dump_array_template(a, size, linesize);
 }
 
 
@@ -125,10 +133,17 @@ void dump_array(float *a, int size,  int linesize) {
  * Show contents of SharedArray instance
  */
 void dump_array(V3DLib::SharedArray<float> const &a, int linesize) {
-  dump_array_template(a, a.size(), linesize, no_fractions(a));
+  auto str = dump_array_template(a, a.size(), linesize, no_fractions(a));
+  printf("%s\n", str.c_str());
+}
+
+
+std::string dump_array2(V3DLib::SharedArray<float> const &a, int linesize) {
+  return dump_array_template(a, a.size(), linesize, no_fractions(a));
 }
 
 
 void dump_array(V3DLib::SharedArray<int> const &a, int linesize) {
-  dump_array_template(a, a.size(), linesize);
+  auto str = dump_array_template(a, a.size(), linesize);
+  printf("%s\n", str.c_str());
 }

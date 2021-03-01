@@ -22,7 +22,7 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
       case MAX:    return A_FMAX;
       case ItoF:   return A_ItoF;
       case ROTATE: return M_ROTATE;
-      //case FFLOOR: return M_FFLOOR;
+      case FFLOOR: return A_FFLOOR;
       default:     assert(false);
     }
   } else {
@@ -120,6 +120,7 @@ char const *ALUOp::pretty_op() const {
     // v3d-specific
     case A_TIDX:    return "tidx";
     case A_EIDX:    return "eidx";
+    case A_FFLOOR:  return "ffloor";
     default:
       assertq(false, "pretty_op(): Unknown alu opcode", true);
       return "";

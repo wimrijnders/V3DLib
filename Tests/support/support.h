@@ -90,8 +90,10 @@ void dump_data(T const &arr, bool do_all = false, bool as_float = false) {
 }
 
 
-void dump_array(float *a, int size,  int linesize = -1);
+void dump_array(float *a, int size, int linesize = -1);
+std::string dump_array2(float *a, int size, int linesize = -1);
 void dump_array(V3DLib::SharedArray<float> const &a, int linesize = -1);
+std::string dump_array2(V3DLib::SharedArray<float> const &a, int linesize = -1);
 void dump_array(V3DLib::SharedArray<int> const &a, int linesize = -1);
 
 

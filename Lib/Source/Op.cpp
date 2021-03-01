@@ -28,12 +28,11 @@ const char *Op::to_string() const {
     case EXP:    return "exp";
     case LOG:    return "log";
 
-    // Float functions
-    case FFLOOR:  return "ffloor";
 
     // v3d-specific
     case TIDX:   return "tidx";
     case EIDX:   return "eidx";
+    case FFLOOR:  return "ffloor";
   }
 
   assertq(false, "opToString(): unknown opcode", true);
@@ -52,7 +51,7 @@ bool Op::isUnary() const {
 
 
 bool Op::isFunction() const {
-  return (op == RECIP || op == RECIPSQRT || op == EXP || op == LOG);
+  return (op == RECIP || op == RECIPSQRT || op == EXP || op == LOG || op == FFLOOR);
 }
 
 
