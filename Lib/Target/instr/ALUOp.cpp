@@ -22,6 +22,7 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
       case MAX:    return A_FMAX;
       case ItoF:   return A_ItoF;
       case ROTATE: return M_ROTATE;
+      //case FFLOOR: return M_FFLOOR;
       default:     assert(false);
     }
   } else {

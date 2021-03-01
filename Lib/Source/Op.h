@@ -29,6 +29,9 @@ enum OpId {
   EXP,
   LOG,
 
+  // Float-only operations
+  FFLOOR,  // TODO do we need this? (and handling downstream)
+
   // v3d only
   TIDX,
   EIDX

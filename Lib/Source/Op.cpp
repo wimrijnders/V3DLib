@@ -28,6 +28,9 @@ const char *Op::to_string() const {
     case EXP:    return "exp";
     case LOG:    return "log";
 
+    // Float functions
+    case FFLOOR:  return "ffloor";
+
     // v3d-specific
     case TIDX:   return "tidx";
     case EIDX:   return "eidx";
@@ -44,7 +47,7 @@ bool Op::noParams() const {
 
 
 bool Op::isUnary() const {
-  return (op == BNOT || op == ItoF || op == FtoI || isFunction());
+  return (op == BNOT || op == ItoF || op == FtoI || op == FFLOOR || isFunction());
 }
 
 

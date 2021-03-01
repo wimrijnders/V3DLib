@@ -35,7 +35,15 @@ bool Float::passParam(Seq<int32_t> *uniforms, float val) {
 
 
 /**
- * Cast to an FloatExpr
+ * Reinterpret the incoming integer expression as a float
+ */
+void Float::as_float(IntExpr rhs) {
+  (*this) = FloatExpr(rhs.expr());
+}
+
+
+/**
+ * Cast to a FloatExpr
  */
 Float::operator FloatExpr() const { return FloatExpr(m_expr); }
 
@@ -151,6 +159,12 @@ IntExpr toInt(FloatExpr a) {
  */
 FloatExpr toFloat(IntExpr a) {
   Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT));
+  return FloatExpr(e);
+}
+
+
+FloatExpr ffloor(FloatExpr a) {
+  Expr::Ptr e = mkApply(a.expr(), Op(FFLOOR, FLOAT));
   return FloatExpr(e);
 }
 
