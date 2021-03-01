@@ -7,7 +7,7 @@
  ******************************************************************************/
 #include "Functions.h"
 #include <iostream>
-#include <cmath>        // M_PI
+#include <cmath>
 #include "Support/Platform.h"
 #include "StmtStack.h"
 #include "Lang.h"
@@ -16,7 +16,7 @@ namespace V3DLib {
 namespace functions {
 namespace {
 
-int const MAX_INT = 2147483647;  // Largest positive 32-bit integer that can negated
+int const MAX_INT = 2147483647;  // Largest positive 32-bit integer that can be negated
 
 }  // anon namespace
 
@@ -129,14 +129,14 @@ IntExpr operator/(IntExpr in_a, IntExpr in_b) {
 /**
  * scalar version of cosine
  *
+ * The input param is normalized on 2*M_PI. Hence setting `x = 1.0f` means that
+ * `cos(2*M_PI) is calculated.
+ *
  * Source: https://stackoverflow.com/questions/18662261/fastest-implementation-of-sine-cosine-and-square-root-in-c-doesnt-need-to-b/28050328#28050328
  */
 float cos(float x_in, bool extra_precision) noexcept {
-  constexpr float tp = (float) (1./(2.*M_PI));
-
   double x = x_in;
 
-  x *= tp;
   x -= .25 + std::floor(x + .25);
   x *= 16. * (std::abs(x) - .5);
 
@@ -149,7 +149,7 @@ float cos(float x_in, bool extra_precision) noexcept {
 
 
 float sin(float x_in, bool extra_precision) noexcept {
-  return cos(((float) M_PI/2) - x_in, extra_precision);
+  return cos(0.25f - x_in, extra_precision);
 }
 
 
@@ -176,21 +176,19 @@ FloatExpr ffloor(FloatExpr x) {
     return ret;
   };
 
-  Float ret;
+  Float ret = x;  // result same as input for exp > 23 bits and whole-integer negative values
 
-  Where (exp > 24)                               // Doesn't work, expecting SEQ: comment("Start ffloor()");
-    ret = x;  // It's an integer already, leave as is
-  Else Where (x >= 1)
-    ret = zap_mantissa(x);
-  Else Where (x >= 0)
-    ret = 0.0f;
-  Else Where (x >= -1.0f)
-    ret = -1.0f;
-  Else Where (x < -1.0f && (frac != 0))
-    ret = zap_mantissa(x) - 1;
-  Else
-    ret = x;  // whole-integer negative number
-  End End End End End
+  Where (exp <= 23)                               // Doesn't work, expecting SEQ: comment("Start ffloor()");
+    Where (x >= 1)
+      ret = zap_mantissa(x);
+    Else Where (x >= 0)
+      ret = 0.0f;
+    Else Where (x >= -1.0f)
+      ret = -1.0f;
+    Else Where (x < -1.0f && (frac != 0))
+      ret = zap_mantissa(x) - 1;
+    End End End End
+  End
 
   return ret;
 }

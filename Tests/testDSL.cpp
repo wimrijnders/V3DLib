@@ -641,13 +641,47 @@ void floor_kernel(Float::Ptr result, Float::Ptr input, Int numValues) {
 
 
 TEST_CASE("Test functions", "[dsl][func]") {
+  Platform::use_main_memory(true);
+
+  int const NumValues       = 15;
+  int const SharedArraySize = (NumValues/16 +1)*16;
+
+  float input[NumValues];
+
+  int n = 0;
+  input[n] =  1.0f; n++;
+  input[n] =  1.3f; n++;
+  input[n] = -1.0f; n++;
+  input[n] = -1.3f; n++;
+  input[n] =  0.9f; n++;
+  input[n] = -0.9f; n++;
+  input[n] =  1.0e-32f; n++;
+  input[n] = -1.0e-32f; n++;
+  input[n] =  1.1e38f; n++;
+  input[n] = -1.1e38f; n++;
+  input[n] = -1.1e-38f; n++;
+  input[n] =  7.0f; n++;
+  input[n] =  7.1f; n++;
+  input[n] = -7.0f; n++;
+  input[n] = -7.1f; n++;
+
+  SharedArray<float> input_qpu(SharedArraySize);
+  for (int n = 0; n < NumValues; ++n) {
+   input_qpu[n] = input[n];
+  }
+
+
+  /**
+   * NOTE: Remember, sin/cos normalized on 2*M_PI
+   */
   SECTION("Test trigonometric functions") {
     float a = functions::cos(0);
     REQUIRE(a == 1.0f);
 
     const int size   = 1000;
     const int offset = size/2;
-    const float freq = (float) (M_PI*2.0f/((double) size));
+    //const float freq = (float) (M_PI*2.0f/((double) size));
+    const float freq = (float) (1.0f/((double) size));
 
     float *arr = new float [size];
     for (int x = 0; x < size; ++x) {
@@ -669,7 +703,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
 
     float *sin_arr = new float [size];
     for (int x = 0; x < size; ++x) {
-      sin_arr[x] = sin(freq*((float) (x - offset)));
+      sin_arr[x] = functions::sin(freq*((float) (x - offset)));
     };
 
     PGM pgm(size, 400);
@@ -680,60 +714,37 @@ TEST_CASE("Test functions", "[dsl][func]") {
     delete [] arr;
   }
 
-  SECTION("Test floor()") {
-    Platform::use_main_memory(true);
 
-    int const NumValues = 15;
-
-    float input[NumValues];
-
-    int n = 0;
-    input[n] =  1.0f; n++;
-    input[n] =  1.3f; n++;
-    input[n] = -1.0f; n++;
-    input[n] = -1.3f; n++;
-    input[n] =  0.9f; n++;
-    input[n] = -0.9f; n++;
-    input[n] =  1.0e-32f; n++;
-    input[n] = -1.0e-32f; n++;
-    input[n] =  1.1e38f; n++;
-    input[n] = -1.1e38f; n++;
-    input[n] = -1.1e-38f; n++;
-    input[n] =  7.0f; n++;
-    input[n] =  7.1f; n++;
-    input[n] = -7.0f; n++;
-    input[n] = -7.1f; n++;
-
+  SECTION("Test ffloor()") {
     float results_scalar[NumValues];
-
     for (int n = 0; n < NumValues; ++n) {
      results_scalar[n] = (float) floor(input[n]);
     }
 
-
-    SharedArray<float> input_qpu((NumValues/16 +1)*16);
-    for (int n = 0; n < NumValues; ++n) {
-     input_qpu[n] = input[n];
-    }
-
-    SharedArray<float> results_qpu((NumValues/16 +1)*16);
+    SharedArray<float> results_qpu(SharedArraySize);
     results_qpu.fill(-1.0f);
 
     auto k = compile(floor_kernel, true);
     //k.pretty(true, nullptr, false);
     k.load(&results_qpu, &input_qpu, NumValues);
-    k.interpret();
-
-
-    dump_array(input_qpu);
-    dump_array(results_scalar, NumValues);
-    dump_array(results_qpu);
+    k.emu();
 
     for (int n = 0; n < NumValues; ++n) {
       INFO("n: " << n);
       REQUIRE(results_scalar[n] == results_qpu[n]);
     }
-
-    Platform::use_main_memory(false);
   }
+
+
+  SECTION("Test fabs()") {
+    float results_scalar[NumValues];
+    for (int n = 0; n < NumValues; ++n) {
+     results_scalar[n] = (float) abs(input[n]);
+    }
+    dump_array(results_scalar, NumValues);
+
+    dump_array(input_qpu);
+  }
+
+  Platform::use_main_memory(false);
 }
