@@ -13,8 +13,6 @@ The kernels are generated inline and offloaded to the GPU's at runtime.
 
 
 -----
-## NOTE
-
 In this project:
 
 - `VideoCore IV` is referred to as `vc4`
@@ -22,8 +20,34 @@ In this project:
 
 This follows the naming convention as used in the linux kernel code and in the `Mesa` library.
 
-
 -----
+
+## Getting Started
+
+This assumes that you are building on a Raspberry Pi.
+
+For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
+
+**Fair Warning:** The first build can take a *long* time, especially on older Pi's.
+See the Build Instructions for details.
+
+    > sudo apt-get install git                                       # If not done already
+
+    > sudo apt install libexpat1-dev                                 # You need this for one lousy include file
+
+    > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # Get only latest commit
+    > cd V3DLib
+    
+    # As long as the external libraries don't change, you need to run this script only once.
+    > script/install.sh                                              # Pull in and build external library
+    # After this, it's sufficient to do just the following line for a build
+    
+    > make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
+                                                                     # GPU support.
+    
+    > make QPU=1 DEBUG=1 test                                        # Build and run the tests
+
+
 ## Code Example
 
 `V3DLib` contains a high-level programming language for easing the pain of GPU-programming.
@@ -64,7 +88,6 @@ int main(int argc, const char *argv[]) {
 ```
 
 
------
 ## Known Issues
 
 ### Not `OpenGL` compatible
@@ -79,10 +102,19 @@ Also, from what I understand, youi will need a specially compiled linux kernel t
 For `vc4`, there is a workaround for this: use DMA exclusively. For `v3d`, this is not an option.
 
 
+### 32-bit programs will not run with a 64-bit kernel
+
+While it is certainly possible to run 32-bit programs with a 64-bit kernel, the initialization code
+for buffer objects fails. The memory offset returned by the `v3d` device driver is invalid (in fact, it
+is the amount of available memory).
+
+To run with a 64-bit kernel, programs using `v3d` will need to be compiled as 64-bits also.
+
+
 ### Some things will not run due to kernel issues
 
 There are still some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
-will run *sometimes* on a `VideoCore VI`, and otherwise hang.
+will run *sometimes* on `v3d`, and otherwise hang.
 This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
 There are also some unit tests which have the same problem, these are disabled when running on `VideoCore VI`.
 
@@ -97,33 +129,6 @@ up the compilation and assembly.
 
 `QPULib`, however, is no longer under development, and I felt the need to expand it to support
 the `VideoCore VI` as well. Hence, `V3DLib` was conceived.
-
-
-
-## Getting Started
-
-This assumes that you are building on a Raspberry Pi.
-
-For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
-
-**Fair Warning:** The first build can take a *long* time, especially on older Pi's.
-See the Build Instructions for details.
-
-    > sudo apt-get install git                                       # If not done already
-
-    > sudo apt install libexpat1-dev                                 # You need this for one lousy include file
-
-    > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # Get only latest commit
-    > cd V3DLib
-    
-    # As long as the external libraries don't change, you need to run this script only once.
-    > script/install.sh                                              # Pull in and build external library
-    # After this, it's sufficient to do just the following line for a build
-    
-    > make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
-                                                                     # GPU support.
-    
-    > make QPU=1 DEBUG=1 test                                        # Build and run the tests
 
 
 ## Useful Links

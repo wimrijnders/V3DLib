@@ -96,12 +96,6 @@ struct MandSettings : public Settings {
     numStepsWidth  = params.parameters()["Dimension"]->get_int_value();
     numStepsHeight = params.parameters()["Dimension"]->get_int_value();
 
-#ifdef ARM64
-    printf("\nWARNING: Mandelbrot will run *sometimes* on 64-bit Raspbian when GPU kernels are used "
-           "(-k=multi or -k=single).\n"
-           "Running it has the potential to lock up your Pi. Please use with care\n\n");
-#endif  // ARM64
-
     return true;
   }
 } settings;
@@ -299,6 +293,12 @@ void run_kernel(int kernel_index) {
 int main(int argc, const char *argv[]) {
   //printf("Check pre\n");
   //RegisterMap::checkThreadErrors();   // TODO: See if it's useful to check this every time after a kernel has run
+
+#ifdef ARM64
+  printf("\nWARNING: Mandelbrot will run *sometimes* on 64-bit Raspbian when GPU kernels are used "
+         "(-k=multi or -k=single).\n"
+         "Running it has the potential to lock up your Pi. Please use with care.\n\n");
+#endif  // ARM64
 
   auto ret = settings.init(argc, argv);
   if (ret != CmdParameters::ALL_IS_WELL) return ret;
