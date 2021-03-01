@@ -2,11 +2,12 @@
 
 ## General
 
-- [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it).
+- [ ] This does not work in source lang code, fix: `*dst = *srs`, where dst/src are uniform pointers
+- [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it)
 - [ ] Automate loading of new versions external libraries
 - [ ] Get `Pi 1` running again; fails in `qpu_enable()`
 - [ ] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
-- [ ] Make heap memory size configurable (ideally cmldine option)
+- [ ] Make heap memory size configurable (ideally cmdline option)
 - [x] ! Fix '+ 0' hack for kernel pointers, this is confusing
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
@@ -33,8 +34,9 @@ v13 = v7;
 
 ## Consider these
 
+- [ ] Enhanced precision using [correction of rounding errors](http://andrewthall.org/papers/df64_qf128.pdf)
 - [ ] Option for disabling L2 cache, for decent cooperation with `OpenGL`.
-      **NOTE:** Needs kernel built for L2 cache disabled. 
+      **NOTE:** Perhaps needs  kernel built for L2 cache disabled. 
       **TODO** profile this!
 - [ ] Adding **Navier-Stokes** as an example.
       [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
@@ -109,7 +111,7 @@ Source code:
 - [x] Examples to separate page under Docs
 - [ ] Mailbox functions link to reference and explanation two size fields
 - [x] QPUs always round *downward* *(in Issue)*
-- [ ] DSL: Use of 'Expr'-constructs, e.g. `BoolExpr`, as a kind of lambda
+- [ ] DSL: Document use of 'Expr'-constructs (e.g. `BoolExpr`) as a kind of lambda
 
 
 ## Unit Tests
