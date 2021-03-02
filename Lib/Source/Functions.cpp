@@ -207,6 +207,7 @@ FloatExpr ffloor(FloatExpr x) {
     };
 
     ret = x;  // result same as input for exp > 23 bits and whole-integer negative values
+    comment("Start ffloor()");
 
     Where (exp <= 23)                               // Doesn't work, expecting SEQ: comment("Start ffloor()");
       Where (x >= 1)

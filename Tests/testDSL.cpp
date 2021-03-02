@@ -685,7 +685,8 @@ TEST_CASE("Test functions", "[dsl][func]") {
   input[n] = -1.0e-32f; n++;
   input[n] =  1.1e38f; n++;
   input[n] = -1.1e38f; n++;
-  input[n] = -1.1e-38f; n++;
+  //input[n] = -1.1e-38f; n++;  // On v3d, this works as expected. On vc4, this registers as 0.0, not negative
+  input[n] = -1.1e-36f; n++;    // Using this value instead
   input[n] =  7.0f; n++;
   input[n] =  7.1f; n++;
   input[n] = -7.0f; n++;
@@ -744,8 +745,6 @@ TEST_CASE("Test functions", "[dsl][func]") {
       k.load(&qpu_cos, size, freq, offset);
       k.call();
 
-      //dump_array(qpu_cos);
-
       float max_diff = calc_max_diff(lib_cos, qpu_cos, size); 
       //printf("Max diff: %f\n", max_diff);
       INFO("Max diff: " << max_diff);
@@ -782,6 +781,9 @@ TEST_CASE("Test functions", "[dsl][func]") {
     k.call();
 
     for (int n = 0; n < NumValues; ++n) {
+      INFO("input_qpu     : " << dump_array2(input_qpu));
+      INFO("results_scalar: " << dump_array2(results_scalar, NumValues));
+      INFO("results_qpu   : " << dump_array2(results_qpu));
       INFO("n: " << n);
       REQUIRE(results_scalar[n] == results_qpu[n]);
     }
@@ -800,11 +802,6 @@ TEST_CASE("Test functions", "[dsl][func]") {
     auto k = compile(fabs_kernel);
     k.load(&results_qpu, &input_qpu, NumValues);
     k.call();
-/*
-    dump_array(input_qpu);
-    dump_array(results_scalar, NumValues);
-    dump_array(results_qpu);
-*/
 
     for (int n = 0; n < NumValues; ++n) {
       INFO("results_scalar: " << dump_array2(results_scalar, NumValues));
