@@ -52,7 +52,7 @@ public:
   PointerExpr operator-(IntExpr b);
 
   static void reset_increment();
-  static bool passParam(Seq<int32_t> *uniforms, BaseSharedArray const *p);
+  static bool passParam(IntList &uniforms, BaseSharedArray const *p);
   static Expr::Ptr getUniformPtr();
 
 protected:

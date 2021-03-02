@@ -14,7 +14,7 @@ void interpreter(
   int numCores,
   Stmt::Ptr stmt,
   int numVars,
-  Seq<int32_t> &uniforms,
+  IntList &uniforms,
   BufferObject &heap
 );
 

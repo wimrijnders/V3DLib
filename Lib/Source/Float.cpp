@@ -27,9 +27,9 @@ Float::Float(float x) {
 }
 
 
-bool Float::passParam(Seq<int32_t> *uniforms, float val) {
+bool Float::passParam(IntList &uniforms, float val) {
   int32_t* bits = (int32_t*) &val;
-  uniforms->append(*bits);
+  uniforms.append(*bits);
   return true;
 }
 

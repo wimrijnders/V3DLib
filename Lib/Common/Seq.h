@@ -269,9 +269,13 @@ private:
  * A small sequence is a sequence with a small initial size
  */
 template <class T> class SmallSeq : public Seq<T> {
-  public:
-    SmallSeq() : Seq<T>(8) {};
+public:
+  SmallSeq() : Seq<T>(8) {};
 };
+
+
+using IntList  = Seq<int32_t>;
+using UIntList = Seq<uint32_t>;
 
 }  // namespace V3DLib
 

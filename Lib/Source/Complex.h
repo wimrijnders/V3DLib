@@ -204,7 +204,7 @@ public:
     Float::Ptr const &im() const  { return  m_im; }
 
     static Ptr mkArg();
-    static bool passParam(Seq<int32_t> *uniforms, Complex::Array *p);
+    static bool passParam(IntList &uniforms, Complex::Array *p);
 
   private:
     Float::Ptr m_re;

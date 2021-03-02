@@ -15,7 +15,7 @@ namespace {
 struct CoreState {
   int id;                        // Core id
   int numCores;                  // Core count
-  Seq<int32_t> uniforms;         // Arguments to kernel
+  IntList uniforms;         // Arguments to kernel
   int nextUniform = -2;          // Pointer to next uniform to read
   int readStride = 0;            // Read stride
   int writeStride = 0;           // Write stride
@@ -636,7 +636,7 @@ void interpreter(
   int numCores,
   Stmt::Ptr stmt,
   int numVars,
-  Seq<int32_t> &uniforms,
+  IntList &uniforms,
   BufferObject &heap
 ) {
   InterpreterState state;

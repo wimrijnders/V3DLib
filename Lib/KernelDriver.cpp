@@ -198,7 +198,7 @@ void KernelDriver::pretty(int numQPUs, const char *filename, bool output_qpu_cod
 }
 
 
-void KernelDriver::invoke(int numQPUs, Seq<int32_t> &params) {
+void KernelDriver::invoke(int numQPUs, IntList &params) {
   if (!has_errors()) {
     encode(numQPUs);
   }
@@ -208,7 +208,7 @@ void KernelDriver::invoke(int numQPUs, Seq<int32_t> &params) {
   }
 
    // Invoke kernel on QPUs
-  invoke_intern(numQPUs, &params);
+  invoke_intern(numQPUs, params);
 }
 
 

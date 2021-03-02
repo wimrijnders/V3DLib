@@ -49,7 +49,7 @@ void KernelDriver::kernelFinish() {
 void KernelDriver::encode(int numQPUs) {
   if (code.size() > 0) return;  // Don't bother if already encoded
 
-  V3DLib::vc4::encode(m_targetCode, &code);
+  V3DLib::vc4::encode(m_targetCode, code);
 }
 
 
@@ -104,7 +104,7 @@ void KernelDriver::compile_intern() {
 }
 
 
-void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
+void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   //debug("Called vc4 KernelDriver::invoke()");  
   assert(code.size() > 0);
 
@@ -128,7 +128,7 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
   }
 
   enableQPUs();
-  V3DLib::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
+  V3DLib::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, &params);
   disableQPUs();
 }
 

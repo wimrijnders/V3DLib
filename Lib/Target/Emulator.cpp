@@ -138,7 +138,7 @@ struct QPUState {
  */
 struct State {
   QPUState qpu[MAX_QPUS];  // State of each QPU
-  Seq<int32_t> uniforms;   // Kernel parameters
+  IntList uniforms;   // Kernel parameters
   Word vpm[VPM_SIZE];      // Shared VPM memory
   int sema[16];            // Semaphores
   SharedArray<uint32_t> emuHeap;
@@ -623,13 +623,14 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
 // Emulator
 // ============================================================================
 
-void emulate(
-  int numQPUs,
-  Instr::List &instrs,
-  int maxReg,
-  Seq<int32_t> &uniforms,
-  BufferObject &heap
-) {
+/**
+ * @param numQPUs   Number of QPUs active
+ * @param instrs    Instruction sequence
+ * @param maxReg    Max reg id used
+ * @param uniforms  Kernel parameters
+ * @param heap
+ */
+void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, BufferObject &heap) {
   State state;
 
   state.uniforms = uniforms;

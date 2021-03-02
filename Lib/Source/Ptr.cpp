@@ -85,8 +85,8 @@ Expr::Ptr Pointer::getUniformPtr() {
 }
 
 
-bool Pointer::passParam(Seq<int32_t> *uniforms, BaseSharedArray const *p) {
-  uniforms->append(p->getAddress());
+bool Pointer::passParam(IntList &uniforms, BaseSharedArray const *p) {
+  uniforms.append(p->getAddress());
   return true;
 }
 

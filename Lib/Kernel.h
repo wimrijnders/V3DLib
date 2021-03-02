@@ -23,7 +23,7 @@ namespace V3DLib {
 template <typename... ts> inline void nothing(ts... args) {}
 
 
-template <typename T, typename t> inline bool passParam(Seq<int32_t>* uniforms, t x) {
+template <typename T, typename t> inline bool passParam(IntList &uniforms, t x) {
   return T::passParam(uniforms, x);
 }
 
@@ -36,13 +36,13 @@ template <typename T, typename t> inline bool passParam(Seq<int32_t>* uniforms, 
  * Even so, I'm probably doing it wrong.
  */
 template <>
-inline bool passParam< Float::Ptr, Shared2DArray<float>* > (Seq<int32_t>* uniforms, Shared2DArray<float> *p) {
+inline bool passParam< Float::Ptr, Shared2DArray<float>* > (IntList &uniforms, Shared2DArray<float> *p) {
   return Float::Ptr::passParam(uniforms, &((BaseSharedArray const &) p->get_parent()));
 }
 
 
 template <>
-inline bool passParam< Complex::Ptr, Complex::Array2D * > (Seq<int32_t>* uniforms, Complex::Array2D *p) {
+inline bool passParam< Complex::Ptr, Complex::Array2D * > (IntList &uniforms, Complex::Array2D *p) {
   passParam< Float::Ptr, Shared2DArray<float>* > (uniforms, &p->re());
   passParam< Float::Ptr, Shared2DArray<float>* > (uniforms, &p->im());
   return true;
@@ -117,7 +117,7 @@ public:
 
 protected:
   int numQPUs = 1;                 // Number of QPUs to run on
-  Seq<int32_t> uniforms;           // Parameters to be passed to kernel
+  IntList uniforms;           // Parameters to be passed to kernel
   vc4::KernelDriver m_vc4_driver;  // Always required for emulator
   int numVars;                     // The number of variables in the source code
 
@@ -187,7 +187,7 @@ public:
   template <typename... us>
   Kernel &load(us... args) {
     uniforms.clear();
-    nothing(passParam<ts, us>(&uniforms, args)...);
+    nothing(passParam<ts, us>(uniforms, args)...);
 
     return *this;
   }

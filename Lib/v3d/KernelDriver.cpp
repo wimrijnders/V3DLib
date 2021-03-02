@@ -1181,9 +1181,7 @@ void KernelDriver::compile_intern() {
 }
 
 
-void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t> *params) {
-  assert(params != nullptr);
-
+void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   // Assumption: code in a kernel, once allocated, doesn't change
   if (qpuCodeMem.allocated()) {
     assert(instructions.size() > 0);
@@ -1208,7 +1206,7 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t> *params) {
     paramMem.alloc(numWords);
   }
 
-  v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, *params);
+  v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
 }
 
 

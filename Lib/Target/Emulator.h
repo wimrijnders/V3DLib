@@ -6,14 +6,7 @@ namespace V3DLib {
 
 class BufferObject;
 
-// Emulator
-void emulate(
-  int numQPUs,                 // Number of QPUs active
-  Instr::List &instrs,         // Instruction sequence
-  int maxReg,                  // Max reg id used
-  Seq<int32_t> &uniforms,      // Kernel parameters
-  BufferObject &heap
-);
+void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, BufferObject &heap);
 
 }  // namespace V3DLib
 

@@ -10,7 +10,7 @@ void invoke(
   int numQPUs,
   SharedArray<uint64_t> &codeMem,
   int qpuCodeMemOffset,
-  Seq<int32_t> &params);
+  IntList &params);
 
 }  // v3d
 }  // V3DLib

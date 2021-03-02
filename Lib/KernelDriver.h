@@ -16,7 +16,7 @@ public:
   virtual void encode(int numQPUs) = 0;
 
   void compile();
-  void invoke(int numQPUs, Seq<int32_t> &params);
+  void invoke(int numQPUs, IntList &params);
   void pretty(int numQPUs, const char *filename = nullptr, bool output_qpu_code = true);
 
   /**
@@ -49,7 +49,7 @@ private:
   StmtStack m_stmtStack;
 
   virtual void compile_intern() = 0;
-  virtual void invoke_intern(int numQPUs, Seq<int32_t>* params) = 0;
+  virtual void invoke_intern(int numQPUs, IntList &params) = 0;
 
   bool has_errors() const { return !errors.empty(); }
   bool handle_errors();

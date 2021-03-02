@@ -20,7 +20,7 @@ namespace V3DLib {
  *    cause and gave up. Instead, I'll just pass a final dummy uniform value,
  *    which can be mangled to the heart's content of the hardware.
  */
-void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, Seq<int32_t>* params) {
+void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, IntList *params) {
   //
   // Number of 32-bit words needed for kernel code & parameters
   // - First two values are always the QPU ID and num QPU's

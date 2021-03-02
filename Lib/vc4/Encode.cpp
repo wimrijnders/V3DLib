@@ -451,8 +451,7 @@ uint64_t encode(Instr instr) {
 }
 
 
-void encode(Instr::List &instrs, Seq<uint32_t>* code) {
-  assert(code != nullptr);
+void encode(Instr::List &instrs, UIntList &code) {
   uint32_t high, low;
 
   for (int i = 0; i < instrs.size(); i++) {
@@ -464,7 +463,7 @@ void encode(Instr::List &instrs, Seq<uint32_t>* code) {
     }
 
     encodeInstr(instr, &high, &low);
-    *code << low << high;
+    code << low << high;
   }
 }
 

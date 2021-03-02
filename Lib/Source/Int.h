@@ -36,14 +36,12 @@ struct Int : public BaseExpr {
   Int(Int const &x);
 
   static Int mkArg();
-  static bool passParam(Seq<int32_t> *uniforms, int val);
+  static bool passParam(IntList &uniforms, int val);
 
-  // Cast to an IntExpr
   operator IntExpr();
 
   Int& operator=(int x);
   Int& operator=(Int const &rhs);
-  //Int& operator=(Int &rhs);
   IntExpr operator=(IntExpr rhs);
 
   void operator++(int);

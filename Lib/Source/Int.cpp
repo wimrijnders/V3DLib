@@ -85,8 +85,8 @@ Int Int::mkArg() {
 }
 
 
-bool Int::passParam(Seq<int32_t> *uniforms, int val) {
-  uniforms->append((int32_t) val);
+bool Int::passParam(IntList &uniforms, int val) {
+  uniforms.append((int32_t) val);
   return true;
 }
 

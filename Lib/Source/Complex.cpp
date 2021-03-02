@@ -163,9 +163,9 @@ Complex::Ptr Complex::Ptr::mkArg() {
 }
 
 
-bool Complex::Ptr::passParam(Seq<int32_t> *uniforms, Complex::Array *p) {
-  uniforms->append(p->re().getAddress());
-  uniforms->append(p->im().getAddress());
+bool Complex::Ptr::passParam(IntList &uniforms, Complex::Array *p) {
+  uniforms.append(p->re().getAddress());
+  uniforms.append(p->im().getAddress());
   return true;
 }
 
