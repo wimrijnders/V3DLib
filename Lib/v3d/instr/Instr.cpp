@@ -116,6 +116,16 @@ Instr::Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, Small
 
 
 /**
+ * Initialize the add alu
+ */
+Instr::Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, Location const &srcb) {
+  init(NOP);
+  alu_add_set(dst, imma, srcb);
+  alu.add.op = op;
+}
+
+
+/**
  * This only works if imma == immb (test here internally)
  * The syntax, however, allows this.
  */
@@ -981,14 +991,12 @@ Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb) {
 }
 
 
-Instr fadd(Location const &dst, Location const &srca, Location const &srcb) {
-  return Instr(V3D_QPU_A_FADD, dst, srca, srcb);
-}
-
-
-Instr fadd(Location const &dst, Location const &srca, SmallImm const &immb) {
-  return Instr(V3D_QPU_A_FADD, dst, srca, immb);
-}
+Instr fsub(Location const &dst, Location const &a, Location const &b) { return Instr(V3D_QPU_A_FSUB, dst, a, b); }
+Instr fsub(Location const &dst, SmallImm const &a, Location const &b) { return Instr(V3D_QPU_A_FSUB, dst, a, b); }
+Instr fsub(Location const &dst, Location const &a, SmallImm const &b) { return Instr(V3D_QPU_A_FSUB, dst, a, b); }
+Instr fadd(Location const &dst, Location const &a, Location const &b) { return Instr(V3D_QPU_A_FADD, dst, a, b); }
+Instr fadd(Location const &dst, Location const &a, SmallImm const &b) { return Instr(V3D_QPU_A_FADD, dst, a, b); }
+Instr fadd(Location const &dst, SmallImm const &a, Location const &b) { return Instr(V3D_QPU_A_FADD, dst, a, b); }
 
 
 Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3) {
@@ -1389,24 +1397,6 @@ Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3) {
   instr.alu_add_set(loc1, reg2, reg3);
 
   instr.alu.add.op    = V3D_QPU_A_FCMP;
-  return instr;
-}
-
-
-Instr fsub(Location const &loc1, Location const &loc2, Location const &loc3) {
-  Instr instr;
-  instr.alu_add_set(loc1, loc2, loc3);
-
-  instr.alu.add.op = V3D_QPU_A_FSUB;
-  return instr;
-}
-
-
-Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &loc3) {
-  Instr instr;
-  instr.alu_add_set(loc1, imm2, loc3);
-
-  instr.alu.add.op = V3D_QPU_A_FSUB;
   return instr;
 }
 

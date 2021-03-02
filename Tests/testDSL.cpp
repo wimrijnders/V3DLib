@@ -244,12 +244,10 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
     int const NUM = 1;
     vector<int> expected = {1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14};
 
-    auto k = compile(kernel_specific_instructions);
-    //k.pretty(true);
-
     SharedArray<int> result(16*NUM);
-
     result.fill(-2);  // Initialize to unexpected value
+
+    auto k = compile(kernel_specific_instructions);
     k.load(&result).emu();
     check_vector(result, 0, expected);
 
@@ -267,14 +265,13 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
   // Test all variations of If and When
   //
   SECTION("Conditionals work as expected") {
-    // Construct kernel
     auto k = compile(kernelIfWhen);
 
     SharedArray<int> result(16*N);
 
     // Reset result array to unexpected values
     auto reset = [&result] () {
-      result.fill(-2);  // Initialize to unexpected value
+      result.fill(-2);
     };
 
     //
@@ -296,8 +293,6 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 
 
 TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
-  //Platform::use_main_memory(true);
-
   SECTION("Test Complex composed type") {
     const int N = 1;  // Number Complex items in vectors
 
@@ -327,8 +322,6 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
     REQUIRE(result[1] ==  complex(-1, 0));
     REQUIRE(result[2] ==  complex(0, 2));
   }
-
-  //Platform::use_main_memory(false);
 }
 
 
@@ -375,13 +368,10 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
     int const N = 8;  // Number of expected results
 
     auto k = compile(int_ops_kernel);
-    //k.pretty(true);
 
     SharedArray<int> result(16*N);
 
     k.load(&result);
-    //k.interpret();
-    //k.emu();
     k.call();
 
     vector<vector<int>> expected = {
@@ -497,7 +487,7 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
   };
 
   auto k = compile(rot_kernel<Int, Int::Ptr>);
-  k.pretty(true, "obj/test/rot_kernel.txt", false);
+  //k.pretty(true, "obj/test/rot_kernel.txt", false);
   k.load(&result1, &a);
 
   // Interpreter works fine, used here to compare emulator output
@@ -631,8 +621,17 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
 
 void cosine_kernel(Float::Ptr result, Int numValues, Float freq, Int offset) {
   For (Int n = 0, n < numValues, n += 16)
-    Float x = freq*((x + toFloat(index())) - toFloat(offset));
+    Float x = freq*toFloat(n + index() - offset);
     *result = functions::cos(x);
+    result.inc();
+  End
+}
+
+
+void sine_kernel(Float::Ptr result, Int numValues, Float freq, Int offset) {
+  For (Int n = 0, n < numValues, n += 16)
+    Float x = freq*toFloat(n + index() - offset);
+    *result = functions::sin(x);
     result.inc();
   End
 }
@@ -703,47 +702,68 @@ TEST_CASE("Test functions", "[dsl][func]") {
    * NOTE: Remember, sin/cos normalized on 2*M_PI
    */
   SECTION("Test trigonometric functions") {
-    float a = functions::cos(0);
-    REQUIRE(a == 1.0f);
+    float const MAX_DIFF = 0.57f;  // Test value for extra_precision == false
 
     const int size   = 1000;
     const int offset = size/2;
     const float freq = (float) (1.0f/((double) size));
 
-    // icreate CPU version, to compare with
-    float arr[size];
+    //
+    // Lib cos, to compare with
+    //
+    float lib_cos[size];
     for (int x = 0; x < size; ++x) {
-      arr[x] = functions::cos(freq*((float) (x - offset)));
+      lib_cos[x] = cos((float) (freq*(2*M_PI)*(x - offset)));
     };
 
+
+    //
     // Calc with scalar kernel
-    float arr2[size];
-    for (int x = 0; x < size; ++x) {
-      arr2[x] = cos((float) (freq*(2*M_PI)*(x - offset)));
-    };
+    //
+    float scalar_cos[size];
 
-    float max_diff = calc_max_diff(arr, arr2, size); 
-    INFO("Max diff: " << max_diff);
-    REQUIRE(max_diff < 0.57f);  // Test value for extra_precision == false
+    {
+      for (int x = 0; x < size; ++x) {
+        scalar_cos[x] = functions::cos(freq*((float) (x - offset)));
+      };
 
-    float sin_arr[size];
-    for (int x = 0; x < size; ++x) {
-      sin_arr[x] = functions::sin(freq*((float) (x - offset)));
+      float max_diff = calc_max_diff(scalar_cos, lib_cos, size); 
+      INFO("Max diff: " << max_diff);
+      REQUIRE(max_diff < MAX_DIFF);
     }
 
+    //
     // Calc with QPU kernel
-    SharedArray<float> results_qpu(size);
+    //
+    SharedArray<float> qpu_cos(size);
+    SharedArray<float> qpu_sin(size);
 
-breakpoint
+    {
+      auto k = compile(cosine_kernel);
+      //k.pretty(false, nullptr, true);
+      k.load(&qpu_cos, size, freq, offset);
+      k.call();
 
-    auto k = compile(cosine_kernel);
-    k.load(&results_qpu, size, freq, offset);
-    k.interpret();
+      //dump_array(qpu_cos);
 
-    dump_array(results_qpu);
+      float max_diff = calc_max_diff(lib_cos, qpu_cos, size); 
+      //printf("Max diff: %f\n", max_diff);
+      INFO("Max diff: " << max_diff);
+      REQUIRE(max_diff < MAX_DIFF);
+    }
+
+    {
+      auto k = compile(sine_kernel);
+      k.load(&qpu_sin, size, freq, offset);
+      k.call();
+    }
 
     PGM pgm(size, 400);
-    pgm.plot(arr, size).plot(arr2, size, 64).plot(sin_arr, size, 48).save("obj/test/cos_plot.pgm");
+    pgm.plot(lib_cos, size, 64)
+     //.plot(scalar_cos, size)
+       .plot(qpu_cos.ptr(), size, 32)
+       .plot(qpu_sin.ptr(), size, 32)
+       .save("obj/test/cos_plot.pgm");
   }
 
 

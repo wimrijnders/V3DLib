@@ -39,6 +39,7 @@ public:
   Instr(uint64_t in_code = NOP);
   Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, Location const &srcb);
   Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
+  Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, Location const &srcb);
   Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, SmallImm const &immb);
 
   Instr &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
@@ -188,8 +189,13 @@ Instr sub(Location const &dst, Location const &srca, Location const &srcb);
 Instr sub(Location const &dst, Location const &srca, SmallImm const &immb);
 Instr sub(Location const &dst, SmallImm const &imma, Location const &srcb);
 
-Instr fadd(Location const &dst, Location const &srca, Location const &srcb);
-Instr fadd(Location const &dst, Location const &srca, SmallImm const &immb);
+Instr fsub(Location const &dst, Location const &a, Location const &b);
+Instr fsub(Location const &dst, SmallImm const &a, Location const &b);
+Instr fsub(Location const &dst, Location const &a, SmallImm const &b);
+Instr fadd(Location const &dst, Location const &a, Location const &b);
+Instr fadd(Location const &dst, Location const &a, SmallImm const &b);
+Instr fadd(Location const &dst, SmallImm const &a, Location const &b);
+
 Instr faddnf(Location const &loc1, Location const &reg2, Location const &reg3);
 Instr faddnf(Location const &loc1, SmallImm imm2, Location const &loc3);
 
@@ -224,8 +230,6 @@ Instr ffloor(Location const &dst, Location const &srca);
 Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2);
 Instr fmax(Location const &dst, Location const &srca, Location const &srcb);
 Instr fcmp(Location const &loc1, Location const &reg2, Location const &reg3);
-Instr fsub(Location const &loc1, Location const &reg2, Location const &reg3);
-Instr fsub(Location const &loc1, SmallImm const &imm2, Location const &reg3);
 Instr vfpack(Location const &dst, Location const &loca, Location const &locb);
 Instr fdx(Location const &dst, Location const &srca);
 Instr vflb(Location const &dst);

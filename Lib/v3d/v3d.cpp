@@ -77,7 +77,7 @@ void log_error(int ret, char const *prefix = "") {
   error(buf);
 }
 
-
+/*
 void log_offset(uint32_t offset) {
   std::string msg = "create_bo.offset : ";
   msg << offset
@@ -91,10 +91,11 @@ void log_offset(uint32_t offset) {
 
   debug(msg);
 }
+*/
 
 
 void warn_offset(uint32_t offset) {
-  log_offset(offset);
+  //log_offset(offset);
 
   if (offset % sysconf(_SC_PAGE_SIZE) != 0) {
     std::string msg = "alloc_intern(): create_bo.offset ";

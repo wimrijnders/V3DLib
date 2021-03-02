@@ -72,6 +72,8 @@ public:
 
   ~SharedArray() { Parent::dealloc(); }
 
+  T *ptr() { return (T *) getPointer(); }  // Return pointer to data in main memory
+
   void fill(T val) {
     assert(allocated());
     //assertq(allocated(), "Can not fill unallocated array");

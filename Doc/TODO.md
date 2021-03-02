@@ -12,6 +12,10 @@
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
 - [x] Fix indentation tabs/spaces
+- [ ] Following source lang leads to infinite recursion and segfault during compile, fix and/or prevent:
+
+    Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacted from original)
+
 	  
 ## Optimization and Cleanup
 

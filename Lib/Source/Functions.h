@@ -16,6 +16,7 @@ float cos(float x_in, bool extra_precision = false) noexcept;
 float sin(float x_in, bool extra_precision = false) noexcept;
 
 FloatExpr cos(FloatExpr x_in, bool extra_precision = false);
+FloatExpr sin(FloatExpr x_in, bool extra_precision = false);
 
 FloatExpr ffloor(FloatExpr x);
 FloatExpr fabs(FloatExpr x);

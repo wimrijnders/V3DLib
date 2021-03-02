@@ -439,7 +439,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
         case ALUOp::A_TIDX:  ret << tidx(*dst_reg); break;
         case ALUOp::A_EIDX:  ret << eidx(*dst_reg); break;
         default:
-          breakpoint  // unimplemented op
+          assertq("unimplemented op, input none", true);
           did_something = false;
         break;
       }
@@ -451,7 +451,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       switch (src_instr.ALU.op.value()) {
         case ALUOp::A_FFLOOR:  ret << ffloor(*dst_reg, *src_a); break;
         default:
-          assertq(false, "unimplemented op, one location input");
+          assertq("unimplemented op, input reg", true);
           did_something = false;
         break;
       }
@@ -472,7 +472,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
         case ALUOp::A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
         case ALUOp::A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
         default:
-          assertq(false, "unimplemented op, two location inputs");
+          assertq("unimplemented op, input reg, reg", true);
           did_something = false;
         break;
       }
@@ -490,13 +490,14 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, imm);          break;
       case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, imm);          break;
       case ALUOp::A_FADD:  ret << fadd(*dst_reg, *src_a, imm);         break;
+      case ALUOp::A_FSUB:  ret << fsub(*dst_reg, *src_a, imm);         break;
       case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, imm);   break;
       case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;
       case ALUOp::A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;
       case ALUOp::A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
       case ALUOp::A_BXOR:  ret << bxor(*dst_reg, *src_a, imm);         break;
       default:
-        assertq(false, "unimplemented op, reg and imm inputs", true);
+        assertq("unimplemented op, input reg, imm", true);
         did_something = false;
       break;
     }
@@ -511,8 +512,9 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       case ALUOp::A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
       case ALUOp::A_SUB:   ret << sub(*dst_reg, imm, *src_b);          break;
       case ALUOp::A_ADD:   ret << add(*dst_reg, imm, *src_b);          break;
+      case ALUOp::A_FADD:  ret << fadd(*dst_reg, imm, *src_b);         break;
       default:
-        breakpoint  // unimplemented op
+        assertq("unimplemented op, input imm, reg", true);
         did_something = false;
       break;
     }
@@ -523,12 +525,12 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
     switch (src_instr.ALU.op.value()) {
       case ALUOp::A_BOR:   ret << bor(*dst_reg, imm_a, imm_b);          break;
       default:
-        breakpoint  // unimplemented op
+        assertq("unimplemented op, input imm, imm", true);
         did_something = false;
       break;
     }
   } else {
-    breakpoint  // Unhandled combination of inputs/output
+    assertq("Unhandled combination of inputs/output", true);
     did_something = false;
   }
 
@@ -628,9 +630,7 @@ bool convert_int_powers(Instructions &output, int in_value) {
  */
 bool encode_int_immediate(Instructions &output, int in_value) {
   Instructions ret;
-
   uint32_t value = (uint32_t) in_value;
-
   uint32_t nibbles[8];  // was 7 (idiot)
 
   for (int i = 0; i < 8; ++i) {
@@ -700,14 +700,47 @@ bool encode_int(Instructions &ret, std::unique_ptr<Location> &dst, int value) {
   if (SmallImm::int_to_opcode_value(value, rep_value)) {  // direct translation
     SmallImm imm(rep_value);
     ret << mov(*dst, imm);
-  } else if (convert_int_powers(ret, value)) {                 // powers of 2 of basic small int's 
+  } else if (convert_int_powers(ret, value)) {            // powers of 2 of basic small int's 
     ret << mov(*dst, r0);
-  } else if (encode_int_immediate(ret, value)) {
-    // All is well
+  } else if (encode_int_immediate(ret, value)) {          // Use full blunt conversion (heavy but always works)
     ret << mov(*dst, r1);
   } else {
-    // Conversion failed
-    success = false;
+    success = false;                                      // Conversion failed
+  }
+
+  return success;
+}
+
+
+bool encode_float(Instructions &ret, std::unique_ptr<Location> &dst, float value) {
+  bool success = true;
+  int rep_value;
+
+  if (value == 0.0) {
+    ret << nop().fmov(*dst, 0.0);                 // Works because float zero is 0x0
+  } else if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
+    ret << nop().fmov(*dst, rep_value)
+        << fsub(*dst, 0, *dst);                   // Works because float zero is 0x0
+  } else if (SmallImm::float_to_opcode_value(value, rep_value)) {
+    ret << nop().fmov(*dst, rep_value);
+  } else if ((value == (float) ((int) value))) {  // Special case: float is encoded int, no fraction
+    int int_value = (int) value;
+    SmallImm dummy(0);                            // TODO why need this???
+
+    if (encode_int(ret, dst, int_value)) {
+      ret  << itof(*dst, *dst, dummy);
+    } else {
+      assertq("Full-int float conversion failed", true);
+      success = false;
+    }
+  } else {
+    // Do the full blunt int conversion
+    int int_value = *((int *) &value);
+    if (encode_int_immediate(ret, int_value)) {
+      ret << mov(*dst, r1);                       // Result is int but will be handled as float downstream
+    } else {
+      success = false;
+    }
   }
 
   return success;
@@ -734,38 +767,15 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
     }
 
   } else if (instr.imm.tag == IMM_FLOAT32) {
-    // Allows for the legal int small imm values and their negatives
     float value = instr.imm.floatVal;
-    int rep_value;
-    bool success = true;
 
-    if (value == 0.0) {
-      ret << nop().fmov(*dst, 0.0);  // This only works because the floating point representation of zero is 0x0
-    } else if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
-      ret << nop().fmov(*dst, rep_value)   // TODO perhaps make 2nd param Small Imm
-          << fsub(*dst, 0, *dst);          // This only works because the floating point representation of zero is 0x0
-    } else if (SmallImm::float_to_opcode_value(value, rep_value)) {
-      ret << nop().fmov(*dst, rep_value);  // TODO perhaps make 2nd param Small Imm
-    } else if ((value == (float) ((int) value))) {
-      int int_value = (int) value;
-      SmallImm imm(0); // dummy value, TODO why need it???
-
-      if (encode_int(ret, dst, int_value)) {
-        ret  << itof(*dst, *dst, imm);
-      } else {
-        success = false;
-      }
-    } else {
-      // TODO: figure out how to handle other float immediates, if necessary at all
-      success = false;
-    }
-
-    if (!success) {
+    if (!encode_float(ret, dst, value)) {
+      // Conversion failed, output error
       err_label = "float";
       err_value = std::to_string(value);
     }
   } else if (instr.imm.tag == IMM_MASK) {
-    debug_break("encodeLoadImmediate(): IMM_MASK not handled yet");
+    debug_break("encodeLoadImmediate(): IMM_MASK not handled");
   } else {
     debug_break("encodeLoadImmediate(): unknown tag value");
   }

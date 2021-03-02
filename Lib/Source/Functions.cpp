@@ -148,10 +148,20 @@ float cos(float x_in, bool extra_precision) noexcept {
 }
 
 
+/**
+ * scalar version of sine
+ *
+ * NB: The input param is normalized on 2*M_PI.
+ */
+float sin(float x_in, bool extra_precision) noexcept {
+  return functions::cos(0.25f - x_in, extra_precision);
+}
+
+
 FloatExpr cos(FloatExpr x_in, bool extra_precision) {
   Float x = x_in;
 
-  x -= 0.25f + functions::ffloor(x + 0.25f);
+  x -= 0.25f + functions::ffloor(x + 0.25f);  comment("Start cosine");
   x *= 16.0f * (fabs(x) - 0.5f);
 
   if (extra_precision) {
@@ -162,13 +172,8 @@ FloatExpr cos(FloatExpr x_in, bool extra_precision) {
 }
 
 
-/**
- * scalar version of sine
- *
- * NB: The input param is normalized on 2*M_PI.
- */
-float sin(float x_in, bool extra_precision) noexcept {
-  return functions::cos(0.25f - x_in, extra_precision);
+FloatExpr sin(FloatExpr x_in, bool extra_precision) {
+  return cos(0.25f - x_in, extra_precision);
 }
 
 
@@ -236,10 +241,10 @@ FloatExpr fabs(FloatExpr x) {
     uint32_t const Mask = ~(((uint32_t) 1) << 31);
 
     // Just zap the top bit
-    ret.as_float(x.as_int() & Mask);
+    ret.as_float(x.as_int() & Mask);            comment("fabs vc4");
   } else {
     // v3d: The conversion of Mask is really long-winded; make the mask in-place
-    ret.as_float(x.as_int() & shr(Int(-1), 1));
+    ret.as_float(x.as_int() & shr(Int(-1), 1));  comment("fabs v3d");
   }
 
   return ret;
