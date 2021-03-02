@@ -5,7 +5,6 @@
 - [ ] This does not work in source lang code, fix: `*dst = *srs`, where dst/src are uniform pointers
 - [ ] Automate loading of new versions external libraries
 - [ ] Get `Pi 1` running again; fails in `qpu_enable()`
-- [ ] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
 - [ ] Make heap memory size configurable (ideally cmdline option)
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [ ] Following source lang leads to infinite recursion and segfault during compile, fix and/or prevent:
@@ -16,6 +15,7 @@ Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacte
 - [x] ! Fix '+ 0' hack for kernel pointers, this is confusing
 - [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it)
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
+- [x] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
 
 	  
 ## Optimization and Cleanup
