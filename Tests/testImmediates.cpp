@@ -15,15 +15,16 @@ using namespace V3DLib;
 namespace {
 
 /**
- * This doesn't appear to do anything useful, but it does.
  * Used to check translation of immediate values.
+ * This doesn't appear to do anything useful, but it does.
  */
 void immediate_kernel(Int::Ptr int_result, Float::Ptr float_result) {
-  // 25 failed at one time
-  *int_result   = 25;     int_result   += 16;
-  *int_result   = -25;                         // Negative values should work as well
-  *float_result = 25.0f;  float_result += 16;
-  *float_result = -25.0f; float_result += 16;  // Should work as well for floats that are int's
+  *int_result   =  25;      int_result.inc();    // failed at one time
+  *int_result   =  15;      int_result.inc();    // failed at one time
+  *int_result   = -25;                           // Negative values should work as well
+  *float_result =  25.0f;   float_result.inc();
+  *float_result = -25.0f;   float_result.inc();  // Should work as well for floats that are int's
+  *float_result =   0.225f; float_result.inc();  // failed at one time
 
   // Other test values
   *float_result = 0.0f;
@@ -32,8 +33,8 @@ void immediate_kernel(Int::Ptr int_result, Float::Ptr float_result) {
 }  // anon namespace
 
 
-TEST_CASE("Test loading of integer immediates", "[dsl][imm]") {
-  int const N = 2;  // Number of distinct results (1 more for float)
+TEST_CASE("Test loading of immediates", "[dsl][imm]") {
+  int const N = 3;  // Number of distinct results (1 more for float)
 
   SharedArray<int> int_result(16*N);
   int_result.fill(0);
@@ -46,13 +47,10 @@ TEST_CASE("Test loading of integer immediates", "[dsl][imm]") {
   k.call();
 
   REQUIRE(int_result[ 0]     ==  25);
-  REQUIRE(int_result[16]     == -25);
+  REQUIRE(int_result[16]     ==  15);
+  REQUIRE(int_result[16*2]   == -25);
   REQUIRE(float_result[ 0]   ==  25.0f);
   REQUIRE(float_result[16]   == -25.0f);
-  REQUIRE(float_result[16*2] ==   0.0f);
+  REQUIRE(float_result[16*2] ==   0.225f);
+  REQUIRE(float_result[16*3] ==   0.0f);
 }
-
-
-TEST_CASE("Test loading of float immediates", "[dsl][imm]") {
-}
- 
