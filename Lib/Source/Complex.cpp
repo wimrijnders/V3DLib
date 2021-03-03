@@ -1,4 +1,5 @@
 #include "Complex.h"
+#include <cmath>
 #include "Support/basics.h"
 #include "Functions.h"  // ::set_at()
 
@@ -18,6 +19,11 @@ ComplexExpr::ComplexExpr(Complex const &rhs) {
 ///////////////////////////////////////////////////////////////////////////////
 // Class complex
 ///////////////////////////////////////////////////////////////////////////////
+
+float complex::magnitude() const {
+ return (float) sqrt(m_re*m_re + m_im*m_im);  // sqrt here is a cmath function
+}
+
 
 std::string complex::dump() const {
   std::string ret;
@@ -263,6 +269,22 @@ int Complex::Array2D::rows() const {
 int Complex::Array2D::columns() const {
   assert(m_re.columns() == m_im.columns());
   return m_re.columns();
+}
+
+
+std::string Complex::Array2D::dump() const {
+  std::string ret;
+
+  for (int r = 0; r < m_re.rows(); ++r) {
+    ret << "(";
+    for (int c = 0; c < m_re.columns(); ++c) {
+      complex tmp(m_re[r][c], m_im[r][c]);
+      ret << tmp.dump() << ", ";
+    }
+    ret << ")\n";
+  }
+
+  return ret;
 }
 
 }  // namespace V3DLib

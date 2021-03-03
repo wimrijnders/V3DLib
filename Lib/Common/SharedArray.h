@@ -72,7 +72,8 @@ public:
 
   ~SharedArray() { Parent::dealloc(); }
 
-  T *ptr() { return (T *) m_usraddr; }  // Return pointer to data in main memory
+  T const *ptr() const { return (T *) m_usraddr; }  // Return pointer to data in main memory
+  T *ptr() { return (T *) m_usraddr; }
 
   void fill(T val) {
     assert(allocated());

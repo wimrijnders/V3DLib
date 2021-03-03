@@ -145,8 +145,8 @@ PGM &PGM::plot(float const *arr, int size, int color) {
   assert(size > 0);
   assert(size <= m_width);
 
-  const float MIN_START =  1000.0f;
-  const float MAX_START = -1000.0f;
+  const float MIN_START =  1.0e20f;
+  const float MAX_START = -1.0e20f;
 
   // determine min and max
   float min = MIN_START;
@@ -169,12 +169,17 @@ PGM &PGM::plot(float const *arr, int size, int color) {
     //       top (y == 0) leaves 1 row open, bottom gets clipped
     int y =  m_height - (int) ((arr[x] - min)/(max - min)*((float) m_height));
 
-   if (y >= m_height) continue;  // clip if out of bounds
+   if (y >= m_height) y = m_height -1;  // clip if out of bounds
 
     m_arr[x + y*m_width] = color;
   }
 
   return *this;
+}
+
+
+PGM &PGM::plot(V3DLib::SharedArray<float> const &arr, int color) {
+  return plot(arr.ptr(), arr.size(), color);
 }
 
 

@@ -297,7 +297,6 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
     const int N = 1;  // Number Complex items in vectors
 
     auto k = compile(complex_kernel);
-    //k.pretty(true, nullptr, false);
 
     // Allocate and array for input and result values
     Complex::Array input(16*N);

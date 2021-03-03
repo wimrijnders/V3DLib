@@ -37,10 +37,13 @@ private:
  */
 class complex {
 public:
+  complex() = default;
   complex(float re, float im) : m_re(re), m_im(im) {}
 
   float re() const { return m_re; }
   float im() const { return m_im; }
+  float magnitude() const;
+  complex conjugate() const { return complex(m_re, -m_im); }
   std::string dump() const;
 
   bool operator==(complex const &rhs) const {
@@ -64,8 +67,8 @@ public:
   }
 
 private:
-  float m_re;
-  float m_im;
+  float m_re = 0.0f;
+  float m_im = 0.0f;
 };
 
 
@@ -138,16 +141,33 @@ public:
         m_im(&parent.im(), row, row_size)
         {}
 
+      ~Row() {
+        if (m_proxy_col != -1) {
+          m_re[m_proxy_col] = m_proxy.re();
+          m_im[m_proxy_col] = m_proxy.im();
+        }
+      }
+
       complex operator[] (int col) const { return complex(m_re[col], m_im[col]); }
+
+      complex &operator[] (int col) {
+        m_proxy = complex(m_re[col], m_im[col]);
+        m_proxy_col = col;
+        return m_proxy;
+      }
 
     private:
       Shared2DArray<float>::Row m_re;
       Shared2DArray<float>::Row m_im;
+
+      int   m_proxy_col = -1;
+      complex m_proxy;
     };
 
   public:
     Array2D() = default;
     Array2D(int rows, int columns);
+    Array2D(int dimension) : Array2D(dimension, dimension) {}
 
     Shared2DArray<float> &re() { return  m_re; }
     Shared2DArray<float> &im() { return  m_im; }
@@ -164,6 +184,8 @@ public:
     bool allocated() const { return m_re.allocated() && m_im.allocated(); }
 
     Row operator[] (int row) { return Row(*this, row, columns()); }
+
+    std::string dump() const;
 
   private:
     Shared2DArray<float> m_re;

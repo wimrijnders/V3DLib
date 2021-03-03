@@ -27,6 +27,7 @@ struct FloatExpr :public BaseExpr {
   FloatExpr(Deref<Float> d);
 
   IntExpr as_int() { return IntExpr(m_expr); }  //<< Reinterpret the float expression as an int expression
+  FloatExpr operator-();
 };
 
 

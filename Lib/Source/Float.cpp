@@ -11,6 +11,8 @@ namespace V3DLib {
 FloatExpr::FloatExpr(float x) { m_expr = std::make_shared<Expr>(x); }
 FloatExpr::FloatExpr(Deref<Float> d) : BaseExpr(d.expr()) {}
 
+FloatExpr FloatExpr::operator-() { return (*this)*-1.0f; }
+
 
 // ============================================================================
 // Class Float

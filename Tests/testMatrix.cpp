@@ -11,6 +11,7 @@
 #include "support/support.h"
 #include "Support/basics.h"
 #include "support/support.h"
+#include "Support/pgm.h"
 #include "../Examples/Kernels/Matrix.h"
 
 namespace {
@@ -568,8 +569,6 @@ void test_complex_matrix_multiplication(
 
 
 TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]") {
-//  Platform::use_main_memory(true);
-
   SECTION("Check correct working complex dotvector") {
     test_complex_dotvector<1>();
     test_complex_dotvector<4>();
@@ -577,7 +576,6 @@ TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]")
   }
 
   SECTION("Check complex matrix multiplication") {
-
     test_complex_matrix_multiplication( 1,    16,   1, 1);
     test_complex_matrix_multiplication( 2,  3*16,   2, 1, {-1.0f, 2.0f});
     test_complex_matrix_multiplication( 2,  3*16,   2, 1, {-1.0f, 2.0f}, { 1.0f, -1.0f });
@@ -587,6 +585,157 @@ TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]")
     test_complex_matrix_multiplication( 2,  3*16,   2, 8, {-1.0f, 2.0f});
     test_complex_matrix_multiplication( 2,  3*16,   2, 8, {-1.0f, 2.0f}, { 1.0f, -1.0f });
   }
+}
 
-//  Platform::use_main_memory(false);
+
+///////////////////////////////////////////////////////////////////////////////
+// Discrete Fourier Transform
+///////////////////////////////////////////////////////////////////////////////
+
+void create_dft_matrix(Complex::Array2D &arr) {
+  REQUIRE(arr.rows() > 0);
+  REQUIRE(arr.rows() % 16 == 0);
+  int const Dim = arr.rows();
+  REQUIRE(Dim == arr.columns());
+
+  float const precision1 = 1.5e-3f;
+
+  for (int r = 0; r < Dim; ++r) {
+    for (int c = 0; c < Dim; ++c) {
+      double angle_lib = (2*M_PI*((float) (-r*c)) / Dim);
+      complex tmp_lib((float) std::cos(angle_lib), (float) std::sin(angle_lib)); 
+
+      float angle = ((float) (-r*c))/((float) Dim); 
+      complex tmp(functions::cos(angle, true), functions::sin(angle, true)); // High-precision is a good idea!
+      //std::cout << tmp.dump();
+
+      INFO("r: " << r << ", c: " << c);
+      INFO("tmp_lib: " << tmp_lib.dump() << ", tmp: " << tmp.dump());
+
+      REQUIRE(abs(tmp_lib.re() - tmp.re()) < precision1);
+      REQUIRE(abs(tmp_lib.im() - tmp.im()) < precision1);
+
+      arr[r][c] = tmp;
+    }
+  }
+}
+
+
+TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
+  Platform::use_main_memory(true);
+
+  /**
+   * Check out how DFT with a matrix looks like
+   * Turns out that the precision is pretty lousy - still usable, though.
+   */
+  SECTION("Check DFT matrix") {
+    int const DimShift = 4;
+    int const Dim = 1 << DimShift;
+
+    Complex::Array2D dft_matrix(Dim);
+    create_dft_matrix(dft_matrix);
+    //std::cout << dft_matrix.dump();
+
+    // Tranpose should be equal to self
+    for (int r = 0; r < Dim; ++r) {
+      for (int c = 0; c < Dim; ++c) {
+        REQUIRE(dft_matrix[r][c] == dft_matrix[c][r]); 
+      }
+    }
+
+
+    //
+    // Multiplying with (transposed) conjugate should give DimxI (I: identity matrix)
+    //
+    Complex::Array2D dft_conjugate(Dim);
+    for (int r = 0; r < Dim; ++r) {
+      for (int c = 0; c < Dim; ++c) {
+        dft_conjugate[r][c] = dft_matrix[r][c].conjugate();  // Don't transpose!
+      }
+    }
+
+    Complex::Array2D result;
+
+    auto k = compile(kernels::complex_matrix_mult_decorator(dft_conjugate, dft_matrix, result));
+    result.fill({-1, -1});
+    k.load(&result, &dft_conjugate, &dft_matrix).emu();
+
+    float const precision2 = 2e-2f;
+
+    for (int r = 0; r < Dim; ++r) {
+      for (int c = 0; c < Dim; ++c) {
+
+        float test = 0.0f;
+        if (r == c) {
+          test = (float) Dim;
+        }
+
+        INFO("r: " << r << ", c: " << c);
+        REQUIRE(abs(result[r][c].re() - test) < precision2);
+        REQUIRE(abs(result[r][c].im() - 0.0f) < precision2);
+      }
+    }
+
+    //std::cout << "\n\n" << result.dump();
+  }
+
+
+  SECTION("Check DFT conversion") {
+    // Make a test wavelet as input
+    int const Dim = 128;
+    Complex::Array2D input(1, Dim);  // Remember, transposed!
+    for (int c = 0; c < Dim; ++c) {
+      float x_exp = ((float) c)/Dim/2;
+      float filter = (float) (functions::sin(x_exp));
+
+      float noise = 60.0f*random_float();
+
+      float freq1 = 6.0f/Dim;
+      float val1  = 20.0f*functions::cos(freq1*((float) c), true);
+
+      float freq2 = 1.0f/Dim;
+      float val2  = 10.0f*functions::cos(freq2*((float) c), true);
+
+      input[0][c] = complex(noise + (filter*filter)*(val1 + val2), 0.0f);
+    }
+
+    // Prepare DFT matrix
+    Complex::Array2D dft_matrix(Dim);
+    create_dft_matrix(dft_matrix);
+
+    Complex::Array2D result;
+
+    auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result));
+    result.fill({-1, -1});
+    k.load(&result, &dft_matrix, &input).emu();
+
+
+    //
+    // Create some visual output
+    //
+    {
+      float real_input[Dim];
+      for (int c = 0; c < Dim; ++c) {
+        real_input[c] = input[0][c].re();
+      }
+
+      PGM pgm(Dim, 100);
+      pgm.plot(real_input, Dim)
+         .save("obj/test/dft_input.pgm");
+    }
+
+    {
+      float real_result[Dim];
+      for (int c = 0; c < Dim; ++c) {
+        real_result[c] = result[0][c].magnitude();
+      }
+      dump_array(real_result, Dim);
+
+      PGM pgm(Dim, 100);
+      pgm.plot(real_result, Dim)
+         .save("obj/test/dft_result.pgm");
+    }
+  }
+
+  Platform::use_main_memory(false);
 }
