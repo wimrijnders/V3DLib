@@ -8,7 +8,7 @@ V3DLib::Settings settings;
 /**
  * Odd/even transposition sorter for a 32-element array
  */
-void oet(Int::Ptr p) {
+void kernel(Int::Ptr p) {
   Int evens = *p;
   Int odds  = *(p+16);
 
@@ -36,22 +36,18 @@ void oet(Int::Ptr p) {
 
 
 int main(int argc, const char *argv[]) {
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
-  // Construct kernel
-  auto k = compile(oet);
+  auto k = compile(kernel);                       // Construct kernel
 
-  // Allocate and initialise array shared between ARM and GPU
-  Int::Array a(32);
+  Int::Array a(32);                               // Allocate and initialise array shared between ARM and GPU
   for (int i = 0; i < (int) a.size(); i++)
     a[i] = 100 - i;
 
-  k.load(&a);           // Load the uniforms
-  settings.process(k);  // Invoke the kernel
+  k.load(&a);                                     // Load the uniforms
+  settings.process(k);                            // Invoke the kernel
 
-  // Display the result
-  for (int i = 0; i < (int) a.size(); i++)
+  for (int i = 0; i < (int) a.size(); i++)        // Display the result
     printf("%i: %i\n", i, (i & 1) ? a[16+(i>>1)] : a[i>>1]);
   
   return 0;

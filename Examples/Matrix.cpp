@@ -139,8 +139,7 @@ void run_qpu_kernel() {
 // ============================================================================
 
 int main(int argc, const char *argv[]) {
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
   // Run a kernel as specified by the passed kernel index
   switch (settings.kernel) {

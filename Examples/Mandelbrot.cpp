@@ -300,8 +300,7 @@ int main(int argc, const char *argv[]) {
          "Running it has the potential to lock up your Pi. Please use with care.\n\n");
 #endif  // ARM64
 
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
   if (settings.kernel == settings.ALL) {
     for (int i = 0; i < settings.ALL; ++i ) {

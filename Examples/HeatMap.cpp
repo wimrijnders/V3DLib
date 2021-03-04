@@ -271,8 +271,7 @@ void run_kernel() {
 // ============================================================================
 
 int main(int argc, const char *argv[]) {
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
   Timer timer;
 

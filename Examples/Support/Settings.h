@@ -22,7 +22,7 @@ struct Settings {
 
   Settings(CmdParameters *derived_params = nullptr, bool use_num_qpus = false);
 
-  int init(int argc, const char *argv[]);
+  void init(int argc, const char *argv[]);
   void process(KernelBase &k);
   virtual bool init_params() { return true; }
 

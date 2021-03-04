@@ -32,15 +32,13 @@ std::string stem(const char *input) {
   // Remove directory if present.
   // Do this before extension removal incase directory has a period character.
   const size_t last_slash_idx = filename.find_last_of("\\/");
-  if (std::string::npos != last_slash_idx)
-  {
+  if (std::string::npos != last_slash_idx) {
     filename.erase(0, last_slash_idx + 1);
   }
 
   // Remove extension if present.
   const size_t period_idx = filename.rfind('.');
-  if (std::string::npos != period_idx)
-  {
+  if (std::string::npos != period_idx) {
     filename.erase(period_idx);
   }
 
@@ -151,7 +149,13 @@ CmdParameters &Settings::base_params() {
 }
 
 
-int Settings::init(int argc, const char *argv[]) {
+/**
+ * Parse the params from the commandline.
+ *
+ * Will exit locally if an error occured or help is displayed.
+ * In other words, if it returns all is well.
+ */
+void Settings::init(int argc, const char *argv[]) {
   int ret = CmdParameters::ALL_IS_WELL;
 
   set_name(argv[0]);
@@ -178,7 +182,7 @@ int Settings::init(int argc, const char *argv[]) {
     }
   }
 
-  return ret;
+  if (ret != CmdParameters::ALL_IS_WELL) exit(ret);
 }
 
 

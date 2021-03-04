@@ -170,10 +170,8 @@ void run_kernel(int kernel_index) {
 // ============================================================================
 
 int main(int argc, const char *argv[]) {
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
   run_kernel(settings.kernel);
-
   return 0;
 }

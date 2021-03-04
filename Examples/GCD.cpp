@@ -24,22 +24,21 @@ void gcd(Int::Ptr p, Int::Ptr q, Int::Ptr r) {
 
 
 int main(int argc, const char *argv[]) {
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
-  auto k = compile(gcd);                 // Construct the kernel
+  auto k = compile(gcd);                          // Construct the kernel
 
-  Int::Array a(16), b(16), r(16);  // Allocate and initialise the arrays shared between ARM and GPU
+  Int::Array a(16), b(16), r(16);                 // Allocate and initialise the arrays shared between ARM and GPU
   srand(0);
   for (int i = 0; i < 16; i++) {
     a[i] = 100 + (rand() % 100);
     b[i] = 100 + (rand() % 100);
   }
 
-  k.load(&a, &b, &r);                    // Invoke the kernel
+  k.load(&a, &b, &r);                             // Invoke the kernel
   settings.process(k);
 
-  for (int i = 0; i < 16; i++)           // Display the result
+  for (int i = 0; i < 16; i++)                    // Display the result
     printf("gcd(%i, %i) = %i\n", a[i], b[i], r[i]);
   
   return 0;

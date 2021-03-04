@@ -15,28 +15,24 @@ void id_kernel(Int::Ptr p, Int::Ptr q) {
 
 
 int main(int argc, const char *argv[]) {
-  int numQPUs = 8;
+  int numQPUs = 8;                                // Max number of QPUs for v3d
 
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
-  // Construct kernel
-  auto k = compile(id_kernel);
-  k.setNumQPUs(numQPUs);  // Value is max for v3d
+  auto k = compile(id_kernel);                    // Construct kernel
+  k.setNumQPUs(numQPUs);
 
-  // Allocate and initialise array shared between ARM and GPU
-  Int::Array id_array(16*numQPUs);
-  id_array.fill(0);
+  Int::Array result(16*numQPUs);                  // Allocate and initialise array shared between ARM and GPU
+  result.fill(0);
 
   Int::Array index_array(16*numQPUs);
   index_array.fill(0);
 
-  k.load(&id_array, &index_array);  // Load the uniforms
-  settings.process(k);              // Invoke the kernel
+  k.load(&result, &index_array);                  // Load the uniforms
+  settings.process(k);                            // Invoke the kernel
 
-  // Display the result
-  for (int i = 0; i < (int) id_array.size(); i++) {
-    printf("%3i: %2i, %2i\n", i, id_array[i], index_array[i]);
+  for (int i = 0; i < (int) result.size(); i++) { // Display the result
+    printf("%3i: %2i, %2i\n", i, result[i], index_array[i]);
   }
   
   return 0;
