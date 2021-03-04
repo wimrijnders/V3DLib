@@ -47,7 +47,6 @@ See the Build Instructions for details.
                                                                      # GPU support.
     
     > make QPU=1 DEBUG=1 test                                        # Build and run the tests
-```
 
 
 ## Code Example
@@ -86,7 +85,7 @@ int main(int argc, const char *argv[]) {
 
   return 0;
 }
-
+```
 
 ## Credit where Credit is Due
 This project builds upon the [QPULib](https://github.com/mn416/QPULib) project, by **Matthew Naylor**.
