@@ -26,10 +26,9 @@ This follows the naming convention as used in the linux kernel code and in the `
 
 This assumes that you are building on a Raspberry Pi.
 
-Please look at the [Known Issues](Doc/BuildInstructions.md#known-issues), so you have an idea what to expect.
-For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
-
-**Fair Warning:** The first build can take a *long* time, especially on older Pi's.
+- Please look at the [Known Issues](Doc/BuildInstructions.md#known-issues), so you have an idea what to expect.
+- For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
+- **Fair Warning:** The first build can take a *long* time, especially on older Pi's.
 See the Build Instructions for details.
 
     > sudo apt-get install git                                       # If not done already
