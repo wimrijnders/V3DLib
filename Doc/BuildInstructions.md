@@ -187,7 +187,6 @@ The following table lists the build times on the oldest and newest Pis.
 
 The difference in speed is staggering. Even if you want to run on a `Pi 1`,
 you're probably better off building on a `Pi 4`.
-```
 
 
 ## Known Issues

@@ -47,6 +47,7 @@ See the Build Instructions for details.
                                                                      # GPU support.
     
     > make QPU=1 DEBUG=1 test                                        # Build and run the tests
+```
 
 
 ## Code Example
