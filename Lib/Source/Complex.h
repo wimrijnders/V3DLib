@@ -184,6 +184,7 @@ public:
 
     Row operator[] (int row) { return Row(*this, row, columns()); }
 
+    void make_unit_matrix();
     std::string dump() const;
 
   private:
@@ -218,6 +219,7 @@ public:
     Deref operator*();
     Ptr::Expr operator+(IntExpr b);
     Ptr &operator+=(IntExpr rhs);
+    void inc() { m_re.inc(); m_im.inc(); }
 
     Float::Ptr &re() { return  m_re; }
     Float::Ptr &im() { return  m_im; }

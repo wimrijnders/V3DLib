@@ -308,14 +308,14 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
     Complex::Array result(16*N);
 
     k.load(&input, &result).call();
-/*
+
     std::cout << input.dump();
     std::cout << result.dump();
 
     std::cout << result[0].dump()     << "\n";
     std::cout << complex(1, 0).dump();
     std::cout << std::endl;
-*/
+
 
     REQUIRE(result[0] ==  complex(1, 0));
     REQUIRE(result[1] ==  complex(-1, 0));

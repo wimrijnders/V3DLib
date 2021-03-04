@@ -287,4 +287,23 @@ std::string Complex::Array2D::dump() const {
   return ret;
 }
 
+
+void Complex::Array2D::make_unit_matrix() {
+  assert(m_re.rows() == m_re.columns());  // square matrices only
+  assert(m_re.rows() == m_im.rows());
+  assert(m_re.columns() == m_im.columns());
+
+  for (int r = 0; r < m_re.rows(); ++r) {
+    for (int c = 0; c < m_re.columns(); ++c) {
+      if (r ==c) {
+        m_re[r][c] = 1.0f;
+        m_im[r][c] = 0.0f;
+      } else {
+        m_re[r][c] = 0.0f;
+        m_im[r][c] = 0.0f;
+      }
+    }
+  }
+}
+
 }  // namespace V3DLib

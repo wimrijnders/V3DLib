@@ -592,6 +592,23 @@ TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]")
 // Discrete Fourier Transform
 ///////////////////////////////////////////////////////////////////////////////
 
+namespace {
+
+int const DimTest = 128;
+
+void complex_matrix_mult_test(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
+  For (Int a_index = 0,  a_index < DimTest, a_index += 16)
+    Complex tmp;
+
+    tmp = *b;
+    *dst = tmp;
+
+    b.inc();
+    dst.inc();
+  End
+}
+
+
 void create_dft_matrix(Complex::Array2D &arr) {
   REQUIRE(arr.rows() > 0);
   REQUIRE(arr.rows() % 16 == 0);
@@ -619,6 +636,9 @@ void create_dft_matrix(Complex::Array2D &arr) {
     }
   }
 }
+
+
+}  // anon namespace
 
 
 TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
@@ -682,30 +702,42 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
 
   SECTION("Check DFT conversion") {
     // Make a test wavelet as input
-    int const Dim = 128;
+    //int const Dim = 128;
+    int const Dim = DimTest;
+
     Complex::Array2D input(1, Dim);  // Remember, transposed!
     for (int c = 0; c < Dim; ++c) {
-      float x_exp = ((float) c)/Dim/2;
-      float filter = (float) (functions::sin(x_exp));
+      float freq_filter = 0.5f/Dim;
+      float filter = functions::sin(freq_filter*((float) c), true);
 
-      float noise = 60.0f*random_float();
+      float noise = 5.0f*random_float();
+      noise = 0;
 
-      float freq1 = 6.0f/Dim;
-      float val1  = 20.0f*functions::cos(freq1*((float) c), true);
+      float freq1 = 1.0f/Dim;
+      float val1  = 10.0f*functions::sin(freq1*((float) c), true);
+val1 = 0;
 
-      float freq2 = 1.0f/Dim;
-      float val2  = 10.0f*functions::cos(freq2*((float) c), true);
+      float freq2 = 10.0f/Dim;
+      float val2  = 20.0f*functions::sin(freq2*((float) c), true);
 
-      input[0][c] = complex(noise + (filter*filter)*(val1 + val2), 0.0f);
+      //input[0][c] = complex(noise + (filter*filter)*(val1 + val2), 0.0f);
+      input[0][c] = complex(filter*filter*(val2), 0.0f);
     }
 
     // Prepare DFT matrix
     Complex::Array2D dft_matrix(Dim);
-    create_dft_matrix(dft_matrix);
+    dft_matrix.make_unit_matrix();
+    //create_dft_matrix(dft_matrix);
+    //std::cout << dft_matrix.dump();
 
-    Complex::Array2D result;
+    //Complex::Array2D result;
+    //auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result));
 
-    auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result));
+    Complex::Array2D result(DimTest, DimTest);
+    auto k = compile(complex_matrix_mult_test);
+    k.pretty(false, nullptr, true);
+
+    k.setNumQPUs(1);
     result.fill({-1, -1});
     k.load(&result, &dft_matrix, &input).emu();
 
@@ -713,11 +745,15 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
     //
     // Create some visual output
     //
+    std::cout << input.dump() << std::endl;
+    std::cout << result.dump() << std::endl;
+
     {
       float real_input[Dim];
       for (int c = 0; c < Dim; ++c) {
         real_input[c] = input[0][c].re();
       }
+      dump_array(real_input, Dim);
 
       PGM pgm(Dim, 100);
       pgm.plot(real_input, Dim)
