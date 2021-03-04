@@ -23,6 +23,8 @@
 #include "v3d/instr/Instr.h"
 #include "v3d/instr/Snippets.h"
 #include "Support/Platform.h"
+#include "Source/Int.h"
+#include "Source/Float.h"
 #include "Target/instr/Instr.h"  // mnemonics()
 #include "support/support.h"
 #include "support/summation_kernel.h"
@@ -33,13 +35,13 @@
 
 using BufferObject = V3DLib::v3d::BufferObject;
 
-template<typename T>
-using SharedArray = V3DLib::SharedArray<T>;
 
 namespace {
 
 using Instructions = V3DLib::v3d::Instructions;
-using ByteCode = V3DLib::v3d::ByteCode;
+using ByteCode     = V3DLib::v3d::ByteCode;
+using Code         = V3DLib::SharedArray<uint64_t>;
+using Data         = V3DLib::Data;
 
 const uint32_t DEFAULT_CODE_AREA_SIZE = 1024 * 1024;
 const uint32_t DEFAULT_DATA_AREA_SIZE = 32 * 1024 * 1024;
@@ -190,10 +192,10 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
     }
 
     BufferObject heap(1024);
-    SharedArray<uint64_t> codeMem((uint32_t) bytecode.size(), heap);
+    Code codeMem((uint32_t) bytecode.size(), heap);
     codeMem.copyFrom(bytecode);
-    SharedArray<float> result(16, heap);
-    SharedArray<uint32_t> unif(2, heap);
+    V3DLib::Float::Array result(16, heap);
+    Data unif(2, heap);
 
     // Some magic to store a float in a uint32_t
     float x = 2.5f;
@@ -253,10 +255,10 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
     }
 
     BufferObject heap(1024);
-    SharedArray<uint64_t> codeMem((uint32_t) bytecode.size(), heap);
+    Code codeMem((uint32_t) bytecode.size(), heap);
     codeMem.copyFrom(bytecode);
-    SharedArray<int> result(16, heap);
-    SharedArray<uint32_t> unif(2, heap);
+    V3DLib::Int::Array result(16, heap);
+    Data unif(2, heap);
 
     unif[0] = 123;
     unif[1] = result.getAddress();
@@ -293,7 +295,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
     BufferObject heap(1024);
     //printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
-    SharedArray<uint64_t> codeMem(array_length, heap);
+    Code codeMem(array_length, heap);
     //printf("codeMem phyaddr: %u, length: %u\n", codeMem.getAddress(), codeMem.size());
     codeMem.copyFrom(do_nothing, array_length);
     //dump_data(codeMem);
@@ -310,7 +312,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
   SECTION("v3d SharedArray should work as expected") {
     const int SIZE = 16;
 
-    SharedArray<uint32_t> arr(SIZE);
+    Data arr(SIZE);
     REQUIRE(arr.size() == SIZE);
 
     arr.fill(0);

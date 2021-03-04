@@ -4,7 +4,7 @@
 #include <string>
 #include <functional>
 #include "Support/basics.h"
-#include "Common/SharedArray.h"
+#include "Source/Float.h"
 
 
 class Color {
@@ -129,7 +129,7 @@ public:
   ~PGM();
 
   PGM &plot(float const *arr, int size, int color = MAX_COLOR);
-  PGM &plot(V3DLib::SharedArray<float> const &arr, int color = MAX_COLOR);
+  PGM &plot(V3DLib::Float::Array const &arr, int color = MAX_COLOR);
   void save(char const *filename);
 
 private:

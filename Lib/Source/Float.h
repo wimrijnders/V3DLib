@@ -35,7 +35,9 @@ struct FloatExpr :public BaseExpr {
 // both the LHS and RHS of an assignment.
 
 struct Float : public BaseExpr {
-  using Ptr = V3DLib::ptr::Ptr<Float>;
+  using Array   = V3DLib::SharedArray<float>;
+  using Array2D = V3DLib::Shared2DArray<float>;
+  using Ptr     = V3DLib::ptr::Ptr<Float>;
 
   Float();
   Float(float x);

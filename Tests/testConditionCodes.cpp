@@ -38,10 +38,10 @@ namespace {
 
 using namespace V3DLib::v3d::instr;
 using Instructions = V3DLib::v3d::Instructions;
-using ByteCode = V3DLib::v3d::ByteCode;
+using ByteCode     = V3DLib::v3d::ByteCode;
+using Code         = V3DLib::SharedArray<uint64_t>;
+using Data         = V3DLib::Data;
 
-template<typename T>
-using SharedArray = V3DLib::SharedArray<T>;
 
 /**
  * `cond = 'push*'` sets the conditional flag A
@@ -141,15 +141,15 @@ TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
     BufferObject heap(10*1024);  // arbitrary size, large enough
     //dump_code(bytecode);
 
-    SharedArray<uint64_t> code((uint32_t) bytecode.size(), heap);
+    Code code((uint32_t) bytecode.size(), heap);
     code.copyFrom(bytecode);
 
-    SharedArray<uint32_t> data(6*DATA_SIZE, heap);
+    Data data(6*DATA_SIZE, heap);
     for (uint32_t offset = 0; offset < data.size(); ++offset) {
       data[offset] = 0;
     }
 
-    SharedArray<uint32_t> unif(1, heap);
+    Data unif(1, heap);
     unif[0] = data.getAddress();
 
     V3DLib::v3d::Driver drv;
@@ -327,7 +327,7 @@ void andor_multi_if_kernel(Float::Ptr result, Int width, Int height) {
 }
 
 
-void check(V3DLib::SharedArray<int> &result, int block, uint32_t *expected) {
+void check(Int::Array &result, int block, uint32_t *expected) {
   bool success = true;
   uint32_t n;
   std::string buf1;
@@ -355,7 +355,7 @@ void check(V3DLib::SharedArray<int> &result, int block, uint32_t *expected) {
 }
 
 
-void check_where_result(V3DLib::SharedArray<int> &result) {
+void check_where_result(Int::Array &result) {
   uint32_t expected_smaller_than[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0};
   uint32_t expected_smaller_equal[VEC_SIZE] = {1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
   uint32_t expected_equal[VEC_SIZE]         = {0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0};
@@ -375,7 +375,7 @@ void check_where_result(V3DLib::SharedArray<int> &result) {
 }
 
 
-void check_andor_result(V3DLib::SharedArray<int> &result) {
+void check_andor_result(Int::Array  &result) {
   uint32_t expected_and[VEC_SIZE]           = {0, 0, 0, 0, 1, 1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0};
   uint32_t expected_or[VEC_SIZE]            = {1, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1};
   uint32_t expected_combined[VEC_SIZE]      = {0, 0, 0, 0, 0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1};
@@ -396,12 +396,12 @@ void check_andor_result(V3DLib::SharedArray<int> &result) {
 }
 
 
-void reset(V3DLib::SharedArray<int> &result, int val = 0) {
+void reset(Int::Array &result, int val = 0) {
   for (int i = 0; i < (int) result.size(); i++) { result[i] = val; }
 }
 
 
-void reset(V3DLib::SharedArray<float> &result, float val = 0.0) {
+void reset(Float::Array &result, float val = 0.0) {
   for (int i = 0; i < (int) result.size(); i++) { result[i] = val; }
 }
 
@@ -423,7 +423,7 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 
   auto k = compile(where_kernel);
 
-  V3DLib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
+  Int::Array result(NUM_TESTS*VEC_SIZE);
 
   k.load(&result);
 
@@ -444,7 +444,7 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
 namespace {
 
   template<typename KernelType>
-  void run_cpu(V3DLib::SharedArray<int> &result, KernelType &k, uint32_t *expected, int index = -1) {
+  void run_cpu(Int::Array &result, KernelType &k, uint32_t *expected, int index = -1) {
     // INFO NOT DISPLAYING
     //printf("Testing cpu run %d\n", index);
     if (index == -1 ) {
@@ -464,7 +464,7 @@ namespace {
 
 
   template<typename KernelType>
-  void run_qpu(V3DLib::SharedArray<int> &result, KernelType &k, int index, uint32_t *expected) {
+  void run_qpu(Int::Array &result, KernelType &k, int index, uint32_t *expected) {
     INFO("Testing qpu run index: " << index);
     reset(result, -1);
     k.call();
@@ -487,7 +487,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 
 
   SECTION("Testing noloop_where_kernel") {
-    V3DLib::SharedArray<int> result(VEC_SIZE);
+    Int::Array result(VEC_SIZE);
 
     auto k1 = compile(noloop_where_kernel);
 
@@ -501,7 +501,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 
 
   SECTION("Testing noloop_if_and_where_kernel") {
-    V3DLib::SharedArray<int> result(VEC_SIZE);
+    Int::Array result(VEC_SIZE);
 
     auto k2 = compile(noloop_if_and_kernel);
 
@@ -514,7 +514,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 
 
   SECTION("Testing noloop_multif_kernel") {
-    V3DLib::SharedArray<int> result(VEC_SIZE);
+    Int::Array result(VEC_SIZE);
 
     auto k3 = compile(noloop_multif_kernel);
     k3.pretty(false,  "obj/test/noloop_multif_v3d.txt");  // Keep enabled to avoid failing assertions, see below
@@ -533,7 +533,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 
 
   SECTION("Testing noloop_if_andor_kernel") {
-    V3DLib::SharedArray<int> result(VEC_SIZE);
+    Int::Array result(VEC_SIZE);
 
     auto k4 = compile(noloop_if_andor_kernel);
 
@@ -556,7 +556,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
   int const width  = 48;
   int const height = 32;
 
-  auto check_output = [width, height] (V3DLib::SharedArray<float> &result, char const *label) {
+  auto check_output = [width, height] (Float::Array &result, char const *label) {
     std::string filename;
     filename <<  "obj/test/andor_" << label << "_output.pgm";
     output_pgm_file(result, width, height, 255, filename.c_str());
@@ -566,7 +566,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
   SECTION("Test Where blocks with and/or") {
     const int NUM_TESTS = 9;
-    V3DLib::SharedArray<int> result(NUM_TESTS*VEC_SIZE);
+    Int::Array result(NUM_TESTS*VEC_SIZE);
 
     auto k = compile(andor_kernel);
     k.load(&result);
@@ -586,7 +586,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
 
   SECTION("Test andor_where_kernel") {
-    V3DLib::SharedArray<float> result(width*height);
+    Float::Array result(width*height);
 
     auto k1 = compile(andor_where_kernel);
     k1.load(&result, width, height);
@@ -606,7 +606,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
 
   SECTION("Test andor_if_kernel") {
-    V3DLib::SharedArray<float> result(width*height);
+    Float::Array result(width*height);
 
     auto k2 = compile(andor_if_kernel);
     k2.load(&result, width, height);
@@ -626,7 +626,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
 
 
   SECTION("Test andor_multi_if_kernel") {
-    V3DLib::SharedArray<float> result(width*height);
+    Float::Array result(width*height);
 
     auto k3 = compile(andor_multi_if_kernel);
     k3.load(&result, width, height);

@@ -6,11 +6,7 @@
 namespace V3DLib {
 namespace v3d {
 
-void invoke(
-  int numQPUs,
-  SharedArray<uint64_t> &codeMem,
-  int qpuCodeMemOffset,
-  IntList &params);
+void invoke(int numQPUs, SharedArray<uint64_t> &codeMem /* Code &codeMem */, int qpuCodeMemOffset, IntList &params);
 
 }  // v3d
 }  // V3DLib

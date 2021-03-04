@@ -56,7 +56,7 @@ namespace v3d {
  *
  * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
  */
-bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms, uint32_t thread) {
+bool Driver::execute(Code &code, UniformArr *uniforms, uint32_t thread) {
   uint32_t code_phyaddr = code.getAddress();
   uint32_t unif_phyaddr = (uniforms == nullptr)?0u:uniforms->getAddress();
 

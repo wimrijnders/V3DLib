@@ -89,12 +89,12 @@ TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
   int const N = 7;
 
   SECTION("Test prefetch with integers") {
-    SharedArray<int> src(16*N);
+    Int::Array src(16*N);
     for (int i = 0; i < (int) src.size(); ++i) {
       src[i] = i + 1;
     }
 
-    SharedArray<int> result(16*N);
+    Int::Array result(16*N);
     result.fill(-1);
 
     auto k = compile(prefetch_kernel<Int, Int::Ptr>);
@@ -114,12 +114,12 @@ TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
 
 
   SECTION("Test prefetch with floats") {
-    SharedArray<float> src(16*N);
+    Float::Array src(16*N);
     for (int i = 0; i < (int) src.size(); ++i) {
       src[i] = (float) (i + 1);
     }
 
-    SharedArray<float> result(16*N);
+    Float::Array result(16*N);
     result.fill(-1);
 
     auto k = compile(prefetch_kernel<Float, Float::Ptr>);
@@ -136,12 +136,12 @@ TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
   SECTION("Test more fetches than prefetch slots") {
     const int N = 10;  // anything over 8 will result in prefetches after loads
 
-    SharedArray<int> src(16*N);
+    Int::Array src(16*N);
     for (int i = 0; i < (int) src.size(); ++i) {
       src[i] = i + 1;
     }
 
-    SharedArray<int> result(16*N);
+    Int::Array result(16*N);
     result.fill(-1);
 
     auto k = compile(multi_prefetch_kernel<N>);

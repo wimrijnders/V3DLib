@@ -80,16 +80,16 @@ void check_dotvector(Float::Ptr dst, Float::Ptr a, Float::Ptr result) {
  */
 template<int const N>
 void test_dotvector() {
-  SharedArray<float> a(16*N);
+  Float::Array a(16*N);
 
   for (int i = 0; i < (int) a.size(); i++) {
     a[i] = 1.0f*((float ) (i + 1));
   }
 
-  SharedArray<float> b(16*N);
+  Float::Array b(16*N);
   b.fill(-1);
 
-  SharedArray<float> result(16);
+  Float::Array result(16);
   result.fill(-1.0f);
 
   REQUIRE(a.size() == b.size());
@@ -131,8 +131,8 @@ template<typename Kernel>
 void check_matrix_results(
   int dimension,
   Kernel &k,
-  Shared2DArray<float> &a,
-  Shared2DArray<float> &result,
+  Float::Array2D &a,
+  Float::Array2D &result,
   float *a_scalar,
   float *expected) {
 
@@ -207,7 +207,7 @@ void check_matrix_results(
     }
   }
 
-  Shared2DArray<float> b(dimension);
+  Float::Array2D b(dimension);
   b.copy_transposed(a);
 
   kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
@@ -235,8 +235,8 @@ void test_square_matrix_multiplication(int dimension) {
   REQUIRE(dimension % 16 == 0);
   int const SIZE = dimension*dimension;
 
-  Shared2DArray<float> a(dimension);
-  Shared2DArray<float> result(dimension);
+  Float::Array2D a(dimension);
+  Float::Array2D result(dimension);
   result.fill(-1.0f);
 
   float a_scalar[SIZE];
@@ -286,12 +286,12 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
   REQUIRE(cols > 0);
   REQUIRE(inner % 16 == 0);
 
-  Shared2DArray<float> a(rows, inner);
+  Float::Array2D a(rows, inner);
   a.fill(init_a);
-  Shared2DArray<float> b(inner, cols);
+  Float::Array2D b(inner, cols);
   b.fill(init_b);
 
-  Shared2DArray<float> result;
+  Float::Array2D result;
 
   REQUIRE(a.columns() == b.rows());
 
@@ -340,10 +340,10 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
 
 
   SECTION("Check rotate sum") {
-    SharedArray<float> vec(16);
+    Float::Array vec(16);
     vec.fill(0.3f);
 
-    SharedArray<float> result(16);
+    Float::Array result(16);
     result.fill(-1);
 
     auto k = compile(check_sum_kernel);
@@ -368,13 +368,13 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
 
 
   SECTION("Check setting single vector element") {
-    SharedArray<float> vec(16);
+    Float::Array vec(16);
 
     for (int i = 0; i < (int) vec.size(); i++) {
       vec[i] = 1.0f*((float ) (i + 1));
     }
 
-    SharedArray<float> result(16);
+    Float::Array result(16);
     result.fill(-1);
 
     auto k = compile(check_set_at);

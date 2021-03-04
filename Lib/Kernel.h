@@ -36,15 +36,15 @@ template <typename T, typename t> inline bool passParam(IntList &uniforms, t x) 
  * Even so, I'm probably doing it wrong.
  */
 template <>
-inline bool passParam< Float::Ptr, Shared2DArray<float>* > (IntList &uniforms, Shared2DArray<float> *p) {
+inline bool passParam< Float::Ptr, Float::Array2D * > (IntList &uniforms, Float::Array2D *p) {
   return Float::Ptr::passParam(uniforms, &((BaseSharedArray const &) p->get_parent()));
 }
 
 
 template <>
 inline bool passParam< Complex::Ptr, Complex::Array2D * > (IntList &uniforms, Complex::Array2D *p) {
-  passParam< Float::Ptr, Shared2DArray<float>* > (uniforms, &p->re());
-  passParam< Float::Ptr, Shared2DArray<float>* > (uniforms, &p->im());
+  passParam< Float::Ptr, Float::Array2D * > (uniforms, &p->re());
+  passParam< Float::Ptr, Float::Array2D * > (uniforms, &p->im());
   return true;
 }
 

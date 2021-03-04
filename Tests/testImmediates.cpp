@@ -36,9 +36,9 @@ void immediate_kernel(Int::Ptr int_result, Float::Ptr float_result) {
 TEST_CASE("Test loading of immediates", "[dsl][imm]") {
   int const N = 3;  // Number of distinct results (1 more for float)
 
-  SharedArray<int> int_result(16*N);
+  Int::Array int_result(16*N);
   int_result.fill(0);
-  SharedArray<float> float_result(16*(N + 1));
+  Float::Array float_result(16*(N + 1));
   float_result.fill(0.0f);
 
   auto k = compile(immediate_kernel);

@@ -8,6 +8,7 @@ namespace V3DLib {
 namespace vc4 {
 
 class KernelDriver : public V3DLib::KernelDriver {
+  using Code   = SharedArray<uint32_t>;
   using Parent = V3DLib::KernelDriver;
 
 public:
@@ -18,9 +19,9 @@ public:
   void encode(int numQPUs) override;
 
 private:
-  SharedArray<uint32_t> qpuCodeMem;   // Memory region for QPU code and parameters
-  UIntList code;                      // opcodes for vc4; can't convert this to uint64_t because qpuCodeMem
-                                      // needs to be uint32_t for invoking (tried it, don't try again!).
+  Code qpuCodeMem;     // Memory region for QPU code and parameters
+  UIntList code;       // opcodes for vc4; can't convert this to uint64_t because qpuCodeMem
+                       // needs to be uint32_t for invoking (tried it, don't try again!).
   void kernelFinish();
   void compile_intern() override;
   void invoke_intern(int numQPUs, IntList &params) override;

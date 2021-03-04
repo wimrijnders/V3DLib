@@ -76,7 +76,7 @@ void run_int() {
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(settings.num_qpus*16);
+  Int::Array array(settings.num_qpus*16);
   for (int i = 0; i < (int) array.size(); i++)
     array[i] = i;
 
@@ -98,7 +98,7 @@ void run_float() {
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<float> array(settings.num_qpus*16);
+  Float::Array array(settings.num_qpus*16);
   for (int i = 0; i < (int) array.size(); i++)
     array[i] = (float) i;
 

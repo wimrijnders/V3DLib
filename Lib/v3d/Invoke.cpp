@@ -6,16 +6,15 @@
 namespace V3DLib {
 namespace v3d {
 
-void invoke(
-  int numQPUs,
-  SharedArray<uint64_t> &codeMem,
-  int qpuCodeMemOffset,
-  IntList &params) {
+using Code       = SharedArray<uint64_t>;
+using UniformArr = SharedArray<uint32_t>;
 
+
+void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList &params) {
   assert(codeMem.size() != 0);
 
-  SharedArray<uint32_t> unif(params.size() + 3);
-  SharedArray<uint32_t> done(1);
+  UniformArr unif(params.size() + 3);
+  UniformArr done(1);
   done[0] = 0;
 
   // The first two slots in uniforms for vc4 are used for qpu number and num qpu's respectively

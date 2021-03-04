@@ -139,7 +139,7 @@ int main(int argc, const char *argv[]) {
 
   auto k = compile(gcd);                 // Construct the kernel
 
-  SharedArray<int> a(16), b(16), r(16);  // Allocate and initialise the arrays shared between ARM and GPU
+  Int::Array a(16), b(16), r(16);        // Allocate and initialise the arrays shared between ARM and GPU
   srand(0);
   for (int i = 0; i < 16; i++) {
     a[i] = 100 + (rand() % 100);
@@ -165,9 +165,9 @@ Explanation:
     but we use the `auto` keyword to avoid clutter;
   * when the kernel is invoked by writing `k(&a, &b, &r)`, `V3DLib` 
     automatically converts CPU values of type
-    `SharedArray<int>*` into QPU values of type `Int::Ptr`;
-  * Type `SharedArray&lt;&alpha;&gt;` type is used to allocate
-    memory that is accessed by both the CPU and the QPUs:
+    `Int::Array*` into QPU values of type `Int::Ptr`;
+  * Type `Int::Array` is derived  from `SharedArray&lt;&alpha;&gt;` which is used to allocate
+    memory that is accessible by both the CPU and the QPUs.
     memory allocated with `new` and `malloc()` is not accessible from the QPUs.
 
 Running this program produces the output:

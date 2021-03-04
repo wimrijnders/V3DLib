@@ -4,14 +4,14 @@
 
 
 TEST_CASE("Test Buffer Objects", "[bo]") {
-  using SharedArray  = V3DLib::SharedArray<uint32_t>;
-  using SharedArrays = std::vector<std::unique_ptr<SharedArray>>;
+  using Data = V3DLib::Data;
+  using SharedArrays = std::vector<std::unique_ptr<Data>>;
 
   V3DLib::emu::BufferObject heap(1024*1024);  // Using in-memory version to avoid having to use devices
 
   auto init_arrays = [&heap] (SharedArrays &arrays, int size) {
     for (int i = 0; i < size; ++i) {
-      arrays[i].reset(new SharedArray(1024, heap));
+      arrays[i].reset(new Data(1024, heap));
     }
   };
     
@@ -102,7 +102,7 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
 
   SECTION("Heap view should not be marked as freed space") {
     {
-      SharedArray view;
+      Data view;
       view.heap_view(heap);
 
       REQUIRE(heap.empty());
@@ -112,12 +112,12 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
     }
 
     {
-      SharedArray view;
+      Data view;
       view.heap_view(heap);
       REQUIRE(heap.empty());
 
-      SharedArray arr1(64, heap);
-      SharedArray arr2(64, heap);
+      Data arr1(64, heap);
+      Data arr2(64, heap);
       REQUIRE(!heap.empty());
 
       arr1.dealloc();

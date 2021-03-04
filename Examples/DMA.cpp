@@ -47,7 +47,7 @@ int main(int argc, const char *argv[]) {
   auto k = compile(dma, true);  // true: only compile for vc4
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(256);
+  Int::Array array(256);
   for (int i = 0; i < 256; i++)
     array[i] = i;
 

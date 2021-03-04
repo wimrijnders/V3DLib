@@ -23,7 +23,7 @@ struct CoreState {
   int sizeEnv;                   // Size of the environment
   Seq<Stmt::Ptr> stack;          // Control stack
   Seq<Vec> loadBuffer;           // Load buffer
-  SharedArray<uint32_t> emuHeap;
+  Data emuHeap;
 
   ~CoreState() {
     // Don't delete uniform and output here, these are used as references

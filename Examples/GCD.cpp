@@ -29,7 +29,7 @@ int main(int argc, const char *argv[]) {
 
   auto k = compile(gcd);                 // Construct the kernel
 
-  SharedArray<int> a(16), b(16), r(16);  // Allocate and initialise the arrays shared between ARM and GPU
+  Int::Array a(16), b(16), r(16);  // Allocate and initialise the arrays shared between ARM and GPU
   srand(0);
   for (int i = 0; i < 16; i++) {
     a[i] = 100 + (rand() % 100);

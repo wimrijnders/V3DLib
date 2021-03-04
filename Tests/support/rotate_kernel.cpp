@@ -6,11 +6,11 @@
 #include "rotate_kernel.h"
 #include "v3d/instr/Snippets.h"
 
-using ByteCode = V3DLib::v3d::ByteCode;
-
-template<typename T>
-using SharedArray =  V3DLib::SharedArray<T>;
+using Data         = V3DLib::Data;
+using Code         = V3DLib::SharedArray<uint64_t>;
+using ByteCode     = V3DLib::v3d::ByteCode;
 using Instructions = V3DLib::v3d::Instructions;
+
 
 //
 // Issue: disassembly code in MESA does not output rotate flag
@@ -411,10 +411,10 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
   uint32_t data_area_size = (10 * 1024) * 4;                 // taken amply
 
   BufferObject heap(code_area_size + data_area_size);
-  SharedArray<uint64_t> code((uint32_t) bytecode.size(), heap);
+  Code code((uint32_t) bytecode.size(), heap);
   code.copyFrom(bytecode);
 
-  SharedArray<uint32_t> X(16, heap);
+  Data X(16, heap);
 
   for (uint32_t offset = 0; offset < X.size(); ++offset) {
     X[offset] = offset;
@@ -422,13 +422,13 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
   //dump_data(X); 
 
   int y_length = 2*(16 - -15) *16;  // NB python range(-15, 16) does not include 2nd value; 'up to'
-  SharedArray<uint32_t> Y(y_length, heap);
+  Data Y(y_length, heap);
 
   for (uint32_t offset = 0; offset < Y.size(); ++offset) {
     Y[offset] = 0;
   }
 
-  SharedArray<uint32_t> unif(3, heap);
+  Data unif(3, heap);
   unif[0] = X.getAddress();
   unif[1] = Y.getAddress();
 

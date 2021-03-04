@@ -8,21 +8,19 @@ namespace V3DLib {
 namespace v3d {
 
 /**
- * NOTE: In python call, following was done in ctor:
  *
- *         self.bo_handles = np.array([self.memory.handle], dtype=np.uint32)
- *
- * TODO: check if this is relevant
  */
 class Driver {
-  using BoHandles = std::vector<uint32_t>;
+  using BoHandles  = std::vector<uint32_t>;
+  using Code       = SharedArray<uint64_t>;
+  using UniformArr = SharedArray<uint32_t>;
 
 public:
   void add_bo(BufferObject const &bo) {
     m_bo_handles.push_back(bo.getHandle());
   }
 
-  bool execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms = nullptr, uint32_t thread = 1);
+  bool execute(Code &code, UniformArr *uniforms = nullptr, uint32_t thread = 1);
 
 private:
   BoHandles m_bo_handles;

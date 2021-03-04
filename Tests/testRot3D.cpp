@@ -95,7 +95,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     {
       // Compare scalar with output kernel 1 - will not be exact
       INFO("Running kernel 1 (always 1 QPU)");
-      SharedArray<float> x(N), y(N);
+      Float::Array x(N), y(N);
       initArrays(x, y, N);
 
       auto k = compile(rot3D_1);
@@ -119,7 +119,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     {
       // This is to check if DMA is still working for load var
       LibSettings::use_tmu_for_load(false);
-      SharedArray<float> x(N), y(N);
+      Float::Array x(N), y(N);
       auto k = compile(rot3D_1);
 
       INFO("Running kernel 1 with DMA");
@@ -130,7 +130,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     }
 
     {
-      SharedArray<float> x(N), y(N);
+      Float::Array x(N), y(N);
       auto k = compile(rot3D_1a);
 
       INFO("Running kernel 1a with 1 QPU");
@@ -146,7 +146,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     }
 
     {
-      SharedArray<float> x(N), y(N);
+      Float::Array x(N), y(N);
       auto k = compile(rot3D_2);
 
       INFO("Running kernel 2 with 1 QPU");
@@ -163,7 +163,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 
     {
       INFO("Running kernel 3 with 1 QPU");
-      SharedArray<float> x(N), y(N);
+      Float::Array x(N), y(N);
       initArrays(x, y, N);
 
       auto k = compile(rot3D_3_decorator(N));
@@ -174,7 +174,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
 
     {
       INFO("Running kernel 3 with 8 QPUs");
-      SharedArray<float> x(N), y(N);
+      Float::Array x(N), y(N);
       initArrays(x, y, N);
 
       auto k = compile(rot3D_3_decorator(N, 8));
@@ -198,14 +198,14 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     }
 
     auto k_1 = compile(rot3D_1);
-    SharedArray<float> x_1(N), y_1(N);
+    Float::Array x_1(N), y_1(N);
     initArrays(x_1, y_1, N);
     k_1.load(N, cosf(THETA), sinf(THETA), &x_1, &y_1).call();
 
     // Next kernel intentionally defined in the same shared array as previous kernel
     // That's the goal of this test.
     auto k_2 = compile(rot3D_2);
-    SharedArray<float> x_2(N), y_2(N);
+    Float::Array x_2(N), y_2(N);
     initArrays(x_2, y_2, N);
     k_2.load(N, cosf(THETA), sinf(THETA), &x_2, &y_2).call();
 

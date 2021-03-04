@@ -242,7 +242,7 @@ void run_qpu_kernel(KernelType &kernel) {
   auto k = compile(kernel);
   k.setNumQPUs(settings.num_qpus);
 
-  SharedArray<int> result(settings.num_items());  // Allocate and initialise
+  Int::Array result(settings.num_items());  // Allocate and initialise
 
   k.load(
     settings.topLeftReal, settings.topLeftIm,

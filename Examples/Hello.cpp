@@ -17,7 +17,7 @@ int main(int argc, const char *argv[]) {
 
   auto k = compile(hello);                        // Construct the kernel
 
-  SharedArray<int> array(16);                     // Allocate and initialise the array shared between ARM and GPU
+  Int::Array array(16);                           // Allocate and initialise the array shared between ARM and GPU
   array.fill(100);
 
   k.load(&array);                                 // Invoke the kernel

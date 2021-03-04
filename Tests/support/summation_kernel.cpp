@@ -4,11 +4,11 @@
 
 namespace {
 
-template<typename T>
-using SharedArray =  V3DLib::SharedArray<T>;
+using Data = V3DLib::Data;
+using Code = V3DLib::SharedArray<uint64_t>;
 
 /*
-void check_returned_registers(SharedArray<uint32_t> &Y) {
+void check_returned_registers(Data &Y) {
   uint32_t cur_QPU;
 
   for (uint32_t offset = 0; offset < Y.size(); ++offset) {
@@ -970,13 +970,13 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
 
   heap.fill(0xdeadbeef);
 
-  SharedArray<uint64_t> code((uint32_t) bytecode.size(), heap);
+  Code code((uint32_t) bytecode.size(), heap);
   code.copyFrom(bytecode);
   //printf("code phyaddr: %u, size: %u\n", code.getAddress(), 8*code.size());
   //dump_data(code); 
 
-  SharedArray<uint32_t> X(length, heap);
-  SharedArray<uint32_t> Y(16 * num_qpus, heap);
+  Data X(length, heap);
+  Data Y(16 * num_qpus, heap);
   //printf("X phyaddr: %u, size: %u\n", X.getAddress(), 4*X.size());
   //printf("Y phyaddr: %u, size: %u\n", Y.getAddress(), 4*Y.size());
 
@@ -1001,7 +1001,7 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
   //dump_data(Y); 
   REQUIRE(sumY() == 0);
 
-  SharedArray<uint32_t> unif(3, heap);
+  Data unif(3, heap);
   unif[0] = length;
   unif[1] = X.getAddress();
   unif[2] = Y.getAddress();

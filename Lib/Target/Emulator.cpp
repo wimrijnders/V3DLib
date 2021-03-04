@@ -138,10 +138,10 @@ struct QPUState {
  */
 struct State {
   QPUState qpu[MAX_QPUS];  // State of each QPU
-  IntList uniforms;   // Kernel parameters
+  IntList uniforms;        // Kernel parameters
   Word vpm[VPM_SIZE];      // Shared VPM memory
   int sema[16];            // Semaphores
-  SharedArray<uint32_t> emuHeap;
+  Data emuHeap;
 
   State() {
     // Initialise semaphores

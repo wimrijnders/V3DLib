@@ -1,6 +1,5 @@
 #ifndef _V3DLIB_SOURCE_COMPLEX_H_
 #define _V3DLIB_SOURCE_COMPLEX_H_
-#include "Common/SharedArray.h"
 #include "Int.h"
 #include "Float.h"
 
@@ -123,14 +122,14 @@ public:
     void fill(complex const &rhs);
     std::string dump() const;
 
-    SharedArray<float> &re() { return  m_re; }
-    SharedArray<float> &im() { return  m_im; }
+    Float::Array &re() { return  m_re; }
+    Float::Array &im() { return  m_im; }
 
     ref operator[] (int i);
 
   private:
-    SharedArray<float> m_re;
-    SharedArray<float> m_im;
+    Float::Array m_re;
+    Float::Array m_im;
   };
 
 
@@ -157,8 +156,8 @@ public:
       }
 
     private:
-      Shared2DArray<float>::Row m_re;
-      Shared2DArray<float>::Row m_im;
+      Float::Array2D::Row m_re;
+      Float::Array2D::Row m_im;
 
       int   m_proxy_col = -1;
       complex m_proxy;
@@ -169,8 +168,8 @@ public:
     Array2D(int rows, int columns);
     Array2D(int dimension) : Array2D(dimension, dimension) {}
 
-    Shared2DArray<float> &re() { return  m_re; }
-    Shared2DArray<float> &im() { return  m_im; }
+    Float::Array2D &re() { return  m_re; }
+    Float::Array2D &im() { return  m_im; }
 
     void fill(complex val);
     int rows() const;
@@ -188,8 +187,8 @@ public:
     std::string dump() const;
 
   private:
-    Shared2DArray<float> m_re;
-    Shared2DArray<float> m_im;
+    Float::Array2D m_re;
+    Float::Array2D m_im;
   };
 
 

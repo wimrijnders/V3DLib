@@ -132,18 +132,18 @@ std::string dump_array2(float *a, int size,  int linesize) {
 /**
  * Show contents of SharedArray instance
  */
-void dump_array(V3DLib::SharedArray<float> const &a, int linesize) {
+void dump_array(V3DLib::Float::Array const &a, int linesize) {
   auto str = dump_array_template(a, a.size(), linesize, no_fractions(a));
   printf("%s\n", str.c_str());
 }
 
 
-std::string dump_array2(V3DLib::SharedArray<float> const &a, int linesize) {
+std::string dump_array2(V3DLib::Float::Array const &a, int linesize) {
   return dump_array_template(a, a.size(), linesize, no_fractions(a));
 }
 
 
-void dump_array(V3DLib::SharedArray<int> const &a, int linesize) {
+void dump_array(V3DLib::Int::Array const &a, int linesize) {
   auto str = dump_array_template(a, a.size(), linesize);
   printf("%s\n", str.c_str());
 }

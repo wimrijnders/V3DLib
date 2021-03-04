@@ -184,11 +184,11 @@ void kernelIfWhen(Int::Ptr result) {
 }
 
 
-void check_conditionals(SharedArray<int> &result, int N) {
+void check_conditionals(Int::Array &result, int N) {
   vector<int> allZeroes = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
   vector<int> allOnes   = {1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1};
 
-  auto assertResult = [N] ( SharedArray<int> &result, int index, std::vector<int> const &expected) {
+  auto assertResult = [N] ( Int::Array &result, int index, std::vector<int> const &expected) {
     INFO("index: " << index);
     REQUIRE(result.size() == (unsigned) N*16);
     check_vector(result, index, expected);
@@ -244,7 +244,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
     int const NUM = 1;
     vector<int> expected = {1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14};
 
-    SharedArray<int> result(16*NUM);
+    Int::Array result(16*NUM);
     result.fill(-2);  // Initialize to unexpected value
 
     auto k = compile(kernel_specific_instructions);
@@ -267,7 +267,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
   SECTION("Conditionals work as expected") {
     auto k = compile(kernelIfWhen);
 
-    SharedArray<int> result(16*N);
+    Int::Array result(16*N);
 
     // Reset result array to unexpected values
     auto reset = [&result] () {
@@ -368,7 +368,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
 
     auto k = compile(int_ops_kernel);
 
-    SharedArray<int> result(16*N);
+    Int::Array result(16*N);
 
     k.load(&result);
     k.call();
@@ -395,7 +395,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
 
     auto k = compile(float_ops_kernel);
 
-    SharedArray<float> result(16*N);
+    Float::Array result(16*N);
 
     k.load(&result).call();
 
@@ -436,7 +436,7 @@ TEST_CASE("Test For-loops", "[dsl][for]") {
   SECTION("Test nested For-loops") {
     auto k = compile(nested_for_kernel);
 
-    SharedArray<int> result(16);
+    Int::Array result(16);
     k.load(&result).emu();
 
     vector<int> expected = {18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27, 18, 27};
@@ -472,10 +472,10 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
   Platform::use_main_memory(true);
   int const N = 4;
 
-  SharedArray<int> a(16);
-  SharedArray<int> result1(N*16);
+  Int::Array a(16);
+  Int::Array result1(N*16);
   result1.fill(-1);
-  SharedArray<int> result2(N*16);
+  Int::Array result2(N*16);
   result2.fill(-1);
 
   auto reset = [&a] () {
@@ -545,8 +545,8 @@ void offsets_kernel(Ptr result, Ptr src) {
 TEST_CASE("Initialization with index() on uniform pointers should work as expected", "[dsl][offsets]") {
   int const N = 6;
 
-  SharedArray<int> a(3*16);
-  SharedArray<int> result(N*16);
+  Int::Array a(3*16);
+  Int::Array result(N*16);
 
   std::vector<int> expected = {
      0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13, 14, 15, 
@@ -692,7 +692,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
   input[n] = -7.1f; n++;
 
 
-  SharedArray<float> input_qpu(SharedArraySize);
+  Float::Array input_qpu(SharedArraySize);
   for (int n = 0; n < NumValues; ++n) {
    input_qpu[n] = input[n];
   }
@@ -735,8 +735,8 @@ TEST_CASE("Test functions", "[dsl][func]") {
     //
     // Calc with QPU kernel
     //
-    SharedArray<float> qpu_cos(size);
-    SharedArray<float> qpu_sin(size);
+    Float::Array qpu_cos(size);
+    Float::Array qpu_sin(size);
 
     {
       auto k = compile(cosine_kernel);
@@ -771,7 +771,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
      results_scalar[n] = (float) floor(input[n]);
     }
 
-    SharedArray<float> results_qpu(SharedArraySize);
+    Float::Array results_qpu(SharedArraySize);
     results_qpu.fill(-1.0f);
 
     auto k = compile(floor_kernel);
@@ -795,7 +795,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
      results_scalar[n] = (float) abs(input[n]);
     }
 
-    SharedArray<float> results_qpu(SharedArraySize);
+    Float::Array results_qpu(SharedArraySize);
     results_qpu.fill(-1.0f);
 
     auto k = compile(fabs_kernel);

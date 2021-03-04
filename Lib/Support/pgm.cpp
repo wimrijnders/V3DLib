@@ -178,7 +178,7 @@ PGM &PGM::plot(float const *arr, int size, int color) {
 }
 
 
-PGM &PGM::plot(V3DLib::SharedArray<float> const &arr, int color) {
+PGM &PGM::plot(V3DLib::Float::Array const &arr, int color) {
   return plot(arr.ptr(), arr.size(), color);
 }
 

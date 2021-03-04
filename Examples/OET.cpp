@@ -43,7 +43,7 @@ int main(int argc, const char *argv[]) {
   auto k = compile(oet);
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> a(32);
+  Int::Array a(32);
   for (int i = 0; i < (int) a.size(); i++)
     a[i] = 100 - i;
 

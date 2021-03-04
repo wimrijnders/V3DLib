@@ -305,12 +305,11 @@ FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method) {
  * Override with extra safety checks of matrix dimensions
  *
  * The result array should not have been allocated beforehand, done here.
- *
  */
 FuncType *matrix_mult_decorator(
-  Shared2DArray<float> &a,
-  Shared2DArray<float> &b,
-  Shared2DArray<float> &result,
+  Float::Array2D &a,
+  Float::Array2D &b,
+  Float::Array2D &result,
   MatrixReadMethod read_method
 ) {
   assert(a.allocated());

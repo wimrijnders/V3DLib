@@ -114,7 +114,7 @@ void run_qpu_kernel(KernelType &kernel) {
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> x(settings.num_vertices), y(settings.num_vertices);
+  Float::Array x(settings.num_vertices), y(settings.num_vertices);
   init_arrays(x, y);
 
   k.load(settings.num_vertices, cosf(settings.THETA), sinf(settings.THETA), &x, &y);
@@ -132,7 +132,7 @@ void run_qpu_kernel_3() {
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> x(settings.num_vertices), y(settings.num_vertices);
+  Float::Array x(settings.num_vertices), y(settings.num_vertices);
   init_arrays(x, y);
 
   k.load(cosf(settings.THETA), sinf(settings.THETA), &x, &y);

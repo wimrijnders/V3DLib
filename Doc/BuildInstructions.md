@@ -88,6 +88,9 @@ Officially, I should be changing the major version continually, but with the pro
 and having exactly two users (Update 2021027: three!), I consider this overkill.
 I up the minor version periodically as a compromise.
 
+I decided to go to `1.0.0` when the TODO list has been completely cleared.
+Don't hold your breath, though, it is still very much a moving target.
+
 
 ## Basic Build Instructions
 

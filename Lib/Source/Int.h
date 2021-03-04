@@ -3,8 +3,9 @@
 ///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_INT_H_
 #define _V3DLIB_SOURCE_INT_H_
-#include "Ptr.h"
+#include "Common/SharedArray.h"
 #include "Common/Seq.h"
+#include "Ptr.h"
 #include "Expr.h"
 
 namespace V3DLib {
@@ -27,7 +28,8 @@ template <typename T> struct Deref; // Forward declaration template class
  * both the LHS and RHS of an assignment.
  */
 struct Int : public BaseExpr {
-  using Ptr = V3DLib::ptr::Ptr<Int>;
+  using Array = V3DLib::SharedArray<int>;
+  using Ptr   = V3DLib::ptr::Ptr<Int>;
 
   Int();
   Int(int x);

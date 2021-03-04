@@ -190,7 +190,7 @@ public:
 
   Shared2DArray() = default;
 
-  Shared2DArray(int rows, int columns) : SharedArray<T>(rows*columns),  m_rows(rows), m_columns(columns) {
+  Shared2DArray(int rows, int columns) : Parent(rows*columns),  m_rows(rows), m_columns(columns) {
     validate();
   }
 
@@ -281,6 +281,9 @@ inline bool no_fractions(V3DLib::SharedArray<float> const &a) {
 
   return ret;
 }
+
+
+using Data = SharedArray<uint32_t>;
 
 }  // namespace V3DLib
 

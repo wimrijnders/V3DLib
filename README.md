@@ -1,6 +1,6 @@
 # V3DLib
 
-**Version 0.3.3**
+**Version 0.4.0**
 
 `V3DLib` is a C++ library for creating programs to run on the VideoCore GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 
@@ -73,7 +73,7 @@ int main(int argc, const char *argv[]) {
 
   auto k = compile(hello);                        // Construct the kernel
 
-  SharedArray<int> array(16);                     // Allocate and initialise the array shared between ARM and GPU
+  Int::Array array(16);                           // Allocate and initialise the array shared between ARM and GPU
   array.fill(100);
 
   k.load(&array);                                 // Invoke the kernel

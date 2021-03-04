@@ -25,10 +25,10 @@ int main(int argc, const char *argv[]) {
   k.setNumQPUs(numQPUs);  // Value is max for v3d
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> id_array(16*numQPUs);
+  Int::Array id_array(16*numQPUs);
   id_array.fill(0);
 
-  SharedArray<int> index_array(16*numQPUs);
+  Int::Array index_array(16*numQPUs);
   index_array.fill(0);
 
   k.load(&id_array, &index_array);  // Load the uniforms

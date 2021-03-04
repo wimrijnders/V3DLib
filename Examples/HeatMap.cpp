@@ -238,8 +238,8 @@ void heatmap_kernel(Float::Ptr map, Float::Ptr mapOut, Int height, Int width) {
  */
 void run_kernel() {
   // Allocate and initialise input and output maps
-  SharedArray<float> mapA(settings.SIZE);
-  SharedArray<float> mapB(settings.SIZE);
+  Float::Array mapA(settings.SIZE);
+  Float::Array mapB(settings.SIZE);
   mapA.fill(0.0f);
   mapB.fill(0.0f);
 
