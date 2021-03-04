@@ -26,6 +26,7 @@ This follows the naming convention as used in the linux kernel code and in the `
 
 This assumes that you are building on a Raspberry Pi.
 
+Please look at the [Known Issues](Doc/BuildInstructions.md#known-issues), so you have an idea what to expect.
 For more extensive details on building, see [Build Instructions](Doc/BuildInstructions.md).
 
 **Fair Warning:** The first build can take a *long* time, especially on older Pi's.
@@ -68,8 +69,7 @@ void hello(Int::Ptr p) {                          // The kernel definition
 
 
 int main(int argc, const char *argv[]) {
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
   auto k = compile(hello);                        // Construct the kernel
 
@@ -85,41 +85,6 @@ int main(int argc, const char *argv[]) {
 
   return 0;
 }
-```
-
-
-## Known Issues
-
-### Not `OpenGL` compatible
-
-`V3DLib` can not work on a Pi4 with `OpenGL` running. You need to run it without a GUI ('headless'),
-except for simple cases such as the `Hello` demo, which only outputs data.
-The issue is that the VideoCore L2 cache can not be shared with other applications when `OpenGL` is hogging it.
-
-It *is* possible to disable the L2 cache. This will affect performance badly, though.
-Also, from what I understand, youi will need a specially compiled linux kernel to deal with a disabled L2 cache.
-
-For `vc4`, there is a workaround for this: use DMA exclusively. For `v3d`, this is not an option.
-
-
-### 32-bit programs will not run with a 64-bit kernel
-
-While it is certainly possible to run 32-bit programs with a 64-bit kernel, the initialization code
-for buffer objects fails. The memory offset returned by the `v3d` device driver is invalid (in fact, it
-is the amount of available memory).
-
-To run with a 64-bit kernel, programs using `v3d` will need to be compiled as 64-bits also.
-
-
-### Some things will not run due to kernel issues
-
-There are still some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
-will run *sometimes* on `v3d`, and otherwise hang.
-This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
-There are also some unit tests which have the same problem, these are disabled when running on `VideoCore VI`.
-
-I haven't been able to resolve these issues and I am waiting for a kernel update with fixes.
-All code for the `VideoCore IV` compiles and runs fine.
 
 
 ## Credit where Credit is Due
