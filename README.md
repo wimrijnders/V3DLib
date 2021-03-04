@@ -31,21 +31,23 @@ This assumes that you are building on a Raspberry Pi.
 - **Fair Warning:** The first build can take a *long* time, especially on older Pi's.
 See the Build Instructions for details.
 
-    > sudo apt-get install git                                       # If not done already
+```
+> sudo apt-get install git                                       # If not done already
 
-    > sudo apt install libexpat1-dev                                 # You need this for one lousy include file
+> sudo apt install libexpat1-dev                                 # You need this for one lousy include file
 
-    > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # Get only latest commit
-    > cd V3DLib
+> git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # Get only latest commit
+> cd V3DLib
     
-    # As long as the external libraries don't change, you need to run this script only once.
-    > script/install.sh                                              # Pull in and build external library
-    # After this, it's sufficient to do just the following line for a build
+# As long as the external libraries don't change, you need to run this script only once.
+> script/install.sh                                              # Pull in and build external library
+# After this, it is sufficient to do just the following line for a build
     
-    > make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
-                                                                     # GPU support.
+> make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
+                                                                 # GPU support.
     
-    > make QPU=1 DEBUG=1 test                                        # Build and run the tests
+> make QPU=1 DEBUG=1 test                                        # Build and run the tests
+```
 
 
 ## Code Example
