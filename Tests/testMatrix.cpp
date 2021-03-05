@@ -316,12 +316,12 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
 
   Float::Array2D a(rows, inner);
   a.fill(init_a);
-  Float::Array2D b(inner, cols);
+  Float::Array2D b(cols, inner);  // Transposed!
   b.fill(init_b);
 
   Float::Array2D result;
 
-  REQUIRE(a.columns() == b.rows());
+  REQUIRE(a.columns() == b.columns());
 
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
   k.setNumQPUs(num_qpus);
@@ -330,7 +330,18 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
   k.load(&result, &a, &b);
   run_kernel(k);
 
-  //std::cout << result.dump() << std::endl;
+/*
+  // Clear the irrelevant parts of the array before displaying
+  for (int r = 0; r < result.rows(); ++r) {
+    for (int c = 0; c < result.columns(); ++c) {
+      if (r >= rows || c >= cols) {
+        result[r][c] = 0;
+      }
+    }
+  }
+
+  std::cout << result.dump() << std::endl;
+*/
 
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
 
@@ -455,10 +466,7 @@ TEST_CASE("Test matrix algebra", "[matrix][mult]") {
 
 
 TEST_CASE("Test matrix algebra with varying sizes", "[matrix][mult][varying]") {
-  //Platform::use_main_memory(true);
-
   SECTION("Check matrix multiplication") {
-
     test_matrix_multiplication( 1,    16,   1);
     test_matrix_multiplication( 1,  5*16,   1);
     test_matrix_multiplication(10,    16,   5);
@@ -676,39 +684,22 @@ namespace {
 
 int const DimTest = 128;
 
-void complex_matrix_mult_test(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
-  For (Int a_index = 0,  a_index < DimTest, a_index += 16)
-    Complex tmp;
-
-    tmp = *b;
-    *dst = tmp;
-
-    b.inc();
-    dst.inc();
-  End
-}
-
-
 void create_test_wavelet(Complex::Array2D &input, int const Dim) {
   REQUIRE(input.columns() == Dim);
 
+  float offset = 0.1f;
+
   float freq_filter =  0.5f / ((float) Dim);
   float freq1       =  1.0f / ((float) Dim);
-  float freq2       = 10.0f / ((float) Dim);
+  float freq2       = 45.0f / ((float) Dim);
 
   for (int c = 0; c < Dim; ++c) {
     float filter = functions::sin(freq_filter*((float) c), true);
+    float noise = 0.3f *random_float();
+    float val1  = 1.0f *functions::sin(freq1*((float) c), true);
+    float val2  = 0.75f*functions::sin(freq2*((float) c), true);
 
-    float noise = 5.0f*random_float();
-    noise = 0;
-
-    float val1  = 10.0f*functions::sin(freq1*((float) c), true);
-val1 = 0;
-
-    float val2  = 20.0f*functions::sin(freq2*((float) c), true);
-
-    //input[0][c] = complex(noise + (filter*filter)*(val1 + val2), 0.0f);
-    input[0][c] = complex(filter*filter*(val2), 0.0f);
+    input[0][c] = complex(offset + noise + (filter*filter)*(val1 + val2), 0.0f);
   }
 }
 
@@ -746,7 +737,6 @@ void create_dft_matrix(Complex::Array2D &arr) {
 
 
 TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
-  //Platform::use_main_memory(true);
 
   /**
    * Check out how DFT with a matrix looks like
@@ -799,8 +789,6 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
         REQUIRE(abs(result[r][c].im() - 0.0f) < precision2);
       }
     }
-
-    //std::cout << "\n\n" << result.dump();
   }
 
 
@@ -812,36 +800,33 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
 
     // Prepare DFT matrix
     Complex::Array2D dft_matrix(Dim);
-    dft_matrix.make_unit_matrix();
-    //create_dft_matrix(dft_matrix);
-    //std::cout << dft_matrix.dump();
+    create_dft_matrix(dft_matrix);
 
     Complex::Array2D result;
     auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result));
 
-    //Complex::Array2D result(DimTest, DimTest);
-    //auto k = compile(complex_matrix_mult_test);
+    //std::cout << "result dimensions: (" << result.rows() << ", " << result.columns() << ")" << std::endl;
 
-    //k.pretty(false, nullptr, true);
     k.setNumQPUs(1);
     result.fill({-1, -1});
     k.load(&result, &dft_matrix, &input);
     k.call();
-    //k.interpret();
 
+    // Columns are padded to multiples of 16, only the first column is relevant
+    // Redo to something more useful
+    Complex::Array2D result2(1, Dim);
+    for (int c = 0; c < Dim; ++c) {
+      result2[0][c] = result[c][0];
+    }
 
     //
     // Create some visual output
     //
-    //std::cout << input.dump() << std::endl;
-    //std::cout << result.dump() << std::endl;
-
     {
       float real_input[Dim];
       for (int c = 0; c < Dim; ++c) {
         real_input[c] = input[0][c].re();
       }
-      //dump_array(real_input, Dim);
 
       PGM pgm(Dim, 100);
       pgm.plot(real_input, Dim)
@@ -851,15 +836,12 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
     {
       float real_result[Dim];
       for (int c = 0; c < Dim; ++c) {
-        real_result[c] = result[0][c].magnitude();
+        real_result[c] = result2[0][c].magnitude();
       }
-      //dump_array(real_result, Dim);
 
       PGM pgm(Dim, 100);
       pgm.plot(real_result, Dim)
          .save("obj/test/dft_result.pgm");
     }
   }
-
-  //Platform::use_main_memory(false);
 }

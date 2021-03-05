@@ -22,9 +22,9 @@ using namespace V3DLib;
 namespace {
 
 struct matrix_settings {
-  int rows;
-  int inner;
-  int columns;
+  int rows;                                   // Rows of the result array
+  int inner;                                  // Inner dimension of the multiplication
+  int columns;                                // Columns of the result array
   MatrixReadMethod read_method = DO_PREFETCH;
 
   /**
@@ -316,7 +316,7 @@ FuncType *matrix_mult_decorator(
   assert(b.allocated());
   assertq(!result.allocated(), "matrix_mult_decorator(): result array should not be allocated beforehand.");
 
-  auto ret = matrix_mult_decorator(a.rows(), a.columns(), b.columns(), read_method);
+  auto ret = matrix_mult_decorator(a.rows(), a.columns(), b.rows(), read_method);
 
   // Result array requires column size which is a multiple of 16
   // Ensure enough padding for result so that size is multiple of 16
@@ -414,6 +414,9 @@ void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
 }
 
 
+/**
+ * Remember, b is transposed!
+ */
 ComplexFuncType *complex_matrix_mult_decorator(
   Complex::Array2D &a,
   Complex::Array2D &b,
@@ -422,8 +425,9 @@ ComplexFuncType *complex_matrix_mult_decorator(
 ) {
   assert(a.allocated());
   assert(b.allocated());
+  //assert(a.columns() == b.columns());
 
-  matrix_mult_decorator(a.rows(), a.columns(), b.columns(), read_method);
+  matrix_mult_decorator(a.rows(), a.columns(), b.rows(), read_method);
 
   if(!result.allocated()) {
     // Result array requires column size which is a multiple of 16
