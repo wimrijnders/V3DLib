@@ -21,6 +21,59 @@ using namespace V3DLib;
 // Support routines
 // ============================================================================
 
+
+void fill_random(float *arr, int size) {
+  for (int n = 0; n < size; n++) {
+    arr[n] = random_float();
+  }
+}
+
+
+/**
+ * Pre: dst properly initialized, matches with src
+ */
+void copy_array(Float::Array2D &dst, float *src) {
+  for (int r = 0; r < dst.rows(); r++) {
+    for (int c = 0; c < dst.columns(); c++) {
+      dst[r][c] = src[r*dst.columns() + c];
+    }
+  }
+}
+
+
+void copy_transposed(float *dst, float *src, int rows, int columns) {
+  for (int r = 0; r < rows; r++) {
+    for (int c = 0; c < columns; c++) {
+      dst[c*rows + r] = src[r*columns + c];
+    }
+  }
+}
+
+
+void compare_arrays(Float::Array2D &a, float *b) {
+  float precision = 2.5e-4f;  // Empirically determined - the bigger the matrices, the less precise
+                              // This value works for 640x640 matrices
+
+  for (int r = 0; r < a.rows(); r++) {
+    for (int c = 0; c < a.columns(); c++) {
+      INFO("r: " << r << ", c: " << c);
+      REQUIRE(abs(a[r][c] - b[r*a.columns() + c]) < precision);
+    }
+  }
+}
+
+
+void compare_array_scalar(Float::Array2D &arr, float scalar) {
+  for (int r = 0; r < arr.rows(); ++r) {
+    for (int c = 0; c < arr.columns(); ++c) {
+      INFO("r: " << r << ", c: " << c);
+      INFO("result: " << arr[r][c] << ", expected: " << scalar);
+      REQUIRE(arr[r][c] == scalar);
+    }
+  }
+}
+
+
 /**
  * Convenience method to make switching run modes easier
  */
@@ -141,32 +194,16 @@ void check_matrix_results(
   //
   a.fill(0);
   result.fill(-1);
-//  k.setNumQPUs(8);
   run_kernel(k);
-
-  for (int r = 0; r < result.rows(); r++) {
-    for (int c = 0; c < result.columns(); c++) {
-      INFO("Dimension: " << dimension <<", element: (" << r << ", " << c << ")");
-      REQUIRE(result[r][c] == 0);
-    }
-  }
+  compare_array_scalar(result, 0.0f);
 
   //
   // Square of input matrix containing all ones
   //
   a.fill(1);
-  //dump_array(a.get_parent(), 16);
-
   result.fill(-1);
-//  k.setNumQPUs(8);
   run_kernel(k);
-
-  for (int r = 0; r < result.rows(); r++) {
-    for (int c = 0; c < result.columns(); c++) {
-      INFO("Dimension: " << dimension <<", element: (" << r << ", " << c << ")");
-      REQUIRE(result[r][c] == (float) dimension);
-    }
-  }
+  compare_array_scalar(result, (float) dimension);
 
   //
   // Square of unit matrix
@@ -199,29 +236,20 @@ void check_matrix_results(
 
 
   //
-  // Random values in array
+  // Test Random values in array
+  // Multiplies array(s) with itself
   //
-  for (int r = 0; r < a.rows(); r++) {
-    for (int c = 0; c < a.columns(); c++) {
-      a_scalar[r*a.rows() + c] = a[r][c] = random_float();
-    }
-  }
+  fill_random(a_scalar, a.rows()*a.columns());
+  copy_array(a, a_scalar);
 
-  Float::Array2D b(dimension);
-  b.copy_transposed(a);
+  float a_transposed[dimension*dimension];
+  copy_transposed(a_transposed, a_scalar, dimension, dimension);
 
-  kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
-  k.load(&result, &a, &b);
+  kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_transposed);
+  k.load(&result, &a, &a);
   run_kernel(k);
 
-  float precision = 2.5e-4f;  // Empirically determined - the bigger the matrices, the less precise
-                              // This value works for 640x640 matrices
-
-  for (int r = 0; r < a.rows(); r++) {
-    for (int c = 0; c < a.columns(); c++) {
-      REQUIRE(abs(result[r][c] - expected[r*a.rows() + c]) < precision);
-    }
-  }
+  compare_arrays(result, expected);
 }
 
 
@@ -301,9 +329,12 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
 
   k.load(&result, &a, &b);
   run_kernel(k);
-  //dump_array(result.get_parent(), cols_result);
+
+  //std::cout << result.dump() << std::endl;
 
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
+
+  // NOTE: this does not compare the entire results array, just the relevant bit(s)
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
       INFO("r: " << r << ", c: " << c);
@@ -540,11 +571,8 @@ void test_complex_matrix_multiplication(
   REQUIRE(cols > 0);
   REQUIRE(inner % 16 == 0);
 
-  Complex::Array2D a(rows, inner);
-  a.fill(init_a);
-  Complex::Array2D b(inner, cols);
-  b.fill(init_b);
-
+  Complex::Array2D a(rows, inner); a.fill(init_a);
+  Complex::Array2D b(inner, cols); b.fill(init_b);
   Complex::Array2D result;
 
   REQUIRE(a.columns() == b.rows());
@@ -585,6 +613,58 @@ TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]")
     test_complex_matrix_multiplication( 2,  3*16,   2, 8, {-1.0f, 2.0f});
     test_complex_matrix_multiplication( 2,  3*16,   2, 8, {-1.0f, 2.0f}, { 1.0f, -1.0f });
   }
+
+
+  SECTION("Compare pure real/im complex matrixes with real") {
+    int const Dim = 16;
+    int const Size = Dim*Dim;
+
+    float scalar[Size];
+    fill_random(scalar, Size);
+
+    float scalar_transposed[Size];
+    copy_transposed(scalar_transposed, scalar, Dim, Dim);
+
+    float scalar_result[Size];
+    kernels::square_matrix_mult_scalar(Dim, scalar_result, scalar, scalar_transposed);
+
+    Complex::Array2D a(Dim);
+    Complex::Array2D result(Dim);
+
+    auto k = compile(kernels::complex_matrix_mult_decorator(a, a, result));
+    k.load(&result, &a, &a);
+
+    //
+    // Compare real only
+    //
+    copy_array(a.re(), scalar);
+    a.im().fill(0.0f);
+
+    k.call();
+    compare_arrays(result.re(), scalar_result);
+    compare_array_scalar(result.im(), 0.0f);
+
+
+    //
+    // Compare im only - result will be negative of scalar_result
+    //
+    copy_array(a.im(), scalar);
+    a.re().fill(0.0f);
+
+    k.interpret();
+
+    //std::cout << result.dump() << std::endl;
+
+    // Negate result
+    for (int r = 0; r < result.rows(); r++) {
+      for (int c = 0; c < result.columns(); c++) {
+        result[r][c] *= -1;
+      }
+    }
+
+    compare_arrays(result.re(), scalar_result);
+    compare_array_scalar(result.im(), 0.0f);
+  }
 }
 
 
@@ -606,6 +686,30 @@ void complex_matrix_mult_test(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) 
     b.inc();
     dst.inc();
   End
+}
+
+
+void create_test_wavelet(Complex::Array2D &input, int const Dim) {
+  REQUIRE(input.columns() == Dim);
+
+  float freq_filter =  0.5f / ((float) Dim);
+  float freq1       =  1.0f / ((float) Dim);
+  float freq2       = 10.0f / ((float) Dim);
+
+  for (int c = 0; c < Dim; ++c) {
+    float filter = functions::sin(freq_filter*((float) c), true);
+
+    float noise = 5.0f*random_float();
+    noise = 0;
+
+    float val1  = 10.0f*functions::sin(freq1*((float) c), true);
+val1 = 0;
+
+    float val2  = 20.0f*functions::sin(freq2*((float) c), true);
+
+    //input[0][c] = complex(noise + (filter*filter)*(val1 + val2), 0.0f);
+    input[0][c] = complex(filter*filter*(val2), 0.0f);
+  }
 }
 
 
@@ -642,7 +746,7 @@ void create_dft_matrix(Complex::Array2D &arr) {
 
 
 TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
-  Platform::use_main_memory(true);
+  //Platform::use_main_memory(true);
 
   /**
    * Check out how DFT with a matrix looks like
@@ -701,28 +805,10 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
 
 
   SECTION("Check DFT conversion") {
-    // Make a test wavelet as input
-    //int const Dim = 128;
     int const Dim = DimTest;
 
-    Complex::Array2D input(1, Dim);  // Remember, transposed!
-    for (int c = 0; c < Dim; ++c) {
-      float freq_filter = 0.5f/Dim;
-      float filter = functions::sin(freq_filter*((float) c), true);
-
-      float noise = 5.0f*random_float();
-      noise = 0;
-
-      float freq1 = 1.0f/Dim;
-      float val1  = 10.0f*functions::sin(freq1*((float) c), true);
-val1 = 0;
-
-      float freq2 = 10.0f/Dim;
-      float val2  = 20.0f*functions::sin(freq2*((float) c), true);
-
-      //input[0][c] = complex(noise + (filter*filter)*(val1 + val2), 0.0f);
-      input[0][c] = complex(filter*filter*(val2), 0.0f);
-    }
+    Complex::Array2D input(1, Dim);  // Create input; remember, transposed!
+    create_test_wavelet(input, Dim);
 
     // Prepare DFT matrix
     Complex::Array2D dft_matrix(Dim);
@@ -730,30 +816,32 @@ val1 = 0;
     //create_dft_matrix(dft_matrix);
     //std::cout << dft_matrix.dump();
 
-    //Complex::Array2D result;
-    //auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result));
+    Complex::Array2D result;
+    auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result));
 
-    Complex::Array2D result(DimTest, DimTest);
-    auto k = compile(complex_matrix_mult_test);
-    k.pretty(false, nullptr, true);
+    //Complex::Array2D result(DimTest, DimTest);
+    //auto k = compile(complex_matrix_mult_test);
 
+    //k.pretty(false, nullptr, true);
     k.setNumQPUs(1);
     result.fill({-1, -1});
-    k.load(&result, &dft_matrix, &input).emu();
+    k.load(&result, &dft_matrix, &input);
+    k.call();
+    //k.interpret();
 
 
     //
     // Create some visual output
     //
-    std::cout << input.dump() << std::endl;
-    std::cout << result.dump() << std::endl;
+    //std::cout << input.dump() << std::endl;
+    //std::cout << result.dump() << std::endl;
 
     {
       float real_input[Dim];
       for (int c = 0; c < Dim; ++c) {
         real_input[c] = input[0][c].re();
       }
-      dump_array(real_input, Dim);
+      //dump_array(real_input, Dim);
 
       PGM pgm(Dim, 100);
       pgm.plot(real_input, Dim)
@@ -765,7 +853,7 @@ val1 = 0;
       for (int c = 0; c < Dim; ++c) {
         real_result[c] = result[0][c].magnitude();
       }
-      dump_array(real_result, Dim);
+      //dump_array(real_result, Dim);
 
       PGM pgm(Dim, 100);
       pgm.plot(real_result, Dim)
@@ -773,5 +861,5 @@ val1 = 0;
     }
   }
 
-  Platform::use_main_memory(false);
+  //Platform::use_main_memory(false);
 }

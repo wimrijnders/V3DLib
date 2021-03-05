@@ -185,7 +185,7 @@ void DotVector::dot_product(Float::Ptr rhs, Float &result) {
  * @param N  dimension of square matrices
  * @param c  Pointer to result array
  */
-void square_matrix_mult_scalar(int N, float *c, float *a, float *b) {
+void square_matrix_mult_scalar(int N, float *dst, float *a, float *b) {
   for (int x = 0; x < N; x++) {
     for (int y = 0; y < N; y++) {
       float result = 0;
@@ -194,7 +194,7 @@ void square_matrix_mult_scalar(int N, float *c, float *a, float *b) {
         result += a[i + y*N] * b [x + i*N];
       }
 
-      c[x + y*N] = result;
+      dst[x + y*N] = result;
     }
   }
 }
@@ -422,14 +422,27 @@ ComplexFuncType *complex_matrix_mult_decorator(
 ) {
   assert(a.allocated());
   assert(b.allocated());
-  assertq(!result.allocated(), "matrix_mult_decorator(): result array should not be allocated beforehand.");
 
   matrix_mult_decorator(a.rows(), a.columns(), b.columns(), read_method);
 
-  // Result array requires column size which is a multiple of 16
-  // Ensure enough padding for result so that size is multiple of 16
-  // It may become too big but never mind
-  result.alloc(a.rows(), settings.cols_result());
+  if(!result.allocated()) {
+    // Result array requires column size which is a multiple of 16
+    // Ensure enough padding for result so that size is multiple of 16
+    // It may become too big but never mind
+    result.alloc(a.rows(), settings.cols_result());
+  } else {
+    if (result.rows() != a.rows()) {
+      std::string msg = "matrix_mult_decorator(): result array should have the same number of rows as matrix a ";
+      msg << "(" << a.rows() << ")";
+      assertq(msg);
+    }
+
+    if (result.columns() != settings.cols_result()) {
+      std::string msg = "matrix_mult_decorator(): result array should have a columns size of ";
+      msg << settings.cols_result();
+      assertq(msg);
+    }
+  }
 
   return complex_matrix_mult;
 }

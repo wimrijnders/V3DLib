@@ -59,7 +59,7 @@ enum MatrixReadMethod {
   NO_READWRITE
 };
 
-void square_matrix_mult_scalar(int N, float *c, float *a, float *b);
+void square_matrix_mult_scalar(int N, float *dst, float *a, float *b);
 void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b);
 
 using FuncType = decltype(matrix_mult);

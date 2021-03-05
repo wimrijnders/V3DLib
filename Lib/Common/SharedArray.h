@@ -2,7 +2,7 @@
 #define _V3DLIB_COMMON_SHAREDARRAY_H_
 #include <vector>
 #include "BufferObject.h"
-#include "../Support/debug.h"
+#include "../Support/basics.h"
 #include "../Support/Platform.h"  // has_vc4
 
 namespace V3DLib {
@@ -253,6 +253,26 @@ public:
         Parent::access(r*dim + c) = (r == c)? 1 : 0;
       }
     }
+  }
+
+
+  std::string dump() const {
+    using ::operator<<;  // C++ weirdness
+    std::string ret;
+
+    for (int r = 0; r < rows(); ++r) {
+      ret << "( ";
+
+      for (int c = 0; c < columns(); ++c) {
+        if ( c != 0 && c % 16 == 0) ret << "\n";
+
+        ret << (*this)[r][c] << ", ";
+      }
+
+      ret << ")\n";
+    }
+
+    return ret;
   }
 
 private:

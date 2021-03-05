@@ -65,6 +65,13 @@ public:
     return *this;
   }
 
+
+  complex &operator*=(float scalar) {
+    m_re *= scalar;
+    m_im *= scalar;
+    return *this;
+  }
+
 private:
   float m_re = 0.0f;
   float m_im = 0.0f;
