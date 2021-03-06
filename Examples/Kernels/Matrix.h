@@ -108,7 +108,7 @@ ComplexFuncType *complex_matrix_mult_decorator(
   Complex::Array2D &a,
   Complex::Array2D &b,
   Complex::Array2D &result,
-  MatrixReadMethod read_method = DEFAULT
+  MatrixReadMethod read_method = DO_PREFETCH
 );
 
 

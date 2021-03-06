@@ -11,6 +11,7 @@
 #include "support/support.h"
 #include "Support/basics.h"
 #include "support/support.h"
+#include "Support/Timer.h"
 #include "Support/pgm.h"
 #include "../Examples/Kernels/Matrix.h"
 
@@ -58,6 +59,22 @@ void compare_arrays(Float::Array2D &a, float *b) {
     for (int c = 0; c < a.columns(); c++) {
       INFO("r: " << r << ", c: " << c);
       REQUIRE(abs(a[r][c] - b[r*a.columns() + c]) < precision);
+    }
+  }
+}
+
+
+void compare_arrays(Complex::Array2D &a, Complex::Array2D &b) {
+  REQUIRE(a.rows() == b.rows());
+  REQUIRE(a.columns() == b.columns());
+
+  for (int r = 0; r < a.rows(); ++r) {
+    for (int c = 0; c < a.columns(); ++c) {
+      if (c == 0) {
+        INFO("(r, c): ( " << r << ", " << c << ")");
+        INFO(a[r][c].dump() << " == " << b[r][c].dump());
+        REQUIRE(a[r][c] == b[r][c]);
+      }
     }
   }
 }
@@ -802,22 +819,48 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
     Complex::Array2D dft_matrix(Dim);
     create_dft_matrix(dft_matrix);
 
-    Complex::Array2D result;
-    auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result));
+    Complex::Array2D result(1, Dim);
 
-    //std::cout << "result dimensions: (" << result.rows() << ", " << result.columns() << ")" << std::endl;
+    {
+      Complex::Array2D result_tmp;  // Will be Dimx16, columns padded to 16 and only 1st relevant
+      auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result_tmp));
 
-    k.setNumQPUs(1);
-    result.fill({-1, -1});
-    k.load(&result, &dft_matrix, &input);
-    k.call();
+      //std::cout << "result dimensions: (" << result_tmp.rows() << ", " << result_tmp.columns() << ")" << std::endl;
 
-    // Columns are padded to multiples of 16, only the first column is relevant
-    // Redo to something more useful
-    Complex::Array2D result2(1, Dim);
-    for (int c = 0; c < Dim; ++c) {
-      result2[0][c] = result[c][0];
+      k.setNumQPUs(1);
+      result.fill({-1, -1});
+      k.load(&result_tmp, &dft_matrix, &input);
+
+      Timer timer;
+      k.call();
+      timer.end();
+
+      // Columns are padded to multiples of 16, only the first column is relevant
+      // Transpose to better form
+      for (int c = 0; c < Dim; ++c) {
+        result[0][c] = result_tmp[c][0];
+      }
     }
+
+
+    // Switching input and matrix around should have same result, but transposed compared to previous
+    // No need to transpose dft_matrix due to symmetry
+    Complex::Array2D result_switched;  // Will be Dimx1
+
+    {
+      auto k = compile(kernels::complex_matrix_mult_decorator(input, dft_matrix, result_switched));
+
+      k.setNumQPUs(1);
+      k.load(&result_switched, &input, &dft_matrix);
+
+      Timer timer;
+      k.call();
+      timer.end();
+    }
+
+    //std::cout << result_switched.dump() << std::endl;
+    REQUIRE(result_switched.columns() == Dim);
+    compare_arrays(result, result_switched);
 
     //
     // Create some visual output
@@ -836,7 +879,7 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
     {
       float real_result[Dim];
       for (int c = 0; c < Dim; ++c) {
-        real_result[c] = result2[0][c].magnitude();
+        real_result[c] = result_switched[0][c].magnitude();
       }
 
       PGM pgm(Dim, 100);
