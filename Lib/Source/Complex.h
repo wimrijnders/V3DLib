@@ -216,6 +216,8 @@ public:
     public:
       Expr(Complex::Ptr e) : m_re(e.re().expr()), m_im(e.im().expr()) {}
 
+      Ptr::Expr operator+(IntExpr b);
+
       V3DLib::PtrExpr<Float> m_re;
       V3DLib::PtrExpr<Float> m_im;
     };

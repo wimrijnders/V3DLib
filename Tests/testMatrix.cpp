@@ -809,7 +809,7 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
   }
 
 
-  SECTION("Check DFT conversion") {
+  SECTION("Check DFT using standard matrix multiplication") {
     int const Dim = DimTest;
 
     Complex::Array2D input(1, Dim);  // Create input; remember, transposed!
@@ -827,7 +827,7 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
 
       //std::cout << "result dimensions: (" << result_tmp.rows() << ", " << result_tmp.columns() << ")" << std::endl;
 
-      k.setNumQPUs(1);
+      k.setNumQPUs(8);  // Running with multi-QPU gives very limited performance improvement
       result.fill({-1, -1});
       k.load(&result_tmp, &dft_matrix, &input);
 
@@ -850,7 +850,7 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
     {
       auto k = compile(kernels::complex_matrix_mult_decorator(input, dft_matrix, result_switched));
 
-      k.setNumQPUs(1);
+      k.setNumQPUs(8);  // Running with multi-QPU gives very limited performance improvement
       k.load(&result_switched, &input, &dft_matrix);
 
       Timer timer;
@@ -858,7 +858,9 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
       timer.end();
     }
 
+    //std::cout << result.dump() << std::endl;
     //std::cout << result_switched.dump() << std::endl;
+
     REQUIRE(result_switched.columns() == Dim);
     compare_arrays(result, result_switched);
 

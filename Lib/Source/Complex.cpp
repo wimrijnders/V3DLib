@@ -152,6 +152,14 @@ Complex::Ptr &Complex::Ptr::operator+=(IntExpr rhs) {
 }
 
 
+Complex::Ptr::Expr Complex::Ptr::Expr::operator+(IntExpr b)  {
+  Expr ret(*this);
+  ret.m_re = m_re + b;
+  ret.m_im = m_im + b;
+  return ret;
+}
+
+
 Complex::Ptr::Expr Complex::Ptr::operator+(IntExpr b)  {
   Expr ret(*this);
   ret.m_re = m_re + b;

@@ -259,7 +259,6 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
 }
 
 
-
 ///////////////////////////////////////////////////////////////////////////////n
 // Decorator Function
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,6 +372,10 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
 }
 
 
+/**
+ * Intentionally made to parallel `matrix_mult`, with the hope of combining
+ * the code (template?).
+ */
 void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
   int const DIM = settings.inner;
@@ -415,6 +418,45 @@ void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
 
 
 /**
+ * Version of matrix mult, which allows for a to be an array with < 16 columns
+ * (even 1), and not have a multiple of 16 as number of columns.
+ *
+ * Needs to have the same prototype as `complex_matrix_mult`.
+ */
+void complex_matrix_mult_1(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
+  assert(settings.inner > 0 && (settings.inner % 16 == 0));
+  assert(settings.columns > 0 && (settings.columns % 16 == 0));
+
+  int const DIM = settings.inner;
+
+  ComplexDotVector vec(settings.inner/16);
+  Complex result;
+
+  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
+    vec.load(a);
+
+    // b_index: column index of block of 16  to process by 1 QPU
+    For (Int b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
+      Complex::Ptr b_local   = b + b_index*settings.inner;
+      Complex::Ptr dst_local = dst + a_index*settings.cols_result() + b_index;
+  
+      Complex tmp;
+      For (Int j = 0,  j < 16, j += 1)
+        vec.dot_product(b_local, tmp);
+
+        result.set_at(j & 0xf, tmp);  // intention: j % 16
+        b_local += settings.inner;
+      End
+
+      pre_write(dst_local, result);
+    End
+
+    a+= DIM;
+  End
+}
+
+
+/**
  * Remember, b is transposed!
  */
 ComplexFuncType *complex_matrix_mult_decorator(
@@ -448,7 +490,13 @@ ComplexFuncType *complex_matrix_mult_decorator(
     }
   }
 
-  return complex_matrix_mult;
+  if (a.rows() < 16 || a.rows() %16 != 0) {
+    //printf("using complex_matrix_mult_1\n");
+    return complex_matrix_mult_1;
+  } else {
+    //printf("using complex_matrix_mult\n");
+    return complex_matrix_mult;
+  }
 }
 
 
