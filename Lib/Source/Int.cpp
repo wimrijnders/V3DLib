@@ -19,7 +19,7 @@ Int::Int(int x)        { assign_intern(mkIntLit(x)); }
 /**
  * Cast to an IntExpr
  */
-Int::operator IntExpr() { return IntExpr(m_expr); }
+Int::operator IntExpr() const { return IntExpr(m_expr); }
 
 // Assignment
 

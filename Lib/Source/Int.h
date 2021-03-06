@@ -40,7 +40,7 @@ struct Int : public BaseExpr {
   static Int mkArg();
   static bool passParam(IntList &uniforms, int val);
 
-  operator IntExpr();
+  operator IntExpr() const;
 
   Int& operator=(int x);
   Int& operator=(Int const &rhs);
@@ -66,7 +66,7 @@ IntExpr rotate(IntExpr a, IntExpr b);
 
 IntExpr operator+(IntExpr a, IntExpr b);
 IntExpr operator-(IntExpr a, IntExpr b);
-IntExpr operator*(IntExpr a, IntExpr b);
+IntExpr operator*(IntExpr a, IntExpr b) ;
 IntExpr min(IntExpr a, IntExpr b);
 IntExpr max(IntExpr a, IntExpr b);
 IntExpr operator<<(IntExpr a, IntExpr b);

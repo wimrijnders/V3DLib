@@ -82,6 +82,7 @@ FloatExpr ffloor(FloatExpr a);
 FloatExpr operator+(FloatExpr a, FloatExpr b);
 FloatExpr operator-(FloatExpr a, FloatExpr b);
 FloatExpr operator*(FloatExpr a, FloatExpr b);
+FloatExpr operator/(FloatExpr a, FloatExpr b);
 FloatExpr min(FloatExpr a, FloatExpr b);
 FloatExpr max(FloatExpr a, FloatExpr b);
 
