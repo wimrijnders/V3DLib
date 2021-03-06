@@ -1,7 +1,6 @@
 #include "ALUOp.h"
 #include <stdint.h>
 #include "Support/Platform.h"
-#include "Source/Op.h"
 #include "Support/basics.h"
 
 namespace V3DLib {
@@ -13,7 +12,7 @@ ALUOp::ALUOp(Op const &op) : m_value(opcode(op)) {}
  * Translate source operator to target opcode
  */
 ALUOp::Enum ALUOp::opcode(Op const &op) const {
-  if (op.type == FLOAT) {
+  if (op.type == BaseType::FLOAT) {
     switch (op.op) {
       case ADD:    return A_FADD;
       case SUB:    return A_FSUB;
@@ -23,7 +22,9 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
       case ItoF:   return A_ItoF;
       case ROTATE: return M_ROTATE;
       case FFLOOR: return A_FFLOOR;
-      default:     assert(false);
+      default:
+        assertq(false, "opcode(): Unhandled op for float", true);
+        break;
     }
   } else {
     switch (op.op) {
@@ -49,7 +50,7 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
         assertq(!Platform::compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
         return A_EIDX;
       default:
-        assertq(false, "Not expecting this op for int in opcode()", true);
+        assertq(false, "opcode(): Unhandled op for int", true);
         break;
     }
   }
@@ -109,7 +110,7 @@ char const *ALUOp::pretty_op() const {
     case A_CLZ:     return "clz";
     case A_V8ADDS:  return "addsatb";
     case A_V8SUBS:  return "subsatb";
-    case M_FMUL:    return "mulf";
+    case M_FMUL:    return "fmul";
     case M_MUL24:   return "mul24";
     case M_V8MUL:   return "mulb";
     case M_V8MIN:   return "minb";
@@ -156,7 +157,7 @@ uint32_t ALUOp::vc4_encodeAddOp() const {
     case A_V8SUBS:  return 31;
 
     default:
-      fatal("V3DLib: unknown add op");
+      assertq("V3DLib: unknown add op", true);
       return 0;
   }
 }

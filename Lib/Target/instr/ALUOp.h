@@ -1,15 +1,23 @@
 #ifndef _V3DLIB_TARGET_SYNTAX_INSTR_ALUOP_H_
 #define _V3DLIB_TARGET_SYNTAX_INSTR_ALUOP_H_
 #include <string>
+#include "Source/Op.h"
 
 namespace V3DLib {
 
-struct Op;  // Forward declaration
-
 class ALUOp {
 public:
-  enum Enum {
-    NOP,            // No op
+  //
+  // Prefixes:
+  // A_: for 'add' ALU
+  // M_: for 'mul' ALU
+  //
+  enum Enum :uint32_t {
+    // The idea behind this construct is to eventually be able to use
+    // one enum for OpIDs and ALUOp::Enum
+    FLOAT = 0x80000000, // signals float operation
+
+    NOP = 0,            // No op
 
     // Opcodes for the 'add' ALU
     A_FADD,         // Floating-point add
@@ -50,6 +58,13 @@ public:
     A_TIDX,
     A_EIDX,
     A_FFLOOR
+/*
+    // Example of use 'FLOAT'
+    NUM_OPS,
+
+    // NB don't implement this! using recip() instead
+    A_FDIV = NUM_OPS + FLOAT + OpId::DIV, // Floating-point divide
+*/
   };
 
   explicit ALUOp(Enum val) : m_value(val) {}
