@@ -836,7 +836,7 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
       timer.end();
 
       // Columns are padded to multiples of 16, only the first column is relevant
-      // Transpose to better form
+      // Translate to better form
       for (int c = 0; c < Dim; ++c) {
         result[0][c] = result_tmp[c][0];
       }

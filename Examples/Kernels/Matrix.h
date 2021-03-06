@@ -92,6 +92,7 @@ public:
   }
 
   void dot_product(Complex::Ptr rhs, Complex &result);
+  void dft_dot_product(Int const &k, Complex &result);
 
 private:
   DotVector re;

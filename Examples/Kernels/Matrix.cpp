@@ -1,6 +1,7 @@
 #include "Matrix.h"
 #include <functional>
 #include "Support/basics.h"
+#include "Source/Functions.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -373,6 +374,29 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
 
 
 /**
+ * Multiply current instance with the DFT elements of line `k`.
+ *
+ * The DFT matrix elements are calculated inline
+ */
+void ComplexDotVector::dft_dot_product(Int const &k, Complex &result) {
+  Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
+
+  int num_elements = ((int) size())* 16;
+  for (int i = 0; i < (int) size(); ++i) {
+    Int offset = i*16 + index();
+    Float param = -1.0f*toFloat(k*offset)/toFloat(num_elements);
+    Complex tmp1(re[i], im[i]);
+    Complex tmp2(functions::cos(param), functions::sin(param));
+
+    tmp += tmp1*tmp2;
+  }
+
+  rotate_sum(tmp.re(), result.re());
+  rotate_sum(tmp.im(), result.im());
+}
+
+
+/**
  * Intentionally made to parallel `matrix_mult`, with the hope of combining
  * the code (template?).
  */
@@ -421,6 +445,8 @@ void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
  * Version of matrix mult, which allows for a to be an array with < 16 columns
  * (even 1), and not have a multiple of 16 as number of columns.
  *
+ * As a benefit, this needs no columns alignment to 16 for result array.
+ *
  * Needs to have the same prototype as `complex_matrix_mult`.
  */
 void complex_matrix_mult_1(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
@@ -435,7 +461,7 @@ void complex_matrix_mult_1(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
   For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
     vec.load(a);
 
-    // b_index: column index of block of 16  to process by 1 QPU
+    // b_index: column index of block of 16 columns to process by 1 QPU
     For (Int b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
       Complex::Ptr b_local   = b + b_index*settings.inner;
       Complex::Ptr dst_local = dst + a_index*settings.cols_result() + b_index;
@@ -444,7 +470,7 @@ void complex_matrix_mult_1(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
       For (Int j = 0,  j < 16, j += 1)
         vec.dot_product(b_local, tmp);
 
-        result.set_at(j & 0xf, tmp);  // intention: j % 16
+        result.set_at(j & 0xf, tmp);
         b_local += settings.inner;
       End
 
