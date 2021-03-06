@@ -84,6 +84,12 @@ void out(Int &res, Int::Ptr &result) {
 }
 
 
+void out(Float &res, Float::Ptr &result) {
+  *result = res;
+  result = result + 16;
+}
+
+
 void test(Cond cond, Int::Ptr &result) {
   Int res = -1;  // temp variable for result of condition, -1 is unexpected value
 
@@ -120,6 +126,15 @@ void kernel_specific_instructions(Int::Ptr result) {
   Int b = a ^ 1;
   out(b, result);
 }
+
+
+void kernel_specific_float_instructions(Float::Ptr result) {
+  Float a = toFloat(index() + 1);
+  //Float b = a / b; - seq fault! TODO detect
+  Float b = 1 / a;
+  out(b, result);
+}
+
 
 
 /**
@@ -240,7 +255,7 @@ void complex_kernel(Complex::Ptr input, Complex::Ptr result) {
 TEST_CASE("Test correct working DSL", "[dsl]") {
   const int N = 25;  // Number of expected result vectors
 
-  SECTION("Test specific instructions") {
+  SECTION("Test specific int instructions") {
     int const NUM = 1;
     vector<int> expected = {1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14};
 
@@ -248,16 +263,43 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
     result.fill(-2);  // Initialize to unexpected value
 
     auto k = compile(kernel_specific_instructions);
+    k.load(&result).interpret();
+    check_vector(result, 0, expected);
+
+    result.fill(-2);
     k.load(&result).emu();
     check_vector(result, 0, expected);
 
     result.fill(-2);
-     k.load(&result).interpret();
+    k.load(&result).call();
+    check_vector(result, 0, expected);
+  }
+
+
+  SECTION("Test specific float instructions") {
+    vector<float> expected;
+   	expected.resize(16); 
+
+    for (int i = 0; i < 16; ++i) {
+      expected[i] = 1.0f/(1.0f + ((float) i));
+    }
+
+    Float::Array result(16);
+    result.fill(-2);  // Initialize to unexpected value
+
+    auto k = compile(kernel_specific_float_instructions);
+    k.load(&result);
+    k.interpret();
     check_vector(result, 0, expected);
 
     result.fill(-2);
-     k.load(&result).call();
+    k.load(&result).emu();
     check_vector(result, 0, expected);
+
+    result.fill(-2);
+    k.load(&result).call();
+    check_vector(result, 0, expected);
+
   }
 
 
