@@ -750,6 +750,42 @@ void create_dft_matrix(Complex::Array2D &arr) {
 }
 
 
+/**
+ * Create some visual output for DFT matrices
+ */
+void output_dft(Complex::Array2D &input, Complex::Array2D &result, char const *file_prefix) {
+  assert(file_prefix != nullptr);
+  int const Dim = input.columns();
+
+  {
+    float real_input[Dim];
+    for (int c = 0; c < Dim; ++c) {
+      real_input[c] = input[0][c].re();
+    }
+
+    std::string filename = "obj/test/";
+    filename << file_prefix << "_input.pgm";
+
+    PGM pgm(Dim, 100);
+    pgm.plot(real_input, Dim)
+       .save(filename.c_str());
+  }
+
+  {
+    float real_result[Dim];
+    for (int c = 0; c < Dim; ++c) {
+      real_result[c] = result[0][c].magnitude();
+    }
+
+    std::string filename = "obj/test/";
+    filename << file_prefix << "_result.pgm";
+
+    PGM pgm(Dim, 100);
+    pgm.plot(real_result, Dim)
+       .save(filename.c_str());
+  }
+}
+
 }  // anon namespace
 
 
@@ -864,29 +900,33 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
     REQUIRE(result_switched.columns() == Dim);
     compare_arrays(result, result_switched);
 
-    //
-    // Create some visual output
-    //
-    {
-      float real_input[Dim];
-      for (int c = 0; c < Dim; ++c) {
-        real_input[c] = input[0][c].re();
-      }
+    output_dft(input, result_switched, "dft");
+  }
 
-      PGM pgm(Dim, 100);
-      pgm.plot(real_input, Dim)
-         .save("obj/test/dft_input.pgm");
-    }
 
-    {
-      float real_result[Dim];
-      for (int c = 0; c < Dim; ++c) {
-        real_result[c] = result_switched[0][c].magnitude();
-      }
+  SECTION("Check DFT with inline sin/cos") {
+    int const Dim = 32;
 
-      PGM pgm(Dim, 100);
-      pgm.plot(real_result, Dim)
-         .save("obj/test/dft_result.pgm");
-    }
+    Complex::Array2D input(1, Dim);  // Create input; remember, transposed!
+    create_test_wavelet(input, Dim);
+
+    Complex::Array2D result;
+
+    Timer timer1("DFT compile time");
+    auto k = compile(kernels::dft_inline_decorator(input, result));
+    timer1.end();
+
+    k.pretty(true,  "obj/test/dft_inline_vc4.txt", false);
+    k.pretty(false, "obj/test/dft_inline_v3d.txt", false);
+    std::cout << k.compile_info() << std::endl;
+
+    k.load(&result, &input);
+
+    Timer timer;
+    k.interpret();
+    //k.call();
+    timer.end();
+
+    output_dft(input, result, "dft_inline");
   }
 }
