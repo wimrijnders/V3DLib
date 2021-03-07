@@ -20,11 +20,11 @@ Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacte
 	  
 ## Optimization and Cleanup
 
-- [x] Complete conversion `Seq<Instr>` to `Instr::List`
 - [ ] Tone down mesa library, compile takes long.
       Tried this but gave up after it became evident nothing could be removed.
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
-- [ ] Get rid of senseless variable reassignment in source language.
+- [x] Complete conversion `Seq<Instr>` to `Instr::List`
+- [x] Get rid of senseless variable reassignment in source language.
       For example, this happens in `complex_kernel`, right after uniform load:
 ```
 v6 = v4;
