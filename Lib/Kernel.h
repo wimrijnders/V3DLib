@@ -114,12 +114,13 @@ public:
   void qpu();
 #endif  // QPU_MODE
 
+  std::string compile_info() const;
 
 protected:
   int numQPUs = 1;                 // Number of QPUs to run on
-  IntList uniforms;           // Parameters to be passed to kernel
+  IntList uniforms;                // Parameters to be passed to kernel
   vc4::KernelDriver m_vc4_driver;  // Always required for emulator
-  int numVars;                     // The number of variables in the source code
+  int numVars;                     // The number of variables in the source code for vc4
 
 #ifdef QPU_MODE
   v3d::KernelDriver m_v3d_driver;
@@ -155,10 +156,22 @@ public:
     {
       m_vc4_driver.compile_init();
 
-      auto args = std::make_tuple(mkArg<ts>()...);
-
       // Construct the AST for vc4
+      f(mkArg<ts>()...);
+/*
+// Another way of doing it; this allows for custom handling in mkArg
+// A consequence is that uniforms are copied to new variables in the source lang generation.
+// This happens at line 21 in assign.h:
+//
+//            f(std::get<N>(std::forward<Tuple>(t))...);
+//
+// It's not much of an issue, just ugly.
+// No need for calling using `apply()` right now, left for reference
+ 
+      auto args = std::make_tuple(mkArg<ts>()...);
       apply(f, args);
+*/
+
 
       m_vc4_driver.compile();
 

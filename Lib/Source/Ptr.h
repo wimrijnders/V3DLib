@@ -138,6 +138,8 @@ class Ptr : public Pointer {
 public:
   Ptr() = default;
 
+  Ptr<T>(Ptr<T> &&rhs) = default;
+
   /**
    * Gets rid of ctor acting as reference
    */

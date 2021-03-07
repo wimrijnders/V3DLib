@@ -7,6 +7,8 @@
 
 namespace V3DLib {
 
+using ::operator<<;  // C++ weirdness
+
 // ============================================================================
 // Class KernelBase
 // ============================================================================
@@ -79,5 +81,21 @@ void KernelBase::call() {
 #endif
 #endif
 };
+
+
+std::string KernelBase::compile_info() const {
+  std::string ret;
+
+  ret << "\n"
+      << "Compile info\n"
+      << "============\n"
+      << "vc4 compile generated " << numVars << " variables.\n";
+
+#ifdef QPU_MODE
+  ret << "v3d compile generated " << getFreshVarCount() << " variables.\n";
+#endif  // QPU_MODE
+
+  return ret;
+}
 
 }  // namespace V3DLib
