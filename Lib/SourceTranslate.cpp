@@ -63,6 +63,8 @@ Instr::List add_uniform_pointer_offset(Instr::List &code) {
     }
   }
 
+  ret.back().comment("End initialize uniform ptr offsets");
+
   return ret;
 }
 

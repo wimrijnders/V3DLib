@@ -43,13 +43,12 @@ struct matrix_settings {
   }
 } settings;
 
-}  // anon namespace
-
 
 ////////////////////////////////////////////////////////////////////////////////
 // Kernel Helper Functions
 ////////////////////////////////////////////////////////////////////////////////
 
+#if 0
 /**
  * Works, but does not improve the performance of matrix in any way.
  * The reason for this is that the dotvector product is already unrolled.
@@ -66,11 +65,11 @@ struct matrix_settings {
  *
  * Replace with following:
  *
- *   loop_unroll(DIM, 8, [&] (Int b_index) {
+ *   loop_unroll(DIM, 8, [&] (Int const &n) {  // n is loop index (watch out for conflict with `index()`)
  *     // Same code as in loop above
  *   });
  */
-void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
+void loop_unroll(int size, int unroll, std::function<void(Int const &)> f) {
   assert(size > 0);
   assert(unroll > 0);
   assert(size >= unroll);
@@ -88,6 +87,7 @@ void loop_unroll(int size, int unroll, std::function<void(Int)> f) {
     }
   End
 }
+#endif  // 0
 
 
 void pre_read(Float &dst, Float::Ptr &src, int prefetch_label) {
@@ -130,6 +130,30 @@ void pre_write(Float::Ptr &dst, Float &src) {
       assert(false);
   }
 }
+
+
+void check_allocate_result_array(Complex::Array2D &result) {
+  if(!result.allocated()) {
+    // Result array requires column size which is a multiple of 16
+    // Ensure enough padding for result so that size is multiple of 16
+    // It may become too big but never mind
+    result.alloc(settings.rows, settings.cols_result());
+  } else {
+    if (result.rows() != settings.rows) {
+      std::string msg = "matrix_mult_decorator(): result array should have the same number of rows as matrix a ";
+      msg << "(" << settings.rows << ")";
+      assertq(msg);
+    }
+
+    if (result.columns() != settings.cols_result()) {
+      std::string msg = "matrix_mult_decorator(): result array should have a columns size of ";
+      msg << settings.cols_result();
+      assertq(msg);
+    }
+  }
+}
+
+}  // anon namespace
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -381,12 +405,19 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
 void ComplexDotVector::dft_dot_product(Int const &k, Complex &result) {
   Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
 
+  // Moved out of the loop to avoid 'register allocation failed', didn't work 
+  Complex tmp1;
+  Complex tmp2;
+  Float param;
+
   int num_elements = ((int) size())* 16;
   for (int i = 0; i < (int) size(); ++i) {
-    Int offset = i*16 + index();
-    Float param = -1.0f*toFloat(k*offset)/toFloat(num_elements);
-    Complex tmp1(re[i], im[i]);
-    Complex tmp2(functions::cos(param), functions::sin(param));
+    param = -1.0f*toFloat(k*(i*16 + index()))/toFloat(num_elements);
+
+    tmp1.re(re[i]);
+    tmp1.im(im[i]);
+    tmp2.re(functions::cos(param));
+    tmp2.im(functions::sin(param));
 
     tmp += tmp1*tmp2;
   }
@@ -442,12 +473,12 @@ void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
 
 
 /**
- * Version of matrix mult, which allows for a to be an array with < 16 columns
+ * Version of matrix mult, which allows for `a` to be an array with < 16 columns
  * (even 1), and not have a multiple of 16 as number of columns.
  *
  * As a benefit, this needs no columns alignment to 16 for result array.
  *
- * Needs to have the same prototype as `complex_matrix_mult`.
+ * Needs to have the same prototype as `complex_matrix_mult()`.
  */
 void complex_matrix_mult_1(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
@@ -493,28 +524,9 @@ ComplexFuncType *complex_matrix_mult_decorator(
 ) {
   assert(a.allocated());
   assert(b.allocated());
-  //assert(a.columns() == b.columns());
 
   matrix_mult_decorator(a.rows(), a.columns(), b.rows(), read_method);
-
-  if(!result.allocated()) {
-    // Result array requires column size which is a multiple of 16
-    // Ensure enough padding for result so that size is multiple of 16
-    // It may become too big but never mind
-    result.alloc(a.rows(), settings.cols_result());
-  } else {
-    if (result.rows() != a.rows()) {
-      std::string msg = "matrix_mult_decorator(): result array should have the same number of rows as matrix a ";
-      msg << "(" << a.rows() << ")";
-      assertq(msg);
-    }
-
-    if (result.columns() != settings.cols_result()) {
-      std::string msg = "matrix_mult_decorator(): result array should have a columns size of ";
-      msg << settings.cols_result();
-      assertq(msg);
-    }
-  }
+  check_allocate_result_array(result);
 
   if (a.rows() < 16 || a.rows() %16 != 0) {
     //printf("using complex_matrix_mult_1\n");
@@ -523,6 +535,55 @@ ComplexFuncType *complex_matrix_mult_decorator(
     //printf("using complex_matrix_mult\n");
     return complex_matrix_mult;
   }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// DFT
+///////////////////////////////////////////////////////////////////////////////
+
+void dft_inline_kernel(Complex::Ptr dst, Complex::Ptr a) {
+  assert(settings.inner > 0 && (settings.inner % 16 == 0));
+  assert(settings.columns > 0 && (settings.columns % 16 == 0));
+
+  int const DIM = settings.inner;
+
+  ComplexDotVector vec(settings.inner/16);
+  Complex result;
+
+  // Moved out of the loop to avoid 'register allocation failed', didn't work 
+  Complex tmp;
+  Complex::Ptr dst_local;
+  Int b_index;
+  Int j;
+
+  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
+    vec.load(a);
+
+    // b_index: column index of block of 16 columns to process by 1 QPU
+    For (b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
+      dst_local = dst + a_index*settings.cols_result() + b_index;
+  
+      For (j = 0,  j < 16, j += 1)
+        vec.dft_dot_product(b_index + j, tmp);
+        result.set_at(j & 0xf, tmp);
+      End
+
+      pre_write(dst_local, result);
+    End
+
+    a+= DIM;
+  End
+}
+
+
+DftFuncType *dft_inline_decorator(Complex::Array2D &a, Complex::Array2D &result, MatrixReadMethod read_method) {
+  assert(a.allocated());
+
+  matrix_mult_decorator(a.rows(), a.columns(), a.columns(), read_method);
+  check_allocate_result_array(result);
+
+  return dft_inline_kernel;
 }
 
 

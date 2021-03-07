@@ -113,6 +113,21 @@ ComplexFuncType *complex_matrix_mult_decorator(
 );
 
 
+///////////////////////////////////////////////////////////////////////////////
+// DFT
+///////////////////////////////////////////////////////////////////////////////
+
+void dft_inline_kernel(Complex::Ptr dst, Complex::Ptr a);
+
+using DftFuncType = decltype(dft_inline_kernel);
+
+DftFuncType *dft_inline_decorator(
+  Complex::Array2D &a,
+  Complex::Array2D &result,
+  MatrixReadMethod read_method = DO_PREFETCH
+);
+
+
 }  // namespace kernels
 
 #endif  // _EXAMPLES_KERNELS_MATRIX_H_

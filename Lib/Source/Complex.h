@@ -222,6 +222,7 @@ public:
       V3DLib::PtrExpr<Float> m_im;
     };
 
+    Ptr() = default;
     Ptr(ComplexExpr rhs);
     Ptr(Ptr::Expr rhs);
 
