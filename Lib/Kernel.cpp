@@ -27,7 +27,7 @@ KernelDriver &KernelBase::select_driver(bool output_for_vc4) {
 
 
 void KernelBase::pretty(bool output_for_vc4, const char *filename, bool output_qpu_code) {
-	select_driver(output_for_vc4).pretty(numQPUs, filename, output_qpu_code);
+  select_driver(output_for_vc4).pretty(numQPUs, filename, output_qpu_code);
 }
 
 
@@ -37,6 +37,11 @@ void KernelBase::pretty(bool output_for_vc4, const char *filename, bool output_q
  * The emulator runs vc4 code.
  */
 void KernelBase::emu() {
+  if (m_vc4_driver.has_errors()) {
+    warning("Not running on emulator, there were errors during compile.");
+    return;
+  }
+
   assert(uniforms.size() != 0);
   emulate(numQPUs, m_vc4_driver.targetCode(), m_vc4_driver.numVars(), uniforms, getBufferObject());
 }
@@ -48,6 +53,11 @@ void KernelBase::emu() {
  * The interpreter parses the CFG ('source code') directly.
  */
 void KernelBase::interpret() {
+  if (m_vc4_driver.has_errors()) {
+    warning("Not running interpreter, there were errors during compile.");
+    return;
+  }
+
   assert(uniforms.size() != 0);
   interpreter(numQPUs, m_vc4_driver.sourceCode(), m_vc4_driver.numVars(), uniforms, getBufferObject());
 }
@@ -58,8 +68,6 @@ void KernelBase::interpret() {
  * Invoke kernel on physical QPU hardware
  */
 void KernelBase::qpu() {
-  assert(uniforms.size() != 0);
-
   if (Platform::has_vc4()) {
     m_vc4_driver.invoke(numQPUs, uniforms);
   } else {
@@ -94,12 +102,12 @@ std::string KernelBase::compile_info() const {
   ret << "\n"
       << "Compile info\n"
       << "============\n"
-      << "vc4 compile num generated variables: " << m_vc4_driver.numVars() << "\n"
-      << "vc4 num accs introduced            : " << m_vc4_driver.numAccs() << "\n";
+      << "vc4:\n"
+      << m_vc4_driver.compile_info() << "\n\n";
 
 #ifdef QPU_MODE
-  ret << "v3d compile num generated variables: " << m_v3d_driver.numVars() << "\n"
-      << "v3d num accs introduced            : " << m_v3d_driver.numAccs() << "\n";
+  ret << "v3d:\n"
+      << m_v3d_driver.compile_info() << "\n\n";
 #endif  // QPU_MODE
 
   return ret;
@@ -107,7 +115,7 @@ std::string KernelBase::compile_info() const {
 
 
 void KernelBase::dump_compile_data(bool output_for_vc4, char const *filename) {
-	select_driver(output_for_vc4).dump_compile_data(filename);
+  select_driver(output_for_vc4).dump_compile_data(filename);
 }
 
 }  // namespace V3DLib

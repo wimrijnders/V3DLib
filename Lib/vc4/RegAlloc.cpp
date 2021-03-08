@@ -80,13 +80,18 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
   LiveSets liveWith(numVars);
   liveWith.init(instrs, live);
 
-  // Step 3 - Allocate a register to each variable
   std::vector<Reg> alloc(numVars);
   for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
 
+  // Introduce accumulators where possible
+  compile_data.num_accs_introduced = introduceAccum(live, instrs, alloc);
+
+  // Step 3 - Allocate a register to each variable
   RegTag prevChosenRegFile = REG_B;
 
   for (int i = 0; i < numVars; i++) {
+    if (alloc[i].tag != NONE) continue;
+
     auto possibleA = liveWith.possible_registers(i, alloc);
     auto possibleB = liveWith.possible_registers(i, alloc, REG_B);
 
@@ -121,15 +126,23 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     Instr &instr = instrs.get(i);
 
     useDef(instr, &useDefSet);
+
     for (int j = 0; j < useDefSet.def.size(); j++) {
       RegId r = useDefSet.def[j];
       RegTag tmp = alloc[r].tag == REG_A ? TMP_A : TMP_B;
-      renameDest(&instr, REG_A, r, tmp, alloc[r].regId);
+
+      Reg current(REG_A, r);
+      Reg replace_with(tmp, alloc[r].regId);
+      renameDest(instr, current, replace_with);
     }
+
     for (int j = 0; j < useDefSet.use.size(); j++) {
       RegId r = useDefSet.use[j];
       RegTag tmp = alloc[r].tag == REG_A ? TMP_A : TMP_B;
-      renameUses(&instr, REG_A, r, tmp, alloc[r].regId);
+
+      Reg current(REG_A, r);
+      Reg replace_with(tmp, alloc[r].regId);
+      renameUses(instr, current, replace_with);
     }
     substRegTag(&instr, TMP_A, REG_A);
     substRegTag(&instr, TMP_B, REG_B);

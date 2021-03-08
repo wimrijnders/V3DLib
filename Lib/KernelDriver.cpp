@@ -233,9 +233,8 @@ void KernelDriver::dump_compile_data(char const *filename) const {
   title(f, "Liveness dump");
   fprintf(f, m_compile_data.liveness_dump.c_str());
 
-	title(f, "Allocated registers to variables");
-	fprintf(f, m_compile_data.allocated_registers_dump.c_str());
-  fprintf(f, "\n");
+  title(f, "Allocated registers to variables");
+  fprintf(f, m_compile_data.allocated_registers_dump.c_str());
 
   title(f, "Target code before regAlloc()");
   fprintf(f, m_compile_data.target_code_before_regalloc.c_str());
@@ -248,6 +247,8 @@ void KernelDriver::dump_compile_data(char const *filename) const {
 
 
 void KernelDriver::invoke(int numQPUs, IntList &params) {
+  assert(params.size() != 0);
+
   if (!has_errors()) {
     encode(numQPUs);
   }
@@ -266,6 +267,17 @@ void KernelDriver::invoke(int numQPUs, IntList &params) {
  */
 void KernelDriver::add_stmt(Stmt::Ptr stmt) {
   m_stmtStack << stmt;
+}
+
+
+std::string KernelDriver::compile_info() const {
+  std::string ret;
+
+  ret << "  compile num generated variables: " << numVars() << "\n"
+      << "  num accs introduced            : " << numAccs() << "\n"
+      << "  num compile errors             : " << errors.size();
+
+  return ret;
 }
 
 }  // namespace V3DLib

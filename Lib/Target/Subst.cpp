@@ -5,29 +5,23 @@ namespace V3DLib {
 /**
  * Rename a destination register in an instruction
  */
-void renameDest(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
-  switch (instr->tag) {
-    // Load immediate
-    case LI:
-      if (instr->LI.dest.tag == vt && instr->LI.dest.regId == v) {
-        instr->LI.dest.tag = wt;
-        instr->LI.dest.regId = w;
+void renameDest(Instr &instr, Reg const &current, Reg const &replace_with) {
+  switch (instr.tag) {
+    case LI:  // Load immediate
+      if (instr.LI.dest == current) {
+        instr.LI.dest = replace_with;
       }
       return;
 
-    // ALU operation
-    case ALU:
-      if (instr->ALU.dest.tag == vt && instr->ALU.dest.regId == v) {
-        instr->ALU.dest.tag = wt;
-        instr->ALU.dest.regId = w;
+    case ALU:  // ALU operation
+      if (instr.ALU.dest == current) {
+        instr.ALU.dest = replace_with;
       }
       return;
 
-    // RECV instruction
-    case RECV:
-      if (instr->RECV.dest.tag == vt && instr->RECV.dest.regId == v) {
-        instr->RECV.dest.tag = wt;
-        instr->RECV.dest.regId = w;
+    case RECV:  // RECV instruction
+      if (instr.RECV.dest == current) {
+        instr.RECV.dest = replace_with;
       }
       return;
     default:
@@ -37,26 +31,17 @@ void renameDest(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
 
 
 /**
- * Renamed a used register in an instruction
+ * Rename a used register in an instruction
  */
-void renameUses(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
-  switch (instr->tag) {
-    case ALU:   // ALU operation
-      if (instr->ALU.srcA.is_reg() && instr->ALU.srcA.reg.tag == vt &&
-          instr->ALU.srcA.reg.regId == v) {
-        instr->ALU.srcA.reg.tag = wt;
-        instr->ALU.srcA.reg.regId = w;
-      }
+void renameUses(Instr &instr, Reg const &current, Reg const &replace_with) {
+  if  (instr.tag != ALU) return;
 
-      if (instr->ALU.srcB.is_reg() && instr->ALU.srcB.reg.tag == vt &&
-          instr->ALU.srcB.reg.regId == v) {
-        instr->ALU.srcB.reg.tag = wt;
-        instr->ALU.srcB.reg.regId = w;
-      }
-      return;
+  if (instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg == current) {
+    instr.ALU.srcA.reg = replace_with;
+  }
 
-    default:
-      return;
+  if (instr.ALU.srcB.is_reg() && instr.ALU.srcB.reg == current) {
+    instr.ALU.srcB.reg = replace_with;
   }
 }
 

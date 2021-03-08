@@ -21,9 +21,10 @@ public:
   void compile();
   void invoke(int numQPUs, IntList &params);
   void pretty(int numQPUs, const char *filename = nullptr, bool output_qpu_code = true);
-  void dump_compile_data(char const *filename) const;
   int numVars() const { return m_numVars; }
-  int numAccs() const { return m_compile_data.num_accs_introduced; }
+  bool has_errors() const { return !errors.empty(); }
+  void dump_compile_data(char const *filename) const;
+  std::string compile_info() const;
 
   Stmt::Ptr sourceCode() { return m_body; }  //<< return AST representing the source code
   Instr::List &targetCode() { return m_targetCode; }
@@ -50,9 +51,11 @@ private:
   virtual void compile_intern() = 0;
   virtual void invoke_intern(int numQPUs, IntList &params) = 0;
 
-  bool has_errors() const { return !errors.empty(); }
+  int numAccs() const { return m_compile_data.num_accs_introduced; }
+
   bool handle_errors();
 };
+
 
 void compile_postprocess(Instr::List &targetCode);
 

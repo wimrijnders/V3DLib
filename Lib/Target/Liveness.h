@@ -77,6 +77,9 @@ private:
   LiveSet *m_sets = nullptr;
 };
 
+
+int introduceAccum(Liveness &live, Instr::List &instrs, std::vector<Reg> &allocated_vars);
+
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_LIVENESS_H_

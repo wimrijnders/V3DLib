@@ -13,12 +13,6 @@
 
 namespace V3DLib {
 
-namespace {
-
-///////////////////////////////////////////////////////////////////////////////
-// Accumulator allocation
-///////////////////////////////////////////////////////////////////////////////
-
 /**
  * Optimisation pass that introduces accumulators
  *
@@ -33,9 +27,17 @@ namespace {
  *     i:  acc <- f(...)
  *     j:  g(..., acc, ...)
  *
+ * @param allocated_vars  write param, to register which vars have an accumulator registered
+ *
  * @return Number of substitustions performed;
  */
-int introduceAccum(Liveness &live, Instr::List &instrs) {
+int introduceAccum(Liveness &live, Instr::List &instrs, std::vector<Reg> &allocated_vars) {
+#ifdef DEBUG
+  for (int i = 0; i < (int) allocated_vars.size(); i++) {
+    assert(allocated_vars[i].tag == NONE);  // Safeguard for the time being
+  }
+#endif  // DEBUG
+
   UseDef  useDefPrev;
   UseDef  useDefCurrent;
   LiveSet liveOut;
@@ -69,26 +71,21 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
       }
     }
 
-    renameDest( &prev, REG_A, def, ACC, acc_id);
-    renameUses(&instr, REG_A, def, ACC, acc_id);
+
+    Reg current(REG_A, def);
+    Reg replace_with(ACC, acc_id);
+
+    renameDest( prev, current, replace_with);
+    renameUses(instr, current, replace_with);
     instrs[i-1] = prev;
     instrs[i]   = instr;
-        
-/*
-    // WRI DEBUG
-    // Result: Happens a lot!
-    // Keeping this in for optimization (e.g. multiple passes)
-    std::string buf = "Liveness: used peephole for instructions ";
-    buf << (i-1) << " and " << i;
-    debug(buf.c_str());
-*/
+    
+    allocated_vars[def] = replace_with;    
     subst_count++;
   }
 
   return subst_count;
 }
-
-}  // anon namespace
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -290,6 +287,8 @@ LiveSet &LiveSets::operator[](int index) {
  * @param index  index of variable
  */
 std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag) {
+  assert(reg_tag == REG_A || reg_tag == REG_B);
+
   const int NUM_REGS = Platform::size_regfile();
   std::vector<bool> possible(NUM_REGS);
 
@@ -360,7 +359,6 @@ void Liveness::compute(Instr::List &instrs) {
 
   //std::cout << live.dump() << std::endl;
   compile_data.liveness_dump = dump();
-  compile_data.num_accs_introduced = introduceAccum(*this, instrs);
 }
 
 
