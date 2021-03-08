@@ -73,7 +73,7 @@ struct Reg {
     return !(*this == rhs);
   }
 
-  std::string pretty() const;
+  std::string dump() const;
 };
 
 

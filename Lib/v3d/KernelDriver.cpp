@@ -1177,7 +1177,7 @@ void KernelDriver::compile_intern() {
   add_init(m_targetCode);
   compile_postprocess(m_targetCode);
 
-  // The translation/removal op labels happens in `v3d::KernelDriver::to_opcodes()` 
+  // The translation/removal of labels happens in `v3d::KernelDriver::to_opcodes()` 
 }
 
 

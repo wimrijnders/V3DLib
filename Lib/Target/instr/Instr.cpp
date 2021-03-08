@@ -41,7 +41,7 @@ bool RegOrImm::operator==(RegOrImm const &rhs) const {
 
 std::string RegOrImm::disp() const {
   if (m_is_reg) {
-    return reg.pretty();
+    return reg.dump();
   } else {
     return printSmallLit(smallImm.val);
   }

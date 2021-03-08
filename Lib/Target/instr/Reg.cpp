@@ -119,7 +119,7 @@ Reg dstReg(Var v) {
 }
 
 
-std::string Reg::pretty() const {
+std::string Reg::dump() const {
   std::string ret;
 
   switch (tag) {

@@ -6,6 +6,7 @@
 #include "Target/Subst.h"
 #include "vc4/DMA/DMA.h"
 #include "Target/instr/Instructions.h"
+#include "Common/CompileData.h"
 
 namespace V3DLib {
 
@@ -43,19 +44,16 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
 void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
   int numVars = getFreshVarCount();
 
-  // Step 0
-  // Perform liveness analysis
+  // Step 0 - Perform liveness analysis
   Liveness live(*cfg);
   live.compute(instrs);
   assert(instrs.size() == live.size());
 
-  // Step 2
-  // For each variable, determine all variables ever live at the same time
+  // Step 2 - For each variable, determine all variables ever live at the same time
   LiveSets liveWith(numVars);
   liveWith.init(instrs, live);
 
-  // Step 3
-  // Allocate a register to each variable
+  // Step 3 - Allocate a register to each variable
   std::vector<Reg> alloc(numVars);
   for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
 
@@ -75,8 +73,9 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
     }
   }
 
-  // Step 4
-  // Apply the allocation to the code
+  compile_data.allocated_registers(alloc);
+
+  // Step 4 - Apply the allocation to the code
   for (int i = 0; i < instrs.size(); i++) {
     auto &useDefSet = liveWith.useDefSet;
     Instr &instr = instrs.get(i);

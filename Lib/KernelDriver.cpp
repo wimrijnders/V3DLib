@@ -15,6 +15,38 @@ using ::operator<<;  // C++ weirdness
 
 namespace {
 
+FILE *open_file(char const *filename, char const *label) {
+  assert(label != nullptr);
+
+  FILE *f = nullptr;
+
+  if (filename == nullptr)
+    f = stdout;
+  else {
+    f = fopen(filename, "w");
+    if (f == nullptr) {
+      fprintf(stderr, "ERROR: could not open file '%s' for %s output\n", filename, label);
+    }
+  }
+
+  return f;
+}
+
+
+void title(FILE *f, std::string const &title) {
+  assert(f != nullptr);
+  assert(!title.empty());
+
+  fprintf(f, "\n");
+  fprintf(f, title.c_str());
+  fprintf(f, "\n");
+
+  std::string line(title.size(), '=');
+  fprintf(f, line.c_str());
+  fprintf(f, "\n");
+}
+
+
 /**
  * Emit source code
  */
@@ -23,8 +55,7 @@ void print_source_code(FILE *f, Stmt::Ptr body) {
     f = stdout;
   }
 
-  fprintf(f, "Source code\n");
-  fprintf(f, "===========\n\n");
+  title(f, "Source code");
 
   if (body.get() == nullptr) {
     fprintf(f, "<No source code to print>\n");
@@ -38,8 +69,8 @@ void print_source_code(FILE *f, Stmt::Ptr body) {
 
 
 void print_target_code(FILE *f, Instr::List const &code) {
-  fprintf(f, "Target code\n");
-  fprintf(f, "===========\n\n");
+  title(f, "Target code");
+
   if (code.empty()) {
     fprintf(f, "<No target code to print>\n");
   } else {
@@ -51,9 +82,10 @@ void print_target_code(FILE *f, Instr::List const &code) {
 
 }  // anon namespace
 
-// ============================================================================
+
+///////////////////////////////////////////////////////////////////////////////
 // Compile kernel
-// ============================================================================
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * @param targetCode  output variable for the target code assembled from the AST and adjusted
@@ -67,6 +99,8 @@ void compile_postprocess(Instr::List &targetCode) {
   // Construct control-flow graph
   CFG cfg;
   buildCFG(targetCode, cfg);
+
+  compile_data.target_code_before_regalloc = targetCode.mnemonics(true);
 
   // Perform register allocation
   getSourceTranslate().regAlloc(&cfg, targetCode);
@@ -96,6 +130,7 @@ void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
   resetFreshVarGen(numVars);
   resetFreshLabelGen();
   Pointer::reset_increment();
+  compile_data.clear();
 
   if (set_qpu_uniforms) {
     // Initialize reserved general-purpose variables
@@ -120,6 +155,9 @@ void KernelDriver::obtain_ast() {
 void KernelDriver::compile() {
   try {
     compile_intern();
+    m_numVars = getFreshVarCount();
+
+    m_compile_data = compile_data;
   } catch (V3DLib::Exception const &e) {
     std::string msg = "Exception occured during compilation: ";
     msg << e.msg();
@@ -160,19 +198,9 @@ bool KernelDriver::handle_errors() {
 *
 * @param filename  if specified, print the output to this file. Otherwise, print to stdout
 */
-void KernelDriver::pretty(int numQPUs, const char *filename, bool output_qpu_code) {
-  FILE *f = nullptr;
-
-  if (filename == nullptr)
-    f = stdout;
-  else {
-    f = fopen(filename, "w");
-    if (f == nullptr) {
-      fprintf(stderr, "ERROR: could not open file '%s' for pretty output\n", filename);
-      return;
-    }
-  }
-
+void KernelDriver::pretty(int numQPUs, char const *filename, bool output_qpu_code) {
+  FILE *f = open_file(filename, "pretty");
+  if (f == nullptr) return;
 
   if (has_errors()) {
     fprintf(f, "=== There were errors during compilation, the output here is likely incorrect or incomplete  ===\n");
@@ -193,6 +221,27 @@ void KernelDriver::pretty(int numQPUs, const char *filename, bool output_qpu_cod
   if (filename != nullptr) {
     assert(f != nullptr);
     assert(f != stdout);
+    fclose(f);
+  }
+}
+
+
+void KernelDriver::dump_compile_data(char const *filename) const {
+  FILE *f = open_file(filename, "compile_data");
+  if (f == nullptr) return;
+
+  title(f, "Liveness dump");
+  fprintf(f, m_compile_data.liveness_dump.c_str());
+
+	title(f, "Allocated registers to variables");
+	fprintf(f, m_compile_data.allocated_registers_dump.c_str());
+  fprintf(f, "\n");
+
+  title(f, "Target code before regAlloc()");
+  fprintf(f, m_compile_data.target_code_before_regalloc.c_str());
+
+
+  if (filename != nullptr) {
     fclose(f);
   }
 }

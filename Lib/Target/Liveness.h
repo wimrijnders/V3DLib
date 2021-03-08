@@ -28,7 +28,6 @@ struct UseDef {
 
 void useDefReg(Instr instr, UseDefReg* out);
 void useDef(Instr const &instr, UseDef* out);
-bool getTwoUses(Instr instr, Reg* r1, Reg* r2);
 
 // A live set containts the variables
 // that are live-in to an instruction.
@@ -49,12 +48,12 @@ public:
   int size() const { return m_set.size(); }
   bool insert(int index, RegId item);
   LiveSet &operator[](int index) { return get(index); }
+  std::string dump();
 
 private:
   CFG &m_cfg;
   Seq<LiveSet> m_set;
 
-  std::string dump();
   LiveSet &get(int index) { return m_set[index]; }
 };
 

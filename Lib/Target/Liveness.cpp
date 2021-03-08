@@ -9,16 +9,19 @@
 #include "Support/Platform.h"  // size_regfile()
 #include "Target/Subst.h"
 #include "Target/Liveness.h"
+#include "Common/CompileData.h"
 
 namespace V3DLib {
 
 namespace {
 
-// ============================================================================
+///////////////////////////////////////////////////////////////////////////////
 // Accumulator allocation
-// ============================================================================
+///////////////////////////////////////////////////////////////////////////////
 
 /**
+ * Optimisation pass that introduces accumulators
+ *
  * This is a simple peephole optimisation, captured by the following
  * rewrite rule:
  *
@@ -29,35 +32,31 @@ namespace {
  * 
  *     i:  acc <- f(...)
  *     j:  g(..., acc, ...)
+ *
+ * @return Number of substitustions performed;
  */
-void introduceAccum(Liveness &live, Instr::List &instrs) {
+int introduceAccum(Liveness &live, Instr::List &instrs) {
   UseDef  useDefPrev;
   UseDef  useDefCurrent;
   LiveSet liveOut;
+  int     subst_count = 0;
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr prev  = instrs[i-1];
     Instr instr = instrs[i];
 
-    // Compute vars defined by prev
-    useDef(prev, &useDefPrev);
+    useDef(prev, &useDefPrev);        // Compute vars defined by prev
 
-    if (useDefPrev.def.empty()) {
-      continue;
-    }
+    if (useDefPrev.def.empty()) continue;
 
     RegId def = useDefPrev.def[0];
 
-    // Compute vars used by instr
-    useDef(instr, &useDefCurrent);
+    useDef(instr, &useDefCurrent);    // Compute vars used by instr
 
-    // Compute vars live-out of instr
-    live.computeLiveOut(i, liveOut);
+    live.computeLiveOut(i, liveOut);  // Compute vars live-out of instr
 
     bool do_it = (prev.is_always() && useDefCurrent.use.member(def) && !liveOut.member(def));
-    if (!do_it) {
-      continue;
-    }
+    if (!do_it) continue;
 
     int acc_id =1;
 
@@ -83,14 +82,18 @@ void introduceAccum(Liveness &live, Instr::List &instrs) {
     buf << (i-1) << " and " << i;
     debug(buf.c_str());
 */
+    subst_count++;
   }
+
+  return subst_count;
 }
 
 }  // anon namespace
 
-// ============================================================================
+
+///////////////////////////////////////////////////////////////////////////////
 // Compute 'use' and 'def' sets
-// ============================================================================
+///////////////////////////////////////////////////////////////////////////////
 
 // 'use' set: the variables read by an instruction
 // 'def' set: the variables modified by an instruction
@@ -179,19 +182,6 @@ void useSetOfSuccs(Instr::List* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* us
   }
 }
 */
-
-// Return true if given instruction has two register operands.
-
-bool getTwoUses(Instr instr, Reg* r1, Reg* r2)
-{
-  if (instr.tag == ALU && instr.ALU.srcA.is_reg()
-                       && instr.ALU.srcB.is_reg()) {
-    *r1 = instr.ALU.srcA.reg;
-    *r2 = instr.ALU.srcB.reg;
-    return true;
-  }
-  return false;
-}
 
 
 namespace {
@@ -368,8 +358,9 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 void Liveness::compute(Instr::List &instrs) {
   liveness(instrs, *this);
 
-  // Optimisation pass that introduces accumulators
-  introduceAccum(*this, instrs);
+  //std::cout << live.dump() << std::endl;
+  compile_data.liveness_dump = dump();
+  compile_data.num_accs_introduced = introduceAccum(*this, instrs);
 }
 
 
@@ -404,8 +395,6 @@ bool Liveness::insert(int index, RegId item) {
 
 std::string Liveness::dump() {
   std::string ret;
-
-  ret += "Liveness dump:\n";
 
   for (int i = 0; i < m_set.size(); ++i) {
     ret += std::to_string(i) + ": ";

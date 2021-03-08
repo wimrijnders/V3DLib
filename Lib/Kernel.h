@@ -115,16 +115,19 @@ public:
 #endif  // QPU_MODE
 
   std::string compile_info() const;
+  void dump_compile_data(bool output_for_vc4, char const *filename);
 
 protected:
   int numQPUs = 1;                 // Number of QPUs to run on
   IntList uniforms;                // Parameters to be passed to kernel
   vc4::KernelDriver m_vc4_driver;  // Always required for emulator
-  int numVars;                     // The number of variables in the source code for vc4
 
 #ifdef QPU_MODE
   v3d::KernelDriver m_v3d_driver;
 #endif
+
+private:
+  KernelDriver &select_driver(bool output_for_vc4);
 };
 
 
@@ -156,8 +159,7 @@ public:
     {
       m_vc4_driver.compile_init();
 
-      // Construct the AST for vc4
-      f(mkArg<ts>()...);
+      f(mkArg<ts>()...);  // Construct the AST for vc4
 /*
 // Another way of doing it; this allows for custom handling in mkArg
 // A consequence is that uniforms are copied to new variables in the source lang generation.
@@ -168,24 +170,18 @@ public:
 // It's not much of an issue, just ugly.
 // No need for calling using `apply()` right now, left for reference
  
+      // Construct the AST for vc4
       auto args = std::make_tuple(mkArg<ts>()...);
       apply(f, args);
 */
 
-
       m_vc4_driver.compile();
-
-      // Remember the number of variables used - for emulator/interpreter
-      numVars = getFreshVarCount();
     }
 
 #ifdef QPU_MODE
     if (!vc4_only) {
       m_v3d_driver.compile_init();
-
-      // Construct the AST for v3d
-      f(mkArg<ts>()...);
-
+      f(mkArg<ts>()...);  // Construct the AST for v3d
       m_v3d_driver.compile();
     }
 #endif  // QPU_MODE

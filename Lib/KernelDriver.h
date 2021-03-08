@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include "Common/BufferType.h"
+#include "Common/CompileData.h"
 #include "Source/StmtStack.h"
 #include "Target/CFG.h"
 
@@ -13,23 +14,19 @@ public:
   KernelDriver(BufferType in_buffer_type) : buffer_type(in_buffer_type) {}
   virtual ~KernelDriver();
 
+  BufferType const buffer_type;
+
   virtual void encode(int numQPUs) = 0;
 
   void compile();
   void invoke(int numQPUs, IntList &params);
   void pretty(int numQPUs, const char *filename = nullptr, bool output_qpu_code = true);
+  void dump_compile_data(char const *filename) const;
+  int numVars() const { return m_numVars; }
+  int numAccs() const { return m_compile_data.num_accs_introduced; }
 
-  /**
-   * @return AST representing the source code
-   */
-  Stmt::Ptr sourceCode() { return m_body; }
-
+  Stmt::Ptr sourceCode() { return m_body; }  //<< return AST representing the source code
   Instr::List &targetCode() { return m_targetCode; }
-
-  BufferType const buffer_type;
-
-  void add_stmt(Stmt::Ptr stmt);  // exposed for autotest
-
 
 protected:
   const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
@@ -43,10 +40,12 @@ protected:
   void init_compile(bool set_qpu_uniforms = true, int numVars = 0);
   virtual void emit_opcodes(FILE *f) {} 
   void obtain_ast();
-
+  void add_stmt(Stmt::Ptr stmt);
 
 private:
   StmtStack m_stmtStack;
+  int m_numVars = 0;                  // The number of variables in the source code for vc4
+  CompileData m_compile_data;
 
   virtual void compile_intern() = 0;
   virtual void invoke_intern(int numQPUs, IntList &params) = 0;

@@ -1,12 +1,27 @@
 #include "RegAlloc.h"
 #include <stdio.h>
-#include "Support/basics.h"  // fatal()
+#include <iostream>
+#include "Support/basics.h"
 #include "Target/Subst.h"
 #include "SourceTranslate.h"
+#include "Common/CompileData.h"
 
 namespace V3DLib {
-
 namespace {
+
+/**
+ * Return true if given instruction has two register operands.
+ */
+bool getTwoUses(Instr instr, Reg* r1, Reg* r2) {
+  if (instr.tag == ALU && instr.ALU.srcA.is_reg() && instr.ALU.srcB.is_reg()) {
+    *r1 = instr.ALU.srcA.reg;
+    *r2 = instr.ALU.srcB.reg;
+    return true;
+  }
+
+  return false;
+}
+
 
 /**
  * For each variable, determine a preference for register file A or B.
@@ -54,6 +69,7 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
   Liveness live(*cfg);
   live.compute(instrs);
 
+
   // Step 1 - For each variable, determine a preference for register file A or B.
   int* prefA = new int [numVars];
   int* prefB = new int [numVars];
@@ -96,6 +112,8 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     alloc[i].tag = chosenRegFile;
     alloc[i].regId = chosenRegFile == REG_A ? chosenA : chosenB;
   }
+
+  compile_data.allocated_registers(alloc);
 
   // Step 4 - Apply the allocation to the code
   for (int i = 0; i < instrs.size(); i++) {
