@@ -46,13 +46,13 @@ string showExpected(const std::vector<T> &expected) {
 
 
 template<typename T>
-void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expected) {
+void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expected, float precision = 0.0f) {
   REQUIRE(expected.size() == 16);
 
   bool passed = true;
   int j = 0;
   for (; j < 16; ++j) {
-    if (result[16*index + j] != expected[j]) {
+    if (abs((float)result[16*index + j] - (float) expected[j]) > precision) {
       passed = false;
       break;
     }
@@ -298,7 +298,13 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 
     result.fill(-2);
     k.load(&result).call();
-    check_vector(result, 0, expected);
+
+    float precision = 0.0f;
+    if (Platform::has_vc4()) {
+      precision = 0.5e-4f;
+    }
+
+    check_vector(result, 0, expected, precision);
 
   }
 
@@ -351,13 +357,14 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
 
     k.load(&input, &result).call();
 
+/*
     std::cout << input.dump();
     std::cout << result.dump();
 
     std::cout << result[0].dump()     << "\n";
     std::cout << complex(1, 0).dump();
     std::cout << std::endl;
-
+*/
 
     REQUIRE(result[0] ==  complex(1, 0));
     REQUIRE(result[1] ==  complex(-1, 0));
