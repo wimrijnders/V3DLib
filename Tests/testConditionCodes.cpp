@@ -536,6 +536,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
     Int::Array result(VEC_SIZE);
 
     auto k4 = compile(noloop_if_andor_kernel);
+    //k4.pretty(false, nullptr, false);
 
     k4.load(&result,  0,  0); run_cpu(result, k4, expected_1, 41);
     k4.load(&result,  0, 15); run_cpu(result, k4, expected_2, 42);
@@ -589,6 +590,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
     Float::Array result(width*height);
 
     auto k1 = compile(andor_where_kernel);
+    k1.pretty(true, "obj/test/andor_where_kernel.txt");
     k1.load(&result, width, height);
 
     reset(result);

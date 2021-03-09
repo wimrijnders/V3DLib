@@ -212,8 +212,17 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 
     live.computeLiveOut(i, liveOut);  // Compute vars live-out of instr
 
-    bool do_it = (prev.is_always() && useDefCurrent.use.member(def) && !liveOut.member(def));
+    bool do_it = (useDefCurrent.use.member(def) && !liveOut.member(def));
     if (!do_it) continue;
+
+    if (!prev.is_always()) {
+/*
+      std::string msg;
+      msg << "peephole_1(): Skipping replacement for line " << i << " because prev.is_always() == false";
+      warning(msg);
+*/
+      continue;
+    }
 
     Reg current(REG_A, def);
     Reg replace_with = replacement_acc(prev, instr);
@@ -293,7 +302,7 @@ int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars
 #endif  // DEBUG
 
 	int subst_count = peephole_1(live, instrs, allocated_vars);
-	subst_count += peephole_2(live, instrs, allocated_vars);
+	//subst_count += peephole_2(live, instrs, allocated_vars);
 
   return subst_count;
 }

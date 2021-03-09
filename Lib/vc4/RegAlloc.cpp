@@ -146,9 +146,9 @@ namespace vc4 {
 void regAlloc(CFG *cfg, Instr::List &instrs) {
   assert(cfg != nullptr);
   assert(count_reg_types(instrs).safe_for_regalloc());
-  Timer("vc4 regAlloc", true);
+  //Timer("vc4 regAlloc", true);
 
-  std::cout << count_reg_types(instrs).dump() << std::endl;
+  //std::cout << count_reg_types(instrs).dump() << std::endl;
   //std::cout << instrs.dump() << std::endl;
 
   int numVars = getFreshVarCount();
@@ -163,10 +163,9 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     live.compute(instrs);
 
     compile_data.num_accs_introduced = introduceAccum(live, instrs, alloc);
-    std::cout << count_reg_types(instrs).dump() << std::endl;
+    //std::cout << count_reg_types(instrs).dump() << std::endl;
   }
 
-  //std::cout << instrs.dump() << std::endl;
 
   // Step 0 - Perform liveness analysis
   RegUsage alloc(numVars);
@@ -174,8 +173,7 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
   Liveness live(*cfg);
   live.compute(instrs);
   alloc.set_live(live);
-  std::cout << alloc.dump() << std::endl;
-  //std::cout << live.dump() << std::endl;
+  //std::cout << alloc.dump() << std::endl;
 
 
   // Step 1 - For each variable, determine a preference for register file A or B.
@@ -221,13 +219,11 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     alloc[i].reg = Reg(chosenRegFile, (chosenRegFile == REG_A)? chosenA : chosenB);
   }
 
-  //std::cout << alloc.dump() << std::endl;
   //check_consistency_alloc(alloc);
   
 
   compile_data.allocated_registers_dump = alloc.allocated_registers_dump();
-  //std::cout << instrs.dump() << std::endl;
-  std::cout << count_reg_types(instrs).dump() << std::endl;
+  //std::cout << count_reg_types(instrs).dump() << std::endl;
 
   // Step 4 - Apply the allocation to the code
   for (int i = 0; i < instrs.size(); i++) {
