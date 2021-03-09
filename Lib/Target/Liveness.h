@@ -12,13 +12,27 @@ namespace V3DLib {
 
 struct RegUsageItem {
  Reg reg;
- int dst_use = 0;
- int src_use = 0;
 
+ struct {
+   int dst_use = 0;
+   int src_use = 0;
+   int dst_first = -1;
+   int src_first = -1;
+ } use;
+
+ struct {
+   int first = -1;
+   int last = -1;
+   int count = 0;
+ } live;
+
+ void add_live(int n);
  bool unused() const;
+ bool only_assigned() const { return use.dst_use != 0 && use.src_use == 0; }
  std::string dump() const;
 };
 
+class Liveness;
 
 struct RegUsage : public std::vector<RegUsageItem> {
   using Parent = std::vector<RegUsageItem>;
@@ -26,6 +40,7 @@ struct RegUsage : public std::vector<RegUsageItem> {
   RegUsage(int numVars);
 
   void set_used(Instr::List &instrs);
+  void set_live(Liveness &live);
   std::string allocated_registers_dump() const;
   std::string dump() const;
 };

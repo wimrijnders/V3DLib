@@ -14,7 +14,7 @@
 namespace V3DLib {
 
 bool RegUsageItem::unused() const {
-  bool ret = (dst_use == 0 && src_use == 0);
+  bool ret = (use.dst_use == 0 && use.src_use == 0);
 
   if (ret) {
     assert(reg.tag == NONE);
@@ -26,10 +26,25 @@ bool RegUsageItem::unused() const {
 
 std::string RegUsageItem::dump() const {
   std::string ret;
-
-  ret << reg.dump() << "; dst count: " << dst_use << "; src count: " << src_use;
-
+  ret << reg.dump()
+      << "; use(dst_first, src_first, dst_count,src_count): ("
+      << use.dst_first << ", " << use.src_first << ", "
+      << use.dst_use << ", " << use.src_use << "), "
+      << "; live(first, last, count): (" << live.first << ", " << live.last << ", " << live.count << ")";
   return ret;
+}
+
+
+void RegUsageItem::add_live(int n) {
+  if (live.first == -1 || live.first > n) {
+    live.first = n;
+  }
+
+  if (live.last == -1 || live.last < n) {
+    live.last = n;
+  }
+
+  live.count++;
 }
 
 RegUsage::RegUsage(int numVars) : Parent(numVars) {
@@ -42,11 +57,34 @@ void RegUsage::set_used(Instr::List &instrs) {
     UseDef out;
     useDef(instrs[i], &out);
 
+
     for (int j = 0; j < out.def.size(); j++) {
-      (*this)[out.def[j]].dst_use++;
+      auto &use = (*this)[out.def[j]].use;
+
+      if (use.dst_first == -1 || use.dst_first > i) {
+        use.dst_first = i;
+      }
+
+      use.dst_use++;
     }
     for (int j = 0; j < out.use.size(); j++) {
-      (*this)[out.use[j]].src_use++;
+      auto &use = (*this)[out.use[j]].use;
+      use.src_use++;
+
+      if (use.src_first == -1 || use.src_first > i) {
+        use.src_first = i;
+      }
+    }
+  }
+}
+
+
+void RegUsage::set_live(Liveness &live) {
+  for (int i = 0; i < live.size(); i++) {
+    auto &item = live[i];
+
+    for (int j = 0; j < item.size(); j++) {
+      (*this)[item[j]].add_live(i);
     }
   }
 }
@@ -64,22 +102,40 @@ std::string RegUsage::allocated_registers_dump() const {
 
 
 std::string RegUsage::dump() const {
+  bool const ShowUnused = false;
+
   std::string ret;
 
   for (int i = 0; i < (int) size(); i++) {
-    ret << i << ": " << (*this)[i].dump() << "\n";
-  }
-
-  std::string unused;
-
-  for (int i = 0; i < (int) size(); i++) {
-    if ((*this)[i].unused()) {
-      unused << i << ",";
+    if (ShowUnused || !(*this)[i].unused()) {
+      ret << i << ": " << (*this)[i].dump() << "\n";
     }
   }
 
-  if (!unused.empty()) {
-    ret << "\nNot used: " << unused;
+  if (ShowUnused) {
+    std::string unused;
+
+      for (int i = 0; i < (int) size(); i++) {
+      if ((*this)[i].unused()) {
+        unused << i << ",";
+      }
+    }
+
+    if (!unused.empty()) {
+      ret << "\nNot used: " << unused << "\n";
+    }
+  }
+
+  std::string assigned_only;
+
+  for (int i = 0; i < (int) size(); i++) {
+    if ((*this)[i].only_assigned()) {
+      assigned_only << i << ",";
+    }
+  }
+
+  if (!assigned_only.empty()) {
+    ret << "\nOnly assigned: " << assigned_only << "\n";
   }
 
   return ret;
@@ -104,9 +160,23 @@ std::string UseDefReg::dump() const {
 }
 
 
+Reg replacement_acc(Instr &prev, Instr &instr) {
+    int acc_id =1;
+
+    if (!Platform::compiling_for_vc4()) {
+      // v3d ROT uses ACC1 (r1) internally, don't use it here
+      // TODO better selection of subsitution ACC
+      if (prev.isRot() || instr.isRot()) {
+        //warning("introduceAccum(): subsituting ACC in ROT operation");
+        acc_id = 2;
+      }
+    }
+
+  return Reg(ACC, acc_id);
+}
+
+
 /**
- * Optimisation pass that introduces accumulators
- *
  * This is a simple peephole optimisation, captured by the following
  * rewrite rule:
  *
@@ -120,26 +190,9 @@ std::string UseDefReg::dump() const {
  *
  * @param allocated_vars  write param, to register which vars have an accumulator registered
  *
- * @return Number of substitustions performed;
- *
- * ============================================================================
- * NOTES
- * =====
- *
- * * It is possible that a variable gets used multiple times, and the last usage of it
- *   is replaced by an accumulator.
- *
- *   For this reason, it is dangerous to keep track of the substitustion in `allocated_vars`,
- *   and to ignore the variable replacement due to acc usage later on. There may still be instances
- *   of the variable that need replacing.
+ * @return Number of substitutions performed;
  */
-int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
-#ifdef DEBUG
-  for (int i = 0; i < (int) allocated_vars.size(); i++) {
-    assert(allocated_vars[i].reg.tag == NONE);  // Safeguard for the time being
-  }
-#endif  // DEBUG
-
+int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
   UseDef  useDefPrev;
   UseDef  useDefCurrent;
   LiveSet liveOut;
@@ -162,19 +215,8 @@ int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars
     bool do_it = (prev.is_always() && useDefCurrent.use.member(def) && !liveOut.member(def));
     if (!do_it) continue;
 
-    int acc_id =1;
-
-    if (!Platform::compiling_for_vc4()) {
-      // v3d ROT uses ACC1 (r1) internally, don't use it here
-      // TODO better selection of subsitution ACC
-      if (prev.isRot() || instr.isRot()) {
-        //warning("introduceAccum(): subsituting ACC in ROT operation");
-        acc_id = 2;
-      }
-    }
-
     Reg current(REG_A, def);
-    Reg replace_with(ACC, acc_id);
+    Reg replace_with = replacement_acc(prev, instr);
 
     renameDest( prev, current, replace_with);
     renameUses(instr, current, replace_with);
@@ -187,6 +229,71 @@ int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars
 
     subst_count++;
   }
+
+  return subst_count;
+}
+
+
+int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
+  UseDef  useDefCurrent;
+  int     subst_count = 0;
+
+  Instr prev;  // NOP
+
+  for (int i = 1; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
+
+    useDef(instr, &useDefCurrent);    // Compute vars used by instr
+    if (useDefCurrent.def.empty()) continue;
+    assert(useDefCurrent.def.size() == 1);
+    RegId def = useDefCurrent.def[0];
+
+    if (!allocated_vars[def].only_assigned()) continue;
+
+    Reg current(REG_A, def);
+    Reg replace_with = replacement_acc(prev, instr);
+
+    renameDest(instr, current, replace_with);
+    instrs[i]   = instr;
+
+    // DANGEROUS! Do not use this value downstream.   
+    // Currently stored for debug display purposes only! 
+    allocated_vars[def].reg = replace_with;    
+
+    subst_count++;
+  }
+
+  return subst_count;
+}
+
+
+/**
+ * Optimisation passes that introduce accumulators
+ *
+ * @param allocated_vars  write param, to register which vars have an accumulator registered
+ *
+ * @return Number of substitutions performed;
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * It is possible that a variable gets used multiple times, and the last usage of it
+ *   is replaced by an accumulator.
+ *
+ *   For this reason, it is dangerous to keep track of the substitustion in `allocated_vars`,
+ *   and to ignore the variable replacement due to acc usage later on. There may still be instances
+ *   of the variable that need replacing.
+ */
+int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
+#ifdef DEBUG
+  for (int i = 0; i < (int) allocated_vars.size(); i++) {
+    assert(allocated_vars[i].reg.tag == NONE);  // Safeguard for the time being
+  }
+#endif  // DEBUG
+
+	int subst_count = peephole_1(live, instrs, allocated_vars);
+	subst_count += peephole_2(live, instrs, allocated_vars);
 
   return subst_count;
 }

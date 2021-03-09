@@ -149,16 +149,16 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
   Timer("vc4 regAlloc", true);
 
   std::cout << count_reg_types(instrs).dump() << std::endl;
-  std::cout << instrs.dump() << std::endl;
+  //std::cout << instrs.dump() << std::endl;
 
   int numVars = getFreshVarCount();
-
 
   // Introduce accumulators where possible
   // The idea is to minimize beforehand the number of variables considered
   // in the liveness analysis
   {
     RegUsage alloc(numVars);
+    alloc.set_used(instrs);
     Liveness live(*cfg);
     live.compute(instrs);
 
@@ -166,14 +166,15 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     std::cout << count_reg_types(instrs).dump() << std::endl;
   }
 
-
-  std::cout << instrs.dump() << std::endl;
+  //std::cout << instrs.dump() << std::endl;
 
   // Step 0 - Perform liveness analysis
   RegUsage alloc(numVars);
   alloc.set_used(instrs);
   Liveness live(*cfg);
   live.compute(instrs);
+  alloc.set_live(live);
+  std::cout << alloc.dump() << std::endl;
   //std::cout << live.dump() << std::endl;
 
 
@@ -220,7 +221,7 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     alloc[i].reg = Reg(chosenRegFile, (chosenRegFile == REG_A)? chosenA : chosenB);
   }
 
-  std::cout << alloc.dump() << std::endl;
+  //std::cout << alloc.dump() << std::endl;
   //check_consistency_alloc(alloc);
   
 
