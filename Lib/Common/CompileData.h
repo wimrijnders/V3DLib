@@ -12,7 +12,6 @@ struct CompileData {
   std::string allocated_registers_dump;
   int num_accs_introduced = 0;
 
-  void allocated_registers(std::vector<Reg> const &allocated_regs);
   void clear();
 };
 

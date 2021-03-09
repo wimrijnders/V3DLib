@@ -151,6 +151,7 @@ struct Instr : public InstructionComment {
     int lastUniformOffset();
     int tag_index(InstrTag tag, bool ensure_one = true);
     int tag_count(InstrTag tag);
+    std::string check_acc_usage() const;
   };
 
   InstrTag tag;
@@ -232,6 +233,7 @@ struct Instr : public InstructionComment {
   SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;
   std::string dump() const;
+  uint32_t get_acc_usage() const;
 
   bool operator==(Instr const &rhs) const {
     // Cheat by comparing the string representation,

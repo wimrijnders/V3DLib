@@ -7,14 +7,15 @@ namespace V3DLib {
 
 /**
  * Simple wrapper class for outputting run time for examples
- *
  */
 class Timer {
 public:
-  Timer(std::string const &label = "Run time");
+  Timer(std::string const &label = "Run time", bool disp_in_dtor = false);
+  ~Timer();
   void end(bool show_output = true);
 
 private:
+  bool m_disp_in_dtor = false;
   std::string m_label;
   timeval tvStart;
 };

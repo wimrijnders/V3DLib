@@ -13,15 +13,4 @@ void CompileData::clear() {
   num_accs_introduced = 0;
 }
 
-
-void CompileData::allocated_registers(std::vector<Reg> const &allocated_regs) {
-  std::string ret;
-
-  for (int i = 0; i < (int) allocated_regs.size(); i++) {
-    ret << i << ": " << allocated_regs[i].dump() << "\n";
-  }
-
-  allocated_registers_dump = ret; 
-}
-
 }  // namespace V3DLib

@@ -53,19 +53,18 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
   LiveSets liveWith(numVars);
   liveWith.init(instrs, live);
 
-  std::vector<Reg> alloc(numVars);
-  for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
+  RegUsage alloc(numVars);
 
   // Introduce accumulators where possible
   compile_data.num_accs_introduced = introduceAccum(live, instrs, alloc);
 
   // Step 3 - Allocate a register to each variable
   for (int i = 0; i < numVars; i++) {
-    if (alloc[i].tag != NONE) continue;
+    if (alloc[i].reg.tag != NONE) continue;
 
     auto possible = liveWith.possible_registers(i, alloc);
 
-    alloc[i].tag = REG_A;
+    alloc[i].reg.tag = REG_A;
     RegId regId = LiveSets::choose_register(possible, false);
 
     if (regId < 0) {
@@ -73,11 +72,11 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
       buf << i << ": " << instrs[i].mnemonic();
       error(buf, true);
     } else {
-      alloc[i].regId = regId;
+      alloc[i].reg.regId = regId;
     }
   }
 
-  compile_data.allocated_registers(alloc);
+  compile_data.allocated_registers_dump = alloc.allocated_registers_dump();
 
   // Step 4 - Apply the allocation to the code
   for (int i = 0; i < instrs.size(); i++) {
@@ -89,7 +88,7 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
       RegId r = useDefSet.def[j];
 
       Reg current(REG_A, r);
-      Reg replace_with(TMP_A, alloc[r].regId);
+      Reg replace_with(TMP_A, alloc[r].reg.regId);
       renameDest(instr, current, replace_with);
     }
 
@@ -97,7 +96,7 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
       RegId r = useDefSet.use[j];
 
       Reg current(REG_A, r);
-      Reg replace_with(TMP_A, alloc[r].regId);
+      Reg replace_with(TMP_A, alloc[r].reg.regId);
       renameUses(instr, current, replace_with);
     }
     substRegTag(&instr, TMP_A, REG_A);

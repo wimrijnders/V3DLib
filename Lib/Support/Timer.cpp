@@ -1,3 +1,19 @@
+///////////////////////////////////////////////////////////////////////////////
+//
+// NOTE: use following to add two timerval structs:
+//
+//     void timeradd(struct timeval *a, struct timeval *b, struct timeval *res);
+//
+// From man timercmp:
+//
+//    struct timeval {
+//        time_t      tv_sec;     /* seconds */
+//        suseconds_t tv_usec;    /* microseconds */
+//    };
+//
+// - tv_usec has a value in the range 0 to 999,999.
+//
+///////////////////////////////////////////////////////////////////////////////
 #include "Timer.h"
 #include <cstddef>  // NULL
 #include <cstdio>   // printf
@@ -6,8 +22,15 @@
 
 namespace V3DLib {
 
-Timer::Timer(std::string const &label) : m_label(label) {
+Timer::Timer(std::string const &label, bool disp_in_dtor) : m_disp_in_dtor(disp_in_dtor), m_label(label) {
   gettimeofday(&tvStart, NULL);
+}
+
+
+Timer::~Timer() {
+  if (m_disp_in_dtor) {  // Allows RAII usage
+    end();
+  }
 }
 
 

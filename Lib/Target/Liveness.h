@@ -10,6 +10,27 @@
 
 namespace V3DLib {
 
+struct RegUsageItem {
+ Reg reg;
+ int dst_use = 0;
+ int src_use = 0;
+
+ bool unused() const;
+ std::string dump() const;
+};
+
+
+struct RegUsage : public std::vector<RegUsageItem> {
+  using Parent = std::vector<RegUsageItem>;
+
+  RegUsage(int numVars);
+
+  void set_used(Instr::List &instrs);
+  std::string allocated_registers_dump() const;
+  std::string dump() const;
+};
+
+
 // 'use' and 'def' sets:
 //   * 'use' set: the variables read by an instruction
 //   * 'def' set: the variables modified by an instruction
@@ -17,6 +38,8 @@ namespace V3DLib {
 struct UseDefReg {
   SmallSeq<Reg> use;
   SmallSeq<Reg> def;
+
+  std::string dump() const;
 };   
      
 struct UseDef {
@@ -67,7 +90,7 @@ public:
 
   void init(Instr::List &instrs, Liveness &live);
   LiveSet &operator[](int index);
-  std::vector<bool> possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag = REG_A);
+  std::vector<bool> possible_registers(int index, RegUsage &alloc, RegTag reg_tag = REG_A);
 
   static RegId choose_register(std::vector<bool> &possible, bool check_limit = true);  
   static void  dump_possible(std::vector<bool> &possible, int index = -1);
@@ -78,7 +101,7 @@ private:
 };
 
 
-int introduceAccum(Liveness &live, Instr::List &instrs, std::vector<Reg> &allocated_vars);
+int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars);
 
 }  // namespace V3DLib
 

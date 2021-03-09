@@ -1,4 +1,5 @@
 #include "Instr.h"         // Location of definition struct Instr
+#include "Support/debug.h"
 #include "Target/Pretty.h"  // pretty_instr_tag()
 #include "Support/basics.h" // fatal()
 #include "Source/BExpr.h"   // class CmpOp
@@ -325,6 +326,57 @@ std::string Instr::dump() const {
 }
 
 
+/**
+ * Determine the accumulators used in this instruction
+ *
+ * @return bitfield with the bits set for used accumulators,
+ *         bit 0 == ACC0, bit 1 == ACC1 etc.
+ */
+uint32_t Instr::get_acc_usage() const {
+  // No distinguishing dst and src here
+  uint32_t ret = 0;
+
+  switch (tag) {
+    case InstrTag::TMU0_TO_ACC4:  // Load immediate
+      ret |=  (1 << 4);
+      break;
+
+    case InstrTag::LI:  // Load immediate
+      if (LI.dest.tag == ACC) {
+        ret |=  (1 << LI.dest.regId);
+      }
+      break;
+
+    case InstrTag::ALU:  // ALU operation
+      if (ALU.dest.tag == ACC) {
+        ret |=  (1 << ALU.dest.regId);
+      }
+
+      // NOTE: dst/srcA/srcB can be same acc
+
+      if (ALU.srcA.is_reg() && ALU.srcA.reg.tag == ACC) {
+        ret |=  (1 << ALU.srcA.reg.regId);
+      }
+
+      if (ALU.srcB.is_reg() && ALU.srcB.reg.tag == ACC) {
+        ret |=  (1 << ALU.srcB.reg.regId);
+      }
+      break;
+
+    case InstrTag::RECV:  // RECV instruction
+      if (RECV.dest.tag == ACC) {
+        ret |=  (1 << RECV.dest.regId);
+      }
+      break;
+
+    default:
+      break;
+  }
+
+  return ret;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Class Instr::List
 ///////////////////////////////////////////////////////////////////////////////
@@ -404,6 +456,35 @@ int Instr::List::tag_index(InstrTag tag, bool ensure_one) {
   assertq(!ensure_one || count == 1, "List::tag_index() Expecting exactly one tag found.");
   return found;
 }
+
+
+/**
+ * Debug function for displaying the used accumulators in the instruction list
+ */
+std::string Instr::List::check_acc_usage() const {
+  std::string ret;
+
+  for (int index = 0; index < size(); ++index) {
+    uint32_t accs = (*this)[index].get_acc_usage();
+    assert(accs < 64);
+
+    if (accs == 0) continue;
+
+    ret << "Instruction " << index << " uses ACCs: ";
+
+    if (accs &  1) ret << "0, ";
+    if (accs &  2) ret << "1, ";
+    if (accs &  4) ret << "2, ";
+    if (accs &  8) ret << "3, ";
+    if (accs & 16) ret << "4, ";
+    if (accs & 32) ret << "5, ";
+
+    ret << "\n";
+  }
+
+  return ret;
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // End Class Instr::List

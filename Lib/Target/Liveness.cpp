@@ -13,6 +13,97 @@
 
 namespace V3DLib {
 
+bool RegUsageItem::unused() const {
+  bool ret = (dst_use == 0 && src_use == 0);
+
+  if (ret) {
+    assert(reg.tag == NONE);
+  }
+
+  return ret;
+}
+
+
+std::string RegUsageItem::dump() const {
+  std::string ret;
+
+  ret << reg.dump() << "; dst count: " << dst_use << "; src count: " << src_use;
+
+  return ret;
+}
+
+RegUsage::RegUsage(int numVars) : Parent(numVars) {
+  for (int i = 0; i < numVars; i++) (*this)[i].reg.tag = NONE;
+}
+
+
+void RegUsage::set_used(Instr::List &instrs) {
+  for (int i = 0; i < instrs.size(); i++) {
+    UseDef out;
+    useDef(instrs[i], &out);
+
+    for (int j = 0; j < out.def.size(); j++) {
+      (*this)[out.def[j]].dst_use++;
+    }
+    for (int j = 0; j < out.use.size(); j++) {
+      (*this)[out.use[j]].src_use++;
+    }
+  }
+}
+
+
+std::string RegUsage::allocated_registers_dump() const {
+  std::string ret;
+
+  for (int i = 0; i < (int) size(); i++) {
+    ret << i << ": " << (*this)[i].reg.dump() << "\n";
+  }
+
+  return ret;
+}
+
+
+std::string RegUsage::dump() const {
+  std::string ret;
+
+  for (int i = 0; i < (int) size(); i++) {
+    ret << i << ": " << (*this)[i].dump() << "\n";
+  }
+
+  std::string unused;
+
+  for (int i = 0; i < (int) size(); i++) {
+    if ((*this)[i].unused()) {
+      unused << i << ",";
+    }
+  }
+
+  if (!unused.empty()) {
+    ret << "\nNot used: " << unused;
+  }
+
+  return ret;
+}
+
+std::string UseDefReg::dump() const {
+  std::string ret;
+
+  ret << "(def: ";
+  for (int j = 0; j < def.size(); j++) {
+    ret << def[j].dump();
+  }
+  ret << "; ";
+
+  ret << "use: ";
+  for (int j = 0; j < use.size(); j++) {
+    ret << use[j].dump();
+  }
+  ret << ") ";
+
+  return ret;
+}
+
+
 /**
  * Optimisation pass that introduces accumulators
  *
@@ -30,11 +121,22 @@ namespace V3DLib {
  * @param allocated_vars  write param, to register which vars have an accumulator registered
  *
  * @return Number of substitustions performed;
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * It is possible that a variable gets used multiple times, and the last usage of it
+ *   is replaced by an accumulator.
+ *
+ *   For this reason, it is dangerous to keep track of the substitustion in `allocated_vars`,
+ *   and to ignore the variable replacement due to acc usage later on. There may still be instances
+ *   of the variable that need replacing.
  */
-int introduceAccum(Liveness &live, Instr::List &instrs, std::vector<Reg> &allocated_vars) {
+int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 #ifdef DEBUG
   for (int i = 0; i < (int) allocated_vars.size(); i++) {
-    assert(allocated_vars[i].tag == NONE);  // Safeguard for the time being
+    assert(allocated_vars[i].reg.tag == NONE);  // Safeguard for the time being
   }
 #endif  // DEBUG
 
@@ -71,7 +173,6 @@ int introduceAccum(Liveness &live, Instr::List &instrs, std::vector<Reg> &alloca
       }
     }
 
-
     Reg current(REG_A, def);
     Reg replace_with(ACC, acc_id);
 
@@ -79,8 +180,11 @@ int introduceAccum(Liveness &live, Instr::List &instrs, std::vector<Reg> &alloca
     renameUses(instr, current, replace_with);
     instrs[i-1] = prev;
     instrs[i]   = instr;
-    
-    allocated_vars[def] = replace_with;    
+
+    // DANGEROUS! Do not use this value downstream.   
+    // Currently stored for debug display purposes only! 
+    allocated_vars[def].reg = replace_with;    
+
     subst_count++;
   }
 
@@ -101,47 +205,36 @@ int introduceAccum(Liveness &live, Instr::List &instrs, std::vector<Reg> &alloca
 void useDefReg(Instr instr, UseDefReg* useDef) {
   auto ALWAYS = AssignCond::Tag::ALWAYS;
 
-  // Make the 'use' and 'def' sets empty
   useDef->use.clear();
   useDef->def.clear();
 
   switch (instr.tag) {
-    // Load immediate
-    case LI:
-      // Add destination reg to 'def' set
-      useDef->def.insert(instr.LI.dest);
+    case LI:                                     // Load immediate
+      useDef->def.insert(instr.LI.dest);         // Add destination reg to 'def' set
 
-      // Add destination reg to 'use' set if conditional assigment
-      if (instr.LI.cond.tag != ALWAYS)
+      if (instr.LI.cond.tag != ALWAYS)           // Add destination reg to 'use' set if conditional assigment
         useDef->use.insert(instr.LI.dest);
       return;
 
-    // ALU operation
-    case ALU:
-      // Add destination reg to 'def' set
-      useDef->def.insert(instr.ALU.dest);
+    case ALU:  // ALU operation
+      useDef->def.insert(instr.ALU.dest);        // Add destination reg to 'def' set
 
-      // Add destination reg to 'use' set if conditional assigment
-      if (instr.ALU.cond.tag != ALWAYS)
+      if (instr.ALU.cond.tag != ALWAYS)          // Add destination reg to 'use' set if conditional assigment
         useDef->use.insert(instr.ALU.dest);
 
-      // Add source reg A to 'use' set
-      if (instr.ALU.srcA.is_reg())
+      if (instr.ALU.srcA.is_reg())               // Add source reg A to 'use' set
         useDef->use.insert(instr.ALU.srcA.reg);
 
-      // Add source reg B to 'use' set
-      if (instr.ALU.srcB.is_reg())
+      if (instr.ALU.srcB.is_reg())               // Add source reg B to 'use' set
         useDef->use.insert(instr.ALU.srcB.reg);
       return;
 
-    // Load receive instruction
-    case RECV:
-      // Add dest reg to 'def' set
-      useDef->def.insert(instr.RECV.dest);
+    case RECV:                                   // Load receive instruction
+      useDef->def.insert(instr.RECV.dest);       // Add dest reg to 'def' set
       return;
     default:
       return;
-  }
+  }  
 }
 
 
@@ -286,7 +379,7 @@ LiveSet &LiveSets::operator[](int index) {
  *
  * @param index  index of variable
  */
-std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag) {
+std::vector<bool> LiveSets::possible_registers(int index, RegUsage &alloc, RegTag reg_tag) {
   assert(reg_tag == REG_A || reg_tag == REG_B);
 
   const int NUM_REGS = Platform::size_regfile();
@@ -299,7 +392,7 @@ std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &allo
 
   // Eliminate impossible choices of register for this variable
   for (int j = 0; j < set.size(); j++) {
-    Reg neighbour = alloc[set[j]];
+    Reg neighbour = alloc[set[j]].reg;
     if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
   }
 
