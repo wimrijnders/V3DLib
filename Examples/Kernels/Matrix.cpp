@@ -552,19 +552,23 @@ void dft_inline_kernel(Complex::Ptr dst, Complex::Ptr a) {
   Complex result;
 
   // Moved out of the loop to avoid 'register allocation failed', didn't work 
-  Complex tmp;
-  Complex::Ptr dst_local;
-  Int b_index;
-  Int j;
+  //Complex tmp;
+  //Complex::Ptr dst_local;
+  //Int b_index;
+  //Int j;
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
     vec.load(a);
 
     // b_index: column index of block of 16 columns to process by 1 QPU
+    Int b_index;
     For (b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
+      Complex::Ptr dst_local;
       dst_local = dst + a_index*settings.cols_result() + b_index;
   
+      Int j;
       For (j = 0,  j < 16, j += 1)
+        Complex tmp;
         vec.dft_dot_product(b_index + j, tmp);
         result.set_at(j & 0xf, tmp);
       End

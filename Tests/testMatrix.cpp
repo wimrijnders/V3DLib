@@ -902,7 +902,11 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
 
     output_dft(input, result_switched, "dft");
   }
+}
 
+
+TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
+  Platform::use_main_memory(true);
 
   SECTION("Check DFT with inline sin/cos") {
     int const Dim = 32;
@@ -930,4 +934,6 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
 
     output_dft(input, result, "dft_inline");
   }
+
+  Platform::use_main_memory(false);
 }
