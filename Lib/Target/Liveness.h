@@ -29,6 +29,7 @@ struct RegUsageItem {
  void add_live(int n);
  bool unused() const;
  bool only_assigned() const { return use.dst_use != 0 && use.src_use == 0; }
+ bool never_assigned() const { return !unused() && use.dst_first == -1; }
  std::string dump() const;
 };
 
@@ -41,8 +42,11 @@ struct RegUsage : public std::vector<RegUsageItem> {
 
   void set_used(Instr::List &instrs);
   void set_live(Liveness &live);
+  std::string dump(bool verbose = false) const;
+  void check() const;
+
+private:
   std::string allocated_registers_dump() const;
-  std::string dump() const;
 };
 
 

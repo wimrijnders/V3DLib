@@ -146,13 +146,12 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
   Liveness live(*cfg);
   live.compute(instrs);
   alloc.set_live(live);
-  assert(instrs.size() == live.size());
-  //std::cout << alloc.dump() << std::endl;
+  alloc.check();
 
 
   // Step 1 - For each variable, determine a preference for register file A or B.
-  int* prefA = new int [numVars];
-  int* prefB = new int [numVars];
+  int *prefA = new int [numVars];
+  int *prefB = new int [numVars];
 
   regalloc_determine_regfileAB(instrs, prefA, prefB, numVars);
 
@@ -193,8 +192,7 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     alloc[i].reg = Reg(chosenRegFile, (chosenRegFile == REG_A)? chosenA : chosenB);
   }
   
-
-  compile_data.allocated_registers_dump = alloc.allocated_registers_dump();
+  compile_data.allocated_registers_dump = alloc.dump(true);
   //std::cout << count_reg_types(instrs).dump() << std::endl;
 
   // Step 4 - Apply the allocation to the code

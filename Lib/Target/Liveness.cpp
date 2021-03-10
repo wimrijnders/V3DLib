@@ -12,151 +12,56 @@
 #include "Common/CompileData.h"
 
 namespace V3DLib {
+namespace {
 
-bool RegUsageItem::unused() const {
-  bool ret = (use.dst_use == 0 && use.src_use == 0);
+/**
+ * Determine the liveness sets for each instruction.
+ */
+void liveness(Instr::List &instrs, Liveness &live) {
+  // Initialise live mapping to have one entry per instruction
+  live.setSize(instrs.size());
 
-  if (ret) {
-    assert(reg.tag == NONE);
-  }
+  // For storing the 'use' and 'def' sets of each instruction
+  UseDef useDefSets;
 
-  return ret;
-}
+  // For temporarily storing live-in and live-out variables
+  LiveSet liveIn;
+  LiveSet liveOut;
 
+  // Has a change been made to the liveness mapping?
+  bool changed = true;
 
-std::string RegUsageItem::dump() const {
-  std::string ret;
-  ret << reg.dump()
-      << "; use(dst_first, src_first, dst_count,src_count): ("
-      << use.dst_first << ", " << use.src_first << ", "
-      << use.dst_use << ", " << use.src_use << "), "
-      << "; live(first, last, count): (" << live.first << ", " << live.last << ", " << live.count << ")";
-  return ret;
-}
+  // Iterate until no change, i.e. fixed point
+  while (changed) {
+    changed = false;
 
+    // Propagate live variables backwards
+    for (int i = instrs.size()-1; i >= 0; i--) {
+      // Compute 'use' and 'def' sets
+      Instr instr = instrs[i];
+      useDef(instr, &useDefSets);
 
-void RegUsageItem::add_live(int n) {
-  if (live.first == -1 || live.first > n) {
-    live.first = n;
-  }
+      // Compute live-out variables
+      live.computeLiveOut(i, liveOut);
 
-  if (live.last == -1 || live.last < n) {
-    live.last = n;
-  }
-
-  live.count++;
-}
-
-RegUsage::RegUsage(int numVars) : Parent(numVars) {
-  for (int i = 0; i < numVars; i++) (*this)[i].reg.tag = NONE;
-}
-
-
-void RegUsage::set_used(Instr::List &instrs) {
-  for (int i = 0; i < instrs.size(); i++) {
-    UseDef out;
-    useDef(instrs[i], &out);
-
-
-    for (int j = 0; j < out.def.size(); j++) {
-      auto &use = (*this)[out.def[j]].use;
-
-      if (use.dst_first == -1 || use.dst_first > i) {
-        use.dst_first = i;
+      // Remove the 'def' set from the live-out set to give live-in set
+      liveIn.clear();
+      for (int j = 0; j < liveOut.size(); j++) {
+        if (!useDefSets.def.member(liveOut[j]))
+          liveIn.insert(liveOut[j]);
       }
 
-      use.dst_use++;
-    }
-    for (int j = 0; j < out.use.size(); j++) {
-      auto &use = (*this)[out.use[j]].use;
-      use.src_use++;
+      // Add the 'use' set to the live-in set
+      for (int j = 0; j < useDefSets.use.size(); j++)
+        liveIn.insert(useDefSets.use[j]);
 
-      if (use.src_first == -1 || use.src_first > i) {
-        use.src_first = i;
+      // Insert the live-in variables into the map
+      for (int j = 0; j < liveIn.size(); j++) {
+        bool inserted = live.insert(i, liveIn[j]);
+        changed = changed || inserted;
       }
     }
   }
-}
-
-
-void RegUsage::set_live(Liveness &live) {
-  for (int i = 0; i < live.size(); i++) {
-    auto &item = live[i];
-
-    for (int j = 0; j < item.size(); j++) {
-      (*this)[item[j]].add_live(i);
-    }
-  }
-}
-
-
-std::string RegUsage::allocated_registers_dump() const {
-  std::string ret;
-
-  for (int i = 0; i < (int) size(); i++) {
-    ret << i << ": " << (*this)[i].reg.dump() << "\n";
-  }
-
-  return ret;
-}
-
-
-std::string RegUsage::dump() const {
-  bool const ShowUnused = false;
-
-  std::string ret;
-
-  for (int i = 0; i < (int) size(); i++) {
-    if (ShowUnused || !(*this)[i].unused()) {
-      ret << i << ": " << (*this)[i].dump() << "\n";
-    }
-  }
-
-  if (ShowUnused) {
-    std::string unused;
-
-      for (int i = 0; i < (int) size(); i++) {
-      if ((*this)[i].unused()) {
-        unused << i << ",";
-      }
-    }
-
-    if (!unused.empty()) {
-      ret << "\nNot used: " << unused << "\n";
-    }
-  }
-
-  std::string assigned_only;
-
-  for (int i = 0; i < (int) size(); i++) {
-    if ((*this)[i].only_assigned()) {
-      assigned_only << i << ",";
-    }
-  }
-
-  if (!assigned_only.empty()) {
-    ret << "\nOnly assigned: " << assigned_only << "\n";
-  }
-
-  return ret;
-}
-
-std::string UseDefReg::dump() const {
-  std::string ret;
-
-  ret << "(def: ";
-  for (int j = 0; j < def.size(); j++) {
-    ret << def[j].dump();
-  }
-  ret << "; ";
-
-  ret << "use: ";
-  for (int j = 0; j < use.size(); j++) {
-    ret << use[j].dump();
-  }
-  ret << ") ";
-
-  return ret;
 }
 
 
@@ -276,141 +181,6 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 }
 
 
-///////////////////////////////////////////////////////////////////////////////
-// Compute 'use' and 'def' sets
-///////////////////////////////////////////////////////////////////////////////
-
-// 'use' set: the variables read by an instruction
-// 'def' set: the variables modified by an instruction
-
-/**
- * Compute 'use' and 'def' sets for a given instruction
- */
-void useDefReg(Instr instr, UseDefReg* useDef) {
-  auto ALWAYS = AssignCond::Tag::ALWAYS;
-
-  useDef->use.clear();
-  useDef->def.clear();
-
-  switch (instr.tag) {
-    case LI:                                     // Load immediate
-      useDef->def.insert(instr.LI.dest);         // Add destination reg to 'def' set
-
-      if (instr.LI.cond.tag != ALWAYS)           // Add destination reg to 'use' set if conditional assigment
-        useDef->use.insert(instr.LI.dest);
-      return;
-
-    case ALU:  // ALU operation
-      useDef->def.insert(instr.ALU.dest);        // Add destination reg to 'def' set
-
-      if (instr.ALU.cond.tag != ALWAYS)          // Add destination reg to 'use' set if conditional assigment
-        useDef->use.insert(instr.ALU.dest);
-
-      if (instr.ALU.srcA.is_reg())               // Add source reg A to 'use' set
-        useDef->use.insert(instr.ALU.srcA.reg);
-
-      if (instr.ALU.srcB.is_reg())               // Add source reg B to 'use' set
-        useDef->use.insert(instr.ALU.srcB.reg);
-      return;
-
-    case RECV:                                   // Load receive instruction
-      useDef->def.insert(instr.RECV.dest);       // Add dest reg to 'def' set
-      return;
-    default:
-      return;
-  }  
-}
-
-
-/**
- * Same as `useDefReg()`, except only yields ids of registers in register file A.
- */
-void useDef(Instr const &instr, UseDef* out) {
-  UseDefReg set;
-  useDefReg(instr, &set);
-  out->use.clear();
-  out->def.clear();
-  for (int i = 0; i < set.use.size(); i++) {
-    Reg r = set.use[i];
-    if (r.tag == REG_A) out->use.append(r.regId);
-  }
-  for (int i = 0; i < set.def.size(); i++) {
-    Reg r = set.def[i];
-    if (r.tag == REG_A) out->def.append(r.regId);
-  }
-}
-
-
-/*
-// Compute the union of the 'use' sets of the successors of a given
-// instruction.
-
-void useSetOfSuccs(Instr::List* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
-  use->clear();
-  Succs* s = &cfg->elems[i];
-  for (int j = 0; j < s->size(); j++) {
-    UseDef set;
-    useDef(instrs->elems[s->elems[j]], &set);
-    for (int k = 0; k < set.use.size(); k++)
-      use->insert(set.use[k]);
-  }
-}
-*/
-
-
-namespace {
-
-/**
- * Determine the liveness sets for each instruction.
- */
-void liveness(Instr::List &instrs, Liveness &live) {
-  // Initialise live mapping to have one entry per instruction
-  live.setSize(instrs.size());
-
-  // For storing the 'use' and 'def' sets of each instruction
-  UseDef useDefSets;
-
-  // For temporarily storing live-in and live-out variables
-  LiveSet liveIn;
-  LiveSet liveOut;
-
-  // Has a change been made to the liveness mapping?
-  bool changed = true;
-
-  // Iterate until no change, i.e. fixed point
-  while (changed) {
-    changed = false;
-
-    // Propagate live variables backwards
-    for (int i = instrs.size()-1; i >= 0; i--) {
-      // Compute 'use' and 'def' sets
-      Instr instr = instrs[i];
-      useDef(instr, &useDefSets);
-
-      // Compute live-out variables
-      live.computeLiveOut(i, liveOut);
-
-      // Remove the 'def' set from the live-out set to give live-in set
-      liveIn.clear();
-      for (int j = 0; j < liveOut.size(); j++) {
-        if (!useDefSets.def.member(liveOut[j]))
-          liveIn.insert(liveOut[j]);
-      }
-
-      // Add the 'use' set to the live-in set
-      for (int j = 0; j < useDefSets.use.size(); j++)
-        liveIn.insert(useDefSets.use[j]);
-
-      // Insert the live-in variables into the map
-      for (int j = 0; j < liveIn.size(); j++) {
-        bool inserted = live.insert(i, liveIn[j]);
-        changed = changed || inserted;
-      }
-    }
-  }
-}
-
-
 /**
  * Optimisation passes that introduce accumulators
  *
@@ -437,9 +207,7 @@ int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars
 #endif  // DEBUG
 
   int subst_count = peephole_1(live, instrs, allocated_vars);
-
-  // TODO some unit tests fail when this is added
-  //subst_count += peephole_2(live, instrs, allocated_vars);
+  subst_count += peephole_2(live, instrs, allocated_vars);
 
   return subst_count;
 }
@@ -520,7 +288,311 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
   substRegTag(&instr, TMP_B, REG_B);
 }
 
+
+std::string get_unused_list(RegUsage const &alloc_list) {
+  std::string ret;
+
+  for (int i = 0; i < (int) alloc_list.size(); i++) {
+    if (alloc_list[i].unused()) {
+      ret << i << ",";
+    }
+  }
+
+  return ret;
+}
+
+
+std::string get_assigned_only_list(RegUsage const &alloc_list) {
+  std::string ret;
+
+  for (int i = 0; i < (int) alloc_list.size(); i++) {
+    if (alloc_list[i].only_assigned()) {
+      ret << i << ",";
+    }
+  }
+
+  return ret;
+}
+
+
+std::string get_never_assigned_list(RegUsage const &alloc_list) {
+  std::string ret;
+
+  for (int i = 0; i < (int) alloc_list.size(); i++) {
+    if (alloc_list[i].never_assigned()) {
+      ret << i << ",";
+    }
+  }
+
+  return ret;
+}
+
+
 }  // anon namespace
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class RegUsageItem
+///////////////////////////////////////////////////////////////////////////////
+
+bool RegUsageItem::unused() const {
+  return (use.dst_use == 0 && use.src_use == 0);
+}
+
+
+std::string RegUsageItem::dump() const {
+  std::string ret;
+  ret << reg.dump() << "; ";
+
+  if (unused()) {
+    ret << "Not used";
+    return ret;
+  }
+
+  ret << "use(dst_first, src_first, dst_count,src_count): ("
+      << use.dst_first << ", " << use.src_first << ", "
+      << use.dst_use << ", " << use.src_use << "), "
+      << "; live(first, last, count): (" << live.first << ", " << live.last << ", " << live.count << ")";
+  return ret;
+}
+
+
+void RegUsageItem::add_live(int n) {
+  if (live.first == -1 || live.first > n) {
+    live.first = n;
+  }
+
+  if (live.last == -1 || live.last < n) {
+    live.last = n;
+  }
+
+  live.count++;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class RegUsageItem
+///////////////////////////////////////////////////////////////////////////////
+
+RegUsage::RegUsage(int numVars) : Parent(numVars) {
+  for (int i = 0; i < numVars; i++) (*this)[i].reg.tag = NONE;
+}
+
+
+void RegUsage::set_used(Instr::List &instrs) {
+  for (int i = 0; i < instrs.size(); i++) {
+    UseDef out;
+    useDef(instrs[i], &out);
+
+
+    for (int j = 0; j < out.def.size(); j++) {
+      auto &use = (*this)[out.def[j]].use;
+
+      if (use.dst_first == -1 || use.dst_first > i) {
+        use.dst_first = i;
+      }
+
+      use.dst_use++;
+    }
+
+    for (int j = 0; j < out.use.size(); j++) {
+      auto &use = (*this)[out.use[j]].use;
+      use.src_use++;
+
+      if (use.src_first == -1 || use.src_first > i) {
+        use.src_first = i;
+      }
+    }
+  }
+}
+
+
+void RegUsage::set_live(Liveness &live) {
+  for (int i = 0; i < live.size(); i++) {
+    auto &item = live[i];
+
+    for (int j = 0; j < item.size(); j++) {
+      (*this)[item[j]].add_live(i);
+    }
+  }
+}
+
+
+void RegUsage::check() const {
+  std::string prefix = "RegUsage in regAlloc() ";
+  if (Platform::compiling_for_vc4()) {
+    prefix << "vc4";
+  } else {
+    prefix << "v3d";
+  }
+  prefix << ": ";
+
+  std::string tmp = get_assigned_only_list(*this);
+  if (!tmp.empty()) {
+    std::string msg = prefix;
+    msg << "There are internal instruction variables which are assigned but never used.\nList: "
+        << tmp << "\n";
+    warning(msg);
+  }
+
+  tmp = get_never_assigned_list(*this);
+  if (!tmp.empty()) {
+    std::string msg = prefix;
+    msg << "There are internal instruction variables which are used but never assigned.\nList: "
+       << tmp << "\n";
+    error(msg, true);
+  }
+}
+
+
+std::string RegUsage::allocated_registers_dump() const {
+  std::string ret;
+
+  for (int i = 0; i < (int) size(); i++) {
+    ret << i << ": " << (*this)[i].reg.dump() << "\n";
+  }
+
+  return ret;
+}
+
+
+std::string RegUsage::dump(bool verbose) const {
+  if (!verbose) return allocated_registers_dump();
+
+  bool const ShowUnused = false;
+
+  std::string ret;
+
+  for (int i = 0; i < (int) size(); i++) {
+    if (ShowUnused || !(*this)[i].unused()) {
+      ret << i << ": " << (*this)[i].dump() << "\n";
+    }
+  }
+
+  std::string tmp = get_unused_list(*this);
+  if (!tmp.empty()) {
+    ret << "\nNot used: " << tmp << "\n";
+  }
+
+  tmp = get_assigned_only_list(*this);
+  if (!tmp.empty()) {
+    ret << "\nOnly assigned: " << tmp << "\n";
+  }
+
+  tmp = get_never_assigned_list(*this);
+  if (!tmp.empty()) {
+    ret << "\nNever assigned: " << tmp << "\n";
+  }
+
+  return ret;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class UseDefReg
+///////////////////////////////////////////////////////////////////////////////
+
+std::string UseDefReg::dump() const {
+  std::string ret;
+
+  ret << "(def: ";
+  for (int j = 0; j < def.size(); j++) {
+    ret << def[j].dump();
+  }
+  ret << "; ";
+
+  ret << "use: ";
+  for (int j = 0; j < use.size(); j++) {
+    ret << use[j].dump();
+  }
+  ret << ") ";
+
+  return ret;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Compute 'use' and 'def' sets
+///////////////////////////////////////////////////////////////////////////////
+
+// 'use' set: the variables read by an instruction
+// 'def' set: the variables modified by an instruction
+
+/**
+ * Compute 'use' and 'def' sets for a given instruction
+ */
+void useDefReg(Instr instr, UseDefReg* useDef) {
+  auto ALWAYS = AssignCond::Tag::ALWAYS;
+
+  useDef->use.clear();
+  useDef->def.clear();
+
+  switch (instr.tag) {
+    case LI:                                     // Load immediate
+      useDef->def.insert(instr.LI.dest);         // Add destination reg to 'def' set
+
+      // TODO see what happens if this is removed
+      if (instr.LI.cond.tag != ALWAYS)           // Add destination reg to 'use' set if conditional assigment
+        useDef->use.insert(instr.LI.dest);
+      return;
+
+    case ALU:  // ALU operation
+      useDef->def.insert(instr.ALU.dest);        // Add destination reg to 'def' set
+
+      // TODO see what happens if this is removed
+      if (instr.ALU.cond.tag != ALWAYS)          // Add destination reg to 'use' set if conditional assigment
+        useDef->use.insert(instr.ALU.dest);
+
+      if (instr.ALU.srcA.is_reg())               // Add source reg A to 'use' set
+        useDef->use.insert(instr.ALU.srcA.reg);
+
+      if (instr.ALU.srcB.is_reg())               // Add source reg B to 'use' set
+        useDef->use.insert(instr.ALU.srcB.reg);
+      return;
+
+    case RECV:                                   // Load receive instruction
+      useDef->def.insert(instr.RECV.dest);       // Add dest reg to 'def' set
+      return;
+    default:
+      return;
+  }  
+}
+
+
+/**
+ * Same as `useDefReg()`, except only yields ids of registers in register file A.
+ */
+void useDef(Instr const &instr, UseDef* out) {
+  UseDefReg set;
+  useDefReg(instr, &set);
+  out->use.clear();
+  out->def.clear();
+  for (int i = 0; i < set.use.size(); i++) {
+    Reg r = set.use[i];
+    if (r.tag == REG_A) out->use.append(r.regId);
+  }
+  for (int i = 0; i < set.def.size(); i++) {
+    Reg r = set.def[i];
+    if (r.tag == REG_A) out->def.append(r.regId);
+  }
+}
+
+
+/*
+// Compute the union of the 'use' sets of the successors of a given
+// instruction.
+
+void useSetOfSuccs(Instr::List* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
+  use->clear();
+  Succs* s = &cfg->elems[i];
+  for (int j = 0; j < s->size(); j++) {
+    UseDef set;
+    useDef(instrs->elems[s->elems[j]], &set);
+    for (int k = 0; k < set.use.size(); k++)
+      use->insert(set.use[k]);
+  }
+}
+*/
 
 
 LiveSets::LiveSets(int size) : m_size(size) {
@@ -642,6 +714,7 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 
 void Liveness::compute(Instr::List &instrs) {
   liveness(instrs, *this);
+  assert(instrs.size() == size());
 
   //std::cout << live.dump() << std::endl;
   compile_data.liveness_dump = dump();

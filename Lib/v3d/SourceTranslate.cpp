@@ -1,4 +1,5 @@
 #include "SourceTranslate.h"
+#include <iostream>
 #include "Support/basics.h"
 #include "Source/Translate.h"
 #include "Source/Stmt.h"
@@ -54,8 +55,8 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
   Liveness live(*cfg);
   live.compute(instrs);
   alloc.set_live(live);
-  assert(instrs.size() == live.size());
-  //std::cout << alloc.dump() << std::endl;
+  alloc.check();
+
 
   // Step 2 - For each variable, determine all variables ever live at the same time
   LiveSets liveWith(numVars);
@@ -80,7 +81,7 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
     }
   }
 
-  compile_data.allocated_registers_dump = alloc.allocated_registers_dump();
+  compile_data.allocated_registers_dump = alloc.dump(true);
 
   // Step 4 - Apply the allocation to the code
   allocate_registers(instrs, alloc);
