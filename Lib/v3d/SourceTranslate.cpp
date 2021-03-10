@@ -48,6 +48,8 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
 
   introduceAccum(*cfg, instrs, numVars);
 
+  compile_data.target_code_before_liveness = instrs.dump();
+
   // Step 0 - Perform liveness analysis
   RegUsage alloc(numVars);
   alloc.set_used(instrs);

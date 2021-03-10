@@ -246,12 +246,6 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
   };
 
   UseDef useDefSet;
-
-  // WRI DEBUG
-//  if (instr.ALU.op == ALUOp::M_MUL24) {
-//    breakpoint
-//  } 
-
   useDef(instr, &useDefSet);  // Registers only usage REG_A
 
   for (int j = 0; j < useDefSet.def.size(); j++) {
@@ -305,7 +299,10 @@ std::string get_unused_list(RegUsage const &alloc_list) {
 std::string get_assigned_only_list(RegUsage const &alloc_list) {
   std::string ret;
 
-  for (int i = 0; i < (int) alloc_list.size(); i++) {
+  // NOTE: var 0 (QPU id) skipped, this always gets set because passed in as uniform,
+  //       but often does not get used.
+
+  for (int i = 1; i < (int) alloc_list.size(); i++) {
     if (alloc_list[i].only_assigned()) {
       ret << i << ",";
     }
@@ -430,16 +427,16 @@ void RegUsage::check() const {
   std::string tmp = get_assigned_only_list(*this);
   if (!tmp.empty()) {
     std::string msg = prefix;
-    msg << "There are internal instruction variables which are assigned but never used.\nList: "
-        << tmp << "\n";
+    msg << "There are internal instruction variables which are assigned but never used.\n"
+        << "Variables: " << tmp << "\n";
     warning(msg);
   }
 
   tmp = get_never_assigned_list(*this);
   if (!tmp.empty()) {
     std::string msg = prefix;
-    msg << "There are internal instruction variables which are used but never assigned.\nList: "
-       << tmp << "\n";
+    msg << "There are internal instruction variables which are used but never assigned.\n"
+        << "Variables: " << tmp << "\n";
     error(msg, true);
   }
 }
@@ -532,6 +529,7 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
       useDef->def.insert(instr.LI.dest);         // Add destination reg to 'def' set
 
       // TODO see what happens if this is removed
+      // Can't remove this yet, things go awry in Where-conditions (see testConditionCodes)
       if (instr.LI.cond.tag != ALWAYS)           // Add destination reg to 'use' set if conditional assigment
         useDef->use.insert(instr.LI.dest);
       return;
@@ -540,6 +538,7 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
       useDef->def.insert(instr.ALU.dest);        // Add destination reg to 'def' set
 
       // TODO see what happens if this is removed
+      // See similar TODO above
       if (instr.ALU.cond.tag != ALWAYS)          // Add destination reg to 'use' set if conditional assigment
         useDef->use.insert(instr.ALU.dest);
 
@@ -716,7 +715,6 @@ void Liveness::compute(Instr::List &instrs) {
   liveness(instrs, *this);
   assert(instrs.size() == size());
 
-  //std::cout << live.dump() << std::endl;
   compile_data.liveness_dump = dump();
 }
 

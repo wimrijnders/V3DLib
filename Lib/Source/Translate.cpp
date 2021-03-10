@@ -452,11 +452,6 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
         if (!seq.empty()) seq.front().comment("else-branch of where (always)");
         ret << seq;
       }
-
-      // Reset flags to initial value
-      // TODO check if really needed
-      Var dummy = freshVar();
-      ret << mov(dummy, condVar).setCondFlag(Flag::ZC);
     } else {
       // Where-statements nested in other where-statements
 
@@ -498,10 +493,6 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
           ret << seq;
         }
       }
-
-      // Reset flags to initial value
-      Var dummy = freshVar();
-      ret << mov(dummy, condVar).setCondFlag(Flag::ZC);
     }
 
     return ret;

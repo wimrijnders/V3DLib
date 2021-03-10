@@ -100,7 +100,7 @@ void compile_postprocess(Instr::List &targetCode) {
   CFG cfg;
   buildCFG(targetCode, cfg);
 
-  compile_data.target_code_before_regalloc = targetCode.mnemonics(true);
+  //compile_data.target_code_before_regalloc = targetCode.dump();
 
   // Perform register allocation
   getSourceTranslate().regAlloc(&cfg, targetCode);
@@ -236,8 +236,15 @@ void KernelDriver::dump_compile_data(char const *filename) const {
   title(f, "Allocated registers to variables");
   fprintf(f, m_compile_data.allocated_registers_dump.c_str());
 
-  title(f, "Target code before regAlloc()");
-  fprintf(f, m_compile_data.target_code_before_regalloc.c_str());
+  if (!m_compile_data.target_code_before_regalloc.empty()) {
+    title(f, "Target code before regAlloc()");
+    fprintf(f, m_compile_data.target_code_before_regalloc.c_str());
+  }
+
+  if (!m_compile_data.target_code_before_liveness.empty()) {
+    title(f, "Target code before liveness, after peepholes");
+    fprintf(f, m_compile_data.target_code_before_liveness.c_str());
+  }
 
 
   if (filename != nullptr) {

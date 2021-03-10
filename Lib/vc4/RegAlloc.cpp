@@ -131,13 +131,13 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
   assert(cfg != nullptr);
   assert(count_reg_types(instrs).safe_for_regalloc());
   //Timer("vc4 regAlloc", true);
-
   //std::cout << count_reg_types(instrs).dump() << std::endl;
-  //std::cout << instrs.dump() << std::endl;
 
   int numVars = getFreshVarCount();
 
   introduceAccum(*cfg, instrs, numVars);
+
+  compile_data.target_code_before_liveness = instrs.dump();
 
   // Step 0 - Perform liveness analysis
   RegUsage alloc(numVars);
