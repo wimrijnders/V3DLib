@@ -276,38 +276,6 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 }
 
 
-/**
- * Optimisation passes that introduce accumulators
- *
- * @param allocated_vars  write param, to register which vars have an accumulator registered
- *
- * @return Number of substitutions performed;
- *
- * ============================================================================
- * NOTES
- * =====
- *
- * * It is possible that a variable gets used multiple times, and the last usage of it
- *   is replaced by an accumulator.
- *
- *   For this reason, it is dangerous to keep track of the substitustion in `allocated_vars`,
- *   and to ignore the variable replacement due to acc usage later on. There may still be instances
- *   of the variable that need replacing.
- */
-int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
-#ifdef DEBUG
-  for (int i = 0; i < (int) allocated_vars.size(); i++) {
-    assert(allocated_vars[i].reg.tag == NONE);  // Safeguard for the time being
-  }
-#endif  // DEBUG
-
-	int subst_count = peephole_1(live, instrs, allocated_vars);
-	//subst_count += peephole_2(live, instrs, allocated_vars);
-
-  return subst_count;
-}
-
-
 ///////////////////////////////////////////////////////////////////////////////
 // Compute 'use' and 'def' sets
 ///////////////////////////////////////////////////////////////////////////////
@@ -442,6 +410,115 @@ void liveness(Instr::List &instrs, Liveness &live) {
   }
 }
 
+
+/**
+ * Optimisation passes that introduce accumulators
+ *
+ * @param allocated_vars  write param, to register which vars have an accumulator registered
+ *
+ * @return Number of substitutions performed;
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * It is possible that a variable gets used multiple times, and the last usage of it
+ *   is replaced by an accumulator.
+ *
+ *   For this reason, it is dangerous to keep track of the substitustion in `allocated_vars`,
+ *   and to ignore the variable replacement due to acc usage later on. There may still be instances
+ *   of the variable that need replacing.
+ */
+int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
+#ifdef DEBUG
+  for (int i = 0; i < (int) allocated_vars.size(); i++) {
+    assert(allocated_vars[i].reg.tag == NONE);  // Safeguard for the time being
+  }
+#endif  // DEBUG
+
+  int subst_count = peephole_1(live, instrs, allocated_vars);
+
+  // TODO some unit tests fail when this is added
+  //subst_count += peephole_2(live, instrs, allocated_vars);
+
+  return subst_count;
+}
+
+
+/**
+ * Replace the variables with the assigned registers for the given instruction
+ *
+ * This functions assigns real registers to the 'variable registers of the instruction.
+ *
+ * The incoming instructions all have REG_A as registers but signify variables.
+ * The reg id's indicate the variable at this stage.
+ *
+ * Allocation is first done with reg types TMP_A/TMP_B,
+ * to avoid accidental replacements of registers with same id.
+ * This has happened IRL.
+ */
+void allocate_registers(Instr &instr, RegUsage const &alloc) {
+
+  auto check_regfile_register = [&instr] (Reg const &replace_with, RegId r) -> bool {
+    if (replace_with.tag == REG_A) return true;
+    if (Platform::compiling_for_vc4() && replace_with.tag == REG_B) return true;
+
+    UseDefReg out;
+    useDefReg(instr, &out);
+
+    std::string msg = "regAlloc(): allocated register must be in register file.";
+    msg << "\n"
+        << "Instruction: " << instr.dump() << ", "
+        << "Registers: " << out.dump() << ", "
+        << "Reg id : " << r << ", alloc value: " << replace_with.dump();
+
+    error(msg, true);  // true: throw if there is an error
+
+    return false;
+  };
+
+  UseDef useDefSet;
+
+  // WRI DEBUG
+//  if (instr.ALU.op == ALUOp::M_MUL24) {
+//    breakpoint
+//  } 
+
+  useDef(instr, &useDefSet);  // Registers only usage REG_A
+
+  for (int j = 0; j < useDefSet.def.size(); j++) {
+    assert(!alloc[j].unused());
+    RegId r = useDefSet.def[j];
+
+    Reg replace_with = alloc[r].reg;
+
+    if (!check_regfile_register(replace_with, r)) {
+      continue;
+    }
+
+    replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
+
+    renameDest(instr, Reg(REG_A, r), replace_with);
+  }
+
+  for (int j = 0; j < useDefSet.use.size(); j++) {
+    assert(!alloc[j].unused());
+    RegId r = useDefSet.use[j];
+
+    Reg replace_with = alloc[r].reg;
+
+    if (!check_regfile_register(replace_with, r)) {
+      continue;
+    }
+
+    replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
+
+    renameUses(instr, Reg(REG_A, r), replace_with);
+  }
+
+  substRegTag(&instr, TMP_A, REG_A);
+  substRegTag(&instr, TMP_B, REG_B);
+}
 
 }  // anon namespace
 
@@ -622,6 +699,31 @@ std::string Liveness::dump() {
   ret += "\n";
 
   return ret;
+}
+
+
+/**
+ * Introduce accumulators where possible
+ *
+ * This is done before the actual liveness analysis.
+ * The idea is to minimize beforehand the number of variables considered
+ * in the liveness analysis.
+ */
+void introduceAccum(CFG &cfg, Instr::List &instrs, int numVars) {
+  RegUsage alloc(numVars);
+  alloc.set_used(instrs);
+  Liveness live(cfg);
+  live.compute(instrs);
+
+  compile_data.num_accs_introduced = introduceAccum(live, instrs, alloc);
+  //std::cout << count_reg_types(instrs).dump() << std::endl;
+}
+
+
+void allocate_registers(Instr::List &instrs, RegUsage const &alloc) {
+  for (int i = 0; i < instrs.size(); i++) {
+    allocate_registers(instrs.get(i), alloc);
+  }
 }
 
 }  // namespace V3DLib

@@ -112,22 +112,6 @@ RegTypeCount count_reg_types(Instr::List &instrs) {
   return reg_types;
 }
 
-
-/**
- * Debug function
- */
-void check_consistency_alloc(RegUsage &alloc) {
-  // Debug output
-  std::cout << alloc.dump() << std::endl;
-
-  for (int i = 0; i < (int) alloc.size(); i++) {
-    RegTag tag = alloc[i].reg.tag;
-
-    assertq(tag != NONE, "regAlloc(): Not all variables have been assigned registers");
-    assertq(tag == REG_A || tag == REG_B || tag == ACC, "regAlloc(): unexpected register types in alloc list");
-  }
-}
-
 }  // anon namespace
 
 
@@ -153,26 +137,16 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
 
   int numVars = getFreshVarCount();
 
-  // Introduce accumulators where possible
-  // The idea is to minimize beforehand the number of variables considered
-  // in the liveness analysis
-  {
-    RegUsage alloc(numVars);
-    alloc.set_used(instrs);
-    Liveness live(*cfg);
-    live.compute(instrs);
-
-    compile_data.num_accs_introduced = introduceAccum(live, instrs, alloc);
-    //std::cout << count_reg_types(instrs).dump() << std::endl;
-  }
-
+  introduceAccum(*cfg, instrs, numVars);
 
   // Step 0 - Perform liveness analysis
   RegUsage alloc(numVars);
   alloc.set_used(instrs);
+
   Liveness live(*cfg);
   live.compute(instrs);
   alloc.set_live(live);
+  assert(instrs.size() == live.size());
   //std::cout << alloc.dump() << std::endl;
 
 
@@ -218,58 +192,13 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     // Finally, allocate a register to the variable
     alloc[i].reg = Reg(chosenRegFile, (chosenRegFile == REG_A)? chosenA : chosenB);
   }
-
-  //check_consistency_alloc(alloc);
   
 
   compile_data.allocated_registers_dump = alloc.allocated_registers_dump();
   //std::cout << count_reg_types(instrs).dump() << std::endl;
 
   // Step 4 - Apply the allocation to the code
-  for (int i = 0; i < instrs.size(); i++) {
-    auto &useDefSet = liveWith.useDefSet;  // TODO distinct useDefSet here
-    Instr &instr = instrs.get(i);
-
-    useDef(instr, &useDefSet);  // Registers only usage REG_A
-
-    for (int j = 0; j < useDefSet.def.size(); j++) {
-      assert(!alloc[j].unused());
-      RegId r = useDefSet.def[j];
-
-      Reg replace_with = alloc[r].reg;
-
-      if (replace_with.tag == ACC) {
-        UseDefReg out;
-        useDefReg(instr, &out);
-
-        std::string msg = "vc4 regAlloc(): ACC encountered in register allocation of dest vars, not expecting this.";
-        msg << "\n"
-            << "Instruction: " << instr.dump() << ", "
-            << "Registers: " << out.dump() << ", "
-            << "Reg id : " << r << ", alloc value: " << replace_with.dump();
-        warning(msg);
-        continue;
-      }
-
-      renameDest(instr, Reg(REG_A, r), replace_with);
-    }
-
-    for (int j = 0; j < useDefSet.use.size(); j++) {
-      assert(!alloc[j].unused());
-      RegId r = useDefSet.use[j];
-
-      Reg replace_with = alloc[r].reg;
-      if (replace_with.tag == ACC) {
-        warning("vc4 regAlloc(): ACC encountered in register allocation of use vars, not expecting this.");
-        continue;
-      }
-
-      renameUses(instr, Reg(REG_A, r), replace_with);
-    }
-    substRegTag(&instr, TMP_A, REG_A);
-    substRegTag(&instr, TMP_B, REG_B);
-  }
-
+  allocate_registers(instrs, alloc);
 
   //std::cout << instrs.check_acc_usage() << std::endl;
 

@@ -42,21 +42,25 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
 
 
 void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
+  assert(cfg != nullptr);
   int numVars = getFreshVarCount();
 
+  introduceAccum(*cfg, instrs, numVars);
+
   // Step 0 - Perform liveness analysis
+  RegUsage alloc(numVars);
+  alloc.set_used(instrs);
+
   Liveness live(*cfg);
   live.compute(instrs);
+  alloc.set_live(live);
   assert(instrs.size() == live.size());
+  //std::cout << alloc.dump() << std::endl;
 
   // Step 2 - For each variable, determine all variables ever live at the same time
   LiveSets liveWith(numVars);
   liveWith.init(instrs, live);
 
-  RegUsage alloc(numVars);
-
-  // Introduce accumulators where possible
-  compile_data.num_accs_introduced = introduceAccum(live, instrs, alloc);
 
   // Step 3 - Allocate a register to each variable
   for (int i = 0; i < numVars; i++) {
@@ -79,28 +83,7 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
   compile_data.allocated_registers_dump = alloc.allocated_registers_dump();
 
   // Step 4 - Apply the allocation to the code
-  for (int i = 0; i < instrs.size(); i++) {
-    auto &useDefSet = liveWith.useDefSet;
-    Instr &instr = instrs.get(i);
-
-    useDef(instr, &useDefSet);
-    for (int j = 0; j < useDefSet.def.size(); j++) {
-      RegId r = useDefSet.def[j];
-
-      Reg current(REG_A, r);
-      Reg replace_with(TMP_A, alloc[r].reg.regId);
-      renameDest(instr, current, replace_with);
-    }
-
-    for (int j = 0; j < useDefSet.use.size(); j++) {
-      RegId r = useDefSet.use[j];
-
-      Reg current(REG_A, r);
-      Reg replace_with(TMP_A, alloc[r].reg.regId);
-      renameUses(instr, current, replace_with);
-    }
-    substRegTag(&instr, TMP_A, REG_A);
-  }
+  allocate_registers(instrs, alloc);
 }
 
 

@@ -116,7 +116,8 @@ private:
 };
 
 
-int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars);
+void introduceAccum(CFG &cfg, Instr::List &instrs, int numVars);
+void allocate_registers(Instr::List &instrs, RegUsage const &alloc);
 
 }  // namespace V3DLib
 
