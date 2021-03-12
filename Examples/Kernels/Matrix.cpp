@@ -251,7 +251,7 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
   a += me()*DIM;
 
   DotVector vec(settings.inner/16);
-  Float result;
+  Float result = 0;  // NOTE explicit init required (TODO enforce)
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
     Float::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
@@ -439,7 +439,7 @@ void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
   a += me()*DIM;
 
   ComplexDotVector vec(settings.inner/16);
-  Complex result;
+  Complex result(0,0);  // NOTE explicit init required (TODO enforce)
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
     Complex::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
@@ -487,7 +487,7 @@ void complex_matrix_mult_1(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
   int const DIM = settings.inner;
 
   ComplexDotVector vec(settings.inner/16);
-  Complex result;
+  Complex result(0,0);  // NOTE explicit init required (TODO enforce)
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
     vec.load(a);

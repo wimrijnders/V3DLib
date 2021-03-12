@@ -2,11 +2,14 @@
 
 ## General
 
-- [ ] This does not work in source lang code, fix: `*dst = *srs`, where dst/src are uniform pointers
+- [ ] This does not work in source lang code, fix: `*dst = *src`, where dst/src are uniform pointers
 - [ ] Automate loading of new versions external libraries
 - [ ] Get `Pi 1` running again; fails in `qpu_enable()`
 - [ ] Make heap memory size configurable (ideally cmdline option)
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
+- [ ] Initializing a Float/Complex(/Int?) variable without value may not add variable to target code.
+      This is a cwconsequence of fixing liveness allocation for dst vars in  conditional instructions.
+      Examine, report, prevent, fix.
 - [ ] Following source lang leads to infinite recursion and segfault during compile, fix and/or prevent:
 ```
 Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacted from original)
@@ -25,17 +28,7 @@ Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacte
       Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
 - [x] Complete conversion `Seq<Instr>` to `Instr::List`
 - [x] Get rid of senseless variable reassignment in source language.
-      For example, this happens in `complex_kernel`, right after uniform load:
-```
-v6 = v4;
-v7 = v5;
-v8 = v2;
-v9 = v3;
-v10 = v8;
-v11 = v9;
-v12 = v6;
-v13 = v7;
-```
+
 
 ## Consider these
 
@@ -148,11 +141,11 @@ Source code:
 - [x] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
   * **Answer:** 8 for single threading, less for multi-threading, but we don't do multi
   * **Answer:** 4 for `vc4`, 8 for `v3d`
-- [ ] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
+- [x] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
   - [x] Add freeing of memory to `SharedArray` heap. This will increase the complexity of the heap code hugely
   - [x] Get rid of AST heap
 	- [x] Fix unfreed elements of `Stmt` (perhaps elsewhere). Made a start with using `std::shared_ptr` for `Expr`
-  - [ ] Verify correct freeing of previous with a memory checker (`valgrind`?)
+  - [x] Verify correct freeing of previous with a memory checker (`valgrind`?)
 
 
 ## CmdParameter

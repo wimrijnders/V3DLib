@@ -458,13 +458,25 @@ void RegUsage::check() const {
   }
   prefix << ": ";
 
-  std::string tmp = get_assigned_only_list(*this);
+  std::string tmp;
+
+  //
+  // Following is pretty common and not much of an issue (any more).
+  // E.g. It occurs if condition flags need to be set and the result of the 
+  // operation is discarded.
+  //
+  // Might need to further specify this, i.e. by removing var's which are known
+  // and intended to be used as dummy's (TODO?)
+  //
+/*
+  tmp = get_assigned_only_list(*this);
   if (!tmp.empty()) {
     std::string msg = prefix;
     msg << "There are internal instruction variables which are assigned but never used.\n"
         << "Variables: " << tmp << "\n";
     warning(msg);
   }
+*/
 
   tmp = get_never_assigned_list(*this);
   if (!tmp.empty()) {

@@ -206,6 +206,7 @@ void check_matrix_results(
   float *a_scalar,
   float *expected) {
 
+/*
   //
   // Multiplication of empty input matrix
   //
@@ -221,12 +222,12 @@ void check_matrix_results(
   result.fill(-1);
   run_kernel(k);
   compare_array_scalar(result, (float) dimension);
+*/
 
   //
   // Square of unit matrix
   //
   a.make_unit_matrix();
-  //dump_array(a.get_parent(), a.columns());
 
   // Check if indeed unitary
   for (int r = 0; r < a.rows(); r++) {
@@ -240,9 +241,14 @@ void check_matrix_results(
   }
 
   run_kernel(k);
+  //k.pretty(true, "obj/test/unitary_matrix_mult_vc4.txt");
+  //k.dump_compile_data(true, "obj/test/compile_data_unitary_matrix_mult_vc4.txt");
+  //dump_array(a.get_parent(), a.columns());
+  //dump_array(result.get_parent(), result.columns());
 
   for (int r = 0; r < result.rows(); r++) {
     for (int c = 0; c < result.columns(); c++) {
+      INFO("rows: " << result.rows() << ", (r,c): (" << r << ", " << c << ")");
       if (r == c) {
         REQUIRE(result[r][c] == 1);
       } else {
