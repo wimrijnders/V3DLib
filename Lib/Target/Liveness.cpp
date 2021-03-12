@@ -1,8 +1,5 @@
+///////////////////////////////////////////////////////////////////////////////
 // Liveness analysis
-//
-// This follows the following source pretty closely:
-//
-//    https://lambda.uta.edu/cse5317/spring01/notes/node37.html
 //
 ///////////////////////////////////////////////////////////////////////////////
 #include "Support/basics.h"    // fatal()
@@ -13,6 +10,43 @@
 
 namespace V3DLib {
 namespace {
+
+
+/**
+ * Same as `useDefReg()`, except only yields ids of registers in register file A.
+ */
+void useDef(Instr const &instr, UseDef* out, bool set_use_where = false) {
+  UseDefReg set;
+  useDefReg(instr, &set, set_use_where);
+  out->use.clear();
+  out->def.clear();
+  for (int i = 0; i < set.use.size(); i++) {
+    Reg r = set.use[i];
+    if (r.tag == REG_A) out->use.append(r.regId);
+  }
+  for (int i = 0; i < set.def.size(); i++) {
+    Reg r = set.def[i];
+    if (r.tag == REG_A) out->def.append(r.regId);
+  }
+}
+
+
+/*
+// Compute the union of the 'use' sets of the successors of a given
+// instruction.
+
+void useSetOfSuccs(Instr::List* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
+  use->clear();
+  Succs* s = &cfg->elems[i];
+  for (int j = 0; j < s->size(); j++) {
+    UseDef set;
+    useDef(instrs->elems[s->elems[j]], &set);
+    for (int k = 0; k < set.use.size(); k++)
+      use->insert(set.use[k]);
+  }
+}
+*/
+
 
 /**
  * Determine the liveness sets for each instruction.
@@ -39,7 +73,7 @@ void liveness(Instr::List &instrs, Liveness &live) {
     for (int i = instrs.size()-1; i >= 0; i--) {
       // Compute 'use' and 'def' sets
       Instr instr = instrs[i];
-      useDef(instr, &useDefSets);
+      useDef(instr, &useDefSets, true);
 
       // Compute live-out variables
       live.computeLiveOut(i, liveOut);
@@ -216,7 +250,7 @@ int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars
 /**
  * Replace the variables with the assigned registers for the given instruction
  *
- * This functions assigns real registers to the 'variable registers of the instruction.
+ * This functions assigns real registers to the 'variable registers' of the instruction.
  *
  * The incoming instructions all have REG_A as registers but signify variables.
  * The reg id's indicate the variable at this stage.
@@ -517,8 +551,46 @@ std::string UseDefReg::dump() const {
 
 /**
  * Compute 'use' and 'def' sets for a given instruction
+ *
+ * Param 'set_use_where' need only be true during liveness analysis.
+ *
+ * @param set_use_where  if true, regard assignments in conditional 'where'
+ *                       instructions as usage.
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * 'set_use_where' needs to be true for the following case (target language):
+ *
+ *    LI A5 <- 0                  # assignment
+ *    ...
+ *    where ZC: LI A6 <- 1
+ *    where ZC: A5 <- or(A6, A6)  # Conditional assignment
+ *    ...
+ *    S[VPM_WRITE] <- shl(A5, 0)  # last use
+ *
+ *   If the condition is ignored (`set_use_where == false`), the conditional
+ *   assignment is regarded as an overwrite of the previous one. The variable
+ *   is then considered live from the conditional assignment onward.
+ *   This is wrong, the value of the first assignment may be significant due
+ *   to the condition. The usage of `A5` runs the risk of being assigned different
+ *   registers for the different assignments, which will lead to wrong code execution.
+ *
+ * * However, always using `set_use_where == true` leads to variables being live
+ *   for unnecessarily long. If this is the *only* usage of `A6`:
+ *
+ *    where ZC: LI A6 <- 1
+ *    where ZC: A5 <- or(A6, A6)  # Conditional assignment
+ *
+ *   ... `A6` would be considered live from the start of the program
+ *   onward till the last usage.
+ *   This unnecessarily ties up a register for a long duration, complicating the
+ *   allocation by creating a false shortage of registers.
+ *   This case can not be handled by the liveness analysis as implemented here.
+ *   It is corrected afterwards in methode `Liveness::compute()`.
  */
-void useDefReg(Instr instr, UseDefReg* useDef) {
+void useDefReg(Instr instr, UseDefReg* useDef, bool set_use_where) {
   auto ALWAYS = AssignCond::Tag::ALWAYS;
 
   useDef->use.clear();
@@ -528,19 +600,19 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
     case LI:                                     // Load immediate
       useDef->def.insert(instr.LI.dest);         // Add destination reg to 'def' set
 
-      // TODO see what happens if this is removed
-      // Can't remove this yet, things go awry in Where-conditions (see testConditionCodes)
-      if (instr.LI.cond.tag != ALWAYS)           // Add destination reg to 'use' set if conditional assigment
-        useDef->use.insert(instr.LI.dest);
+      if (set_use_where) {
+        if (instr.LI.cond.tag != ALWAYS)         // Add destination reg to 'use' set if conditional assigment
+          useDef->use.insert(instr.LI.dest);
+      }
       return;
 
-    case ALU:  // ALU operation
+    case ALU:                                    // ALU operation
       useDef->def.insert(instr.ALU.dest);        // Add destination reg to 'def' set
 
-      // TODO see what happens if this is removed
-      // See similar TODO above
-      if (instr.ALU.cond.tag != ALWAYS)          // Add destination reg to 'use' set if conditional assigment
-        useDef->use.insert(instr.ALU.dest);
+      if (set_use_where) {
+        if (instr.ALU.cond.tag != ALWAYS)        // Add destination reg to 'use' set if conditional assigment
+          useDef->use.insert(instr.ALU.dest);
+      }
 
       if (instr.ALU.srcA.is_reg())               // Add source reg A to 'use' set
         useDef->use.insert(instr.ALU.srcA.reg);
@@ -556,42 +628,6 @@ void useDefReg(Instr instr, UseDefReg* useDef) {
       return;
   }  
 }
-
-
-/**
- * Same as `useDefReg()`, except only yields ids of registers in register file A.
- */
-void useDef(Instr const &instr, UseDef* out) {
-  UseDefReg set;
-  useDefReg(instr, &set);
-  out->use.clear();
-  out->def.clear();
-  for (int i = 0; i < set.use.size(); i++) {
-    Reg r = set.use[i];
-    if (r.tag == REG_A) out->use.append(r.regId);
-  }
-  for (int i = 0; i < set.def.size(); i++) {
-    Reg r = set.def[i];
-    if (r.tag == REG_A) out->def.append(r.regId);
-  }
-}
-
-
-/*
-// Compute the union of the 'use' sets of the successors of a given
-// instruction.
-
-void useSetOfSuccs(Instr::List* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
-  use->clear();
-  Succs* s = &cfg->elems[i];
-  for (int j = 0; j < s->size(); j++) {
-    UseDef set;
-    useDef(instrs->elems[s->elems[j]], &set);
-    for (int k = 0; k < set.use.size(); k++)
-      use->insert(set.use[k]);
-  }
-}
-*/
 
 
 LiveSets::LiveSets(int size) : m_size(size) {
@@ -712,8 +748,36 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 
 
 void Liveness::compute(Instr::List &instrs) {
+  reg_usage.set_used(instrs);
+
   liveness(instrs, *this);
   assert(instrs.size() == size());
+
+  reg_usage.set_live(*this);
+
+  // Adjust first usage in liveness, if necessary 
+  for (int i = 0; i < (int) reg_usage.size(); ++i) {
+    auto &item = reg_usage[i];
+
+    if (item.unused() || item.only_assigned())     continue;  // skip special cases
+    if (item.use.dst_first + 1 == item.live.first) continue;  // all is well
+
+/*
+    {
+      std::string msg;
+      msg << "reg_usage[" << i << "]: discrepancy between first assign and liveness: " << item.dump();
+      warning(msg);
+    }
+*/
+
+    // Remove all liveness of given variable `i` before and including first assign
+    assert(item.use.dst_first != -1);
+    assert(item.live.first != -1);
+    for (int j = item.live.first; j <= item.use.dst_first; ++j) {
+      int num = m_set[j].remove_set(i);
+      assert(num == 1);
+    }
+  }
 
   compile_data.liveness_dump = dump();
 }
@@ -781,12 +845,10 @@ std::string Liveness::dump() {
  * in the liveness analysis.
  */
 void introduceAccum(CFG &cfg, Instr::List &instrs, int numVars) {
-  RegUsage alloc(numVars);
-  alloc.set_used(instrs);
-  Liveness live(cfg);
+  Liveness live(cfg, numVars);
   live.compute(instrs);
 
-  compile_data.num_accs_introduced = introduceAccum(live, instrs, alloc);
+  compile_data.num_accs_introduced = introduceAccum(live, instrs, live.alloc());
   //std::cout << count_reg_types(instrs).dump() << std::endl;
 }
 

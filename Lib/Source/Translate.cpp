@@ -276,12 +276,12 @@ void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
   instr.ALU.op       = ALUOp(op);
   instr.ALU.srcB     = operand(b.cmp_rhs());
 
-  *seq << li(v, 0)
+  *seq << li(v, 0).comment("Store condition as Bool var")
        << instr
        << mov(v, 1).cond(assign_cond)            // TODO: would be better if this used acc-reg
        << mov(dummy2, v).setCondFlag(Flag::ZC);  // Reset flags so that Z-flag is used
 
-  seq->back().comment("Store condition as Bool var");
+  seq->back().comment("End store condition as Bool var");
 }
 
 
@@ -305,15 +305,17 @@ AssignCond boolExp(Instr::List *seq, BExpr::Ptr bexpr, Var v);  // Forward decla
 void boolVarExp(Instr::List &seq, BExpr b, Var v) {
   using namespace V3DLib::Target::instr;
 
-  boolExp(&seq, b.lhs(), v);                     // return val ignored
+  // TODO maybe not necessary, check. Otherwise, use v directly
+  Var v1 = freshVar();
+  boolExp(&seq, b.lhs(), v1);  // return val ignored
 
   Var w = freshVar();
   boolExp(&seq, b.rhs(), w);  // idem
 
   if (b.tag() == OR) {
-    seq << bor(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var OR");
+    seq << bor(dstReg(v), srcReg(v1), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var OR");
   } else if (b.tag() == AND) {
-    seq << band(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var AND");
+    seq << band(dstReg(v), srcReg(v1), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var AND");
   } else {
     assert(false);
   }

@@ -446,19 +446,19 @@ namespace {
   template<typename KernelType>
   void run_cpu(Int::Array &result, KernelType &k, uint32_t *expected, int index = -1) {
     // INFO NOT DISPLAYING
-    //printf("Testing cpu run %d\n", index);
     if (index == -1 ) {
       INFO("Testing cpu run");
     } else {
+      //printf("Testing cpu run %d\n", index);
       INFO("Testing cpu run index " << index);
     }
 
     reset(result, -1);
-    k.emu();
+    k.interpret();
     check(result, 0, expected);
 
     reset(result, -1);
-    k.interpret();
+    k.emu();
     check(result, 0, expected);
   };
 
@@ -490,10 +490,12 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
     Int::Array result(VEC_SIZE);
 
     auto k1 = compile(noloop_where_kernel);
+    //k1.pretty(true, "obj/test/noloop_where_kernel.txt");
+    //k1.dump_compile_data(true, "obj/test/noloop_where_compile_data_vc4.txt");
 
-    k1.load(&result, 0, 0);   run_cpu(result, k1, expected_1);
-    k1.load(&result, 12, 15); run_cpu(result, k1, expected_2);
-    k1.load(&result, 21, 15); run_cpu(result, k1, expected_1);
+    k1.load(&result, 0, 0);   run_cpu(result, k1, expected_1, 1);
+    k1.load(&result, 12, 15); run_cpu(result, k1, expected_2, 2);
+    k1.load(&result, 21, 15); run_cpu(result, k1, expected_1, 3);
     k1.load(&result, 0, 0);   run_qpu(result, k1, 0, expected_1);
     k1.load(&result, 12, 15); run_qpu(result, k1, 1, expected_2);
     k1.load(&result, 21, 15); run_qpu(result, k1, 2, expected_1);

@@ -66,23 +66,33 @@ struct UseDef {
   SmallSeq<RegId> def;
 };   
 
-// Compute 'use' and 'def' sets for a given instruction
+void useDefReg(Instr instr, UseDefReg* out, bool set_use_where = false);
 
-void useDefReg(Instr instr, UseDefReg* out);
-void useDef(Instr const &instr, UseDef* out);
-
-// A live set containts the variables
+// A live set contains the variables
 // that are live-in to an instruction.
 using LiveSet = SmallSeq<RegId>;
 
+
 /**
- * The result of liveness analysis is a set
- * of live variables for each instruction.
+ * The result of liveness analysis is a set of live variables for each instruction.
+ *
+ * `Liveness Analysis` is a method to assign registers to variables.
+ * In the period that a variable is `live`, one register is exclusively used for
+ * that variable. When not live, the register can be reassigned to another live variable.
+ *
+ * A variable is 'live' in the instruction list:
+ *  - from 1 *after* an assignment
+ *  - till final use
+ *
+ * This link follows the source code here pretty closely: https://lambda.uta.edu/cse5317/spring01/notes/node37.html
  */
 class Liveness {
 public:
-  Liveness(CFG &cfg) : m_cfg(cfg) {}
+  Liveness(CFG &cfg, int numVars) : m_cfg(cfg), reg_usage(numVars) {}
 
+  RegUsage &alloc() { return reg_usage; }
+
+//private:  TODO this
   void compute(Instr::List &instrs);
   void computeLiveOut(InstrId i, LiveSet &liveOut);
 
@@ -95,6 +105,7 @@ public:
 private:
   CFG &m_cfg;
   Seq<LiveSet> m_set;
+  RegUsage reg_usage;
 
   LiveSet &get(int index) { return m_set[index]; }
 };

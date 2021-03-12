@@ -67,25 +67,25 @@ public:
 
   bool empty() const { return size() == 0; }
 
-    T &get(int index) {
-      assertq(!empty(), "seq[]: can not access elements, sequence is empty", true);
-      assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
-      return elems[index];
-    }
+  T &get(int index) {
+    assertq(!empty(), "seq[]: can not access elements, sequence is empty", true);
+    assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
+    return elems[index];
+  }
 
-    T &operator[](int index) {
-      return get(index);
-    }
+  T &operator[](int index) {
+    return get(index);
+  }
 
-    T operator[](int index) const {
-      assertq(!empty(), "seq[]: can not access elements, sequence is empty", true);
-      assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
-      return elems[index];
-    }
+  T operator[](int index) const {
+    assertq(!empty(), "seq[]: can not access elements, sequence is empty", true);
+    assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
+    return elems[index];
+  }
 
-    T &front()            { return get(0); }
-    T &back()             { return get(size() - 1); }
-    T const &back() const { return get(size() - 1); }
+  T &front()            { return get(0); }
+  T &back()             { return get(size() - 1); }
+  T const &back() const { return get(size() - 1); }
 
 
   /**
@@ -117,38 +117,37 @@ public:
   }
 
 
-    // Append
-    void append(T x) {
-      extend_by(1);
-      numElems++;
-      elems[numElems-1] = x;
+  void append(T x) {
+    extend_by(1);
+    numElems++;
+    elems[numElems-1] = x;
+  }
+
+  // Delete last element
+  void deleteLast() {
+    numElems--;
+  }
+
+  void push(T x) { append(x); }
+
+  T pop() {
+    assertq(numElems > 0, "Seq::pop(): sequence is empty, nothing to return");
+    numElems--;
+    return elems[numElems];
+  }
+
+  // Clear the sequence
+  void clear() { numElems = 0; }
+
+  /**
+   * Check if given value in sequence
+   */
+  bool member(T x) {
+    for (int i = 0; i < numElems; i++) {
+      if (elems[i] == x) return true;
     }
-
-    // Delete last element
-    void deleteLast() {
-      numElems--;
-    }
-
-    void push(T x) { append(x); }
-
-    T pop() {
-      assertq(numElems > 0, "Seq::pop(): sequence is empty, nothing to return");
-      numElems--;
-      return elems[numElems];
-    }
-
-    // Clear the sequence
-    void clear() { numElems = 0; }
-
-    /**
-     * Check if given value already in sequence
-     */
-    bool member(T x) {
-      for (int i = 0; i < numElems; i++) {
-        if (elems[i] == x) return true;
-      }
-      return false;
-    }
+    return false;
+  }
 
 
   /**
@@ -161,40 +160,76 @@ public:
   }
 
 
-    /**
-     * Insert item at specified location
-     */
-    void insert(int index, T const &item) {
-      shift_tail(index, 1);
-      elems[index] = item;
-    }
+  /**
+   * Remove element from sequence used as set
+   *
+   * @return  number of times that element is removed.
+   *          Should be 0 or 1 for a set.
+   */
+  int remove_set(T x) {
+    int  count = 0;
+    bool found_it = true;
 
+    // TODO inefficient, optimize (don't care right now)
+    while (found_it) {
+      int index = -1;
 
-    /**
-     * Insert passed sequence at specified location
-     */
-    void insert(int index, Seq<T> const &items) {
-      shift_tail(index, items.size());
-
-      for (int j = 0; j < items.size(); j++) {
-        elems[index + j] = items.elems[j];
-      }
-    }
-
-
-    // Remove element at index
-    T remove(int index) {
-      assertq(numElems > 0, "Seq::remove(): sequence is empty, nothing to remove");
-      assertq(0 <= index && index < numElems, "Seq::remove(): index out of range");
-      T x = elems[index];
-
-      for (int j = index; j < numElems-1; j++) {
-        elems[j] = elems[j+1];
+      // Search for first occurance
+      for (int i = 0; i < numElems; i++) {
+        if (elems[i] == x) {
+          index = i;
+          break;
+        }
       }
 
-      numElems--;
-      return x;
+      if (index != -1) {
+        remove(index);
+        count++;
+      }
+
+      found_it = (index != -1);
     }
+
+    return count;
+  }
+
+
+  /**
+   * Insert item at specified location
+   */
+  void insert(int index, T const &item) {
+    shift_tail(index, 1);
+    elems[index] = item;
+  }
+
+
+  /**
+   * Insert passed sequence at specified location
+   */
+  void insert(int index, Seq<T> const &items) {
+    shift_tail(index, items.size());
+
+    for (int j = 0; j < items.size(); j++) {
+      elems[index + j] = items.elems[j];
+    }
+  }
+
+
+  /**
+   * Remove element at index
+   */
+  T remove(int index) {
+    assertq(numElems > 0, "Seq::remove(): sequence is empty, nothing to remove");
+    assertq(0 <= index && index < numElems, "Seq::remove(): index out of range");
+    T x = elems[index];
+
+    for (int j = index; j < numElems-1; j++) {
+      elems[j] = elems[j+1];
+    }
+
+    numElems--;
+    return x;
+  }
 
 
   Seq<T> &operator<<(T const &rhs) { 
@@ -244,7 +279,7 @@ private:
    * Ensure that sequence can contain current num elements + passed value
    *
    */
-   void extend_by(int step = 1) {
+  void extend_by(int step = 1) {
     assertq(step > 0, "Seq::extend_by(): can not extend with zero length");
 
     int newSize = maxElems;
