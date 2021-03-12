@@ -31,74 +31,6 @@ void useDef(Instr const &instr, UseDef* out, bool set_use_where = false) {
 }
 
 
-/*
-// Compute the union of the 'use' sets of the successors of a given
-// instruction.
-
-void useSetOfSuccs(Instr::List* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
-  use->clear();
-  Succs* s = &cfg->elems[i];
-  for (int j = 0; j < s->size(); j++) {
-    UseDef set;
-    useDef(instrs->elems[s->elems[j]], &set);
-    for (int k = 0; k < set.use.size(); k++)
-      use->insert(set.use[k]);
-  }
-}
-*/
-
-
-/**
- * Determine the liveness sets for each instruction.
- */
-void liveness(Instr::List &instrs, Liveness &live) {
-  // Initialise live mapping to have one entry per instruction
-  live.setSize(instrs.size());
-
-  // For storing the 'use' and 'def' sets of each instruction
-  UseDef useDefSets;
-
-  // For temporarily storing live-in and live-out variables
-  LiveSet liveIn;
-  LiveSet liveOut;
-
-  // Has a change been made to the liveness mapping?
-  bool changed = true;
-
-  // Iterate until no change, i.e. fixed point
-  while (changed) {
-    changed = false;
-
-    // Propagate live variables backwards
-    for (int i = instrs.size()-1; i >= 0; i--) {
-      // Compute 'use' and 'def' sets
-      Instr instr = instrs[i];
-      useDef(instr, &useDefSets, true);
-
-      // Compute live-out variables
-      live.computeLiveOut(i, liveOut);
-
-      // Remove the 'def' set from the live-out set to give live-in set
-      liveIn.clear();
-      for (int j = 0; j < liveOut.size(); j++) {
-        if (!useDefSets.def.member(liveOut[j]))
-          liveIn.insert(liveOut[j]);
-      }
-
-      // Add the 'use' set to the live-in set
-      for (int j = 0; j < useDefSets.use.size(); j++)
-        liveIn.insert(useDefSets.use[j]);
-
-      // Insert the live-in variables into the map
-      for (int j = 0; j < liveIn.size(); j++) {
-        bool inserted = live.insert(i, liveIn[j]);
-        changed = changed || inserted;
-      }
-    }
-  }
-}
-
-
 Reg replacement_acc(Instr &prev, Instr &instr) {
     int acc_id =1;
 
@@ -759,10 +691,61 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 }  
 
 
+/**
+ * Determine the liveness sets for each instruction.
+ */
+void Liveness::compute_liveness(Instr::List &instrs) {
+  // Initialise live mapping to have one entry per instruction
+  setSize(instrs.size());
+
+  // For storing the 'use' and 'def' sets of each instruction
+  UseDef useDefSets;
+
+  // For temporarily storing live-in and live-out variables
+  LiveSet liveIn;
+  LiveSet liveOut;
+
+  // Has a change been made to the liveness mapping?
+  bool changed = true;
+
+  // Iterate until no change, i.e. fixed point
+  while (changed) {
+    changed = false;
+
+    // Propagate live variables backwards
+    for (int i = instrs.size()-1; i >= 0; i--) {
+      // Compute 'use' and 'def' sets
+      Instr instr = instrs[i];
+      useDef(instr, &useDefSets, true);
+
+      // Compute live-out variables
+      computeLiveOut(i, liveOut);
+
+      // Remove the 'def' set from the live-out set to give live-in set
+      liveIn.clear();
+      for (int j = 0; j < liveOut.size(); j++) {
+        if (!useDefSets.def.member(liveOut[j]))
+          liveIn.insert(liveOut[j]);
+      }
+
+      // Add the 'use' set to the live-in set
+      for (int j = 0; j < useDefSets.use.size(); j++)
+        liveIn.insert(useDefSets.use[j]);
+
+      // Insert the live-in variables into the map
+      for (int j = 0; j < liveIn.size(); j++) {
+        bool inserted = insert(i, liveIn[j]);
+        changed = changed || inserted;
+      }
+    }
+  }
+}
+
+
 void Liveness::compute(Instr::List &instrs) {
   reg_usage.set_used(instrs);
 
-  liveness(instrs, *this);
+  compute_liveness(instrs);
   assert(instrs.size() == size());
 
   reg_usage.set_live(*this);

@@ -90,16 +90,12 @@ class Liveness {
 public:
   Liveness(CFG &cfg, int numVars) : m_cfg(cfg), reg_usage(numVars) {}
 
+  int size() const { return m_set.size(); }
   RegUsage &alloc() { return reg_usage; }
+  LiveSet &operator[](int index) { return get(index); }
 
-//private:  TODO this
   void compute(Instr::List &instrs);
   void computeLiveOut(InstrId i, LiveSet &liveOut);
-
-  void setSize(int size);
-  int size() const { return m_set.size(); }
-  bool insert(int index, RegId item);
-  LiveSet &operator[](int index) { return get(index); }
   std::string dump();
 
 private:
@@ -108,6 +104,9 @@ private:
   RegUsage reg_usage;
 
   LiveSet &get(int index) { return m_set[index]; }
+  void compute_liveness(Instr::List &instrs);
+  void setSize(int size);
+  bool insert(int index, RegId item);
 };
 
 
