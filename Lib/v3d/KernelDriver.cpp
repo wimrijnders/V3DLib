@@ -461,6 +461,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       assert(src_a && src_b);
 
       switch (src_instr.ALU.op.value()) {
+        case ALUOp::A_ASR:   ret << asr(*dst_reg, *src_a, *src_b);          break;
         case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
         case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
         case ALUOp::A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
@@ -507,6 +508,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
     assert(src_b);
 
     switch (src_instr.ALU.op.value()) {
+      case ALUOp::A_SHL:   ret << shl(*dst_reg, imm, *src_b);          break;
       case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
       case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
       case ALUOp::A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;

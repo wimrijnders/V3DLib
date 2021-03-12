@@ -68,43 +68,80 @@ IntExpr abs(IntExpr a) {
 
 
 /**
- * Adjusted from: https://www.geeksforgeeks.org/divide-two-integers-without-using-multiplication-division-mod-operator/
+ * Determine index of topmost bit set.
  *
- * TODO: See if special cases (like division by one can be sanely handled
+ * Incoming values are assumed to be unsigned.
+ * a == 0 will return -1.
+ */
+IntExpr topmost_bit(IntExpr in_a) {
+  Stmt::Ptr stmt = tempStmt([in_a] {
+    Int a = in_a;
+    Int topmost = -1;
+
+    For (Int n = 30, n >= 0, n--)
+      Where (topmost == -1)
+        Where ((a & (1 << n)) != 0)
+          topmost = n;
+        End
+      End
+    End
+
+    // Prepare an expression which can be assigned
+    // dummy is not used, only the rhs matters
+    Int dummy;
+    dummy = topmost;
+  });
+
+  //std::cout << stmt->dump() << std::endl;
+  stmtStack() << stmt;
+
+  Stmt *ret = stmt->last_in_seq();
+  return ret->assign_rhs();
+}
+
+
+/**
+ * Uses Long division
+ * Source: https://en.wikipedia.org/wiki/Division_algorithm#Integer_division_(unsigned)_with_remainder
  */
 IntExpr operator/(IntExpr in_a, IntExpr in_b) {
 
   Stmt::Ptr stmt = tempStmt([in_a, in_b] {
-    Int a = in_a;  comment("Start integer divide - Warning: inefficient!");
-    Int b = in_b;
-    Int sign;
+    Int N = in_a;  comment("Start long integer divide");
+    Int D = in_b;
 
-    Where ((a >= 0) != (b >= 0))  // Determine sign
+    Int sign = 1;
+
+    Where ((N >= 0) != (D >= 0))       // Determine sign
       sign = -1;
-    Else
-      sign = 1;
     End
  
-    a = abs(a);
-    b = abs(b);
- 
-    Int quotient = 0;
+    N = abs(N);
+    D = abs(D);
 
-    // Divide by continually subtracting and remembering the count
-    // Yes, insanely inefficient for large a's and small b's. You tell me how to do better.
-    While (any(b != 0 && a >= b))
-      Where (b == 0)
-        quotient = MAX_INT;
+    Int Q = 0;                         // Initialize quotient and remainder to zero
+
+    IntExpr top_bit = topmost_bit(N);  // Find first non-zero bit
+
+    Int R = 0;
+
+    For (Int i = 30, i >= 0, i--)
+      Where (D == 0)
+        Q = MAX_INT;                   // Indicates infinity
       Else
-        Where (a >= b)
-          a = a - b;
-          quotient += 1;
+        Where (top_bit >= i)
+          R = R << 1;                  // Left-shift R by 1 bit (lsb == 0)
+          R |= (N >> i) & 1;           // Set the least-significant bit of R equal to bit i of the numerator
+          Where (R >= D)
+            R -= D;
+            Q |= (1 << i);
+          End
         End
       End
     End
 
     Where (sign == -1)
-      quotient = two_complement(quotient);
+      Q = two_complement(Q);
     End
  
     comment("End integer divide");
@@ -112,7 +149,7 @@ IntExpr operator/(IntExpr in_a, IntExpr in_b) {
     // Prepare an expression which can be assigned
     // dummy is not used, only the rhs matters
     Int dummy;
-    dummy = quotient;
+    dummy = Q;
   });
 
   //std::cout << stmt->dump() << std::endl;

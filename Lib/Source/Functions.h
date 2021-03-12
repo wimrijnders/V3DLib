@@ -8,6 +8,7 @@ namespace functions {
 
 IntExpr two_complement(IntExpr a);
 IntExpr abs(IntExpr a);
+IntExpr topmost_bit(IntExpr in_a);
 IntExpr operator/(IntExpr in_a, IntExpr in_b);
 
 inline IntExpr operator-(IntExpr a) { return two_complement(a); }

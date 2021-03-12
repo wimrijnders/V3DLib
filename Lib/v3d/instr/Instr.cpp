@@ -876,7 +876,9 @@ Instr mov(Location const &dst, Location const &a) { return Instr(V3D_QPU_A_OR, d
 Instr  shl(Location const &dst, Location const &a, SmallImm const &b) { return Instr(V3D_QPU_A_SHL,  dst, a, b); }
 Instr  shl(Location const &dst, Location const &a, Location const &b) { return Instr(V3D_QPU_A_SHL,  dst, a, b); }
 Instr  shl(Location const &dst, SmallImm const &a, SmallImm const &b) { return Instr(V3D_QPU_A_SHL,  dst, a, b); }
+Instr  shl(Location const &dst, SmallImm const &a, Location const &b) { return Instr(V3D_QPU_A_SHL,  dst, a, b); }
 Instr  asr(Location const &dst, Location const &a, SmallImm const &b) { return Instr(V3D_QPU_A_ASR,  dst, a, b); }
+Instr  asr(Location const &dst, Location const &a, Location const &b) { return Instr(V3D_QPU_A_ASR,  dst, a, b); }
 Instr  add(Location const &dst, Location const &a, Location const &b) { return Instr(V3D_QPU_A_ADD,  dst, a, b); }
 Instr  add(Location const &dst, Location const &a, SmallImm const &b) { return Instr(V3D_QPU_A_ADD,  dst, a, b); }
 Instr  add(Location const &dst, SmallImm const &a, Location const &b) { return Instr(V3D_QPU_A_ADD,  dst, a, b); }

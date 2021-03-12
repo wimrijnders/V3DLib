@@ -395,10 +395,14 @@ void int_ops_kernel(Int::Ptr result) {
   store(abs(index() - 8));
   store(two_complement(index() - 8));       // 2's complement, library call
 
+  Int b = topmost_bit(1 << (index() + 3));
+  store(b);
+
   store(16*16/index());
   store((-16*16)/(-index()));
   store((-16*16)/index());
   store(16*16/(-index()));
+  store(17*index()/11);
 }
 
 
@@ -413,7 +417,7 @@ void float_ops_kernel(Float::Ptr result) {
 
 TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
   SECTION("Test integer operations") {
-    int const N = 8;  // Number of expected results
+    int const N = 10;  // Number of expected results
 
     auto k = compile(int_ops_kernel);
 
@@ -427,12 +431,14 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
       {-8, -7, -6, -5, -4, -3, -2, -1, 0, 1, 2, 3, 4, 5, 6, 7},                     // -=
       {8, 7, 6, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7},                             // abs
       {8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7},                      // 2-s complement
+      {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},                    // topmost_bi 
 
       // integer division
       {2147483647, 256, 128, 85, 64, 51, 42, 36, 32, 28, 25, 23, 21, 19, 18, 17},   // First value is 'infinity'
       {-2147483647, 256, 128, 85, 64, 51, 42, 36, 32, 28, 25, 23, 21, 19, 18, 17},  // NB -0 == 0
       {-2147483647, -256, -128, -85, -64, -51, -42, -36, -32, -28, -25, -23, -21, -19, -18, -17},
       {2147483647, -256, -128, -85, -64, -51, -42, -36, -32, -28, -25, -23, -21, -19, -18, -17},
+      {0, 1, 3, 4, 6, 7, 9, 10, 12, 13, 15, 17, 18, 20, 21, 23}
     };
 
     check_vectors(result, expected);

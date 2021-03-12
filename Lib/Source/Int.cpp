@@ -40,19 +40,17 @@ IntExpr Int::operator=(IntExpr rhs) {
 }
 
 
-Int &Int::operator+=(IntExpr rhs){
-  *this = *this + rhs;
-  return *this;
-}
+Int &Int::operator+=(IntExpr rhs) { *this = *this + rhs; return *this; }
+Int &Int::operator-=(IntExpr rhs) { *this = *this - rhs; return *this; }
+Int &Int::operator|=(IntExpr rhs) { *this = *this | rhs; return *this; }
 
 
-Int &Int::operator-=(IntExpr rhs){
-  *this = *this - rhs;
-  return *this;
-}
-
-
+//
+// Note that these do not follow the c-convention that inc/dec
+// is performed AFTER current expression.
+//
 void Int::operator++(int) { *this = *this + 1; }
+void Int::operator--(int)  { *this = *this - 1; }
 
 
 // ============================================================================
