@@ -915,7 +915,7 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
   Platform::use_main_memory(true);
 
   SECTION("Check DFT with inline sin/cos") {
-    int const Dim = 32;
+    int const Dim = 16*2;  // max vc4: 16*4. Max v3d is higher, at least 64*8
 
     Complex::Array2D input(1, Dim);  // Create input; remember, transposed!
     create_test_wavelet(input, Dim);

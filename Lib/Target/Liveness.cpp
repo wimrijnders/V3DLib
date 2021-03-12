@@ -86,6 +86,8 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     bool do_it = (useDefCurrent.use.member(def) && !liveOut.member(def));
     if (!do_it) continue;
 
+    // 20210312 This test still required
+    // TODO see if it can be fixed
     if (!prev.is_always()) {
 /*
       std::string msg;
