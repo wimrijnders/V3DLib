@@ -44,20 +44,9 @@ void check_reg(Reg reg) {
 
 
 uint8_t to_waddr(Reg const &reg) {
-  assert(reg.tag == REG_A || reg.tag == REG_B);
-
-  // There is no reg A and B in v3d
-  // To distinguish between the register allocations,
-  // an offset for B is used for now
-  // TODO: clean this up
-  uint8_t reg_offset = 0;
-
-  if (reg.tag == REG_B) {
-    debug_break("to_waddr(): Not expecting REG_B any more, examine");
-    reg_offset = REGB_OFFSET;
-  }
-
-  return (uint8_t) (reg_offset + reg.regId);
+  assertq(reg.tag != REG_B, "to_waddr(): Not expecting REG_B any more, examine");
+  assert(reg.tag == REG_A);
+  return (uint8_t) (reg.regId);
 }
 
 
@@ -67,7 +56,7 @@ uint8_t to_waddr(Reg const &reg) {
 SmallImm encodeSmallImm(RegOrImm const &src_reg) {
   assert(src_reg.is_imm());
 
-  Word w = decodeSmallLit(src_reg.smallImm.val);
+  Word w = decodeSmallLit(src_reg.imm().val);
   SmallImm ret(w.intVal);
   return ret;
 }
@@ -233,7 +222,7 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
           break;
       }
       break;
-    case NONE:
+    case NONE: {
       // As far as I can tell, there is no such thing as a NONE register on v3d;
       // it may be one of the bits in `struct v3d_qpu_sig`.
       //
@@ -247,17 +236,25 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
       assert(src_instr.setCond().flags_set());
       assert(src_instr.tag == ALU);
 
+      auto &srcA = src_instr.ALU.srcA;
+
       // srcA and srcB are the same rf-register
+      if (srcA.is_reg()
+      && (srcA.reg().tag == REG_A || srcA.reg().tag == REG_B)
+      && (srcA == src_instr.ALU.srcB)
+/*
       if ((src_instr.ALU.srcA.is_reg() && src_instr.ALU.srcB.is_reg())
-      && ((src_instr.ALU.srcA.reg.tag == REG_A && src_instr.ALU.srcA.reg.tag == src_instr.ALU.srcB.reg.tag)
-      || (src_instr.ALU.srcA.reg.tag == REG_B && src_instr.ALU.srcA.reg.tag == src_instr.ALU.srcB.reg.tag))
-      && (src_instr.ALU.srcA.reg.regId == src_instr.ALU.srcB.reg.regId)) {
-        ret = encodeSrcReg(src_instr.ALU.srcA.reg);
+      && ((src_instr.ALU.srcA.reg().tag == REG_A && src_instr.ALU.srcA.reg().tag == src_instr.ALU.srcB.reg().tag)
+      || (src_instr.ALU.srcA.reg().tag == REG_B && src_instr.ALU.srcA.reg().tag == src_instr.ALU.srcB.reg().tag)) 
+      && (src_instr.ALU.srcA.reg().regId == src_instr.ALU.srcB.reg().regId)) {
+*/
+      ) {
+        ret = encodeSrcReg(srcA.reg());
       } else {
         breakpoint  // case not handled yet
       }
-
-      break;
+    }
+    break;
 
     default:
       assertq(false, "V3DLib: unexpected reg tag in encodeDestReg()");
@@ -300,10 +297,10 @@ void checkSpecialIndex(V3DLib::Instr const &src_instr) {
   auto srca = src_instr.ALU.srcA;
   auto srcb = src_instr.ALU.srcB;
 
-  bool a_is_elem_num = (srca.is_reg() && srca.reg.tag == SPECIAL && srca.reg.regId == SPECIAL_ELEM_NUM);
-  bool a_is_qpu_num  = (srca.is_reg() && srca.reg.tag == SPECIAL && srca.reg.regId == SPECIAL_QPU_NUM);
-  bool b_is_elem_num = (srcb.is_reg() && srcb.reg.tag == SPECIAL && srcb.reg.regId == SPECIAL_ELEM_NUM);
-  bool b_is_qpu_num  = (srcb.is_reg() && srcb.reg.tag == SPECIAL && srcb.reg.regId == SPECIAL_QPU_NUM);
+  bool a_is_elem_num = (srca.is_reg() && srca.reg().tag == SPECIAL && srca.reg().regId == SPECIAL_ELEM_NUM);
+  bool a_is_qpu_num  = (srca.is_reg() && srca.reg().tag == SPECIAL && srca.reg().regId == SPECIAL_QPU_NUM);
+  bool b_is_elem_num = (srcb.is_reg() && srcb.reg().tag == SPECIAL && srcb.reg().regId == SPECIAL_ELEM_NUM);
+  bool b_is_qpu_num  = (srcb.is_reg() && srcb.reg().tag == SPECIAL && srcb.reg().regId == SPECIAL_QPU_NUM);
   bool a_is_special  = a_is_elem_num || a_is_qpu_num;
   bool b_is_special  = b_is_elem_num || b_is_qpu_num;
 
@@ -338,8 +335,8 @@ bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
 
   auto srca = src_instr.ALU.srcA;
   auto srcb = src_instr.ALU.srcB;
-  bool a_is_special = (srca.is_reg() && srca.reg.tag == SPECIAL && srca.reg.regId == index);
-  bool b_is_special = (srcb.is_reg() && srcb.reg.tag == SPECIAL && srcb.reg.regId == index);
+  bool a_is_special = (srca.is_reg() && srca.reg().tag == SPECIAL && srca.reg().regId == index);
+  bool b_is_special = (srcb.is_reg() && srcb.reg().tag == SPECIAL && srcb.reg().regId == index);
 
   return (a_is_special && b_is_special);
 }
@@ -432,7 +429,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       ret << tidx(*dst_reg);
     } else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
       ret << eidx(*dst_reg);
-    } else if (reg_a.reg.tag == NONE && reg_b.reg.tag == NONE) {
+    } else if (reg_a.reg().tag == NONE && reg_b.reg().tag == NONE) {
       assert(src_instr.ALU.op.noOperands());
 
       switch (src_instr.ALU.op.value()) {
@@ -443,9 +440,9 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
           did_something = false;
         break;
       }
-    } else if (reg_a.reg.tag != NONE && reg_b.reg.tag == NONE) {
+    } else if (reg_a.reg().tag != NONE && reg_b.reg().tag == NONE) {
       // 1 input
-      auto src_a = encodeSrcReg(reg_a.reg);
+      auto src_a = encodeSrcReg(reg_a.reg());
       assert(src_a);
 
       switch (src_instr.ALU.op.value()) {
@@ -456,8 +453,8 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
         break;
       }
     } else {
-      auto src_a = encodeSrcReg(reg_a.reg);
-      auto src_b = encodeSrcReg(reg_b.reg);
+      auto src_a = encodeSrcReg(reg_a.reg());
+      auto src_b = encodeSrcReg(reg_b.reg());
       assert(src_a && src_b);
 
       switch (src_instr.ALU.op.value()) {
@@ -479,7 +476,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       }
     }
   } else if (dst_reg && reg_a.is_reg() && reg_b.is_imm()) {
-    auto src_a = encodeSrcReg(reg_a.reg);
+    auto src_a = encodeSrcReg(reg_a.reg());
     assert(src_a);
     SmallImm imm = encodeSmallImm(reg_b);
 
@@ -504,7 +501,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
     }
   } else if (dst_reg && reg_a.is_imm() && reg_b.is_reg()) {
     SmallImm imm = encodeSmallImm(reg_a);
-    auto src_b   = encodeSrcReg(reg_b.reg);
+    auto src_b   = encodeSrcReg(reg_b.reg());
     assert(src_b);
 
     switch (src_instr.ALU.op.value()) {
@@ -554,7 +551,7 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
   assertq(dst_reg->to_mux() != V3D_QPU_MUX_R1, "Rotate can not have destination register R1", true);
 
   auto reg_a = instr.ALU.srcA;
-  auto src_a = encodeSrcReg(reg_a.reg);
+  auto src_a = encodeSrcReg(reg_a.reg());
   auto reg_b = instr.ALU.srcB;                  // reg b is either r5 or small imm
 
   if (src_a->to_mux() != V3D_QPU_MUX_R0) {
@@ -569,8 +566,8 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
   if (reg_b.is_reg()) {
     breakpoint
 
-    assert(instr.ALU.srcB.reg.tag == ACC && instr.ALU.srcB.reg.regId == 5);  // reg b must be r5
-    auto src_b = encodeSrcReg(reg_b.reg);
+    assert(instr.ALU.srcB.reg().tag == ACC && instr.ALU.srcB.reg().regId == 5);  // reg b must be r5
+    auto src_b = encodeSrcReg(reg_b.reg());
 
     ret << rotate(r1, r0, *src_b);
 
@@ -1057,8 +1054,8 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
     assert(dst);
     auto reg_a = next_instr.ALU.srcA;
     auto reg_b = next_instr.ALU.srcB;
-    auto src_a = encodeSrcReg(reg_a.reg);
-    auto src_b = encodeSrcReg(reg_b.reg);
+    auto src_a = encodeSrcReg(reg_a.reg());
+    auto src_b = encodeSrcReg(reg_b.reg());
     assert(src_a && src_b);
     tmp[0].add(*dst, *src_a, *src_b);
     tmp[0].comment(instr.comment());

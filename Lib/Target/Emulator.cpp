@@ -580,11 +580,11 @@ Vec evalSmallImm(QPUState* s, SmallImm imm) {
 }
 
 
-Vec readRegOrImm(QPUState* s, State* g, RegOrImm src) {
+Vec readRegOrImm(QPUState* s, State* g, RegOrImm const &src) {
   if (src.is_reg()) {
-    return readReg(s, g, src.reg);
+    return readReg(s, g, src.reg());
   } else {
-    return evalSmallImm(s, src.smallImm);
+    return evalSmallImm(s, src.imm());
   }
 }
 
@@ -601,7 +601,7 @@ Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
   Vec a, b;
   a = readRegOrImm(s, g, srcA);
 
-  if (srcA.is_reg() && srcB.is_reg() && srcA.reg == srcB.reg) {
+  if (srcA.is_reg() && srcB.is_reg() && srcA.reg() == srcB.reg()) {
     b = a;
   } else {
     b = readRegOrImm(s, g, srcB);

@@ -93,6 +93,13 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
     if (item.range() != range_size) continue;
     assert(range_size != 0 || item.only_assigned());
 
+    // Guard for this special case for the time being.
+    // It should actually be possible to load a uniform in an accumulator,
+    // not bothering right now.
+    if (item.only_assigned()) {
+      if (instrs[item.first_use()].isUniformLoad()) continue;
+    }
+
     //
     // NOTE: There may be a slight issue here:
     //       in line of first use, src acc's may be used for vars which have
@@ -266,8 +273,29 @@ int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars
     subst_count += count;
   }
 
-  subst_count += peephole_1(live, instrs, allocated_vars);
-  subst_count += peephole_2(live, instrs, allocated_vars);
+  {
+    int count = peephole_1(live, instrs, allocated_vars);
+
+    {
+      std::string msg;
+      msg << "peephole_1, num substs: " << count;
+      debug(msg);
+    }
+
+    subst_count += count;
+  }
+
+  {
+    int count = peephole_2(live, instrs, allocated_vars);
+
+    {
+      std::string msg;
+      msg << "peephole_2, num substs: " << count;
+      debug(msg);
+    }
+
+    subst_count += count;
+  }
 
   return subst_count;
 }
@@ -309,30 +337,22 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
   useDef(instr, &useDefSet);  // Registers only usage REG_A
 
   for (int j = 0; j < useDefSet.def.size(); j++) {
-    assert(!alloc[j].unused());
     RegId r = useDefSet.def[j];
-
+    assert(!alloc[r].unused());
     Reg replace_with = alloc[r].reg;
 
-    if (!check_regfile_register(replace_with, r)) {
-      continue;
-    }
-
+    if (!check_regfile_register(replace_with, r)) continue;
     replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
 
     renameDest(instr, Reg(REG_A, r), replace_with);
   }
 
   for (int j = 0; j < useDefSet.use.size(); j++) {
-    assert(!alloc[j].unused());
     RegId r = useDefSet.use[j];
-
+    assert(!alloc[r].unused());
     Reg replace_with = alloc[r].reg;
 
-    if (!check_regfile_register(replace_with, r)) {
-      continue;
-    }
-
+    if (!check_regfile_register(replace_with, r)) continue;
     replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
 
     renameUses(instr, Reg(REG_A, r), replace_with);
@@ -683,10 +703,10 @@ void useDefReg(Instr instr, UseDefReg* useDef, bool set_use_where) {
       }
 
       if (instr.ALU.srcA.is_reg())               // Add source reg A to 'use' set
-        useDef->use.insert(instr.ALU.srcA.reg);
+        useDef->use.insert(instr.ALU.srcA.reg());
 
       if (instr.ALU.srcB.is_reg())               // Add source reg B to 'use' set
-        useDef->use.insert(instr.ALU.srcB.reg);
+        useDef->use.insert(instr.ALU.srcB.reg());
       return;
 
     case RECV:                                   // Load receive instruction

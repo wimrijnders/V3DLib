@@ -319,15 +319,15 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
 
       if (alu.op.isRot()) {
-        assert(alu.srcA.is_reg() && alu.srcA.reg.tag == ACC && alu.srcA.reg.regId == 0);
-        assert(alu.srcB.is_reg() ?  alu.srcB.reg.tag == ACC && alu.srcB.reg.regId == 5 : true);
+        assert(alu.srcA.is_reg() && alu.srcA.reg().tag == ACC && alu.srcA.reg().regId == 0);
+        assert(alu.srcB.is_reg()? alu.srcB.reg().tag == ACC && alu.srcB.reg().regId == 5 : true);
         uint32_t mulOp = ALUOp(ALUOp::M_V8MIN).vc4_encodeMulOp() << 29;
         uint32_t raddrb;
 
         if (alu.srcB.is_reg()) {
           raddrb = 48;
         } else {
-          uint32_t n = (uint32_t) alu.srcB.smallImm.val;
+          uint32_t n = (uint32_t) alu.srcB.imm().val;
           assert(n >= 1 || n <= 15);
           raddrb = 48 + n;
         }
@@ -345,40 +345,40 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
         if (alu.srcA.is_imm() && alu.srcB.is_imm()) {
           assertq(false, "srcA and srcB can not both be (small) immediates", true);
         } else if (alu.srcA.is_reg() && alu.srcB.is_reg()) { // Both operands are registers
-          RegTag aFile = regFileOf(alu.srcA.reg);
-          RegTag bFile = regFileOf(alu.srcB.reg);
-          RegTag aTag  = alu.srcA.reg.tag;
-          RegTag bTag  = alu.srcB.reg.tag;
+          RegTag aFile = regFileOf(alu.srcA.reg());
+          RegTag bFile = regFileOf(alu.srcB.reg());
+          RegTag aTag  = alu.srcA.reg().tag;
+          RegTag bTag  = alu.srcB.reg().tag;
 
           // If operands are the same register
-          if (aTag != NONE && aTag == bTag && alu.srcA.reg.regId == alu.srcB.reg.regId) {
+          if (aTag != NONE && aTag == bTag && alu.srcA.reg().regId == alu.srcB.reg().regId) {
             if (aFile == REG_A) {
-              raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
+              raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
               muxb = muxa; raddrb = 39;
             } else {
-              raddrb = encodeSrcReg(alu.srcA.reg, REG_B, &muxa);
+              raddrb = encodeSrcReg(alu.srcA.reg(), REG_B, &muxa);
               muxb = muxa; raddra = 39;
             }
           } else {
             // Operands are different registers
             assert(aFile == NONE || bFile == NONE || aFile != bFile);  // TODO examine why aFile == bFile is disallowed here
             if (aFile == REG_A || bFile == REG_B) {
-              raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
-              raddrb = encodeSrcReg(alu.srcB.reg, REG_B, &muxb);
+              raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
+              raddrb = encodeSrcReg(alu.srcB.reg(), REG_B, &muxb);
             } else {
-              raddrb = encodeSrcReg(alu.srcA.reg, REG_B, &muxa);
-              raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
+              raddrb = encodeSrcReg(alu.srcA.reg(), REG_B, &muxa);
+              raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
             }
           }
         } else if (alu.srcB.is_imm()) {
           // Second operand is a small immediate
-          raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
-          raddrb = (uint32_t) alu.srcB.smallImm.val;
+          raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
+          raddrb = (uint32_t) alu.srcB.imm().val;
           muxb   = 7;
         } else if (alu.srcA.is_imm()) {
           // First operand is a small immediate
-          raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
-          raddrb = (uint32_t) alu.srcA.smallImm.val;
+          raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
+          raddrb = (uint32_t) alu.srcA.imm().val;
           muxa   = 7;
         } else {
           assert(false);  // Not expecting this

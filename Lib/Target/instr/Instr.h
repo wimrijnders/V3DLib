@@ -40,13 +40,6 @@ struct SmallImm {
 };
 
 struct RegOrImm {
-  union {
-    // A register
-    Reg reg;
-    
-    // A small immediate
-    SmallImm smallImm;
-  };
 
   void set_imm(int rhs);
   void set_reg(RegTag tag, RegId id);
@@ -59,8 +52,16 @@ struct RegOrImm {
   bool is_imm() const { return !m_is_reg; }
   std::string disp() const;
 
+  Reg &reg();
+  Reg reg() const;
+  SmallImm &imm();
+  SmallImm imm() const;
+
 private:
-  bool m_is_reg;  // if false, is an imm
+  bool m_is_reg;        // if false, is an imm
+
+  Reg m_reg;            // A register
+  SmallImm m_smallImm;  // A small immediate
 };
 
 

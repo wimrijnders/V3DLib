@@ -47,12 +47,12 @@ int renameDest(Instr &instr, Reg const &current, Reg const &replace_with) {
 void renameUses(Instr &instr, Reg const &current, Reg const &replace_with) {
   if  (instr.tag != ALU) return;
 
-  if (instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg == current) {
-    instr.ALU.srcA.reg = replace_with;
+  if (instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg() == current) {
+    instr.ALU.srcA.reg() = replace_with;
   }
 
-  if (instr.ALU.srcB.is_reg() && instr.ALU.srcB.reg == current) {
-    instr.ALU.srcB.reg = replace_with;
+  if (instr.ALU.srcB.is_reg() && instr.ALU.srcB.reg() == current) {
+    instr.ALU.srcB.reg() = replace_with;
   }
 }
 
@@ -70,10 +70,10 @@ void substRegTag(Instr* instr, RegTag vt, RegTag wt) {
     case ALU:
       if (instr->ALU.dest.tag == vt)
         instr->ALU.dest.tag = wt;
-      if (instr->ALU.srcA.is_reg() && instr->ALU.srcA.reg.tag == vt)
-        instr->ALU.srcA.reg.tag = wt;
-      if (instr->ALU.srcB.is_reg() && instr->ALU.srcB.reg.tag == vt)
-        instr->ALU.srcB.reg.tag = wt;
+      if (instr->ALU.srcA.is_reg() && instr->ALU.srcA.reg().tag == vt)
+        instr->ALU.srcA.reg().tag = wt;
+      if (instr->ALU.srcB.is_reg() && instr->ALU.srcB.reg().tag == vt)
+        instr->ALU.srcB.reg().tag = wt;
       return;
 
     case RECV:

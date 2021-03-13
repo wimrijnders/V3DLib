@@ -18,8 +18,8 @@ namespace {
  */
 bool getTwoUses(Instr instr, Reg* r1, Reg* r2) {
   if (instr.tag == ALU && instr.ALU.srcA.is_reg() && instr.ALU.srcB.is_reg()) {
-    *r1 = instr.ALU.srcA.reg;
-    *r2 = instr.ALU.srcB.reg;
+    *r1 = instr.ALU.srcA.reg();
+    *r2 = instr.ALU.srcB.reg();
     return true;
   }
 
@@ -45,13 +45,13 @@ void regalloc_determine_regfileAB(Instr::List &instrs, int *prefA, int *prefB, i
         prefA[y]++; prefB[x]++;
       }
     } else if (instr.tag == ALU &&
-               instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg.tag == REG_A &&
+               instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg().tag == REG_A &&
                instr.ALU.srcB.is_imm()) {
-      prefA[instr.ALU.srcA.reg.regId]++;
+      prefA[instr.ALU.srcA.reg().regId]++;
     } else if (instr.tag == ALU &&
-               instr.ALU.srcB.is_reg() && instr.ALU.srcB.reg.tag == REG_A &&
+               instr.ALU.srcB.is_reg() && instr.ALU.srcB.reg().tag == REG_A &&
                instr.ALU.srcA.is_imm()) {
-      prefA[instr.ALU.srcB.reg.regId]++;
+      prefA[instr.ALU.srcB.reg().regId]++;
     }
   }
 }

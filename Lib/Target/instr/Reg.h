@@ -60,7 +60,7 @@ struct Reg {
   RegTag tag;   // What kind of register is it?
   RegId regId;  // Register identifier
 
-  bool isUniformPtr;
+  bool isUniformPtr = false;
 
   Reg() = default;
   Reg(RegTag in_tag, RegId in_regId) : tag(in_tag), regId(in_regId) {}

@@ -52,7 +52,6 @@ Reg freshReg() {
  */
 Reg srcReg(Var v) {
   Reg r;
-  r.isUniformPtr = false;
 
   switch (v.tag()) {
     case UNIFORM:
