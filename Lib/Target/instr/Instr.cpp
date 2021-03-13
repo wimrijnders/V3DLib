@@ -506,7 +506,7 @@ std::string Instr::List::check_acc_usage() const {
  */
 int Instr::List::get_free_acc(int first, int last) const {
   assert(first <= last);
-  assert(first <= 0);
+  assert(first >= 0);
   assert(last  < size());
 
   uint32_t acc_use = 0xffffffff;  // Keeps track of free acc's, default all free

@@ -4,7 +4,7 @@
 
 namespace V3DLib {
 
-void renameDest(Instr &instr, Reg const &current, Reg const &replace_with);
+int renameDest(Instr &instr, Reg const &current, Reg const &replace_with);
 void renameUses(Instr &instr, Reg const &current, Reg const &replace_with);
 void substRegTag(Instr* instr, RegTag vt, RegTag wt);
 

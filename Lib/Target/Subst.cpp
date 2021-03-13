@@ -4,29 +4,40 @@ namespace V3DLib {
 
 /**
  * Rename a destination register in an instruction
+ *
+ * @return number of substitutions performed.
  */
-void renameDest(Instr &instr, Reg const &current, Reg const &replace_with) {
+int renameDest(Instr &instr, Reg const &current, Reg const &replace_with) {
+  int count = 0;
+
   switch (instr.tag) {
     case LI:  // Load immediate
       if (instr.LI.dest == current) {
         instr.LI.dest = replace_with;
+        count += 1;
       }
-      return;
+      break;
 
     case ALU:  // ALU operation
       if (instr.ALU.dest == current) {
         instr.ALU.dest = replace_with;
+        count += 1;
       }
-      return;
+      break;
 
     case RECV:  // RECV instruction
       if (instr.RECV.dest == current) {
         instr.RECV.dest = replace_with;
+        count += 1;
       }
-      return;
+      break;
+
     default:
-      return;
+      break;
   }
+
+  assert(count <= 1);
+  return count;
 }
 
 

@@ -47,6 +47,83 @@ Reg replacement_acc(Instr &prev, Instr &instr) {
 }
 
 
+void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id) {
+  Reg current(REG_A, var_id);
+  Reg replace_with(ACC, acc_id);
+
+  if (item.range() == 0) {
+    assert(item.only_assigned());
+    renameDest(instrs[item.first_use()], current, replace_with);
+    return;
+  }
+
+  // There can possibly be more assignments between first usage and live range
+  // Following serves to capture them all - this might just be paranoia
+  int tmp_count = 0;
+  for (int i = item.first_use() + 1; i <= item.live.first - 1; i++) {
+    tmp_count += renameDest(instrs[item.use.dst_first], current, replace_with);
+  }
+
+  if (tmp_count > 0) {
+    std::string msg = "Detected extra assignments for var ";
+    msg << var_id
+        << " in range " << (item.first_use() + 1) << "-" << (item.live.first - 1);
+
+    debug(msg);
+  }
+
+  for (int i = item.live.first; i <= item.live.last; i++) {
+    auto &instr = instrs[i];
+
+    int tmp = renameDest(instr, current, replace_with);
+    assert(tmp == 0);  // Not expecting this
+
+    renameUses(instr, current, replace_with);
+  }
+}
+
+
+int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
+  int subst_count = 0;
+
+  for (int var_id = 0; var_id < (int) allocated_vars.size(); var_id++) {
+    auto &item = allocated_vars[var_id];
+
+    if (item.unused()) continue;
+    if (item.range() != range_size) continue;
+    assert(range_size != 0 || item.only_assigned());
+
+    //
+    // NOTE: There may be a slight issue here:
+    //       in line of first use, src acc's may be used for vars which have
+    //       last use in this line. I.e. they would be free for usage in this line.
+    //
+    // This is a small thing, perhaps for later optimization
+    //
+    int acc_id = instrs.get_free_acc(item.first_use(), item.last_use());
+
+    {
+      std::string msg;
+      msg << "Var " << var_id << ", "
+          << "lines " << item.first_use()  << "-" << item.last_use() << ", "
+          << "free acc: " << acc_id;
+      debug(msg);
+    }
+
+    if (acc_id == -1 ) {
+      warning("No free acc!");
+      continue;
+    }
+
+    replace_acc(instrs, item, var_id, acc_id);
+    subst_count++;
+  }
+
+
+  return subst_count;
+}
+
+
 /**
  * This is a simple peephole optimisation, captured by the following
  * rewrite rule:
@@ -175,7 +252,21 @@ int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars
   }
 #endif  // DEBUG
 
-  int subst_count = peephole_1(live, instrs, allocated_vars);
+  int subst_count = 0;
+
+  for (int range_size = 0; range_size <= 0; range_size++) {
+    int count = peephole_0(range_size, instrs, allocated_vars);
+
+    {
+      std::string msg = "peephole_0 for range size ";
+      msg << range_size << ", num substs: " << count;
+      debug(msg);
+    }
+
+    subst_count += count;
+  }
+
+  subst_count += peephole_1(live, instrs, allocated_vars);
   subst_count += peephole_2(live, instrs, allocated_vars);
 
   return subst_count;
@@ -333,6 +424,36 @@ void RegUsageItem::add_live(int n) {
   }
 
   live.count++;
+}
+
+
+int RegUsageItem::range() const {
+  if (live.first == -1 && live.last == -1) {
+    assert(use.src_use == 0);  // dst_use may be nonzero!
+    return 0;
+  }
+
+  assert(live.first != -1 && live.last != -1);
+
+  // NOTE: this is not true: `(live.last - live.first + 1) == live.count)`,
+  //       because there can conceivably be gaps for liveness, due to interim assignments.
+  return (live.last - live.first + 1);
+}
+
+
+int RegUsageItem::first_use() const {
+  assert(use.dst_first != -1);
+  assert(only_assigned() || (use.dst_first - 1  == live.first));
+  return use.dst_first;
+}
+
+
+/**
+ * Get last line number for which variable is used.
+ */
+int RegUsageItem::last_use() const {
+  if (only_assigned()) return use.dst_first;
+  return live.last;
 }
 
 

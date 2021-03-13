@@ -14,8 +14,8 @@ struct RegUsageItem {
  Reg reg;
 
  struct {
-   int dst_use = 0;
-   int src_use = 0;
+   int dst_use = 0;    // Number of times used as dst in code
+   int src_use = 0;    // Number of times used as src in code
    int dst_first = -1;
    int src_first = -1;
  } use;
@@ -31,6 +31,9 @@ struct RegUsageItem {
  bool only_assigned() const { return use.dst_use != 0 && use.src_use == 0; }
  bool never_assigned() const { return !unused() && use.dst_first == -1; }
  std::string dump() const;
+ int range() const;
+ int first_use() const;
+ int last_use() const;
 };
 
 class Liveness;
