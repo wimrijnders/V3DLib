@@ -246,6 +246,8 @@ void KernelDriver::dump_compile_data(char const *filename) const {
     fprintf(f, m_compile_data.target_code_before_liveness.c_str());
   }
 
+  title(f, "ACC usage");
+  fprintf(f, m_targetCode.check_acc_usage().c_str());
 
   if (filename != nullptr) {
     fclose(f);

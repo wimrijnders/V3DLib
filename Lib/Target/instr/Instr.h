@@ -152,6 +152,7 @@ struct Instr : public InstructionComment {
     int tag_index(InstrTag tag, bool ensure_one = true);
     int tag_count(InstrTag tag);
     std::string check_acc_usage() const;
+    int get_free_acc(int first, int last) const;
   };
 
   InstrTag tag;

@@ -2,6 +2,7 @@
 #include "Support/debug.h"
 #include "Target/Pretty.h"  // pretty_instr_tag()
 #include "Support/basics.h" // fatal()
+#include "Support/Platform.h"
 #include "Source/BExpr.h"   // class CmpOp
 #include "Target/SmallLiteral.h"
 
@@ -373,6 +374,13 @@ uint32_t Instr::get_acc_usage() const {
       break;
   }
 
+  // Expecting acc0 and 1 to be set for rot, check
+  if (!Platform::compiling_for_vc4()) {
+    if (isRot()) {
+      assert((ret & 0x3) == 3);
+    }
+  }
+
   return ret;
 }
 
@@ -479,7 +487,47 @@ std::string Instr::List::check_acc_usage() const {
     if (accs & 16) ret << "4, ";
     if (accs & 32) ret << "5, ";
 
+    if ((*this)[index].isRot()) {
+      ret << " - Rot instruction";
+    }
+
     ret << "\n";
+  }
+
+  return ret;
+}
+
+
+/**
+ * Return index of accumulator which is free for the given
+ * range in the instruction list.
+ *
+ * If none can be found, return -1.
+ */
+int Instr::List::get_free_acc(int first, int last) const {
+  assert(first <= last);
+  assert(first <= 0);
+  assert(last  < size());
+
+  uint32_t acc_use = 0xffffffff;  // Keeps track of free acc's, default all free
+
+  for (int i = first; i <= last; ++i) {
+    acc_use = acc_use & ~(*this)[i].get_acc_usage();  // Remember, get_acc_usage() returns *used* acc's
+  }
+
+  // Mask out unused bit and also r5, because it has special usage
+  // Actually, r3 (sfu) and r4 (tmu read) have special usages as well, 
+  // but let's see how far we get.
+  acc_use = acc_use & 0x1f;
+
+  // Determine first non-zero bit
+  int ret = -1;
+
+  for (int i = 0; i < 5; ++i) {
+    if ((acc_use & (1 << i)) != 0) {
+      ret = i;
+      break;
+    }
   }
 
   return ret;

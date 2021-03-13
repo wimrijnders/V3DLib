@@ -89,11 +89,12 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     // 20210312 This test still required
     // TODO see if it can be fixed
     if (!prev.is_always()) {
-/*
       std::string msg;
-      msg << "peephole_1(): Skipping replacement for line " << i << " because prev.is_always() == false";
+      msg << "peephole_1(): Skipping replacement for line " << i << " because prev.is_always() == false\n"
+          << "prev : " << prev.dump()  << "\n"
+          << "instr: " << instr.dump() << "\n";
+
       warning(msg);
-*/
       continue;
     }
 
@@ -138,7 +139,7 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     renameDest(instr, current, replace_with);
     instrs[i]   = instr;
 
-    // DANGEROUS! Do not use this value downstream.   
+    // DANGEROUS! Do not use this value downstream (remember why, old man?).   
     // Currently stored for debug display purposes only! 
     allocated_vars[def].reg = replace_with;    
 
