@@ -132,6 +132,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
     {
       Float::Array x(N), y(N);
       auto k = compile(rot3D_1a);
+      //k.pretty(false, "obj/test/rot3D_1a_v3d.txt", false);
 
       INFO("Running kernel 1a with 1 QPU");
       initArrays(x, y, N);

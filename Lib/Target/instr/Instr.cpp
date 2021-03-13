@@ -379,10 +379,12 @@ uint32_t Instr::get_acc_usage() const {
       break;
   }
 
-  // Expecting acc0 and 1 to be set for rot, check
+  // ACC 0 and 1 are used rot v3d, add
+  // dst r1 and src r0 might be explicitly set beforehand, this is fine.
+  // Generation of rot-instruction checks for this
   if (!Platform::compiling_for_vc4()) {
     if (isRot()) {
-      assert((ret & 0x3) == 3);
+      ret |= 3;
     }
   }
 

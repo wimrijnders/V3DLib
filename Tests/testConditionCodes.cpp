@@ -422,6 +422,7 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
   int const NUM_TESTS = 7;
 
   auto k = compile(where_kernel);
+  //k.pretty(true, "obj/test/where_blocks_vc4.txt", false);
 
   Int::Array result(NUM_TESTS*VEC_SIZE);
 
