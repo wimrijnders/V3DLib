@@ -563,8 +563,8 @@ void dft_inline_kernel(Complex::Ptr dst, Complex::Ptr a) {
     // b_index: column index of block of 16 columns to process by 1 QPU
     Int b_index;
     For (b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
-      Complex::Ptr dst_local;
-      dst_local = dst + a_index*settings.cols_result() + b_index;
+      Int offset = (a_index*settings.cols_result() + b_index);  // Calculating offset first is slightly more efficient
+      Complex::Ptr dst_local = dst + offset;
   
       Int j;
       For (j = 0,  j < 16, j += 1)

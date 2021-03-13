@@ -214,6 +214,7 @@ public:
 
     class Expr {
     public:
+      Expr(Float::Ptr re, Float::Ptr im) : m_re(re.expr()), m_im(im.expr()) {}
       Expr(Complex::Ptr e) : m_re(e.re().expr()), m_im(e.im().expr()) {}
 
       Ptr::Expr operator+(IntExpr b);
