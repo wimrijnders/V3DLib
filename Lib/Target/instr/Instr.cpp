@@ -522,7 +522,7 @@ int Instr::List::get_free_acc(int first, int last) const {
     acc_use = acc_use & ~(*this)[i].get_acc_usage();  // Remember, get_acc_usage() returns *used* acc's
   }
 
-  // Mask out unused bit and also r5, because it has special usage
+  // Mask out unused bits and also r5, because it has special usage
   // Actually, r3 (sfu) and r4 (tmu read) have special usages as well, 
   // but let's see how far we get.
   acc_use = acc_use & 0x1f;

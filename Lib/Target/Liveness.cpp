@@ -30,7 +30,10 @@ void useDef(Instr const &instr, UseDef* out, bool set_use_where = false) {
   }
 }
 
-
+/**
+ * TODO replace usage of this function with Instr::List::get_free_acc().
+ *      Couldn't be bothered right now, nothing to gain here.
+ */
 Reg replacement_acc(Instr &prev, Instr &instr) {
     int acc_id =1;
 
@@ -139,6 +142,9 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
       continue;
     }
 
+    Reg replace_with(ACC, acc_id);
+    allocated_vars.check_overlap_usage(replace_with, item);
+
     replace_acc(instrs, item, var_id, acc_id);
 
     subst_count++;
@@ -176,21 +182,18 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     Instr instr = instrs[i];
 
     useDef(prev, &useDefPrev);        // Compute vars defined by prev
-
     if (useDefPrev.def.empty()) continue;
-
     RegId def = useDefPrev.def[0];
 
     useDef(instr, &useDefCurrent);    // Compute vars used by instr
-
     live.computeLiveOut(i, liveOut);  // Compute vars live-out of instr
 
-    bool do_it = (useDefCurrent.use.member(def) && !liveOut.member(def));
-    if (!do_it) continue;
+    // If 'instr' is not last usage of the found var, skip
+    if (!(useDefCurrent.use.member(def) && !liveOut.member(def))) continue;
 
-    // 20210312 This test still required
-    // TODO see if it can be fixed
-    // 20210313 Answer: nope
+    // Can't remove this test.
+    // Reason: There may be a preceding instruction which sets the var to be replaced.
+    //         If 'prev' is conditional, replacing the var with an acc will ignore the previously set value.
     if (!prev.is_always()) {
 /*
       std::string msg;
@@ -539,8 +542,13 @@ int RegUsageItem::last_use() const {
 }
 
 
+bool RegUsageItem::use_overlaps(RegUsageItem const &rhs) const {
+  return !((first_use() > rhs.last_use()) || (last_use() < rhs.first_use()));
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
-// Class RegUsageItem
+// Class RegUsage
 ///////////////////////////////////////////////////////////////////////////////
 
 RegUsage::RegUsage(int numVars) : Parent(numVars) {
@@ -684,6 +692,27 @@ std::string RegUsage::dump_use_ranges() const {
   }
 
   return ret;
+}
+
+
+/**
+ * Check if found acc does not conflict with other uses of this acc.
+ * It may have been assigned to another var whose use-range overlaps with current var.
+ *
+ * This is something waiting to happen. It has not occured yet.
+ * This test serves as a canary; if it fires, we need to do something about the situation.
+ */
+void RegUsage::check_overlap_usage(Reg acc, RegUsageItem const &item) const {
+  assert(acc.tag == ACC);
+  assert(acc.regId >= 0);
+
+  for (int i = 0; i < (int) size(); ++i) {
+    auto const &cur = (*this)[i];
+    if (cur.reg != acc) continue;
+
+    debug("Found acc in list!");  // TODO Remove this when it is displayed
+    assertq(!cur.use_overlaps(item), "Detected conflicting usage of replacement acc", true);
+  }
 }
 
 
