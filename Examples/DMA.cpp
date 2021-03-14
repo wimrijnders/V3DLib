@@ -42,7 +42,7 @@ int main(int argc, const char *argv[]) {
     return 1;
   }
 
-  auto k = compile(dma, true);                    // Construct kernel. Param true: only compile for vc4
+  auto k = compile(dma, CompileFor::VC4);         // Construct kernel, only compile for vc4
 
   Int::Array array(256);                          // Allocate and initialise array shared between ARM and GPU
   for (int i = 0; i < 256; i++)
