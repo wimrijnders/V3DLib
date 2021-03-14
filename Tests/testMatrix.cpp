@@ -1100,8 +1100,8 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
       int N = 1;
 
       std::cout << "DFT compare\n"
-                << "Platform #QPU DIM Label            Time\n"
-                << "======== ==== === ================ ====\n";
+                << "Platform,#QPU,DIM, Label           , Time\n"
+                << "========,====,===, ================, ========\n";
 
       bool can_continue = true;
       while (can_continue) {
