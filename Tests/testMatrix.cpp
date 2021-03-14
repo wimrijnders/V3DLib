@@ -1087,11 +1087,11 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
   }
 
   SECTION("All DFT calculations should return the same") {
-    bool do_profiling = true;
+    bool do_profiling = false;
 
     if (!do_profiling) {
       // Following is enough for the unit test
-      for (int N = 1; N < 5; ++N) {
+      for (int N = 1; N < 4; ++N) {
         bool no_errors = compare_dfts(16*N, 1, false);
         REQUIRE(no_errors);
       }
