@@ -372,6 +372,16 @@ void ComplexDotVector::load(Complex::Ptr const &rhs) {
 }
 
 
+void ComplexDotVector::load(Float::Ptr const &rhs) {
+  Float::Ptr rhs_re = rhs;  // Need to init ptr's here so that they are initialized before prefetch
+
+  for (int i = 0; i < (int) size(); ++i) {
+    pre_read(re[i], rhs_re, 1);
+    im[i] = 0;
+  }
+}
+
+
 void pre_write(Complex::Ptr &dst, Complex &src) {
   pre_write(dst.re(), src.re());
   pre_write(dst.im(), src.im());
@@ -542,6 +552,9 @@ ComplexFuncType *complex_matrix_mult_decorator(
 // DFT
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Tried moving local vars out of the loops to avoid 'register allocation failed', didn't work 
+ */
 void dft_inline_kernel(Complex::Ptr dst, Complex::Ptr a) {
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
   assert(settings.columns > 0 && (settings.columns % 16 == 0));
@@ -549,26 +562,61 @@ void dft_inline_kernel(Complex::Ptr dst, Complex::Ptr a) {
   int const DIM = settings.inner;
 
   ComplexDotVector vec(settings.inner/16);
-  Complex result;
 
-  // Moved out of the loop to avoid 'register allocation failed', didn't work 
-  //Complex tmp;
-  //Complex::Ptr dst_local;
-  //Int b_index;
-  //Int j;
+  Complex result(0,0);  // init required! Otherwise, var not added here in target lang
+                        // This also applies to other local variables
+                        // It's sort of a bug, but I'll live with it for now
+                        // TODO examine in due time
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
     vec.load(a);
 
     // b_index: column index of block of 16 columns to process by 1 QPU
-    Int b_index;
+    Int b_index = 0;
     For (b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
       Int offset = (a_index*settings.cols_result() + b_index);  // Calculating offset first is slightly more efficient
       Complex::Ptr dst_local = dst + offset;
   
       Int j;
       For (j = 0,  j < 16, j += 1)
-        Complex tmp;
+        Complex tmp(0,0);
+        vec.dft_dot_product(b_index + j, tmp);
+        result.set_at(j & 0xf, tmp);
+      End
+
+      pre_write(dst_local, result);
+    End
+
+    a+= DIM;
+  End
+}
+
+
+void dft_inline_float_kernel(Complex::Ptr dst, Float::Ptr a) {
+  assert(settings.inner > 0 && (settings.inner % 16 == 0));
+  assert(settings.columns > 0 && (settings.columns % 16 == 0));
+
+  int const DIM = settings.inner;
+
+  ComplexDotVector vec(settings.inner/16);
+
+  Complex result(0,0);  // init required! Otherwise, var not added here in target lang
+                        // This also applies to other local variables
+                        // It's sort of a bug, but I'll live with it for now
+                        // TODO examine in due time
+
+  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
+    vec.load(a);
+
+    // b_index: column index of block of 16 columns to process by 1 QPU
+    Int b_index = 0;
+    For (b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
+      Int offset = (a_index*settings.cols_result() + b_index);  // Calculating offset first is slightly more efficient
+      Complex::Ptr dst_local = dst + offset;
+  
+      Int j;
+      For (j = 0,  j < 16, j += 1)
+        Complex tmp(0,0);
         vec.dft_dot_product(b_index + j, tmp);
         result.set_at(j & 0xf, tmp);
       End
@@ -588,6 +636,16 @@ DftFuncType *dft_inline_decorator(Complex::Array2D &a, Complex::Array2D &result,
   check_allocate_result_array(result);
 
   return dft_inline_kernel;
+}
+
+
+DftFuncType2 *dft_inline_decorator(Float::Array &a, Complex::Array2D &result, MatrixReadMethod read_method) {
+  assert(a.allocated());
+
+  matrix_mult_decorator(1, a.size(), a.size(), read_method);
+  check_allocate_result_array(result);
+
+  return dft_inline_float_kernel;
 }
 
 

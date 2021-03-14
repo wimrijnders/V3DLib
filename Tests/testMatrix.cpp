@@ -792,6 +792,161 @@ void output_dft(Complex::Array2D &input, Complex::Array2D &result, char const *f
   }
 }
 
+
+/**
+ * @return  true if all kernels compiled something,
+ *          false if any kernel failed compilation for vc4 as well as v3d
+ */ 
+bool compare_dfts(int Dim, int num_qpus, bool show_output) {
+  assert(Dim > 0 && (Dim % 16 == 0));
+
+  //
+  // Support Stuff
+  //
+  bool const ShowCompile = false;
+  CompileFor for_platform = (Platform::has_vc4())?CompileFor::VC4:CompileFor::V3D;
+  bool compiled = true;
+
+  struct out_data {
+    out_data(std::string const &in_label, std::string const &in_timer) : label(in_label), timer(in_timer) {}
+
+    std::string label;
+    std::string timer;
+  };
+
+  std::vector<out_data> output;
+
+  auto add_compile = [ShowCompile, &output] (std::string const &label, Timer &timer) {
+    if (!ShowCompile) return; 
+
+    std::string str;
+    str << "\"compile " << label << "\"";
+    output << out_data(str, timer.end(false));
+  };
+
+  auto add_call = [&output] (std::string const &label, Timer &timer) {
+    std::string str;
+    str << "\"" << label << "\"";
+    output << out_data(str, timer.end(false));
+  };
+
+  //
+  // Initialize shared arrays
+  //
+  Complex::Array2D input(1, Dim);  // Create input; remember, transposed!
+  create_test_wavelet(input, Dim);
+
+  Float::Array input_float(Dim);
+  for (int i = 0; i < input.re().columns(); ++i) {
+    input_float[i] = input.re()[0][i];
+  }
+
+  // Prepare DFT matrix
+  Complex::Array2D dft_matrix(Dim);
+  create_dft_matrix(dft_matrix);
+
+  Complex::Array2D result_mult;  // Will be Dimx1
+  Complex::Array2D result_complex;
+  Complex::Array2D result_float;
+
+  //
+  // Run the kernels
+  //
+
+  {
+    std::string label = "matrix mult";
+
+    // Do regular complex matrix multiplication
+    // In this call, the matrix and input are switched.
+    // This is slightly more efficient and should not affect the result
+    Timer timer1;
+    auto k = compile(kernels::complex_matrix_mult_decorator(input, dft_matrix, result_mult), for_platform);
+    add_compile(label, timer1);
+    k.setNumQPUs(num_qpus);
+    compiled = compiled && !(k.has_errors());
+
+    REQUIRE(!k.has_errors());  // TODO sort this out
+
+    if (!k.has_errors()) {
+      k.load(&result_mult, &input, &dft_matrix);
+
+      Timer timer;
+      k.call();
+      add_call(label, timer);
+    }
+  }
+
+  {
+    std::string label = "inline complex";
+
+    Timer timer1;
+    auto k = compile(kernels::dft_inline_decorator(input, result_complex), for_platform);
+    add_compile(label, timer1);
+    k.setNumQPUs(num_qpus);
+    compiled = compiled && !(k.has_errors());
+
+    if (!k.has_errors()) {
+      k.load(&result_complex, &input);
+
+      Timer timer;
+      k.call();
+      add_call(label, timer);
+      compare_arrays(result_mult, result_complex);
+      output_dft(input, result_complex, "dft_inline_complex");
+    }
+  }
+
+  {
+    std::string label = "inline float";
+
+    Timer timer1;
+    auto k = compile(kernels::dft_inline_decorator(input_float, result_float), for_platform);
+    add_compile(label, timer1);
+    k.setNumQPUs(num_qpus);
+    compiled = compiled && !(k.has_errors());
+
+    if (!k.has_errors()) {
+      k.load(&result_float, &input_float);
+
+      Timer timer;
+      k.call();
+      add_call(label, timer);
+      compare_arrays(result_mult, result_float);
+      output_dft(input, result_complex, "dft_inline_float");
+    }
+  }
+
+  //std::cout << result_mult.dump() << std::endl;
+  //std::cout << result_complex.dump() << std::endl;
+
+  if (show_output) {
+    auto tabbed_str = [] (int tab_size, std::string const &val) -> std::string {
+      std::string ret;
+      for (int i = (int) val.size(); i < tab_size; ++i ) {
+        ret << " ";
+      }
+
+      ret << val;
+      return ret;
+    };
+
+    auto tabbed = [tabbed_str] (int tab_size, int val) -> std::string {
+      std::string tmp;
+      tmp << val;
+      return tabbed_str(tab_size, tmp);
+    };
+
+    std::string platform = (Platform::has_vc4())?"vc4":"v3d";
+
+    for (int i = 0; i < (int) output.size(); ++i) {
+      std::cout << platform << "     , " << tabbed(2, num_qpus) << ", " << tabbed(3, Dim) << ", "
+                << tabbed_str(16, output[i].label) << ", " << output[i].timer << "\n";
+    }
+  }
+
+  return compiled;
+}
+
 }  // anon namespace
 
 
@@ -872,10 +1027,7 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
       k.setNumQPUs(8);  // Running with multi-QPU gives very limited performance improvement
       result.fill({-1, -1});
       k.load(&result_tmp, &dft_matrix, &input);
-
-      Timer timer;
       k.call();
-      timer.end();
 
       // Columns are padded to multiples of 16, only the first column is relevant
       // Translate to better form
@@ -895,9 +1047,7 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
       k.setNumQPUs(8);  // Running with multi-QPU gives very limited performance improvement
       k.load(&result_switched, &input, &dft_matrix);
 
-      Timer timer;
-      k.call();
-      timer.end();
+      k.interpret();
     }
 
     //std::cout << result.dump() << std::endl;
@@ -912,8 +1062,6 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
 
 
 TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
-  Platform::use_main_memory(true);
-
   SECTION("Check DFT with inline sin/cos") {
     int const Dim = 16*2;  // max vc4: 16*4. Max v3d is higher, at least 64*8
 
@@ -925,21 +1073,42 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
     Timer timer1("DFT compile time");
     auto k = compile(kernels::dft_inline_decorator(input, result));
     timer1.end();
-
+/*
     k.pretty(true,  "obj/test/dft_inline_vc4.txt", false);
     k.dump_compile_data(true, "obj/test/dft_compile_data_vc4.txt");
     k.pretty(false, "obj/test/dft_inline_v3d.txt", false);
+*/
     std::cout << k.compile_info() << std::endl;
 
     k.load(&result, &input);
-
-    Timer timer;
-    k.interpret();
-    //k.call();
-    timer.end();
+    k.call();
 
     output_dft(input, result, "dft_inline");
   }
 
-  Platform::use_main_memory(false);
+  SECTION("All DFT calculations should return the same") {
+    bool do_profiling = true;
+
+    if (!do_profiling) {
+      // Following is enough for the unit test
+      for (int N = 1; N < 5; ++N) {
+        bool no_errors = compare_dfts(16*N, 1, false);
+        REQUIRE(no_errors);
+      }
+    } else {
+      // Profiling: try all sizes until compilation fails
+      int N = 1;
+
+      std::cout << "DFT compare\n"
+                << "Platform #QPU DIM Label            Time\n"
+                << "======== ==== === ================ ====\n";
+
+      bool can_continue = true;
+      while (can_continue) {
+        can_continue = compare_dfts(16*N, 1, true) && compare_dfts(16*N, 8, true);
+        N += 4;
+        if (N > 32) break;
+      }
+    }
+  }
 }

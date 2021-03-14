@@ -16,6 +16,13 @@
 
 namespace V3DLib {
 
+enum CompileFor {
+  VC4 = 1,
+  V3D = 2,
+  BOTH = VC4 + V3D
+};
+
+
 // ============================================================================
 // Parameter passing
 // ============================================================================
@@ -116,6 +123,17 @@ public:
 
   std::string compile_info() const;
   void dump_compile_data(bool output_for_vc4, char const *filename);
+  bool vc4_has_errors() const { return m_vc4_driver.has_errors(); }
+
+  bool v3d_has_errors() const { 
+#ifdef QPU_MODE
+    return m_v3d_driver.has_errors();
+#else
+    return true;  // Absence of v3d regarded as error here
+#endif
+  }
+
+  bool has_errors() const { return vc4_has_errors() || v3d_has_errors(); }
 
 protected:
   int numQPUs = 1;                 // Number of QPUs to run on
@@ -155,8 +173,8 @@ public:
   /**
    * Construct kernel out of C++ function
    */
-  Kernel(KernelFunction f, bool vc4_only = false) {
-    {
+  Kernel(KernelFunction f, CompileFor compile_for) {
+    if (compile_for & VC4) {
       m_vc4_driver.compile_init();
 
       f(mkArg<ts>()...);  // Construct the AST for vc4
@@ -179,11 +197,13 @@ public:
     }
 
 #ifdef QPU_MODE
-    if (!vc4_only) {
+    if (compile_for & V3D) {
       m_v3d_driver.compile_init();
       f(mkArg<ts>()...);  // Construct the AST for v3d
       m_v3d_driver.compile();
     }
+#else
+    assertq(compile_for & V3D, "QPU_MODE disabled, will not compile for v3d");
 #endif  // QPU_MODE
   }
 
@@ -205,8 +225,8 @@ public:
 // Initialiser
 
 template <typename... ts>
-Kernel<ts...> compile(void (*f)(ts... params), bool vc4_only = false) {
-  Kernel<ts...> k(f, vc4_only);
+Kernel<ts...> compile(void (*f)(ts... params), CompileFor compile_for = BOTH) {
+  Kernel<ts...> k(f, compile_for);
   return std::move(k);
 }
 

@@ -85,6 +85,7 @@ public:
   size_t size() const;
 
   void load(Complex::Ptr const &rhs);
+  void load(Float::Ptr const &rhs);
 
   void save(Complex::Ptr output) {
     re.save(output.re());
@@ -118,11 +119,20 @@ ComplexFuncType *complex_matrix_mult_decorator(
 ///////////////////////////////////////////////////////////////////////////////
 
 void dft_inline_kernel(Complex::Ptr dst, Complex::Ptr a);
-
 using DftFuncType = decltype(dft_inline_kernel);
 
 DftFuncType *dft_inline_decorator(
   Complex::Array2D &a,
+  Complex::Array2D &result,
+  MatrixReadMethod read_method = DO_PREFETCH
+);
+
+
+void dft_inline_float_kernel(Complex::Ptr dst, Float::Ptr a);
+using DftFuncType2 = decltype(dft_inline_float_kernel);
+
+DftFuncType2 *dft_inline_decorator(
+  Float::Array &a,
   Complex::Array2D &result,
   MatrixReadMethod read_method = DO_PREFETCH
 );

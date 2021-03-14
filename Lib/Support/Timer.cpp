@@ -34,7 +34,7 @@ Timer::~Timer() {
 }
 
 
-void Timer::end(bool show_output) {
+std::string Timer::end(bool show_output) {
   assert(!m_label.empty());
 
   timeval tvEnd, tvDiff;
@@ -44,6 +44,10 @@ void Timer::end(bool show_output) {
   if (show_output) {
     printf("%s: %ld.%06lds\n", m_label.c_str(), tvDiff.tv_sec, tvDiff.tv_usec);
   }
+
+  char buf[128]; 
+  sprintf(buf, "%ld.%06ld", tvDiff.tv_sec, tvDiff.tv_usec);
+  return std::string(buf); 
 }
 
 }  // namespace
