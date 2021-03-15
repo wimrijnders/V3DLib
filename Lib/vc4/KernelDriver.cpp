@@ -46,7 +46,7 @@ void KernelDriver::kernelFinish() {
 /**
  * Encode target instrs into array of 32-bit ints
  */
-void KernelDriver::encode(int numQPUs) {
+void KernelDriver::encode() {
   if (code.size() > 0) return;  // Don't bother if already encoded
 
   V3DLib::vc4::encode(m_targetCode, code);
@@ -101,6 +101,10 @@ void KernelDriver::compile_intern() {
 
   // Translate branch-to-labels to relative branches
   removeLabels(m_targetCode);
+
+  if (!has_errors()) {
+    encode();
+  }
 }
 
 

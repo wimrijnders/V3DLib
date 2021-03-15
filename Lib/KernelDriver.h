@@ -16,7 +16,7 @@ public:
 
   BufferType const buffer_type;
 
-  virtual void encode(int numQPUs) = 0;
+  virtual void encode() = 0;
 
   void compile();
   void invoke(int numQPUs, IntList &params);

@@ -956,7 +956,7 @@ Instructions encodeInstr(V3DLib::Instr instr) {
  * have not participated in the liveness determination. This may lead to screwed up variable assignments.
  * **Keep this in mind!**
  */
-Instructions encode_init(uint8_t numQPUs) {
+Instructions encode_init() {
   Instructions ret;
   ret << instr::enable_tmu_read();
 
@@ -1068,7 +1068,7 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
 /**
  * Translate instructions from target to v3d
  */
-void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &instructions) {
+void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
   assert(checkUniformAtTop(instrs));
   bool prev_was_init_begin = false;
   bool prev_was_init_end    = false;
@@ -1082,7 +1082,7 @@ void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &i
     if (instr.tag == INIT_BEGIN) {
       prev_was_init_begin = true;
     } else if (instr.tag == INIT_END) {
-      instructions << encode_init(numQPUs);
+      instructions << encode_init();
       prev_was_init_end = true;
     } else {
       Instructions ret;
@@ -1125,17 +1125,11 @@ void KernelDriver::compile_init() {
 }
 
 
-void KernelDriver::encode(int numQPUs) {
+void KernelDriver::encode() {
   if (instructions.size() > 0) return;  // Don't bother if already encoded
 
-  if (numQPUs != 1 && numQPUs != 8) {
-    errors << "Num QPU's must be 1 or 8";
-    return;
-  }
-  local_numQPUs = (uint8_t) numQPUs;
-
   // Encode target instructions
-  _encode((uint8_t) numQPUs, m_targetCode, instructions);
+  _encode(m_targetCode, instructions);
   removeLabels(instructions);
 
   if (!local_errors.empty()) {
@@ -1175,6 +1169,10 @@ void KernelDriver::compile_intern() {
   insertInitBlock(m_targetCode);
   add_init(m_targetCode);
   compile_postprocess(m_targetCode);
+
+  if (!has_errors()) {
+    encode();
+  }
 }
 
 
@@ -1198,8 +1196,12 @@ void KernelDriver::allocate() {
 
 
 void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
-  allocate();  // In case not already done
+  if (numQPUs != 1 && numQPUs != 8) {
+    error("Num QPU's must be 1 or 8", true);
+  }
 
+  local_numQPUs = (uint8_t) numQPUs;
+  allocate();  // In case not already done
 
   // Allocate memory for the parameters if not done already
   // TODO Not used in v3d, do we need this?

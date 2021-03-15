@@ -20,7 +20,7 @@ public:
   KernelDriver();
 
   void compile_init();
-  void encode(int numQPUs) override;
+  void encode() override;
 
 private:
   Code          qpuCodeMem;
