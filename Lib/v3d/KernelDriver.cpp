@@ -28,7 +28,6 @@ uint8_t const NOP_ADDR    = 39;
 uint8_t const REGB_OFFSET = 32;
 uint8_t const NUM_REGS_RF = 64;  // Number of available registers in the register file
 
-uint8_t local_numQPUs = 0;
 std::vector<std::string> local_errors;
 
 
@@ -1170,20 +1169,19 @@ void KernelDriver::compile_intern() {
   add_init(m_targetCode);
   compile_postprocess(m_targetCode);
 
-  if (!has_errors()) {
-    encode();
-  }
+  encode();
 }
 
 
 void KernelDriver::allocate() {
+  assert(!instructions.empty());
+
   // Assumption: code in a kernel, once allocated, doesn't change
   if (qpuCodeMem.allocated()) {
-    assert(instructions.size() > 0);
     assert(instructions.size() >= qpuCodeMem.size());  // Tentative check, not perfect
                                                        // actual opcode seq can be smaller due to removal labels
   } else {
-    std::vector<uint64_t> code = to_opcodes();;
+    std::vector<uint64_t> code = to_opcodes();
     assert(!code.empty());
 
     // Allocate memory for the QPU code
@@ -1200,7 +1198,7 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
     error("Num QPU's must be 1 or 8", true);
   }
 
-  local_numQPUs = (uint8_t) numQPUs;
+  breakpoint
   allocate();  // In case not already done
 
   // Allocate memory for the parameters if not done already
