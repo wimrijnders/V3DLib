@@ -15,3 +15,21 @@ void findAndReplaceAll(std::string & data, std::string toSearch, std::string rep
       pos =data.find(toSearch, pos + replaceStr.size());
     }
 }
+
+
+std::string tabbed(int tab_size, std::string const &val) {
+  std::string ret;
+  for (int i = (int) val.size(); i < tab_size; ++i ) {
+    ret << " ";
+  }
+
+  ret << val;
+  return ret;
+}
+
+
+std::string tabbed(int tab_size, int val) {
+  std::string tmp;
+  tmp << val;
+  return tabbed(tab_size, tmp);
+}

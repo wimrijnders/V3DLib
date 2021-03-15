@@ -23,6 +23,7 @@ public:
   void pretty(int numQPUs, const char *filename = nullptr, bool output_qpu_code = true);
   int numVars() const { return m_numVars; }
   bool has_errors() const { return !errors.empty(); }
+  std::string get_errors() const;
   void dump_compile_data(char const *filename) const;
   std::string compile_info() const;
 

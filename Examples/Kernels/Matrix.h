@@ -40,6 +40,7 @@ public:
   void load(Float::Ptr input);
   void save(Float::Ptr output);
   void dot_product(Float::Ptr rhs, Float &result);
+  void dft_dot_product(Int const &k, Complex &result);
   size_t size() const { return elements.size(); }
   Float &operator[] (int index) { return elements[index]; }
   Float const &operator[] (int index) const { return elements[index]; }
@@ -63,9 +64,7 @@ void square_matrix_mult_scalar(int N, float *dst, float *a, float *b);
 void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b);
 
 using FuncType = decltype(matrix_mult);
-
 FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method = DEFAULT);
-
 
 FuncType *matrix_mult_decorator(
   Float::Array2D &a,
@@ -102,9 +101,7 @@ private:
 
 
 void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b);
-
 using ComplexFuncType = decltype(complex_matrix_mult);
-
 
 ComplexFuncType *complex_matrix_mult_decorator(
   Complex::Array2D &a,
@@ -118,20 +115,18 @@ ComplexFuncType *complex_matrix_mult_decorator(
 // DFT
 ///////////////////////////////////////////////////////////////////////////////
 
-void dft_inline_kernel(Complex::Ptr dst, Complex::Ptr a);
-using DftFuncType = decltype(dft_inline_kernel);
+using DftFuncType = void (*)(Complex::Ptr dst, Complex::Ptr a);
 
-DftFuncType *dft_inline_decorator(
+DftFuncType dft_inline_decorator(
   Complex::Array2D &a,
   Complex::Array2D &result,
   MatrixReadMethod read_method = DO_PREFETCH
 );
 
 
-void dft_inline_float_kernel(Complex::Ptr dst, Float::Ptr a);
-using DftFuncType2 = decltype(dft_inline_float_kernel);
+using DftFuncType2 = void (*)(Complex::Ptr dst, Float::Ptr a);
 
-DftFuncType2 *dft_inline_decorator(
+DftFuncType2 dft_inline_decorator(
   Float::Array &a,
   Complex::Array2D &result,
   MatrixReadMethod read_method = DO_PREFETCH

@@ -124,16 +124,9 @@ public:
   std::string compile_info() const;
   void dump_compile_data(bool output_for_vc4, char const *filename);
   bool vc4_has_errors() const { return m_vc4_driver.has_errors(); }
-
-  bool v3d_has_errors() const { 
-#ifdef QPU_MODE
-    return m_v3d_driver.has_errors();
-#else
-    return true;  // Absence of v3d regarded as error here
-#endif
-  }
-
+  bool v3d_has_errors() const;
   bool has_errors() const { return vc4_has_errors() || v3d_has_errors(); }
+  std::string get_errors() const;
 
 protected:
   int numQPUs = 1;                 // Number of QPUs to run on
@@ -159,6 +152,21 @@ private:
  *
  *    The kernel constructor takes a function with parameters of QPU
  *    types 'ts'.  It applies the function to constuct an AST.
+ *
+ * 2. Another way to apply the arguments.
+ *
+ *    Following allows for custom handling in mkArg.
+ *    A consequence is that uniforms are copied to new variables in the source lang generation.
+ *    This happens at line 21 in assign.h:
+ *
+ *            f(std::get<N>(std::forward<Tuple>(t))...);
+ *
+ *    It's not much of an issue, just ugly.
+ *    No need for calling using `apply()` right now, this is for reference.
+ * 
+ *      // Construct the AST for vc4
+ *      auto args = std::make_tuple(mkArg<ts>()...);
+ *      apply(f, args);
  */
 template <typename... ts> struct Kernel : public KernelBase {
   using KernelFunction = void (*)(ts... params);
@@ -176,23 +184,7 @@ public:
   Kernel(KernelFunction f, CompileFor compile_for) {
     if (compile_for & VC4) {
       m_vc4_driver.compile_init();
-
-      f(mkArg<ts>()...);  // Construct the AST for vc4
-/*
-// Another way of doing it; this allows for custom handling in mkArg
-// A consequence is that uniforms are copied to new variables in the source lang generation.
-// This happens at line 21 in assign.h:
-//
-//            f(std::get<N>(std::forward<Tuple>(t))...);
-//
-// It's not much of an issue, just ugly.
-// No need for calling using `apply()` right now, left for reference
- 
-      // Construct the AST for vc4
-      auto args = std::make_tuple(mkArg<ts>()...);
-      apply(f, args);
-*/
-
+      f(mkArg<ts>()...);  // Construct the AST for vc4; see Note 2 in class header
       m_vc4_driver.compile();
     }
 

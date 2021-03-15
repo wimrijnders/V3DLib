@@ -171,6 +171,17 @@ void KernelDriver::compile() {
 }
 
 
+std::string KernelDriver::get_errors() const {
+  std::string ret;
+
+  for (auto const &err : errors) {
+    ret << "  " << err << "\n";
+  }
+
+  return ret;
+}
+
+
 /**
  * @return true if errors present, false otherwise
  */
@@ -182,11 +193,8 @@ bool KernelDriver::handle_errors() {
     return false;
   }
 
-  cout << "Errors encountered during compilation and/or encoding:\n";
-
-  for (auto const &err : errors) {
-    cout << "  " << err << "\n";
-  }
+  cout << "Errors encountered during compilation and/or encoding:\n"
+       << get_errors();
 
   cout << "\nNot running the kernel" << endl;
   return true;      

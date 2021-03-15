@@ -118,4 +118,34 @@ void KernelBase::dump_compile_data(bool output_for_vc4, char const *filename) {
   select_driver(output_for_vc4).dump_compile_data(filename);
 }
 
+
+bool KernelBase::v3d_has_errors() const { 
+#ifdef QPU_MODE
+  return m_v3d_driver.has_errors();
+#else
+  return true;  // Absence of v3d regarded as error here
+#endif
+}
+
+
+std::string KernelBase::get_errors() const {
+  std::string ret;
+
+  if (m_vc4_driver.has_errors()) {
+    ret << m_vc4_driver.get_errors();
+  }
+
+#ifdef QPU_MODE
+  if (m_v3d_driver.has_errors()) {
+    ret << m_v3d_driver.get_errors();
+  }
+#endif
+
+  if (ret.empty()) {
+    ret = "<No Errors>";
+  }
+
+  return ret;
+}
+
 }  // namespace V3DLib

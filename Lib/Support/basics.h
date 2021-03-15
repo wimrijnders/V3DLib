@@ -33,6 +33,8 @@ inline void fatal(std::string const &msg) {
 
 void findAndReplaceAll(std::string &data, std::string toSearch, std::string replaceStr);
 
+std::string tabbed(int tab_size, std::string const &val);
+std::string tabbed(int tab_size, int val);
 
 //
 // Convenience definitions

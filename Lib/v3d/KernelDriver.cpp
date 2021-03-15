@@ -242,12 +242,6 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
       if (srcA.is_reg()
       && (srcA.reg().tag == REG_A || srcA.reg().tag == REG_B)
       && (srcA == src_instr.ALU.srcB)
-/*
-      if ((src_instr.ALU.srcA.is_reg() && src_instr.ALU.srcB.is_reg())
-      && ((src_instr.ALU.srcA.reg().tag == REG_A && src_instr.ALU.srcA.reg().tag == src_instr.ALU.srcB.reg().tag)
-      || (src_instr.ALU.srcA.reg().tag == REG_B && src_instr.ALU.srcA.reg().tag == src_instr.ALU.srcB.reg().tag)) 
-      && (src_instr.ALU.srcA.reg().regId == src_instr.ALU.srcB.reg().regId)) {
-*/
       ) {
         ret = encodeSrcReg(srcA.reg());
       } else {
@@ -1150,11 +1144,17 @@ void KernelDriver::encode(int numQPUs) {
 
   errors << local_errors;
   local_errors.clear();
+
+  if (!has_errors()) {
+    allocate();
+  }
 }
 
 
 /**
  * Generate the opcodes for the currrent v3d instruction sequence
+ *
+ * The translation/removal of labels happens here somewhere 
  */
 std::vector<uint64_t> KernelDriver::to_opcodes() {
   assert(instructions.size() > 0);
@@ -1175,19 +1175,18 @@ void KernelDriver::compile_intern() {
   insertInitBlock(m_targetCode);
   add_init(m_targetCode);
   compile_postprocess(m_targetCode);
-
-  // The translation/removal of labels happens in `v3d::KernelDriver::to_opcodes()` 
 }
 
 
-void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
+void KernelDriver::allocate() {
   // Assumption: code in a kernel, once allocated, doesn't change
   if (qpuCodeMem.allocated()) {
     assert(instructions.size() > 0);
     assert(instructions.size() >= qpuCodeMem.size());  // Tentative check, not perfect
                                                        // actual opcode seq can be smaller due to removal labels
   } else {
-    std::vector<uint64_t> code = to_opcodes();
+    std::vector<uint64_t> code = to_opcodes();;
+    assert(!code.empty());
 
     // Allocate memory for the QPU code
     qpuCodeMem.alloc((uint32_t) code.size());
@@ -1195,6 +1194,12 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
 
     qpuCodeMemOffset = (int) (8*code.size());
   }
+}
+
+
+void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
+  allocate();  // In case not already done
+
 
   // Allocate memory for the parameters if not done already
   // TODO Not used in v3d, do we need this?

@@ -30,6 +30,7 @@ private:
   void compile_intern() override;
   void invoke_intern(int numQPUs, IntList &params) override;
 
+  void allocate();
   std::vector<uint64_t> to_opcodes();
   void emit_opcodes(FILE *f) override;
 };
