@@ -52,8 +52,14 @@ void copy_transposed(float *dst, float *src, int rows, int columns) {
 
 
 void compare_arrays(Float::Array2D &a, float *b) {
-  float precision = 2.5e-4f;  // Empirically determined - the bigger the matrices, the less precise
-                              // This value works for 640x640 matrices
+  float precision = 0;
+
+  // Values empirically determined - the bigger the matrices, the less precise
+  if (Platform::has_vc4()) {
+    precision = 1.0e-3f;
+  } else {
+    precision = 2.5e-4f;  // This value works for 640x640 matrices
+  }
 
   for (int r = 0; r < a.rows(); r++) {
     for (int c = 0; c < a.columns(); c++) {
@@ -68,12 +74,15 @@ void compare_arrays(Complex::Array2D &a, Complex::Array2D &b) {
   REQUIRE(a.rows() == b.rows());
   REQUIRE(a.columns() == b.columns());
 
+  float precision = 1.0e-5f;  // Likely only necessary for vc4
+
   for (int r = 0; r < a.rows(); ++r) {
     for (int c = 0; c < a.columns(); ++c) {
       if (c == 0) {
         INFO("(r, c): ( " << r << ", " << c << ")");
         INFO(a[r][c].dump() << " == " << b[r][c].dump());
-        REQUIRE(a[r][c] == b[r][c]);
+        REQUIRE(abs(a[r][c].magnitude() - b[r][c].magnitude()) < precision);
+        //REQUIRE(a[r][c] = b[r][c]);  // This likely good enough for v3d
       }
     }
   }
@@ -903,7 +912,7 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
     add_compile(label, timer1, Dim, 0);
 
     if (!k.has_errors()) compiled += 2;
-    std::cout << k.get_errors() << "\n";
+    //std::cout << k.get_errors() << "\n";
 
     if (!k.has_errors()) {
       k.load(&result_complex, &input);
@@ -927,7 +936,6 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
     add_compile(label, timer1, Dim, 0);
 
     if (!k.has_errors()) compiled += 4;
-    std::cout << k.get_errors() << "\n";
 
     if (!k.has_errors()) {
       k.load(&result_float, &input_float);
@@ -939,7 +947,7 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
         add_call(label, timer, Dim, num);
       }
 
-      output_dft(input, result_complex, "dft_inline_float");
+      output_dft(input, result_float, "dft_inline_float");
     }
   }
 
@@ -1102,7 +1110,7 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
   }
 
   SECTION("All DFT calculations should return the same") {
-    bool do_profiling = true;
+    bool do_profiling = false;
 
     if (!do_profiling) {
       // Following is enough for the unit test
@@ -1115,22 +1123,23 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
       std::cout << "DFT compare\n"
                 << "Platform,#QPU,DIM, Label           , Time\n";
 
+      std::vector<int> num_qpus;
+      int Step = 1;
+
       if (Platform::has_vc4()) {
-        int N = 1;
-        bool can_continue = true;
-        while (can_continue) {
-          can_continue = compare_dfts(16*N, {4, 8, 12}, true);
-          N += 1;
-          if (N > 4) break;
-        }
+        num_qpus = {1,4,8,12};
+        Step = 2;
       } else {
-        int N = 1;
-        bool can_continue = true;
-        while (can_continue) {
-          can_continue = compare_dfts(16*N, {1, 8}, true);
-          N += 4;
-          //if (N > 8) break;
-        }
+        num_qpus = {1,8};
+        Step = 4;
+      }
+
+      int N = 1;
+      bool can_continue = true;
+      while (can_continue) {
+        can_continue = compare_dfts(16*N, num_qpus, true);
+        N += Step;
+        if (N > 6) break;
       }
     }
   }

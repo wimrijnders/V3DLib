@@ -66,6 +66,20 @@ public:
   }
 
 
+  complex &operator-=(complex const &rhs) {
+    m_re -= rhs.m_re;
+    m_im -= rhs.m_im;
+    return *this;
+  }
+
+
+  complex operator-(complex const &rhs) const {
+    complex ret(*this);
+    ret -= rhs;
+    return ret;
+  }
+
+
   complex &operator*=(float scalar) {
     m_re *= scalar;
     m_im *= scalar;
