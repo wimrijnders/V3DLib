@@ -1126,6 +1126,8 @@ void KernelDriver::compile_init() {
 
 void KernelDriver::encode() {
   if (instructions.size() > 0) return;  // Don't bother if already encoded
+  if (has_errors()) return;              // Don't do this if compile errors occured
+  assert(!qpuCodeMem.allocated());
 
   // Encode target instructions
   _encode(m_targetCode, instructions);
@@ -1167,9 +1169,8 @@ void KernelDriver::compile_intern() {
   translate_stmt(m_targetCode, m_body);
   insertInitBlock(m_targetCode);
   add_init(m_targetCode);
-  compile_postprocess(m_targetCode);
 
-  encode();
+  compile_postprocess(m_targetCode);
 }
 
 
@@ -1198,8 +1199,7 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
     error("Num QPU's must be 1 or 8", true);
   }
 
-  breakpoint
-  allocate();  // In case not already done
+  assert(qpuCodeMem.allocated());
 
   // Allocate memory for the parameters if not done already
   // TODO Not used in v3d, do we need this?

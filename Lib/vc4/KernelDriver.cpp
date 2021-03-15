@@ -48,6 +48,8 @@ void KernelDriver::kernelFinish() {
  */
 void KernelDriver::encode() {
   if (code.size() > 0) return;  // Don't bother if already encoded
+  if (has_errors()) return;              // Don't do this if compile errors occured
+  assert(!qpuCodeMem.allocated());
 
   V3DLib::vc4::encode(m_targetCode, code);
 }
@@ -101,10 +103,6 @@ void KernelDriver::compile_intern() {
 
   // Translate branch-to-labels to relative branches
   removeLabels(m_targetCode);
-
-  if (!has_errors()) {
-    encode();
-  }
 }
 
 

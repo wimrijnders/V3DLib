@@ -12,6 +12,7 @@ namespace V3DLib {
 class KernelDriver {
 public:
   KernelDriver(BufferType in_buffer_type) : buffer_type(in_buffer_type) {}
+  KernelDriver(KernelDriver &&k) = default;
   virtual ~KernelDriver();
 
   BufferType const buffer_type;

@@ -18,6 +18,7 @@ class KernelDriver : public V3DLib::KernelDriver {
 
 public:
   KernelDriver();
+  KernelDriver(KernelDriver &&a) = default;
 
   void compile_init();
   void encode() override;

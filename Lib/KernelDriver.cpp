@@ -262,8 +262,6 @@ void KernelDriver::dump_compile_data(char const *filename) const {
 
 
 void KernelDriver::invoke(int numQPUs, IntList &params) {
-  Timer timer("invoke_intern", true);
-
   assert(params.size() != 0);
 
   if (handle_errors()) {
