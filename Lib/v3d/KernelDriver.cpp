@@ -28,7 +28,6 @@ uint8_t const NOP_ADDR    = 39;
 uint8_t const REGB_OFFSET = 32;
 uint8_t const NUM_REGS_RF = 64;  // Number of available registers in the register file
 
-uint8_t local_numQPUs = 0;
 std::vector<std::string> local_errors;
 
 
@@ -956,7 +955,7 @@ Instructions encodeInstr(V3DLib::Instr instr) {
  * have not participated in the liveness determination. This may lead to screwed up variable assignments.
  * **Keep this in mind!**
  */
-Instructions encode_init(uint8_t numQPUs) {
+Instructions encode_init() {
   Instructions ret;
   ret << instr::enable_tmu_read();
 
@@ -1068,7 +1067,7 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
 /**
  * Translate instructions from target to v3d
  */
-void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &instructions) {
+void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
   assert(checkUniformAtTop(instrs));
   bool prev_was_init_begin = false;
   bool prev_was_init_end    = false;
@@ -1082,7 +1081,7 @@ void _encode(uint8_t numQPUs, V3DLib::Instr::List const &instrs, Instructions &i
     if (instr.tag == INIT_BEGIN) {
       prev_was_init_begin = true;
     } else if (instr.tag == INIT_END) {
-      instructions << encode_init(numQPUs);
+      instructions << encode_init();
       prev_was_init_end = true;
     } else {
       Instructions ret;
@@ -1125,17 +1124,13 @@ void KernelDriver::compile_init() {
 }
 
 
-void KernelDriver::encode(int numQPUs) {
+void KernelDriver::encode() {
   if (instructions.size() > 0) return;  // Don't bother if already encoded
-
-  if (numQPUs != 1 && numQPUs != 8) {
-    errors << "Num QPU's must be 1 or 8";
-    return;
-  }
-  local_numQPUs = (uint8_t) numQPUs;
+  if (has_errors()) return;              // Don't do this if compile errors occured
+  assert(!qpuCodeMem.allocated());
 
   // Encode target instructions
-  _encode((uint8_t) numQPUs, m_targetCode, instructions);
+  _encode(m_targetCode, instructions);
   removeLabels(instructions);
 
   if (!local_errors.empty()) {
@@ -1174,18 +1169,20 @@ void KernelDriver::compile_intern() {
   translate_stmt(m_targetCode, m_body);
   insertInitBlock(m_targetCode);
   add_init(m_targetCode);
+
   compile_postprocess(m_targetCode);
 }
 
 
 void KernelDriver::allocate() {
+  assert(!instructions.empty());
+
   // Assumption: code in a kernel, once allocated, doesn't change
   if (qpuCodeMem.allocated()) {
-    assert(instructions.size() > 0);
     assert(instructions.size() >= qpuCodeMem.size());  // Tentative check, not perfect
                                                        // actual opcode seq can be smaller due to removal labels
   } else {
-    std::vector<uint64_t> code = to_opcodes();;
+    std::vector<uint64_t> code = to_opcodes();
     assert(!code.empty());
 
     // Allocate memory for the QPU code
@@ -1198,8 +1195,11 @@ void KernelDriver::allocate() {
 
 
 void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
-  allocate();  // In case not already done
+  if (numQPUs != 1 && numQPUs != 8) {
+    error("Num QPU's must be 1 or 8", true);
+  }
 
+  assert(qpuCodeMem.allocated());
 
   // Allocate memory for the parameters if not done already
   // TODO Not used in v3d, do we need this?

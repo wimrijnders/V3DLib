@@ -8,6 +8,7 @@
 #include "Source/Lang.h"       // initStmt
 #include "Target/Satisfy.h"
 #include "SourceTranslate.h"
+#include "Support/Timer.h"
 
 namespace V3DLib {
 
@@ -220,9 +221,6 @@ void KernelDriver::pretty(int numQPUs, char const *filename, bool output_qpu_cod
   print_target_code(f, m_targetCode);
 
   if (output_qpu_code) {
-    if (!has_errors()) {
-      encode(numQPUs);  // generate opcodes if not already done
-    }
     emit_opcodes(f);
   }
 
@@ -265,10 +263,6 @@ void KernelDriver::dump_compile_data(char const *filename) const {
 
 void KernelDriver::invoke(int numQPUs, IntList &params) {
   assert(params.size() != 0);
-
-  if (!has_errors()) {
-    encode(numQPUs);
-  }
 
   if (handle_errors()) {
     fatal("Errors during kernel compilation/encoding, can't continue.");

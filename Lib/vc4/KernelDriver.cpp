@@ -46,8 +46,10 @@ void KernelDriver::kernelFinish() {
 /**
  * Encode target instrs into array of 32-bit ints
  */
-void KernelDriver::encode(int numQPUs) {
+void KernelDriver::encode() {
   if (code.size() > 0) return;  // Don't bother if already encoded
+  if (has_errors()) return;              // Don't do this if compile errors occured
+  assert(!qpuCodeMem.allocated());
 
   V3DLib::vc4::encode(m_targetCode, code);
 }

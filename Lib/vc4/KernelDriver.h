@@ -16,7 +16,7 @@ public:
   KernelDriver(KernelDriver &&k) = default;
 
   void compile_init(bool set_qpu_uniforms = true, int numVars = 0);
-  void encode(int numQPUs) override;
+  void encode() override;
 
 private:
   Code qpuCodeMem;     // Memory region for QPU code and parameters

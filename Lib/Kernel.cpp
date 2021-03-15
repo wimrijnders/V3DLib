@@ -127,6 +127,14 @@ bool KernelBase::v3d_has_errors() const {
 #endif
 }
 
+void KernelBase::encode() {
+  m_vc4_driver.encode();
+
+#ifdef QPU_MODE
+  m_v3d_driver.encode();
+#endif
+}
+
 
 std::string KernelBase::get_errors() const {
   std::string ret;

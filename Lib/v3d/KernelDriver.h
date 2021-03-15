@@ -18,9 +18,10 @@ class KernelDriver : public V3DLib::KernelDriver {
 
 public:
   KernelDriver();
+  KernelDriver(KernelDriver &&a) = default;
 
   void compile_init();
-  void encode(int numQPUs) override;
+  void encode() override;
 
 private:
   Code          qpuCodeMem;

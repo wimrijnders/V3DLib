@@ -137,6 +137,8 @@ protected:
   v3d::KernelDriver m_v3d_driver;
 #endif
 
+  void encode();
+
 private:
   KernelDriver &select_driver(bool output_for_vc4);
 };
@@ -210,6 +212,9 @@ public:
     uniforms.clear();
     nothing(passParam<ts, us>(uniforms, args)...);
 
+    encode(); // This is the best place to do it, due to qpuCodeMem being destructed on
+              // std::move.
+
     return *this;
   }
 };
@@ -219,7 +224,7 @@ public:
 template <typename... ts>
 Kernel<ts...> compile(void (*f)(ts... params), CompileFor compile_for = BOTH) {
   Kernel<ts...> k(f, compile_for);
-  return std::move(k);
+  return std::move(k);  // Member qpuCodeMem doesn't survive the move, dtor gets called despite move ctor present
 }
 
 }  // namespace V3DLib

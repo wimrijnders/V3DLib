@@ -1129,7 +1129,7 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
         while (can_continue) {
           can_continue = compare_dfts(16*N, {1, 8}, true);
           N += 4;
-          if (N > 4) break;
+          //if (N > 8) break;
         }
       }
     }
