@@ -937,7 +937,7 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
     if (possible[j]) { chosenA = j; break; }
 
   if (check_limit && chosenA < 0) {
-    fatal("LiveSets::choose_register(): register allocation failed, insufficient capacity");
+    error("LiveSets::choose_register(): register allocation failed, insufficient capacity", true);
   }
 
   return chosenA;

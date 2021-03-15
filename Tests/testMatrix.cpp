@@ -903,6 +903,7 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
     add_compile(label, timer1, Dim, 0);
 
     if (!k.has_errors()) compiled += 2;
+    std::cout << k.get_errors() << "\n";
 
     if (!k.has_errors()) {
       k.load(&result_complex, &input);
@@ -926,6 +927,7 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
     add_compile(label, timer1, Dim, 0);
 
     if (!k.has_errors()) compiled += 4;
+    std::cout << k.get_errors() << "\n";
 
     if (!k.has_errors()) {
       k.load(&result_float, &input_float);
@@ -1114,10 +1116,15 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
                 << "Platform,#QPU,DIM, Label           , Time\n";
 
       if (Platform::has_vc4()) {
-        REQUIRE(false);  // TODO
+        int N = 1;
+        bool can_continue = true;
+        while (can_continue) {
+          can_continue = compare_dfts(16*N, {4, 8, 12}, true);
+          N += 1;
+          if (N > 4) break;
+        }
       } else {
         int N = 1;
-
         bool can_continue = true;
         while (can_continue) {
           can_continue = compare_dfts(16*N, {1, 8}, true);
