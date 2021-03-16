@@ -1033,9 +1033,9 @@ void Liveness::compute_liveness(Instr::List &instrs) {
     // Propagate live variables backwards
     for (int i = instrs.size() - 1; i >= 0; i--) {
 
-if (i <= 10 && !Platform::compiling_for_vc4()) {
-  breakpoint
-}
+//if (i <= 10 && !Platform::compiling_for_vc4()) {
+//  breakpoint
+//}
 
       // Compute 'use' and 'def' sets
       Instr instr = instrs[i];

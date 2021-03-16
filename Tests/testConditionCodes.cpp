@@ -205,7 +205,8 @@ void where_kernel(Int::Ptr result) {
   Where (a >  8)   r = 1; End; next(result, r);
   Where (a >= 8)   r = 1; End; next(result, r);
   Where (!(a > 3)) r = 1; End; next(result, r);
-  *result = r;
+  // NB hangs v3d:  *result = r;
+  // This likely because of previous next() call.
 }
 
 
@@ -422,11 +423,16 @@ TEST_CASE("Test Where blocks", "[where][cond]") {
   int const NUM_TESTS = 7;
 
   auto k = compile(where_kernel);
-  //k.pretty(true, "obj/test/where_blocks_vc4.txt", false);
 
   Int::Array result(NUM_TESTS*VEC_SIZE);
 
   k.load(&result);
+/*
+  k.pretty(true, "obj/test/where_blocks_vc4.txt");
+  k.pretty(false, "obj/test/where_blocks_v3d.txt");
+  k.dump_compile_data(true, "obj/test/where_blocks_compile_data_vc4.txt");
+  k.dump_compile_data(false, "obj/test/where_blocks_compile_data_v3d.txt");
+*/
 
   reset(result);
   k.emu();
