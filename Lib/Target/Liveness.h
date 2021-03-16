@@ -71,13 +71,24 @@ struct UseDefReg {
 struct UseDef {
   SmallSeq<RegId> use;
   SmallSeq<RegId> def;
+
+  std::string dump() const;
 };   
 
 void useDefReg(Instr instr, UseDefReg* out, bool set_use_where = false);
 
-// A live set contains the variables
-// that are live-in to an instruction.
-using LiveSet = SmallSeq<RegId>;
+/**
+ * A live set contains the variables that are live-in to an instruction.
+ */
+class LiveSet : public SmallSeq<RegId> {
+ using Parent = SmallSeq<RegId>;
+
+public:
+  void add_not_used(LiveSet const &def, UseDef const &use);
+  void add(SmallSeq<RegId> const &set);
+  void add(LiveSet const &set);
+  std::string dump() const;
+};
 
 
 /**
@@ -113,7 +124,8 @@ private:
   LiveSet &get(int index) { return m_set[index]; }
   void compute_liveness(Instr::List &instrs);
   void setSize(int size);
-  bool insert(int index, RegId item);
+  //bool insert(int index, RegId item);
+  bool insert(int index, LiveSet const &set);
 };
 
 

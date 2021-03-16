@@ -286,7 +286,6 @@ int introduceAccum(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars
   int subst_count = 0;
 
   //debug(allocated_vars.dump_use_ranges());
-
   // Picks up a lot usually, but range_size > 1 seldom results in something
   for (int range_size = 1; range_size <= 10; range_size++) {
     int count = peephole_0(range_size, instrs, allocated_vars);
@@ -740,6 +739,72 @@ std::string UseDefReg::dump() const {
 
 
 ///////////////////////////////////////////////////////////////////////////////
+// Class UseDef
+///////////////////////////////////////////////////////////////////////////////
+
+std::string UseDef::dump() const {
+  std::string ret;
+
+  ret << "(def: ";
+  for (int j = 0; j < def.size(); j++) {
+    ret << def[j];
+  }
+  ret << "; ";
+
+  ret << "use: ";
+  for (int j = 0; j < use.size(); j++) {
+    ret << use[j];
+  }
+  ret << ") ";
+
+  return ret;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class LiveSet
+///////////////////////////////////////////////////////////////////////////////
+
+void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
+  clear();
+  for (int j = 0; j < set.size(); j++) {
+    if (!use.def.member(set[j]))
+      Parent::insert(set[j]);
+  }
+}
+
+
+/**
+ * TODO: This might be made more general for Set.
+ *       Just adding a set to a set here.
+ */
+void LiveSet::add(SmallSeq<RegId> const &set) {
+  for (int j = 0; j < set.size(); j++)
+    Parent::insert(set[j]);
+}
+
+
+void LiveSet::add(LiveSet const &set) {
+  for (int j = 0; j < set.size(); j++)
+    Parent::insert(set[j]);
+}
+
+
+std::string LiveSet::dump() const {
+  std::string ret;
+
+  ret << "(";
+  for (int j = 0; j < size(); j++) {
+    ret << (*this)[j] << ", ";
+  }
+  ret << ")";
+
+  return ret;
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
 // Compute 'use' and 'def' sets
 ///////////////////////////////////////////////////////////////////////////////
 
@@ -966,29 +1031,25 @@ void Liveness::compute_liveness(Instr::List &instrs) {
     changed = false;
 
     // Propagate live variables backwards
-    for (int i = instrs.size()-1; i >= 0; i--) {
+    for (int i = instrs.size() - 1; i >= 0; i--) {
+
+if (i <= 10 && !Platform::compiling_for_vc4()) {
+  breakpoint
+}
+
       // Compute 'use' and 'def' sets
       Instr instr = instrs[i];
       useDef(instr, &useDefSets, true);
 
-      // Compute live-out variables
       computeLiveOut(i, liveOut);
 
       // Remove the 'def' set from the live-out set to give live-in set
-      liveIn.clear();
-      for (int j = 0; j < liveOut.size(); j++) {
-        if (!useDefSets.def.member(liveOut[j]))
-          liveIn.insert(liveOut[j]);
-      }
+      liveIn.add_not_used(liveOut, useDefSets);
 
-      // Add the 'use' set to the live-in set
-      for (int j = 0; j < useDefSets.use.size(); j++)
-        liveIn.insert(useDefSets.use[j]);
+      liveIn.add(useDefSets.use);
 
-      // Insert the live-in variables into the map
-      for (int j = 0; j < liveIn.size(); j++) {
-        bool inserted = insert(i, liveIn[j]);
-        changed = changed || inserted;
+      if (insert(i, liveIn)) {
+        changed = true;
       }
     }
   }
@@ -1043,9 +1104,7 @@ void Liveness::computeLiveOut(InstrId i, LiveSet &liveOut) {
 
   for (int j = 0; j < s.size(); j++) {
     LiveSet &set = get(s[j]);
-
-    for (int k = 0; k < set.size(); k++)
-      liveOut.insert(set[k]);
+    liveOut.add(set);
   }
 }
 
@@ -1055,8 +1114,24 @@ void Liveness::setSize(int size) {
 }
 
 
+/*
 bool Liveness::insert(int index, RegId item) {
   return m_set[index].insert(item);
+}
+*/
+
+
+bool Liveness::insert(int index, LiveSet const &set) {
+  bool changed = false;
+
+  for (int j = 0; j < set.size(); j++) {
+    if (m_set[index].insert(set[j])) {
+//    if(insert(index, set[j])) {
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 
@@ -1094,6 +1169,7 @@ std::string Liveness::dump() {
  */
 void introduceAccum(CFG &cfg, Instr::List &instrs, int numVars) {
   Liveness live(cfg, numVars);
+
   live.compute(instrs);
 
   compile_data.num_accs_introduced = introduceAccum(live, instrs, live.alloc());
