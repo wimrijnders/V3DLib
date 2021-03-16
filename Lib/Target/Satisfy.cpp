@@ -133,10 +133,8 @@ Instr::List insertMoves(Instr::List &instrs) {
 Instr::List insertNops(Instr::List &instrs) {
   Instr::List newInstrs(instrs.size() * 2);
 
-  // Use/def sets
   UseDefReg mySet, prevSet;
 
-  // Previous instruction
   Instr prev = Instr::nop();
 
   for (int i = 0; i < instrs.size(); i++) {
@@ -145,6 +143,7 @@ Instr::List insertNops(Instr::List &instrs) {
     // Insert NOPs to avoid data hazards
     useDefReg(prev, &prevSet);
     useDefReg(instr, &mySet);
+
     for (int j = 0; j < prevSet.def.size(); j++) {
       Reg defReg = prevSet.def[j];
       bool needNop = defReg.tag == REG_A || defReg.tag == REG_B;

@@ -2,16 +2,16 @@
 // Sequence data type
 //
 ///////////////////////////////////////////////////////////////////////////////
-#ifndef _V3DLIB_SEQ_H_
-#define _V3DLIB_SEQ_H_
+#ifndef _V3DLIB_COMMON_SEQ_H_
+#define _V3DLIB_COMMON_SEQ_H_
 #include <stdlib.h>
 #include <string>
 #include "Support/debug.h"
 
-
 namespace V3DLib {
 
-template <class T> class Seq {
+template <class T>
+class Seq {
 public:
   int const INITIAL_MAX_ELEMS = 1024;
 
@@ -44,9 +44,6 @@ public:
   }
 
 
-  T *data() { return elems; }
-
-
   /**
    * Here's one for the Hall of Shame, previous definition:
    *
@@ -65,17 +62,12 @@ public:
     numElems = new_size;
   }
 
-  bool empty() const { return size() == 0; }
-
   T &get(int index) {
     assertq(!empty(), "seq[]: can not access elements, sequence is empty", true);
     assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
     return elems[index];
   }
 
-  T &operator[](int index) {
-    return get(index);
-  }
 
   T operator[](int index) const {
     assertq(!empty(), "seq[]: can not access elements, sequence is empty", true);
@@ -83,9 +75,13 @@ public:
     return elems[index];
   }
 
-  T &front()            { return get(0); }
-  T &back()             { return get(size() - 1); }
-  T const &back() const { return get(size() - 1); }
+
+  bool empty() const       { return size() == 0; }
+  T &operator[](int index) { return get(index); }
+  T &front()               { return get(0); }
+  T &back()                { return get(size() - 1); }
+  T const &back() const    { return get(size() - 1); }
+  T *data()                { return elems; }
 
 
   /**
@@ -123,74 +119,16 @@ public:
     elems[numElems-1] = x;
   }
 
-  // Delete last element
-  void deleteLast() {
-    numElems--;
-  }
 
-  void push(T x) { append(x); }
+  void clear()      { numElems = 0; }
+  void deleteLast() { numElems--; }
+  void push(T x)    { append(x); }
+
 
   T pop() {
     assertq(numElems > 0, "Seq::pop(): sequence is empty, nothing to return");
     numElems--;
     return elems[numElems];
-  }
-
-  // Clear the sequence
-  void clear() { numElems = 0; }
-
-  /**
-   * Check if given value in sequence
-   */
-  bool member(T x) const {
-    for (int i = 0; i < numElems; i++) {
-      if (elems[i] == x) return true;
-    }
-    return false;
-  }
-
-
-  /**
-   * Insert element into sequence if not already present
-   */
-  bool insert(T x) {
-    bool alreadyPresent = member(x);
-    if (!alreadyPresent) append(x);
-    return !alreadyPresent;
-  }
-
-
-  /**
-   * Remove element from sequence used as set
-   *
-   * @return  number of times that element is removed.
-   *          Should be 0 or 1 for a set.
-   */
-  int remove_set(T x) {
-    int  count = 0;
-    bool found_it = true;
-
-    // TODO inefficient, optimize (don't care right now)
-    while (found_it) {
-      int index = -1;
-
-      // Search for first occurance
-      for (int i = 0; i < numElems; i++) {
-        if (elems[i] == x) {
-          index = i;
-          break;
-        }
-      }
-
-      if (index != -1) {
-        remove(index);
-        count++;
-      }
-
-      found_it = (index != -1);
-    }
-
-    return count;
   }
 
 
@@ -302,11 +240,13 @@ private:
 
 /**
  * A small sequence is a sequence with a small initial size
- */
+ * TODO see if this can be removed
+ * /
 template <class T> class SmallSeq : public Seq<T> {
 public:
   SmallSeq() : Seq<T>(8) {};
 };
+*/
 
 
 using IntList  = Seq<int32_t>;
@@ -314,4 +254,4 @@ using UIntList = Seq<uint32_t>;
 
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_SEQ_H_
+#endif  // _V3DLIB_COMMON_SEQ_H_

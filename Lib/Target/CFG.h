@@ -4,20 +4,16 @@
 // ============================================================================
 #ifndef _V3DLIB_CFG_H_
 #define _V3DLIB_CFG_H_
+#include "Common/Set.h"
 #include "Target/instr/Instr.h"
 
 namespace V3DLib {
 
-typedef int InstrId;  // Index of instruction in instruction list
+typedef int InstrId;                           // Index of instruction in instruction list
+using Succs = SmallSet<InstrId>;               // Set of successors.
+using CFG   = Set<Succs>;                      // Set of successors for each instruction.
 
-// A set of successors.
-using Succs =  SmallSeq<InstrId>;
-
-// A CFG is a set of successors for each instruction.
-using CFG =  Seq<Succs>;
-
-// Function to construct a CFG.
-void buildCFG(Instr::List &instrs, CFG &cfg);
+void buildCFG(Instr::List &instrs, CFG &cfg);  // Function to construct a CFG.
 
 }  // namespace V3DLib
 

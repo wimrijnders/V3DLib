@@ -45,7 +45,7 @@ void buildCFG(Instr::List &instrs, CFG &cfg) {
     bool end = instr.tag == END || i+1 == instrs.size();
 
     // Add successor
-    if (! (uncond || end))
+    if (!(uncond || end))
       cfg[i].insert(i+1);
 
     // Remember location of each label

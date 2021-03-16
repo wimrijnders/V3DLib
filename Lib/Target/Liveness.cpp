@@ -13,24 +13,6 @@ namespace {
 
 
 /**
- * Same as `useDefReg()`, except only yields ids of registers in register file A.
- */
-void useDef(Instr const &instr, UseDef* out, bool set_use_where = false) {
-  UseDefReg set;
-  useDefReg(instr, &set, set_use_where);
-  out->use.clear();
-  out->def.clear();
-  for (int i = 0; i < set.use.size(); i++) {
-    Reg r = set.use[i];
-    if (r.tag == REG_A) out->use.append(r.regId);
-  }
-  for (int i = 0; i < set.def.size(); i++) {
-    Reg r = set.def[i];
-    if (r.tag == REG_A) out->def.append(r.regId);
-  }
-}
-
-/**
  * TODO replace usage of this function with Instr::List::get_free_acc().
  *      Couldn't be bothered right now, nothing to gain here.
  */
@@ -181,11 +163,11 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     Instr prev  = instrs[i-1];
     Instr instr = instrs[i];
 
-    useDef(prev, &useDefPrev);        // Compute vars defined by prev
+    useDefPrev.set_used(prev);        // Compute vars defined by prev
     if (useDefPrev.def.empty()) continue;
     RegId def = useDefPrev.def[0];
 
-    useDef(instr, &useDefCurrent);    // Compute vars used by instr
+    useDefCurrent.set_used(instr);    // Compute vars used by instr
     live.computeLiveOut(i, liveOut);  // Compute vars live-out of instr
 
     // If 'instr' is not last usage of the found var, skip
@@ -234,7 +216,7 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
   for (int i = 1; i < instrs.size(); i++) {
     Instr instr = instrs[i];
 
-    useDef(instr, &useDefCurrent);    // Compute vars used by instr
+    useDefCurrent.set_used(instr);    // Compute vars used by instr
     if (useDefCurrent.def.empty()) continue;
     assert(useDefCurrent.def.size() == 1);
     RegId def = useDefCurrent.def[0];
@@ -367,7 +349,7 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
   };
 
   UseDef useDefSet;
-  useDef(instr, &useDefSet);  // Registers only usage REG_A
+  useDefSet.set_used(instr);  // Registers only usage REG_A
 
   for (int j = 0; j < useDefSet.def.size(); j++) {
     RegId r = useDefSet.def[j];
@@ -558,8 +540,7 @@ RegUsage::RegUsage(int numVars) : Parent(numVars) {
 void RegUsage::set_used(Instr::List &instrs) {
   for (int i = 0; i < instrs.size(); i++) {
     UseDef out;
-    useDef(instrs[i], &out);
-
+    out.set_used(instrs[i]);
 
     for (int j = 0; j < out.def.size(); j++) {
       auto &use = (*this)[out.def[j]].use;
@@ -682,7 +663,7 @@ std::string RegUsage::dump_use_ranges() const {
   Seq<int> ranges;
 
   for (int i = 0; i < (int) size(); ++i) {
-    ranges.insert((*this)[i].use_range());
+    ranges.append((*this)[i].use_range());
   }
 
 
@@ -761,6 +742,29 @@ std::string UseDef::dump() const {
 }
 
 
+/**
+ * Get variables used in instruction
+ *
+ * Same as `useDefReg()`, except only yields ids of registers in register file A.
+ */
+void UseDef::set_used(Instr const &instr, bool set_use_where) {
+  UseDefReg set;
+  useDefReg(instr, &set, set_use_where);
+  use.clear();
+  def.clear();
+
+  for (int i = 0; i < set.use.size(); i++) {
+    Reg r = set.use[i];
+    if (r.tag == REG_A) use.insert(r.regId);
+  }
+
+  for (int i = 0; i < set.def.size(); i++) {
+    Reg r = set.def[i];
+    if (r.tag == REG_A) def.insert(r.regId);
+  }
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Class LiveSet
 ///////////////////////////////////////////////////////////////////////////////
@@ -771,22 +775,6 @@ void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
     if (!use.def.member(set[j]))
       Parent::insert(set[j]);
   }
-}
-
-
-/**
- * TODO: This might be made more general for Set.
- *       Just adding a set to a set here.
- */
-void LiveSet::add(SmallSeq<RegId> const &set) {
-  for (int j = 0; j < set.size(); j++)
-    Parent::insert(set[j]);
-}
-
-
-void LiveSet::add(LiveSet const &set) {
-  for (int j = 0; j < set.size(); j++)
-    Parent::insert(set[j]);
 }
 
 
@@ -908,7 +896,7 @@ void LiveSets::init(Instr::List &instrs, Liveness &live) {
 
   for (int i = 0; i < instrs.size(); i++) {
     live.computeLiveOut(i, liveOut);
-    useDef(instrs[i], &useDefSet);
+    useDefSet.set_used(instrs[i]);
 
     for (int j = 0; j < liveOut.size(); j++) {
       RegId rx = liveOut[j];
@@ -1039,7 +1027,7 @@ void Liveness::compute_liveness(Instr::List &instrs) {
 
       // Compute 'use' and 'def' sets
       Instr instr = instrs[i];
-      useDef(instr, &useDefSets, true);
+      useDefSets.set_used(instr, true);
 
       computeLiveOut(i, liveOut);
 
@@ -1083,7 +1071,7 @@ void Liveness::compute(Instr::List &instrs) {
     assert(item.use.dst_first != -1);
     assert(item.live.first != -1);
     for (int j = item.live.first; j <= item.use.dst_first; ++j) {
-      int num = m_set[j].remove_set(i);
+      int num = m_set[j].remove(i);
       assert(num == 1);
     }
   }

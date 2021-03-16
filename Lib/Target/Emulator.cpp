@@ -102,7 +102,7 @@ struct QPUState {
   VPMStoreReq vpmStoreSetup;           // VPM store setup
   int readPitch = 0;                   // Read pitch
   int writeStride = 0;                 // Write stride
-  SmallSeq<Vec> loadBuffer;            // Load buffer for loads via TMU
+  Seq<Vec> loadBuffer = 8;             // Load buffer for loads via TMU, 8 is initial size
 
   SFU sfu;
 

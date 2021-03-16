@@ -62,16 +62,17 @@ private:
 //   * 'def' set: the variables modified by an instruction
 
 struct UseDefReg {
-  SmallSeq<Reg> use;
-  SmallSeq<Reg> def;
+  SmallSet<Reg> use;
+  SmallSet<Reg> def;
 
   std::string dump() const;
 };   
      
 struct UseDef {
-  SmallSeq<RegId> use;
-  SmallSeq<RegId> def;
+  SmallSet<RegId> use;
+  SmallSet<RegId> def;
 
+  void set_used(Instr const &instr, bool set_use_where = false);
   std::string dump() const;
 };   
 
@@ -80,13 +81,11 @@ void useDefReg(Instr instr, UseDefReg* out, bool set_use_where = false);
 /**
  * A live set contains the variables that are live-in to an instruction.
  */
-class LiveSet : public SmallSeq<RegId> {
- using Parent = SmallSeq<RegId>;
+class LiveSet : public SmallSet<RegId> {
+ using Parent = SmallSet<RegId>;
 
 public:
   void add_not_used(LiveSet const &def, UseDef const &use);
-  void add(SmallSeq<RegId> const &set);
-  void add(LiveSet const &set);
   std::string dump() const;
 };
 
