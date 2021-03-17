@@ -1,4 +1,3 @@
-#ifdef QPU_MODE
 #include "KernelDriver.h"
 #include <iostream>
 #include <memory>
@@ -1116,6 +1115,9 @@ using UniformArr = SharedArray<uint32_t>;
 
 
 void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList &params) {
+#ifndef QPU_MODE
+  assertq(false, "Cannot run v3d invoke(), QPU_MODE not enabled");
+#else
   assert(codeMem.size() != 0);
 
   UniformArr unif(params.size() + 3);
@@ -1141,7 +1143,9 @@ void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList &params) {
   Driver drv;
   drv.add_bo(getBufferObject());
   drv.execute(codeMem, &unif, numQPUs);
+#endif  // QPU_MODE
 }
+
 
 }  // anon namespace
 
@@ -1261,5 +1265,3 @@ void KernelDriver::emit_opcodes(FILE *f) {
 
 }  // namespace v3d
 }  // namespace V3DLib
-
-#endif  // QPU_MODE

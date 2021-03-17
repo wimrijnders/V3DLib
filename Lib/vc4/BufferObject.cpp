@@ -1,3 +1,5 @@
+#ifdef QPU_MODE
+
 #include "BufferObject.h"
 #include <cassert>
 #include <stdio.h>
@@ -78,3 +80,5 @@ BufferObject &getHeap() {
 
 }  // namespace vc4
 }  // namespace V3DLib
+
+#endif  // QPU_MODE

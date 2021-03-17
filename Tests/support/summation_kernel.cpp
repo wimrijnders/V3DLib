@@ -937,10 +937,13 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 // Adapted from: https://github.com/Idein/py-videocore6/blob/master/examples/summation.py
 //
 // This uses a single shared array for code and data.
-// It might be possible to use muliple arrays, but we're sticking to the original
+// It might be possible to use multiple arrays, but we're sticking to the original
 // example here.
 //
 void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift) {
+#ifndef QPU_MODE
+  assertq(false, "Cannot run run_summation_kernel(), QPU_MODE not enabled");
+#else
   using namespace V3DLib::v3d;
 
   //printf("bytecode size: %u\n", bytecode.size());
@@ -1033,5 +1036,6 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
   
   // Check if values supplied
   REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
+#endif  // QPU_MODE
 }
 

@@ -1,3 +1,5 @@
+#ifdef QPU_MODE
+
 #include "BufferObject.h"
 #include <memory>
 #include "Support/basics.h"
@@ -147,3 +149,5 @@ uint32_t &BufferObject::operator[] (int i) {
 
 }  // namespace v3d
 }  // namespace V3DLib
+
+#endif  // QPU_MODE
