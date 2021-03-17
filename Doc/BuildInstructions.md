@@ -216,6 +216,11 @@ To run with a 64-bit kernel, programs using `v3d` will need to be compiled as 64
 
 There are still some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
 will run *sometimes* on `v3d`, and otherwise hang.
+
+**NOTE 20210317:** `Mandelbrot` on 32-bit `v3d` is running fine now.
+                   There are still issues on 64-bit, where 'Timer expired' can still occur. Once that happens,
+                   the message pops up of every usage.
+
 This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
 There are also some unit tests which have the same problem, these are disabled when running on `VideoCore VI`.
 
