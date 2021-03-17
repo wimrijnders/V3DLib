@@ -91,7 +91,7 @@ void check_unhandled_registers(Reg reg, bool do_src_regs) {
   if (do_src_regs) {
     switch (reg.tag) {
       case REG_B:
-        debug_break("encodeSrcReg(): Not expecting REG_B any more, examine");
+        debug_break("check_unhandled_registers(): Not expecting REG_B any more, examine");
       break;
 
     case SPECIAL:
@@ -103,12 +103,10 @@ void check_unhandled_registers(Reg reg, bool do_src_regs) {
         case SPECIAL_UNIFORM:
         case SPECIAL_ELEM_NUM:
         case SPECIAL_QPU_NUM:
-          assertq(false, "encodeSrcReg(): Not expecting this SPECIAL regId, should be handled before call()", true);
+          assertq(false, "check_unhandled_registers(): Not expecting this SPECIAL regId, should be handled before call()", true);
         break;
 
-        default:
-          breakpoint // TODO examine what happens on fall-through
-        break;
+        default: break;
       }
       break;
 
@@ -129,15 +127,13 @@ void check_unhandled_registers(Reg reg, bool do_src_regs) {
       }
       break;
 
-    default:
-      break;
+    default: break;
   }
 }
 
 
 /**
  *
- * TODO this does not appear to be called any more, or at least not used fully
  */
 std::unique_ptr<Location> encodeSrcReg(Reg reg) {
   check_unhandled_registers(reg, true);
@@ -417,7 +413,6 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
   auto dst_reg = encodeDestReg(src_instr);
 
   if (dst_reg && reg_a.is_reg() && reg_b.is_reg()) {
-    // TODO this special index handling is probably obsolete, verify and remove
     checkSpecialIndex(src_instr);
     if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
       ret << tidx(*dst_reg);
@@ -1204,6 +1199,7 @@ void KernelDriver::compile_intern() {
   add_init(m_targetCode);
 
   compile_postprocess(m_targetCode);
+  encode();
 }
 
 

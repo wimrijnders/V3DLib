@@ -188,14 +188,12 @@ bool KernelDriver::handle_errors() {
   using std::cout;
   using std::endl;
 
-  if (errors.empty()) {
-    return false;
-  }
+  if (errors.empty()) return false;
 
   cout << "Errors encountered during compilation and/or encoding:\n"
-       << get_errors();
+       << get_errors()
+       << "\nNot running the kernel" << endl;
 
-  cout << "\nNot running the kernel" << endl;
   return true;      
 }
 
@@ -268,14 +266,6 @@ void KernelDriver::invoke(int numQPUs, IntList &params) {
 
    // Invoke kernel on QPUs
   invoke_intern(numQPUs, params);
-}
-
-
-/**
- * Only here for autotest
- */
-void KernelDriver::add_stmt(Stmt::Ptr stmt) {
-  m_stmtStack << stmt;
 }
 
 
