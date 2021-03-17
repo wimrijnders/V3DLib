@@ -1,5 +1,6 @@
-#include "Kernel.h"
+#include "BaseKernel.h"
 #include "Support/basics.h"
+#include "Source/Interpreter.h"
 #include "Target/Emulator.h"
 #include "Target/CFG.h"
 #include "Target/Liveness.h"
@@ -10,23 +11,23 @@ namespace V3DLib {
 using ::operator<<;  // C++ weirdness
 
 // ============================================================================
-// Class KernelBase
+// Class BaseKernel
 // ============================================================================
 
-KernelDriver &KernelBase::select_driver(bool output_for_vc4) {
+KernelDriver &BaseKernel::select_driver(bool output_for_vc4) {
   if (output_for_vc4) {
     return m_vc4_driver;
   } else {
 #ifdef QPU_MODE
     return m_v3d_driver;
 #else
-    warning("KernelBase::pretty(): v3d code not generated for this platform.");
+    warning("BaseKernel::pretty(): v3d code not generated for this platform.");
 #endif
   }
 }
 
 
-void KernelBase::pretty(bool output_for_vc4, const char *filename, bool output_qpu_code) {
+void BaseKernel::pretty(bool output_for_vc4, const char *filename, bool output_qpu_code) {
   select_driver(output_for_vc4).pretty(numQPUs, filename, output_qpu_code);
 }
 
@@ -36,7 +37,7 @@ void KernelBase::pretty(bool output_for_vc4, const char *filename, bool output_q
  *
  * The emulator runs vc4 code.
  */
-void KernelBase::emu() {
+void BaseKernel::emu() {
   if (m_vc4_driver.has_errors()) {
     warning("Not running on emulator, there were errors during compile.");
     return;
@@ -52,7 +53,7 @@ void KernelBase::emu() {
  *
  * The interpreter parses the CFG ('source code') directly.
  */
-void KernelBase::interpret() {
+void BaseKernel::interpret() {
   if (m_vc4_driver.has_errors()) {
     warning("Not running interpreter, there were errors during compile.");
     return;
@@ -67,7 +68,7 @@ void KernelBase::interpret() {
 /**
  * Invoke kernel on physical QPU hardware
  */
-void KernelBase::qpu() {
+void BaseKernel::qpu() {
   if (Platform::has_vc4()) {
     m_vc4_driver.invoke(numQPUs, uniforms);
   } else {
@@ -80,7 +81,7 @@ void KernelBase::qpu() {
 /**
  * Invoke the kernel
  */
-void KernelBase::call() {
+void BaseKernel::call() {
 #ifdef EMULATION_MODE
   emu();
 #else
@@ -96,7 +97,7 @@ void KernelBase::call() {
 };
 
 
-std::string KernelBase::compile_info() const {
+std::string BaseKernel::compile_info() const {
   std::string ret;
 
   ret << "\n"
@@ -114,12 +115,12 @@ std::string KernelBase::compile_info() const {
 }
 
 
-void KernelBase::dump_compile_data(bool output_for_vc4, char const *filename) {
+void BaseKernel::dump_compile_data(bool output_for_vc4, char const *filename) {
   select_driver(output_for_vc4).dump_compile_data(filename);
 }
 
 
-bool KernelBase::v3d_has_errors() const { 
+bool BaseKernel::v3d_has_errors() const { 
 #ifdef QPU_MODE
   return m_v3d_driver.has_errors();
 #else
@@ -127,7 +128,7 @@ bool KernelBase::v3d_has_errors() const {
 #endif
 }
 
-void KernelBase::encode() {
+void BaseKernel::encode() {
   m_vc4_driver.encode();
 
 #ifdef QPU_MODE
@@ -136,7 +137,7 @@ void KernelBase::encode() {
 }
 
 
-std::string KernelBase::get_errors() const {
+std::string BaseKernel::get_errors() const {
   std::string ret;
 
   if (m_vc4_driver.has_errors()) {

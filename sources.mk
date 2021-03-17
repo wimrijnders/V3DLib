@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Wed 17 Mar 2021 02:26:21 AM CET
+# Generated on: Wed 17 Mar 2021 02:38:45 AM CET
 #
 ###############################################################################
 
@@ -33,8 +33,8 @@ OBJ := \
   Kernels/Rot3D.o  \
   Kernels/Matrix.o  \
   SourceTranslate.o  \
-  Kernel.o  \
   KernelDriver.o  \
+  BaseKernel.o  \
   Source/gather.o  \
   Source/StmtStack.o  \
   Source/Expr.o  \

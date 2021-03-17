@@ -1,5 +1,5 @@
-#ifndef _LIB_KERNELS_MATRIX_H_
-#define _LIB_KERNELS_MATRIX_H_
+#ifndef _V3DLIB_KERNELS_MATRIX_H_
+#define _V3DLIB_KERNELS_MATRIX_H_
 #include "V3DLib.h"
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -135,4 +135,4 @@ DftFuncType2 dft_inline_decorator(
 
 }  // namespace kernels
 
-#endif  // _LIB_KERNELS_MATRIX_H_
+#endif  // _V3DLIB_KERNELS_MATRIX_H_

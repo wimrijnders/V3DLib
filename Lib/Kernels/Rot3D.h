@@ -1,5 +1,5 @@
-#ifndef _LIB_KERNELS_ROT3D_H_
-#define _LIB_KERNELS_ROT3D_H_
+#ifndef _V3DLIB_KERNELS_ROT3D_H_
+#define _V3DLIB_KERNELS_ROT3D_H_
 #include "V3DLib.h"
 
 namespace kernels {
@@ -19,4 +19,4 @@ FuncType *rot3D_3_decorator(int dimension, int in_numQPUs = 1);
 
 }  // namespace kernels
 
-#endif  // _LIB_KERNELS_ROT3D_H_
+#endif  // _V3DLIB_KERNELS_ROT3D_H_

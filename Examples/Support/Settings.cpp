@@ -300,7 +300,7 @@ void Settings::stopPerfCounters() {
 }
 
 
-void Settings::process(KernelBase &k) {
+void Settings::process(BaseKernel &k) {
   startPerfCounters();
 
   if (!compile_only) {
