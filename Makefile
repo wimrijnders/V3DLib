@@ -107,7 +107,6 @@ endif
 	LIBS += -L /opt/vc/lib -l bcm_host
 else
   OBJ_DIR := $(OBJ_DIR)/emu
-  CXX_FLAGS += -DEMULATION_MODE
 endif
 
 # Debug mode

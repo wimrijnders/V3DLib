@@ -1,8 +1,10 @@
 #ifndef _V3D_V3D_h
 #define _V3D_V3D_h
+
+#ifdef QPU_MODE
+
 #include <stdint.h>
 #include <vector>
-//#include "Common/SharedArray.h"
 
 struct WorkGroup {
   uint32_t wg_x = 0;
@@ -33,5 +35,7 @@ bool v3d_alloc(uint32_t size, uint32_t &handle, uint32_t &phyaddr, void **usradd
 bool v3d_unmap(uint32_t size, uint32_t handle, void *usraddr);
 bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns);
 int v3d_submit_csd(st_v3d_submit_csd &st);
+
+#endif  // QPU_MODE
 
 #endif  // _V3D_V3D_h

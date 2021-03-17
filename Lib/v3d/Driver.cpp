@@ -1,3 +1,5 @@
+#ifdef QPU_MODE
+
 // 
 // Converted from: https://github.com/Idein/py-videocore6/blob/ec275f668f8aa4c89839fb8095b74f402260b1a6/videocore6/driver.py
 //
@@ -106,3 +108,5 @@ bool Driver::execute(Code &code, UniformArr *uniforms, uint32_t thread) {
 
 }  // v3d
 }  // V3DLib
+
+#endif  // QPU_MODE

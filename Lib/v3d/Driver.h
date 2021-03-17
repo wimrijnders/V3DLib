@@ -1,5 +1,8 @@
 #ifndef _VC6_DRIVER_H_
 #define _VC6_DRIVER_H_
+
+#ifdef QPU_MODE
+
 #include "Common/SharedArray.h"
 #include "v3d.h"
 
@@ -29,4 +32,6 @@ private:
 }  // v3d
 }  // V3DLib
 
-#endif // _VC6_DRIVER_H_
+#endif  // QPU_MODE
+
+#endif  // _VC6_DRIVER_H_

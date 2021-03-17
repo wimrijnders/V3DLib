@@ -1,6 +1,9 @@
 /**
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
+
+#ifdef QPU_MODE
+
 #include "v3d.h"
 #include <cassert>
 #include <sys/ioctl.h>
@@ -23,22 +26,26 @@ typedef struct {
     uint32_t offset = 0;
 } drm_v3d_create_bo;
 
+
 typedef struct {
     uint32_t handle = 0;
     uint32_t flags  = 0;
     uint64_t offset = 0;
 } drm_v3d_mmap_bo;
 
+
 typedef struct {
     uint32_t  handle;
     uint32_t  pad;
 } gem_close;
+
 
 struct st_v3d_wait_bo {
   uint32_t handle;
   uint32_t pad;
   uint64_t timeout_ns;
 };
+
 
 // Derived from linux/include/uapi/drm/drm.h
 #define DRM_IOCTL_BASE   'd'
@@ -372,3 +379,5 @@ bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns) {
 
   return ret;
 }
+
+#endif  // QPU_MODE

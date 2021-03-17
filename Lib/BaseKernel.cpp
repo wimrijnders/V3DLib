@@ -119,9 +119,6 @@ void BaseKernel::qpu() {
  * Invoke the kernel
  */
 void BaseKernel::call() {
-#ifdef EMULATION_MODE
-  emu();
-#else
 #ifdef QPU_MODE
   if (Platform::use_main_memory()) {
     warning("Main memory selected in QPU mode, running on emulator instead of QPU.");
@@ -129,7 +126,8 @@ void BaseKernel::call() {
   } else {
     qpu();
   }
-#endif
+#else
+  emu();
 #endif
 };
 

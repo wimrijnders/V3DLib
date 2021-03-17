@@ -52,14 +52,10 @@ std::string stem(const char *input) {
 
 const char *blurb =
   "Example Program\n"      // TODO Perhaps fill this in dynamically
-#ifdef EMULATION_MODE
-  "\nRunning in emulation mode.\n"
-#ifdef QPU_MODE
-  "\nRunning in QPU mode AND  emulation mode! This will likely lead to segmentation faults.\n"
-#endif
-#endif
 #ifdef QPU_MODE
   "\nRunning in QPU mode.\n"
+#else
+  "\nRunning in emulation mode.\n"
 #endif
 ;
 
