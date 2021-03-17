@@ -1,6 +1,6 @@
 #include "catch.hpp"
 #include <math.h>
-#include "../Examples/Kernels/Rot3D.h"
+#include "Kernels/Rot3D.h"
 #include "LibSettings.h"
 
 using namespace kernels;

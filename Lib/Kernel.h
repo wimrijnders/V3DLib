@@ -39,7 +39,7 @@ template <typename T, typename t> inline bool passParam(IntList &uniforms, t x) 
  * Grumbl still need special override for 2D shared array.
  * Sort of patched this, will sort it out another time.
  *
- * You can not possibly have any idea how long it took me * to implement and use this correctly.
+ * You can not possibly have any idea how long it took me to implement and use this correctly.
  * Even so, I'm probably doing it wrong.
  */
 template <>

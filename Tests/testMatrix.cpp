@@ -13,7 +13,7 @@
 #include "support/support.h"
 #include "Support/Timer.h"
 #include "Support/pgm.h"
-#include "../Examples/Kernels/Matrix.h"
+#include "Kernels/Matrix.h"
 
 namespace {
 using namespace V3DLib;

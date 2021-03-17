@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Mon 08 Mar 2021 04:10:56 AM CET
+# Generated on: Wed 17 Mar 2021 02:26:21 AM CET
 #
 ###############################################################################
 
@@ -30,6 +30,8 @@ OBJ := \
   Support/pgm.o  \
   Support/Timer.o  \
   Support/HeapManager.o  \
+  Kernels/Rot3D.o  \
+  Kernels/Matrix.o  \
   SourceTranslate.o  \
   Kernel.o  \
   KernelDriver.o  \
@@ -102,10 +104,7 @@ EXAMPLES := \
 
 # support files for examples
 EXAMPLES_EXTRA := \
-  Examples/Kernels/Rot3D.o  \
-  Examples/Kernels/Matrix.o  \
   Examples/Support/Settings.o  \
-  
 # support files for tests
 TESTS_FILES := \
   Tests/testBO.o  \

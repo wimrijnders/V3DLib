@@ -1,6 +1,6 @@
-#ifndef _EXAMPLES_KERNELS_MATRIX_H_
-#define _EXAMPLES_KERNELS_MATRIX_H_
-#include <V3DLib.h>
+#ifndef _LIB_KERNELS_MATRIX_H_
+#define _LIB_KERNELS_MATRIX_H_
+#include "V3DLib.h"
 
 ////////////////////////////////////////////////////////////////////////////////
 // Utility functions
@@ -135,4 +135,4 @@ DftFuncType2 dft_inline_decorator(
 
 }  // namespace kernels
 
-#endif  // _EXAMPLES_KERNELS_MATRIX_H_
+#endif  // _LIB_KERNELS_MATRIX_H_
