@@ -15,21 +15,26 @@ public:
   KernelDriver(KernelDriver &&k) = default;
   virtual ~KernelDriver();
 
-  BufferType const buffer_type;
-
-  virtual void encode() = 0;
-
+  void init_compile();
   void compile();
+  virtual void encode() = 0;
   void invoke(int numQPUs, IntList &params);
-  void pretty(int numQPUs, const char *filename = nullptr, bool output_qpu_code = true);
-  int numVars() const { return m_numVars; }
   bool has_errors() const { return !errors.empty(); }
   std::string get_errors() const;
-  void dump_compile_data(char const *filename) const;
-  std::string compile_info() const;
-
-  Stmt::Ptr sourceCode() { return m_body; }  //<< return AST representing the source code
+  int numVars() const { return m_numVars; }
   Instr::List &targetCode() { return m_targetCode; }
+  Stmt::Ptr sourceCode() { return m_body; }  //<< return AST representing the source code
+
+  void pretty(char const *filename = nullptr, bool output_qpu_code = true);
+  std::string compile_info() const;
+  void dump_compile_data(char const *filename) const;
+
+///////////////////////////////////////
+
+private:
+  BufferType const buffer_type;
+
+
 
 protected:
   const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
@@ -40,7 +45,6 @@ protected:
   int qpuCodeMemOffset = 0;
   std::vector<std::string> errors;
 
-  void init_compile(bool set_qpu_uniforms = true, int numVars = 0);
   virtual void emit_opcodes(FILE *f) {} 
   void obtain_ast();
   void add_stmt(Stmt::Ptr stmt);

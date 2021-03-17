@@ -10,25 +10,62 @@ namespace V3DLib {
 
 using ::operator<<;  // C++ weirdness
 
-// ============================================================================
-// Class BaseKernel
-// ============================================================================
+BaseKernel::BaseKernel() {}
 
-KernelDriver &BaseKernel::select_driver(bool output_for_vc4) {
-  if (output_for_vc4) {
-    return m_vc4_driver;
+bool BaseKernel::has_vc4() const { return m_vc4_driver.get() != nullptr; }
+bool BaseKernel::has_v3d() const { return m_v3d_driver.get() != nullptr; }
+
+
+V3DLib::KernelDriver &BaseKernel::vc4() {
+  assertq(has_vc4(), "vc4 driver not enabled for this kernel");
+  return *m_vc4_driver;
+}
+
+
+V3DLib::KernelDriver &BaseKernel::v3d() {
+  assertq(has_v3d(), "v3d driver not enabled for this kernel");
+  return *m_v3d_driver;
+}
+
+
+V3DLib::KernelDriver const &BaseKernel::vc4() const {
+  assertq(has_vc4(), "vc4 driver not enabled for this kernel");
+  return *m_vc4_driver;
+}
+
+
+V3DLib::KernelDriver const &BaseKernel::v3d() const {
+  assertq(has_v3d(), "v3d driver not enabled for this kernel");
+  return *m_v3d_driver;
+}
+
+
+void BaseKernel::compile_init(bool do_vc4) {
+  if (do_vc4) {
+    assert(!has_vc4());
+    m_vc4_driver.reset(new vc4::KernelDriver);
+    vc4().init_compile();
+    Platform::compiling_for_vc4(true);
   } else {
-#ifdef QPU_MODE
-    return m_v3d_driver;
-#else
-    warning("BaseKernel::pretty(): v3d code not generated for this platform.");
-#endif
+    assert(!has_v3d());
+    m_v3d_driver.reset(new v3d::KernelDriver);
+    v3d().init_compile();
+    Platform::compiling_for_vc4(false);
   }
 }
 
 
+bool BaseKernel::has_errors() const {
+ return (has_vc4() && vc4().has_errors()) || (has_v3d() && v3d().has_errors());
+}
+
+
 void BaseKernel::pretty(bool output_for_vc4, const char *filename, bool output_qpu_code) {
-  select_driver(output_for_vc4).pretty(numQPUs, filename, output_qpu_code);
+  if (output_for_vc4) {
+    vc4().pretty(filename, output_qpu_code);
+  } else {
+    v3d().pretty(filename, output_qpu_code);
+  }
 }
 
 
@@ -38,13 +75,13 @@ void BaseKernel::pretty(bool output_for_vc4, const char *filename, bool output_q
  * The emulator runs vc4 code.
  */
 void BaseKernel::emu() {
-  if (m_vc4_driver.has_errors()) {
+  if (vc4().has_errors()) {
     warning("Not running on emulator, there were errors during compile.");
     return;
   }
 
   assert(uniforms.size() != 0);
-  emulate(numQPUs, m_vc4_driver.targetCode(), m_vc4_driver.numVars(), uniforms, getBufferObject());
+  emulate(numQPUs, vc4().targetCode(), vc4().numVars(), uniforms, getBufferObject());
 }
 
 
@@ -54,13 +91,13 @@ void BaseKernel::emu() {
  * The interpreter parses the CFG ('source code') directly.
  */
 void BaseKernel::interpret() {
-  if (m_vc4_driver.has_errors()) {
+  if (vc4().has_errors()) {
     warning("Not running interpreter, there were errors during compile.");
     return;
   }
 
   assert(uniforms.size() != 0);
-  interpreter(numQPUs, m_vc4_driver.sourceCode(), m_vc4_driver.numVars(), uniforms, getBufferObject());
+  interpreter(numQPUs, vc4().sourceCode(), vc4().numVars(), uniforms, getBufferObject());
 }
 
 
@@ -70,9 +107,9 @@ void BaseKernel::interpret() {
  */
 void BaseKernel::qpu() {
   if (Platform::has_vc4()) {
-    m_vc4_driver.invoke(numQPUs, uniforms);
+    vc4().invoke(numQPUs, uniforms);
   } else {
-    m_v3d_driver.invoke(numQPUs, uniforms);
+    v3d().invoke(numQPUs, uniforms);
   }
 }
 #endif  // QPU_MODE
@@ -102,53 +139,51 @@ std::string BaseKernel::compile_info() const {
 
   ret << "\n"
       << "Compile info\n"
-      << "============\n"
-      << "vc4:\n"
-      << m_vc4_driver.compile_info() << "\n\n";
+      << "============\n";
 
-#ifdef QPU_MODE
-  ret << "v3d:\n"
-      << m_v3d_driver.compile_info() << "\n\n";
-#endif  // QPU_MODE
+  if (!has_vc4() && !has_v3d()) {
+    ret << "No kernel drivers enabled\n\n";
+  } else {
+    if (has_vc4()) {
+      ret << "vc4:\n"
+          << vc4().compile_info() << "\n\n";
+    }
+
+    if (has_v3d()) {
+      ret << "vc4:\n"
+          << v3d().compile_info() << "\n\n";
+    }
+  }
 
   return ret;
 }
 
 
 void BaseKernel::dump_compile_data(bool output_for_vc4, char const *filename) {
-  select_driver(output_for_vc4).dump_compile_data(filename);
+  if (output_for_vc4) {
+    vc4().dump_compile_data(filename);
+  } else {
+    v3d().dump_compile_data(filename);
+  }
 }
 
-
-bool BaseKernel::v3d_has_errors() const { 
-#ifdef QPU_MODE
-  return m_v3d_driver.has_errors();
-#else
-  return true;  // Absence of v3d regarded as error here
-#endif
-}
 
 void BaseKernel::encode() {
-  m_vc4_driver.encode();
-
-#ifdef QPU_MODE
-  m_v3d_driver.encode();
-#endif
+  if (has_vc4()) vc4().encode();
+  if (has_v3d()) v3d().encode();
 }
 
 
 std::string BaseKernel::get_errors() const {
   std::string ret;
 
-  if (m_vc4_driver.has_errors()) {
-    ret << m_vc4_driver.get_errors();
+  if (has_vc4() && vc4().has_errors()) {
+    ret << vc4().get_errors();
   }
 
-#ifdef QPU_MODE
-  if (m_v3d_driver.has_errors()) {
-    ret << m_v3d_driver.get_errors();
+  if (has_v3d() && v3d().has_errors()) {
+    ret << v3d().get_errors();
   }
-#endif
 
   if (ret.empty()) {
     ret = "<No Errors>";

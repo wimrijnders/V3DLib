@@ -1118,12 +1118,6 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
 KernelDriver::KernelDriver() : V3DLib::KernelDriver(V3dBuffer) {}
 
 
-void KernelDriver::compile_init() {
-  Parent::init_compile();
-  Platform::compiling_for_vc4(false);
-}
-
-
 void KernelDriver::encode() {
   if (instructions.size() > 0) return;  // Don't bother if already encoded
   if (has_errors()) return;              // Don't do this if compile errors occured

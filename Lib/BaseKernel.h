@@ -1,5 +1,6 @@
 #ifndef _V3DLIB_BASEKERNEL_H_
 #define _V3DLIB_BASEKERNEL_H_
+#include <memory>
 #include "vc4/KernelDriver.h"
 #include "v3d/KernelDriver.h"
 
@@ -53,12 +54,20 @@ namespace V3DLib {
  */
 class BaseKernel {
 public:
-  BaseKernel() {}
+  BaseKernel();
   BaseKernel(BaseKernel &&k) = default;
 
+  bool has_vc4() const;
+  bool has_v3d() const;
+  V3DLib::KernelDriver &vc4();
+  V3DLib::KernelDriver &v3d();
+  V3DLib::KernelDriver const &vc4() const;
+  V3DLib::KernelDriver const &v3d() const;
+
+  void compile_init(bool do_vc4);
   void pretty(bool output_for_vc4, const char *filename = nullptr, bool output_qpu_code = true);
 
-  BaseKernel &setNumQPUs(int n)       { numQPUs = n;           return *this; }
+  BaseKernel &setNumQPUs(int n) { numQPUs = n; return *this; }
 
   void emu();
   void interpret();
@@ -69,24 +78,20 @@ public:
 
   std::string compile_info() const;
   void dump_compile_data(bool output_for_vc4, char const *filename);
-  bool vc4_has_errors() const { return m_vc4_driver.has_errors(); }
-  bool v3d_has_errors() const;
-  bool has_errors() const { return vc4_has_errors() || v3d_has_errors(); }
+  bool has_errors() const;
   std::string get_errors() const;
+
+protected:
+  void encode();
 
 protected:
   int numQPUs = 1;                 // Number of QPUs to run on
   IntList uniforms;                // Parameters to be passed to kernel
-  vc4::KernelDriver m_vc4_driver;  // Always required for emulator
 
-#ifdef QPU_MODE
-  v3d::KernelDriver m_v3d_driver;
-#endif
-
-  void encode();
-
-private:
-  KernelDriver &select_driver(bool output_for_vc4);
+  // Defined as unique pointers so that they easily survive the std::move
+  // (There are other reasons but this is the main one)
+  std::unique_ptr<vc4::KernelDriver> m_vc4_driver;
+  std::unique_ptr<v3d::KernelDriver> m_v3d_driver;
 };
 
 

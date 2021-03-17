@@ -15,7 +15,7 @@ public:
   KernelDriver();
   KernelDriver(KernelDriver &&k) = default;
 
-  void compile_init(bool set_qpu_uniforms = true, int numVars = 0);
+private:
   void encode() override;
 
 private:

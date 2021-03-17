@@ -125,20 +125,18 @@ KernelDriver::~KernelDriver() {}
  * @param set_qpu_uniforms  if true, initialize the uniforms for QPU ID and number of QPU's
  * @param numVars           number of variables already assigned prior to compilation
  */
-void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
+void KernelDriver::init_compile() {
   initStmt();
   initStack(m_stmtStack);
-  resetFreshVarGen(numVars);
+  resetFreshVarGen();
   resetFreshLabelGen();
   Pointer::reset_increment();
   compile_data.clear();
 
-  if (set_qpu_uniforms) {
-    // Initialize reserved general-purpose variables
-    Int qpuId, qpuCount;
-    qpuId    = getUniformInt();
-    qpuCount = getUniformInt();
-  }
+  // Initialize reserved general-purpose variables
+  Int qpuId, qpuCount;
+  qpuId    = getUniformInt();
+  qpuCount = getUniformInt();
 }
 
 
@@ -207,7 +205,7 @@ bool KernelDriver::handle_errors() {
 *
 * @param filename  if specified, print the output to this file. Otherwise, print to stdout
 */
-void KernelDriver::pretty(int numQPUs, char const *filename, bool output_qpu_code) {
+void KernelDriver::pretty(char const *filename, bool output_qpu_code) {
   FILE *f = open_file(filename, "pretty");
   if (f == nullptr) return;
 

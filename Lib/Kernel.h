@@ -93,20 +93,16 @@ public:
    */
   Kernel(KernelFunction f, CompileFor compile_for) {
     if (compile_for & VC4) {
-      m_vc4_driver.compile_init();
+      compile_init(true);
       f(mkArg<ts>()...);  // Construct the AST for vc4; see Note 2 in class header
-      m_vc4_driver.compile();
+      vc4().compile();
     }
 
-#ifdef QPU_MODE
     if (compile_for & V3D) {
-      m_v3d_driver.compile_init();
+      compile_init(false);
       f(mkArg<ts>()...);  // Construct the AST for v3d
-      m_v3d_driver.compile();
+      v3d().compile();
     }
-#else
-    assertq(compile_for & V3D, "QPU_MODE disabled, will not compile for v3d");
-#endif  // QPU_MODE
   }
 
 
@@ -120,6 +116,7 @@ public:
     uniforms.clear();
     nothing(passParam<ts, us>(uniforms, args)...);
 
+    // TODO: move this to before std::move
     encode(); // This is the best place to do it, due to qpuCodeMem being destructed on
               // std::move.
 

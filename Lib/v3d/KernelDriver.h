@@ -20,7 +20,7 @@ public:
   KernelDriver();
   KernelDriver(KernelDriver &&a) = default;
 
-  void compile_init();
+private:
   void encode() override;
 
 private:
