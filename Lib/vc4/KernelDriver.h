@@ -15,11 +15,11 @@ public:
   KernelDriver();
   KernelDriver(KernelDriver &&k) = default;
 
-private:
   void encode() override;
 
 private:
   Code qpuCodeMem;     // Memory region for QPU code and parameters
+                       // Doesn't survive std::move, dtor gets called despite move ctor present
   UIntList code;       // opcodes for vc4; can't convert this to uint64_t because qpuCodeMem
                        // needs to be uint32_t for invoking (tried it, don't try again!).
   void kernelFinish();
@@ -31,6 +31,5 @@ private:
 
 }  // namespace vc4
 }  // namespace V3DLib
-
 
 #endif  // _LIB_VC4_KERNELDRIVER_H

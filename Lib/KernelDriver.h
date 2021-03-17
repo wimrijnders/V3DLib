@@ -29,13 +29,6 @@ public:
   std::string compile_info() const;
   void dump_compile_data(char const *filename) const;
 
-///////////////////////////////////////
-
-private:
-  BufferType const buffer_type;
-
-
-
 protected:
   const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
@@ -47,9 +40,9 @@ protected:
 
   virtual void emit_opcodes(FILE *f) {} 
   void obtain_ast();
-  void add_stmt(Stmt::Ptr stmt);
 
 private:
+  BufferType const buffer_type;
   StmtStack m_stmtStack;
   int m_numVars = 0;                  // The number of variables in the source code for vc4
   CompileData m_compile_data;

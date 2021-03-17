@@ -115,21 +115,15 @@ public:
   Kernel &load(us... args) {
     uniforms.clear();
     nothing(passParam<ts, us>(uniforms, args)...);
-
-    // TODO: move this to before std::move
-    encode(); // This is the best place to do it, due to qpuCodeMem being destructed on
-              // std::move.
-
     return *this;
   }
 };
 
-// Initialiser
 
 template <typename... ts>
 Kernel<ts...> compile(void (*f)(ts... params), CompileFor compile_for = BOTH) {
   Kernel<ts...> k(f, compile_for);
-  return std::move(k);  // Member qpuCodeMem doesn't survive the move, dtor gets called despite move ctor present
+  return std::move(k);
 }
 
 }  // namespace V3DLib
