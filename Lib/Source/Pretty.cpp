@@ -10,6 +10,26 @@ using ::operator<<;  // C++ weirdness
 
 namespace {
 
+/**
+ * Split given string into first line and the rest.
+ *
+ * If there is no newline, put the entire string in `first`.
+ */
+void split_first_line(std::string const &in, std::string &first, std::string &rest) {
+
+ auto pos = in.find("\n");
+
+ if (pos == in.npos) {
+   // No newline detected
+   first = in;
+   rest.clear();
+ } else {
+   first = in.substr(0, pos);  // This includes the newline
+   rest  = in.substr(pos + 1);
+ }
+}
+
+
 std::string pretty(int indent, Stmt::Ptr s) {
   std::string ret;
   bool do_eol = true;
@@ -43,7 +63,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 
     case Stmt::IF:
       ret << indentBy(indent)
-          << "If  (" << s->if_cond()->dump() << ")\n"
+          << "If (" << s->if_cond()->dump() << ")\n"
           << pretty(indent+2, s->thenStmt());
 
       if (s->elseStmt().get() != nullptr) {
@@ -56,7 +76,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
 
     case Stmt::WHILE:
       ret << indentBy(indent)
-          << "While  (" << s->loop_cond()->dump() << ")\n"
+          << "While (" << s->loop_cond()->dump() << ")\n"
           << pretty(indent+2, s->body())
           << indentBy(indent) << "End";
       break;
@@ -86,14 +106,28 @@ std::string pretty(int indent, Stmt::Ptr s) {
   }
 
   std::string out;
-  out << s->emit_header()
-      << ret
+  out << s->emit_header();
 
-      // NOTE: For multiline output, the comment gets added to the end!
-      //       We might want to fix this.
-      << s->emit_comment(27);  // param is temp measure till we figure out size of current instruction
-                               // TODO fix this (too lazy now)
+  if (s->emit_comment(0).empty()) {
+    out << ret;
+  } else {
+    std::string first;
+    std::string rest;
+    split_first_line(ret, first, rest);
 
+    out << first << s->emit_comment(first.length());
+
+    if (!rest.empty()) {
+      out << "\n" << rest;
+    }
+
+    std::string msg;
+    msg << "first: '" << first << "'\n"
+        << "rest : '" << rest  << "'\n"
+        << "out  : '" << out   << "'\n";
+    debug(msg);
+
+  }
 
   if (do_eol) {
     out << "\n";

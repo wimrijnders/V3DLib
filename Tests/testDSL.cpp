@@ -45,6 +45,9 @@ string showExpected(const std::vector<T> &expected) {
 }
 
 
+/**
+ * Compare 16-value block in `result` starting at `index` with expected value.
+ */
 template<typename T>
 void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expected, float precision = 0.0f) {
   REQUIRE(expected.size() == 16);
@@ -61,6 +64,22 @@ void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expec
   INFO("j: " << j);
   INFO(showResult(result, index) << showExpected(expected));
   REQUIRE(passed);
+}
+
+
+/**
+ * Overload which assumes that all elements of the 16-value block have the same values
+ */
+template<typename T>
+void check_vector(SharedArray<T> &result, int index, int expected, float precision = 0.0f) {
+  std::vector<T> vec;
+  vec.resize(16);
+
+  for (int i = 0; i < (int) vec.size(); ++i) {
+    vec[i] = expected;
+  }
+
+  check_vector(result, index, vec, precision);
 }
 
 
@@ -721,8 +740,6 @@ float calc_max_diff(T1 &arr1, T2 &arr2, int size) {
 
 
 TEST_CASE("Test functions", "[dsl][func]") {
-  //Platform::use_main_memory(true);
-
   int const NumValues       = 15;
   int const SharedArraySize = (NumValues/16 +1)*16;
 
@@ -864,6 +881,64 @@ TEST_CASE("Test functions", "[dsl][func]") {
       REQUIRE(results_scalar[n] == results_qpu[n]);
     }
   }
+}
 
-  //Platform::use_main_memory(false);
+
+//=============================================================================
+// Test Issues
+//
+// Test stuff which has been seen to go wrong.
+//=============================================================================
+
+namespace {
+
+void issues_kernel(Int::Ptr result) {
+  Int a = 0;
+  Int c = 0;
+
+  For (Int b = 0, b < 2, b++)
+    // This and following If should be identical - visual check
+    If (a != b)
+      c = 1;
+    End
+
+    *result = c; result.inc();
+
+    c = 0;
+
+    If (any(a != b))
+     c = 1;
+    End
+
+    *result = c; result.inc();
+  End
+
+  Int dummy = 0;  comment("Start ptr offset check");
+
+}
+
+}  // anon namespace
+
+
+TEST_CASE("Test issues", "[dsl][issues]") {
+  Platform::use_main_memory(true);
+
+  SECTION("'If (a != b)' same as 'If (any(a !=b))'") {
+    int const N = 4;
+
+    auto k = compile(issues_kernel);
+    k.pretty(true, "obj/test/issues_kernel.txt", false);
+
+    Int::Array result(16*N);
+    k.load(&result);
+    //k.interpret();
+    k.emu();
+
+    check_vector(result, 0, 0);
+    check_vector(result, 1, 0);
+    check_vector(result, 2, 1);
+    check_vector(result, 3, 1);
+  }
+
+  Platform::use_main_memory(false);
 }

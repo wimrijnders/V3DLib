@@ -268,31 +268,8 @@ bool Instr::isTMUAWrite(bool fetch_only) const {
     return false;
   }
 
-  bool ret = (!fetch_only && reg.regId == SPECIAL_DMA_ST_ADDR)
-          || (reg.regId == SPECIAL_TMU0_S);
-
-#if 0
-  // Prob not needed, triple check before removing (already single-checked)
-
-  if (ret) {
-    // It's a simple move (BOR) instruction, src registers should be the same
-    auto reg_a = ALU.srcA;
-    auto reg_b = ALU.srcB;
-    std::string msg = "src registers should be the same; instruction:";
-    assertq(reg_a == reg_b, msg << mnemonic(true) , true);
-
-/*
-    // In current logic, src should always be read from register file;
-    // enforce this.
-    if (!(reg_a.tag == REG && (reg_a.reg.tag == REG_A || reg_a.reg.tag == REG_B))) {
-      std::string msg = "Not allowed by logic; instruction: ";
-      assertq(false, msg << mnemonic(true)); 
-    }
-*/
-  }
-#endif
-
-  return ret;
+  return (!fetch_only && reg.regId == SPECIAL_DMA_ST_ADDR)
+      || (reg.regId == SPECIAL_TMU0_S);
 }
 
 
@@ -607,7 +584,7 @@ std::string Instr::mnemonic(bool with_comments, std::string const &prefix) const
   ret << prefix << out;
 
   if (with_comments) {
-    ret << emit_comment((int) out.size());
+    ret << emit_comment((int) (out.size() + prefix.size()));
   }
 
   return ret;
