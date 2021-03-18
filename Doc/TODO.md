@@ -42,7 +42,14 @@ Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacte
 - [ ] Implement [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
 - [ ] Make [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
 - [ ] Use [inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
-- [ ] Implement DFT (and then FFT) - consider [sliding windows](https://github.com/glidernet/ogn-rf/issues/36#issuecomment-775688969)
+- [ ] Fourier Transform
+  * [x] Implement DFT
+  * [ ] Implement FFT - viable implementations: [github gist](https://gist.github.com/agrafix/aa49c17cd32c8ba63b6a7cb8dce8b0bd),
+        [O'Reilly](https://www.oreilly.com/library/view/c-cookbook/0596007612/ch11s18.html),
+        [Turbo-C++](https://www.electronicsforu.com/electronics-projects/software-projects-ideas/implementation-fast-fourier-transform-using-c)
+  * [ ]  consider [sliding windows](https://github.com/glidernet/ogn-rf/issues/36#issuecomment-775688969)
+- [ ] Etherium mining - [Proof of Work algorithm](https://github.com/chfast/ethash), [ethash spec revision 23](https://eth.wiki/en/concepts/ethash/ethash)
+  * [ ] Keccak - derive from PoW project
 
 
 ## v3d
@@ -64,8 +71,8 @@ Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacte
 
 ## Compile source code
 
-- [ ] `If (a != b)` appears to do the same as  `any(a1 != b)`, verify
-- [ ] Following generation is wrong *(this is probably an old v3d issue and not relevant any more - CHECK!)*.
+- [x] `If (a != b)` appears to do the same as `any(a != b)`, verify. *Result: Verified, identical*
+- [x] v3d, following generation is wrong: *Result: Verified, now correct*.
 
 Source code:
 
@@ -108,7 +115,7 @@ Source code:
 - [ ] Drill-down of the bare essentials for understanding `VideoCore`
 - [x] Examples to separate page under Docs
 - [ ] Mailbox functions link to reference and explanation two size fields
-- [x] QPUs always round *downward* *(in Issue)*
+- [x] QPUs always round *downward* *(in Issues)*
 - [ ] DSL: Document use of 'Expr'-constructs (e.g. `BoolExpr`) as a kind of lambda
 
 
