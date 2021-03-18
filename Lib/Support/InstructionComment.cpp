@@ -75,20 +75,6 @@ std::string InstructionComment::emit_comment(int instr_size) const {
   int spaces = COMMENT_INDENT - instr_size;
   if (spaces < 2) spaces = 2;
 
-/*
-  // Output spaces till the position of the comment
-  auto emit_spaces = [] (int spaces) -> std::string {
-    std::string ret;
-
-    while (spaces > 0) {
-      ret += " ";
-      spaces--;
-    }
-
-    return ret;
-  };
-*/
-
   std::string ret;
   ret << tabs(spaces) << "# " << m_comment;
   return ret;

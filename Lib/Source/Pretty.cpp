@@ -120,13 +120,13 @@ std::string pretty(int indent, Stmt::Ptr s) {
     if (!rest.empty()) {
       out << "\n" << rest;
     }
-
+/*
     std::string msg;
     msg << "first: '" << first << "'\n"
         << "rest : '" << rest  << "'\n"
         << "out  : '" << out   << "'\n";
     debug(msg);
-
+*/
   }
 
   if (do_eol) {

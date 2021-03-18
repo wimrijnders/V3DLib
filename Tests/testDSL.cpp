@@ -893,7 +893,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
 namespace {
 
 void issues_kernel(Int::Ptr result) {
-  Int a = 0;
+  Int a = 0;  comment("Start check 'If (a != b)' same as 'If (any(a !=b))'");
   Int c = 0;
 
   For (Int b = 0, b < 2, b++)
@@ -914,7 +914,7 @@ void issues_kernel(Int::Ptr result) {
   End
 
   Int dummy = 0;  comment("Start ptr offset check");
-
+  *result = 4*(index() + 16*me());
 }
 
 }  // anon namespace
@@ -924,10 +924,11 @@ TEST_CASE("Test issues", "[dsl][issues]") {
   Platform::use_main_memory(true);
 
   SECTION("'If (a != b)' same as 'If (any(a !=b))'") {
-    int const N = 4;
+    int const N = 5;
 
     auto k = compile(issues_kernel);
-    k.pretty(true, "obj/test/issues_kernel.txt", false);
+    //k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
+    k.pretty(false, "obj/test/issues_kernel_v3d.txt");
 
     Int::Array result(16*N);
     k.load(&result);
@@ -938,6 +939,10 @@ TEST_CASE("Test issues", "[dsl][issues]") {
     check_vector(result, 1, 0);
     check_vector(result, 2, 1);
     check_vector(result, 3, 1);
+
+    std::vector<int> expected = {0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60};
+    check_vector(result, 4, expected);
+    //std::cout << showResult(result, 4) << std::endl;
   }
 
   Platform::use_main_memory(false);
