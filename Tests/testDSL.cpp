@@ -892,12 +892,12 @@ TEST_CASE("Test functions", "[dsl][func]") {
 
 namespace {
 
-void issues_kernel(Int::Ptr result) {
-  Int a = 0;  comment("Start check 'If (a != b)' same as 'If (any(a !=b))'");
+void issues_kernel(Int::Ptr result, Int::Ptr src) {
+  Int a = 0;       comment("Start check 'If (a != b)' same as 'If (any(a !=b))'");
   Int c = 0;
 
   For (Int b = 0, b < 2, b++)
-    // This and following If should be identical - visual check
+    // Generation of this and following If should be identical - visual check
     If (a != b)
       c = 1;
     End
@@ -913,8 +913,13 @@ void issues_kernel(Int::Ptr result) {
     *result = c; result.inc();
   End
 
-  Int dummy = 0;  comment("Start ptr offset check");
+  Int dummy = 0;   comment("Start ptr offset check");
   *result = 4*(index() + 16*me());
+  result.inc();
+
+breakpoint
+
+  *result = *src;  comment("Check *dst = *src");
 }
 
 }  // anon namespace
@@ -923,17 +928,21 @@ void issues_kernel(Int::Ptr result) {
 TEST_CASE("Test issues", "[dsl][issues]") {
   Platform::use_main_memory(true);
 
-  SECTION("'If (a != b)' same as 'If (any(a !=b))'") {
-    int const N = 5;
+  SECTION("Verify issues") {
+    int const N = 6;
 
     auto k = compile(issues_kernel);
-    //k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
-    k.pretty(false, "obj/test/issues_kernel_v3d.txt");
+    k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
+    k.dump_compile_data(true, "obj/test/issues_kernel_compile_data_vc4.txt");
+    //k.pretty(false, "obj/test/issues_kernel_v3d.txt");
+
+    Int::Array input(16);
+    input.fill(3);
 
     Int::Array result(16*N);
-    k.load(&result);
-    //k.interpret();
-    k.emu();
+    k.load(&result, &input);
+    k.interpret();
+    //k.emu();
 
     check_vector(result, 0, 0);
     check_vector(result, 1, 0);
@@ -942,7 +951,8 @@ TEST_CASE("Test issues", "[dsl][issues]") {
 
     std::vector<int> expected = {0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60};
     check_vector(result, 4, expected);
-    //std::cout << showResult(result, 4) << std::endl;
+
+    std::cout << showResult(result, 5) << std::endl;
   }
 
   Platform::use_main_memory(false);

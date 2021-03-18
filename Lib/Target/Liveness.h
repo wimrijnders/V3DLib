@@ -123,7 +123,6 @@ private:
   LiveSet &get(int index) { return m_set[index]; }
   void compute_liveness(Instr::List &instrs);
   void setSize(int size);
-  //bool insert(int index, RegId item);
   bool insert(int index, LiveSet const &set);
 };
 

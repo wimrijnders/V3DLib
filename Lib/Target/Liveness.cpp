@@ -997,6 +997,10 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 }  
 
 
+///////////////////////////////////////////////////////////////////////////////
+// Class Liveness
+///////////////////////////////////////////////////////////////////////////////
+
 /**
  * Determine the liveness sets for each instruction.
  */
@@ -1070,9 +1074,19 @@ void Liveness::compute(Instr::List &instrs) {
     // Remove all liveness of given variable `i` before and including first assign
     assert(item.use.dst_first != -1);
     assert(item.live.first != -1);
+    int remove_count = 0;
     for (int j = item.live.first; j <= item.use.dst_first; ++j) {
       int num = m_set[j].remove(i);
-      assert(num == 1);
+      if (num == 1) remove_count++;
+    }
+
+    if (remove_count == 0) {
+      std::string msg = "Liveness::compute(): ";
+      msg << "failed to remove liveness for var " << i << " "
+          << "for usage (live.first and use.dst_first significant): " << item.dump() << "\n"
+          << " Liveness table:\n" << dump();
+
+      warning(msg);
     }
   }
 
@@ -1102,19 +1116,11 @@ void Liveness::setSize(int size) {
 }
 
 
-/*
-bool Liveness::insert(int index, RegId item) {
-  return m_set[index].insert(item);
-}
-*/
-
-
 bool Liveness::insert(int index, LiveSet const &set) {
   bool changed = false;
 
   for (int j = 0; j < set.size(); j++) {
     if (m_set[index].insert(set[j])) {
-//    if(insert(index, set[j])) {
       changed = true;
     }
   }
@@ -1141,6 +1147,8 @@ std::string Liveness::dump() {
     }
     ret += "\n";
   }
+
+  if (ret.empty()) ret += "<Empty>";
 
   ret += "\n";
 
