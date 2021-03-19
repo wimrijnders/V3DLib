@@ -37,6 +37,22 @@
 ```
 Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacted from original)
 ```
+
+**Research:**
+
+The issue here is that the following is allowed by `C++` syntax:
+```
+int x = x;  // or any other rhs with x
+```
+
+...and this is also valid for `Int x`. With `-Wall`, you will get output:
+```
+warning: ‘x’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+```
+
+In the case of `Int x = x` the compiler will happily compile, but the contents of `x` on the rhs
+are uninitialized and therefore garbage. Due to this, things likely explode on execution.
+
 - [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] This does not work in source lang code, fix: `*dst = *src`, where dst/src are uniform pointers
 - [x] `If (a != b)` appears to do the same as `any(a != b)`, verify. *Result: Verified, identical*

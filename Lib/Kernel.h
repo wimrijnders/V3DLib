@@ -94,14 +94,17 @@ public:
   Kernel(KernelFunction f, CompileFor compile_for) {
     if (compile_for & VC4) {
       compile_init(true);
-      f(mkArg<ts>()...);  // Construct the AST for vc4; see Note 2 in class header
-      vc4().compile();
+      vc4().compile([this, f] () {
+        f(mkArg<ts>()...);  // Construct the AST for vc4; see Note 2 in class header
+      });
     }
 
     if (compile_for & V3D) {
       compile_init(false);
-      f(mkArg<ts>()...);  // Construct the AST for v3d
-      v3d().compile();
+
+      v3d().compile([this, f] () {
+        f(mkArg<ts>()...);  // Construct the AST for v3d
+      });
     }
   }
 

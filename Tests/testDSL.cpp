@@ -917,7 +917,17 @@ void issues_kernel(Int::Ptr result, Int::Ptr src) {
   *result = 4*(index() + 16*me());
   result.inc();
 
-  *result = *src;  comment("Check *dst = *src");
+  *result = *src;  comment("Check *dst = *src"); 
+}
+
+
+void init_self_1_kernel() {
+  Int x = x;  // Should generate error
+}
+
+
+void init_self_2_kernel() {
+  Int x = x + 1;  // Should generate error
 }
 
 }  // anon namespace
@@ -930,8 +940,8 @@ TEST_CASE("Test issues", "[dsl][issues]") {
     int const N = 6;
 
     auto k = compile(issues_kernel);
-    k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
-    k.dump_compile_data(true, "obj/test/issues_kernel_compile_data_vc4.txt");
+    //k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
+    //k.dump_compile_data(true, "obj/test/issues_kernel_compile_data_vc4.txt");
     //k.pretty(false, "obj/test/issues_kernel_v3d.txt");
 
     Int::Array input(16);
@@ -939,8 +949,8 @@ TEST_CASE("Test issues", "[dsl][issues]") {
 
     Int::Array result(16*N);
     k.load(&result, &input);
-    k.interpret();
-    //k.emu();
+    //k.interpret();
+    k.emu();
 
     check_vector(result, 0, 0);
     check_vector(result, 1, 0);
@@ -951,6 +961,19 @@ TEST_CASE("Test issues", "[dsl][issues]") {
     check_vector(result, 4, expected);
     check_vector(result, 5, 7);
     //std::cout << showResult(result, 5) << std::endl;
+  }
+
+
+  SECTION("Check init self issue") {
+    {
+      auto k1 = compile(init_self_1_kernel);
+      REQUIRE(k1.has_errors());
+    }
+
+    {
+//      auto k2 = compile(init_self_2_kernel);
+//      REQUIRE(k2.has_errors());
+    }
   }
 
   Platform::use_main_memory(false);

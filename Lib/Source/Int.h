@@ -33,8 +33,8 @@ struct Int : public BaseExpr {
 
   Int();
   Int(int x);
-  Int(IntExpr e);
   Int(Deref<Int> d);
+  Int(IntExpr e);
   Int(Int const &x);
 
   static Int mkArg();

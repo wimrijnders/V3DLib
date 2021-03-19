@@ -151,11 +151,11 @@ void KernelDriver::obtain_ast() {
  *
  * This method is here to just handle thrown exceptions.
  */
-void KernelDriver::compile() {
+void KernelDriver::compile(std::function<void()> create_ast) {
   try {
+    create_ast();
     compile_intern();
     m_numVars = getFreshVarCount();
-
     m_compile_data = compile_data;
   } catch (V3DLib::Exception const &e) {
     std::string msg = "Exception occured during compilation: ";
@@ -166,6 +166,8 @@ void KernelDriver::compile() {
     } else {
       throw;  // Must be a fatal()
     }
+
+    clearStack();
   }
 }
 

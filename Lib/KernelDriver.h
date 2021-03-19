@@ -2,6 +2,7 @@
 #define _LIB_KERNELDRIVER_H
 #include <vector>
 #include <string>
+#include <functional>
 #include "Common/BufferType.h"
 #include "Common/CompileData.h"
 #include "Source/StmtStack.h"
@@ -16,7 +17,7 @@ public:
   virtual ~KernelDriver();
 
   void init_compile();
-  void compile();
+  void compile(std::function<void()> create_ast);
   virtual void encode() = 0;
   void invoke(int numQPUs, IntList &params);
   bool has_errors() const { return !errors.empty(); }
