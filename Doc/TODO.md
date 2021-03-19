@@ -2,54 +2,16 @@
 
 ## General
 
-- [ ] This does not work in source lang code, fix: `*dst = *src`, where dst/src are uniform pointers
 - [ ] Automate loading of new versions external libraries
 - [ ] Get `Pi 1` running again; fails in `qpu_enable()`
 - [ ] Make heap memory size configurable (ideally cmdline option)
-- [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [ ] Initializing a Float/Complex(/Int?) variable without value may not add variable to target code.
-      This is a cwconsequence of fixing liveness allocation for dst vars in  conditional instructions.
+      This is a consequence of fixing liveness allocation for dst vars in  conditional instructions.
       Examine, report, prevent, fix.
-- [ ] Following source lang leads to infinite recursion and segfault during compile, fix and/or prevent:
-```
-Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacted from original)
-```
 - [x] Fix indentation tabs/spaces
-- [x] ! Fix '+ 0' hack for kernel pointers, this is confusing
 - [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it)
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
 - [x] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
-
-	  
-## Optimization and Cleanup
-
-- [ ] Tone down mesa library, compile takes long.
-      Tried this but gave up after it became evident nothing could be removed.
-      Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
-- [x] Complete conversion `Seq<Instr>` to `Instr::List`
-- [x] Get rid of senseless variable reassignment in source language.
-
-
-## Consider these
-
-- [ ] Enhanced precision using [correction of rounding errors](http://andrewthall.org/papers/df64_qf128.pdf)
-- [ ] Option for disabling L2 cache, for decent cooperation with `OpenGL`.
-      **NOTE:** Perhaps needs  kernel built for L2 cache disabled. 
-      **TODO** profile this!
-- [ ] Adding **Navier-Stokes** as an example.
-      [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
-      looks promising.
-- [ ] Implement [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
-- [ ] Make [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
-- [ ] Use [inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
-- [ ] Fourier Transform
-  * [x] Implement DFT
-  * [ ] Implement FFT - viable implementations: [github gist](https://gist.github.com/agrafix/aa49c17cd32c8ba63b6a7cb8dce8b0bd),
-        [O'Reilly](https://www.oreilly.com/library/view/c-cookbook/0596007612/ch11s18.html),
-        [Turbo-C++](https://www.electronicsforu.com/electronics-projects/software-projects-ideas/implementation-fast-fourier-transform-using-c)
-  * [ ]  consider [sliding windows](https://github.com/glidernet/ogn-rf/issues/36#issuecomment-775688969)
-- [ ] Etherium mining - [Proof of Work algorithm](https://github.com/chfast/ethash), [ethash spec revision 23](https://eth.wiki/en/concepts/ethash/ethash)
-  * [ ] Keccak - derive from PoW project
 
 
 ## v3d
@@ -71,8 +33,15 @@ Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacte
 
 ## Compile source code
 
+- [ ] Following source lang leads to infinite recursion and segfault during compile, fix and/or prevent:
+```
+Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacted from original)
+```
+- [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
+- [x] This does not work in source lang code, fix: `*dst = *src`, where dst/src are uniform pointers
 - [x] `If (a != b)` appears to do the same as `any(a != b)`, verify. *Result: Verified, identical*
 - [x] v3d, following generation is wrong: *Result: Verified, now correct*.
+- [x] ! Fix '+ 0' hack for kernel pointers, this is confusing
 
 Source code:
 
@@ -186,8 +155,42 @@ Error(s) on command line:
 - [x] enable `-Wall` on compilation and deal with all the fallout
 - [x] enable build for QPU and Emulation mode together
 
+---------------------------
+# Long Term
 
-## Long Term
+	  
+## Consider these
+
+- [ ] Enhanced precision using [correction of rounding errors](http://andrewthall.org/papers/df64_qf128.pdf)
+- [ ] Option for disabling L2 cache, for decent cooperation with `OpenGL`.
+      **NOTE:** Perhaps needs  kernel built for L2 cache disabled. 
+      **TODO** profile this!
+- [ ] Adding **Navier-Stokes** as an example.
+      [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
+      looks promising.
+- [ ] Implement [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
+- [ ] Make [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
+- [ ] Use [inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
+- [ ] Fourier Transform
+  * [x] Implement DFT
+  * [ ] Implement FFT - viable implementations: [github gist](https://gist.github.com/agrafix/aa49c17cd32c8ba63b6a7cb8dce8b0bd),
+        [O'Reilly](https://www.oreilly.com/library/view/c-cookbook/0596007612/ch11s18.html),
+        [Turbo-C++](https://www.electronicsforu.com/electronics-projects/software-projects-ideas/implementation-fast-fourier-transform-using-c)
+  * [ ]  consider [sliding windows](https://github.com/glidernet/ogn-rf/issues/36#issuecomment-775688969)
+- [ ] Etherium mining - [Proof of Work algorithm](https://github.com/chfast/ethash), [ethash spec revision 23](https://eth.wiki/en/concepts/ethash/ethash)
+  * [ ] Keccak - derive from PoW project
+
+
+## Optimization and Cleanup
+
+- [ ] Tone down mesa library, compile takes long.
+      Tried this but gave up after it became evident nothing could be removed.
+      Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
+- [x] Complete conversion `Seq<Instr>` to `Instr::List`
+- [x] Get rid of senseless variable reassignment in source language.
+
+
+## Other
 
 - [ ] Add optional doc generation with `doxygen`.
       This is only useful if there are a sufficient number of header comments.

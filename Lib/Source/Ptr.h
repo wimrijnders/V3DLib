@@ -79,15 +79,13 @@ template <typename T>
 struct Deref : public BaseExpr {
   explicit Deref(Expr::Ptr e) : BaseExpr(e) {}
 
-  T &operator=(T &rhs) {
-    assign(m_expr, rhs.expr());
-    return rhs;
-  }
+  // NOTE 'return *this' might be betteri
+  // TODO try this out
+  T &operator=(T &rhs) { assign(m_expr, rhs.expr()); return rhs; }
+  T const &operator=(T const &rhs) { assign(m_expr, rhs.expr()); return rhs; }
 
-  T const &operator=(T const &rhs) {
-    assign(m_expr, rhs.expr());
-    return rhs;
-  }
+  // For special case '*dst = *src' and similar
+  void operator=(Deref<T> const &rhs) { assign(m_expr, rhs.expr()); }
 };
 
 

@@ -917,8 +917,6 @@ void issues_kernel(Int::Ptr result, Int::Ptr src) {
   *result = 4*(index() + 16*me());
   result.inc();
 
-breakpoint
-
   *result = *src;  comment("Check *dst = *src");
 }
 
@@ -937,7 +935,7 @@ TEST_CASE("Test issues", "[dsl][issues]") {
     //k.pretty(false, "obj/test/issues_kernel_v3d.txt");
 
     Int::Array input(16);
-    input.fill(3);
+    input.fill(7);
 
     Int::Array result(16*N);
     k.load(&result, &input);
@@ -951,8 +949,8 @@ TEST_CASE("Test issues", "[dsl][issues]") {
 
     std::vector<int> expected = {0, 4, 8, 12, 16, 20, 24, 28, 32, 36, 40, 44, 48, 52, 56, 60};
     check_vector(result, 4, expected);
-
-    std::cout << showResult(result, 5) << std::endl;
+    check_vector(result, 5, 7);
+    //std::cout << showResult(result, 5) << std::endl;
   }
 
   Platform::use_main_memory(false);
