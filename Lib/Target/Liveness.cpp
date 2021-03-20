@@ -48,19 +48,19 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
   // There can possibly be more assignments between first usage and live range
   // Following serves to capture them all - this might just be paranoia
   int tmp_count = 0;
-  for (int i = item.first_use() + 1; i <= item.live.first - 1; i++) {
-    tmp_count += renameDest(instrs[item.use.dst_first], current, replace_with);
+  for (int i = item.first_use() + 1; i <= item.first_live() - 1; i++) {
+    tmp_count += renameDest(instrs[item.first_dst()], current, replace_with);
   }
 
   if (tmp_count > 0) {
     std::string msg = "Detected extra assignments for var ";
     msg << var_id
-        << " in range " << (item.first_use() + 1) << "-" << (item.live.first - 1);
+        << " in range " << (item.first_use() + 1) << "-" << (item.first_live() - 1);
 
     debug(msg);
   }
 
-  for (int i = item.live.first; i <= item.live.last; i++) {
+  for (int i = item.first_live(); i <= item.last_live(); i++) {
     auto &instr = instrs[i];
 
     renameDest(instr, current, replace_with);
@@ -428,7 +428,7 @@ std::string get_never_assigned_list(RegUsage const &alloc_list) {
 ///////////////////////////////////////////////////////////////////////////////
 
 bool RegUsageItem::unused() const {
-  return (use.dst_use == 0 && use.src_use == 0);
+  return (use.dst.empty() && use.src_use == 0);
 }
 
 
@@ -441,11 +441,34 @@ std::string RegUsageItem::dump() const {
     return ret;
   }
 
-  ret << "use(dst_first, src_first, dst_count,src_count): ("
-      << use.dst_first << ", " << use.src_first << ", "
-      << use.dst_use << ", " << use.src_use << "), "
-      << "; live(first, last, count): (" << live.first << ", " << live.last << ", " << live.count << ")";
+  ret << "use(src_first, src_count, dst): ("
+      << use.src_first << ", " << use.src_use << ", {";
+
+  for (int i = 0; i < (int) use.dst.size(); ++i) {
+    if (i != 0) {
+      ret << ", ";
+    }
+    ret << use.dst[i];
+  }
+
+  ret << "}); live(first, last, count): ("
+      << live.first << ", " << live.last << ", " << live.count << ")";
   return ret;
+}
+
+
+void RegUsageItem::add_dst(int n) {
+  assert(use.dst.empty() || use.dst.back() < n);
+  use.dst << n;
+}
+
+
+void RegUsageItem::add_src(int n) {
+  use.src_use++;
+
+  if (use.src_first == -1 || use.src_first > n) {
+    use.src_first = n;
+  }
 }
 
 
@@ -489,11 +512,11 @@ int RegUsageItem::live_range() const {
 int RegUsageItem::use_range() const {
   if (unused()) return 0;
 
-  int first = use.dst_use;
-  if (first == -1) first = live.first;  // Guards for case where var is read only (e.g. dummy input)
+   int first = live.first;
+  if (!use.dst.empty()) first = use.dst[0];  // Guard for case where var is read only (eg. dummy input)
 
   int last = live.last;
-  if (last == -1) {                     // Guard for case where var is write only (e.g. dummy output)
+  if (last == -1) {                        // Guard for case where var is write only (eg. dummy output)
     last = first;
   }
 
@@ -504,13 +527,13 @@ int RegUsageItem::use_range() const {
 
 
 int RegUsageItem::first_use() const {
-  assert(use.dst_first != -1);
+  assert(!use.dst.empty());
 
   // Following has been seen to fail for kernel rot3D_1, range_size 100
   // TODO investigate
-  assertq(only_assigned() || (use.dst_first + 1  == live.first), "assert failed in first_use()", true);
+  assertq(only_assigned() || (use.dst[0] + 1  == live.first), "assert failed in first_use()", true);
 
-  return use.dst_first;
+  return use.dst[0];
 }
 
 
@@ -518,7 +541,7 @@ int RegUsageItem::first_use() const {
  * Get last line number for which variable is used.
  */
 int RegUsageItem::last_use() const {
-  if (only_assigned()) return use.dst_first;
+  if (only_assigned()) return first_dst();
   return live.last;
 }
 
@@ -543,22 +566,11 @@ void RegUsage::set_used(Instr::List &instrs) {
     out.set_used(instrs[i]);
 
     for (int j = 0; j < out.def.size(); j++) {
-      auto &use = (*this)[out.def[j]].use;
-
-      if (use.dst_first == -1 || use.dst_first > i) {
-        use.dst_first = i;
-      }
-
-      use.dst_use++;
+      (*this)[out.def[j]].add_dst(i);
     }
 
     for (int j = 0; j < out.use.size(); j++) {
-      auto &use = (*this)[out.use[j]].use;
-      use.src_use++;
-
-      if (use.src_first == -1 || use.src_first > i) {
-        use.src_first = i;
-      }
+      (*this)[out.use[j]].add_src(i);
     }
   }
 }
@@ -690,7 +702,6 @@ void RegUsage::check_overlap_usage(Reg acc, RegUsageItem const &item) const {
     auto const &cur = (*this)[i];
     if (cur.reg != acc) continue;
 
-    debug("Found acc in list!");  // TODO Remove this when it is displayed
     assertq(!cur.use_overlaps(item), "Detected conflicting usage of replacement acc", true);
   }
 }
@@ -1008,15 +1019,22 @@ void Liveness::compute_liveness(Instr::List &instrs) {
   // Initialise live mapping to have one entry per instruction
   setSize(instrs.size());
 
-  // For storing the 'use' and 'def' sets of each instruction
-  UseDef useDefSets;
+  UseDef useDef;
 
   // For temporarily storing live-in and live-out variables
   LiveSet liveIn;
   LiveSet liveOut;
 
-  // Has a change been made to the liveness mapping?
   bool changed = true;
+  int count = 0;
+
+  {
+    std::string msg;
+    msg << "compute_liveness CFG:\n"
+        << m_cfg.dump();
+
+    debug(msg);
+  }
 
   // Iterate until no change, i.e. fixed point
   while (changed) {
@@ -1024,27 +1042,36 @@ void Liveness::compute_liveness(Instr::List &instrs) {
 
     // Propagate live variables backwards
     for (int i = instrs.size() - 1; i >= 0; i--) {
-
-//if (i <= 10 && !Platform::compiling_for_vc4()) {
-//  breakpoint
-//}
-
       // Compute 'use' and 'def' sets
-      Instr instr = instrs[i];
-      useDefSets.set_used(instr, true);
+      useDef.set_used(instrs[i], true);
 
       computeLiveOut(i, liveOut);
 
       // Remove the 'def' set from the live-out set to give live-in set
-      liveIn.add_not_used(liveOut, useDefSets);
+      liveIn.add_not_used(liveOut, useDef);
 
-      liveIn.add(useDefSets.use);
+      liveIn.add(useDef.use);
+
+
+      if (i == 25 || i == 26) { 
+        std::string msg;
+        msg << "count " << count << ", line " << i << ": liveIn: " << liveIn.dump() << ", liveOut: " << liveOut.dump(); 
+        debug(msg);
+breakpoint
+      }
+
 
       if (insert(i, liveIn)) {
         changed = true;
       }
     }
+
+    count++;
   }
+
+  std::string msg;
+  msg << "compute_liveness count: " << count;
+  debug(msg);
 }
 
 
@@ -1054,6 +1081,12 @@ void Liveness::compute(Instr::List &instrs) {
   compute_liveness(instrs);
   assert(instrs.size() == size());
 
+  {
+    std::string msg;
+    msg << " Liveness table:\n" << dump();
+    debug(msg);
+  }
+
   reg_usage.set_live(*this);
 
   // Adjust first usage in liveness, if necessary 
@@ -1061,7 +1094,7 @@ void Liveness::compute(Instr::List &instrs) {
     auto &item = reg_usage[i];
 
     if (item.unused() || item.only_assigned())     continue;  // skip special cases
-    if (item.use.dst_first + 1 == item.live.first) continue;  // all is well
+    if (item.first_dst() + 1 == item.first_live()) continue;  // all is well
 
 /*
     {
@@ -1072,19 +1105,22 @@ void Liveness::compute(Instr::List &instrs) {
 */
 
     // Remove all liveness of given variable `i` before and including first assign
-    assert(item.use.dst_first != -1);
-    assert(item.live.first != -1);
+    assert(item.first_dst() != -1);
+    assert(item.first_live() != -1);
     int remove_count = 0;
-    for (int j = item.live.first; j <= item.use.dst_first; ++j) {
+    for (int j = item.first_live(); j <= item.first_dst(); ++j) {
       int num = m_set[j].remove(i);
       if (num == 1) remove_count++;
     }
 
     if (remove_count == 0) {
       std::string msg = "Liveness::compute(): ";
-      msg << "failed to remove liveness for var " << i << " "
-          << "for usage (live.first and use.dst_first significant): " << item.dump() << "\n"
-          << " Liveness table:\n" << dump();
+      msg << "failed to remove liveness for var " << i 
+          << " in range (" << item.first_dst() << ", " << item.first_live() << ")\n"
+          << " Usage item: " << item.dump() << "\n"
+          << " Liveness table:\n" << dump() << "\n"
+          << " Reg usage:\n" << reg_usage.dump(true) << "\n"
+          << " Code:\n" << instrs.dump(true) << "\n";
 
       warning(msg);
     }

@@ -147,7 +147,7 @@ struct Instr : public InstructionComment {
     List() = default;
     List(int size) : Parent(size) {}
 
-    std::string dump() const;
+    std::string dump(bool with_line_numbers = false) const;
     std::string mnemonics(bool with_comments = false) const;
     int lastUniformOffset();
     int tag_index(InstrTag tag, bool ensure_one = true);

@@ -373,10 +373,14 @@ uint32_t Instr::get_acc_usage() const {
 // Class Instr::List
 ///////////////////////////////////////////////////////////////////////////////
 
-std::string Instr::List::dump() const {
+std::string Instr::List::dump(bool with_line_numbers) const {
   std::string ret;
 
   for (int i = 0; i < size(); ++i ) {
+    if (with_line_numbers) {
+      ret << i << ": ";
+    }
+
     ret << (*this)[i].dump() << "\n";
   }
 

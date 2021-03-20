@@ -967,6 +967,7 @@ TEST_CASE("Test issues", "[dsl][issues]") {
   SECTION("Check init self issue") {
     {
       auto k1 = compile(init_self_1_kernel);
+      k1.pretty(true, "obj/test/init_self_1_kernel.txt", false);
       REQUIRE(k1.has_errors());
     }
 

@@ -115,7 +115,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
     std::string rest;
     split_first_line(ret, first, rest);
 
-    out << first << s->emit_comment(first.length());
+    out << first << s->emit_comment((int) first.length());
 
     if (!rest.empty()) {
       out << "\n" << rest;

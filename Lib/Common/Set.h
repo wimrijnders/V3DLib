@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_COMMON_SET_H_
 #define _V3DLIB_COMMON_SET_H_
 #include "Seq.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
@@ -27,6 +28,32 @@ public:
       if ((*this)[i] == x) return true;
     }
     return false;
+  }
+
+
+  /**
+   * Not too sure yet about this.
+   *
+   * Its direct purpose is make CFG::dump() easier to use,
+   * and is therefors an implicit `dump()` call.
+   *
+   * There is something to be said about making all `dump()` methods
+   * like this. OTOH, I sort of prefer having an explicit `dump()`.
+   *
+   * TODO Think about this, decide something.
+   */
+  operator std::string() const {
+    using ::operator<<;
+
+    std::string ret;
+
+    for (int i = 0; i < size(); ++i) {
+      if (i > 0) ret << ", ";
+
+      ret << (*this)[i];
+    } 
+
+    return ret;
   }
 
 

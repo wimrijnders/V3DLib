@@ -4,8 +4,6 @@
 #include "Common/SharedArray.h"
 #include "instr/Instr.h"
 
-#ifdef QPU_MODE
-
 namespace V3DLib {
 namespace v3d {
 
@@ -37,7 +35,5 @@ private:
 
 }  // namespace v3d
 }  // namespace V3DLib
-
-#endif  // QPU_MODE
 
 #endif  // _LIB_V3d_KERNELDRIVER_H
