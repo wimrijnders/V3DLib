@@ -214,14 +214,14 @@ void RegUsage::set_live(Liveness &live) {
 }
 
 
+/**
+ * Check internal consistency of used variables
+ *
+ * If anything is detected here, it is a compile error.
+ */
 void RegUsage::check() const {
-  std::string prefix = "RegUsage in regAlloc() ";
-  if (Platform::compiling_for_vc4()) {
-    prefix << "vc4";
-  } else {
-    prefix << "v3d";
-  }
-  prefix << ": ";
+  std::string ret;
+
 
   std::string tmp;
 
@@ -243,13 +243,46 @@ void RegUsage::check() const {
   }
 */
 
-  tmp = get_never_assigned_list(*this);
-  if (!tmp.empty()) {
-    std::string msg = prefix;
-    msg << "There are internal instruction variables which are used but never assigned.\n"
-        << "Variables: " << tmp << "\n";
-    error(msg, true);
+  {
+    std::string tmp = get_never_assigned_list(*this);
+    if (!tmp.empty()) {
+      std::string msg;
+      msg << "  There are internal instruction variables which are used but never assigned.\n"
+          << "  Variables: " << tmp << "\n";
+
+      ret << msg;
+    }
   }
+
+  {
+    std::string tmp;
+
+    for (int i = 0; i < (int) size(); i++) {
+      auto const &item = (*this)[i];
+      if (!item.regular_use()) continue;
+
+      if (item.first_live() <= item.first_dst()) {
+        tmp << "  Variable " << i << " is live before first assignment" << "\n";
+      }
+    }
+
+    if (!tmp.empty()) {
+      tmp << "\n  This can happen if the first assignment is in a conditional block (If, When, For etc).\n";
+      ret << tmp;
+    }
+  }
+ 
+  if (!ret.empty()) {
+    std::string prefix = "RegUsage internal error(s) ";
+    if (Platform::compiling_for_vc4()) {
+      prefix << "vc4";
+    } else {
+      prefix << "v3d";
+    }
+    prefix << ":\n";
+
+    error(prefix + ret, true);
+  } 
 }
 
 

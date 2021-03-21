@@ -25,6 +25,10 @@ struct RegUsageItem {
   int last_use() const;
   bool use_overlaps(RegUsageItem const &rhs) const;
 
+  bool regular_use() const {
+    return !(unused() || only_assigned());
+  }
+
 private:
 
   struct {

@@ -53,7 +53,6 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
   // Step 0 - Perform liveness analysis
   Liveness live(*cfg, numVars);
   live.compute(instrs);
-  live.alloc().check();
 
 
   // Step 2 - For each variable, determine all variables ever live at the same time
@@ -63,11 +62,11 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
 
   // Step 3 - Allocate a register to each variable
   for (int i = 0; i < numVars; i++) {
-    if (live.alloc()[i].reg.tag != NONE) continue;
+    if (live.reg_usage()[i].reg.tag != NONE) continue;
 
-    auto possible = liveWith.possible_registers(i, live.alloc());
+    auto possible = liveWith.possible_registers(i, live.reg_usage());
 
-    live.alloc()[i].reg.tag = REG_A;
+    live.reg_usage()[i].reg.tag = REG_A;
     RegId regId = LiveSets::choose_register(possible, false);
 
     if (regId < 0) {
@@ -75,14 +74,14 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
       buf << i << ": " << instrs[i].mnemonic();
       error(buf, true);
     } else {
-      live.alloc()[i].reg.regId = regId;
+      live.reg_usage()[i].reg.regId = regId;
     }
   }
 
-  compile_data.allocated_registers_dump = live.alloc().dump(true);
+  compile_data.allocated_registers_dump = live.reg_usage().dump(true);
 
   // Step 4 - Apply the allocation to the code
-  allocate_registers(instrs, live.alloc());
+  allocate_registers(instrs, live.reg_usage());
 }
 
 

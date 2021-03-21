@@ -142,7 +142,6 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
   // Step 0 - Perform liveness analysis
   Liveness live(*cfg, numVars);
   live.compute(instrs);
-  live.alloc().check();
 
 
   // Step 1 - For each variable, determine a preference for register file A or B.
@@ -160,11 +159,11 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
   RegTag prevChosenRegFile = REG_B;
 
   for (int i = 0; i < numVars; i++) {
-    if (live.alloc()[i].reg.tag != NONE) continue;
-    if (live.alloc()[i].unused()) continue;
+    if (live.reg_usage()[i].reg.tag != NONE) continue;
+    if (live.reg_usage()[i].unused()) continue;
 
-    auto possibleA = liveWith.possible_registers(i, live.alloc());
-    auto possibleB = liveWith.possible_registers(i, live.alloc(), REG_B);
+    auto possibleA = liveWith.possible_registers(i, live.reg_usage());
+    auto possibleB = liveWith.possible_registers(i, live.reg_usage(), REG_B);
 
     // Find possible register in each register file
     RegId chosenA = LiveSets::choose_register(possibleA, false);
@@ -185,14 +184,14 @@ void regAlloc(CFG *cfg, Instr::List &instrs) {
     prevChosenRegFile = chosenRegFile;
 
     // Finally, allocate a register to the variable
-    live.alloc()[i].reg = Reg(chosenRegFile, (chosenRegFile == REG_A)? chosenA : chosenB);
+    live.reg_usage()[i].reg = Reg(chosenRegFile, (chosenRegFile == REG_A)? chosenA : chosenB);
   }
   
-  compile_data.allocated_registers_dump = live.alloc().dump(true);
+  compile_data.allocated_registers_dump = live.reg_usage().dump(true);
   //std::cout << count_reg_types(instrs).dump() << std::endl;
 
   // Step 4 - Apply the allocation to the code
-  allocate_registers(instrs, live.alloc());
+  allocate_registers(instrs, live.reg_usage());
 
   //std::cout << instrs.check_acc_usage() << std::endl;
 

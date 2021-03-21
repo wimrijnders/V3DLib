@@ -39,10 +39,10 @@ public:
  */
 class Liveness {
 public:
-  Liveness(CFG &cfg, int numVars) : m_cfg(cfg), reg_usage(numVars) {}
+  Liveness(CFG &cfg, int numVars) : m_cfg(cfg), m_reg_usage(numVars) {}
 
   int size() const { return m_set.size(); }
-  RegUsage &alloc() { return reg_usage; }
+  RegUsage &reg_usage() { return m_reg_usage; }
   LiveSet &operator[](int index) { return get(index); }
 
   void compute(Instr::List &instrs);
@@ -50,9 +50,9 @@ public:
   std::string dump();
 
 private:
-  CFG &m_cfg;
+  CFG         &m_cfg;
   Seq<LiveSet> m_set;
-  RegUsage reg_usage;
+  RegUsage     m_reg_usage;
 
   LiveSet &get(int index) { return m_set[index]; }
   void compute_liveness(Instr::List &instrs);

@@ -680,7 +680,7 @@ breakpoint
 
 
 void Liveness::compute(Instr::List &instrs) {
-  reg_usage.set_used(instrs);
+  m_reg_usage.set_used(instrs);
 
   compute_liveness(instrs);
   assert(instrs.size() == size());
@@ -691,12 +691,12 @@ void Liveness::compute(Instr::List &instrs) {
     debug(msg);
   }
 
-  reg_usage.set_live(*this);
-  debug(reg_usage.dump(true));
+  m_reg_usage.set_live(*this);
+  debug(m_reg_usage.dump(true));
 
   // Adjust first usage in liveness, if necessary 
-  for (int i = 0; i < (int) reg_usage.size(); ++i) {
-    auto &item = reg_usage[i];
+  for (int i = 0; i < (int) m_reg_usage.size(); ++i) {
+    auto &item = m_reg_usage[i];
 
     if (item.unused() || item.only_assigned())     continue;  // skip special cases
     if (item.first_dst() + 1 == item.first_live()) continue;  // all is well
@@ -704,7 +704,7 @@ void Liveness::compute(Instr::List &instrs) {
 /*
     {
       std::string msg;
-      msg << "reg_usage[" << i << "]: discrepancy between first assign and liveness: " << item.dump();
+      msg << "m_reg_usage[" << i << "]: discrepancy between first assign and liveness: " << item.dump();
       warning(msg);
     }
 */
@@ -724,7 +724,7 @@ void Liveness::compute(Instr::List &instrs) {
           << " in range (" << item.first_dst() << ", " << item.first_live() << ")\n"
           << " Usage item: " << item.dump() << "\n"
           << " Liveness table:\n" << dump() << "\n"
-          << " Reg usage:\n" << reg_usage.dump(true) << "\n"
+          << " Reg usage:\n" << m_reg_usage.dump(true) << "\n"
           << " Code:\n" << instrs.dump(true) << "\n";
 
       warning(msg);
@@ -732,6 +732,8 @@ void Liveness::compute(Instr::List &instrs) {
   }
 
   compile_data.liveness_dump = dump();
+
+  m_reg_usage.check();
 }
 
 
@@ -809,7 +811,7 @@ void introduceAccum(CFG &cfg, Instr::List &instrs, int numVars) {
 
   live.compute(instrs);
 
-  compile_data.num_accs_introduced = introduceAccum(live, instrs, live.alloc());
+  compile_data.num_accs_introduced = introduceAccum(live, instrs, live.reg_usage());
   //std::cout << count_reg_types(instrs).dump() << std::endl;
 }
 
