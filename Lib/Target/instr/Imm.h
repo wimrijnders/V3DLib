@@ -17,11 +17,14 @@ struct Imm {
   Imm(float f);
 
   ImmTag tag() const { return m_tag; }
+  bool   is_int() const { return m_tag == IMM_INT32; }
+  bool   is_float() const { return m_tag == IMM_FLOAT32; }
   int    intVal() const;
   int    mask() const;
   float  floatVal() const;
 
   bool is_zero() const;
+  bool is_basic() const;
   std::string pretty() const;
 
 private:

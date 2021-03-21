@@ -238,12 +238,19 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 
 
 void combineImmediates(Liveness &live, Instr::List &instrs) {
+  bool found_something = false;
+
   for (int i = 0; i < (int) instrs.size(); i++) {
     Instr &instr = instrs[i];
+    if (instr.tag != InstrTag::LI) continue;
+    if (instr.LI.imm.is_basic()) continue;
 
-    if (instr.tag == InstrTag::LI) {
-      std::cout << "LI at " << i << ": " << instr.dump() << std::endl;
-    }
+    std::cout << "LI at " << i << ": " << instr.dump() << std::endl;
+    found_something = true;
+  }
+
+  if (found_something) {
+    std::cout << live.cfg().dump_blocks() << std::endl;
   }
 }
 

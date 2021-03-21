@@ -22,13 +22,13 @@ class CFG : public Set<Succs> {
 public:
   void build(Instr::List &instrs);
   std::string dump() const;
+  std::string dump_blocks() const;
 
 private:
   std::vector<int> blocks;
 
   bool is_regular(InstrId i) const;
   void build_blocks();
-  std::string dump_blocks() const;
 };
 
 

@@ -41,6 +41,7 @@ class Liveness {
 public:
   Liveness(CFG &cfg, int numVars) : m_cfg(cfg), m_reg_usage(numVars) {}
 
+  CFG const &cfg() const { return m_cfg; }
   int size() const { return m_set.size(); }
   RegUsage &reg_usage() { return m_reg_usage; }
   LiveSet &operator[](int index) { return get(index); }

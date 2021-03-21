@@ -1,5 +1,7 @@
 #include "Imm.h"
 #include "Support/basics.h"
+#include "Support/Platform.h"
+#include "v3d/instr/SmallImm.h"
 
 namespace V3DLib {
 
@@ -11,6 +13,35 @@ int   Imm::mask()     const { assert(m_tag == IMM_MASK);    return m_intVal; }
 float Imm::floatVal() const { assert(m_tag == IMM_FLOAT32); return m_floatVal; }
 
 bool Imm::is_zero() const { return m_tag == IMM_INT32 && m_intVal == 0; }
+
+
+/**
+ * Check if this is an immediate value which does not
+ * need to be constructed inline.
+ */
+bool Imm::is_basic() const {
+  if (Platform::compiling_for_vc4()) {
+    return true;  // All values are basic for vc4
+  }
+
+  assert(m_tag != IMM_MASK);  // Not dealing with this here
+  int dummy;
+
+  if (is_int()) {
+    if (v3d::instr::SmallImm::int_to_opcode_value(m_intVal, dummy)) {
+      return true;
+    }
+  }
+
+  if (is_float()) {
+    if (v3d::instr::SmallImm::float_to_opcode_value(m_floatVal, dummy)) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
 
 std::string Imm::pretty() const {
   std::string ret;

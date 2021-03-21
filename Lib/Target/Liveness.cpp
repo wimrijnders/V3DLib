@@ -328,13 +328,15 @@ void Liveness::compute_liveness(Instr::List &instrs) {
   bool changed = true;
   int count = 0;
 
+/*
   {
     std::string msg;
     msg << "compute_liveness CFG:\n"
         << m_cfg.dump();
 
     debug(msg);
-  }
+}
+*/
 
   // Iterate until no change, i.e. fixed point
   while (changed) {
@@ -344,21 +346,10 @@ void Liveness::compute_liveness(Instr::List &instrs) {
     for (int i = instrs.size() - 1; i >= 0; i--) {
       // Compute 'use' and 'def' sets
       useDef.set_used(instrs[i], true);
-
       computeLiveOut(i, liveOut);
-
-      // Remove the 'def' set from the live-out set to give live-in set
-      liveIn.add_not_used(liveOut, useDef);
-
+      liveIn.add_not_used(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
       liveIn.add(useDef.use);
-/*
-      if (i == 25 || i == 26) { 
-        std::string msg;
-        msg << "count " << count << ", line " << i << ": liveIn: " << liveIn.dump() << ", liveOut: " << liveOut.dump(); 
-        debug(msg);
-breakpoint
-      }
-*/
+
       if (insert(i, liveIn)) {
         changed = true;
       }
@@ -379,14 +370,16 @@ void Liveness::compute(Instr::List &instrs) {
   compute_liveness(instrs);
   assert(instrs.size() == size());
 
+/*
   {
     std::string msg;
     msg << " Liveness table:\n" << dump();
     debug(msg);
   }
+*/
 
   m_reg_usage.set_live(*this);
-  debug(m_reg_usage.dump(true));
+  //debug(m_reg_usage.dump(true));
 
   // Adjust first usage in liveness, if necessary 
   for (int i = 0; i < (int) m_reg_usage.size(); ++i) {
@@ -416,10 +409,12 @@ void Liveness::compute(Instr::List &instrs) {
       std::string msg = "Liveness::compute(): ";
       msg << "failed to remove liveness for var " << i 
           << " in range (" << item.first_dst() << ", " << item.first_live() << ")\n"
-          << " Usage item: " << item.dump() << "\n"
+          << " Usage item: " << item.dump() << "\n";
+/*
           << " Liveness table:\n" << dump() << "\n"
           << " Reg usage:\n" << m_reg_usage.dump(true) << "\n"
           << " Code:\n" << instrs.dump(true) << "\n";
+*/
 
       warning(msg);
     }
