@@ -49,6 +49,8 @@ public:
   void computeLiveOut(InstrId i, LiveSet &liveOut);
   std::string dump();
 
+  static void optimize(CFG &cfg, Instr::List &instrs, int numVars);
+
 private:
   CFG         &m_cfg;
   Seq<LiveSet> m_set;
@@ -81,7 +83,6 @@ private:
 };
 
 
-void introduceAccum(CFG &cfg, Instr::List &instrs, int numVars);
 void allocate_registers(Instr::List &instrs, RegUsage const &alloc);
 
 }  // namespace V3DLib

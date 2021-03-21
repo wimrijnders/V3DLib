@@ -44,10 +44,9 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
 
 void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
   assert(cfg != nullptr);
+
   int numVars = getFreshVarCount();
-
-  introduceAccum(*cfg, instrs, numVars);
-
+  Liveness::optimize(*cfg, instrs, numVars);
   compile_data.target_code_before_liveness = instrs.dump();
 
   // Step 0 - Perform liveness analysis

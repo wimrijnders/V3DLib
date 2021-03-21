@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sun 21 Mar 2021 04:44:26 AM CET
+# Generated on: Sun 21 Mar 2021 06:12:49 AM CET
 #
 ###############################################################################
 
@@ -11,6 +11,7 @@ OBJ := \
   Target/BufferObject.o  \
   Target/Pretty.o  \
   Target/liveness/UseDef.o  \
+  Target/liveness/Optimizations.o  \
   Target/liveness/RegUsage.o  \
   Target/instr/ALUOp.o  \
   Target/instr/Conditions.o  \
