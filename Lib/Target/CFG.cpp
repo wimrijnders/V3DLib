@@ -3,16 +3,81 @@
 
 namespace V3DLib {
 
-// ============================================================================
-// Build control-flow graph
-// ============================================================================
+
+/**
+ * Check if given instruction only passes to the next instruction
+ *
+ * @return true if instruction has only one successor, and that is 
+ *         the next instruction, false otherwise
+ */
+bool CFG::is_regular(InstrId i) const {
+  auto const &item = (*this)[i];
+  return (item.size() == 1 && item[0] == (i + 1));
+}
+
+
+std::string CFG::dump() const {
+  using ::operator<<;
+
+  std::string ret;
+
+  ret << "Instruction length: " << size() << "\n";
+
+  for (int i = 0; i < size(); ++i) {
+    auto const &item = (*this)[i];
+    if (is_regular(i)) continue;
+
+    ret << i << ": " << item << "\n";
+  } 
+
+  ret << dump_blocks();
+  return ret;
+}
+
+
+std::string CFG::dump_blocks() const {
+  std::string ret;
+
+  ret << "\nBlocks:\n";
+
+  // Make a kind of header
+  int tabs = 0;
+  for (int i = 0; i < (int) blocks.size(); ++i) {
+    if (i % 10 == 0) {
+      ret << i;
+
+     if (i < 10)        tabs = 0;
+     else if (i < 100)  tabs = 1;
+     else if (i < 1000) tabs = 2;
+     else assert(false);  // Expand this list if this happens
+    } else {
+      if (tabs > 0) {
+        tabs--;
+      } else {
+        ret << " ";
+     }
+    }
+  }
+
+  ret << "\n";
+
+  for (int i = 0; i < (int) blocks.size(); ++i) {
+    assert(blocks[i] < 10);  // If this happens, we need to adjust the display (not critical)
+    ret << blocks[i];
+  }
+
+  ret << "\n";
+
+  return ret;
+}
+
 
 /**
  * Build a CFG for a given instruction sequence.
  */
-void buildCFG(Instr::List &instrs, CFG &cfg) {
-  assert(cfg.empty());
-  cfg.set_size(instrs.size());
+void CFG::build(Instr::List &instrs) {
+  assert(empty());
+  set_size(instrs.size());
 
   // ----------
   // First pass
@@ -46,7 +111,7 @@ void buildCFG(Instr::List &instrs, CFG &cfg) {
 
     // Add successor
     if (!(uncond || end))
-      cfg[i].insert(i+1);
+      (*this)[i].insert(i+1);
 
     // Remember location of each label
     if (instr.tag == LAB) {
@@ -65,12 +130,43 @@ void buildCFG(Instr::List &instrs, CFG &cfg) {
     Instr instr = instrs[i];
     if (instr.tag == BRL) {
       assert(labelMap[instr.BRL.label] >= 0);
-      cfg[i].insert(labelMap[instr.BRL.label]);
+      (*this)[i].insert(labelMap[instr.BRL.label]);
     }
   }
 
   // Free memory
   delete [] labelMap;
+
+  build_blocks();
+}
+
+
+void CFG::build_blocks() {
+  blocks.resize(size());
+
+  for (int i = 0; i < (int) blocks.size(); i++) {
+    blocks[i] = 0;
+  }
+
+
+  int block_index = 0;
+
+  for (int i = 0; i < (int) size(); i++) {
+    if (is_regular(i)) continue;
+    auto const &item = (*this)[i];
+
+    for (int j = 0; j < (int) item.size(); j++) {
+      int jump_instr = item[j];
+
+      if (jump_instr == i + 1) continue;  // Skip regular successor
+      if (jump_instr <= i) continue;  // Skip jumps backward for now. TODO investigate if these should be noted here
+
+      block_index++;
+      for (int k = i + 1; k < (int) jump_instr; k++) {
+        blocks[k] = block_index;
+      }
+    }
+  }
 }
 
 }  // namespace V3DLib
