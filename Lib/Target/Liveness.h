@@ -7,85 +7,10 @@
 #include <string>
 #include <vector>
 #include "CFG.h"
+#include "liveness/RegUsage.h"
+#include "liveness/UseDef.h"
 
 namespace V3DLib {
-
-struct RegUsageItem {
-  Reg reg;
-
-  void add_dst(int n);
-  void add_src(int n);
-  void add_live(int n);
-  bool unused() const;
-  bool only_assigned() const  { return !use.dst.empty() && use.src_use == 0; }
-  bool never_assigned() const { return !unused() && use.dst.empty(); }
-  std::string dump() const;
-  int live_range() const;
-  int use_range() const;
-  int first_use() const;
-  int first_dst() const       { return use.dst[0]; }
-  int first_live() const      { return live.first; }
-  int last_live() const       { return live.last; }
-  int last_use() const;
-  bool use_overlaps(RegUsageItem const &rhs) const;
-
-private:
-
-  struct {
-    int src_use = 0;       // Number of times used as src in code
-    int src_first = -1;
-
-    //int dst_use = 0;       // Number of times used as dst in code
-    //int dst_first = -1;
-    std::vector<int> dst;  // List of line numbers where var is set
-  } use;
-
-  struct {
-    int first = -1;
-    int last = -1;
-    int count = 0;
-  } live;
-};
-
-class Liveness;
-
-struct RegUsage : public std::vector<RegUsageItem> {
-  using Parent = std::vector<RegUsageItem>;
-
-  RegUsage(int numVars);
-
-  void set_used(Instr::List &instrs);
-  void set_live(Liveness &live);
-  std::string dump(bool verbose = false) const;
-  void check() const;
-  std::string dump_use_ranges() const;
-  void check_overlap_usage(Reg acc, RegUsageItem const &item) const;
-
-private:
-  std::string allocated_registers_dump() const;
-};
-
-
-// 'use' and 'def' sets:
-//   * 'use' set: the variables read by an instruction
-//   * 'def' set: the variables modified by an instruction
-
-struct UseDefReg {
-  SmallSet<Reg> use;
-  SmallSet<Reg> def;
-
-  std::string dump() const;
-};   
-     
-struct UseDef {
-  SmallSet<RegId> use;
-  SmallSet<RegId> def;
-
-  void set_used(Instr const &instr, bool set_use_where = false);
-  std::string dump() const;
-};   
-
-void useDefReg(Instr instr, UseDefReg* out, bool set_use_where = false);
 
 /**
  * A live set contains the variables that are live-in to an instruction.
