@@ -24,6 +24,7 @@ PointerExpr PointerExpr::add(IntExpr b) {
 ///////////////////////////////////////////////////////////////////////////////
 
 namespace {
+/*
 std::unique_ptr<Int> increment;
 
 Int &get_increment() {
@@ -34,6 +35,7 @@ Int &get_increment() {
 
   return *increment;
 }
+*/
 
 }  // anon namespace
 
@@ -70,12 +72,19 @@ Pointer &Pointer::self() {
 
 
 void Pointer::reset_increment() {
-  increment.reset(nullptr);
+  // Does nothing for now
+  // TODO cleanup
+  // increment.reset(nullptr);
 }
 
 
 void Pointer::inc() {
-  self() = bare_addself(get_increment());  comment("increment pointer");
+  std::unique_ptr<Int> increment;
+  int const INC = 16*4;  // for getting next block for a sequential pointer
+  increment.reset(new Int(INC));  comment("pointer increment");
+
+  //self() = bare_addself(get_increment());  comment("increment pointer");
+  self() = bare_addself(*increment);  comment("increment pointer");
 }
 
 
