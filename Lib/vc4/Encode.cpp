@@ -5,10 +5,8 @@
 #include "Target/Satisfy.h"
 #include "Target/Pretty.h"
 
-
 namespace V3DLib {
 namespace vc4 {
-
 namespace {
 
 // ===============
@@ -234,8 +232,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       instr.LI.cond.tag   = AssignCond::Tag::ALWAYS;
       instr.LI.dest.tag   = SPECIAL;
       instr.LI.dest.regId = SPECIAL_HOST_INT;
-      instr.LI.imm.tag    = IMM_INT32;
-      instr.LI.imm.intVal = 1;
+      instr.LI.imm        = Imm(1);
       break;
 
     case DMA_LOAD_WAIT:
@@ -277,7 +274,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       uint32_t ws   = (file == REG_A ? 0 : 1) << 12;
       uint32_t sf   = (li.m_setCond.flags_set()? 1 : 0) << 13;
       *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
-      *low          = (uint32_t) li.imm.intVal;
+      *low          = (uint32_t) li.imm.intVal();
       return;
     }
 

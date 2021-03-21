@@ -49,9 +49,32 @@ Vec rotate(Vec v, int n) {
 
 Vec Vec::Always(1);
 
+
 Vec::Vec(int val) {
   for (int i = 0; i < NUM_LANES; i++)
     elems[i].intVal = 1;
+}
+
+
+Vec::Vec(Imm imm) {
+  switch (imm.tag()) {
+    case Imm::IMM_INT32:
+      for (int i = 0; i < NUM_LANES; i++)
+        (*this)[i].intVal = imm.intVal();
+      break;
+
+    case Imm::IMM_FLOAT32:
+      for (int i = 0; i < NUM_LANES; i++)
+        (*this)[i].floatVal = imm.floatVal();
+      break;
+
+    case Imm::IMM_MASK:
+      for (int i = 0; i < NUM_LANES; i++)
+        (*this)[i].intVal = (imm.mask() >> i) & 1;
+      break;
+
+    default: assert(false); break;
+  }
 }
 
 
@@ -216,6 +239,5 @@ void Vec::assign(Vec const &rhs) {
     elems[i] = rhs[i];
   }
 }
-
 
 }  // namespace V3DLib

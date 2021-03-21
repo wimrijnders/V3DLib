@@ -295,8 +295,7 @@ bool Instr::isZero() const {
       && LI.dest.tag      == REG_A
       && LI.dest.regId    == 0
       && LI.dest.isUniformPtr == false 
-      && LI.imm.tag       == IMM_INT32
-      && LI.imm.intVal    == 0
+      && LI.imm.is_zero()
   ;
 }
 

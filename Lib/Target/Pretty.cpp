@@ -2,34 +2,6 @@
 #include "Support/basics.h"
 
 namespace V3DLib {
-namespace {
-
-std::string pretty(Imm imm) {
-  std::string ret;
-
-  switch (imm.tag) {
-    case IMM_INT32:
-      ret << imm.intVal;
-    break;
-    case IMM_FLOAT32:
-      ret << imm.floatVal;
-    break;
-    case IMM_MASK: {
-        int b = imm.intVal;
-        for (int i = 0; i < 16; i++) {
-          ret << ((b & 1)? 1 : 0);
-          b >>= 1;
-        }
-    }
-    break;
-    default: assert(false); break;
-  }
-
-  return ret;
-}
-
-}  // anon namespace
-
  
 /**
  * Pretty printer for Target instructions
@@ -44,7 +16,7 @@ std::string pretty_instr(Instr const &instr) {
       buf << instr.LI.cond.to_string()
           << "LI " << instr.LI.dest.dump()
           << " <-" << instr.setCond().pretty() << " "
-          << pretty(instr.LI.imm);
+          << instr.LI.imm.pretty();
     }
     break;
 

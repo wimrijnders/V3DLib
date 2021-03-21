@@ -1,4 +1,5 @@
 #include "Optimizations.h"
+#include <iostream>
 #include "../Liveness.h"
 #include "Support/Platform.h"
 #include "Target/Subst.h"
@@ -236,6 +237,17 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 }  // anon namespace
 
 
+void combineImmediates(Liveness &live, Instr::List &instrs) {
+  for (int i = 0; i < (int) instrs.size(); i++) {
+    Instr &instr = instrs[i];
+
+    if (instr.tag == InstrTag::LI) {
+      std::cout << "LI at " << i << ": " << instr.dump() << std::endl;
+    }
+  }
+}
+
+
 /**
  * Optimisation passes that introduce accumulators
  *
@@ -312,4 +324,5 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
 
   return subst_count;
 }
+
 }  // namespace V3DLib

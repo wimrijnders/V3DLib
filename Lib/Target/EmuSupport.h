@@ -2,6 +2,7 @@
 #define _V3DLIB_TARGET_EMUSUPPORT_H_
 #include <stdint.h>
 #include "Common/Seq.h"
+#include "Target/instr/Imm.h"
 
 
 /**
@@ -23,10 +24,13 @@ union Word {
 };
 
 
-// Vector values
+/**
+ * Vector values
+ */
 struct Vec {
   Vec() = default;
   Vec(int val);
+  Vec(Imm imm);
 
   Word &get(int index) {
     assert(0 <= index && index < NUM_LANES);

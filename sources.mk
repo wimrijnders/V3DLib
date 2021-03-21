@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sun 21 Mar 2021 06:12:49 AM CET
+# Generated on: Sun 21 Mar 2021 07:31:38 AM CET
 #
 ###############################################################################
 
@@ -19,6 +19,7 @@ OBJ := \
   Target/instr/Instructions.o  \
   Target/instr/Instr.o  \
   Target/instr/Label.o  \
+  Target/instr/Imm.o  \
   Target/SmallLiteral.o  \
   Target/EmuSupport.o  \
   Target/Liveness.o  \

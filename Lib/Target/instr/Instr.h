@@ -4,6 +4,7 @@
 #include "Common/Seq.h"
 #include "Reg.h"
 #include "Label.h"
+#include "Imm.h"
 #include "Conditions.h"
 #include "ALUOp.h"
 
@@ -15,29 +16,13 @@ class CmpOp;
 // Immediates
 // ============================================================================
 
-// Different kinds of immediate
-enum ImmTag {
-    IMM_INT32    // 32-bit word
-  , IMM_FLOAT32  // 32-bit float
-  , IMM_MASK     // 1 bit per vector element (0 to 0xffff)
-};
-
-struct Imm {
-  ImmTag tag;
-
-  union {
-    int intVal;
-    float floatVal;
-  };
-};
-
-
 struct SmallImm {
   int val;
 
   bool operator==(SmallImm const &rhs) const { return val == rhs.val;  }
   bool operator!=(SmallImm const &rhs) const { return !(*this == rhs); }
 };
+
 
 struct RegOrImm {
 

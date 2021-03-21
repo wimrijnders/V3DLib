@@ -162,10 +162,9 @@ Instr sub(Reg dst, Reg srcA, int n) {
  */
 Instr li(Reg dst, int i) {
   Instr instr(LI);
-  instr.LI.cond       = always;
-  instr.LI.dest       = dst;
-  instr.LI.imm.tag    = IMM_INT32;
-  instr.LI.imm.intVal = i;
+  instr.LI.cond = always;
+  instr.LI.dest = dst;
+  instr.LI.imm  = Imm(i);
  
   return instr;
 }
@@ -178,10 +177,9 @@ Instr li(Var v, int i) {
 
 Instr li(Var v, float f) {
   Instr instr(LI);
-  instr.LI.cond         = always;
-  instr.LI.dest         = dstReg(v);
-  instr.LI.imm.tag      = IMM_FLOAT32;
-  instr.LI.imm.floatVal = f;
+  instr.LI.cond = always;
+  instr.LI.dest = dstReg(v);
+  instr.LI.imm  = Imm(f);
  
   return instr;
 }

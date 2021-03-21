@@ -745,27 +745,36 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
   std::string err_label;
   std::string err_value;
 
-  if (instr.imm.tag == IMM_INT32) {
-    int value = instr.imm.intVal;
+  switch (instr.imm.tag()) {
+  case Imm::IMM_INT32: {
+    int value = instr.imm.intVal();
 
     if (!encode_int(ret, dst, value)) {
       // Conversion failed, output error
       err_label = "int";
       err_value = std::to_string(value);
     }
+  }
+  break;
 
-  } else if (instr.imm.tag == IMM_FLOAT32) {
-    float value = instr.imm.floatVal;
+  case Imm::IMM_FLOAT32: {
+    float value = instr.imm.floatVal();
 
     if (!encode_float(ret, dst, value)) {
       // Conversion failed, output error
       err_label = "float";
       err_value = std::to_string(value);
     }
-  } else if (instr.imm.tag == IMM_MASK) {
+  }
+  break;
+
+  case Imm::IMM_MASK:
     debug_break("encodeLoadImmediate(): IMM_MASK not handled");
-  } else {
+  break;
+
+  default:
     debug_break("encodeLoadImmediate(): unknown tag value");
+  break;
   }
 
   if (!err_value.empty()) {

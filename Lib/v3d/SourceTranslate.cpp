@@ -47,7 +47,6 @@ void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
 
   int numVars = getFreshVarCount();
   Liveness::optimize(*cfg, instrs, numVars);
-  compile_data.target_code_before_liveness = instrs.dump();
 
   // Step 0 - Perform liveness analysis
   Liveness live(*cfg, numVars);

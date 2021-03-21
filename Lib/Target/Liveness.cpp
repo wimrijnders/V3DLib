@@ -504,8 +504,12 @@ void Liveness::optimize(CFG &cfg, Instr::List &instrs, int numVars) {
   Liveness live(cfg, numVars);
   live.compute(instrs);
 
+  combineImmediates(live, instrs);
+
   compile_data.num_accs_introduced = introduceAccum(live, instrs);
+
   //std::cout << count_reg_types(instrs).dump() << std::endl;
+  compile_data.target_code_before_liveness = instrs.dump();
 }
 
 

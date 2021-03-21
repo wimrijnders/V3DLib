@@ -538,32 +538,6 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
 }
 
 
-/**
- * Interpret an immediate operand
- */
-Vec evalImm(Imm imm) {
-  Vec v;
-  switch (imm.tag) {
-    case IMM_INT32:
-      for (int i = 0; i < NUM_LANES; i++)
-        v[i].intVal = imm.intVal;
-      return v;
-    case IMM_FLOAT32:
-      for (int i = 0; i < NUM_LANES; i++)
-        v[i].floatVal = imm.floatVal;
-      return v;
-    case IMM_MASK:
-      for (int i = 0; i < NUM_LANES; i++)
-        v[i].intVal = (imm.intVal >> i) & 1;
-      return v;
-  }
-
-  // Unreachable
-  assert(false);
-  return v;
-}
-
-
 // ============================================================================
 // Interpret a small immediate operand
 // ============================================================================
@@ -684,7 +658,7 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
         switch (instr.tag) {
           // Load immediate
           case LI: {
-            Vec imm = evalImm(instr.LI.imm);
+            Vec imm(instr.LI.imm);
             writeReg(s, &state, instr.setCond().flags_set(), instr.LI.cond, instr.LI.dest, imm);
             break;
           }
