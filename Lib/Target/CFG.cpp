@@ -177,7 +177,7 @@ int CFG::block_end(InstrId line_num) const {
  */
 bool CFG::is_parent_block(InstrId line_num, int block) const {
   assert(blocks[0] == 0);    // Double-check that top block is zero.
-  if (block == 0) return 0;  // In that case, block is always parent
+  if (block == 0) return true;  // In that case, block is always parent
 
   int cur_block = blocks[line_num];
 

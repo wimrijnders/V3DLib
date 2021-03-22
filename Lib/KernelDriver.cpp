@@ -136,7 +136,6 @@ void KernelDriver::init_compile() {
 
 
 void KernelDriver::obtain_ast() {
-  clearStack();
   m_body = m_stmtStack.pop();
 }
 
@@ -161,9 +160,9 @@ void KernelDriver::compile(std::function<void()> create_ast) {
     } else {
       throw;  // Must be a fatal()
     }
-
-    clearStack();
   }
+
+  clearStack();
 }
 
 

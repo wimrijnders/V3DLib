@@ -2,6 +2,7 @@
 // Liveness analysis
 //
 ///////////////////////////////////////////////////////////////////////////////
+#include <iostream>
 #include "Support/basics.h"
 #include "Support/Platform.h"
 #include "Target/Subst.h"
@@ -12,11 +13,11 @@
 namespace V3DLib {
 namespace {
 
-int count_noops(Instr::List &instrs) {
+int count_skips(Instr::List &instrs) {
   int ret = 0;
 
   for (int i = 0; i < (int) instrs.size(); i++) {
-    if (instrs[i].tag == InstrTag::NO_OP) {
+    if (instrs[i].tag == InstrTag::SKIP) {
       ret++;
     }
   }
@@ -87,14 +88,14 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
 
 
 /**
- * Removes all NO_OP instructions from the list
+ * Removes all SKIP instructions from the list
  */
 void remove_replaced_instructions(Instr::List &instrs) {
   int cur   = 0;
   int count = 0;
 
   while (cur < instrs.size()) {
-    if (instrs[cur].tag == InstrTag::NO_OP) {
+    if (instrs[cur].tag == InstrTag::SKIP) {
       instrs.remove(cur);
       count++;
     } else {
@@ -104,7 +105,7 @@ void remove_replaced_instructions(Instr::List &instrs) {
 
   if (count > 0) {
     std::string msg;
-    msg << "remove_replaced_instructions() removed " << count << " NO_OPs";
+    msg << "remove_replaced_instructions() removed " << count << " SKIPs";
     debug(msg);
   }
 }
@@ -459,8 +460,7 @@ std::string Liveness::dump() {
  * in the liveness analysis.
  */
 void Liveness::optimize(Instr::List &instrs, int numVars) {
-  // Sanity check - to see if NO_OPs can be used as instructions to remove
-  assertq(count_noops(instrs) == 0, "combineImmediates(): NO_OPs detected in instruction list");
+  assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list");
 
   Liveness live(numVars);
   live.compute(instrs);
@@ -470,13 +470,13 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
 
   live.compute(instrs);  // instructions may have changed in previous step, redo liveness
 
-  int prev_count_noops = count_noops(instrs);
-
+  int prev_count_skips = count_skips(instrs);
   compile_data.num_accs_introduced = introduceAccum(live, instrs);
-
-  assertq(prev_count_noops == count_noops(instrs), "NO_OP count changed after introduceAccum()");
+  assertq(prev_count_skips == count_skips(instrs), "SKIP count changed after introduceAccum()");
 
   remove_replaced_instructions(instrs);
+  assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list after cleanup");
+
   //std::cout << count_reg_types(instrs).dump() << std::endl;
   compile_data.target_code_before_liveness = instrs.dump();
 }

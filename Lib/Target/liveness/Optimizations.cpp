@@ -259,12 +259,37 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
               << instr.mnemonic(false) << std::endl;
 
     // Scan forward to find replaceable LI's (i.e. LI's with same value in same or child block)
+    int last_use = i;
+    int const LAST_USE_LIMIT = 50;
+
     for (int j = i + 1; j < (int) instrs.size(); j++) {
+      if (last_use + LAST_USE_LIMIT < j) {
+        debug("Hit last use limit, stopping forward scan");
+        break;
+      }
+
+      {
+        UseDefReg regs;
+        regs.set_used(instrs[j]);
+        if (regs.is_dest(instr.LI.dest)) {
+          std::string msg;
+          msg << "Stopping forward scan LIs: "
+              << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
+              << " as dst"
+              << ": " << instrs[j].mnemonic(false);
+
+          if (instrs[j].isCondAssign()) {
+            msg << " (Conditional assign!)";
+          }
+          debug(msg);
+          break;
+        }
+      }
+
       Instr &instr2 = instrs[j];
 
-      if (instr2.tag != InstrTag::LI || instr2.LI.imm != instr.LI.imm) continue;
-      if (instr2.LI.imm.is_basic()) continue;
-      if (!live.cfg().is_parent_block(j, live.cfg().block_at(j))) continue;
+      if (!(instr2.tag == InstrTag::LI && instr2.LI.imm == instr.LI.imm)) continue;
+      if (!live.cfg().is_parent_block(j, live.cfg().block_at(i))) continue;
 
 /*
       std::cout << "  Could replace LI at " << j << " (block " << live.cfg().block_at(j) << "): "
@@ -283,7 +308,7 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
         if (regs.is_dest(instr2.LI.dest)) {
           std::string msg;
           msg << "Stopping replacing same LIs: "
-              << "instruction at " << k << " uses reg " << instr2.LI.dest.dump()
+              << "instrs[" << k << "] uses reg " << instr2.LI.dest.dump()
               << " as dst"
               << ": " << instrs[k].mnemonic(false);
 
@@ -291,8 +316,6 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
             msg << " (Conditional assign!)";
           }
           debug(msg);
-
-          assertq(!instrs[k].isCondAssign(), "Assign is conditional");
 
           break;  // Stop if var to replace is rewritten
         }
@@ -311,12 +334,13 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
       }
 
       if (num_subsitutions > 0) {
+        last_use = j;
 /*
         std::string msg;
         msg << "Replacing instruction at " << j << " with with NOP";
         debug(msg);
 */
-        instr2.tag = InstrTag::NO_OP;
+        instr2.tag = InstrTag::SKIP;
       }
     }
 

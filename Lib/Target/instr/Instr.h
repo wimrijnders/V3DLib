@@ -71,47 +71,54 @@ struct BranchTarget {
 // ============================================================================
 
 enum InstrTag {
-  LI,             // Load immediate
-  ALU,            // ALU operation
-  BR,             // Conditional branch to target
-  END,            // Program end (halt)
+  LI,              // Load immediate
+  ALU,             // ALU operation
+  BR,              // Conditional branch to target
+  END,             // Program end (halt)
 
   // ==================================================
   // Intermediate-language constructs
   // ==================================================
 
-  BRL,            // Conditional branch to label
-  LAB,            // Label
-  NO_OP,          // No-op
+  BRL,             // Conditional branch to label
+  LAB,             // Label
+  NO_OP,           // No-op
+  SKIP,            // For internal use during optimization
 
-  VC4_ONLY,       // Marker in this enum, not an op!
+  // ==================================================
+  // vc4-only instructions
+  // ==================================================
+  VC4_ONLY,        // Marker in this enum, not an op!
 
   DMA_LOAD_WAIT = VC4_ONLY, // Wait for DMA load to complete
-  DMA_STORE_WAIT, // Wait for DMA store to complete
-  SINC,           // Increment semaphore
-  SDEC,           // Decrement semaphore
-  IRQ,            // Send IRQ to host
+  DMA_STORE_WAIT,  // Wait for DMA store to complete
+  SINC,            // Increment semaphore
+  SDEC,            // Decrement semaphore
+  IRQ,             // Send IRQ to host
 
-  VPM_STALL,      // Marker for VPM read setup
+  VPM_STALL,       // Marker for VPM read setup
 
-  END_VC4_ONLY,   // Marker in this enum, not an op!
+  END_VC4_ONLY,    // Marker in this enum, not an op!
 
+  // ==================================================
+  // v3d/vc4 instructions
+  // ==================================================
   // Load receive via TMU
   RECV = END_VC4_ONLY,
   TMU0_TO_ACC4,
 
   // Init program block (Currently filled only for v3d)
-  INIT_BEGIN,     // Marker for start of init block
-  INIT_END,       // Marker for end of init block
+  INIT_BEGIN,      // Marker for start of init block
+  INIT_END,        // Marker for end of init block
 
   // ==================================================
   // v3d-only instructions
   // ==================================================
-  V3D_ONLY,       // Marker in this enum, not an op!
+  V3D_ONLY,        // Marker in this enum, not an op!
 
   TMUWT = V3D_ONLY,
 
-  END_V3D_ONLY    // Marker in this enum, not an op!
+  END_V3D_ONLY     // Marker in this enum, not an op!
 };
 
 
