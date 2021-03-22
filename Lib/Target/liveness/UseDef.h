@@ -6,14 +6,13 @@
 
 namespace V3DLib {
 
-// 'use' and 'def' sets:
-//   * 'use' set: the variables read by an instruction
-//   * 'def' set: the variables modified by an instruction
-
 struct UseDefReg {
-  SmallSet<Reg> use;
-  SmallSet<Reg> def;
+  SmallSet<Reg> use;   // the variables used as src in an instruction
+  SmallSet<Reg> def;   // the variables (at most 1!) used as dst by an instruction
 
+  void set_used(Instr instr, bool set_use_where = false);
+  bool is_dest(Reg const &rhs) const;
+  bool is_src(Reg const &rhs) const;
   std::string dump() const;
 };   
 
@@ -25,8 +24,6 @@ struct UseDef {
   void set_used(Instr const &instr, bool set_use_where = false);
   std::string dump() const;
 };   
-
-void useDefReg(Instr instr, UseDefReg* out, bool set_use_where = false);
 
 }  // namespace V3DLib
 

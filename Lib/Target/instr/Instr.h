@@ -84,7 +84,7 @@ enum InstrTag {
   LAB,            // Label
   NO_OP,          // No-op
 
-  VC4_ONLY,
+  VC4_ONLY,       // Marker in this enum, not an op!
 
   DMA_LOAD_WAIT = VC4_ONLY, // Wait for DMA load to complete
   DMA_STORE_WAIT, // Wait for DMA store to complete
@@ -94,7 +94,7 @@ enum InstrTag {
 
   VPM_STALL,      // Marker for VPM read setup
 
-  END_VC4_ONLY,
+  END_VC4_ONLY,   // Marker in this enum, not an op!
 
   // Load receive via TMU
   RECV = END_VC4_ONLY,
@@ -107,12 +107,11 @@ enum InstrTag {
   // ==================================================
   // v3d-only instructions
   // ==================================================
-  V3D_ONLY,
+  V3D_ONLY,       // Marker in this enum, not an op!
 
   TMUWT = V3D_ONLY,
-  // TODO Add as required here
 
-  END_V3D_ONLY
+  END_V3D_ONLY    // Marker in this enum, not an op!
 };
 
 
@@ -227,6 +226,8 @@ struct Instr : public InstructionComment {
     // to avoid having to check the union members separately, and to skip unused fields
     return this->mnemonic() == rhs.mnemonic();
   }
+
+  bool operator!=(Instr const &rhs) const { return !(*this == rhs); }
 
 
   static Instr nop();

@@ -11,14 +11,22 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
   Reg current(REG_A, var_id);
   Reg replace_with(ACC, acc_id);
 
+  auto &instr = instrs[item.first_use()];
+
   if (item.only_assigned()) {
     assert(item.use_range() == 1);
-    renameDest(instrs[item.first_use()], current, replace_with);
+    renameDest(instr, current, replace_with);
     return;
   }
 
-  int tmp = renameDest(instrs[item.first_use()], current, replace_with);
-  assert(tmp != 0);  // Not expecting this
+  if (instr.tag != InstrTag::NO_OP) {
+    int tmp = renameDest(instr, current, replace_with);
+    if (tmp == 0) {  // Not expecting this
+      std::string msg;
+      msg << "Failed to rename dest for instruction: " << instr.dump();
+      assertq(false, msg, true);
+    }
+  }
 
   // There can possibly be more assignments between first usage and live range
   // Following serves to capture them all - this might just be paranoia
@@ -105,6 +113,7 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
     //
     int acc_id = instrs.get_free_acc(item.first_use(), item.last_use());
 
+/*
 //    if (acc_id > 0) {
     if (range_size > 1) {
       std::string msg;
@@ -113,6 +122,7 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
           << "free acc: " << acc_id;
       debug(msg);
     }
+*/
 
     if (acc_id == -1 ) {
       warning("No free acc!");
@@ -245,7 +255,71 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
     if (instr.tag != InstrTag::LI) continue;
     if (instr.LI.imm.is_basic()) continue;
 
-    std::cout << "LI at " << i << ": " << instr.dump() << std::endl;
+    std::cout << "LI at " << i << " (block " << live.cfg().block_at(i) << "): "
+              << instr.mnemonic(false) << std::endl;
+
+    // Scan forward to find replaceable LI's (i.e. LI's with same value in same or child block)
+    for (int j = i + 1; j < (int) instrs.size(); j++) {
+      Instr &instr2 = instrs[j];
+
+      if (instr2.tag != InstrTag::LI || instr2.LI.imm != instr.LI.imm) continue;
+      if (instr2.LI.imm.is_basic()) continue;
+      if (!live.cfg().is_parent_block(j, live.cfg().block_at(j))) continue;
+
+/*
+      std::cout << "  Could replace LI at " << j << " (block " << live.cfg().block_at(j) << "): "
+                << instr2.mnemonic(false) << std::endl;
+
+      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl; 
+*/
+
+      int block_end = live.cfg().block_end(j);
+      UseDefReg regs;
+      int num_subsitutions = 0;
+
+      for (int k = j + 1; k <= block_end; k++) {
+        regs.set_used(instrs[k]);
+
+        if (regs.is_dest(instr2.LI.dest)) {
+          std::string msg;
+          msg << "Stopping replacing same LIs: "
+              << "instruction at " << k << " uses reg " << instr2.LI.dest.dump()
+              << " as dst"
+              << ": " << instrs[k].mnemonic(false);
+
+          if (instrs[k].isCondAssign()) {
+            msg << " (Conditional assign!)";
+          }
+          debug(msg);
+
+          assertq(!instrs[k].isCondAssign(), "Assign is conditional");
+
+          break;  // Stop if var to replace is rewritten
+        }
+
+        Reg current      = instr2.LI.dest;
+        Reg replace_with = instr.LI.dest;
+
+        if (regs.is_src(current)) {
+          std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
+                    << current.dump() << " -> " << replace_with.dump()
+                    << ": " << instrs[k].mnemonic(false) << std::endl;
+
+          renameUses(instrs[k], current, replace_with);
+          num_subsitutions++;
+        }
+      }
+
+      if (num_subsitutions > 0) {
+/*
+        std::string msg;
+        msg << "Replacing instruction at " << j << " with with NOP";
+        debug(msg);
+*/
+        instr2.tag = InstrTag::NO_OP;
+      }
+    }
+
     found_something = true;
   }
 
@@ -269,7 +343,7 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
  * * It is possible that a variable gets used multiple times, and the last usage of it
  *   is replaced by an accumulator.
  *
- *   For this reason, it is dangerous to keep track of the substitustion in `allocated_vars`,
+ *   For this reason, it is dangerous to keep track of the substitutions in `allocated_vars`,
  *   and to ignore the variable replacement due to acc usage later on. There may still be instances
  *   of the variable that need replacing.
  */

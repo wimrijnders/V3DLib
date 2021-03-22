@@ -6,7 +6,7 @@
 namespace V3DLib {
 namespace vc4 {
 
-void regAlloc(CFG *cfg, Instr::List &instrs);
+void regAlloc(Instr::List &instrs);
 
 }  // namespace vc4; 
 }  // namespace V3DLib

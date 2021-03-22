@@ -39,7 +39,7 @@ public:
  */
 class Liveness {
 public:
-  Liveness(CFG &cfg, int numVars) : m_cfg(cfg), m_reg_usage(numVars) {}
+  Liveness(int numVars) : m_reg_usage(numVars) {}
 
   CFG const &cfg() const { return m_cfg; }
   int size() const { return m_set.size(); }
@@ -50,14 +50,15 @@ public:
   void computeLiveOut(InstrId i, LiveSet &liveOut);
   std::string dump();
 
-  static void optimize(CFG &cfg, Instr::List &instrs, int numVars);
+  static void optimize(Instr::List &instrs, int numVars);
 
 private:
-  CFG         &m_cfg;
+  CFG          m_cfg;
   Seq<LiveSet> m_set;
   RegUsage     m_reg_usage;
 
   LiveSet &get(int index) { return m_set[index]; }
+  void clear();
   void compute_liveness(Instr::List &instrs);
   void setSize(int size);
   bool insert(int index, LiveSet const &set);

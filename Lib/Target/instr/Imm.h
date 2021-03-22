@@ -27,6 +27,9 @@ struct Imm {
   bool is_basic() const;
   std::string pretty() const;
 
+  bool operator==(Imm const &rhs) const;
+  bool operator!=(Imm const &rhs) const { return !(*this == rhs); }
+
 private:
   ImmTag m_tag      = IMM_INT32;
   int    m_intVal   = 0;

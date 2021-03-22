@@ -141,8 +141,8 @@ Instr::List insertNops(Instr::List &instrs) {
     Instr instr = instrs[i];
 
     // Insert NOPs to avoid data hazards
-    useDefReg(prev, &prevSet);
-    useDefReg(instr, &mySet);
+    prevSet.set_used(prev);
+    mySet.set_used(instr);
 
     for (int j = 0; j < prevSet.def.size(); j++) {
       Reg defReg = prevSet.def[j];
@@ -179,8 +179,8 @@ Instr::List insertNops(Instr::List &instrs) {
 bool notVPMGet(Instr instr) {
   // Use/def sets
   UseDefReg useDef;
+  useDef.set_used(instr);
 
-  useDefReg(instr, &useDef);
   for (int i = 0; i < useDef.use.size(); i++) {
     Reg useReg = useDef.use[i];
     if (useReg.tag == SPECIAL && useReg.regId == SPECIAL_VPM_READ)

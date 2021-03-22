@@ -96,14 +96,10 @@ void compile_postprocess(Instr::List &targetCode) {
 
   loadStorePass(targetCode);
 
-  // Construct control-flow graph
-  CFG cfg;
-  cfg.build(targetCode);
-
   //compile_data.target_code_before_regalloc = targetCode.dump();
 
   // Perform register allocation
-  getSourceTranslate().regAlloc(&cfg, targetCode);
+  getSourceTranslate().regAlloc(targetCode);
 
   // Satisfy target code constraints
   satisfy(targetCode);

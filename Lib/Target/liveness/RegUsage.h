@@ -46,11 +46,14 @@ private:
 
 class Liveness;
 
-struct RegUsage : public std::vector<RegUsageItem> {
+struct RegUsage : private std::vector<RegUsageItem> {
   using Parent = std::vector<RegUsageItem>;
+  using Parent::size;
+  using Parent::operator[];
 
   RegUsage(int numVars);
 
+  void reset();
   void set_used(Instr::List &instrs);
   void set_live(Liveness &live);
   std::string dump(bool verbose = false) const;

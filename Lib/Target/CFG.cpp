@@ -141,6 +141,69 @@ void CFG::build(Instr::List &instrs) {
 }
 
 
+/**
+ * Returns the block of given instruction line
+ */
+int CFG::block_at(InstrId line_num) const {
+  return blocks[line_num];
+}
+
+
+/**
+ * Find the last line num which has the same block as `line_num`.
+ */
+int CFG::block_end(InstrId line_num) const {
+ int ret = blocks[line_num];
+
+ for (int j = line_num + 1; j < (int) blocks.size(); j++) {
+   if (blocks[line_num] == blocks[j]) {
+     ret = j;
+   }
+ }
+
+ return ret;
+}
+
+
+/**
+ * Check if given block is same as or parent of block at line_num
+ *
+ * 'Parent' is defined as a block which precedes *and* follows block at line_num.
+ * This prevents detection of two conditional blocks which directly follow each other.
+ * This condition might be too strict, but it's erring on the safe side.
+ *
+ * This method assumes that all blocks are numbered uniquely.
+ * Assumption should hold (it does at time of writing), but is not enforced.
+ */
+bool CFG::is_parent_block(InstrId line_num, int block) const {
+  assert(blocks[0] == 0);    // Double-check that top block is zero.
+  if (block == 0) return 0;  // In that case, block is always parent
+
+  int cur_block = blocks[line_num];
+
+  if (cur_block == block) return true;
+
+  for (int i = line_num - 1; i >= 0; i--) {
+    if (blocks[i] == 0) return false;        // top block, no point in scanning further
+    if (cur_block == blocks[i]) continue;
+
+    // Found a candidate; scan after line_num to see if it's embedded
+    for (int j = line_num + 1; j < (int) blocks.size(); j++) {
+      if (blocks[i] == 0) return false;      // top block, no point in scanning further
+      if (cur_block == blocks[j]) continue;  // Skip after current block
+
+      if (blocks[i] == blocks[j]) {
+        return true;
+      }
+
+      // Keep on scanning, to avoid child blocks in current block
+    }
+  }
+
+  return false;
+}
+
+
 void CFG::build_blocks() {
   blocks.resize(size());
 

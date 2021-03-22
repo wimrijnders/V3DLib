@@ -21,6 +21,10 @@ using Succs = SmallSet<InstrId>;               // Set of successors.
 class CFG : public Set<Succs> {
 public:
   void build(Instr::List &instrs);
+  int  block_at(InstrId line_num) const;
+  int  block_end(InstrId line_num) const;
+  bool is_parent_block(InstrId line_num, int block) const;
+
   std::string dump() const;
   std::string dump_blocks() const;
 

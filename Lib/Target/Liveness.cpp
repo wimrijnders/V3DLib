@@ -12,6 +12,18 @@
 namespace V3DLib {
 namespace {
 
+int count_noops(Instr::List &instrs) {
+  int ret = 0;
+
+  for (int i = 0; i < (int) instrs.size(); i++) {
+    if (instrs[i].tag == InstrTag::NO_OP) {
+      ret++;
+    }
+  }
+
+  return ret;
+}
+
 /**
  * Replace the variables with the assigned registers for the given instruction
  *
@@ -31,7 +43,7 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
     if (Platform::compiling_for_vc4() && replace_with.tag == REG_B) return true;
 
     UseDefReg out;
-    useDefReg(instr, &out);
+    out.set_used(instr);
 
     std::string msg = "regAlloc(): allocated register must be in register file.";
     msg << "\n"
@@ -73,6 +85,30 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
   substRegTag(&instr, TMP_B, REG_B);
 }
 
+
+/**
+ * Removes all NO_OP instructions from the list
+ */
+void remove_replaced_instructions(Instr::List &instrs) {
+  int cur   = 0;
+  int count = 0;
+
+  while (cur < instrs.size()) {
+    if (instrs[cur].tag == InstrTag::NO_OP) {
+      instrs.remove(cur);
+      count++;
+    } else {
+      cur++;
+    }
+  }
+
+  if (count > 0) {
+    std::string msg;
+    msg << "remove_replaced_instructions() removed " << count << " NO_OPs";
+    debug(msg);
+  }
+}
+
 }  // anon namespace
 
 
@@ -99,95 +135,6 @@ std::string LiveSet::dump() const {
   ret << ")";
 
   return ret;
-}
-
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Compute 'use' and 'def' sets
-///////////////////////////////////////////////////////////////////////////////
-
-// 'use' set: the variables read by an instruction
-// 'def' set: the variables modified by an instruction
-
-/**
- * Compute 'use' and 'def' sets for a given instruction
- *
- * Param 'set_use_where' need only be true during liveness analysis.
- *
- * @param set_use_where  if true, regard assignments in conditional 'where'
- *                       instructions as usage.
- *
- * ============================================================================
- * NOTES
- * =====
- *
- * * 'set_use_where' needs to be true for the following case (target language):
- *
- *    LI A5 <- 0                  # assignment
- *    ...
- *    where ZC: LI A6 <- 1
- *    where ZC: A5 <- or(A6, A6)  # Conditional assignment
- *    ...
- *    S[VPM_WRITE] <- shl(A5, 0)  # last use
- *
- *   If the condition is ignored (`set_use_where == false`), the conditional
- *   assignment is regarded as an overwrite of the previous one. The variable
- *   is then considered live from the conditional assignment onward.
- *   This is wrong, the value of the first assignment may be significant due
- *   to the condition. The usage of `A5` runs the risk of being assigned different
- *   registers for the different assignments, which will lead to wrong code execution.
- *
- * * However, always using `set_use_where == true` leads to variables being live
- *   for unnecessarily long. If this is the *only* usage of `A6`:
- *
- *    where ZC: LI A6 <- 1
- *    where ZC: A5 <- or(A6, A6)  # Conditional assignment
- *
- *   ... `A6` would be considered live from the start of the program
- *   onward till the last usage.
- *   This unnecessarily ties up a register for a long duration, complicating the
- *   allocation by creating a false shortage of registers.
- *   This case can not be handled by the liveness analysis as implemented here.
- *   It is corrected afterwards in methode `Liveness::compute()`.
- */
-void useDefReg(Instr instr, UseDefReg* useDef, bool set_use_where) {
-  auto ALWAYS = AssignCond::Tag::ALWAYS;
-
-  useDef->use.clear();
-  useDef->def.clear();
-
-  switch (instr.tag) {
-    case LI:                                     // Load immediate
-      useDef->def.insert(instr.LI.dest);         // Add destination reg to 'def' set
-
-      if (set_use_where) {
-        if (instr.LI.cond.tag != ALWAYS)         // Add destination reg to 'use' set if conditional assigment
-          useDef->use.insert(instr.LI.dest);
-      }
-      return;
-
-    case ALU:                                    // ALU operation
-      useDef->def.insert(instr.ALU.dest);        // Add destination reg to 'def' set
-
-      if (set_use_where) {
-        if (instr.ALU.cond.tag != ALWAYS)        // Add destination reg to 'use' set if conditional assigment
-          useDef->use.insert(instr.ALU.dest);
-      }
-
-      if (instr.ALU.srcA.is_reg())               // Add source reg A to 'use' set
-        useDef->use.insert(instr.ALU.srcA.reg());
-
-      if (instr.ALU.srcB.is_reg())               // Add source reg B to 'use' set
-        useDef->use.insert(instr.ALU.srcB.reg());
-      return;
-
-    case RECV:                                   // Load receive instruction
-      useDef->def.insert(instr.RECV.dest);       // Add dest reg to 'def' set
-      return;
-    default:
-      return;
-  }  
 }
 
 
@@ -364,7 +311,23 @@ void Liveness::compute_liveness(Instr::List &instrs) {
 }
 
 
+void Liveness::clear() {
+  m_cfg.clear();
+  m_set.clear();
+  m_reg_usage.reset();
+
+/*
+  std::string msg;
+  msg << "Liveness after Liveness::clear(): " << this->dump();
+  debug(msg);
+*/
+}
+
+
 void Liveness::compute(Instr::List &instrs) {
+  clear();
+
+  m_cfg.build(instrs);
   m_reg_usage.set_used(instrs);
 
   compute_liveness(instrs);
@@ -495,14 +458,25 @@ std::string Liveness::dump() {
  * The idea is to minimize beforehand the number of variables considered
  * in the liveness analysis.
  */
-void Liveness::optimize(CFG &cfg, Instr::List &instrs, int numVars) {
-  Liveness live(cfg, numVars);
+void Liveness::optimize(Instr::List &instrs, int numVars) {
+  // Sanity check - to see if NO_OPs can be used as instructions to remove
+  assertq(count_noops(instrs) == 0, "combineImmediates(): NO_OPs detected in instruction list");
+
+  Liveness live(numVars);
   live.compute(instrs);
 
   combineImmediates(live, instrs);
+  //remove_replaced_instructions(instrs); - bad idea here, CFG  doesn't change
+
+  live.compute(instrs);  // instructions may have changed in previous step, redo liveness
+
+  int prev_count_noops = count_noops(instrs);
 
   compile_data.num_accs_introduced = introduceAccum(live, instrs);
 
+  assertq(prev_count_noops == count_noops(instrs), "NO_OP count changed after introduceAccum()");
+
+  remove_replaced_instructions(instrs);
   //std::cout << count_reg_types(instrs).dump() << std::endl;
   compile_data.target_code_before_liveness = instrs.dump();
 }

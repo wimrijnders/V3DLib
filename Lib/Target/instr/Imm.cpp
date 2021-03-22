@@ -67,4 +67,19 @@ std::string Imm::pretty() const {
 }
 
 
+bool Imm::operator==(Imm const &rhs) const {
+  if (m_tag != rhs.m_tag) return false;
+
+  switch(m_tag) {
+    case IMM_INT32:
+    case IMM_MASK:
+      return (m_intVal == rhs.m_intVal);
+    case IMM_FLOAT32:
+      return (m_floatVal == rhs.m_floatVal);
+    default: assert(false);
+  }
+
+  return false;
+}
+
 }  // namespace V3DLib

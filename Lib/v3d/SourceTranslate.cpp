@@ -42,14 +42,12 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
 }
 
 
-void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
-  assert(cfg != nullptr);
-
+void SourceTranslate::regAlloc(Instr::List &instrs) {
   int numVars = getFreshVarCount();
-  Liveness::optimize(*cfg, instrs, numVars);
+  Liveness::optimize(instrs, numVars);
 
   // Step 0 - Perform liveness analysis
-  Liveness live(*cfg, numVars);
+  Liveness live(numVars);
   live.compute(instrs);
 
 

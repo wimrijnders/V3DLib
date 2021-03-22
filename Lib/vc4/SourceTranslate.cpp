@@ -27,8 +27,8 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
 }
 
 
-void SourceTranslate::regAlloc(CFG* cfg, Instr::List &instrs) {
-  vc4::regAlloc(cfg, instrs);
+void SourceTranslate::regAlloc(Instr::List &instrs) {
+  vc4::regAlloc(instrs);
 }
 
 

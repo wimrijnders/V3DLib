@@ -85,7 +85,7 @@ std::string RegUsageItem::dump() const {
 
 
 void RegUsageItem::add_dst(int n) {
-  assert(use.dst.empty() || use.dst.back() < n);
+  assertq(use.dst.empty() || use.dst.back() < n, "RegUsageItem::add_dst() failed", true);
   use.dst << n;
 }
 
@@ -183,7 +183,18 @@ bool RegUsageItem::use_overlaps(RegUsageItem const &rhs) const {
 ///////////////////////////////////////////////////////////////////////////////
 
 RegUsage::RegUsage(int numVars) : Parent(numVars) {
-  for (int i = 0; i < numVars; i++) (*this)[i].reg.tag = NONE;
+  reset();
+}
+
+
+void RegUsage::reset() {
+  assert(size() > 0);
+
+  for (int i = 0; i < (int) size(); i++) {
+    auto &item = (*this)[i];
+    item = RegUsageItem();
+    item.reg.tag = NONE;
+  }
 }
 
 
@@ -298,6 +309,8 @@ std::string RegUsage::allocated_registers_dump() const {
 
 
 std::string RegUsage::dump(bool verbose) const {
+  if (empty()) return "<Empty>";
+
   if (!verbose) return allocated_registers_dump();
 
   bool const ShowUnused = false;

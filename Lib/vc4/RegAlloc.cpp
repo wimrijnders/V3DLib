@@ -100,7 +100,8 @@ RegTypeCount count_reg_types(Instr::List &instrs) {
 
   for (int i = 0; i < instrs.size(); i++) {
     UseDefReg def_regs;
-    useDefReg(instrs[i], &def_regs);
+    def_regs.set_used(instrs[i]);
+
     for (int j = 0; j < def_regs.use.size(); j++) {
       reg_types.list[def_regs.use[j].tag]++;
     }
@@ -127,17 +128,16 @@ namespace vc4 {
  *
  * The list can contain predefined accumulators, SPECIAL registers and NONE.
  */
-void regAlloc(CFG *cfg, Instr::List &instrs) {
-  assert(cfg != nullptr);
+void regAlloc(Instr::List &instrs) {
   assert(count_reg_types(instrs).safe_for_regalloc());
   //Timer("vc4 regAlloc", true);
   //std::cout << count_reg_types(instrs).dump() << std::endl;
 
   int numVars = getFreshVarCount();
-  Liveness::optimize(*cfg, instrs, numVars);
+  Liveness::optimize(instrs, numVars);
 
   // Step 0 - Perform liveness analysis
-  Liveness live(*cfg, numVars);
+  Liveness live(numVars);
   live.compute(instrs);
 
 
