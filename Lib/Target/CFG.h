@@ -19,11 +19,14 @@ using Succs = SmallSet<InstrId>;               // Set of successors.
  * Set of successors for each instruction.
  */
 class CFG : public Set<Succs> {
+  using Parent = Set<Succs>;
+
 public:
   void build(Instr::List &instrs);
   int  block_at(InstrId line_num) const;
   int  block_end(InstrId line_num) const;
   bool is_parent_block(InstrId line_num, int block) const;
+  void clear();
 
   std::string dump() const;
   std::string dump_blocks() const;

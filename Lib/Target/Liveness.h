@@ -33,9 +33,16 @@ public:
  *
  * A variable is 'live' in the instruction list:
  *  - from 1 *after* an assignment
- *  - till final use
+ *  - Up to and including final use, or *till* (not including) next assignment.
+ *    Note special case `x = f(x)`.
  *
  * This link follows the source code here pretty closely: https://lambda.uta.edu/cse5317/spring01/notes/node37.html
+ *
+ *  - "A variable x is *live* at a particular point (statement) in a program,
+ *     if it holds a value that may be needed in the future.
+ *
+ *     That is, x is live at this point if there is a path (following gotos)
+ *     from this point to a statement that use x and there is no assignment to x in any statement in the path."
  */
 class Liveness {
 public:

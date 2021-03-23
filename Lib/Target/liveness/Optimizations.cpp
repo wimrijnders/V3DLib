@@ -11,7 +11,7 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
   Reg current(REG_A, var_id);
   Reg replace_with(ACC, acc_id);
 
-  auto &instr = instrs[item.first_use()];
+  auto &instr = instrs[item.first_usage()];
 
   if (item.only_assigned()) {
     assert(item.use_range() == 1);
@@ -19,7 +19,7 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
     return;
   }
 
-  if (instr.tag != InstrTag::NO_OP) {
+  if (instr.tag != InstrTag::NO_OP && instr.tag != InstrTag::SKIP) {
     int tmp = renameDest(instr, current, replace_with);
     if (tmp == 0) {  // Not expecting this
       std::string msg;
@@ -31,14 +31,14 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
   // There can possibly be more assignments between first usage and live range
   // Following serves to capture them all - this might just be paranoia
   int tmp_count = 0;
-  for (int i = item.first_use() + 1; i <= item.first_live() - 1; i++) {
+  for (int i = item.first_usage() + 1; i <= item.first_live() - 1; i++) {
     tmp_count += renameDest(instrs[item.first_dst()], current, replace_with);
   }
 
   if (tmp_count > 0) {
     std::string msg = "Detected extra assignments for var ";
     msg << var_id
-        << " in range " << (item.first_use() + 1) << "-" << (item.first_live() - 1);
+        << " in range " << (item.first_usage() + 1) << "-" << (item.first_live() - 1);
 
     debug(msg);
   }
@@ -70,7 +70,7 @@ Reg replacement_acc(Instr &prev, Instr &instr) {
       // v3d ROT uses ACC1 (r1) internally, don't use it here
       // TODO better selection of subsitution ACC
       if (prev.isRot() || instr.isRot()) {
-        //warning("introduceAccum(): subsituting ACC in ROT operation");
+        //warning("replacement_acc(): subsituting ACC in ROT operation");
         acc_id = 2;
       }
     }
@@ -102,7 +102,9 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
     // Guard for this special case for the time being.
     // It should actually be possible to load a uniform in an accumulator,
     // not bothering right now.
-    if (instrs[item.first_use()].isUniformLoad()) continue;
+    if (instrs[item.first_dst()].isUniformLoad()) {
+      continue;
+    }
 
     //
     // NOTE: There may be a slight issue here:
@@ -111,14 +113,14 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
     //
     // This is a small thing, perhaps for later optimization
     //
-    int acc_id = instrs.get_free_acc(item.first_use(), item.last_use());
+    int acc_id = instrs.get_free_acc(item.first_usage(), item.last_usage());
 
 /*
 //    if (acc_id > 0) {
     if (range_size > 1) {
       std::string msg;
       msg << "range_size: " << range_size << ", Var " << var_id << ", "
-          << "lines " << item.first_use()  << "-" << item.last_use() << ", "
+          << "lines " << item.first_usage()  << "-" << item.last_usage() << ", "
           << "free acc: " << acc_id;
       debug(msg);
     }
@@ -255,14 +257,22 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
     if (instr.tag != InstrTag::LI) continue;
     if (instr.LI.imm.is_basic()) continue;
 
+/*
     std::cout << "LI at " << i << " (block " << live.cfg().block_at(i) << "): "
               << instr.mnemonic(false) << std::endl;
+*/
 
     // Scan forward to find replaceable LI's (i.e. LI's with same value in same or child block)
     int last_use = i;
     int const LAST_USE_LIMIT = 50;
 
     for (int j = i + 1; j < (int) instrs.size(); j++) {
+      auto &instr = instrs[j];
+
+      if (instr.is_branch()) {  // Don't go over branches, this affects liveness in a bad way
+        break;
+      }
+
       if (last_use + LAST_USE_LIMIT < j) {
         debug("Hit last use limit, stopping forward scan");
         break;
@@ -271,7 +281,9 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
       {
         UseDefReg regs;
         regs.set_used(instrs[j]);
+
         if (regs.is_dest(instr.LI.dest)) {
+/*
           std::string msg;
           msg << "Stopping forward scan LIs: "
               << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
@@ -282,6 +294,7 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
             msg << " (Conditional assign!)";
           }
           debug(msg);
+*/
           break;
         }
       }
@@ -348,7 +361,7 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
   }
 
   if (found_something) {
-    std::cout << live.cfg().dump_blocks() << std::endl;
+//    std::cout << live.cfg().dump_blocks() << std::endl;
   }
 }
 

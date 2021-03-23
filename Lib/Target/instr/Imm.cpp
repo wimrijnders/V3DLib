@@ -82,4 +82,21 @@ bool Imm::operator==(Imm const &rhs) const {
   return false;
 }
 
+
+/**
+ * Return a representation of the value which is suitable for adding
+ * to a (vc4) instruction
+ */
+uint32_t Imm::encode() const {
+  assert(sizeof(m_intVal)   == sizeof(uint32_t));
+  assert(sizeof(m_floatVal) == sizeof(uint32_t));
+
+  if (m_tag == IMM_FLOAT32) {
+    auto *tmp = (uint32_t *) &m_floatVal;
+    return *tmp;
+  }
+
+  return (uint32_t) m_intVal;
+}
+
 }  // namespace V3DLib

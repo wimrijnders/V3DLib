@@ -274,7 +274,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       uint32_t ws   = (file == REG_A ? 0 : 1) << 12;
       uint32_t sf   = (li.m_setCond.flags_set()? 1 : 0) << 13;
       *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
-      *low          = (uint32_t) li.imm.intVal();
+      *low          = li.imm.encode();
       return;
     }
 

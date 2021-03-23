@@ -136,6 +136,7 @@ void KernelDriver::init_compile() {
 
 
 void KernelDriver::obtain_ast() {
+  clearStack();
   m_body = m_stmtStack.pop();
 }
 
@@ -151,18 +152,20 @@ void KernelDriver::compile(std::function<void()> create_ast) {
     compile_intern();
     m_numVars = getFreshVarCount();
     m_compile_data = compile_data;
+    //clearStack();
   } catch (V3DLib::Exception const &e) {
     std::string msg = "Exception occured during compilation: ";
     msg << e.msg();
+
+    clearStack();
 
     if (e.msg().compare(0, 5, "ERROR") == 0) {
       errors << msg;
     } else {
       throw;  // Must be a fatal()
     }
-  }
 
-  clearStack();
+  }
 }
 
 

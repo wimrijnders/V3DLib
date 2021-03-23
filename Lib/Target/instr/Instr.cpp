@@ -148,6 +148,17 @@ bool Instr::isCondAssign() const {
 }
 
 
+AssignCond Instr::assign_cond() const {
+  if (tag == InstrTag::LI)
+    return LI.cond;
+
+  if (tag == InstrTag::ALU)
+    return ALU.cond;
+
+  return always;
+}
+
+
 /**
  * Check that write is non-conditional
  *

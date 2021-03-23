@@ -18,11 +18,11 @@ struct RegUsageItem {
   std::string dump() const;
   int live_range() const;
   int use_range() const;
-  int first_use() const;
-  int first_dst() const       { return use.dst[0]; }
+  int first_dst() const;
   int first_live() const      { return live.first; }
   int last_live() const       { return live.last; }
-  int last_use() const;
+  int first_usage() const;
+  int last_usage() const;
   bool use_overlaps(RegUsageItem const &rhs) const;
 
   bool regular_use() const {
@@ -33,7 +33,8 @@ private:
 
   struct {
     int src_use = 0;       // Number of times used as src in code
-    int src_first = -1;    // First instruction where var is used
+    int src_first = -1;    // First instruction where var is used as src
+    int src_last = -1;     // Last instruction where var is used as src
     std::vector<int> dst;  // List of line numbers where var is set
   } use;
 

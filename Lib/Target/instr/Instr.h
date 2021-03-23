@@ -213,8 +213,10 @@ struct Instr : public InstructionComment {
   Instr &setCondFlag(Flag flag);
   Instr &setCondOp(CmpOp const &cmp_op);
   Instr &cond(AssignCond in_cond);
+  bool is_branch() const { return tag == InstrTag::BR || tag == InstrTag::BRL; }
   bool isCondAssign() const;
   bool is_always() const;
+  AssignCond assign_cond() const;
   bool hasImm() const { return ALU.srcA.is_imm() || ALU.srcB.is_imm(); }
   bool isUniformLoad() const;
   bool isUniformPtrLoad() const;

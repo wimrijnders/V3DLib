@@ -61,15 +61,18 @@ bool RegUsageItem::unused() const {
 
 std::string RegUsageItem::dump() const {
   std::string ret;
-  ret << reg.dump() << "; ";
 
   if (unused()) {
     ret << "Not used";
     return ret;
   }
 
-  ret << "use(src_first, src_count, dst): ("
-      << use.src_first << ", " << use.src_use << ", {";
+  ret << reg.dump() << "; ";
+
+  ret << "use(src_first, src_last, src_count, dst): ("
+      << use.src_first << ", "
+      << use.src_last  << ", "
+      << use.src_use   << ", {";
 
   for (int i = 0; i < (int) use.dst.size(); ++i) {
     if (i != 0) {
@@ -95,6 +98,10 @@ void RegUsageItem::add_src(int n) {
 
   if (use.src_first == -1 || use.src_first > n) {
     use.src_first = n;
+  }
+
+  if (use.src_last == -1 || use.src_last < n) {
+    use.src_last = n;
   }
 }
 
@@ -153,28 +160,34 @@ int RegUsageItem::use_range() const {
 }
 
 
-int RegUsageItem::first_use() const {
+int RegUsageItem::first_dst() const {
   assert(!use.dst.empty());
-
-  // Following has been seen to fail for kernel rot3D_1, range_size 100
-  // TODO investigate
-  assertq(only_assigned() || (use.dst[0] + 1  == live.first), "assert failed in first_use()", true);
-
   return use.dst[0];
 }
 
 
 /**
- * Get last line number for which variable is used.
+ * Return the first in in which this variable is used (either as src or dst)
  */
-int RegUsageItem::last_use() const {
+int RegUsageItem::first_usage() const {
+  assert(use.src_first == -1 || use.src_first >= first_dst());
+  assert(!use.dst.empty());
+  return use.dst[0];
+}
+
+
+/**
+ * Get last line number for which variable is used (either as src or dst)
+ */
+int RegUsageItem::last_usage() const {
   if (only_assigned()) return first_dst();
-  return live.last;
+  assert(use.src_last == -1 || use.src_last >= use.src_first);
+  return use.src_last;
 }
 
 
 bool RegUsageItem::use_overlaps(RegUsageItem const &rhs) const {
-  return !((first_use() > rhs.last_use()) || (last_use() < rhs.first_use()));
+  return !((first_usage() > rhs.last_usage()) || (last_usage() < rhs.first_usage()));
 }
 
 
@@ -280,6 +293,9 @@ void RegUsage::check() const {
     if (!tmp.empty()) {
       tmp << "\n  This can happen if the first assignment is in a conditional block (If, When, For etc).\n";
       ret << tmp;
+
+      //debug(dump(true));
+      breakpoint
     }
   }
  

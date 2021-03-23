@@ -127,7 +127,8 @@ std::string Reg::dump() const {
     case ACC:     ret << "ACC" << regId; break;
     case SPECIAL: ret <<  "S[" << specialStr(regId) << "]"; break;
     case NONE:    ret <<   "_"; break;
-    default: assert(false); break;
+
+    default: assertq(false, "Reg::dump() failed", true); break;
   }
 
   return ret;

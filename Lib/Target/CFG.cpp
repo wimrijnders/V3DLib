@@ -232,4 +232,10 @@ void CFG::build_blocks() {
   }
 }
 
+
+void CFG::clear() {
+  Parent::clear();
+  blocks.clear();
+}
+
 }  // namespace V3DLib

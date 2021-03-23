@@ -268,9 +268,7 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
 
   int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
   log_error(ret, "v3d_wait_bo()");
-  if (ret != 0) {
-    breakpoint
-  }
+  assertq(ret == 0, "v3d_wait_bo(): call iotctl failed", true);
   return (ret == 0);
 }
 

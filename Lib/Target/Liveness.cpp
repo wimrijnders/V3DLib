@@ -292,8 +292,33 @@ void Liveness::compute_liveness(Instr::List &instrs) {
 
     // Propagate live variables backwards
     for (int i = instrs.size() - 1; i >= 0; i--) {
+      auto &instr = instrs[i];
+
+      bool also_set_used = false;
+      if (instr.isCondAssign()) {
+        UseDef useDef;
+        useDef.set_used(instr);
+        if (!useDef.def.empty()) {
+          auto &item = m_reg_usage[useDef.def[0]];
+
+          // If the dst variable is not used before, it should not be set as used as well
+          assert(item.first_dst() <= i);
+          also_set_used = (item.first_dst() < i);
+
+          if (!also_set_used) {
+            // Sanity check: in this case, we expect the variable to be in the condition assign block only
+            AssignCond assign_cond = instr.assign_cond();
+            for (int j = item.first_usage(); j <= item.last_usage(); j++) {
+              assert((assign_cond == instrs[j].assign_cond())            // expected usage
+                   || (instrs[j].is_always() && !instrs[j].is_branch())  // Interim basic usage allowed (happens)
+              );
+            }
+          }
+        }
+      }
+
       // Compute 'use' and 'def' sets
-      useDef.set_used(instrs[i], true);
+      useDef.set_used(instr, also_set_used);
       computeLiveOut(i, liveOut);
       liveIn.add_not_used(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
       liveIn.add(useDef.use);
@@ -352,13 +377,11 @@ void Liveness::compute(Instr::List &instrs) {
     if (item.unused() || item.only_assigned())     continue;  // skip special cases
     if (item.first_dst() + 1 == item.first_live()) continue;  // all is well
 
-/*
     {
       std::string msg;
       msg << "m_reg_usage[" << i << "]: discrepancy between first assign and liveness: " << item.dump();
       warning(msg);
     }
-*/
 
     // Remove all liveness of given variable `i` before and including first assign
     assert(item.first_dst() != -1);
@@ -464,6 +487,7 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
 
   Liveness live(numVars);
   live.compute(instrs);
+  //live.dump();
 
   combineImmediates(live, instrs);
   //remove_replaced_instructions(instrs); - bad idea here, CFG  doesn't change
