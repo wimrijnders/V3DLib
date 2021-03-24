@@ -331,9 +331,11 @@ void Liveness::compute_liveness(Instr::List &instrs) {
     count++;
   }
 
+/*
   std::string msg;
   msg << "compute_liveness count: " << count;
   debug(msg);
+*/
 }
 
 

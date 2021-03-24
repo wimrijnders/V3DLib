@@ -17,33 +17,23 @@ namespace v3d {
 
 Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
   using namespace V3DLib::Target::instr;
-
   Instr::List ret;
 
   Reg srcData = srcReg(dst_addr);
   Reg srcAddr = srcReg(src);
 
-  if (src.tag() == ELEM_NUM) {
-    // Why would you ever do this?
-    breakpoint  // check if ever used
-
-    //TODO: is ACC0 safe here?
-    assert(srcAddr == ELEM_ID);
-    ret << mov(ACC0, ELEM_ID)
-        << mov(TMUD, ACC0);
-  } else {
-    ret << mov(TMUD, srcAddr);
-  }
-
-  ret << mov(TMUA, srcData)
+  ret << mov(TMUD, srcAddr)
+      << mov(TMUA, srcData)
       << tmuwt();
+
+  ret.front().comment("store_var v3d");
 
   return ret;
 }
 
 
 void SourceTranslate::regAlloc(Instr::List &instrs) {
-  int numVars = getFreshVarCount();
+  int numVars = VarGen::count();
   Liveness::optimize(instrs, numVars);
 
   // Step 0 - Perform liveness analysis

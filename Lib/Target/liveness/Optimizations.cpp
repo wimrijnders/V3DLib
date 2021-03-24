@@ -400,11 +400,13 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
   for (int range_size = 1; range_size <= 10; range_size++) {
     int count = peephole_0(range_size, instrs, allocated_vars);
 
+/*
     if (count > 0 && range_size > 1) {
       std::string msg = "peephole_0 for range size ";
       msg << range_size << ", num substs: " << count;
       debug(msg);
     }
+*/
 
     subst_count += count;
   }

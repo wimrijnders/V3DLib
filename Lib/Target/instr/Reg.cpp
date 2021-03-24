@@ -35,19 +35,6 @@ const char* specialStr(RegId rid) {
 
 
 /**
- * Obtain a register for a fresh variable
- */
-Reg freshReg() {
-  Var v = freshVar();
-  Reg r;
-
-  r.tag = REG_A;
-  r.regId = v.id();
-  return r;
-}
-
-
-/**
  * Translate variable to source register.
  */
 Reg srcReg(Var v) {
@@ -135,6 +122,7 @@ std::string Reg::dump() const {
 }
 
 
+// TODO Move this away, to DMA
 bool is_dma_only_register(Reg const &reg) {
   if (reg.tag != SPECIAL) return false;
 

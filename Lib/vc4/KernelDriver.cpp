@@ -82,7 +82,7 @@ void KernelDriver::compile_intern() {
 
     Instr::List ret;
 
-    ret << mov(freshVar(), Var(UNIFORM)).comment("Last uniform load is dummy value")
+    ret << mov(VarGen::fresh(), Var(UNIFORM)).comment("Last uniform load is dummy value")
         << add_uniform_pointer_offset(m_targetCode);  // !!! NOTE: doesn't take dummy in previous into account
                                                       // This should not be a problem
 

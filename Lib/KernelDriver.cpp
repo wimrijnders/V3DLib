@@ -123,7 +123,7 @@ KernelDriver::~KernelDriver() {}
 void KernelDriver::init_compile() {
   initStmt();
   initStack(m_stmtStack);
-  resetFreshVarGen();
+  VarGen::reset();
   resetFreshLabelGen();
   Pointer::reset_increment();
   compile_data.clear();
@@ -150,7 +150,7 @@ void KernelDriver::compile(std::function<void()> create_ast) {
   try {
     create_ast();
     compile_intern();
-    m_numVars = getFreshVarCount();
+    m_numVars = VarGen::count();
     m_compile_data = compile_data;
     //clearStack();
   } catch (V3DLib::Exception const &e) {

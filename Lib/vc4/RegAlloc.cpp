@@ -133,7 +133,7 @@ void regAlloc(Instr::List &instrs) {
   //Timer("vc4 regAlloc", true);
   //std::cout << count_reg_types(instrs).dump() << std::endl;
 
-  int numVars = getFreshVarCount();
+  int numVars = VarGen::count();
   Liveness::optimize(instrs, numVars);
 
   // Step 0 - Perform liveness analysis

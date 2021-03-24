@@ -22,7 +22,6 @@ struct Expr {
     DEREF       // Dereference a pointer
   };
 
-  Expr();
   Expr(Var in_var);
   Expr(int in_lit);
   Expr(float in_lit);

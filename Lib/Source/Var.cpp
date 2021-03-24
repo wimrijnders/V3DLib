@@ -2,8 +2,12 @@
 #include "Support/basics.h"
 
 namespace V3DLib {
+namespace {
 
-static int globalVarId = 0;  // Used for fresh variable generation
+int globalVarId = 0;  // Used for fresh variable generation
+
+}  // anon namespace
+
 
 Var::Var(VarTag tag, bool is_uniform_ptr) : m_tag(tag), m_is_uniform_ptr(is_uniform_ptr)  {
   assert(!is_uniform_ptr || tag == UNIFORM);
@@ -13,7 +17,7 @@ Var::Var(VarTag tag, bool is_uniform_ptr) : m_tag(tag), m_is_uniform_ptr(is_unif
 bool Var::is_uniform_ptr() const { return m_is_uniform_ptr; }
 
 
-std::string Var::disp() const {
+std::string Var::dump() const {
   std::string ret;
 
   switch(m_tag) {
@@ -55,9 +59,10 @@ std::string Var::disp() const {
 
 /**
  * Obtain a fresh variable
- * @return a fresh standard variable
+ *
+ * @return a new standard variable
  */
-Var freshVar() {
+Var VarGen::fresh() {
   return Var(STANDARD, globalVarId++);
 }
 
@@ -65,7 +70,7 @@ Var freshVar() {
 /**
  * Returns number of fresh vars used
  */
-int getFreshVarCount() {
+int VarGen::count() {
   return globalVarId;
 }
 
@@ -73,7 +78,7 @@ int getFreshVarCount() {
 /**
  * Reset fresh variable generator
  */
-void resetFreshVarGen(int val) {
+void VarGen::reset(int val) {
   assert(val >= 0);
   globalVarId = val;
 }

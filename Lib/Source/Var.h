@@ -37,7 +37,7 @@ struct Var {
   VarId id() const { return m_id; }
   bool is_uniform_ptr () const;
 
-  std::string disp() const;
+  std::string dump() const;
 
 private:
   VarTag m_tag;
@@ -46,9 +46,12 @@ private:
 };
 
 
-Var freshVar();
-int getFreshVarCount();
-void resetFreshVarGen(int val = 0);
+class VarGen {
+public:
+  static Var fresh();
+  static int count();
+  static void reset(int val = 0);
+};
 
 }  // namespace V3DLib
 

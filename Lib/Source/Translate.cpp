@@ -42,9 +42,14 @@ Expr::Ptr simplify(Instr::List *seq, Expr::Ptr e) {
     return e;
   }
 
-  Var tmp = freshVar();
-  *seq << varAssign(tmp, e);
-  return mkVar(tmp);
+  Var tmp_var = VarGen::fresh();
+
+  Instr::List tmp;
+  tmp << varAssign(tmp_var, e);
+  //tmp.front().comment("simplify varAssign");
+  *seq << tmp;
+
+  return mkVar(tmp_var);
 }
 
 
@@ -144,79 +149,6 @@ void assign(Instr::List *seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
 // ============================================================================
 
 /**
- * NOT USED ANY MORE
- * Kept here for reference and fall-back
- *
- * Pre:
- * - Hypothesis: condVar set for condA
- * - Implicit condition vector set for condB
- *
- * ## Truth Table
- * ```
- *        | B
- * ------------------------------------
- * A      | never    | always | flag
- * ------------------------------------
- * never  | never    | always | B
- * always | always   | always | always
- * flag   | A        | always |
- * ------------------------------------
- * ```
- *
- * ------
- * ## NOTES
- *
- * 1. In the case of `cond = condB`, I would be expecting `condVar` to be completely reset,
- *    i.e. first init `condVar = 0` for all vector values.
- *
- *    This would be OK if `condA == Never` and `condvar` still zeroes.
- *
- *    TODO investigate if possible
- * /
-AssignCond boolOr(Instr::List &seq, AssignCond condA, Var condVar, AssignCond condB) {
-  using namespace Target::instr;
-
-  //breakpoint
-
-  // Determine a value that will cause the specified flag bit to be set in the condition vector.
-  auto determineCondVar = [] (AssignCond cond) -> int {
-    int val = 0;
-
-    switch (cond.flag) {
-      case ZS: val =  0; break;
-      case ZC: val =  1; break;
-      case NS: val = -1; break;
-      case NC: val =  0; break;  // TODO set to unique value (e.g. 2) -> need to research logic for correctness
-      default: assert(false); val = -1; break;
-    }
-
-    return val;
-  };
-
-
-  if (condA.is_always() || condB.is_always()) return always;
-  if (condA.is_never()  && condB.is_never() ) return never;
-
-  if (condB.is_never()) {                     // condA == FLAG
-    seq << mov(None, condVar).setCondFlag(condA.flag);     // Set implicit condition vector to variable
-    return condA;
-  } else if (condA.is_never()) {              // condB == FLAG
-    int val = determineCondVar(condB);
-
-    seq << li(condVar, val).cond(condB);      // set condB values in condVar, See Note 1
-    return condB;
-  } else {                                    // condA == flag and condB == FLAG
-    int val = determineCondVar(condA);
-
-    seq << li(condVar, val).cond(condB)       // Adjust condVar for condB
-        << mov(None, condVar).setCondFlag(condB.flag);     // Set implicit condition vector for new value condVar
-    return condA;
-  }
-}
-*/
-
-
-/**
  * Creates the instructions for this comparison.
  *
  * The comparison is internally implemented as a subtract-operation.
@@ -251,7 +183,7 @@ void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
   }
 
   if (b.cmp_rhs()->isLit() && b.cmp_rhs()->isLit()) {  // 'x op y', where x and y are both literals
-    Var tmpVar = freshVar();
+    Var tmpVar = VarGen::fresh();
     *seq << varAssign(tmpVar, b.cmp_lhs());
     b.cmp_lhs(mkVar(tmpVar));
   }
@@ -262,8 +194,8 @@ void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
   //
   using namespace V3DLib::Target::instr;
 
-  Var dummy  = freshVar();
-  Var dummy2 = freshVar();
+  Var dummy  = VarGen::fresh();
+  Var dummy2 = VarGen::fresh();
   AssignCond assign_cond(b.cmp);
 
   // Implement comparison using subtraction instruction
@@ -288,28 +220,14 @@ void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
 AssignCond boolExp(Instr::List *seq, BExpr::Ptr bexpr, Var v);  // Forward declaration
 
 
-/**
- * Previous case for or:
- * 
- *     AssignCond condA = boolExp(seq, b.disj.lhs, v);
- *     Var w = freshVar();
- *     AssignCond condB = boolExp(seq, b.disj.rhs, w);
- *     return boolOr(*seq, condA, v, condB);
- * 
- * Previous case for and:
- *  
- *     // Use De Morgan's law
- *     BExpr* demorgan = b.conj.lhs->Not()->Or(b.conj.rhs->Not())->Not();
- *     return boolExp(seq, demorgan, v);
- */
 void boolVarExp(Instr::List &seq, BExpr b, Var v) {
   using namespace V3DLib::Target::instr;
 
   // TODO maybe not necessary, check. Otherwise, use v directly
-  Var v1 = freshVar();
+  Var v1 = VarGen::fresh();
   boolExp(&seq, b.lhs(), v1);  // return val ignored
 
-  Var w = freshVar();
+  Var w = VarGen::fresh();
   boolExp(&seq, b.rhs(), w);  // idem
 
   if (b.tag() == OR) {
@@ -372,7 +290,7 @@ AssignCond boolExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
 // ============================================================================
 
 BranchCond condExp(Instr::List &seq, CExpr &c) {
-  Var v = freshVar();
+  Var v = VarGen::fresh();
   AssignCond cond = boolExp(&seq, c.bexpr(), v);
 
   return cond.to_branch_cond(c.tag() == ALL);
@@ -404,7 +322,7 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
   // ------------------------------------------------------
   if (s->tag == Stmt::ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
     assign(&ret, s->assign_lhs(), s->assign_rhs());
-    ret.back().cond(cond); //.comment("Assign *var (deref) in Where");
+    ret.back().cond(cond); // .comment("Assign *var (deref) in Where");
     return ret;
   }
 
@@ -428,7 +346,7 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
     if (cond.is_always()) {
       // Top-level handling of where-statements
 
-      Var newCondVar   = freshVar();
+      Var newCondVar   = VarGen::fresh();
       AssignCond newCond;
       {
         Instr::List seq;
@@ -447,7 +365,7 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 
       // Compile 'else' statement
       if (s->elseStmt().get() != nullptr) {
-        Var v2 = freshVar();
+        Var v2 = VarGen::fresh();
         ret << bxor(v2, newCondVar, 1).setCondFlag(Flag::ZC);
 
         auto seq = whereStmt(s->elseStmt(), v2, andCond, false);
@@ -458,7 +376,7 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
       // Where-statements nested in other where-statements
 
       // Compile new boolean expression
-      Var newCondVar   = freshVar();
+      Var newCondVar   = VarGen::fresh();
       AssignCond newCond;
       {
         Instr::List seq;
@@ -470,7 +388,7 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 
       if (s->thenStmt().get() != nullptr) {  // NOTE: syntax allows then-stmt to be empty and else not empty
         // AND new boolean expression with original condition
-        Var dummy   = freshVar();
+        Var dummy   = VarGen::fresh();
         ret << band(dummy, condVar, newCondVar).setCondFlag(Flag::ZC);
 
         // Compile 'then' statement
@@ -482,8 +400,8 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
       }
 
       if (s->elseStmt() != nullptr) {
-        Var v2   = freshVar();
-        Var dummy   = freshVar();
+        Var v2    = VarGen::fresh();
+        Var dummy = VarGen::fresh();
 
         ret << bxor(v2, newCondVar, 1)
             << band(dummy, condVar, v2).setCondFlag(Flag::ZC);
@@ -590,7 +508,7 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
       translateWhile(*seq, *s);
       break;
     case Stmt::WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
-        Var condVar = freshVar();        // This is the top-level definition of condVar
+        Var condVar = VarGen::fresh();   // This is the top-level definition of condVar
         *seq << whereStmt(s, condVar, always, false);
       }
       break;
@@ -667,7 +585,7 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       }
 
       if (e.lhs()->isLit() && e.rhs()->isLit()) {         // x and y are both literals
-        Var tmpVar = freshVar();
+        Var tmpVar = VarGen::fresh();
         ret << varAssign(cond, tmpVar, e.lhs());
         e.lhs(mkVar(tmpVar));
       }
@@ -728,7 +646,8 @@ Expr::Ptr putInVar(Instr::List *seq, Expr::Ptr e) {
     return e;
   }
 
-  Var tmp = freshVar();
+  Var tmp = VarGen::fresh();
+  //seq->back().comment("putInVar starts next");
   *seq << varAssign(tmp, e);
   return mkVar(tmp);
 }

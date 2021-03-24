@@ -10,6 +10,14 @@ using namespace V3DLib::Target::instr;
 
 namespace {
 
+/**
+ * Obtain a register for a fresh variable
+ */
+Reg freshReg() {
+  return Reg(REG_A, VarGen::fresh().id());
+}
+
+
 // =============================================================================
 // VPM setup
 // =============================================================================
@@ -281,7 +289,7 @@ Instr::List setStrideStmt(bool is_read, Expr::Ptr e) {
     else
       ret << genSetWriteStride(reg);
   } else {
-    Var v = freshVar();
+    Var v = VarGen::fresh();
     ret << varAssign(v, e);
     if (is_read)
       ret << genSetReadPitch(srcReg(v));
@@ -297,7 +305,7 @@ Instr::List startDMAReadStmt(Expr::Ptr e) {
   Instr::List ret;
 
   if (e->tag() != Expr::VAR) {
-    Var v = freshVar();
+    Var v = VarGen::fresh();
     ret << varAssign(v, e);
   }
 
@@ -310,7 +318,7 @@ Instr::List startDMAWriteStmt(Expr::Ptr e) {
   Instr::List ret;
 
   if (e->tag() != Expr::VAR) {
-    Var v = freshVar();
+    Var v = VarGen::fresh();
     ret << varAssign(v, e);
   }
 
@@ -362,7 +370,7 @@ Instr::List Stmt::setupVPMRead() {
   else if (e->tag() == Expr::VAR)
     ret << genSetupVPMLoad(n, srcReg(e->var()), hor, stride);
   else {
-    Var v = freshVar();
+    Var v = VarGen::fresh();
     ret << varAssign(v, e)
         << genSetupVPMLoad(n, srcReg(v), hor, stride);
   }
@@ -389,7 +397,7 @@ Instr::List Stmt::setupDMARead() {
   else if (e->tag() == Expr::VAR)
     ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var()));
   else {
-    Var v = freshVar();
+    Var v = VarGen::fresh();
 
     ret << varAssign(v, e)
         << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(v));
@@ -412,7 +420,7 @@ Instr::List Stmt::setupDMAWrite() {
   } else if (e->tag() == Expr::VAR) {
     ret << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var()));
   } else {
-    Var v = freshVar();
+    Var v = VarGen::fresh();
 
     ret << varAssign(v, e)
         << genSetupDMAStore(numRows, rowLen, hor, srcReg(v));
@@ -434,7 +442,7 @@ Instr::List Stmt::setupVPMWrite() {
   else if (e->tag() == Expr::VAR)
     ret << genSetupVPMStore(srcReg(e->var()), hor, stride);
   else {
-    Var v = freshVar();
+    Var v = VarGen::fresh();
     ret << varAssign(v, e)
         << genSetupVPMStore(srcReg(v), hor, stride);
   }

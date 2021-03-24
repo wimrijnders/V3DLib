@@ -171,7 +171,7 @@ Instr li(Reg dst, int i) {
 
 
 Instr li(Var v, int i) {
-  return li(dstReg(v), i);
+  return li(dstReg(v), i).comment("li(Var, int)");
 }
 
 

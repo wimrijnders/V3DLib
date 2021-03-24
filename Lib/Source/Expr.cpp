@@ -7,15 +7,8 @@ namespace V3DLib {
 
 using ::operator<<;  // C++ weirdness
 
-Expr::Expr() {
-  breakpoint
-}
 
-
-Expr::Expr(Var in_var) {
-  m_tag = VAR; 
-  m_var   = in_var;
-}
+Expr::Expr(Var in_var) : m_var(in_var), m_tag(VAR) {}
 
 
 Expr::Expr(int in_lit) {
@@ -110,7 +103,7 @@ std::string Expr::pretty() const {
   switch (tag()) {
     case INT_LIT:   ret << intLit;                       break;
     case FLOAT_LIT: ret << floatLit;                     break;
-    case VAR:       ret << m_var.disp();                 break;
+    case VAR:       ret << m_var.dump();                 break;
     case APPLY:     ret << disp_apply();                 break;
     case DEREF:     ret << "*" << deref_ptr()->pretty(); break;
     default:
@@ -128,7 +121,7 @@ std::string Expr::dump() const {
   switch(m_tag) {
     case INT_LIT:   ret << "Int "    << intLit;              break;
     case FLOAT_LIT: ret << "Float "  << floatLit;            break;
-    case VAR:       ret << "Var: "   << m_var.disp();        break;
+    case VAR:       ret << "Var: "   << m_var.dump();        break;
     case APPLY:     ret << "Apply: " << disp_apply();        break;
     case DEREF:     ret << "Deref: " << deref_ptr()->dump(); break;
     default:
@@ -170,13 +163,13 @@ BaseExpr::BaseExpr(Expr::Ptr e, char const *label) : m_label(label) {
 
 
 void BaseExpr::assign_intern() {
-  Var v  = freshVar();
+  Var v  = VarGen::fresh();
   m_expr = mkVar(v);
 }
 
 
 void BaseExpr::assign_intern(Expr::Ptr expr) {
-  Var v  = freshVar();
+  Var v  = VarGen::fresh();
   m_expr = mkVar(v);
   assign(m_expr, expr);
 }
@@ -229,7 +222,7 @@ Expr::Ptr mkApply(Expr::Ptr lhs, Op op) {
 
 
 // ============================================================================
-// class IntExpr                   
+// Class IntExpr                   
 // ============================================================================
 
 IntExpr::IntExpr(int x) { m_expr = mkIntLit(x); }

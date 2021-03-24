@@ -77,7 +77,6 @@ struct Reg {
 };
 
 
-Reg freshReg();
 Reg srcReg(Var v);
 Reg dstReg(Var v);
 
