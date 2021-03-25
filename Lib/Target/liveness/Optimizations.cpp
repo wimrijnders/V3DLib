@@ -236,7 +236,7 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     renameDest(instr, current, replace_with);
     instrs[i]   = instr;
 
-    // DANGEROUS! Do not use this value downstream (remember why, old man?).   
+    // DANGEROUS! Do not use this value downstream (remember why, old fart?).   
     // Currently stored for debug display purposes only! 
     allocated_vars[def].reg = replace_with;    
 
@@ -369,7 +369,7 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
 /**
  * Optimisation passes that introduce accumulators
  *
- * @param allocated_vars  write param, to register which vars have an accumulator registered
+ * @param allocated_vars write param; note which vars have an accumulator registered
  *
  * @return Number of substitutions performed;
  *

@@ -372,43 +372,6 @@ void Liveness::compute(Instr::List &instrs) {
   m_reg_usage.set_live(*this);
   //debug(m_reg_usage.dump(true));
 
-  // Adjust first usage in liveness, if necessary 
-  for (int i = 0; i < (int) m_reg_usage.size(); ++i) {
-    auto &item = m_reg_usage[i];
-
-    if (item.unused() || item.only_assigned())     continue;  // skip special cases
-    if (item.first_dst() + 1 == item.first_live()) continue;  // all is well
-
-    {
-      std::string msg;
-      msg << "m_reg_usage[" << i << "]: discrepancy between first assign and liveness: " << item.dump();
-      warning(msg);
-    }
-
-    // Remove all liveness of given variable `i` before and including first assign
-    assert(item.first_dst() != -1);
-    assert(item.first_live() != -1);
-    int remove_count = 0;
-    for (int j = item.first_live(); j <= item.first_dst(); ++j) {
-      int num = m_set[j].remove(i);
-      if (num == 1) remove_count++;
-    }
-
-    if (remove_count == 0) {
-      std::string msg = "Liveness::compute(): ";
-      msg << "failed to remove liveness for var " << i 
-          << " in range (" << item.first_dst() << ", " << item.first_live() << ")\n"
-          << " Usage item: " << item.dump() << "\n";
-/*
-          << " Liveness table:\n" << dump() << "\n"
-          << " Reg usage:\n" << m_reg_usage.dump(true) << "\n"
-          << " Code:\n" << instrs.dump(true) << "\n";
-*/
-
-      warning(msg);
-    }
-  }
-
   compile_data.liveness_dump = dump();
 
   m_reg_usage.check();
@@ -492,7 +455,6 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
   //live.dump();
 
   combineImmediates(live, instrs);
-  //remove_replaced_instructions(instrs); - bad idea here, CFG  doesn't change
 
   live.compute(instrs);  // instructions may have changed in previous step, redo liveness
 
