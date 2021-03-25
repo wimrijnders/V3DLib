@@ -61,7 +61,7 @@ void check_vector(SharedArray<T> &result, int index, std::vector<T> const &expec
     }
   }
 
-  INFO("j: " << j);
+  INFO("index: " << index << ", j: " << j);
   INFO(showResult(result, index) << showExpected(expected));
   REQUIRE(passed);
 }
@@ -399,7 +399,18 @@ TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
 void int_ops_kernel(Int::Ptr result) {
   using namespace V3DLib::functions;
 
-  auto store = [&result] (IntExpr const &val) {
+  //
+  // NEVER FORGET:
+  //
+  // Previous definition:
+  //
+  //    auto store = [&result] (IntExpr const &val) {
+  //
+  // This resulted in the passed Int var to be converted to IntExpr,
+  // and then back to Int, creating a useless interim variable in the source lang
+  //
+  auto store = [&result] (Int const &val) {
+    comment("store starts next"); 
     *result = val;
     result += 16;
   };
@@ -417,8 +428,15 @@ void int_ops_kernel(Int::Ptr result) {
   Int b = topmost_bit(1 << (index() + 3));
   store(b);
 
+  b = -256;
+  store(b);
+
+  comment("First division test starts next");
   store(16*16/index());
-  store((-16*16)/(-index()));
+
+  comment("First usage -index() starts next");
+  /* Only this one fails --> */ store((-16*16)/(-index()));
+
   store((-16*16)/index());
   store(16*16/(-index()));
   store(17*index()/11);
@@ -436,13 +454,16 @@ void float_ops_kernel(Float::Ptr result) {
 
 TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
   SECTION("Test integer operations") {
-    int const N = 10;  // Number of expected results
+    int const N = 11;  // Number of expected results
 
     auto k = compile(int_ops_kernel);
 
     Int::Array result(16*N);
 
     k.load(&result);
+    k.pretty(true, "obj/test/int_ops_kernel_vc4.txt", true);
+    k.pretty(false, "obj/test/int_ops_kernel_v3d.txt", true);
+    //k.emu();
     k.call();
 
     vector<vector<int>> expected = {
@@ -451,7 +472,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
       {8, 7, 6, 5, 4, 3, 2, 1, 0, 1, 2, 3, 4, 5, 6, 7},                             // abs
       {8, 7, 6, 5, 4, 3, 2, 1, 0, -1, -2, -3, -4, -5, -6, -7},                      // 2-s complement
       {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18},                    // topmost_bi 
-
+      {-256, -256, -256, -256, -256, -256, -256, -256, -256, -256, -256, -256, -256, -256, -256, -256}, // b = -256 
       // integer division
       {2147483647, 256, 128, 85, 64, 51, 42, 36, 32, 28, 25, 23, 21, 19, 18, 17},   // First value is 'infinity'
       {-2147483647, 256, 128, 85, 64, 51, 42, 36, 32, 28, 25, 23, 21, 19, 18, 17},  // NB -0 == 0

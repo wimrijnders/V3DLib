@@ -23,7 +23,7 @@ void assign(Expr::Ptr lhs, Expr::Ptr rhs);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Non-templated base classes
-///////////////////////////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////////////////////////
 
 class PointerExpr : public BaseExpr {
 public:
@@ -75,13 +75,27 @@ private:
 // These exist to impose some form of type safety in the kernel code.
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Create a Deref instance
+ *
+ * This is used for reading/writing to/from a Ptr, eg: `*this = val`.
+ *
+ * ========================
+ * NOTES
+ * =====
+ *
+ * * Often, following is enough:
+ *
+ *    T &operator=(T &rhs) { m_expr = rhs.expr2(); return rhs; }
+ *    T const &operator=(T const &rhs) { m_expr = rhs.expr(); return rhs; }
+ *
+ *  Notable exception: `Rot3D`, no output written.
+ */
 template <typename T>
 struct Deref : public BaseExpr {
   explicit Deref(Expr::Ptr e) : BaseExpr(e) {}
 
-  // NOTE 'return *this' might be betteri
-  // TODO try this out
-  T &operator=(T &rhs) { assign(m_expr, rhs.expr()); return rhs; }
+  T &operator=(T &rhs)             { assign(m_expr, rhs.expr()); return rhs; }
   T const &operator=(T const &rhs) { assign(m_expr, rhs.expr()); return rhs; }
 
   // For special case '*dst = *src' and similar

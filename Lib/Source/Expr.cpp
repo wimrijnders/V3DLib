@@ -146,8 +146,7 @@ bool Expr::isSimple() const {
 // Class BaseExpr
 // ============================================================================
 
-BaseExpr::BaseExpr() {
-}
+BaseExpr::BaseExpr() {}
 
 
 BaseExpr::BaseExpr(char const *label) : m_label(label) {
