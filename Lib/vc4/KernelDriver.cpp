@@ -41,8 +41,8 @@ void KernelDriver::kernelFinish() {
  * Encode target instrs into array of 32-bit ints
  */
 void KernelDriver::encode() {
-  if (code.size() > 0) return;  // Don't bother if already encoded
-  if (has_errors()) return;              // Don't do this if compile errors occured
+  if (code.size() > 0) return;      // Don't bother if already encoded
+  if (has_errors()) return;         // Don't do this if compile errors occured
   assert(!qpuCodeMem.allocated());
 
   V3DLib::vc4::encode(m_targetCode, code);
@@ -54,13 +54,20 @@ void KernelDriver::emit_opcodes(FILE *f) {
   fprintf(f, "===============\n\n");
   fflush(f);
 
-  Seq<uint64_t> instructions;
+  if (code.empty()) {
+    fprintf(f, "<No opcodes to print>\n");
+  } else {
+    // Note: this is the same as code, but code is uint64_t and this is uint64_t.
+    Seq<uint64_t> instructions;
 
-  for (int i = 0; i < m_targetCode.size(); ++i ) {
-    instructions << vc4::encode(m_targetCode[i]);
+    for (int i = 0; i < m_targetCode.size(); ++i ) {
+      instructions << vc4::encode(m_targetCode[i]);
+    }
+
+    assert(instructions.size()*2 == code.size());
+
+    dump_instr(f, instructions.data(), instructions.size());
   }
-
-  dump_instr(f, instructions.data(), instructions.size());
 }
 
 
@@ -97,12 +104,14 @@ void KernelDriver::compile_intern() {
 
   // Translate branch-to-labels to relative branches
   removeLabels(m_targetCode);
+
+  encode();
 }
 
 
 void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   //debug("Called vc4 KernelDriver::invoke()");  
-  assert(code.size() > 0);
+  assertq(code.size() > 0, "invoke_intern() vc4: no code to invoke", true );
 
   unsigned numWords = code.size() + 12*MAX_KERNEL_PARAMS + 12*2;
 

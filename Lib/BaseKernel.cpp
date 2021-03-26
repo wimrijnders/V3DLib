@@ -165,11 +165,12 @@ void BaseKernel::dump_compile_data(bool output_for_vc4, char const *filename) {
   }
 }
 
-
+/*
 void BaseKernel::encode() {
   if (has_vc4()) vc4().encode();
   if (has_v3d()) v3d().encode();
 }
+*/
 
 
 std::string BaseKernel::get_errors() const {
