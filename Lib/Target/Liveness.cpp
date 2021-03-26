@@ -457,7 +457,6 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
   //live.dump();
 
   combineImmediates(live, instrs);
-
   live.compute(instrs);  // instructions may have changed in previous step, redo liveness
 
   int prev_count_skips = count_skips(instrs);

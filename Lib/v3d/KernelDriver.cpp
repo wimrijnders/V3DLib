@@ -635,8 +635,8 @@ bool encode_int_immediate(Instructions &output, int in_value) {
     // result is in r1
 
     if (!did_first) {
-      ret << mov(r1, imm);  // TODO Gives segfault on p4-3
-                            //      No clue why, works fine on silke (arm64)d$ and pi3
+      ret << mov(r1, imm);  // TODO Gives segfault on p4-3 (arm32)
+                            //      No clue why, works fine on silke (arm64) and pi3
 
       if (i > 0) {
         if (convert_int_powers(ret, 4*i)) {
@@ -651,13 +651,13 @@ bool encode_int_immediate(Instructions &output, int in_value) {
       if (i > 0) {
         if (convert_int_powers(ret, 4*i)) {
           // r0 now contains value for left shift
-          ret << mov(r2, imm);
-          ret << shl(r0, r2, r0);
+          //ret << mov(r2, imm);
+          //ret << shl(r0, r2, r0);
+          ret << shl(r0, imm, r0);
         } else {
           ret << mov(r0, imm);
           ret << shl(r0, r0, SmallImm(4*i));
         }
-
 
         ret << bor(r1, r1, r0);
       } else {

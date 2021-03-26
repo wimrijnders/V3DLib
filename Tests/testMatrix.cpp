@@ -637,11 +637,15 @@ void test_complex_matrix_multiplication(
 
 
 TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]") {
+/*
+  WRI DEBUG - re-enable this
+
   SECTION("Check correct working complex dotvector") {
     test_complex_dotvector<1>();
     test_complex_dotvector<4>();
     test_complex_dotvector<10>();
   }
+*/
 
   SECTION("Check complex matrix multiplication") {
     test_complex_matrix_multiplication( 1,    16,   1, 1);

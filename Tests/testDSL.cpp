@@ -459,9 +459,11 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
     auto k = compile(int_ops_kernel);
 
     Int::Array result(16*N);
+    result.fill(-1);
 
     k.load(&result);
     k.pretty(true, "obj/test/int_ops_kernel_vc4.txt", true);
+    k.dump_compile_data(false, "obj/test/int_ops_kernel_compile_data_v3d.txt");
     k.pretty(false, "obj/test/int_ops_kernel_v3d.txt", true);
     //k.emu();
     k.call();
@@ -581,7 +583,6 @@ TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
   };
 
   auto k = compile(rot_kernel<Int, Int::Ptr>);
-  //k.pretty(true, "obj/test/rot_kernel.txt", false);
   k.load(&result1, &a);
 
   // Interpreter works fine, used here to compare emulator output
@@ -693,7 +694,6 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
     LibSettings::use_tmu_for_load(false);
 
     auto k = compile(offsets_kernel<Int, Int::Ptr>);
-    //k.pretty(true, nullptr, false);
     k.load(&result, &a);
 
     reset();
@@ -962,7 +962,6 @@ TEST_CASE("Test issues", "[dsl][issues]") {
 
     auto k = compile(issues_kernel);
     //k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
-    //k.dump_compile_data(true, "obj/test/issues_kernel_compile_data_vc4.txt");
     //k.pretty(false, "obj/test/issues_kernel_v3d.txt");
 
     Int::Array input(16);
@@ -970,7 +969,6 @@ TEST_CASE("Test issues", "[dsl][issues]") {
 
     Int::Array result(16*N);
     k.load(&result, &input);
-    //k.interpret();
     k.emu();
 
     check_vector(result, 0, 0);
