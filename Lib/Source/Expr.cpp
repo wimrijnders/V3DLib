@@ -125,7 +125,7 @@ std::string Expr::dump() const {
     case APPLY:     ret << "Apply: " << disp_apply();        break;
     case DEREF:     ret << "Deref: " << deref_ptr()->dump(); break;
     default:
-      assert(false);
+      assertq(false, "Invalid tag for Expr", true);
     break;
   }
 
@@ -168,8 +168,7 @@ void BaseExpr::assign_intern() {
 
 
 void BaseExpr::assign_intern(Expr::Ptr expr) {
-  Var v  = VarGen::fresh();
-  m_expr = mkVar(v);
+  assign_intern();
   assign(m_expr, expr);
 }
 

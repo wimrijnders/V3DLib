@@ -263,11 +263,10 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
   switch (in_tag) {
     case ASSIGN:
       if (e0 == nullptr) {
-breakpoint
-        error("Stmt::create(): e0 is null", true);
+        error("Stmt::create(): e0 is null, variable might not be initialized", true);
       }
       if (e1 == nullptr) {
-        error("Stmt::create(): e1 is null", true);
+        error("Stmt::create(): e1 is null, variable might not be initialized", true);
       }
       //assertq(e0 != nullptr && e1 != nullptr, "create 1");
       ret->m_exp_a = e0;

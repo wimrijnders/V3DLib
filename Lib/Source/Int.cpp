@@ -2,34 +2,31 @@
 #include "Lang.h"  // only for assign()!
 #include "SourceTranslate.h"
 #include "Support/Platform.h"
+#include "Support/debug.h"
 
 namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
 
 // ============================================================================
 // Class Int
 // ============================================================================
 
-Int::Int()             { assign_intern(); }
-Int::Int(int x)        { assign_intern(mkIntLit(x)); }
-Int::Int(Deref<Int> d) { assign_intern(d.expr()); }
-Int::Int(IntExpr e)    { assign_intern(e.expr()); }
-
-Int::Int(Int const &x) {
-  if (this == &x) {
-    error("Can not initialize value with self", true);
-  } else {
-    assign_intern(x.expr());
-  }
+Int::Int()              { assign_intern(); }
+Int::Int(int x)         { assign_intern(mkIntLit(x)); }
+Int::Int(Deref<Int> d)  { assign_intern(d.expr()); }
+Int::Int(IntExpr e)     { assign_intern(e.expr()); }
+Int::Int(Int const &x)  { assign_intern(x.expr());
 }
-
 
 
 /**
  * Cast to an IntExpr
  */
-Int::operator IntExpr() const { return IntExpr(m_expr); }
+Int::operator IntExpr() const {
+  return IntExpr(m_expr);
+}
 
-// Assignment
 
 Int &Int::operator=(int x) {
   Int tmp(x);

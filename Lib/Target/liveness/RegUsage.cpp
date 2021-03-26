@@ -295,7 +295,7 @@ void RegUsage::check() const {
       ret << tmp;
 
       //debug(dump(true));
-      breakpoint
+      //breakpoint
     }
   }
  

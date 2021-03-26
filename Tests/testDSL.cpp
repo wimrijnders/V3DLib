@@ -435,7 +435,7 @@ void int_ops_kernel(Int::Ptr result) {
   store(16*16/index());
 
   comment("First usage -index() starts next");
-  /* Only this one fails --> */ store((-16*16)/(-index()));
+  store((-16*16)/(-index()));
 
   store((-16*16)/index());
   store(16*16/(-index()));
@@ -462,10 +462,11 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
     result.fill(-1);
 
     k.load(&result);
+/*
     k.pretty(true, "obj/test/int_ops_kernel_vc4.txt", true);
     k.dump_compile_data(false, "obj/test/int_ops_kernel_compile_data_v3d.txt");
     k.pretty(false, "obj/test/int_ops_kernel_v3d.txt", true);
-    //k.emu();
+*/
     k.call();
 
     vector<vector<int>> expected = {
@@ -942,14 +943,12 @@ void issues_kernel(Int::Ptr result, Int::Ptr src) {
 }
 
 
-void init_self_1_kernel() {
-  Int x = x;  // Should generate error
-}
-
-
-void init_self_2_kernel() {
-  Int x = x + 1;  // Should generate error
-}
+//
+// Following should all generate errors during compile
+//
+void init_self_1_kernel() { Int x = x; }
+void init_self_2_kernel() { Float x = x; }
+void init_self_3_kernel() { Complex y = y; }
 
 }  // anon namespace
 
@@ -983,16 +982,34 @@ TEST_CASE("Test issues", "[dsl][issues]") {
   }
 
 
+  /**
+   * The issue here is that initialization like:
+   *
+   *   Int x = x + 1;
+   *
+   * ... is allowed by C++ syntax. There is no way to prevent this, other
+   * than hoping that the compiler flags this as warning. In the given example,
+   * no warning is given.
+   *
+   * The only good way to deal with this, is to just be aware of it.
+   *
+   * This test only checks for `Int x = x;`, the simplest case possible.
+   * Anything more elaborate, forget it. I've racked my brain on this, there is no salvation.
+   */
   SECTION("Check init self issue") {
     {
-      auto k1 = compile(init_self_1_kernel);
-      k1.pretty(true, "obj/test/init_self_1_kernel.txt", false);
-      REQUIRE(k1.has_errors());
+      auto k = compile(init_self_1_kernel);
+      REQUIRE(k.has_errors());
     }
 
     {
-//      auto k2 = compile(init_self_2_kernel);
-//      REQUIRE(k2.has_errors());
+      auto k = compile(init_self_2_kernel);
+      REQUIRE(k.has_errors());
+    }
+
+    {
+      auto k = compile(init_self_3_kernel);
+      REQUIRE(k.has_errors());
     }
   }
 
