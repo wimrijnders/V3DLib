@@ -37,6 +37,8 @@ std::string tabbed(int tab_size, std::string const &val);
 std::string tabbed(int tab_size, int val);
 inline std::string tabs(int tab_size) { return tabbed(tab_size, ""); }
 
+std::string title(std::string const &str);
+
 //
 // Convenience definitions
 //

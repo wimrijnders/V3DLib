@@ -33,3 +33,21 @@ std::string tabbed(int tab_size, int val) {
   tmp << val;
   return tabbed(tab_size, tmp);
 }
+
+
+std::string title(std::string const &str) {
+  assert(!str.empty());
+  std::string ret;
+
+  ret << "\n"
+      << str
+      << "\n";
+
+  std::string line(str.size(), '=');
+
+  ret << line
+      << "\n"
+      << "\n";
+
+  return ret;
+}

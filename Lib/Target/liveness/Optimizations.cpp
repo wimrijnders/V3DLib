@@ -115,19 +115,17 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
     //
     int acc_id = instrs.get_free_acc(item.first_usage(), item.last_usage());
 
+    if (acc_id == -1) {
 /*
-//    if (acc_id > 0) {
-    if (range_size > 1) {
+      warning("No free acc!");
+
       std::string msg;
       msg << "range_size: " << range_size << ", Var " << var_id << ", "
-          << "lines " << item.first_usage()  << "-" << item.last_usage() << ", "
-          << "free acc: " << acc_id;
-      debug(msg);
-    }
-*/
+          << "lines " << item.first_usage()  << "-" << item.last_usage() << "\n"
+          << instrs.check_acc_usage(item.first_usage(), item.last_usage()) << "\n";
 
-    if (acc_id == -1 ) {
-      warning("No free acc!");
+      debug(msg);
+*/
       continue;
     }
 

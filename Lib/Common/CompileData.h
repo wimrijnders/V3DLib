@@ -8,11 +8,13 @@ namespace V3DLib {
 
 struct CompileData {
   std::string liveness_dump;
+  std::string target_code_before_optimization;
   std::string target_code_before_regalloc;
   std::string target_code_before_liveness;
   std::string allocated_registers_dump;
   int num_accs_introduced = 0;
 
+  std::string dump() const;
   void clear();
 };
 

@@ -450,6 +450,8 @@ std::string Liveness::dump() {
 void Liveness::optimize(Instr::List &instrs, int numVars) {
   assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list");
 
+  compile_data.target_code_before_optimization = instrs.dump();
+
   Liveness live(numVars);
   live.compute(instrs);
   //live.dump();

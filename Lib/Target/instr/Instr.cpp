@@ -467,16 +467,21 @@ int Instr::List::tag_index(InstrTag tag, bool ensure_one) {
 /**
  * Debug function for displaying the used accumulators in the instruction list
  */
-std::string Instr::List::check_acc_usage() const {
+std::string Instr::List::check_acc_usage(int first, int last) const {
+  if (first == -1) first = 0;
+  if (last  == -1) last = size() -1;
+  assert(first <= last);
+
   std::string ret;
 
-  for (int index = 0; index < size(); ++index) {
+  for (int index = first; index <= last; ++index) {
     uint32_t accs = (*this)[index].get_acc_usage();
     assert(accs < 64);
 
     if (accs == 0) continue;
 
-    ret << "Instruction " << index << " uses ACCs: ";
+    ret << "Acc usage:\n"
+        << index << ": ";
 
     if (accs &  1) ret << "0, ";
     if (accs &  2) ret << "1, ";

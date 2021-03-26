@@ -34,17 +34,9 @@ FILE *open_file(char const *filename, char const *label) {
 }
 
 
-void title(FILE *f, std::string const &title) {
+void title(FILE *f, std::string const &in_title) {
   assert(f != nullptr);
-  assert(!title.empty());
-
-  fprintf(f, "\n");
-  fprintf(f, title.c_str());
-  fprintf(f, "\n");
-
-  std::string line(title.size(), '=');
-  fprintf(f, line.c_str());
-  fprintf(f, "\n");
+  fprintf(f, ::title(in_title).c_str());
 }
 
 
@@ -231,21 +223,7 @@ void KernelDriver::dump_compile_data(char const *filename) const {
   FILE *f = open_file(filename, "compile_data");
   if (f == nullptr) return;
 
-  title(f, "Liveness dump");
-  fprintf(f, m_compile_data.liveness_dump.c_str());
-
-  title(f, "Allocated registers to variables");
-  fprintf(f, m_compile_data.allocated_registers_dump.c_str());
-
-  if (!m_compile_data.target_code_before_regalloc.empty()) {
-    title(f, "Target code before regAlloc()");
-    fprintf(f, m_compile_data.target_code_before_regalloc.c_str());
-  }
-
-  if (!m_compile_data.target_code_before_liveness.empty()) {
-    title(f, "Target code before liveness, after peepholes");
-    fprintf(f, m_compile_data.target_code_before_liveness.c_str());
-  }
+  fprintf(f, m_compile_data.dump().c_str());
 
   title(f, "ACC usage");
   fprintf(f, m_targetCode.check_acc_usage().c_str());
