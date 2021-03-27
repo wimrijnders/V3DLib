@@ -2,30 +2,7 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
-
-#define DIAG_STRINGIFY(x) #x
-#define WIGNORE(flag) _Pragma(DIAG_STRINGIFY(GCC diagnostic ignored #flag))
-
-// NOTE: Following for gcc only
-// GCC - should be ok for gcc v6.3.0 and later (currently using v8.3.0)i
-//     - explicit v4.x def's dropped
-
-// Disable specific warnings for the encompassed includes
-#define DISABLE_COMPILE_TIME_WARNINGS \
-  _Pragma("GCC diagnostic push") \
-  WIGNORE(-Wconversion) \
-  WIGNORE(-Wnarrowing) \
-  WIGNORE(-Wsign-conversion) \
-
-// Enable original warnings again
-#define ENABLE_COMPILE_TIME_WARNINGS \
-  _Pragma("GCC diagnostic pop")
-
-
-DISABLE_COMPILE_TIME_WARNINGS
-#define HAVE_ENDIAN_H
-#include "gallium/drivers/vc4/vc4_qpu.h"  // vc4_qpu_disasm()
-ENABLE_COMPILE_TIME_WARNINGS
+#include "disasm.h"
 
 
 /**
@@ -36,9 +13,26 @@ ENABLE_COMPILE_TIME_WARNINGS
  * 
  * Adapted from: https://www.unix.com/programming/268879-c-unix-how-redirect-stdout-file-c-code.html
  *
- * TODO Consider using memory streams: https://linux.die.net/man/3/open_memstream
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * Tried out `open_memstream()`  - https://linux.die.net/man/3/open_memstream
+ *   Doesn't work:
+ *
+ *    FILE *out;
+ *    char *ptr;
+ *    size_t size;
+ *
+ *    out = open_memstream(&ptr, &size);
+ *    assert(out != NULL);
+ *  
+ *    // Start redirect
+ *    int save_err = dup(fileno(stderr));
+ *    int err = dup2(fileno(out), fileno(stderr));
+ *    assert(err != -1);  // <-- fails
  */
-static int redirect(FILE *f, const uint64_t *instructions, int num_instructions) {
+static void redirect(FILE *f, const uint64_t *instructions, int num_instructions) {
   // Start redirect
   int save_err = dup(fileno(stderr));
   int err = dup2(fileno(f), fileno(stderr));
@@ -51,11 +45,13 @@ static int redirect(FILE *f, const uint64_t *instructions, int num_instructions)
   fflush(stderr); close(err);
   dup2(save_err, fileno(stderr));
   close(save_err);
-
-  return 0;
 }
 
 
-void dump_instr(FILE * f,const uint64_t *instructions, int num_instructions) {
+/**
+ * Capture stderr output of enclosed function `vc4_qpu_disasm()` and redirect
+ * to passed file.
+ */
+void dump_instr(FILE * f, const uint64_t *instructions, int num_instructions) {
   redirect(f, instructions, num_instructions);
 }

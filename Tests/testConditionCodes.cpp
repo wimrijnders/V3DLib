@@ -497,8 +497,8 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
     Int::Array result(VEC_SIZE);
 
     auto k1 = compile(noloop_where_kernel);
-    //k1.pretty(true, "obj/test/noloop_where_kernel.txt");
-    //k1.dump_compile_data(true, "obj/test/noloop_where_compile_data_vc4.txt");
+    k1.pretty(true, "obj/test/noloop_where_kernel.txt");
+    k1.dump_compile_data(true, "obj/test/noloop_where_compile_data_vc4.txt");
 
     k1.load(&result, 0, 0);   run_cpu(result, k1, expected_1, 1);
     k1.load(&result, 12, 15); run_cpu(result, k1, expected_2, 2);

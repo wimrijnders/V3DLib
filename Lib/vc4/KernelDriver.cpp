@@ -1,4 +1,6 @@
 #include "KernelDriver.h"
+#include <iostream>
+#include <sstream>
 #include "Source/Lang.h"
 #include "Source/Translate.h"
 #include "Target/RemoveLabels.h"
@@ -8,6 +10,7 @@
 #include "dump_instr.h"
 #include "Target/instr/Instructions.h"
 #include "SourceTranslate.h"  // add_uniform_pointer_offset()
+#include "dump_instr.h"
 
 namespace V3DLib {
 namespace vc4 {
@@ -65,7 +68,6 @@ void KernelDriver::emit_opcodes(FILE *f) {
     }
 
     assert(instructions.size()*2 == code.size());
-
     dump_instr(f, instructions.data(), instructions.size());
   }
 }
