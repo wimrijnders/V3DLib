@@ -538,10 +538,17 @@ int Instr::List::get_free_acc(int first, int last) const {
     acc_use = acc_use & ~(*this)[i].get_acc_usage();  // Remember, get_acc_usage() returns *used* acc's
   }
 
-  // Mask out unused bits and also r5, because it has special usage
-  // Actually, r3 (sfu) and r4 (tmu read) have special usages as well, 
-  // but let's see how far we get.
-  acc_use = acc_use & 0x1f;
+  // Mask out unused bits and also r5, because it has special usage.
+  // NOTE, r3 (sfu) and r4 (tmu read) have special usages as well, 
+  if (Platform::compiling_for_vc4()) {
+    // It appears to be required for vc4 to not use r4 (unit test [cond] fails)
+    // Translation:
+    // Target     : LI ACC4 <- 0
+    // vc4 opcodes: load_imm tmu_noswap, nop, 0x00000000 (0.000000)
+    acc_use = acc_use & 0xf;   // r0-r3
+  } else {
+    acc_use = acc_use & 0x1f;  // r0-r4
+  }
 
   // Determine first non-zero bit
   int ret = -1;

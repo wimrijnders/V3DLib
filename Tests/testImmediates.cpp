@@ -43,7 +43,7 @@ TEST_CASE("Test loading of immediates", "[dsl][imm]") {
 
   auto k = compile(immediate_kernel);
   REQUIRE(!k.has_errors());
-  k.pretty(true);
+  //k.pretty(true);
   k.load(&int_result, &float_result);
   k.call();
 
