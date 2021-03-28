@@ -2,12 +2,12 @@
 
 ## General
 
-- [ ] Automate loading of new versions external libraries
 - [ ] Get `Pi 1` running again; fails in `qpu_enable()`
 - [ ] Make heap memory size configurable (ideally cmdline option)
 - [ ] Initializing a Float/Complex(/Int?) variable without value may not add variable to target code.
       This is a consequence of fixing liveness allocation for dst vars in  conditional instructions.
       Examine, report, prevent, fix.
+- [x] Automate loading of new versions external libraries
 - [x] Fix indentation tabs/spaces
 - [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it)
 - [x] Refactor derived settings in examples, too much duplicated screen noise.

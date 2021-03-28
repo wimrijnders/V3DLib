@@ -38,11 +38,6 @@ See the Build Instructions for details.
 
 > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # Get only latest commit
 > cd V3DLib
-    
-# As long as the external libraries don't change, you need to run this script only once.
-> script/install.sh                                              # Pull in and build external library
-# After this, it is sufficient to do just the following line for a build
-    
 > make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
                                                                  # GPU support.
     

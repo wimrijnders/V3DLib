@@ -57,14 +57,6 @@ EXE1=$(grep -rl "main(" Examples/ Tools/)
 EXE2=$(echo "$EXE1" | sed "s/\\.cpp$/  \\\\/g")
 EXAMPLES=$(echo "$EXE2" | sed "s/^.*\//  /g")
 
-#
-# NOT WORKING YET
-#
-## Get list of directories to create in the obj dir
-## Note that 'old' is excluded
-#OBJ_DIRS1=$(find . -name *cpp | xargs dirname | sort | uniq | grep -v old | sed "s/^\.\//\$(OBJ_DIR)\//")
-#OBJ_DIRS=$(echo "$OBJ_DIRS1" | sed "s/^/	@mkdir -p /g")
-
 mkdir -p obj
 
 cat << END > sources.mk
