@@ -621,9 +621,13 @@ void exec(InterpreterState* state, CoreState* s) {
 // ============================================================================
 
 /**
+ * Run the interpreter
+ *
+ * The interpreter parses the CFG ('source code') directly.
+ *
  * The interpreter works in a similar way to the emulator.  The
- * difference is that the former operates on source code and the
- * latter on target code.
+ * difference is that the interpreter operates on source code and the
+ * emulator on target code.
  *
  * @param numCores  Number of cores active
  * @param stmt      Source code

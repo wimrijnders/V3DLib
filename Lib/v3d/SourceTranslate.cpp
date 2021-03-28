@@ -3,7 +3,7 @@
 #include "Support/basics.h"
 #include "Source/Translate.h"
 #include "Source/Stmt.h"
-#include "Target/Liveness.h"
+#include "Liveness/Liveness.h"
 #include "Target/Subst.h"
 #include "vc4/DMA/DMA.h"
 #include "Target/instr/Instructions.h"

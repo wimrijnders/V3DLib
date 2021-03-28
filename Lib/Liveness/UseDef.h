@@ -2,7 +2,7 @@
 #define _V3DLIB_LIVENESS_USEDEF_H_
 #include <string>
 #include "Common/Set.h"
-#include "../instr/Instr.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 

@@ -10,7 +10,6 @@
 #include "dump_instr.h"
 #include "Target/instr/Instructions.h"
 #include "SourceTranslate.h"  // add_uniform_pointer_offset()
-#include "dump_instr.h"
 
 namespace V3DLib {
 namespace vc4 {
