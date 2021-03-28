@@ -4,75 +4,55 @@ namespace V3DLib {
 
 /**
  * Rename a destination register in an instruction
+ *
+ * @return number of substitutions performed.
  */
-void renameDest(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
-  switch (instr->tag) {
-    // Load immediate
-    case LI:
-      if (instr->LI.dest.tag == vt && instr->LI.dest.regId == v) {
-        instr->LI.dest.tag = wt;
-        instr->LI.dest.regId = w;
-      }
-      return;
+int renameDest(Instr &instr, Reg const &current, Reg const &replace_with) {
+  int count = 0;
 
-    // ALU operation
-    case ALU:
-      if (instr->ALU.dest.tag == vt && instr->ALU.dest.regId == v) {
-        instr->ALU.dest.tag = wt;
-        instr->ALU.dest.regId = w;
+  switch (instr.tag) {
+    case LI:  // Load immediate
+      if (instr.LI.dest == current) {
+        instr.LI.dest = replace_with;
+        count += 1;
       }
-      return;
+      break;
 
-    // RECV instruction
-    case RECV:
-      if (instr->RECV.dest.tag == vt && instr->RECV.dest.regId == v) {
-        instr->RECV.dest.tag = wt;
-        instr->RECV.dest.regId = w;
+    case ALU:  // ALU operation
+      if (instr.ALU.dest == current) {
+        instr.ALU.dest = replace_with;
+        count += 1;
       }
-      return;
-		default:
-      return;
+      break;
+
+    case RECV:  // RECV instruction
+      if (instr.RECV.dest == current) {
+        instr.RECV.dest = replace_with;
+        count += 1;
+      }
+      break;
+
+    default:
+      break;
   }
+
+  assert(count <= 1);
+  return count;
 }
 
 
 /**
- * Renamed a used register in an instruction
+ * Rename a used register in an instruction
  */
-void renameUses(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
-  switch (instr->tag) {
-    // ALU operation
-    case ALU:
-      if (instr->ALU.srcA.tag == REG && instr->ALU.srcA.reg.tag == vt &&
-          instr->ALU.srcA.reg.regId == v) {
-        instr->ALU.srcA.reg.tag = wt;
-        instr->ALU.srcA.reg.regId = w;
-      }
+void renameUses(Instr &instr, Reg const &current, Reg const &replace_with) {
+  if  (instr.tag != ALU) return;
 
-      if (instr->ALU.srcB.tag == REG && instr->ALU.srcB.reg.tag == vt &&
-          instr->ALU.srcB.reg.regId == v) {
-        instr->ALU.srcB.reg.tag = wt;
-        instr->ALU.srcB.reg.regId = w;
-      }
-      return;
+  if (instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg() == current) {
+    instr.ALU.srcA.reg() = replace_with;
+  }
 
-    // Print integer instruction
-    case PRI:
-      if (instr->PRI.tag == vt && instr->PRI.regId == v) {
-        instr->PRI.tag = wt;
-        instr->PRI.regId = w;
-      }
-      return;
-
-    // Print float instruction
-    case PRF:
-      if (instr->PRF.tag == vt && instr->PRF.regId == v) {
-        instr->PRF.tag = wt;
-        instr->PRF.regId = w;
-      }
-      return;
-		default:
-      return;
+  if (instr.ALU.srcB.is_reg() && instr.ALU.srcB.reg() == current) {
+    instr.ALU.srcB.reg() = replace_with;
   }
 }
 
@@ -82,40 +62,25 @@ void renameUses(Instr* instr, RegTag vt, RegId v, RegTag wt, RegId w) {
  */
 void substRegTag(Instr* instr, RegTag vt, RegTag wt) {
   switch (instr->tag) {
-    // Load immediate
-    case LI:
+    case LI:  // Load immediate
       if (instr->LI.dest.tag == vt)
         instr->LI.dest.tag = wt;
       return;
 
-    // ALU operation
     case ALU:
       if (instr->ALU.dest.tag == vt)
         instr->ALU.dest.tag = wt;
-      if (instr->ALU.srcA.tag == REG && instr->ALU.srcA.reg.tag == vt)
-        instr->ALU.srcA.reg.tag = wt;
-      if (instr->ALU.srcB.tag == REG && instr->ALU.srcB.reg.tag == vt)
-        instr->ALU.srcB.reg.tag = wt;
+      if (instr->ALU.srcA.is_reg() && instr->ALU.srcA.reg().tag == vt)
+        instr->ALU.srcA.reg().tag = wt;
+      if (instr->ALU.srcB.is_reg() && instr->ALU.srcB.reg().tag == vt)
+        instr->ALU.srcB.reg().tag = wt;
       return;
 
-    // Print integer instruction
-    case PRI:
-      if (instr->PRI.tag == vt)
-        instr->PRI.tag = wt;
-      return;
-
-    // Print float instruction
-    case PRF:
-      if (instr->PRF.tag == vt)
-        instr->PRF.tag = wt;
-      return;
-
-    // RECV instruction
     case RECV:
       if (instr->RECV.dest.tag == vt)
         instr->RECV.dest.tag = wt;
       return;
-		default:
+    default:
       return;
   }
 }

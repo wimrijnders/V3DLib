@@ -1,7 +1,9 @@
-#include "Target/Satisfy.h"
-#include "Target/Liveness.h"
+#include "Satisfy.h"
 #include <assert.h>
 #include <stdio.h>
+#include "Support/Platform.h"
+#include "Target/Liveness.h"
+#include "Target/instr/Instructions.h"
 
 namespace V3DLib {
 namespace {
@@ -14,11 +16,11 @@ namespace {
  * instruction to the given accumulator.
  */
 Instr remapAToAccum(Instr* instr, RegId acc) {
-  assert(instr->ALU.srcA.tag == REG);
+  assert(instr->ALU.srcA.is_reg());
 
-  Reg src = instr->ALU.srcA.reg;
-  instr->ALU.srcA.reg.tag    = ACC;
-  instr->ALU.srcA.reg.regId  = acc;
+  Reg src = instr->ALU.srcA.reg();
+  instr->ALU.srcA.reg().tag    = ACC;
+  instr->ALU.srcA.reg().regId  = acc;
 
   return Target::instr::mov(Reg(ACC, acc), src);
 }
@@ -28,11 +30,11 @@ Instr remapAToAccum(Instr* instr, RegId acc) {
  * Remap register B to accumulator
  */
 Instr remapBToAccum(Instr* instr, RegId acc) {
-  assert(instr->ALU.srcB.tag == REG);
+  assert(instr->ALU.srcB.is_reg());
 
-  Reg src = instr->ALU.srcB.reg;
-  instr->ALU.srcB.reg.tag   = ACC;
-  instr->ALU.srcB.reg.regId = acc;
+  Reg src = instr->ALU.srcB.reg();
+  instr->ALU.srcB.reg().tag   = ACC;
+  instr->ALU.srcB.reg().regId = acc;
 
   return Target::instr::mov(Reg(ACC, acc), src);
 }
@@ -43,12 +45,12 @@ Instr remapBToAccum(Instr* instr, RegId acc) {
  * to the same register file, then remap one of them to an accumulator.
  */
 bool resolveRegFileConflict(Instr* instr, Instr* newInstr) {
-  if (instr->tag == ALU && instr->ALU.srcA.tag == REG && instr->ALU.srcB.tag == REG) {
-    int rfa = regFileOf(instr->ALU.srcA.reg);
-    int rfb = regFileOf(instr->ALU.srcB.reg);
+  if (instr->tag == ALU && instr->ALU.srcA.is_reg() && instr->ALU.srcB.is_reg()) {
+    int rfa = regFileOf(instr->ALU.srcA.reg());
+    int rfb = regFileOf(instr->ALU.srcB.reg());
 
     if (rfa != NONE && rfb != NONE) {
-      bool conflict = rfa == rfb && !(instr->ALU.srcA.reg == instr->ALU.srcB.reg);
+      bool conflict = rfa == rfb && !(instr->ALU.srcA.reg() == instr->ALU.srcB.reg());
 
       if (conflict) {
         *newInstr = remapAToAccum(instr, 0);
@@ -63,59 +65,85 @@ bool resolveRegFileConflict(Instr* instr, Instr* newInstr) {
 /**
  * First pass for satisfy constraints: insert move-to-accumulator instructions
  */
-void insertMoves(Seq<Instr> &instrs, Seq<Instr>* newInstrs) {
+Instr::List insertMoves_vc4(Instr::List &instrs) {
+  if (!Platform::compiling_for_vc4())  {                           // Not an issue for v3d
+    return instrs;
+  }
+
+  Instr::List newInstrs(instrs.size() * 2);
+
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
+
+    if (instr.tag == ALU && instr.ALU.srcA.is_imm() &&
+        instr.ALU.srcB.is_reg() &&
+        regFileOf(instr.ALU.srcB.reg()) == REG_B) {
+      // Insert moves for an operation with a small immediate whose
+      // register operand must reside in reg file B.
+      newInstrs << remapBToAccum(&instr, 0);
+    } else if (instr.tag == ALU && instr.ALU.srcB.is_imm() &&
+             instr.ALU.srcA.is_reg() &&
+             regFileOf(instr.ALU.srcA.reg()) == REG_B) {
+      // Insert moves for an operation with a small immediate whose
+      // register operand must reside in reg file B.
+      newInstrs << remapAToAccum(&instr, 0);
+    } else {
+      // Insert moves for operands that are mapped to the same reg file
+      Instr move;
+      if (resolveRegFileConflict(&instr, &move)) {
+        newInstrs << move;
+      }
+    }
+    
+    // Put current instruction into the new sequence
+    newInstrs << instr;
+  }
+
+  return newInstrs;
+}
+
+
+Instr::List insertMoves(Instr::List &instrs) {
+  Instr::List newInstrs(instrs.size() * 2);
+
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
 
     if (instr.tag == ALU && instr.ALU.op.value() == ALUOp::M_ROTATE) {
       // Insert moves for horizontal rotate operations
-      *newInstrs << remapAToAccum(&instr, 0);
+      newInstrs << remapAToAccum(&instr, 0);
 
-      if (instr.ALU.srcB.tag == REG)
-        *newInstrs << remapBToAccum(&instr, 5);
+      if (instr.ALU.srcB.is_reg())
+        newInstrs << remapBToAccum(&instr, 5);
 
-      *newInstrs << Instr::nop();
-    } else if (instr.tag == ALU && instr.ALU.srcA.tag == IMM &&
-             instr.ALU.srcB.tag == REG &&
-             regFileOf(instr.ALU.srcB.reg) == REG_B) {
-      // Insert moves for an operation with a small immediate whose
-      // register operand must reside in reg file B.
-      *newInstrs << remapBToAccum(&instr, 0);
-    } else if (instr.tag == ALU && instr.ALU.srcB.tag == IMM &&
-             instr.ALU.srcA.tag == REG &&
-             regFileOf(instr.ALU.srcA.reg) == REG_B) {
-      // Insert moves for an operation with a small immediate whose
-      // register operand must reside in reg file B.
-      newInstrs->append(remapAToAccum(&instr, 0));
-    } else {
-      // Insert moves for operands that are mapped to the same reg file
-      Instr move;
-      if (resolveRegFileConflict(&instr, &move))
-        newInstrs->append(move);
+      newInstrs << Instr::nop();
     }
     
     // Put current instruction into the new sequence
-    newInstrs->append(instr);
+    newInstrs << instr;
   }
+
+  return newInstrs;
 }
 
 
 /**
  * Second pass satisfy constraints: insert NOPs
  */
-void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
-  // Use/def sets
+Instr::List insertNops(Instr::List &instrs) {
+  Instr::List newInstrs(instrs.size() * 2);
+
   UseDefReg mySet, prevSet;
 
-  // Previous instruction
   Instr prev = Instr::nop();
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
 
     // Insert NOPs to avoid data hazards
-    useDefReg(prev, &prevSet);
-    useDefReg(instr, &mySet);
+    prevSet.set_used(prev);
+    mySet.set_used(instr);
+
     for (int j = 0; j < prevSet.def.size(); j++) {
       Reg defReg = prevSet.def[j];
       bool needNop = defReg.tag == REG_A || defReg.tag == REG_B;
@@ -140,6 +168,8 @@ void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
     // Update previous instruction
     if (instr.tag != LAB) prev = instr;
   }
+
+  return newInstrs;
 }
 
 
@@ -149,8 +179,8 @@ void insertNops(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
 bool notVPMGet(Instr instr) {
   // Use/def sets
   UseDefReg useDef;
+  useDef.set_used(instr);
 
-  useDefReg(instr, &useDef);
   for (int i = 0; i < useDef.use.size(); i++) {
     Reg useReg = useDef.use[i];
     if (useReg.tag == SPECIAL && useReg.regId == SPECIAL_VPM_READ)
@@ -163,7 +193,9 @@ bool notVPMGet(Instr instr) {
 /**
  * Insert NOPs between VPM setup and VPM read, if needed
  */
-void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
+Instr::List removeVPMStall(Instr::List &instrs) {
+  Instr::List newInstrs(instrs.size() * 2);
+
   // Use/def sets
   UseDefReg useDef;
 
@@ -184,17 +216,15 @@ void removeVPMStall(Seq<Instr> &instrs, Seq<Instr> &newInstrs) {
         newInstrs << Instr::nop();
     }
   }
+
+  return newInstrs;
 }
 
 }  // anon namespace
 
 
-// ==============================
-// Resolve register file conflict
-// ==============================
-
 /**
- * Determine reg file of given register.
+ * Determine reg file of given register
  */
 RegTag regFileOf(Reg r) {
   if (r.tag == REG_A) return REG_A;
@@ -221,36 +251,29 @@ RegTag regFileOf(Reg r) {
 }
 
 
-// =============================
-// Satisfy VideoCore constraints
-// =============================
-
-// Transform an instruction sequence to satisfy various VideoCore
-// constraints, including:
-//
-//   1. fill branch delay slots with NOPs;
-//
-//   2. introduce accumulators for operands mapped to the same
-//      register file;
-//
-//   3. introduce accumulators for horizontal rotation operands;
-//
-//   4. insert NOPs to account for data hazards: a destination
-//      register (assuming it's not an accumulator) cannot be read by
-//      the next instruction.
-
-void satisfy(Seq<Instr>* instrs) {
-  assert(instrs != nullptr);
-
-  // New instruction sequence
-  Seq<Instr> newInstrs0(instrs->size() * 2);
-  Seq<Instr> newInstrs1(instrs->size() * 2);
-
+/**
+ * Satisfy VideoCore constraints
+ *
+ * Transform an instruction sequence to satisfy various VideoCore
+ * constraints, including:
+ *
+ *   1. fill branch delay slots with NOPs;
+ *
+ *   2. introduce accumulators for operands mapped to the same
+ *      register file;
+ *
+ *   3. introduce accumulators for horizontal rotation operands;
+ *
+ *   4. insert NOPs to account for data hazards: a destination
+ *      register (assuming it's not an accumulator) cannot be read by
+ *      the next instruction.
+ */
+void satisfy(Instr::List &instrs) {
   // Apply passes
-  insertMoves(*instrs, &newInstrs0);
-  insertNops(newInstrs0, newInstrs1);
-  instrs->clear();
-  removeVPMStall(newInstrs1, *instrs);
+  Instr::List newInstrs = insertMoves(instrs);
+  newInstrs = insertMoves_vc4(newInstrs);
+  newInstrs = insertNops(newInstrs);
+  instrs = removeVPMStall(newInstrs);
 }
 
 }  // namespace V3DLib

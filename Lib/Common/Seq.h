@@ -2,16 +2,16 @@
 // Sequence data type
 //
 ///////////////////////////////////////////////////////////////////////////////
-#ifndef _V3DLIB_SEQ_H_
-#define _V3DLIB_SEQ_H_
+#ifndef _V3DLIB_COMMON_SEQ_H_
+#define _V3DLIB_COMMON_SEQ_H_
 #include <stdlib.h>
 #include <string>
 #include "Support/debug.h"
 
-
 namespace V3DLib {
 
-template <class T> class Seq {
+template <class T>
+class Seq {
 public:
   int const INITIAL_MAX_ELEMS = 1024;
 
@@ -44,9 +44,6 @@ public:
   }
 
 
-  T *data() { return elems; }
-
-
   /**
    * Here's one for the Hall of Shame, previous definition:
    *
@@ -65,27 +62,26 @@ public:
     numElems = new_size;
   }
 
-  bool empty() const { return size() == 0; }
+  T &get(int index) {
+    assertq(!empty(), "seq[]: can not access elements, sequence is empty", true);
+    assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
+    return elems[index];
+  }
 
-    T &get(int index) {
-      assertq(!empty(), "seq[]: can not access elements, sequence is empty");
-      assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
-      return elems[index];
-    }
 
-    T &operator[](int index) {
-      return get(index);
-    }
+  T operator[](int index) const {
+    assertq(!empty(), "seq[]: can not access elements, sequence is empty", true);
+    assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
+    return elems[index];
+  }
 
-    T operator[](int index) const {
-      assertq(!empty(), "seq[]: can not access elements, sequence is empty");
-      assertq(0 <= index && index < numElems, "Seq[]: index out of range", true);
-      return elems[index];
-    }
 
-    T &front()            { return get(0); }
-    T &back()             { return get(size() - 1); }
-    T const &back() const { return get(size() - 1); }
+  bool empty() const       { return size() == 0; }
+  T &operator[](int index) { return get(index); }
+  T &front()               { return get(0); }
+  T &back()                { return get(size() - 1); }
+  T const &back() const    { return get(size() - 1); }
+  T *data()                { return elems; }
 
 
   /**
@@ -117,84 +113,61 @@ public:
   }
 
 
-    // Append
-    void append(T x) {
-      extend_by(1);
-      numElems++;
-      elems[numElems-1] = x;
-    }
-
-    // Delete last element
-    void deleteLast() {
-      numElems--;
-    }
-
-    void push(T x) { append(x); }
-
-    T pop() {
-      assertq(numElems > 0, "Seq::pop(): sequence is empty, nothing to return");
-      numElems--;
-      return elems[numElems];
-    }
-
-    // Clear the sequence
-    void clear() { numElems = 0; }
-
-    /**
-     * Check if given value already in sequence
-     */
-    bool member(T x) {
-      for (int i = 0; i < numElems; i++) {
-        if (elems[i] == x) return true;
-      }
-      return false;
-    }
-
-
-  /**
-   * Insert element into sequence if not already present
-   */
-  bool insert(T x) {
-    bool alreadyPresent = member(x);
-    if (!alreadyPresent) append(x);
-    return !alreadyPresent;
+  void append(T x) {
+    extend_by(1);
+    numElems++;
+    elems[numElems-1] = x;
   }
 
 
-    /**
-     * Insert item at specified location
-     */
-    void insert(int index, T const &item) {
-      shift_tail(index, 1);
-      elems[index] = item;
+  void clear()      { numElems = 0; }
+  void deleteLast() { numElems--; }
+  void push(T x)    { append(x); }
+
+
+  T pop() {
+    assertq(numElems > 0, "Seq::pop(): sequence is empty, nothing to return");
+    numElems--;
+    return elems[numElems];
+  }
+
+
+  /**
+   * Insert item at specified location
+   */
+  void insert(int index, T const &item) {
+    shift_tail(index, 1);
+    elems[index] = item;
+  }
+
+
+  /**
+   * Insert passed sequence at specified location
+   */
+  void insert(int index, Seq<T> const &items) {
+    shift_tail(index, items.size());
+
+    for (int j = 0; j < items.size(); j++) {
+      elems[index + j] = items.elems[j];
+    }
+  }
+
+
+  /**
+   * Remove element at index
+   */
+  T remove(int index) {
+    assertq(numElems > 0, "Seq::remove(): sequence is empty, nothing to remove");
+    assertq(0 <= index && index < numElems, "Seq::remove(): index out of range");
+    T x = elems[index];
+
+    for (int j = index; j < numElems-1; j++) {
+      elems[j] = elems[j+1];
     }
 
-
-    /**
-     * Insert passed sequence at specified location
-     */
-    void insert(int index, Seq<T> const &items) {
-      shift_tail(index, items.size());
-
-      for (int j = 0; j < items.size(); j++) {
-        elems[index + j] = items.elems[j];
-      }
-    }
-
-
-    // Remove element at index
-    T remove(int index) {
-      assertq(numElems > 0, "Seq::remove(): sequence is empty, nothing to remove");
-      assertq(0 <= index && index < numElems, "Seq::remove(): index out of range");
-      T x = elems[index];
-
-      for (int j = index; j < numElems-1; j++) {
-        elems[j] = elems[j+1];
-      }
-
-      numElems--;
-      return x;
-    }
+    numElems--;
+    return x;
+  }
 
 
   Seq<T> &operator<<(T const &rhs) { 
@@ -244,7 +217,7 @@ private:
    * Ensure that sequence can contain current num elements + passed value
    *
    */
-   void extend_by(int step = 1) {
+  void extend_by(int step = 1) {
     assertq(step > 0, "Seq::extend_by(): can not extend with zero length");
 
     int newSize = maxElems;
@@ -265,14 +238,9 @@ private:
 };
 
 
-/**
- * A small sequence is a sequence with a small initial size
- */
-template <class T> class SmallSeq : public Seq<T> {
-  public:
-    SmallSeq() : Seq<T>(8) {};
-};
+using IntList  = Seq<int32_t>;
+using UIntList = Seq<uint32_t>;
 
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_SEQ_H_
+#endif  // _V3DLIB_COMMON_SEQ_H_

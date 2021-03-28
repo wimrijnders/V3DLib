@@ -2,16 +2,17 @@
 
 ## General
 
-- [ ] ! Fix '+ 0' hack for kernel pointers, this is confusing
-- [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
+- [ ] Automate loading of new versions external libraries
+- [ ] Get `Pi 1` running again; fails in `qpu_enable()`
+- [ ] Make heap memory size configurable (ideally cmdline option)
+- [ ] Initializing a Float/Complex(/Int?) variable without value may not add variable to target code.
+      This is a consequence of fixing liveness allocation for dst vars in  conditional instructions.
+      Examine, report, prevent, fix.
+- [x] Fix indentation tabs/spaces
+- [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it)
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
-- [ ] Fix indentation tabs/spaces - ongoing
-- [ ] Consider adding **Navier-Stokes** as an example.
-      [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
-      looks promising.
-- [ ] Tone down mesa library, compile takes long.
-      Tried this but gave up after it became evident nothing could be removed.
-      Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
+- [x] Figure out segfault with imm(15) in immediates unit test; happens on `pi4 32b`
+
 
 ## v3d
 
@@ -25,7 +26,6 @@
 
 ## vc4
 
-- [ ] Consider replacing DMA transfers with TMU. Selection of either could be optional.
 - [ ] Consider using device driver interface for vc4 - this will get rid of need for `sudo`
 - [ ] Enforce acc4 (r4) as a read-only register, notably in emulator
 - [ ] Enforce non-usage of acc4 (r4) during sfu-call, notably in emulator
@@ -33,8 +33,31 @@
 
 ## Compile source code
 
-- [ ] `If (a != b)` appears to do the same as  `any(a1 != b)`, verify
-- [ ] Following generation is wrong *(this is probably an old v3d issue and not relevant any more - CHECK!)*.
+- [ ] Following source lang leads to infinite recursion and segfault during compile, fix and/or prevent:
+```
+Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacted from original)
+```
+
+**Research:**
+
+The issue here is that the following is allowed by `C++` syntax:
+```
+int x = x;  // or any other rhs with x
+```
+
+...and this is also valid for `Int x`. With `-Wall`, you will get output:
+```
+warning: ‘x’ may be used uninitialized in this function [-Wmaybe-uninitialized]
+```
+
+In the case of `Int x = x` the compiler will happily compile, but the contents of `x` on the rhs
+are uninitialized and therefore garbage. Due to this, things likely explode on execution.
+
+- [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
+- [x] This does not work in source lang code, fix: `*dst = *src`, where dst/src are uniform pointers
+- [x] `If (a != b)` appears to do the same as `any(a != b)`, verify. *Result: Verified, identical*
+- [x] v3d, following generation is wrong: *Result: Verified, now correct*.
+- [x] ! Fix '+ 0' hack for kernel pointers, this is confusing
 
 Source code:
 
@@ -77,8 +100,8 @@ Source code:
 - [ ] Drill-down of the bare essentials for understanding `VideoCore`
 - [x] Examples to separate page under Docs
 - [ ] Mailbox functions link to reference and explanation two size fields
-- [x] QPUs always round *downward* *(in Issue)*
-- [ ] DSL: Use of 'Expr'-constructs, e.g. `BoolExpr`, as a kind of lambda
+- [x] QPUs always round *downward* *(in Issues)*
+- [ ] DSL: Document use of 'Expr'-constructs (e.g. `BoolExpr`) as a kind of lambda
 
 
 ## Unit Tests
@@ -107,11 +130,14 @@ Source code:
 
 ## Investigate
 
-- [ ] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
-- [ ] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
+- [x] Is the gather limit 8 or 4? This depends on threading being enabled, check code for this.
+  * **Answer:** 8 for single threading, less for multi-threading, but we don't do multi
+  * **Answer:** 4 for `vc4`, 8 for `v3d`
+- [x] Improve heap implementation and usage. The issue is that heap memory can not be reclaimed. Suggestions:
   - [x] Add freeing of memory to `SharedArray` heap. This will increase the complexity of the heap code hugely
   - [x] Get rid of AST heap
-	- [ ] fix unfreed elements of `Stmt` (perhaps elsewhere). Made a start with using `std::shared_ptr` for `Expr`
+	- [x] Fix unfreed elements of `Stmt` (perhaps elsewhere). Made a start with using `std::shared_ptr` for `Expr`
+  - [x] Verify correct freeing of previous with a memory checker (`valgrind`?)
 
 
 ## CmdParameter
@@ -129,7 +155,7 @@ Error(s) on command line:
 ```
 
 ## Library Code
-- [ ] Add check in emulator for too many `gather()` calls
+- [ ] Add check in emulator for too many `gather()` calls. Or not enough `receive()` calls, same thing
 - [x] Determine num QPUs from hardware
 - [x] Add method to determine RPi hardware revision number via mailbox
 - [x] Add code for using the `Special Functions Unit (SFU)`, operations: `RECIP`, `RECIPSQRT`, `LOG`, `EXP`
@@ -145,66 +171,43 @@ Error(s) on command line:
 - [x] enable `-Wall` on compilation and deal with all the fallout
 - [x] enable build for QPU and Emulation mode together
 
+---------------------------
+# Long Term
 
-## Long Term
+	  
+## Consider these
+
+- [ ] Enhanced precision using [correction of rounding errors](http://andrewthall.org/papers/df64_qf128.pdf)
+- [ ] Option for disabling L2 cache, for decent cooperation with `OpenGL`.
+      **NOTE:** Perhaps needs  kernel built for L2 cache disabled. 
+      **TODO** profile this!
+- [ ] Adding **Navier-Stokes** as an example.
+      [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
+      looks promising.
+- [ ] Implement [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
+- [ ] Make [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
+- [ ] Use [inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
+- [ ] Fourier Transform
+  * [x] Implement DFT
+  * [ ] Implement FFT - viable implementations: [github gist](https://gist.github.com/agrafix/aa49c17cd32c8ba63b6a7cb8dce8b0bd),
+        [O'Reilly](https://www.oreilly.com/library/view/c-cookbook/0596007612/ch11s18.html),
+        [Turbo-C++](https://www.electronicsforu.com/electronics-projects/software-projects-ideas/implementation-fast-fourier-transform-using-c)
+  * [ ]  consider [sliding windows](https://github.com/glidernet/ogn-rf/issues/36#issuecomment-775688969)
+- [ ] Etherium mining - [Proof of Work algorithm](https://github.com/chfast/ethash), [ethash spec revision 23](https://eth.wiki/en/concepts/ethash/ethash)
+  * [ ] Keccak - derive from PoW project
+
+
+## Optimization and Cleanup
+
+- [ ] Tone down mesa library, compile takes long.
+      Tried this but gave up after it became evident nothing could be removed.
+      Perhaps leave out the `*.c` files? Not looking forward to it, lots of work.
+- [x] Complete conversion `Seq<Instr>` to `Instr::List`
+- [x] Get rid of senseless variable reassignment in source language.
+
+
+## Other
 
 - [ ] Add optional doc generation with `doxygen`.
       This is only useful if there are a sufficient number of header comments.
 - [ ] Scheduling of kernels - see VideoCore `fft` project.
-
-
------
-
-# Mysteries
-
-## vc4 DMA write: destination pointer impervious to offset changes
-
-Pointers are initialized on kernel startup to contain offsets.
-For all intents and purposes, they are redefined as follows:
-
-```
-    p = p + 4*(index() + 16*me());
-```
-
-For `vc4` when doing DMA writes, this works a little differently;
-the index offset is taken into account in the DMA setup, therefore there is no need to add it.
-
-However, in a previous version of the DSL unit test, the following was done before a write (kernel source code):
-
-```
-  outIndex = index();
-  ...
-  result[outIndex] = res;
-  outIndex = outIndex + 16;
-```
-
-This is the 'old', pre-`v3d` way of doing things. I would expect DMA to write to wrong locations.
-
-**But it doesn't**
-
-The DMA write ignores this offset and writes to the correct location, i.e. just like:
-
-```
-  ...
-  *result = res;
-  ...
-```
-
-This undoubtedly has something to do with DMA setup. I really have no patience to examine this.
-As far as I'm concerned, DMA writes are old-school, and relevant only to `vc4` anyway.
-If it works, it works.
-
-I much prefer to focus on `v3d`, which uses only TMU for main memory access.
-Maybe one day I'll rewrite the `vc4` assembly to do the same *(hereby noted as TODO)*.
-
------
-
-# Stuff to Consider
-
-## Measure performance in various ways
-
-E.g. compare between:
-
-  - different iterations of a program
-  - number of QPUs used
-  - RPi versions

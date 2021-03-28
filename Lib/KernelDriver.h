@@ -2,7 +2,9 @@
 #define _LIB_KERNELDRIVER_H
 #include <vector>
 #include <string>
+#include <functional>
 #include "Common/BufferType.h"
+#include "Common/CompileData.h"
 #include "Source/StmtStack.h"
 #include "Target/CFG.h"
 
@@ -11,54 +13,51 @@ namespace V3DLib {
 class KernelDriver {
 public:
   KernelDriver(BufferType in_buffer_type) : buffer_type(in_buffer_type) {}
+  KernelDriver(KernelDriver &&k) = default;
   virtual ~KernelDriver();
 
-  virtual void encode(int numQPUs) = 0;
+  void init_compile();
+  void compile(std::function<void()> create_ast);
+  virtual void encode() = 0;
+  void invoke(int numQPUs, IntList &params);
+  bool has_errors() const { return !errors.empty(); }
+  std::string get_errors() const;
+  int numVars() const { return m_numVars; }
+  Instr::List &targetCode() { return m_targetCode; }
+  Stmt::Ptr sourceCode() { return m_body; }  //<< return AST representing the source code
 
-  void compile();
-  void invoke(int numQPUs, Seq<int32_t> &params);
-  void pretty(int numQPUs, const char *filename = nullptr);
-
-  /**
-   * @return AST representing the source code
-   */
-  Stmt::Ptr sourceCode() { return m_body; }
-
-  Seq<Instr> &targetCode() { return m_targetCode; }
-
-  BufferType const buffer_type;
-
-#ifdef DEBUG
-  // Only here for autotest
-  void add_stmt(Stmt::Ptr stmt);
-#endif
-
+  void pretty(char const *filename = nullptr, bool output_qpu_code = true);
+  std::string compile_info() const;
+  void dump_compile_data(char const *filename) const;
 
 protected:
   const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
-  Seq<Instr> m_targetCode;            // Target code generated from AST
-  Stmt::Ptr  m_body;
+  Instr::List m_targetCode;           // Target code generated from AST
+  Stmt::Ptr   m_body;
 
   int qpuCodeMemOffset = 0;
   std::vector<std::string> errors;
 
-  void init_compile(bool set_qpu_uniforms = true, int numVars = 0);
   virtual void emit_opcodes(FILE *f) {} 
   void obtain_ast();
 
-
 private:
+  BufferType const buffer_type;
   StmtStack m_stmtStack;
+  int m_numVars = 0;                  // The number of variables in the source code for vc4
+  CompileData m_compile_data;
 
   virtual void compile_intern() = 0;
-  virtual void invoke_intern(int numQPUs, Seq<int32_t>* params) = 0;
+  virtual void invoke_intern(int numQPUs, IntList &params) = 0;
 
-  bool has_errors() const { return !errors.empty(); }
+  int numAccs() const { return m_compile_data.num_accs_introduced; }
+
   bool handle_errors();
 };
 
-void compile_postprocess(Seq<Instr> &targetCode);
+
+void compile_postprocess(Instr::List &targetCode);
 
 }  // namespace V3DLib
 

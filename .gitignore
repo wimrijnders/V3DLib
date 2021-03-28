@@ -3,6 +3,9 @@ obj*
 .directory
 *.log
 *.pgm
+*.ppm
 *.swp
+*.org~
+.~lock.*
 extern
 *_code.txt

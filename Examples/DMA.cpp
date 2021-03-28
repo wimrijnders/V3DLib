@@ -1,12 +1,12 @@
 #include "V3DLib.h"
-#include "vc4/DMA.h"
+#include "vc4/DMA/Operations.h"
 #include "Support/Settings.h"
 
 using namespace V3DLib;
 
 V3DLib::Settings settings;
 
-void dma(Ptr<Int> p) {
+void dma(Int::Ptr p) {
   // Setup load of 16 vectors into VPM, starting at word address 0
   dmaSetReadPitch(64);
   dmaSetupRead(HORIZ, 16, 0);
@@ -34,32 +34,27 @@ void dma(Ptr<Int> p) {
 
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
-	if (!Platform::instance().has_vc4 && settings.run_type == 0) {
-		printf("\nThe DMA example does not work on v3d, it is only meant for vc4.\n"
-					 "It will only work for the emulator on v3d.\n\n");
-		return 1;
-	}
+  if (!Platform::has_vc4() && settings.run_type == 0) {
+    printf("\nThe DMA example does not work on v3d, it is only meant for vc4.\n"
+           "It will only work for the emulator on v3d.\n\n");
+    return 1;
+  }
 
-  // Construct kernel
-  auto k = compile(dma, true);  // true: only compile for vc4
+  auto k = compile(dma, CompileFor::VC4);         // Construct kernel, only compile for vc4
 
-  // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(256);
+  Int::Array array(256);                          // Allocate and initialise array shared between ARM and GPU
   for (int i = 0; i < 256; i++)
     array[i] = i;
 
-  // Invoke the kernel
-	k.load(&array);  
-	settings.process(k);  
+  k.load(&array);                                 // Invoke the kernel
+  settings.process(k);  
 
-	// Display the result
-  for (int i = 0; i < 16; i++) {
+  for (int i = 0; i < 16; i++) {                  // Display the result
     for (int j = 0; j < 16; j++) {
       printf("%i ", array[16*i + j]);
-		}
+    }
 
     printf("\n");
   }

@@ -1,270 +1,142 @@
+///////////////////////////////////////////////////////////////////////////////
 // Liveness analysis
 //
-// This follows the following source pretty closely:
-//
-//    https://lambda.uta.edu/cse5317/spring01/notes/node37.html
-//
 ///////////////////////////////////////////////////////////////////////////////
-#include "Support/basics.h"    // fatal()
-#include "Support/Platform.h"  // size_regfile()
+#include <iostream>
+#include "Support/basics.h"
+#include "Support/Platform.h"
 #include "Target/Subst.h"
 #include "Target/Liveness.h"
+#include "Common/CompileData.h"
+#include "liveness/Optimizations.h"
 
 namespace V3DLib {
-
 namespace {
 
-// ============================================================================
-// Accumulator allocation
-// ============================================================================
+int count_skips(Instr::List &instrs) {
+  int ret = 0;
+
+  for (int i = 0; i < (int) instrs.size(); i++) {
+    if (instrs[i].tag == InstrTag::SKIP) {
+      ret++;
+    }
+  }
+
+  return ret;
+}
 
 /**
- * This is a simple peephole optimisation, captured by the following
- * rewrite rule:
+ * Replace the variables with the assigned registers for the given instruction
  *
- *     i:  x <- f(...)
- *     j:  g(..., x, ...)
- * 
- * ===> if x not live-out of j
- * 
- *     i:  acc <- f(...)
- *     j:  g(..., acc, ...)
+ * This functions assigns real registers to the 'variable registers' of the instruction.
+ *
+ * The incoming instructions all have REG_A as registers but signify variables.
+ * The reg id's indicate the variable at this stage.
+ *
+ * Allocation is first done with reg types TMP_A/TMP_B,
+ * to avoid accidental replacements of registers with same id.
+ * This has happened IRL.
  */
-void introduceAccum(Liveness &live, Seq<Instr> &instrs) {
-  auto ALWAYS = AssignCond::Tag::ALWAYS;
-  UseDef  useDefPrev;
-  UseDef  useDefCurrent;
-  LiveSet liveOut;
+void allocate_registers(Instr &instr, RegUsage const &alloc) {
 
-  for (int i = 1; i < instrs.size(); i++) {
-    Instr prev  = instrs[i-1];
-    Instr instr = instrs[i];
+  auto check_regfile_register = [&instr] (Reg const &replace_with, RegId r) -> bool {
+    if (replace_with.tag == REG_A) return true;
+    if (Platform::compiling_for_vc4() && replace_with.tag == REG_B) return true;
 
-    // Compute vars defined by prev
-    useDef(prev, &useDefPrev);
+    UseDefReg out;
+    out.set_used(instr);
 
-    if (useDefPrev.def.empty()) {
-      continue;
+    std::string msg = "regAlloc(): allocated register must be in register file.";
+    msg << "\n"
+        << "Instruction: " << instr.dump() << ", "
+        << "Registers: " << out.dump() << ", "
+        << "Reg id : " << r << ", alloc value: " << replace_with.dump();
+
+    error(msg, true);  // true: throw if there is an error
+
+    return false;
+  };
+
+  UseDef useDefSet;
+  useDefSet.set_used(instr);  // Registers only usage REG_A
+
+  for (int j = 0; j < useDefSet.def.size(); j++) {
+    RegId r = useDefSet.def[j];
+    assert(!alloc[r].unused());
+    Reg replace_with = alloc[r].reg;
+
+    if (!check_regfile_register(replace_with, r)) continue;
+    replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
+
+    renameDest(instr, Reg(REG_A, r), replace_with);
+  }
+
+  for (int j = 0; j < useDefSet.use.size(); j++) {
+    RegId r = useDefSet.use[j];
+    assert(!alloc[r].unused());
+    Reg replace_with = alloc[r].reg;
+
+    if (!check_regfile_register(replace_with, r)) continue;
+    replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
+
+    renameUses(instr, Reg(REG_A, r), replace_with);
+  }
+
+  substRegTag(&instr, TMP_A, REG_A);
+  substRegTag(&instr, TMP_B, REG_B);
+}
+
+
+/**
+ * Removes all SKIP instructions from the list
+ */
+void remove_replaced_instructions(Instr::List &instrs) {
+  int cur   = 0;
+  int count = 0;
+
+  while (cur < instrs.size()) {
+    if (instrs[cur].tag == InstrTag::SKIP) {
+      instrs.remove(cur);
+      count++;
+    } else {
+      cur++;
     }
+  }
 
-    RegId def = useDefPrev.def[0];
-
-    // Compute vars used by instr
-    useDef(instr, &useDefCurrent);
-
-    // Compute vars live-out of instr
-    live.computeLiveOut(i, liveOut);
-
-    // Check that write is non-conditional
-    bool always = (prev.tag == LI && prev.LI.cond.tag == ALWAYS)
-               || (prev.tag == ALU && prev.ALU.cond.tag == ALWAYS);
-
-    bool do_it = (always && useDefCurrent.use.member(def) && !liveOut.member(def));
-    if (!do_it) {
-      continue;
-    }
-
-    int acc_id =1;
-
-    if (!Platform::instance().compiling_for_vc4()) {
-      // v3d ROT uses ACC1 (r1) internally, don't use it here
-      // TODO better selection of subsitution ACC
-      if (prev.ALU.op.isRot() || instr.ALU.op.isRot()) {
-        //warning("introduceAccum(): subsituting ACC in ROT operation");
-        acc_id = 2;
-      }
-    }
-
-    renameDest( &prev, REG_A, def, ACC, acc_id);
-    renameUses(&instr, REG_A, def, ACC, acc_id);
-    instrs[i-1] = prev;
-    instrs[i]   = instr;
-        
-/*
-    // WRI DEBUG
-    // Result: Happens a lot!
-    // Keeping this in for optimization (e.g. multiple passes)
-    std::string buf = "Liveness: used peephole for instructions ";
-    buf << (i-1) << " and " << i;
-    debug(buf.c_str());
-*/
+  if (count > 0) {
+    std::string msg;
+    msg << "remove_replaced_instructions() removed " << count << " SKIPs";
+    debug(msg);
   }
 }
 
 }  // anon namespace
 
-// ============================================================================
-// Compute 'use' and 'def' sets
-// ============================================================================
 
-// 'use' set: the variables read by an instruction
-// 'def' set: the variables modified by an instruction
+///////////////////////////////////////////////////////////////////////////////
+// Class LiveSet
+///////////////////////////////////////////////////////////////////////////////
 
-/**
- * Compute 'use' and 'def' sets for a given instruction
- */
-void useDefReg(Instr instr, UseDefReg* useDef) {
-  auto ALWAYS = AssignCond::Tag::ALWAYS;
-
-  // Make the 'use' and 'def' sets empty
-  useDef->use.clear();
-  useDef->def.clear();
-
-  switch (instr.tag) {
-    // Load immediate
-    case LI:
-      // Add destination reg to 'def' set
-      useDef->def.insert(instr.LI.dest);
-
-      // Add destination reg to 'use' set if conditional assigment
-      if (instr.LI.cond.tag != ALWAYS)
-        useDef->use.insert(instr.LI.dest);
-      return;
-
-    // ALU operation
-    case ALU:
-      // Add destination reg to 'def' set
-      useDef->def.insert(instr.ALU.dest);
-
-      // Add destination reg to 'use' set if conditional assigment
-      if (instr.ALU.cond.tag != ALWAYS)
-        useDef->use.insert(instr.ALU.dest);
-
-      // Add source reg A to 'use' set
-      if (instr.ALU.srcA.tag == REG)
-        useDef->use.insert(instr.ALU.srcA.reg);
-
-      // Add source reg B to 'use' set
-      if (instr.ALU.srcB.tag == REG)
-        useDef->use.insert(instr.ALU.srcB.reg);
-      return;
-
-    // Print integer instruction
-    case PRI:
-      // Add source reg to 'use' set
-      useDef->use.insert(instr.PRI);
-      return;
-
-    // Print float instruction
-    case PRF:
-      // Add source reg to 'use' set
-      useDef->use.insert(instr.PRF);
-      return;
-
-    // Load receive instruction
-    case RECV:
-      // Add dest reg to 'def' set
-      useDef->def.insert(instr.RECV.dest);
-      return;
-    default:
-      return;
+void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
+  clear();
+  for (int j = 0; j < set.size(); j++) {
+    if (!use.def.member(set[j]))
+      Parent::insert(set[j]);
   }
 }
 
 
-/**
- * Same as `useDefReg()`, except only yields ids of registers in register file A.
- */
-void useDef(Instr const &instr, UseDef* out) {
-  UseDefReg set;
-  useDefReg(instr, &set);
-  out->use.clear();
-  out->def.clear();
-  for (int i = 0; i < set.use.size(); i++) {
-    Reg r = set.use[i];
-    if (r.tag == REG_A) out->use.append(r.regId);
+std::string LiveSet::dump() const {
+  std::string ret;
+
+  ret << "(";
+  for (int j = 0; j < size(); j++) {
+    ret << (*this)[j] << ", ";
   }
-  for (int i = 0; i < set.def.size(); i++) {
-    Reg r = set.def[i];
-    if (r.tag == REG_A) out->def.append(r.regId);
-  }
+  ret << ")";
+
+  return ret;
 }
-
-
-/*
-// Compute the union of the 'use' sets of the successors of a given
-// instruction.
-
-void useSetOfSuccs(Seq<Instr>* instrs, CFG* cfg, InstrId i, SmallSeq<RegId>* use) {
-  use->clear();
-  Succs* s = &cfg->elems[i];
-  for (int j = 0; j < s->size(); j++) {
-    UseDef set;
-    useDef(instrs->elems[s->elems[j]], &set);
-    for (int k = 0; k < set.use.size(); k++)
-      use->insert(set.use[k]);
-  }
-}
-*/
-
-// Return true if given instruction has two register operands.
-
-bool getTwoUses(Instr instr, Reg* r1, Reg* r2)
-{
-  if (instr.tag == ALU && instr.ALU.srcA.tag == REG
-                       && instr.ALU.srcB.tag == REG) {
-    *r1 = instr.ALU.srcA.reg;
-    *r2 = instr.ALU.srcB.reg;
-    return true;
-  }
-  return false;
-}
-
-
-namespace {
-
-/**
- * Determine the liveness sets for each instruction.
- */
-void liveness(Seq<Instr> &instrs, Liveness &live) {
-  // Initialise live mapping to have one entry per instruction
-  live.setSize(instrs.size());
-
-  // For storing the 'use' and 'def' sets of each instruction
-  UseDef useDefSets;
-
-  // For temporarily storing live-in and live-out variables
-  LiveSet liveIn;
-  LiveSet liveOut;
-
-  // Has a change been made to the liveness mapping?
-  bool changed = true;
-
-  // Iterate until no change, i.e. fixed point
-  while (changed) {
-    changed = false;
-
-    // Propagate live variables backwards
-    for (int i = instrs.size()-1; i >= 0; i--) {
-      // Compute 'use' and 'def' sets
-      Instr instr = instrs[i];
-      useDef(instr, &useDefSets);
-
-      // Compute live-out variables
-      live.computeLiveOut(i, liveOut);
-
-      // Remove the 'def' set from the live-out set to give live-in set
-      liveIn.clear();
-      for (int j = 0; j < liveOut.size(); j++) {
-        if (!useDefSets.def.member(liveOut[j]))
-          liveIn.insert(liveOut[j]);
-      }
-
-      // Add the 'use' set to the live-in set
-      for (int j = 0; j < useDefSets.use.size(); j++)
-        liveIn.insert(useDefSets.use[j]);
-
-      // Insert the live-in variables into the map
-      for (int j = 0; j < liveIn.size(); j++) {
-        bool inserted = live.insert(i, liveIn[j]);
-        changed = changed || inserted;
-      }
-    }
-  }
-}
-
-
-}  // anon namespace
 
 
 LiveSets::LiveSets(int size) : m_size(size) {
@@ -278,12 +150,12 @@ LiveSets::~LiveSets() {
 }
 
 
-void LiveSets::init(Seq<Instr> &instrs, Liveness &live) {
+void LiveSets::init(Instr::List &instrs, Liveness &live) {
   LiveSet liveOut;
 
   for (int i = 0; i < instrs.size(); i++) {
     live.computeLiveOut(i, liveOut);
-    useDef(instrs[i], &useDefSet);
+    useDefSet.set_used(instrs[i]);
 
     for (int j = 0; j < liveOut.size(); j++) {
       RegId rx = liveOut[j];
@@ -316,8 +188,10 @@ LiveSet &LiveSets::operator[](int index) {
  *
  * @param index  index of variable
  */
-std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &alloc, RegTag reg_tag) {
-  const int NUM_REGS = Platform::instance().size_regfile();
+std::vector<bool> LiveSets::possible_registers(int index, RegUsage &alloc, RegTag reg_tag) {
+  assert(reg_tag == REG_A || reg_tag == REG_B);
+
+  const int NUM_REGS = Platform::size_regfile();
   std::vector<bool> possible(NUM_REGS);
 
   for (int j = 0; j < NUM_REGS; j++)
@@ -327,7 +201,7 @@ std::vector<bool> LiveSets::possible_registers(int index, std::vector<Reg> &allo
 
   // Eliminate impossible choices of register for this variable
   for (int j = 0; j < set.size(); j++) {
-    Reg neighbour = alloc[set[j]];
+    Reg neighbour = alloc[set[j]].reg;
     if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
   }
 
@@ -375,19 +249,132 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
     if (possible[j]) { chosenA = j; break; }
 
   if (check_limit && chosenA < 0) {
-    fatal("LiveSets::choose_register(): register allocation failed, insufficient capacity");
+    error("LiveSets::choose_register(): register allocation failed, insufficient capacity", true);
   }
 
   return chosenA;
 }  
 
 
-void Liveness::compute(Seq<Instr> &instrs) {
-  liveness(instrs, *this);
-  //printf("%s", dump().c_str());
+///////////////////////////////////////////////////////////////////////////////
+// Class Liveness
+///////////////////////////////////////////////////////////////////////////////
 
-  // Optimisation pass that introduces accumulators
-  introduceAccum(*this, instrs);
+/**
+ * Determine the liveness sets for each instruction.
+ */
+void Liveness::compute_liveness(Instr::List &instrs) {
+  // Initialise live mapping to have one entry per instruction
+  setSize(instrs.size());
+
+  UseDef useDef;
+
+  // For temporarily storing live-in and live-out variables
+  LiveSet liveIn;
+  LiveSet liveOut;
+
+  bool changed = true;
+  int count = 0;
+
+/*
+  {
+    std::string msg;
+    msg << "compute_liveness CFG:\n"
+        << m_cfg.dump();
+
+    debug(msg);
+}
+*/
+
+  // Iterate until no change, i.e. fixed point
+  while (changed) {
+    changed = false;
+
+    // Propagate live variables backwards
+    for (int i = instrs.size() - 1; i >= 0; i--) {
+      auto &instr = instrs[i];
+
+      bool also_set_used = false;
+      if (instr.isCondAssign()) {
+        UseDef useDef;
+        useDef.set_used(instr);
+        if (!useDef.def.empty()) {
+          auto &item = m_reg_usage[useDef.def[0]];
+
+          // If the dst variable is not used before, it should not be set as used as well
+          assert(item.first_dst() <= i);
+          also_set_used = (item.first_dst() < i);
+
+          if (!also_set_used) {
+            // Sanity check: in this case, we expect the variable to be in the condition assign block only
+            AssignCond assign_cond = instr.assign_cond();
+            for (int j = item.first_usage(); j <= item.last_usage(); j++) {
+              assert((assign_cond == instrs[j].assign_cond())            // expected usage
+                   || (instrs[j].is_always() && !instrs[j].is_branch())  // Interim basic usage allowed (happens)
+              );
+            }
+          }
+        }
+      }
+
+      // Compute 'use' and 'def' sets
+      useDef.set_used(instr, also_set_used);
+      computeLiveOut(i, liveOut);
+      liveIn.add_not_used(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
+      liveIn.add(useDef.use);
+
+      if (insert(i, liveIn)) {
+        changed = true;
+      }
+    }
+
+    count++;
+  }
+
+/*
+  std::string msg;
+  msg << "compute_liveness count: " << count;
+  debug(msg);
+*/
+}
+
+
+void Liveness::clear() {
+  m_cfg.clear();
+  m_set.clear();
+  m_reg_usage.reset();
+
+/*
+  std::string msg;
+  msg << "Liveness after Liveness::clear(): " << this->dump();
+  debug(msg);
+*/
+}
+
+
+void Liveness::compute(Instr::List &instrs) {
+  clear();
+
+  m_cfg.build(instrs);
+  m_reg_usage.set_used(instrs);
+
+  compute_liveness(instrs);
+  assert(instrs.size() == size());
+
+/*
+  {
+    std::string msg;
+    msg << " Liveness table:\n" << dump();
+    debug(msg);
+  }
+*/
+
+  m_reg_usage.set_live(*this);
+  //debug(m_reg_usage.dump(true));
+
+  compile_data.liveness_dump = dump();
+
+  m_reg_usage.check();
 }
 
 
@@ -403,9 +390,7 @@ void Liveness::computeLiveOut(InstrId i, LiveSet &liveOut) {
 
   for (int j = 0; j < s.size(); j++) {
     LiveSet &set = get(s[j]);
-
-    for (int k = 0; k < set.size(); k++)
-      liveOut.insert(set[k]);
+    liveOut.add(set);
   }
 }
 
@@ -415,15 +400,21 @@ void Liveness::setSize(int size) {
 }
 
 
-bool Liveness::insert(int index, RegId item) {
-  return m_set[index].insert(item);
+bool Liveness::insert(int index, LiveSet const &set) {
+  bool changed = false;
+
+  for (int j = 0; j < set.size(); j++) {
+    if (m_set[index].insert(set[j])) {
+      changed = true;
+    }
+  }
+
+  return changed;
 }
 
 
 std::string Liveness::dump() {
   std::string ret;
-
-  ret += "Liveness dump:\n";
 
   for (int i = 0; i < m_set.size(); ++i) {
     ret += std::to_string(i) + ": ";
@@ -441,9 +432,49 @@ std::string Liveness::dump() {
     ret += "\n";
   }
 
+  if (ret.empty()) ret += "<Empty>";
+
   ret += "\n";
 
   return ret;
+}
+
+
+/**
+ * Introduce optimizations where possible in the instruction list
+ *
+ * This is done before the actual liveness analysis.
+ * The idea is to minimize beforehand the number of variables considered
+ * in the liveness analysis.
+ */
+void Liveness::optimize(Instr::List &instrs, int numVars) {
+  assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list");
+
+  compile_data.target_code_before_optimization = instrs.dump();
+
+  Liveness live(numVars);
+  live.compute(instrs);
+  //live.dump();
+
+  combineImmediates(live, instrs);
+  live.compute(instrs);  // instructions may have changed in previous step, redo liveness
+
+  int prev_count_skips = count_skips(instrs);
+  compile_data.num_accs_introduced = introduceAccum(live, instrs);
+  assertq(prev_count_skips == count_skips(instrs), "SKIP count changed after introduceAccum()");
+
+  remove_replaced_instructions(instrs);
+  assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list after cleanup");
+
+  //std::cout << count_reg_types(instrs).dump() << std::endl;
+  compile_data.target_code_before_liveness = instrs.dump();
+}
+
+
+void allocate_registers(Instr::List &instrs, RegUsage const &alloc) {
+  for (int i = 0; i < instrs.size(); i++) {
+    allocate_registers(instrs.get(i), alloc);
+  }
 }
 
 }  // namespace V3DLib

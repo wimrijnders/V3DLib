@@ -4,63 +4,18 @@
 #include "Int.h"
 #include "Expr.h"
 #include "CExpr.h"
+#include "vc4/DMA/DMA.h"
 
 namespace V3DLib {
-
-// ============================================================================
-// Class PrintStmt
-// ============================================================================
-
-// For displaying values in emulation
-enum PrintTag { PRINT_INT, PRINT_FLOAT, PRINT_STR };
-
-struct PrintStmt {
-  PrintTag tag() const { return m_tag;}
-  void tag(PrintTag tag) { m_tag = tag;}
-
-  char const *str() const;
-  void str(char const *str);
-  std::string disp() const;
-
-private:
-  PrintTag    m_tag;
-  const char *m_str;
-};
-
 
 // ============================================================================
 // Class Stmt
 // ============================================================================
 
-// What kind of statement is it?
-enum StmtTag {
-  SKIP,
-  ASSIGN,
-  SEQ,
-  WHERE,
-  IF,
-  WHILE,
-  PRINT,
-  FOR,
-  SET_READ_STRIDE,
-  SET_WRITE_STRIDE,
-  LOAD_RECEIVE,
-  STORE_REQUEST,
-  SEND_IRQ_TO_HOST,
-  SEMA_INC,
-  SEMA_DEC,
-  SETUP_VPM_READ,
-  SETUP_VPM_WRITE,
-  SETUP_DMA_READ,
-  SETUP_DMA_WRITE,
-  DMA_READ_WAIT,
-  DMA_WRITE_WAIT,
-  DMA_START_READ,
-  DMA_START_WRITE
-};
-
-
 /**
+ * An instance is actually a tree of statements, due to having SEQ as 
+ * a possible element.
+ *
  * The original implementation put instances of `Stmt` on a custom heap.
  * This placed a strict limit on compilation size, which I continually ran
  * into, and complicated initialization of instances (notably, ctors were
@@ -68,16 +23,52 @@ enum StmtTag {
  *
  * The custom heap has thus been removed and instances are allocated in
  * the regular C++ way.
+ *
  * Pointers within this definition are in the process of being replaced
  * with smart pointers.
+ * TODO check if done
  */
 struct Stmt : public InstructionComment {
   using Ptr = std::shared_ptr<Stmt>;
 
+  enum Tag {
+    SKIP,
+    ASSIGN,
+    SEQ,
+    WHERE,
+    IF,
+    WHILE,
+    FOR,
+    LOAD_RECEIVE,
+
+    GATHER_PREFETCH,
+
+    // DMA stuff
+    SET_READ_STRIDE,
+    SET_WRITE_STRIDE,
+    SEND_IRQ_TO_HOST,
+    SEMA_INC,
+    SEMA_DEC,
+    SETUP_VPM_READ,
+    SETUP_VPM_WRITE,
+    SETUP_DMA_READ,
+    SETUP_DMA_WRITE,
+    DMA_READ_WAIT,
+    DMA_WRITE_WAIT,
+    DMA_START_READ,
+    DMA_START_WRITE,
+
+    NUM_TAGS
+  };
+
   ~Stmt() {}
+
+  Stmt &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
+  Stmt &comment(std::string msg)       { InstructionComment::comment(msg); return *this; }
 
   std::string disp() const { return disp_intern(false, 0); }
   std::string dump() const { return disp_intern(true, 0); }
+  void append(Ptr rhs);
 
   //
   // Accessors for pointer objects.
@@ -90,11 +81,9 @@ struct Stmt : public InstructionComment {
 
   Expr::Ptr assign_lhs() const;
   Expr::Ptr assign_rhs() const;
-  Expr::Ptr stride();
-  Expr::Ptr storeReq_data();
-  Expr::Ptr storeReq_addr();
   Expr::Ptr address();
-  Expr::Ptr print_expr() const;
+  Stmt *first_in_seq() const;
+  Stmt *last_in_seq() const;
 
   Ptr seq_s0() const;
   Ptr seq_s1() const;
@@ -117,9 +106,9 @@ struct Stmt : public InstructionComment {
   //
   // Instantiation methods
   //
-  static Ptr create(StmtTag in_tag);
-  static Ptr create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1);  // TODO make private
-  static Ptr create(StmtTag in_tag, Ptr s0, Ptr s1);
+  static Ptr create(Tag in_tag);
+  static Ptr create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1);  // TODO make private
+  static Ptr create(Tag in_tag, Ptr s0, Ptr s1);
   static Ptr create_assign(Expr::Ptr lhs, Expr::Ptr rhs);
   static Ptr create_sequence(Ptr s0, Ptr s1);
 
@@ -127,36 +116,12 @@ struct Stmt : public InstructionComment {
   static Ptr mkWhile(CExpr::Ptr cond, Ptr body);
   static Ptr mkFor(CExpr::Ptr cond, Ptr inc, Ptr body);
 
-  StmtTag tag;  // What kind of statement is it?
+  Tag tag;  // What kind of statement is it?
 
-  union {
-    // Print
-    PrintStmt print;
+  DMA::Stmt dma;
 
-    // Semaphore id for increment / decrement
-    int semaId;
-
-    // VPM read setup
-    struct { int numVecs; int hor; int stride; } setupVPMRead;
-
-    // VPM write setup
-    struct { int hor; int stride; } setupVPMWrite;
-
-    // DMA read setup
-    struct {
-      int numRows;
-      int rowLen;
-      int hor;
-      int vpitch;
-    } setupDMARead;
-
-    // DMA write setup
-    struct {
-      int numRows;
-      int rowLen;
-      int hor;
-    } setupDMAWrite;
-  };
+  void break_point() { m_break_point = true; }
+  bool do_break_point() const { return m_break_point; }
 
 private:
   BExpr::Ptr m_where_cond;
@@ -169,7 +134,9 @@ private:
 
   CExpr::Ptr m_cond;
 
-  void init(StmtTag in_tag);
+  bool m_break_point = false;
+
+  void init(Tag in_tag);
   std::string disp_intern(bool with_linebreaks, int seq_depth) const;
 };
 
@@ -177,7 +144,6 @@ private:
 // Functions to construct statements
 Stmt::Ptr mkSkip();
 Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
-Stmt::Ptr mkPrint(PrintTag t, Expr::Ptr e);
 
 }  // namespace V3DLib
 

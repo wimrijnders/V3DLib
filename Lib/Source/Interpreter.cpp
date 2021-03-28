@@ -1,5 +1,4 @@
 #include "Source/Interpreter.h"
-#include <cmath>
 #include "Common/SharedArray.h"
 #include "Source/Stmt.h"
 #include "Common/BufferObject.h"
@@ -7,29 +6,38 @@
 #include "Support/basics.h"
 
 namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
+
 namespace {
 
 // State of a single core.
 struct CoreState {
   int id;                        // Core id
   int numCores;                  // Core count
-  Seq<int32_t> uniforms;         // Arguments to kernel
+  IntList uniforms;         // Arguments to kernel
   int nextUniform = -2;          // Pointer to next uniform to read
   int readStride = 0;            // Read stride
   int writeStride = 0;           // Write stride
   Vec* env = nullptr;            // Environment mapping vars to values
   int sizeEnv;                   // Size of the environment
-  Seq<char>* output = nullptr;   // Output from print statements
   Seq<Stmt::Ptr> stack;          // Control stack
   Seq<Vec> loadBuffer;           // Load buffer
-  SharedArray<uint32_t> emuHeap;
-
+  Data emuHeap;
 
   ~CoreState() {
     // Don't delete uniform and output here, these are used as references
     delete [] env;
   }
+
+  void store_to_heap(Vec const &index, Vec &val);
+  Vec  load_from_heap(Vec const &index);
+
+private:
+  int load_show_count = 0;
+  int store_show_count = 0;
 };
+
 
 // State of the Interpreter.
 struct InterpreterState {
@@ -44,12 +52,72 @@ struct InterpreterState {
 };
 
 
-void storeToHeap(CoreState *s, Vec &index, Vec &val) {
-  uint32_t hp = (uint32_t) index[0].intVal;
-  for (int i = 0; i < NUM_LANES; i++) {
-    s->emuHeap.phy(hp>>2) = val[i].intVal;
-    hp += 4 + s->writeStride;
+void CoreState::store_to_heap(Vec const &index, Vec &val) {
+  assert(writeStride == 0);  // usage of writeStride is probably wrong!
+
+  if (!index.is_uniform()) {
+    // NOTE: This part will not work for vc4 DMA output!
+    //       Better to get rid of it
+
+    std::string msg;
+    msg << "store_to_heap(): index does not have all same values" << index.dump();
+
+    if (store_show_count == 1) {
+      msg << "\n(this message not shown any more for more occurences)";
+    }
+    if (store_show_count < 2) {
+      warning(msg);
+    }
+    store_show_count ++;
+    // The human has been warned, assume that she knows what she's doing
+
+    for (int i = 0; i < NUM_LANES; i++) {
+      uint32_t hp = (uint32_t) index[i].intVal + 4*i;
+      emuHeap.phy(hp>>2) = val[i].intVal;
+    }
+  } else {
+
+    uint32_t hp = (uint32_t) index[0].intVal;  // NOTE: only first value used
+
+    for (int i = 0; i < NUM_LANES; i++) {
+      emuHeap.phy(hp>>2) = val[i].intVal;
+      hp += 4 + writeStride;  // writeStride only relevant for DMA
+    }
   }
+}
+
+
+Vec CoreState::load_from_heap(Vec const &index) {
+  assert(readStride == 0);  // Usage of readStride is probably wrong!
+  Vec v;
+
+  if (!index.is_uniform()) {
+    std::string msg;
+    msg << "load_from_heap(): index does not have all same values: " << index.dump();
+
+    if (load_show_count == 1) {
+      msg << "\n(this message not shown any more for more occurences)";
+    }
+    if (load_show_count < 2) {
+      warning(msg);
+    }
+    load_show_count ++;
+    // The human has been warned, assume that she knows what she's doing
+
+    for (int i = 0; i < NUM_LANES; i++) {
+      uint32_t hp = (uint32_t) index[i].intVal + 4*i;
+      v[i].intVal = emuHeap.phy((hp >> 2));
+    }
+  } else {
+    uint32_t hp = (uint32_t) index[0].intVal;  // NOTE: only first value used
+
+    for (int i = 0; i < NUM_LANES; i++) {
+      v[i].intVal = emuHeap.phy((hp >> 2));
+      hp += 4 + readStride;  // readStride only relevant for DMA
+    }
+  }
+
+  return v;
 }
 
 
@@ -108,13 +176,6 @@ Vec evalVar(CoreState* s, Var v) {
   return Vec();
 }
 
-
-// Bitwise rotate-right
-inline int32_t rotRight(int32_t x, int32_t n) {
-  uint32_t ux = (uint32_t) x;
-  return (ux >> n) | (x << (32-n));
-}
-
 }  // anon namespace
 
 
@@ -147,76 +208,16 @@ Vec eval(CoreState* s, Expr::Ptr e) {
       Vec a = eval(s, e->lhs());
       Vec b = eval(s, e->rhs());
 
-      if (e->apply_op.op == ROTATE) {
-        // Vector rotation
-        v = rotate(a, b[0].intVal);
-      } else if (e->apply_op.type == FLOAT) {
-        // Floating-point operation
-        for (int i = 0; i < NUM_LANES; i++) {
-          float  x = a[i].floatVal;
-          float  y = b[i].floatVal;
-          float &d = v[i].floatVal;
+      bool did_something = v.apply(e->apply_op, a, b);
+      assert(did_something);
 
-          switch (e->apply_op.op) {
-            case ADD      : d = x+y;                   break;
-            case SUB      : d = x-y;                   break;
-            case MUL      : d = x*y;                   break;
-            case ItoF     : d = (float) a[i].intVal;   break;
-            case FtoI     : v[i].intVal   = (int) x;   break;
-            case MIN      : d = x<y?x:y;               break;
-            case MAX      : d = x>y?x:y;               break;
-            case RECIP    : d = 1/x;                   break; // TODO guard against zero?
-            case RECIPSQRT: d = (float) (1/::sqrt(x)); break; // TODO idem
-            case EXP      : d = (float) ::exp2(x);     break;
-            case LOG      : d = (float) ::log2(x);     break; // TODO idem
-            default: assert(false);
-          }
-        }
-      }
-      else {
-        // Integer operation
-        for (int i = 0; i < NUM_LANES; i++) {
-          int32_t x   = a[i].intVal;
-          int32_t y   = b[i].intVal;
-          uint32_t ux = (uint32_t) x;
-
-          switch (e->apply_op.op) {
-            case ADD:  v[i].intVal = x+y; break;
-            case SUB:  v[i].intVal = x-y; break;
-            case MUL:  v[i].intVal = (x&0xffffff)*(y&0xffffff); break;
-            case SHL:  v[i].intVal = x<<y; break;
-            case SHR:  v[i].intVal = x>>y; break;
-            case USHR: v[i].intVal = (int32_t) (ux >> y); break;
-            case ItoF: v[i].floatVal = (float) a[i].intVal; break;
-            case FtoI: v[i].intVal   = (int) a[i].floatVal; break;
-            case MIN:  v[i].intVal = x<y?x:y; break;
-            case MAX:  v[i].intVal = x>y?x:y; break;
-            case BOR:  v[i].intVal = x|y; break;
-            case BAND: v[i].intVal = x&y; break;
-            case BXOR: v[i].intVal = x^y; break;
-            case BNOT: v[i].intVal = ~x; break;
-            case ROR:  v[i].intVal = rotRight(x, y);
-            default: assert(false);
-          }
-        }
-      }
       return v;
     }
 
     // Dereference pointer
     case Expr::DEREF:
-      Vec a = eval(s, e->deref_ptr());
-      uint32_t hp = (uint32_t) a[0].intVal;
-
-      // NOTE: `hp` is the same for all lanes.
-      //       This has been tested and verified.
-      //       So, all we need to do here is add the index number to the pointer.
-
-      Vec v;
-      for (int i = 0; i < NUM_LANES; i++) {
-        v[i].intVal = s->emuHeap.phy((hp >> 2) + i); // WRI added '+ i'
-        hp += s->readStride;
-      }
+      Vec index = eval(s, e->deref_ptr());
+      v = s->load_from_heap(index);
       return v;
   }
 
@@ -358,11 +359,7 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
 
     case TMU0_ADDR: {  // Load via TMU
       assert(s->loadBuffer.size() < 8);
-      Vec w;
-      for (int i = 0; i < NUM_LANES; i++) {
-        uint32_t addr = (uint32_t) x[i].intVal;
-        w[i].intVal = s->emuHeap.phy(addr>>2);
-      }
+      Vec w =  s->load_from_heap(x);
       s->loadBuffer.append(w);
       break;
     }
@@ -400,10 +397,9 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
       break;
 
     // Dereferenced pointer
-    // Comparable to execStoreRequest()
     case Expr::DEREF: {
       Vec index = eval(s, lhs->deref_ptr());
-      storeToHeap(s, index, val);
+      s->store_to_heap(index, val);
     }
     break;
 
@@ -418,27 +414,11 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
 // Condition vector auxiliaries
 // ============================================================================
 
-// Condition vector containing all trues
-Vec vecAlways()
-{
-  Vec always;
-  for (int i = 0; i < NUM_LANES; i++)
-    always[i].intVal = 1;
-  return always;
-}
 
-// Negate a condition vector
-Vec vecNeg(Vec cond)
-{
-  Vec v;
-  for (int i = 0; i < NUM_LANES; i++)
-    v[i].intVal = !cond[i].intVal;
-  return v;
-}
-
-// And two condition vectors
-Vec vecAnd(Vec x, Vec y)
-{
+/**
+ * And two condition vectors
+ */
+Vec vecAnd(Vec x, Vec y) {
   Vec v;
   for (int i = 0; i < NUM_LANES; i++)
     v[i].intVal = x[i].intVal && y[i].intVal;
@@ -454,29 +434,27 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
   switch (stmt->tag) {
     // No-op
-    case SKIP:
+    case Stmt::GATHER_PREFETCH:
+    case Stmt::SKIP:
       return;
 
     // Sequential composition
-    case SEQ:
+    case Stmt::SEQ:
       execWhere(s, cond, stmt->seq_s0());
       execWhere(s, cond, stmt->seq_s1());
       return;
 
     // Assignment
-    case ASSIGN:
-      if (stmt->assign_lhs()->tag() != Expr::VAR) {
-        printf("V3DLib: only var assignments permitted in 'where'\n");
-        assert(false);
-      }
+    case Stmt::ASSIGN:
+      assertq(stmt->assign_lhs()->tag() == Expr::VAR, "V3DLib: only var assignments permitted in 'where'");
       execAssign(s, cond, stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
     // Nested where
-    case WHERE: {
+    case Stmt::WHERE: {
       Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, vecAnd(b, cond), stmt->thenStmt());
-      execWhere(s, vecAnd(vecNeg(b), cond), stmt->elseStmt());
+      execWhere(s, vecAnd(b.negate(), cond), stmt->elseStmt());
       return;
     }
 
@@ -486,40 +464,14 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
   }
 }
 
-// ============================================================================
-// Execute print statement
-// ============================================================================
-
-void execPrint(CoreState* s, Stmt::Ptr stmt) {
-  switch (stmt->print.tag()) {
-    // Integer
-    case PRINT_INT: {
-      Vec x = eval(s, stmt->print_expr());
-      printIntVec(s->output, x);
-      return;
-    }
-
-    // Float
-    case PRINT_FLOAT: {
-      Vec x = eval(s, stmt->print_expr());
-      printFloatVec(s->output, x);
-      return;
-    }
-
-    // String
-    case PRINT_STR:
-      emitStr(s->output, stmt->print.str());
-      return;
-  }
-}
 
 // ============================================================================
 // Execute set-stride statements
 // ============================================================================
 
-void execSetStride(CoreState* s, StmtTag tag, Expr::Ptr e) {
+void execSetStride(CoreState* s, Stmt::Tag tag, Expr::Ptr e) {
   Vec v = eval(s, e);
-  if (tag == SET_READ_STRIDE)
+  if (tag == Stmt::SET_READ_STRIDE)
     s->readStride = v[0].intVal;
   else
     s->writeStride = v[0].intVal;
@@ -533,20 +485,58 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
   assert(s->loadBuffer.size() > 0);
   assert(e->tag() == Expr::VAR);
   Vec val = s->loadBuffer.remove(0);
-  assignToVar(s, vecAlways(), e->var(), val);
-}
-
-
-void execStoreRequest(CoreState* s, Expr::Ptr data, Expr::Ptr addr) {
-  Vec val = eval(s, data);
-  Vec index = eval(s, addr);
-  storeToHeap(s, index, val);
+  assignToVar(s, Vec::Always, e->var(), val);
 }
 
 
 // ============================================================================
 // Execute code
 // ============================================================================
+
+bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
+  bool ret = true;
+
+  int semaId = stmt->dma.semaId();
+
+  switch (stmt->tag) {
+    // Increment semaphore
+    // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
+    case Stmt::SEMA_INC:
+      assert(semaId >= 0 && semaId < 16);
+      if (state->sema[semaId] == 15) s->stack.push(stmt);
+      else state->sema[semaId]++;
+      break;
+ 
+    // Decrement semaphore
+    // Note at SEMA_INC also applies here
+    case Stmt::SEMA_DEC:
+      assert(semaId >= 0 && semaId < 16);
+      if (state->sema[semaId] == 0) s->stack.push(stmt);
+      else state->sema[semaId]--;
+      break;
+
+    case Stmt::DMA_READ_WAIT:
+    case Stmt::DMA_WRITE_WAIT:
+    case Stmt::SETUP_VPM_READ:
+    case Stmt::SETUP_VPM_WRITE:
+    case Stmt::SETUP_DMA_READ:
+    case Stmt::SETUP_DMA_WRITE:
+      // Interpreter ignores these
+      break;
+
+    case Stmt::DMA_START_READ:
+    case Stmt::DMA_START_WRITE:
+      fatal("V3DLib: DMA access not supported by interpreter\n");
+      break;
+
+    default:
+      ret = false;
+      break;
+  }
+
+  return ret;
+}
+
 
 void exec(InterpreterState* state, CoreState* s) {
   // Control stack must be non-empty
@@ -555,109 +545,72 @@ void exec(InterpreterState* state, CoreState* s) {
   // Pop the statement at the top of the stack
   Stmt::Ptr stmt = s->stack.pop();
 
-  if (stmt == NULL) return;
+  if (stmt == NULL) { // Apparently this happens
+    //assertq(false, " Interpreter: not expecting nullptr for stmt");
+    return;
+  }
+
+  if (stmt->do_break_point()) {
+#ifdef DEBUG
+    printf("Interpreter: hit breakpoint for stmt: %s\n", stmt->dump().c_str());
+    breakpoint
+#endif
+  }
 
   switch (stmt->tag) {
-    // No-op
-    case SKIP:
+    case Stmt::GATHER_PREFETCH: // Ignore
+    case Stmt::SKIP:
       return;
 
-    // Assignment
-    case ASSIGN:
-      execAssign(s, vecAlways(), stmt->assign_lhs(), stmt->assign_rhs());
+    case Stmt::ASSIGN:          // Assignment
+      execAssign(s, Vec::Always, stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
-    // Sequential composition
-    case SEQ:
+    case Stmt::SEQ:             // Sequential composition
       s->stack.push(stmt->seq_s1());
       s->stack.push(stmt->seq_s0());
       return;
 
-    // Conditional assignment
-    case WHERE: {
+    case Stmt::WHERE: {         // Conditional assignment
       Vec b = evalBool(s, stmt->where_cond());
       execWhere(s, b, stmt->thenStmt());
-      execWhere(s, vecNeg(b), stmt->elseStmt());
+      execWhere(s, b.negate(), stmt->elseStmt());
       return;
     }
 
-    // If statement
-    case IF:
+    case Stmt::IF:
       if (evalCond(s, stmt->if_cond()))
         s->stack.push(stmt->thenStmt());
       else
         s->stack.push(stmt->elseStmt());
       return;
 
-    // While statement
-    case WHILE:
+    case Stmt::WHILE:
       if (evalCond(s, stmt->loop_cond())) {
         s->stack.push(stmt);
         s->stack.push(stmt->body());
       }
       return;
 
-    // Print statement
-    case PRINT:
-      execPrint(s, stmt);
+    case Stmt::SET_READ_STRIDE:
+      execSetStride(s, Stmt::SET_READ_STRIDE, stmt->dma.stride_internal());
       return;
 
-    // Set read stride
-    case SET_READ_STRIDE:
-      execSetStride(s, SET_READ_STRIDE, stmt->stride());
+    case Stmt::SET_WRITE_STRIDE:
+      execSetStride(s, Stmt::SET_WRITE_STRIDE, stmt->dma.stride_internal());
       return;
 
-    // Set write stride
-    case SET_WRITE_STRIDE:
-      execSetStride(s, SET_WRITE_STRIDE, stmt->stride());
-      return;
-
-    // Load receive
-    case LOAD_RECEIVE:
+    case Stmt::LOAD_RECEIVE:
       execLoadReceive(s, stmt->address());
       return;
 
-    // Store request
-    case STORE_REQUEST:
-      execStoreRequest(s, stmt->storeReq_data(), stmt->storeReq_addr());
+    case Stmt::SEND_IRQ_TO_HOST:
       return;
-
-    // Host IRQ
-    case SEND_IRQ_TO_HOST:
-      return;
-
-    // Increment semaphore
-    // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
-    case SEMA_INC:
-      assert(stmt->semaId >= 0 && stmt->semaId < 16);
-      if (state->sema[stmt->semaId] == 15) s->stack.push(stmt);
-      else state->sema[stmt->semaId]++;
-      return;
- 
-    // Decrement semaphore
-    // Note at SEMA_INC also applies here
-    case SEMA_DEC:
-      assert(stmt->semaId >= 0 && stmt->semaId < 16);
-      if (state->sema[stmt->semaId] == 0) s->stack.push(stmt);
-      else state->sema[stmt->semaId]--;
-      return;
-
-    case DMA_READ_WAIT:
-    case DMA_WRITE_WAIT:
-    case SETUP_VPM_READ:
-    case SETUP_VPM_WRITE:
-    case SETUP_DMA_READ:
-    case SETUP_DMA_WRITE:
-      // Interpreter ignores these
-      return;
-
-    case DMA_START_READ:
-    case DMA_START_WRITE:
-      fatal("V3DLib: DMA access not supported by interpreter\n");
-      break;
 
     default:
-      assertq(false, "interpreter: unexpected stmt-tag in exec()");
+      if (!dma_exec(state, s, stmt)) {
+        assertq(false, "interpreter: unexpected stmt-tag in exec()");
+      }
       break;
   }
 }
@@ -683,9 +636,8 @@ void interpreter(
   int numCores,
   Stmt::Ptr stmt,
   int numVars,
-  Seq<int32_t> &uniforms,
-  BufferObject &heap,
-  Seq<char>* output
+  IntList &uniforms,
+  BufferObject &heap
 ) {
   InterpreterState state;
 
@@ -698,7 +650,6 @@ void interpreter(
     s.uniforms    = uniforms;
     s.env         = new Vec [numVars + 1];
     s.sizeEnv     = numVars + 1;
-    s.output      = output;
     s.emuHeap.heap_view(heap);
   }
 

@@ -7,12 +7,12 @@
 namespace V3DLib {
 
 enum BufferType : int {
-	HeapBuffer,
+  HeapBuffer,
 #ifdef USE_V3D_BUFFERS
-	Vc4Buffer,
-	V3dBuffer
+  Vc4Buffer,
+  V3dBuffer
 #else
-	Vc4Buffer
+  Vc4Buffer
 #endif
 };
 

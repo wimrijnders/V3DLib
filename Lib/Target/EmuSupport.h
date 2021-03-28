@@ -2,6 +2,7 @@
 #define _V3DLIB_TARGET_EMUSUPPORT_H_
 #include <stdint.h>
 #include "Common/Seq.h"
+#include "Target/instr/Imm.h"
 
 
 /**
@@ -9,30 +10,58 @@
  */
 namespace V3DLib {
 
+class Op;
+class ALUOp;
+
 const int NUM_LANES =   16;
 const int MAX_QPUS  =   12;
 const int VPM_SIZE  = 1024;
 
 // This is a type for representing the values in a vector
 union Word {
-  int32_t intVal;
+  int32_t intVal = 0;
   float floatVal; 
 };
 
-// Vector values
-struct Vec {
-	Word &get(int index) {
-		assert(0 <= index && index < NUM_LANES);
-		return elems[index];
-	}
 
-	Word &operator[](int index) {
-		return get(index);
-	}
+/**
+ * Vector values
+ */
+struct Vec {
+  Vec() = default;
+  Vec(int val);
+  Vec(Imm imm);
+
+  Word &get(int index) {
+    assert(0 <= index && index < NUM_LANES);
+    return elems[index];
+  }
+
+  Word &operator[](int index) {
+    return get(index);
+  }
+
+  Word operator[](int index) const {
+    assert(0 <= index && index < NUM_LANES);
+    return elems[index];
+  }
+
+  std::string dump() const;
+  Vec negate() const;
+  bool apply(Op const &op, Vec a, Vec b);
+  bool apply(ALUOp const &op, Vec a, Vec b);
+  bool is_uniform() const;
+
+  Vec &operator=(Vec const &rhs) { assign(rhs); return *this; }
+
+  static Vec Always;
 
 private:
- 	Word elems[NUM_LANES];
+  Word elems[NUM_LANES];
+
+  void assign(Vec const &rhs);
 };
+
 
 // In-flight DMA request
 struct DMAAddr {
@@ -71,15 +100,6 @@ struct DMAStoreReq {
   int rowLen;   // Length of each row in memory
   int vpmAddr;  // VPM address to load from
 };
-
-
-// Rotate a vector
-Vec rotate(Vec v, int n);
-
-// Printing routines
-void emitStr(Seq<char>* out, const char* s);
-void printIntVec(Seq<char>* out, Vec x);
-void printFloatVec(Seq<char>* out, Vec x);
 
 }  // namespace V3DLib
 

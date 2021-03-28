@@ -4,37 +4,39 @@
 namespace V3DLib {
 
 const char *Op::to_string() const {
-	switch (op) {
-		case ADD:    return "+";
-		case SUB:    return "-";
-		case MUL:    return "*";
-		case MIN:    return " min ";
-		case MAX:    return " max ";
-		case ROTATE: return " rotate ";
-		case SHL:    return " << ";
-		case SHR:    return " >> ";
-		case USHR:   return " _>> ";
-		case ROR:    return " ror ";
-		case BOR:    return " | ";
-		case BAND:   return " & ";
-		case BXOR:   return " ^ ";
-		case BNOT:   return "~";
-		case ItoF:   return "(Float) ";
-		case FtoI:   return "(Int) ";
+  switch (op) {
+    case ADD:    return "+";
+    case SUB:    return "-";
+    case MUL:    return "*";
+    case MIN:    return " min ";
+    case MAX:    return " max ";
+    case ROTATE: return " rotate ";
+    case SHL:    return " << ";
+    case SHR:    return " >> ";
+    case USHR:   return " _>> ";
+    case ROR:    return " ror ";
+    case BOR:    return " | ";
+    case BAND:   return " & ";
+    case BXOR:   return " ^ ";
+    case BNOT:   return "~";
+    case ItoF:   return "(Float) ";
+    case FtoI:   return "(Int) ";
 
-		// SFU functions
-		case RECIP:  return "recip";
-		case RECIPSQRT: return "recipsqrt";
-		case EXP:    return "exp";
-		case LOG:    return "log";
+    // SFU functions
+    case RECIP:  return "recip";
+    case RECIPSQRT: return "recipsqrt";
+    case EXP:    return "exp";
+    case LOG:    return "log";
 
-		// v3d-specific
-		case TIDX:   return "tidx";
-		case EIDX:   return "eidx";
-	}
 
-	assertq(false, "opToString(): unknown opcode", true);
-	return nullptr;
+    // v3d-specific
+    case TIDX:   return "tidx";
+    case EIDX:   return "eidx";
+    case FFLOOR:  return "ffloor";
+  }
+
+  assertq(false, "opToString(): unknown opcode", true);
+  return nullptr;
 }
 
 
@@ -44,12 +46,12 @@ bool Op::noParams() const {
 
 
 bool Op::isUnary() const {
-  return (op == BNOT || op == ItoF || op == FtoI || isFunction());
+  return (op == BNOT || op == ItoF || op == FtoI || op == FFLOOR || isFunction());
 }
 
 
 bool Op::isFunction() const {
-  return (op == RECIP || op == RECIPSQRT || op == EXP || op == LOG);
+  return (op == RECIP || op == RECIPSQRT || op == EXP || op == LOG || op == FFLOOR);
 }
 
 

@@ -1,6 +1,9 @@
 /**
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
+
+#ifdef QPU_MODE
+
 #include "v3d.h"
 #include <cassert>
 #include <sys/ioctl.h>
@@ -9,37 +12,40 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <stdio.h>
-#include <unistd.h>   // close()
+#include <unistd.h>   // close(), sysconf()
 #include "Support/basics.h"
-#include "Support/debug.h"
 
 namespace {
 
 int fd = 0;
 
 typedef struct {
-    uint32_t size;
-    uint32_t flags;
-    uint32_t handle;
-    uint32_t offset;
+    uint32_t size   = 0;
+    uint32_t flags  = 0;
+    uint32_t handle = 0;
+    uint32_t offset = 0;
 } drm_v3d_create_bo;
 
+
 typedef struct {
-    uint32_t handle;
-    uint32_t flags;
-    uint64_t offset;
+    uint32_t handle = 0;
+    uint32_t flags  = 0;
+    uint64_t offset = 0;
 } drm_v3d_mmap_bo;
+
 
 typedef struct {
     uint32_t  handle;
     uint32_t  pad;
 } gem_close;
 
+
 struct st_v3d_wait_bo {
   uint32_t handle;
   uint32_t pad;
   uint64_t timeout_ns;
 };
+
 
 // Derived from linux/include/uapi/drm/drm.h
 #define DRM_IOCTL_BASE   'd'
@@ -74,13 +80,75 @@ void log_error(int ret, char const *prefix = "") {
   if (ret == 0) return;
 
   char buf[256];
-  sprintf(buf, "%sioctl: %s\n", prefix, strerror(errno));
+  sprintf(buf, "ERROR %s: %s\n", prefix, strerror(errno));
   error(buf);
 }
 
+/*
+void log_offset(uint32_t offset) {
+  std::string msg = "create_bo.offset : ";
+  msg << offset
+      << "; multiple page size: ";
 
+  if (offset % sysconf(_SC_PAGE_SIZE) != 0) {
+    msg << "no";
+  } else {
+    msg << "yes";
+  }
+
+  debug(msg);
+}
+*/
+
+
+void warn_offset(uint32_t offset) {
+  //log_offset(offset);
+
+  if (offset % sysconf(_SC_PAGE_SIZE) != 0) {
+    std::string msg = "alloc_intern(): create_bo.offset ";
+    msg << "(" << offset << ") "
+        << "is not a multiple of pagesize "
+        << "(" << sysconf(_SC_PAGE_SIZE) << "); "
+        << "mmap() may fail";
+    warning(msg);
+  }
+}
+
+
+/**
+ * Allocate and map a buffer object
+ *
+ * This function is also used to check availability of the GPU device
+ * via a given device driver (called 'card' in this code).
+ * Parameter `show_perror` is used to suppress any errors if this check fails.
+ *
+ * Calls to ioctl will fail if `sudo` not used.
+ *
+ * @param show_perror  if true, suppress any errors when creating a buffer object
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * Possible reasons mmap() failing (online research):
+ *
+ *   - running in virtual VM - hypervisor will not allow MAP_SHARED outside of VM boundary
+ *   - EINVAL from man:
+ *     * We don't like addr, length, or offset (e.g., they are too large, or not aligned on a page boundary).
+ *     * length was 0.
+ *     * flags contained none of MAP_PRIVATE, MAP_SHARED or MAP_SHARED_VALIDATE.
+ *     Remedies:
+ *       * addr == NULL, as in mesa v3d_bo_map_unsynchronized(), should be OK
+ *       * flags: MAP_SHARED used, is OK
+ *       * offset checked for page size multiple
+ *       * length? Added warning
+ *   - No memory available, but would then have error ENOMEM
+ *   - VM_SHARED set but open() called with no write permission set.
+ *   - Total number of mapped pages exceeds `/proc/sys/vm/max_map_count`
+ */
 bool alloc_intern(
-  int fd, uint32_t size,
+  int fd,
+  uint32_t size,
   uint32_t &handle,
   uint32_t &phyaddr,
   void **usraddr,
@@ -91,63 +159,97 @@ bool alloc_intern(
   create_bo.size = size;
   create_bo.flags = 0;
   {
-    int res = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
-    if (show_perror) log_error(res);  // NOTE: `show_perror` intentionally only used here
-    if (res != 0) return false;
+    // Returns handle and offset in create_bo
+    int result = ioctl(fd, IOCTL_V3D_CREATE_BO, &create_bo);
+    if (show_perror) {
+      log_error(result, "alloc_intern() create bo");  // `show_perror` intentionally only used here
+    }
+
+    if (result != 0) {
+      handle  = 0;
+      phyaddr = 0;
+      return false;
+    }
   }
   handle  = create_bo.handle;
   phyaddr = create_bo.offset;
 
+  warn_offset(create_bo.offset);
+
   drm_v3d_mmap_bo mmap_bo;
-  mmap_bo.handle = handle;
+  mmap_bo.handle = create_bo.handle;
   mmap_bo.flags = 0;
   {
-    int res = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);
-    log_error(res);
-    if (res != 0) return false;
+    // Returns offset to use for mmap() in mmap_bo
+    int result = ioctl(fd, IOCTL_V3D_MMAP_BO, &mmap_bo);
+    log_error(result, "alloc_intern() mmap bo");
+    if (result != 0) return false;
   }
-  *usraddr = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (__off_t) mmap_bo.offset);
-  return (usraddr != MAP_FAILED);
+
+  {
+    void *result = mmap(NULL, size, PROT_READ | PROT_WRITE, MAP_SHARED, fd, (__off_t) mmap_bo.offset);
+    if (result == MAP_FAILED) {
+      log_error(1, "alloc_intern() mmap");
+
+      std::string msg = "mmap() failure, size: ";
+      msg << size << ", offset: " << mmap_bo.offset;
+      error(msg);
+
+      return false;
+    }
+
+    *usraddr = result;
+  }
+
+  return true;
 }
 
 
 void fd_close(int fd) {
   if (fd > 0 ) {
-    int ret = close(fd);
-    assert(ret >= 0);
+#ifdef DEBUG
+    assert(close(fd) >= 0);
+#else
+    close(fd);
+#endif
   }
 }
 
 
+/**
+ * @return  > 0 if call succeeded,
+ *            0 if call failed,
+ *           -1 if call failed and likely due to sudo
+ */
 int open_card(char const *card) {
-  int fd = open(card , O_RDWR);
-
+  int fd = open(card , O_RDWR);  // This works without sudo
   if (fd == 0) {
-    V3DLib::fatal("FATAL: Can't open card device (sudo?)");
+    return 0;
   }
 
   //
   // Perform an operation on the device: allocate 16 bytes of memory.
   // The 'wrong' card will fail here
   //
-  {
-    const uint32_t ALLOC_SIZE = 16;
+  const uint32_t ALLOC_SIZE = 16;
 
-    // Place a call on it see if it works
-    uint32_t handle = 0;
-    uint32_t phyaddr = 0;
-    void *usraddr = nullptr;
+  // Place a call on ithe card see if it works
+  uint32_t handle = 0;
+  uint32_t phyaddr = 0;
+  void *usraddr = nullptr;
 
-    if (alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr, false)) {
-      // worked! clean up
-      v3d_unmap(ALLOC_SIZE, handle, usraddr);
-      //printf("open_card(): alloc test succeeded for card %s\n", card);
-    } else {
-      // fail
-      fd_close(fd);
-      fd = 0;
-      //printf("open_card(): alloc test FAILED for card %s\n", card);
-    }
+  bool success = alloc_intern(fd, ALLOC_SIZE, handle, phyaddr, &usraddr, false);
+
+  // Clean up bo
+  if (handle != 0) {
+    assert(phyaddr != 0);
+    v3d_unmap(ALLOC_SIZE, handle, usraddr);
+  }
+
+  if (!success) {
+    fd_close(fd);
+    fd = -1;
+    //printf("open_card(): alloc test FAILED for card %s\n", card);
   }
 
   return fd;
@@ -165,7 +267,8 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
   };
 
   int ret = ioctl(fd, IOCTL_V3D_WAIT_BO, &st);
-  log_error(ret, "v3d_wait_bo() ");
+  log_error(ret, "v3d_wait_bo()");
+  assertq(ret == 0, "v3d_wait_bo(): call iotctl failed", true);
   return (ret == 0);
 }
 
@@ -177,7 +280,7 @@ bool v3d_wait_bo(uint32_t handle, uint64_t timeout_ns) {
  */
 int v3d_submit_csd(st_v3d_submit_csd &st) {
   int ret = ioctl(fd, IOCTL_V3D_SUBMIT_CSD, &st);
-  log_error(ret);
+  log_error(ret, "v3d_submit_csd()");
   assert(ret == 0);
   return ret;
 }
@@ -201,17 +304,19 @@ bool v3d_open() {
   int fd0 = open_card("/dev/dri/card0");
   int fd1 = open_card("/dev/dri/card1");
 
-  if (fd0 == 0) {
-    assert(fd1 != 0);
-    fd = fd1;
-  } else if (fd1 == 0) {
-    assert(fd0 != 0);
-    fd = fd0;
-  } else {
-    V3DLib::fatal("FATAL: could not open card device");
+  if (fd0 <= 0 && fd1 <= 0) {
+    std::string msg = "Could not open v3d device";
+
+    if (fd0 < 0 || fd1 < 0) {
+      msg << ", did you forget 'sudo'?";
+    }
+    assertq(false, msg);
+    return false;
   }
 
-  return (fd > 0);
+  fd = (fd1 <= 0)? fd0: fd1;
+  assert(fd > 0);
+  return true;
 }
 
 
@@ -272,3 +377,5 @@ bool v3d_wait_bo(std::vector<uint32_t> const &bo_handles, uint64_t timeout_ns) {
 
   return ret;
 }
+
+#endif  // QPU_MODE

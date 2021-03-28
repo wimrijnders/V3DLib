@@ -25,6 +25,15 @@ Linux kernel version number:
 
 ## Kernel Warning
 
+**NOTE:**  This appears to be a know bug in the kerner driver.
+
+Issue: https://github.com/raspberrypi/linux/pull/3816
+Fix pending: https://github.com/raspberrypi/linux/pull/3816/commits/803f25eb03d2698c79eea495be7dee47c3bb86c2
+
+So it appears we just need to wait.
+ 
+----- 
+
 The following warning message (or similar) appears in the linux log appears every time a program is
 run on `v3d`. It appears to be harmless, but it may have something to do with the actual issue.
 

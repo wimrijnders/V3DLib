@@ -36,6 +36,7 @@ void If_(BoolExpr b) {
   If_(any(b));
 }
 
+
 //=============================================================================
 // 'Else' token
 //=============================================================================
@@ -46,7 +47,7 @@ void Else_() {
   if (controlStack.size() > 0) {
     Stmt::Ptr s = controlStack.top();
 
-    if ((s->tag == IF || s->tag == WHERE ) && s->then_is_null()) {
+    if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
       s->thenStmt(stmtStack().pop());
       stmtStack().push(mkSkip());
       ok = 1;
@@ -68,7 +69,7 @@ void End_() {
   if (!controlStack.empty()) {
     Stmt::Ptr s = controlStack.top();
 
-    if (s->tag == IF || s->tag == WHERE) {
+    if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
       if (s->then_is_null()) {
         s->thenStmt(stmtStack().pop());
         ok = 1;
@@ -78,12 +79,12 @@ void End_() {
       }
     }
 
-    if (s->tag == WHILE && s->body_is_null()) {
+    if (s->tag == Stmt::WHILE && s->body_is_null()) {
       s->body(stmtStack().pop());
       ok = 1;
     }
 
-    if (s->tag == FOR && s->body_is_null()) {
+    if (s->tag == Stmt::FOR && s->body_is_null()) {
       s->for_to_while(stmtStack().pop());
       ok = 1;
     }
@@ -98,6 +99,7 @@ void End_() {
   }
 }
 
+
 //=============================================================================
 // 'While' token
 //=============================================================================
@@ -108,9 +110,11 @@ void While_(Cond c) {
   stmtStack().push(mkSkip());
 }
 
+
 void While_(BoolExpr b) {
   While_(any(b));
 }
+
 
 //=============================================================================
 // 'Where' token
@@ -122,6 +126,7 @@ void Where__(BExpr::Ptr b) {
   stmtStack().push(mkSkip());
 }
 
+
 //=============================================================================
 // 'For' token
 //=============================================================================
@@ -132,9 +137,11 @@ void For_(Cond c) {
   stmtStack().push(mkSkip());
 }
 
+
 void For_(BoolExpr b) {
   For_(any(b));
 }
+
 
 void ForBody_() {
   Stmt::Ptr s = controlStack.top();
@@ -142,48 +149,29 @@ void ForBody_() {
   stmtStack().push(mkSkip());
 }
 
-//=============================================================================
-// 'Print' token
-//=============================================================================
-
-void Print(const char *str) {
-  Stmt::Ptr s = Stmt::create(PRINT);
-  s->print.str(str);
-  stmtStack().append(s);
-}
-
-
-void Print(IntExpr x) {
-  Stmt::Ptr s = Stmt::create(PRINT, x.expr(), nullptr);
-  stmtStack().append(s);
-}
-
 
 void header(char const *str) {
-   assert(stmtStack().top() != nullptr);
-   stmtStack().top()->seq_s1()->header(str);
+  assert(stmtStack().top() != nullptr);
+  stmtStack().top()->seq_s1()->header(str);
 }
 
 
 void comment(char const *str) {
-   assert(stmtStack().top() != nullptr);
-   stmtStack().top()->seq_s1()->comment(str);
+  assert(stmtStack().top() != nullptr);
+  stmtStack().top()->seq_s1()->comment(str);
 }
 
 
-/**
- * QPU code for clean exit
- */
-void finishStmt() {
-  clearStack();
+void break_point(bool val) {
+  if (val) {
+    assert(stmtStack().top() != nullptr);
+    stmtStack().top()->seq_s1()->break_point();
+  }
 }
 
 
-void initStmt(StmtStack &stmtStack) {
+void initStmt() {
   controlStack.clear();
-  stmtStack.clear();
-  stmtStack.push(mkSkip());
-  setStack(stmtStack);
 }
 
 }  // namespace V3DLib

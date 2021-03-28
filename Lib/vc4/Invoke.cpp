@@ -6,6 +6,9 @@
 
 namespace V3DLib {
 
+using Code = SharedArray<uint32_t>;
+
+
 /**
  * TODO rewrite to shared array holding the parameters
  *
@@ -20,7 +23,7 @@ namespace V3DLib {
  *    cause and gave up. Instead, I'll just pass a final dummy uniform value,
  *    which can be mangled to the heart's content of the hardware.
  */
-void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, Seq<int32_t>* params) {
+void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList *params) {
   //
   // Number of 32-bit words needed for kernel code & parameters
   // - First two values are always the QPU ID and num QPU's
@@ -30,11 +33,10 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
   //   the pointer to the kernel program to execute.
   //
   unsigned numWords = qpuCodeMemOffset + (2 + params->size() + 1)*numQPUs + 2*numQPUs;
-
   assert(numWords < codeMem.size());
 
   // Pointer to start of code
-  uint32_t* qpuCodePtr = codeMem.getPointer();
+  uint32_t *qpuCodePtr = codeMem.getPointer();
 
   // Copy parameters to instruction memory
   int offset = qpuCodeMemOffset;
@@ -63,9 +65,7 @@ void invoke(int numQPUs, SharedArray<uint32_t> &codeMem, int qpuCodeMemOffset, S
   // Launch QPUs
   unsigned result = execute_qpu(mb, numQPUs, (uint32_t) launchMsgsPtr, 1, LibSettings::qpu_timeout()*1000);
 #else
-  #pragma message("WARNING: invoke() will not run on this platform, only on ARM 32-bits")
   assertq(false, "invoke() will not run on this platform, only on ARM 32-bits");
-
   unsigned result = 1;  // Force error message
 #endif
 

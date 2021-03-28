@@ -435,8 +435,11 @@ void usleep_range(unsigned min, unsigned max) {
 uint64_t ktime_get_raw() {
   struct timespec t;
 
-  int ret = clock_gettime(CLOCK_REALTIME, &t);
-  assert(ret == 0);
+#ifdef DEBUG
+  assert(clock_gettime(CLOCK_REALTIME, &t) == 0);
+#else
+  clock_gettime(CLOCK_REALTIME, &t);
+#endif
 
   return (int64_t)(t.tv_sec) * (int64_t)1000000000 + (int64_t)(t.tv_nsec);
 }

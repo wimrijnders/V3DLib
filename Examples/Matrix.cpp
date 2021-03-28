@@ -24,7 +24,13 @@ CmdParameters params = {
     "Kernel",
     "-k=",
     kernel_id,
-    "Select the kernel to use"
+    "Select the kernel to use\n"
+  },{
+    "Read method",
+    "-read=",
+    { "default", "prefetch", "none"}, 
+    "The way to retrieve data from memory. "
+    "Option 'none' skips all reads and writes, the rest have only effect on reads.\n"
   },{
     "Matrix dimension",
     { "-d=","-dimension="},
@@ -46,15 +52,28 @@ struct MatrixSettings : public Settings {
   int kernel;
   int dimension;
   int repeats;
+  MatrixReadMethod read_method;
 
   int size() const { return dimension*dimension; }
 
   MatrixSettings() : Settings(&params, true) {}
 
-  void init_params() override {
-    kernel    = params.parameters()["Kernel"           ]->get_int_value();
-    dimension = params.parameters()["Matrix dimension" ]->get_int_value();
-    repeats   = params.parameters()["Number of repeats"]->get_int_value();
+  bool init_params() override {
+    kernel      = params.parameters()["Kernel"           ]->get_int_value();
+    dimension   = params.parameters()["Matrix dimension" ]->get_int_value();
+    repeats     = params.parameters()["Number of repeats"]->get_int_value();
+
+    int in_read_method = params.parameters()["Read method"]->get_int_value();
+
+    switch(in_read_method) {
+      case 0: read_method = DEFAULT;      break;
+      case 1: read_method = DO_PREFETCH;  break;
+      case 2: read_method = NO_READWRITE; break;
+
+      default: assertq(false, "Unknown read method"); return false;
+    }
+
+    return true;
   }
 } settings;
 
@@ -63,30 +82,6 @@ struct MatrixSettings : public Settings {
 // ============================================================================
 // Local functions
 // ============================================================================
-
-void run_qpu_kernel() {
-  auto k = compile(kernels::matrix_mult_decorator(settings.dimension));  // Construct kernel
-  k.setNumQPUs(settings.num_qpus);
-
-
-  // Allocate and initialise arrays shared between ARM and GPU
-  SharedArray<float> a(settings.size());
-  SharedArray<float> b(settings.size());
-  SharedArray<float> result(settings.size());
-
-  for (int i = 0; i < settings.size(); i++) {
-    a[i] = random_float();
-    b[i] = random_float();
-  }
-
-  Timer timer;
-  k.load(&result, &a, &b);
-  for (int i = 0; i < settings.repeats; ++i) {
-    settings.process(k);
-  }
-  timer.end(!settings.silent);
-}
-
 
 void run_scalar_kernel() {
   if (settings.compile_only) return;
@@ -103,7 +98,7 @@ void run_scalar_kernel() {
 
   Timer timer;
   for (int i = 0; i < settings.repeats; ++i) {
-    kernels::matrix_mult_scalar(settings.dimension, result, a, b);
+    kernels::square_matrix_mult_scalar(settings.dimension, result, a, b);
   }
   timer.end(!settings.silent);
 
@@ -113,18 +108,44 @@ void run_scalar_kernel() {
 }
 
 
+void run_qpu_kernel() {
+  auto k = compile(kernels::matrix_mult_decorator(settings.dimension, settings.read_method));  // Construct kernel
+  k.setNumQPUs(settings.num_qpus);
+
+
+  // Allocate and initialise arrays shared between ARM and GPU
+  Shared2DArray<float> a(settings.dimension);
+  Shared2DArray<float> b(settings.dimension);
+  Shared2DArray<float> result(settings.dimension);
+
+  for (int r = 0; r < settings.dimension; r++) {
+    for (int c = 0; c < settings.dimension; c++) {
+      a[r][c] = random_float();
+      b[r][c] = random_float();
+    }
+  }
+
+  Timer timer;
+  k.load(&result, &a, &b);
+  for (int i = 0; i < settings.repeats; ++i) {
+    settings.process(k);
+  }
+  timer.end(!settings.silent);
+}
+
+
 // ============================================================================
 // Main
 // ============================================================================
 
 int main(int argc, const char *argv[]) {
-  auto ret = settings.init(argc, argv);
-  if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
   // Run a kernel as specified by the passed kernel index
   switch (settings.kernel) {
-    case 0: run_qpu_kernel();    break;  
-    case 1: run_scalar_kernel(); break;
+    case 0: run_qpu_kernel();     break;  
+    case 1: run_scalar_kernel();  break;
+    default: assert(false);       break;
   }
 
   if (!settings.silent) {

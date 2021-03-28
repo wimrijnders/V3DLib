@@ -1,21 +1,43 @@
+//
 // Control-flow graphs (CFGs)
-
+//
+// ============================================================================
 #ifndef _V3DLIB_CFG_H_
 #define _V3DLIB_CFG_H_
-
-#include "Common/Seq.h"
-#include "Target/Syntax.h"
+#include "Common/Set.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 
-// A set of successors.
-typedef SmallSeq<InstrId> Succs;
+typedef int InstrId;                           // Index of instruction in instruction list
+using Succs = SmallSet<InstrId>;               // Set of successors.
 
-// A CFG is a set of successors for each instruction.
-typedef Seq<Succs> CFG;
 
-// Function to construct a CFG.
-void buildCFG(Seq<Instr> &instrs, CFG &cfg);
+/**
+ * Control Flow Graph
+ *
+ * Set of successors for each instruction.
+ */
+class CFG : public Set<Succs> {
+  using Parent = Set<Succs>;
+
+public:
+  void build(Instr::List &instrs);
+  int  block_at(InstrId line_num) const;
+  int  block_end(InstrId line_num) const;
+  bool is_parent_block(InstrId line_num, int block) const;
+  void clear();
+
+  std::string dump() const;
+  std::string dump_blocks() const;
+
+private:
+  std::vector<int> blocks;
+
+  bool is_regular(InstrId i) const;
+  void build_blocks();
+};
+
 
 }  // namespace V3DLib
 

@@ -1,56 +1,10 @@
 #include "Stmt.h"
 #include "Support/basics.h"
+#include "vc4/DMA/DMA.h"
 
 namespace V3DLib {
 
 using ::operator<<;  // C++ weirdness
-
-// ============================================================================
-// Class PrintStmt
-// ============================================================================
-
-char const *PrintStmt::str() const {
-  assert(m_tag == PRINT_STR && m_str != nullptr);
-  return m_str;
-}
-
-
-void PrintStmt::str(char const *str) {
-  assert(m_str == nullptr);
-  m_tag = PRINT_STR;
-  m_str = str;
-}
-
-
-/**
- * NOTE: The expr for int and float is stored external to this class, in `Stmt`
- *       For a full representation, this needs to be added in stmt::dsp()`
- */
-std::string PrintStmt::disp() const {
-  std::string ret;
-
-  switch (m_tag) {
-  case PRINT_INT:
-    ret << "Print Int";
-  break;
-  case PRINT_FLOAT:
-    ret << "Print Float";
-  break;
-  case PRINT_STR:
-    ret << "Print String";
-    if (m_str == nullptr) {
-      ret << " <nullptr>";
-    } else {
-      ret << " '" << m_str << "'";
-    }
-  break;
-  default:
-    assert(false);
-  }
-
-  return ret;
-}
-
 
 // ============================================================================
 // Class Stmt
@@ -59,13 +13,23 @@ std::string PrintStmt::disp() const {
 /**
  * Replacement initializer for this class,
  * because a class with unions can not have a ctor.
+ *
+ * TODO union has been removed, dissolve this method
  */
-void Stmt::init(StmtTag in_tag) {
+void Stmt::init(Tag in_tag) {
   clear_comments();  // TODO prob not necessary, check
 
   assert(SKIP <= in_tag && in_tag <= DMA_START_WRITE);
   assertq(tag == SKIP, "Stmt::init(): can't reassign tag once assigned");
   tag = in_tag;
+}
+
+
+void Stmt::append(Ptr rhs) {
+  Ptr s0;
+  s0.reset(new Stmt(*this));
+  auto tmp = create_sequence(s0, rhs);
+  *this = *tmp;
 }
 
 
@@ -97,47 +61,8 @@ Expr::Ptr Stmt::assign_rhs() const {
 }
 
 
-Expr::Ptr Stmt::stride() {
-  assert(tag == SET_READ_STRIDE || tag == SET_WRITE_STRIDE);
-  assert(m_exp_a.get() != nullptr);
-  assert(m_exp_b.get() == nullptr);
-  return m_exp_a;
-}
-
-
-Expr::Ptr Stmt::storeReq_data() {
-  assert(tag == STORE_REQUEST);
-  assert(m_exp_a.get() != nullptr);
-  return m_exp_a;
-}
-
-
-Expr::Ptr Stmt::storeReq_addr() {
-  assert(tag == STORE_REQUEST);
-  assert(m_exp_b.get() != nullptr);
-  return m_exp_b;
-}
-
-
 Expr::Ptr Stmt::address() {
-  assert(
-    tag == LOAD_RECEIVE    ||
-    tag == SETUP_VPM_READ  ||
-    tag == SETUP_VPM_WRITE ||
-    tag == SETUP_DMA_READ  ||
-    tag == SETUP_DMA_WRITE ||
-    tag == DMA_START_READ  ||
-    tag == DMA_START_WRITE);
-
-  assert(m_exp_a.get() != nullptr);
-  assert(m_exp_b.get() == nullptr);
-  return m_exp_a;
-}
-
-
-Expr::Ptr Stmt::print_expr() const {
-  assert(tag == PRINT);
-  assert(print.tag() == PRINT_INT || print.tag() == PRINT_FLOAT);
+  assert(tag == LOAD_RECEIVE);
   assert(m_exp_a.get() != nullptr);
   assert(m_exp_b.get() == nullptr);
   return m_exp_a;
@@ -152,7 +77,7 @@ Stmt::Ptr Stmt::seq_s0() const {
 
 
 Stmt::Ptr Stmt::seq_s1() const {
-  assert(tag == SEQ);
+  assertq(tag == SEQ, "Expecting SEQ", true);
   assert(m_stmt_b.get() != nullptr);
   return m_stmt_b;
 }
@@ -297,77 +222,70 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
       ret << "WHILE (" << m_cond->dump() << ") " << thenStmt()->dump();
       // There is no ELSE for while
     break;
-    case PRINT:
-      ret << print.disp();
-      if (print.tag() != PRINT_STR) {
-        if (m_exp_a.get() == nullptr) {
-          ret << " <no expr>";
-        } else {
-          ret << m_exp_a->dump();
-        }
-      }
-    break;
 
+    case GATHER_PREFETCH:  ret << "GATHER_PREFETCH";  break;
     case FOR:              ret << "FOR";              break;
-    case SET_READ_STRIDE:  ret << "SET_READ_STRIDE";  break;
-    case SET_WRITE_STRIDE: ret << "SET_WRITE_STRIDE"; break;
     case LOAD_RECEIVE:     ret << "LOAD_RECEIVE";     break;
-    case STORE_REQUEST:    ret << "STORE_REQUEST";    break;
-    case SEND_IRQ_TO_HOST: ret << "SEND_IRQ_TO_HOST"; break;
-    case SEMA_INC:         ret << "SEMA_INC";         break;
-    case SEMA_DEC:         ret << "SEMA_DEC";         break;
-    case SETUP_VPM_READ:   ret << "SETUP_VPM_READ";   break;
-    case SETUP_VPM_WRITE:  ret << "SETUP_VPM_WRITE";  break;
-    case SETUP_DMA_READ:   ret << "SETUP_DMA_READ";   break;
-    case SETUP_DMA_WRITE:  ret << "SETUP_DMA_WRITE";  break;
-    case DMA_READ_WAIT:    ret << "DMA_READ_WAIT";    break;
-    case DMA_WRITE_WAIT:   ret << "DMA_WRITE_WAIT";   break;
-    case DMA_START_READ:   ret << "DMA_START_READ";   break;
-    case DMA_START_WRITE:  ret << "DMA_START_WRITE";  break;
 
-    default:
-      assert(false);
-    break;
+    default: {
+        std::string tmp = DMA::disp(tag);
+        if (tmp.empty()) {
+          std::string msg;
+          msg << "Unknown tag '" << tag << "' in Stmt::disp_intern()";
+
+          if (tag < 0 || tag > DMA_START_WRITE) {
+            msg << "; tag out of range";
+          }
+
+          assertq(false, msg);
+        }
+        ret << tmp;
+      }
+      break;
   }
 
   return ret;
 }
 
 
-Stmt::Ptr Stmt::create(StmtTag in_tag) {
+Stmt::Ptr Stmt::create(Tag in_tag) {
   Ptr ret(new Stmt());
   ret->init(in_tag);
   return ret;
 }
 
 
-Stmt::Ptr Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
+Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
+  // Intention: assert(!DMA::Stmt::is_dma_tag(in_tag);  - and change default below
   Ptr ret(new Stmt());
   ret->init(in_tag);
 
   switch (in_tag) {
     case ASSIGN:
-    case STORE_REQUEST:
-      assertq(e0 != nullptr && e1 != nullptr, "create 1");
+      if (e0 == nullptr) {
+        error("Stmt::create(): e0 is null, variable might not be initialized", true);
+      }
+      if (e1 == nullptr) {
+        error("Stmt::create(): e1 is null, variable might not be initialized", true);
+      }
+      //assertq(e0 != nullptr && e1 != nullptr, "create 1");
       ret->m_exp_a = e0;
       ret->m_exp_b = e1;
     break;
 
-    case PRINT:
     case LOAD_RECEIVE:
-    case SET_READ_STRIDE:
-    case SET_WRITE_STRIDE:
-    case SETUP_VPM_READ:
-    case SETUP_VPM_WRITE:
-    case SETUP_DMA_READ:
-    case SETUP_DMA_WRITE:
-    case DMA_START_READ:
-    case DMA_START_WRITE:
       assertq(e0 != nullptr && e1 == nullptr, "create 2");
       ret->m_exp_a = e0;
     break;
+
+    case GATHER_PREFETCH:
+      // Nothing to do
+    break;
+
     default:
-      fatal("This tag not handled yet in create(Expr,Expr)");
+      if (!ret->dma.address(in_tag, e0)) {
+        fatal("create(Expr,Expr): Tag not handled");
+      }
     break;
   }
 
@@ -375,7 +293,7 @@ Stmt::Ptr Stmt::create(StmtTag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 }
 
 
-Stmt::Ptr Stmt::create(StmtTag in_tag, Ptr s0, Ptr s1) {
+Stmt::Ptr Stmt::create(Tag in_tag, Ptr s0, Ptr s1) {
   Ptr ret(new Stmt());
   ret->init(in_tag);
 
@@ -476,43 +394,72 @@ CExpr::Ptr Stmt::loop_cond() const {
 }
 
 
+/**
+ * Do a leftmost search for non-SEQ item
+ */
+Stmt *Stmt::first_in_seq() const {
+  if (tag != SEQ) {
+    if (tag == SKIP) {
+      return nullptr;
+    } else {
+      assert(tag != Stmt::GATHER_PREFETCH);  // paranoia
+      return const_cast<Stmt *>(this);
+    }
+  }
+
+  Stmt *ret = seq_s0()->first_in_seq();
+  if (ret != nullptr) {
+    return ret;
+  }
+
+  return seq_s1()->first_in_seq();
+}
+
+
+Stmt *Stmt::last_in_seq() const {
+  if (tag == SEQ) {
+    return seq_s1()->last_in_seq();
+  }
+
+  assert(tag != SKIP);                   // paranoia
+  assert(tag != Stmt::GATHER_PREFETCH);  // paranoia
+
+  return const_cast<Stmt *>(this);
+}
+
+
+
+
 // ============================================================================
 // Functions on statements
 // ============================================================================
 
-Stmt::Ptr mkSkip() { return Stmt::create(SKIP); }
+Stmt::Ptr mkSkip() { return Stmt::create(Stmt::SKIP); }
 
 Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
-  Stmt::Ptr s = Stmt::create(WHERE, thenStmt, elseStmt);
+  Stmt::Ptr s = Stmt::create(Stmt::WHERE, thenStmt, elseStmt);
   s->where_cond(cond);
   return s;
 }
 
 
 Stmt::Ptr Stmt::mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt) {
-  Stmt::Ptr s = Stmt::create(IF, thenStmt, elseStmt);
+  Stmt::Ptr s = Stmt::create(Stmt::IF, thenStmt, elseStmt);
   s->m_cond   = cond;
   return s;
 }
 
 
 Stmt::Ptr Stmt::mkWhile(CExpr::Ptr cond, Ptr body) {
-  Stmt::Ptr s = Stmt::create(WHILE, body, Stmt::Ptr());
+  Stmt::Ptr s = Stmt::create(Stmt::WHILE, body, Stmt::Ptr());
   s->m_cond   = cond;
   return s;
 }
 
 
 Stmt::Ptr Stmt::mkFor(CExpr::Ptr cond, Ptr inc, Ptr body) {
-  Stmt::Ptr s = Stmt::create(FOR, inc, body);
+  Stmt::Ptr s = Stmt::create(Stmt::FOR, inc, body);
   s->m_cond   = cond;
-  return s;
-}
-
-
-Stmt::Ptr mkPrint(PrintTag t, Expr::Ptr e) {
-  Stmt::Ptr s = Stmt::create(PRINT, e, nullptr);
-  s->print.tag(t);
   return s;
 }
 

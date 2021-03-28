@@ -11,8 +11,6 @@ namespace V3DLib {
 // Also used in other operator/comparison classes.
 enum BaseType { UINT8, INT16, INT32, FLOAT };
 
-// Order of operators is important to the random generator, see `Gen.cpp`.
-// This applies to the range ROTATE...ROR.
 enum OpId {
   // Int & Float operators:
   ROTATE, ADD, SUB, MUL, MIN, MAX,
@@ -31,7 +29,8 @@ enum OpId {
 
   // v3d only
   TIDX,
-  EIDX
+  EIDX,
+  FFLOOR,
 };
 
 
@@ -52,6 +51,5 @@ struct Op {
 };
 
 }  // namespace V3DLib
-
 
 #endif  //  _V3DLIB_SOURCE_OP_H_

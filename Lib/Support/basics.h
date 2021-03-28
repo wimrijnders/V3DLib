@@ -33,6 +33,11 @@ inline void fatal(std::string const &msg) {
 
 void findAndReplaceAll(std::string &data, std::string toSearch, std::string replaceStr);
 
+std::string tabbed(int tab_size, std::string const &val);
+std::string tabbed(int tab_size, int val);
+inline std::string tabs(int tab_size) { return tabbed(tab_size, ""); }
+
+std::string title(std::string const &str);
 
 //
 // Convenience definitions
@@ -58,34 +63,14 @@ inline std::vector<std::string> &operator<<(std::vector<std::string> &a, char co
 }
 
 
-inline std::string &operator<<(std::string &a, char const *str) {
-  a += str;
-  return a;
-}
+inline std::string &operator<<(std::string &a, char const *str)        { a += str; return a; }
+inline std::string &operator<<(std::string &a, std::string const &str) { a += str; return a; }
 
 
-inline std::string &operator<<(std::string &a, std::string const &str) {
-  a += str;
-  return a;
-}
-
-
-inline std::string &operator<<(std::string &a, int val) {
-  a += std::to_string(val);
-  return a;
-}
-
-
-inline std::string &operator<<(std::string &a, uint32_t val) {
-  a += std::to_string(val);
-  return a;
-}
-
-
-inline std::string &operator<<(std::string &a, float val) {
-  a += std::to_string(val);
-  return a;
-}
-
+inline std::string &operator<<(std::string &a, int val)      { a += std::to_string(val); return a; }
+inline std::string &operator<<(std::string &a, long val)     { a += std::to_string(val); return a; }
+inline std::string &operator<<(std::string &a, uint32_t val) { a += std::to_string(val); return a; }
+inline std::string &operator<<(std::string &a, uint64_t val) { a += std::to_string(val); return a; }
+inline std::string &operator<<(std::string &a, float val)    { a += std::to_string(val); return a; }
 
 #endif  // _V3DLIB_SUPPORT_BASICS_H

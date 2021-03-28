@@ -5,9 +5,7 @@ using namespace V3DLib;
 
 V3DLib::Settings settings;
 
-// Define function that runs on the GPU.
-
-void kernel(Ptr<Int> p) {
+void kernel(Int::Ptr p) {
   Int x, y;
 
   gather(p);
@@ -20,26 +18,18 @@ void kernel(Ptr<Int> p) {
 
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
-	int numQpus = 1;
+  auto k = compile(kernel);                       // Construct kernel
 
-  // Construct kernel
-  auto k = compile(kernel);
-  k.setNumQPUs(numQpus);
-
-  // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(numQpus*16 + 16);
+  Int::Array array(2*16);                         // Allocate and initialise array shared between ARM and GPU
   for (int i = 0; i < (int) array.size(); i++)
     array[i] = i;
 
-  // Invoke the kernel
-  k.load(&array);
+  k.load(&array);                                 // Invoke the kernel
   settings.process(k);
 
-	// Display the result
-  for (int i = 0; i < numQpus*16; i++)
+  for (int i = 0; i < (int) array.size()/2; i++)  // Display the result
     printf("%i: %i\n", i, array[i]);
   
   return 0;

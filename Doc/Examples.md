@@ -15,7 +15,7 @@
 * [Example 2: 3D Rotation](#example-2-3d-rotation)
     * [Scalar version](#scalar-version-1)
     * [Vector version 1](#vector-version-1-1)
-    * [Vector version 2: non-blocking loads and stores](#vector-version-2-non-blocking-loads-and-stores)
+    * [Vector version 2: non-blocking memory access](#vector-version-2-non-blocking-memory-access)
     * [Performance](#performance)
 * [Example 3: 2D Convolution (Heat Transfer)](#example-3-2d-convolution-heat-transfer)
     * [Scalar version](#scalar-version-2)
@@ -88,11 +88,10 @@ prepares the way for the vector version which operates on
 Using `V3DLib`, the algorithm looks as follows.
 
 ```c++
-#include <V3DLib.h>
-
-void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
+void gcd(Int::Ptr p, Int::Ptr q, Int::Ptr r) {
   Int a = *p;
   Int b = *q;
+
   While (any(a != b))
     Where (a > b)
       a = a-b;
@@ -101,6 +100,7 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
       b = b-a;
     End
   End
+
   *r = a;
 }
 ```
@@ -108,7 +108,7 @@ void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
 This example introduces a number of concepts:
 
   * the `Int` type denotes a 16-element vector of 32-bit integers;
-  * the `Ptr<Int>` type denotes a 16-element vector of *addresses* of
+  * the `Int::Ptr` type denotes a 16-element vector of *addresses* of
     `Int` vectors;
   * the expression `*p` denotes the `Int` vector in memory starting at address
     <tt>p<sub>0</sub></tt>, i.e. starting at the *first* address in the
@@ -133,28 +133,22 @@ This kind of language is called a
 The following program computes 16 GCDs in parallel on a single QPU:
 
 ```c++
-int main() {
-  // Compile the gcd function to a QPU kernel k
-  auto k = compile(gcd);
+int main(int argc, const char *argv[]) {
+  settings.init(argc, argv);
 
-  // Allocate and initialise arrays shared between CPU and QPUs
-  SharedArray<int> a(16), b(16), r(16);
+  auto k = compile(gcd);                 // Construct the kernel
 
-  // Initialise inputs to random values in range 100..199
+  Int::Array a(16), b(16), r(16);        // Allocate and initialise the arrays shared between ARM and GPU
   srand(0);
   for (int i = 0; i < 16; i++) {
-    a[i] = 100 + rand()%100;
-    b[i] = 100 + rand()%100;
+    a[i] = 100 + (rand() % 100);
+    b[i] = 100 + (rand() % 100);
   }
 
-  // Set the number of QPUs to use
-  k.setNumQPUs(1);
+  k.load(&a, &b, &r);                    // Invoke the kernel
+  settings.process(k);
 
-  // Invoke the kernel
-  k(&a, &b, &r);
-
-  // Display the result
-  for (int i = 0; i < 16; i++)
+  for (int i = 0; i < 16; i++)           // Display the result
     printf("gcd(%i, %i) = %i\n", a[i], b[i], r[i]);
   
   return 0;
@@ -165,15 +159,15 @@ Explanation:
 
   * `compile()` takes a function defining a QPU computation and returns a
     CPU-side handle that can be used to invoke it;
-  * the handle `k` is of type `Kernel<Ptr<Int>, Ptr<Int>,
-    Ptr<Int>>`, capturing the types of `gcd`'s parameters,
+  * the handle `k` is of type `Kernel<Int::Ptr, iInt::Ptr, Int::Ptr>`,
+    capturing the types of `gcd`'s parameters,
     but we use the `auto` keyword to avoid clutter;
   * when the kernel is invoked by writing `k(&a, &b, &r)`, `V3DLib` 
     automatically converts CPU values of type
-    `SharedArray<int>*` into QPU values of type `Ptr<Int>`;
-  * Type `SharedArray&lt;&alpha;&gt;` type is used to allocate
-    memory that is accessed by both the CPU and the QPUs:
-    memory allocated with `new` and `malloc()` will not be accessible from the QPUs.
+    `Int::Array*` into QPU values of type `Int::Ptr`;
+  * Type `Int::Array` is derived  from `SharedArray&lt;&alpha;&gt;` which is used to allocate
+    memory that is accessible by both the CPU and the QPUs.
+    memory allocated with `new` and `malloc()` is not accessible from the QPUs.
 
 Running this program produces the output:
 
@@ -209,7 +203,7 @@ Although loop unrolling is not done automaticlly,
 it is straightforward use a C++ loop to generate multiple QPU statements.
 
 ```c++
-void gcd(Ptr<Int> p, Ptr<Int> q, Ptr<Int> r) {
+void gcd(Int::Ptr p, Int::Ptr q, Int::Ptr r) {
   Int a = *p;
   Int b = *q;
   While (any(a != b))
@@ -269,8 +263,8 @@ This first vector version is almost identical to the scalar version above.
 The only difference is that each loop iteration now processes 16 vertices at a time rather than a single vertex.
 
 ```c++
-void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
-  For (Int i = 0, i < n, i = i+16)
+void rot3D_1(Int n, Float cosTheta, Float sinTheta, Float::Ptr x, Float::Ptr y) {
+  For (Int i = 0, i < n, i += 16)
     Float xOld = x[i];
     Float yOld = y[i];
     x[i] = xOld * cosTheta - yOld * sinTheta;
@@ -279,55 +273,61 @@ void rot3D(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
 }
 ```
 
-This simple solution will spend a lot of time blocking on the memory subsystem, waiting for vector loads and stores to complete.
-To get good performance on a QPU, it is desirable to overlap memory access with computation;
-the current `V3DLib` version is not good at this yet (TODO!).
-*Non-blocking* load and store operations, however, can be added explicitly.
+This simple solution will spend a lot of time blocking on the memory subsystem, waiting for vector reads and write to complete.
+The next section explores how to improve performance by overlapping memory access with computation.
 
-### Vector version 2: non-blocking loads and stores
 
-`V3DLib` supports non-blocking loads through these functions:
+### Vector version 2: non-blocking memory access 
 
-  * `gather(p)`   - Given a vector of addresses `p`, *request* the value at each address in `p`.
-                    Will block if all corresponding `receive()` calls have not been completed.
-  * `receive(x)`  - Loads values collected by `gather(p)` and stores these in `x`.
-                    Will block if the values are not yet available.
-  * `store(x, p)` - Given vector of addresses `p` and a vector `x`,
-                    write vector `x` to the memory beginning at the first address in `p`.
-                    Will block until a previous `store()` has completed, iotherwise does not block QPU execution.
+`V3DLib` supports explicit non-blocking loads through these functions:
+
+| Operation        | Description                                                                  |
+|------------------|------------------------------------------------------------------------------|
+| `gather(p)`      | Given a vector of addresses `p`, *request* the value at each address in `p`. |
+|                  | A maximum of 8 gather calls can be outstanding at any one time.              |
+|                  | For more than 8, the QPU will block *(TODO verify)*.                         |
+| `receive(x)`     | Loads values collected by `gather(p)` and stores these in `x`.               |
+|                  | Will block if the values are not yet available.                              |
+| `prefetch(x, p)` | Combines `gather` and `receive` in an efficient manner. `gather` is          |
+|                  | performed as early as possible. There are restrictions to its usage *(TODO)* |
+
+These are all read operations, the write operation can not be optimized.
+
+ - On `vc4` a write operation has to wait for a previous write operation to complete.
+ - On `v3d`, a write operation does not block and always overlaps with QPU computation.
 
 Between `gather(p)` and `receive(x)` the program is free to perform computation *in parallel*
-with the (slow) memory accesses.
+with the memory accesses.
 
-Inside the QPU, an 4-element FIFO is used to hold `gather`
-requests: each call to `gather` will enqueue the FIFO, and each call
-to `receive` will dequeue it.  This means that a maximum of four
-`gather` calls may be issued before a `receive` must be called.
-
-For `vc4`, unlike the statement `*p = x`, the statement `store(p, x)` does not wait until `x` has been written.
-Future improvements to `V3DLib` could allow several outstanding stores instead of just one.
+Inside the QPU, an 8-element FIFO, called the **TMU**, is used to hold `gather` requests:
+each call to `gather` will enqueue the FIFO, and each call to `receive` will dequeue it.
+This means that a maximum of eight `gather` calls may be issued before a `receive` must be called.
 
 A vectorised rotation routine that overlaps memory access with computation might be as follows:
 
 ```c++
-void rot3D_2(Int n, Float cosTheta, Float sinTheta, Ptr<Float> x, Ptr<Float> y) {
+void rot3D_2(Int n, Float cosTheta, Float sinTheta, Float::Ptr x, Float::Ptr y) {
   Int inc = numQPUs() << 4;
-  Ptr<Float> p = x;
-  Ptr<Float> q = y;
+  Float::Ptr p = x + me()*16;
+  Float::Ptr q = y + me()*16;
+
   gather(p); gather(q);
  
   Float xOld, yOld;
-  For (Int i = 0, i < n, i = i+inc)
+  For (Int i = 0, i < n, i += inc)
     gather(p+inc); gather(q+inc); 
     receive(xOld); receive(yOld);
-    store(xOld * cosTheta - yOld * sinTheta, p);
-    store(yOld * cosTheta + xOld * sinTheta, q);
-    p = p+inc; q = q+inc;
+
+    *p = xOld * cosTheta - yOld * sinTheta;
+    *q = yOld * cosTheta + xOld * sinTheta;
+    p += inc; q += inc;
   End
 
   receive(xOld); receive(yOld);
 }
 ```
+
+(**TODO** same example with `prefetch()`)
 
 While the outputs from one iteration are being computed and written to
 memory, the inputs for the *next* iteration are being loaded *in parallel*.
@@ -335,30 +335,50 @@ memory, the inputs for the *next* iteration are being loaded *in parallel*.
 Variable `inc` is there to take into account multiple QPU's running.
 Each QPU will handle a distinct block of 16 elements.
 
+
 ### Performance
 
 Times taken to rotate an object with 192,000 vertices:
-(**TODO** Make a test case using the actual Example program with supplied inputs)
 
 ```
+Raspberry Pi 3 Model B Rev 1.2 (vc4):
+
   Version  | Number of QPUs | Run-time (s) |
-  ---------| -------------: | -----------: |
-  Scalar   | 0              | 0.018        |
-  Vector 1 | 1              | 0.040        |
-  Vector 2 | 1              | 0.018        |
-  Vector 3 | 1              | 0.018        |
-  Vector 3 | 2              | 0.016        |
+  ---------| -------------- | ------------ |
+  Scalar   |  0             | 0.020532     |
+  Kernel 1 |  1             | 0.032531     |
+  Kernel 2 |  1             | 0.015441     |
+  Kernel 2 |  4             | 0.013367     |
+  Kernel 2 |  8             | 0.013368     |
+  Kernel 2 | 12             | 0.013386     |
+
+Raspberry Pi 4 Model B Rev 1.1 (64-bits, v3d):
+
+  Version  | Number of QPUs | Run-time (s) |
+  ---------| -------------- | ------------ |
+  Scalar   |  0             | 0.008814     |
+  Kernel 1 |  1             | 0.008867     |
+  Kernel 2 |  1             | 0.00566      |
+  Kernel 2 |  8             | 0.001803     |
+
 ```
 
-Non-blocking loads and stores (vector version 2) give a
-significant performance boost: in this case a factor of 2.
+![Rot3D Profiling](./images/rot3d_profiling.png)
 
-This program does not scale well to multiple QPUs.  
-This is likely becaue the compute-to-memory ratio is too low:
-only 2 arithmetic operations are done for every memory access, perhaps overwhelming the memory subsystem.
+
+Non-blocking loads (Kernel 2) give a significant performance boost: in this case a factor of 2.
+
+On `vc4`, this program does not scale well to multiple QPUs.
+This is likely because the compute-to-memory ratio is too low:
+only 3 arithmetic operations (2 multiplications, 1 addition/substraction)
+are done for every memory access, perhaps overwhelming the memory subsystem.
 
 Example `Mandelbrot` had a much better compute-to-memory ratio, and is therefore a better candidate for
-measuring performance with respect to scaling.
+measuring computing performance with respect to scaling.
+
+On `v3d`, this *does* scale with the QPUs. This is a good indication that the memory handling has been improved in this model.
+In addition, it is significantly faster overall.
+
 
 ## Example 3: 2D Convolution (Heat Transfer)
 
@@ -397,15 +417,15 @@ The following function simulates a single time-step of the
 differential equation, applied to each object in the 2D grid.
 
 ```c++
-void step(float** grid, float** gridOut, int width, int height) {
+void scalar_step(float** map, float** mapOut, int width, int height) {
   for (int y = 1; y < height-1; y++) {
     for (int x = 1; x < width-1; x++) {
       float surroundings =
-        grid[y-1][x-1] + grid[y-1][x]   + grid[y-1][x+1] +
-        grid[y][x-1]   +                  grid[y][x+1]   +
-        grid[y+1][x-1] + grid[y+1][x]   + grid[y+1][x+1];
-      surroundings *= 0.125;
-      gridOut[y][x] = grid[y][x] - (K * (grid[y][x] - surroundings));
+        map[y-1][x-1] + map[y-1][x]   + map[y-1][x+1] +
+        map[y][x-1]   +                 map[y][x+1]   +
+        map[y+1][x-1] + map[y+1][x]   + map[y+1][x+1];
+      surroundings *= 0.125f;
+      mapOut[y][x] = (float) (map[y][x] - (K * (map[y][x] - surroundings)));
     }
   }
 }
@@ -439,53 +459,43 @@ and supports three main operations:
 Here is a `V3DLib` implementation of a cursor, using a C++ class.
 
 ```c++
-class Cursor {
-  Ptr<Float> cursor;
+struct Cursor {
+  Float::Ptr addr;
   Float prev, current, next;
 
- public:
-
-  // Initialise to cursor to a given pointer
-  // and fetch the first vector.
-  void init(Ptr<Float> p) {
-    gather(p);
-    current = 0;
-    cursor = p+16;
+  void init(Float::Ptr p) {
+    gather(p); comment("Cursor init");
+    current = 0.0f;
+    addr = p + 16;
   }
 
-  // Receive the first vector and fetch the second.
-  // (prime the software pipeline)
   void prime() {
     receive(next);
-    gather(cursor);
+    gather(addr);
   }
 
-  // Receive the next vector and fetch another.
   void advance() {
-    cursor = cursor+16;
+    addr.inc();     comment("Cursor advance");
     prev = current;
-    gather(cursor);
+    gather(addr);
     current = next;
     receive(next);
   }
 
-  // Receive final vector and don't fetch any more.
   void finish() {
     receive(next);
   }
 
-  // Shift the current vector left one element
   void shiftLeft(Float& result) {
-    result = rotate(current, 15);
+    result = rotate(current, 15); comment("Cursor shiftLeft");
     Float nextRot = rotate(next, 15);
     Where (index() == 15)
       result = nextRot;
     End
   }
 
-  // Shift the current vector right one element
   void shiftRight(Float& result) {
-    result = rotate(current, 1);
+    result = rotate(current, 1); comment("Cursor shiftRight");
     Float prevRot = rotate(prev, 1);
     Where (index() == 0)
       result = prevRot;
@@ -504,24 +514,23 @@ it is instead 1D array with a `pitch` parameter that gives the increment needed 
 from the start of one row to the start of the next.
 
 ```C++
-void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height) {
+/**
+ * Performs a single step for the heat transfer
+ */
+void heatmap_kernel(Float::Ptr map, Float::Ptr mapOut, Int height, Int width) {
   Cursor row[3];
-  grid = grid + pitch*me() + index();
 
-  // Skip first row of output grid
-  gridOut = gridOut + pitch;
+  For (Int y = 1, y < height - 1 - numQPUs(), y = y + numQPUs())
+    // Point p to the in- and output row
+    Float::Ptr p_in = map    + (y + me())*width;
+    Float::Ptr p    = mapOut + (y + me())*width;
 
-  For (Int y = me(), y < height, y=y+numQPUs())
-    // Point p to the output row
-    Ptr<Float> p = gridOut + y*pitch;
-
-    // Initilaise three cursors for the three input rows
-    for (int i = 0; i < 3; i++) row[i].init(grid + i*pitch);
+    // Initialize three cursors for the three input rows
+    for (int i = 0; i < 3; i++) row[i].init(p_in + (i - 1)*width);
     for (int i = 0; i < 3; i++) row[i].prime();
 
     // Compute one output row
-    For (Int x = 0, x < width, x=x+16)
-
+    For (Int x = 0, x < width, x = x + 16)
       for (int i = 0; i < 3; i++) row[i].advance();
 
       Float left[3], right[3];
@@ -534,16 +543,23 @@ void step(Ptr<Float> grid, Ptr<Float> gridOut, Int pitch, Int width, Int height)
                   left[1] +                  right[1] +
                   left[2] + row[2].current + right[2];
 
-      store(row[1].current - K * (row[1].current - sum * 0.125), p);
-      p = p + 16;
+       Float output = row[1].current - K * (row[1].current - sum * 0.125);
 
+      // Ensure left and right borders are zero
+      Int actual_x = x + index();
+      Where (actual_x == 0)
+        output = 0.0f;
+      End
+      Where (actual_x == width - 1)
+        output = 0.0f;
+      End
+
+       *p = output;
+      p.inc();
     End
 
     // Cursors are finished for this row
     for (int i = 0; i < 3; i++) row[i].finish();
-
-    // Move to the next input rows
-    grid = grid + pitch*numQPUs();
   End
 }
 ```

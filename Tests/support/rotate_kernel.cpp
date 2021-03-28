@@ -6,10 +6,11 @@
 #include "rotate_kernel.h"
 #include "v3d/instr/Snippets.h"
 
-using ByteCode = V3DLib::v3d::ByteCode;
+using Data         = V3DLib::Data;
+using Code         = V3DLib::SharedArray<uint64_t>;
+using ByteCode     = V3DLib::v3d::ByteCode;
+using Instructions = V3DLib::v3d::Instructions;
 
-template<typename T>
-using SharedArray =  V3DLib::SharedArray<T>;
 
 //
 // Issue: disassembly code in MESA does not output rotate flag
@@ -363,44 +364,32 @@ ByteCode rotate_kernel() {
 
   Instructions ret;
 
-  ret
-    << eidx(r0).ldunif()
-    << mov(rf(0), r5).ldunif()
-    << shl(r3, 4, 4).mov(rf(1), r5)
-
-    << shl(r0, r0, 2)
-    << add(rf(0), rf(0), r0)
-    << add(rf(1), rf(1), r0)
-
-    << mov(tmua, rf(0)).add(rf(0), rf(0), r3).thrsw()
-    << nop()
-    << nop()
-    << nop().ldtmu(r0);
-  ;
-
-  ret << nop();
-  ret.back().comment("required before rotate");
+  ret << eidx(r0).ldunif()
+      << mov(rf(0), r5).ldunif()
+      << shl(r3, 4, 4).mov(rf(1), r5)
+      << shl(r0, r0, 2)
+      << add(rf(0), rf(0), r0)
+      << add(rf(1), rf(1), r0)
+      << mov(tmua, rf(0)).add(rf(0), rf(0), r3).thrsw()
+      << nop()
+      << nop()
+      << nop().ldtmu(r0)
+      << nop().comment("required before rotate");
 
   for (int i = -15; i < 16; ++i) {
-    ret
-      << rotate(r1, r0, i)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, i)`
-      << mov(tmud, r1)
-      << mov(tmua, rf(1))
-      << tmuwt().add(rf(1), rf(1), r3);
+    ret << rotate(r1, r0, i)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, i)`
+        << mov(tmud, r1)
+        << mov(tmua, rf(1))
+        << tmuwt().add(rf(1), rf(1), r3);
   }
 
-
   for (int i = -15; i < 16; ++i) {
-    ret << mov(r5, si(i));
-
-    ret << nop();
-    ret.back().comment("required before rotate");
-
-    ret
-      << rotate(r1, r0, r5)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, r5)`
-      << mov(tmud, r1)
-      << mov(tmua, rf(1))
-      << tmuwt().add(rf(1), rf(1), r3);
+    ret << mov(r5, si(i))
+        << nop().comment("required before rotate")
+        << rotate(r1, r0, r5)  // redirects to mul alu, no point in checking `nop().rotate(r1, r0, r5)`
+        << mov(tmud, r1)
+        << mov(tmua, rf(1))
+        << tmuwt().add(rf(1), rf(1), r3);
   }
 
   ret << end_program();
@@ -415,18 +404,20 @@ ByteCode rotate_kernel() {
 
 
 void run_rotate_alias_kernel(ByteCode const &bytecode) {
+#ifndef QPU_MODE
+  assertq(false, "Cannot run run_rotate_alias_kernel(), QPU_MODE not enabled");
+#else
   using namespace V3DLib::v3d;
-  //printf("==== rotate alias kernel ====\n");
   REQUIRE(bytecode.size() > 0);
 
   uint32_t code_area_size = (uint32_t) (8*bytecode.size());  // size in bytes
   uint32_t data_area_size = (10 * 1024) * 4;                 // taken amply
 
   BufferObject heap(code_area_size + data_area_size);
-  SharedArray<uint64_t> code((uint32_t) bytecode.size(), heap);
+  Code code((uint32_t) bytecode.size(), heap);
   code.copyFrom(bytecode);
 
-  SharedArray<uint32_t> X(16, heap);
+  Data X(16, heap);
 
   for (uint32_t offset = 0; offset < X.size(); ++offset) {
     X[offset] = offset;
@@ -434,21 +425,19 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
   //dump_data(X); 
 
   int y_length = 2*(16 - -15) *16;  // NB python range(-15, 16) does not include 2nd value; 'up to'
-  SharedArray<uint32_t> Y(y_length, heap);
+  Data Y(y_length, heap);
 
   for (uint32_t offset = 0; offset < Y.size(); ++offset) {
     Y[offset] = 0;
   }
 
-  SharedArray<uint32_t> unif(3, heap);
+  Data unif(3, heap);
   unif[0] = X.getAddress();
-   unif[1] = Y.getAddress();
+  unif[1] = Y.getAddress();
 
   V3DLib::v3d::Driver drv;
   drv.add_bo(heap);
   REQUIRE(drv.execute(code, &unif, 1));
-
-  //dump_data(Y); 
 
   for(int count = 0; count < 2; ++count) { // Output is double, first with small imm, then with r5
     for(int rot = -15; rot < 16; ++rot) {
@@ -461,4 +450,5 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
       }
     }
   }
+#endif  // QPU_MODE
 }

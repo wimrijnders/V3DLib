@@ -4,11 +4,11 @@
 
 namespace {
 
-template<typename T>
-using SharedArray =  V3DLib::SharedArray<T>;
+using Data = V3DLib::Data;
+using Code = V3DLib::SharedArray<uint64_t>;
 
 /*
-void check_returned_registers(SharedArray<uint32_t> &Y) {
+void check_returned_registers(Data &Y) {
   uint32_t cur_QPU;
 
   for (uint32_t offset = 0; offset < Y.size(); ++offset) {
@@ -29,6 +29,52 @@ void check_returned_registers(SharedArray<uint32_t> &Y) {
   printf("\n");
 }
 */
+
+
+using Instructions = V3DLib::v3d::Instructions;
+
+/**
+ * Determine address offset for address registers.
+ *
+ * The offset is put in r0.
+ * A register file location is also used as a temp storage location.
+ *
+ * @param reg_qpu_num index in the register file for location to put the qpu num in
+ */
+Instructions calc_offset(uint8_t num_qpus, uint8_t reg_qpu_num) {
+  using namespace V3DLib::v3d::instr;
+  Instructions ret;
+
+  const char *text = 
+    "Determine offset -> r0\n"
+    "addr += 4 * (thread_num + 16 * qpu_num)";
+
+  ret << set_qpu_num(num_qpus, reg_qpu_num).comment(text)
+      << shl(r0, rf(reg_qpu_num), 4)
+      << eidx(r1)
+      << add(r0, r0, r1)
+      << shl(r0, r0, 2);
+
+  return ret;
+}
+
+
+/**
+ * Calculates stride and start address per QPU
+ *
+ * @param reg_stride rf slot in which to store the stride
+ */
+Instructions calc_stride( uint8_t num_qpus, uint8_t reg_stride) {
+  using namespace V3DLib::v3d::instr;
+  Instructions ret;
+
+  uint8_t num_qpus_shift = get_shift(num_qpus);
+
+  ret << mov(rf(reg_stride), 1).header("stride = 4 * 16 * num_qpus")
+      << shl(rf(reg_stride), rf(reg_stride), 6 + num_qpus_shift);
+
+  return ret;
+}
 
 }  // anon namespace
 
@@ -779,7 +825,7 @@ Instructions align_code(int code_offset, int target_offset) {
 }
 
 
-Instructions emit_unroll(int unroll, Instructions block) {
+Instructions emit_unroll(int unroll, Instructions const &block) {
   Instructions ret;
 
   for (int j = 0; j < unroll - 1; ++j) {
@@ -859,10 +905,10 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
   ret << mov(tmua, rf(reg_src)).sub(rf(reg_length), rf(reg_length), r1).pushz()  // pushz sets flag for cond na0
       << add(rf(reg_src), rf(reg_src), rf(reg_stride)).ldtmu(r0);
 
-  ret << emit_unroll(unroll, {
+  ret << emit_unroll(unroll, Instructions({
       prefetch,
       sum_and_load
-  });
+  }));
 
   for (int i = 0; i < 5; ++i) {
     ret << sum_and_load;
@@ -891,10 +937,13 @@ ByteCode summation_kernel(uint8_t num_qpus, int unroll_shift, int code_offset) {
 // Adapted from: https://github.com/Idein/py-videocore6/blob/master/examples/summation.py
 //
 // This uses a single shared array for code and data.
-// It might be possible to use muliple arrays, but we're sticking to the original
+// It might be possible to use multiple arrays, but we're sticking to the original
 // example here.
 //
 void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift) {
+#ifndef QPU_MODE
+  assertq(false, "Cannot run run_summation_kernel(), QPU_MODE not enabled");
+#else
   using namespace V3DLib::v3d;
 
   //printf("bytecode size: %u\n", bytecode.size());
@@ -924,13 +973,13 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
 
   heap.fill(0xdeadbeef);
 
-  SharedArray<uint64_t> code((uint32_t) bytecode.size(), heap);
+  Code code((uint32_t) bytecode.size(), heap);
   code.copyFrom(bytecode);
   //printf("code phyaddr: %u, size: %u\n", code.getAddress(), 8*code.size());
   //dump_data(code); 
 
-  SharedArray<uint32_t> X(length, heap);
-  SharedArray<uint32_t> Y(16 * num_qpus, heap);
+  Data X(length, heap);
+  Data Y(16 * num_qpus, heap);
   //printf("X phyaddr: %u, size: %u\n", X.getAddress(), 4*X.size());
   //printf("Y phyaddr: %u, size: %u\n", Y.getAddress(), 4*Y.size());
 
@@ -955,7 +1004,7 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
   //dump_data(Y); 
   REQUIRE(sumY() == 0);
 
-  SharedArray<uint32_t> unif(3, heap);
+  Data unif(3, heap);
   unif[0] = length;
   unif[1] = X.getAddress();
   unif[2] = Y.getAddress();
@@ -987,5 +1036,6 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
   
   // Check if values supplied
   REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
+#endif  // QPU_MODE
 }
 

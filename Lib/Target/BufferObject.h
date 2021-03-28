@@ -6,19 +6,19 @@ namespace V3DLib {
 namespace emu {
 
 class BufferObject : public V3DLib::BufferObject {
-	using Parent = V3DLib::BufferObject;
+  using Parent = V3DLib::BufferObject;
 
 public:
-	BufferObject(uint32_t size) { alloc_heap(size); }
-	~BufferObject() { dealloc(); }
+  BufferObject(uint32_t size) { alloc_heap(size); }
+  ~BufferObject() { dealloc(); }
 
-	uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
+  uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
 
-	const BufferType buftype = HeapBuffer;
+  const BufferType buftype = HeapBuffer;
 
 private:
-	void alloc_heap(uint32_t size);
-	void dealloc() { delete [] arm_base; arm_base = nullptr; }
+  void alloc_heap(uint32_t size);
+  void dealloc() { delete [] arm_base; arm_base = nullptr; }
 };
 
 BufferObject &getHeap();

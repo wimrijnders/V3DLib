@@ -23,32 +23,35 @@ enum VarTag {
   , VPM_WRITE    // (Write-only.) Write a vector to the VPM.
   , TMU0_ADDR    // (Write-only.) Initiate load via TMU
 
-	, DUMMY        // No variable. As a source variable, it indicates that given operation has no input
-	               // TODO: As a destination variable, it indicates that the result can be ignored
+  , DUMMY        // No variable. As a source variable, it indicates that given operation has no input
+                 // TODO: As a destination variable, it indicates that the result can be ignored
 };
 
 typedef int VarId;
 
 struct Var {
-	Var(VarTag tag, VarId id = 0) : m_tag(tag), m_id(id) {}
+  Var(VarTag tag, bool is_uniform_ptr = false);
+  Var(VarTag tag, VarId id) : m_tag(tag), m_id(id) {}
 
-	VarTag tag() const { return m_tag; }
-	VarId id() const { return m_id; }
-	bool isUniformPtr () const;
-	void setUniformPtr();
+  VarTag tag() const { return m_tag; }
+  VarId id() const { return m_id; }
+  bool is_uniform_ptr () const;
 
-	std::string disp() const;
+  std::string dump() const;
 
 private:
   VarTag m_tag;
   VarId  m_id = 0; // A unique identifier for a standard variable
-	bool   m_isUniformPtr = false;
+  bool   m_is_uniform_ptr = false;
 };
 
 
-Var freshVar();
-int getFreshVarCount();
-void resetFreshVarGen(int val = 0);
+class VarGen {
+public:
+  static Var fresh();
+  static int count();
+  static void reset(int val = 0);
+};
 
 }  // namespace V3DLib
 

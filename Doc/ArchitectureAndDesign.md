@@ -28,7 +28,7 @@ It has been tested on the:
 # VideoCore Background
 
 The
-[VideoCore 4](http://www.broadcom.com/docs/support/videocore/VideoCoreIV-AG100-R.pdf)
+[VideoCore IV](http://www.broadcom.com/docs/support/videocore/VideoCoreIV-AG100-R.pdf)
 is a [vector processor](https://en.wikipedia.org/wiki/Vector_processor)
 developed by [Broadcom](http://www.broadcom.com/) with
 instructions that operate on 16-element vectors of 32-bit integer or
@@ -145,34 +145,56 @@ void kernel(Ptr<Float> x) {
 }
 ```
 
-## Design decision: Automatic uniform pointer initialization
+
+# Design decisions
+
+## Automatic uniform pointer initialization
 
 The uniform pointers are initialized with vector offsets on the execution of a kernel.
-The stride is added implicitly to all uniform pointers on initialization of a kernel.
+In effect, all uniform pointers get adjusted as follows:
+
+    ptr += 4*index()
+
 There is therefore no need to explicitly do this yourself.
-
-It is, however, useful to be aware of this pointer adjustment, and it is conceivable that you might need to use it
-in your own code.
-
-This adjustment has been integrated in the pointer usage, because it is so frequently recurring that I consider it
-to be the standard way of dealing with pointers.
+It is useful to be aware of this pointer adjustment, as it is conceivable
+that you might need to adjust it in your own code.
+For most purposes, however, the adjustment is useful and recurs frequently - almost always,
+I have not encountered a counter-example yet.
 
 Automatic uniform pointer initialization places restrictions on pointer usage:
 
-- All accessed memory blocks should have a number of elements which is a multiple of 16.
-- If multiple QPU's are used for a calculation, the number of elements should be (num QPU's) * 16.
+- All accessed memory blocks must a number of elements which is a multiple of 16.
 
 Not adhering to this will lead to reads and writes outside the memory blocks.
 This is not necessarily fatal, but you can expect wild and unexpected results.
 
-**Unfortunately:**
+## vc4 DMA write: destination pointer is impervious to offset changes
 
-It turns out that this default case is useful for only the basic usage. For more sophisticated use of pointers, this becomes a hindrance.
+For `vc4`, when doing DMA writes, the index offset is taken into account
+in the DMA setup, therefore there is no need to add it.
+In fact, the added offset is completely disregarded.
 
-For example, the example programs `HeatMap` and `Mandelbrot` deal with uniform pointers differently, and actually
-need to unset the automatic uniform pointer adjustment to work.
+This came to light in a previous version of the `DSL` unit test.
+The following was done before a write (kernel source code):
 
-I'm not too happy about this. I'll keep the uniform pointer initialization in for now, until I think of a better way.
+```
+  outIndex = index();
+  ...
+  result[outIndex] = res;
+  outIndex = outIndex + 16;
+```
+
+I would expect DMA to write to wrong locations, **but it doesn't**.
+The DMA write ignores this offset and writes to the correct location, i.e. just like:
+
+```
+  ...
+  *result = res;
+  ...
+```
+
+My working hypothesis is that only the pointer value for vector index 0 is used to
+initialize DMA.
 
 ### Previous Attempts
 
@@ -184,7 +206,8 @@ I'm retaining it to preserve the insights encountered along the way, should I ev
 This places the initialization code in the INIT-block, after translation of source to target.
 The INIT-block therefore needs to be added first.
 
-This did not work for DMA, because DMA add the offset itself.
+The pointer offset is only effective for TMU accesses.
+When VPM/DMA is used, the index number is compensated for automatically, hence no need for it.
 
 ```
 void SourceTranslate::add_init(Seq<Instr> &code) {
@@ -194,14 +217,51 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 
 	Seq<Instr> ret;
 
-	// When DMA is used, the index number is compensated for automatically, hence no need for it
-	// offset = 4 * ( 16 * qpu_num);
-	ret << shl(ACC0, rf(RSV_QPU_ID), 4 + 2)
-	    << add_uniform_pointer_offset(code);
+/*
+    // Previous version, adding an offset for multiple QPUs
+    // This was silly idea and has been removed. Kept here for reference
+    // offset = 4 * (vector_id + 16 * qpu_num);
+    ret << shl(ACC1, rf(RSV_QPU_ID), 4) // Avoid ACC0 here, it's used for getting QPU_ID and ELEM_ID (next stmt)
+        << mov(ACC0, ELEM_ID)
+        << add(ACC1, ACC1, ACC0)
+        << shl(ACC0, ACC1, 2)           // offset now in ACC0
+        << add_uniform_pointer_offset(code);
+*/
+
+  // offset = 4 * vector_id;
+  ret << mov(ACC0, ELEM_ID)
+      << shl(ACC0, ACC0, 2)             // offset now in ACC0
+      << add_uniform_pointer_offset(code);
+		
 
 	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
 }
 ```
+
+## Strict versus Relaxed Definition of the Target Language
+
+*Adapted from text by Matthew Naylor, originally in `Target/Syntax.h`*
+
+This abstract syntax is a balance between a strict and relaxed
+definition of the target language:
+ 
+- a "strict" definition would allow only instructions that can run on
+the target machine to be expressed
+- a "relaxed" one allows
+instructions that have no direct mapping to machine instructions.
+
+A relaxed definition allows the compilation process to be incremental:
+after each pass, the target code gets closer to being executable, by
+transforming away constructs that do not have a direct mapping to
+hardware.  However, we do not want to be too relaxed, otherwise we
+lose scope for the type checker to help us.
+
+For example, the definition below allows an instruction to read two
+operands from the *same* register file.  In fact, two operands must be
+taken from different register files in the target language. It is the
+job of a compiler pass to enforce such a constraint.
+
+
 -----
 
 # Setting of Branch Conditions

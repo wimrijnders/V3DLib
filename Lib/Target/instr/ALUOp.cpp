@@ -1,7 +1,6 @@
 #include "ALUOp.h"
 #include <stdint.h>
 #include "Support/Platform.h"
-#include "Source/Op.h"
 #include "Support/basics.h"
 
 namespace V3DLib {
@@ -13,7 +12,7 @@ ALUOp::ALUOp(Op const &op) : m_value(opcode(op)) {}
  * Translate source operator to target opcode
  */
 ALUOp::Enum ALUOp::opcode(Op const &op) const {
-  if (op.type == FLOAT) {
+  if (op.type == BaseType::FLOAT) {
     switch (op.op) {
       case ADD:    return A_FADD;
       case SUB:    return A_FSUB;
@@ -22,7 +21,10 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
       case MAX:    return A_FMAX;
       case ItoF:   return A_ItoF;
       case ROTATE: return M_ROTATE;
-      default:     assert(false);
+      case FFLOOR: return A_FFLOOR;
+      default:
+        assertq(false, "opcode(): Unhandled op for float", true);
+        break;
     }
   } else {
     switch (op.op) {
@@ -42,18 +44,18 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
       case BNOT:   return A_BNOT;
       case ROTATE: return M_ROTATE;
       case TIDX: 
-				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
-				return A_TIDX;
+        assertq(!Platform::compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
+        return A_TIDX;
       case EIDX: 
-				assertq(!Platform::instance().compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
-				return A_EIDX;
+        assertq(!Platform::compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
+        return A_EIDX;
       default:
-				assertq(false, "Not expecting this op for int in opcode()", true);
-				break;
+        assertq(false, "opcode(): Unhandled op for int", true);
+        break;
     }
   }
 
-	return NOP;
+  return NOP;
 }
 
 
@@ -63,22 +65,22 @@ ALUOp::Enum ALUOp::opcode(Op const &op) const {
  * TODO: Examine if this is still true for v3d
  */
 bool ALUOp::isMul() const {
-	auto op = m_value;
+  auto op = m_value;
 
   bool ret =
-		op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
+    op == M_FMUL   || op == M_MUL24 || op == M_V8MUL  ||
     op == M_V8MIN  || op == M_V8MAX || op == M_V8ADDS ||
     op == M_V8SUBS || op == M_ROTATE;
 
-	return ret;
+  return ret;
 }
 
 
 std::string ALUOp::pretty() const {
-	std::string ret;
+  std::string ret;
 
-	ret << pretty_op();
-	return ret;
+  ret << pretty_op();
+  return ret;
 }
 
 
@@ -108,7 +110,7 @@ char const *ALUOp::pretty_op() const {
     case A_CLZ:     return "clz";
     case A_V8ADDS:  return "addsatb";
     case A_V8SUBS:  return "subsatb";
-    case M_FMUL:    return "mulf";
+    case M_FMUL:    return "fmul";
     case M_MUL24:   return "mul24";
     case M_V8MUL:   return "mulb";
     case M_V8MIN:   return "minb";
@@ -116,12 +118,13 @@ char const *ALUOp::pretty_op() const {
     case M_V8ADDS:  return "m_addsatb";
     case M_V8SUBS:  return "m_subsatb";
     case M_ROTATE:  return "rotate";
-		// v3d-specific
+    // v3d-specific
     case A_TIDX:    return "tidx";
     case A_EIDX:    return "eidx";
-		default:
-			assertq(false, "pretty_op(): Unknown alu opcode", true);
-			return "";
+    case A_FFLOOR:  return "ffloor";
+    default:
+      assertq(false, "pretty_op(): Unknown alu opcode", true);
+      return "";
   }
 }
 
@@ -153,9 +156,9 @@ uint32_t ALUOp::vc4_encodeAddOp() const {
     case A_V8ADDS:  return 30;
     case A_V8SUBS:  return 31;
 
-		default:
-  		fatal("V3DLib: unknown add op");
-			return 0;
+    default:
+      assertq("V3DLib: unknown add op", true);
+      return 0;
   }
 }
 
@@ -171,9 +174,9 @@ uint32_t ALUOp::vc4_encodeMulOp() const {
     case M_V8ADDS: return 6;
     case M_V8SUBS: return 7;
 
-		default:
-  		fatal("V3DLib: unknown mul op");
-			return 0;
+    default:
+      fatal("V3DLib: unknown mul op");
+      return 0;
   }
 }
 

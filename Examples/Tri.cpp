@@ -7,24 +7,25 @@ using namespace V3DLib;
 std::vector<const char *> const kernels = { "integer", "float" };  // First is default
 
 CmdParameters params = {
-	"Tri - Calculate triangular numbers\n",
+  "Tri - Calculate triangular numbers\n",
   {{
     "Kernel",
     "-k=",
-		kernels,
+    kernels,
     "Select the kernel to use"
-	}}
+  }}
 };
 
 
 struct TriSettings : public Settings {
-	int kernel;
+  int kernel;
 
-	TriSettings() : Settings(&params, true) {}
+  TriSettings() : Settings(&params, true) {}
 
-	void init_params() override {
-		kernel = params.parameters()[0]->get_int_value();
-	}
+  bool init_params() override {
+    kernel = params.parameters()[0]->get_int_value();
+    return true;
+  }
 
 } settings;
 
@@ -33,7 +34,9 @@ struct TriSettings : public Settings {
 // Kernels
 ///////////////////////////////////////////
 
-void tri_int(Ptr<Int> p) {
+void tri_int(Int::Ptr p) {
+  p += me()*16;
+
   Int n = *p;
   Int sum = 0;
   While (any(n > 0))
@@ -46,7 +49,9 @@ void tri_int(Ptr<Int> p) {
 }
 
 
-void tri_float(Ptr<Float> p) {
+void tri_float(Float::Ptr p) {
+  p += me()*16;
+
   Int n = toInt(*p);
   Int sum = 0;
   While (any(n > 0))
@@ -64,14 +69,14 @@ void tri_float(Ptr<Float> p) {
 ///////////////////////////////////////////
 
 void run_int() {
-	printf("Running integer kernel.\n");
+  printf("Running integer kernel.\n");
 
   // Construct kernel
   auto k = compile(tri_int);
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(settings.num_qpus*16);
+  Int::Array array(settings.num_qpus*16);
   for (int i = 0; i < (int) array.size(); i++)
     array[i] = i;
 
@@ -86,14 +91,14 @@ void run_int() {
 
 
 void run_float() {
-	printf("Running float kernel.\n");
+  printf("Running float kernel.\n");
 
   // Construct kernel
   auto k = compile(tri_float);
   k.setNumQPUs(settings.num_qpus);
 
   // Allocate and initialise array shared between ARM and GPU
-  SharedArray<float> array(settings.num_qpus*16);
+  Float::Array array(settings.num_qpus*16);
   for (int i = 0; i < (int) array.size(); i++)
     array[i] = (float) i;
 
@@ -112,13 +117,12 @@ void run_float() {
 ///////////////////////////////////////////
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
-	switch (settings.kernel) {
-		case 0: run_int(); break;
-		case 1: run_float(); break;
-	}
+  switch (settings.kernel) {
+    case 0: run_int(); break;
+    case 1: run_float(); break;
+  }
   
   return 0;
 }

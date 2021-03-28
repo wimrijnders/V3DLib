@@ -1,5 +1,6 @@
 #include "Source/Float.h"
 #include "Lang.h"  // only for assign()!
+#include "Functions.h"  // ::set_at()
 
 namespace V3DLib {
 
@@ -7,86 +8,92 @@ namespace V3DLib {
 // Class FloatExpr
 // ============================================================================
 
-FloatExpr::FloatExpr(float x) {
-  m_expr = std::make_shared<Expr>(x);
-}
-
+FloatExpr::FloatExpr(float x) { m_expr = std::make_shared<Expr>(x); }
 FloatExpr::FloatExpr(Deref<Float> d) : BaseExpr(d.expr()) {}
+
+FloatExpr FloatExpr::operator-() { return (*this)*-1.0f; }
 
 
 // ============================================================================
 // Class Float
 // ============================================================================
 
-Float::Float() {
-  Var v  = freshVar();
-  m_expr = mkVar(v);
-}
-
+Float::Float()               { assign_intern(); }
+Float::Float(FloatExpr e)    { assign_intern(e.expr()); }
+Float::Float(Deref<Float> d) { assign_intern(d.expr()); }
+Float::Float(Float const &x) { assign_intern(x.expr()); }
 
 Float::Float(float x) {
-  Var v  = freshVar();
-  m_expr = mkVar(v);
   auto a = std::make_shared<Expr>(x);
-  assign(m_expr, a);
+  assign_intern(a);
 }
 
 
-Float::Float(FloatExpr e) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, e.expr());
-}
-
-
-Float::Float(Deref<Float> d) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, d.expr());
-}
-
-
-// Copy constructors
-
-Float::Float(Float &x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, x.expr());
-}
-
-
-Float::Float(Float const &x) {
-  Var v    = freshVar();
-  m_expr = mkVar(v);
-  assign(m_expr, x.expr());
+bool Float::passParam(IntList &uniforms, float val) {
+  int32_t* bits = (int32_t*) &val;
+  uniforms.append(*bits);
+  return true;
 }
 
 
 /**
- * Cast to an FloatExpr
+ * Reinterpret the incoming integer expression as a float
  */
-Float::operator FloatExpr() { return FloatExpr(m_expr); }
+void Float::as_float(IntExpr rhs) {
+  (*this) = FloatExpr(rhs.expr());
+}
+
+
+/**
+ * Cast to a FloatExpr
+ */
+Float::operator FloatExpr() const { return FloatExpr(m_expr); }
 
 
 /**
  * Assignment
  */
+
+Float &Float::operator=(float rhs) {
+  Float tmp(rhs);
+  assign(m_expr, tmp.expr());
+  return self();
+}
+
+
 Float &Float::operator=(Float &rhs) {
   assign(m_expr, rhs.expr());
   return rhs;
 }
 
-
-FloatExpr Float::operator=(FloatExpr rhs) {
+Float &Float::operator=(Float const &rhs) {
   assign(m_expr, rhs.expr());
-  return rhs;
+  return self();
 }
 
 
-Float &Float::operator+=(FloatExpr rhs) {
-  *this = *this + rhs;
-  return *this;
+FloatExpr Float::operator=(FloatExpr const &rhs) {
+  assign(m_expr, rhs.expr());
+  return self();
 }
+
+
+Float &Float::operator=(Deref<Float> d) {
+  Float tmp = d;
+  assign(m_expr, tmp.expr());
+  return self();
+}
+
+
+Float &Float::self() {
+  return *(const_cast<Float *>(this));
+}
+
+
+Float &Float::operator+=(FloatExpr rhs) { *this = *this + rhs; return *this; }
+Float &Float::operator-=(FloatExpr rhs) { *this = *this - rhs; return *this; }
+Float &Float::operator*=(FloatExpr rhs) { *this = *this * rhs; return *this; }
+
 
 
 // ============================================================================
@@ -105,16 +112,24 @@ inline FloatExpr mkFloatApply(FloatExpr rhs, Op op) {
 }
 
 
-// ============================================================================
-// Specific operations
-// ============================================================================
-
-// Read an Float from the UNIFORM FIFO.
-FloatExpr getUniformFloat() {
+/**
+ * Read an Float from the UNIFORM FIFO.
+ */
+Float Float::mkArg() {
   Expr::Ptr e = mkVar(UNIFORM);
-  return FloatExpr(e);
+  Float x;
+  x = FloatExpr(e);
+  return x;
 }
 
+
+void Float::set_at(Int n, Float const &src) {
+  V3DLib::set_at(*this, n, src);
+}
+
+// ============================================================================
+// Operations
+// ============================================================================
 
 // Read vector from VPM
 FloatExpr vpmGetFloat() {
@@ -123,9 +138,48 @@ FloatExpr vpmGetFloat() {
 }
 
 
+/**
+ * Vector rotation for float values
+ */
+FloatExpr rotate(FloatExpr a, IntExpr b) {
+  Expr::Ptr e = mkApply(a.expr(), Op(ROTATE, FLOAT), b.expr());
+  return FloatExpr(e);
+}
+
+
+/**
+ * Conversion to Int
+ */
+IntExpr toInt(FloatExpr a) {
+  Expr::Ptr e = mkApply(a.expr(), Op(FtoI, INT32));
+  return IntExpr(e);
+}
+
+
+/**
+ * Conversion to Float
+ */
+FloatExpr toFloat(IntExpr a) {
+  Expr::Ptr e = mkApply(a.expr(), Op(ItoF, FLOAT));
+  return FloatExpr(e);
+}
+
+
+FloatExpr ffloor(FloatExpr a) {
+  Expr::Ptr dummy = mkVar(Var(DUMMY));
+  Expr::Ptr e = mkApply(a.expr(), Op(FFLOOR, FLOAT), dummy);
+  return FloatExpr(e);
+}
+
+
 FloatExpr operator+(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(ADD, FLOAT), b); }
 FloatExpr operator-(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(SUB, FLOAT), b); }
 FloatExpr operator*(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(MUL, FLOAT), b); }
+
+FloatExpr operator/(FloatExpr a, FloatExpr b) {
+  return mkFloatApply(a, Op(MUL, FLOAT), recip(b));
+}
+
 FloatExpr min(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MIN, FLOAT), b); }
 FloatExpr max(FloatExpr a, FloatExpr b)       { return mkFloatApply(a, Op(MAX, FLOAT), b); }
 

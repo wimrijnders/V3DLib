@@ -10,6 +10,32 @@
 #   obj/qpu          - using hardware
 #   objiqpu-debug    - output debug info, using hardware
 #
+#==============================================================================
+# NOTES
+# =====
+#
+# * valgrind goes into a fit when used on `runTests`:
+# 
+#    --8346-- WARNING: Serious error when reading debug info
+#    --8346-- When reading debug info from /lib/arm-linux-gnueabihf/ld-2.28.so:
+#    --8346-- Ignoring non-Dwarf2/3/4 block in .debug_info
+#    --8346-- WARNING: Serious error when reading debug info
+#    --8346-- When reading debug info from /lib/arm-linux-gnueabihf/ld-2.28.so:
+#    --8346-- Last block truncated in .debug_info; ignoring
+#    ==8346== Conditional jump or move depends on uninitialised value(s)
+#    ==8346==    at 0x401A5D0: index (in /lib/arm-linux-gnueabihf/ld-2.28.so)
+#    ...
+#
+#  This has to do with valgrind not being able to read compressed debug info.
+#  Note that this happens in system libraries.
+#
+#  Tried countering this with compiler options:
+#
+#  * -Wa,--nocompress-debug-sections -Wl,--compress-debug-sections=none
+#  * -gz=none
+#
+#  ...with no effect. This is somewhat logical, the system libraries are
+#  pre-compiled.
 #
 ###############################################################################
 
@@ -56,7 +82,7 @@ CXX_FLAGS = \
  -Wall \
  -Wconversion \
  -Wno-psabi \
- -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)" -g
+ -I $(ROOT) $(INCLUDE_EXTERN) -MMD -MP -MF"$(@:%.o=%.d)"
 
 # Object directory
 OBJ_DIR := obj
@@ -81,15 +107,16 @@ endif
 	LIBS += -L /opt/vc/lib -l bcm_host
 else
   OBJ_DIR := $(OBJ_DIR)/emu
-  CXX_FLAGS += -DEMULATION_MODE
 endif
 
 # Debug mode
 ifeq ($(DEBUG), 1)
-  CXX_FLAGS += -DDEBUG    # -Wall
+  CXX_FLAGS += -DDEBUG -g
   OBJ_DIR := $(OBJ_DIR)-debug
 else
-  CXX_FLAGS += -DNDEBUG		# Disable assertions
+  # -DNDEBUG	disables assertions
+  # -g0 still adds debug info, using -s instead
+  CXX_FLAGS += -DNDEBUG -s
 endif
 
 -include sources.mk
@@ -120,7 +147,7 @@ MESA_LIB = obj/mesa/bin/libmesa.a
 
 # Top-level targets
 
-.PHONY: help clean all lib test $(EXAMPLES)
+.PHONY: help clean all lib test $(EXAMPLES) init
 
 # Following prevents deletion of object files after linking
 # Otherwise, deletion happens for targets of the form '%.o'
@@ -152,6 +179,10 @@ all: $(V3DLIB) $(EXAMPLES)
 clean:
 	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug obj/test
 
+init:
+	@./script/detect_tabs.sh
+	@mkdir -p ./obj/test
+
 
 #
 # Targets for static library
@@ -166,13 +197,13 @@ $(MESA_LIB):
 
 
 # Rule for creating object files
-$(OBJ_DIR)/%.o: %.cpp
+$(OBJ_DIR)/%.o: %.cpp | init
 	@echo Compiling $<
 	@mkdir -p $(@D)
 	@$(CXX) -std=c++11 -c -o $@ $< $(CXX_FLAGS)
 
 # Same thing for C-files
-$(OBJ_DIR)/%.o: %.c
+$(OBJ_DIR)/%.o: %.c | init
 	@echo Compiling $<
 	@mkdir -p $(@D)
 	@$(CXX) -x c -c -o $@ $< $(CXX_FLAGS)

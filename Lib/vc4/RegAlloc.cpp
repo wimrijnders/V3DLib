@@ -1,18 +1,36 @@
 #include "RegAlloc.h"
 #include <stdio.h>
-#include "Support/basics.h"  // fatal()
-#include "Target/Syntax.h"
+#include <iostream>
+#include "Support/basics.h"
+#include "Support/Timer.h"
 #include "Target/Subst.h"
 #include "SourceTranslate.h"
+#include "Common/CompileData.h"
 
 namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
 
 namespace {
 
 /**
+ * Return true if given instruction has two register operands.
+ */
+bool getTwoUses(Instr instr, Reg* r1, Reg* r2) {
+  if (instr.tag == ALU && instr.ALU.srcA.is_reg() && instr.ALU.srcB.is_reg()) {
+    *r1 = instr.ALU.srcA.reg();
+    *r2 = instr.ALU.srcB.reg();
+    return true;
+  }
+
+  return false;
+}
+
+
+/**
  * For each variable, determine a preference for register file A or B.
  */
-void regalloc_determine_regfileAB(Seq<Instr> &instrs, int *prefA, int *prefB, int n) {
+void regalloc_determine_regfileAB(Instr::List &instrs, int *prefA, int *prefB, int n) {
   for (int i = 0; i < n; i++) prefA[i] = prefB[i] = 0;
 
   for (int i = 0; i < instrs.size(); i++) {
@@ -21,27 +39,82 @@ void regalloc_determine_regfileAB(Seq<Instr> &instrs, int *prefA, int *prefB, in
     if (getTwoUses(instr, &ra, &rb) && ra.tag == REG_A && rb.tag == REG_A) {
       RegId x = ra.regId;
       RegId y = rb.regId;
-      if (prefA[x] > prefA[y] || prefB[y] > prefB[x])
-        { prefA[x]++; prefB[y]++; }
-      else
-        { prefA[y]++; prefB[x]++; }
-    }
-    else if (instr.tag == ALU &&
-             instr.ALU.srcA.tag == REG &&
-             instr.ALU.srcA.reg.tag == REG_A &&
-             instr.ALU.srcB.tag == IMM) {
-      prefA[instr.ALU.srcA.reg.regId]++;
-    }
-    else if (instr.tag == ALU &&
-             instr.ALU.srcB.tag == REG &&
-             instr.ALU.srcB.reg.tag == REG_A &&
-             instr.ALU.srcA.tag == IMM) {
-      prefA[instr.ALU.srcB.reg.regId]++;
+      if (prefA[x] > prefA[y] || prefB[y] > prefB[x]) {
+        prefA[x]++; prefB[y]++;
+      } else {
+        prefA[y]++; prefB[x]++;
+      }
+    } else if (instr.tag == ALU &&
+               instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg().tag == REG_A &&
+               instr.ALU.srcB.is_imm()) {
+      prefA[instr.ALU.srcA.reg().regId]++;
+    } else if (instr.tag == ALU &&
+               instr.ALU.srcB.is_reg() && instr.ALU.srcB.reg().tag == REG_A &&
+               instr.ALU.srcA.is_imm()) {
+      prefA[instr.ALU.srcB.reg().regId]++;
     }
   }
 }
 
+
+struct RegTypeCount {
+  static int const NumRegTypes = (TMP_B + 1);
+
+  RegTypeCount() {
+    for (int i = 0; i < NumRegTypes; i++) {
+      list[i] = 0;
+    }
+  }
+
+  bool safe_for_regalloc() const {
+    return list[REG_B] == 0 && list[TMP_A] == 0 && list[TMP_B] ==0;
+  }
+
+  /**
+   * Debug function to display the register types count of an instruction list
+   */
+  std::string dump() {
+    std::string ret = "Used register types in instruction list:\n";
+  
+    ret << "  REG_A    : " << list[REG_A]   << "\n"
+        << "  REG_B    : " << list[REG_B]   << "\n"
+        << "  ACC      : " << list[ACC]     << "\n"
+        << "  SPECIAL  : " << list[SPECIAL] << "\n"
+        << "  NONE     : " << list[NONE]    << "\n"
+        << "  TMP_A    : " << list[TMP_A]   << "\n"
+        << "  TMP_B    : " << list[TMP_B]   << "\n"
+        << "\n";
+
+    return ret;
+  }
+
+  int list[NumRegTypes];
+};
+
+
+/**
+ * Determine the register types count in an instruction list
+ */
+RegTypeCount count_reg_types(Instr::List &instrs) {
+  RegTypeCount reg_types;
+
+  for (int i = 0; i < instrs.size(); i++) {
+    UseDefReg def_regs;
+    def_regs.set_used(instrs[i]);
+
+    for (int j = 0; j < def_regs.use.size(); j++) {
+      reg_types.list[def_regs.use[j].tag]++;
+    }
+    for (int j = 0; j < def_regs.def.size(); j++) {
+      reg_types.list[def_regs.def[j].tag]++;
+    }
+  }
+
+  return reg_types;
+}
+
 }  // anon namespace
+
 
 // ============================================================================
 // Register allocation
@@ -49,36 +122,45 @@ void regalloc_determine_regfileAB(Seq<Instr> &instrs, int *prefA, int *prefB, in
 
 namespace vc4 {
 
-void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
-	assert(instrs != nullptr);
-  int numVars = getFreshVarCount();
+/**
+ * The incoming instruction list has all variables assigned as
+ * registers in register file A, with the index set to the variable index.
+ *
+ * The list can contain predefined accumulators, SPECIAL registers and NONE.
+ */
+void regAlloc(Instr::List &instrs) {
+  assert(count_reg_types(instrs).safe_for_regalloc());
+  //Timer("vc4 regAlloc", true);
+  //std::cout << count_reg_types(instrs).dump() << std::endl;
 
-  // Step 0
-  // Perform liveness analysis
-  Liveness live(*cfg);
-  live.compute(*instrs);
+  int numVars = VarGen::count();
+  Liveness::optimize(instrs, numVars);
 
-  // Step 1
-  // For each variable, determine a preference for register file A or B.
-  int* prefA = new int [numVars];
-  int* prefB = new int [numVars];
+  // Step 0 - Perform liveness analysis
+  Liveness live(numVars);
+  live.compute(instrs);
 
-	regalloc_determine_regfileAB(*instrs, prefA, prefB, numVars);
 
-  // Step 2
-  // For each variable, determine all variables ever live at same time
+  // Step 1 - For each variable, determine a preference for register file A or B.
+  int *prefA = new int [numVars];
+  int *prefB = new int [numVars];
+
+  regalloc_determine_regfileAB(instrs, prefA, prefB, numVars);
+
+  // Step 2 - For each variable, determine all variables ever live at same time
   LiveSets liveWith(numVars);
-	liveWith.init(*instrs, live);
+  liveWith.init(instrs, live);
 
-  // Step 3
-  // Allocate a register to each variable
+
+  // Step 3 - Allocate a register to each variable
   RegTag prevChosenRegFile = REG_B;
-  std::vector<Reg> alloc(numVars);
-  for (int i = 0; i < numVars; i++) alloc[i].tag = NONE;
 
   for (int i = 0; i < numVars; i++) {
-		auto possibleA = liveWith.possible_registers(i, alloc);
-		auto possibleB = liveWith.possible_registers(i, alloc, REG_B);
+    if (live.reg_usage()[i].reg.tag != NONE) continue;
+    if (live.reg_usage()[i].unused()) continue;
+
+    auto possibleA = liveWith.possible_registers(i, live.reg_usage());
+    auto possibleB = liveWith.possible_registers(i, live.reg_usage(), REG_B);
 
     // Find possible register in each register file
     RegId chosenA = LiveSets::choose_register(possibleA, false);
@@ -99,30 +181,16 @@ void regAlloc(CFG* cfg, Seq<Instr>* instrs) {
     prevChosenRegFile = chosenRegFile;
 
     // Finally, allocate a register to the variable
-    alloc[i].tag = chosenRegFile;
-    alloc[i].regId = chosenRegFile == REG_A ? chosenA : chosenB;
+    live.reg_usage()[i].reg = Reg(chosenRegFile, (chosenRegFile == REG_A)? chosenA : chosenB);
   }
+  
+  compile_data.allocated_registers_dump = live.reg_usage().dump(true);
+  //std::cout << count_reg_types(instrs).dump() << std::endl;
 
-  // Step 4
-  // Apply the allocation to the code
-  for (int i = 0; i < instrs->size(); i++) {
-		auto &useDefSet = liveWith.useDefSet;
-    Instr &instr = instrs->get(i);
+  // Step 4 - Apply the allocation to the code
+  allocate_registers(instrs, live.reg_usage());
 
-    useDef(instr, &useDefSet);
-    for (int j = 0; j < useDefSet.def.size(); j++) {
-      RegId r = useDefSet.def[j];
-      RegTag tmp = alloc[r].tag == REG_A ? TMP_A : TMP_B;
-      renameDest(&instr, REG_A, r, tmp, alloc[r].regId);
-    }
-    for (int j = 0; j < useDefSet.use.size(); j++) {
-      RegId r = useDefSet.use[j];
-      RegTag tmp = alloc[r].tag == REG_A ? TMP_A : TMP_B;
-      renameUses(&instr, REG_A, r, tmp, alloc[r].regId);
-    }
-    substRegTag(&instr, TMP_A, REG_A);
-    substRegTag(&instr, TMP_B, REG_B);
-  }
+  //std::cout << instrs.check_acc_usage() << std::endl;
 
   // Free memory
   delete [] prefA;

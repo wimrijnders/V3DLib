@@ -6,30 +6,25 @@ using namespace V3DLib;
 V3DLib::Settings settings;
 
 
-// Define function that runs on the GPU.
-void hello(Ptr<Int> p) {
+void hello(Int::Ptr p) {                          // The kernel definition
   *p = 1;
 }
 
 
 int main(int argc, const char *argv[]) {
-	auto ret = settings.init(argc, argv);
-	if (ret != CmdParameters::ALL_IS_WELL) return ret;
+  settings.init(argc, argv);
 
-  // Construct kernel
-  auto k = compile(hello);
+  auto k = compile(hello);                        // Construct the kernel
 
-  // Allocate and initialise array shared between ARM and GPU
-  SharedArray<int> array(16);
-	array.fill(100);
+  Int::Array array(16);                           // Allocate and initialise the array shared between ARM and GPU
+  array.fill(100);
 
-  // Invoke the kernel
-	k.load(&array);
-	settings.process(k);  
+  k.load(&array);                                 // Invoke the kernel
+  settings.process(k);  
 
-	// Display the result
-  for (int i = 0; i < (int) array.size(); i++) {
+  for (int i = 0; i < (int) array.size(); i++) {  // Display the result
     printf("%i: %i\n", i, array[i]);
   }
+
   return 0;
 }

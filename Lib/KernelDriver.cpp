@@ -1,18 +1,44 @@
 #include "KernelDriver.h"
 #include <iostream>            // cout
 #include "Support/basics.h"
+#include "Support/Platform.h"
 #include "Source/StmtStack.h"
 #include "Source/Pretty.h"
 #include "Source/Translate.h"
 #include "Source/Lang.h"       // initStmt
 #include "Target/Satisfy.h"
 #include "SourceTranslate.h"
+#include "Support/Timer.h"
 
 namespace V3DLib {
 
 using ::operator<<;  // C++ weirdness
 
 namespace {
+
+FILE *open_file(char const *filename, char const *label) {
+  assert(label != nullptr);
+
+  FILE *f = nullptr;
+
+  if (filename == nullptr)
+    f = stdout;
+  else {
+    f = fopen(filename, "w");
+    if (f == nullptr) {
+      fprintf(stderr, "ERROR: could not open file '%s' for %s output\n", filename, label);
+    }
+  }
+
+  return f;
+}
+
+
+void title(FILE *f, std::string const &in_title) {
+  assert(f != nullptr);
+  fprintf(f, ::title(in_title).c_str());
+}
+
 
 /**
  * Emit source code
@@ -22,58 +48,61 @@ void print_source_code(FILE *f, Stmt::Ptr body) {
     f = stdout;
   }
 
-  fprintf(f, "Source code\n");
-  fprintf(f, "===========\n\n");
+  title(f, "Source code");
 
-  if (body.get() == nullptr)
-    fprintf(stderr, "<No source code to print>");
-  else
-    fprintf(f, "%s", pretty(body).c_str());
+  if (body.get() == nullptr) {
+    fprintf(f, "<No source code to print>\n");
+  } else {
+    fprintf(f, pretty(body).c_str());
+  }
 
   fprintf(f, "\n");
   fflush(f);
 }
 
 
-void print_target_code(FILE *f, Seq<Instr> const &code) {
-  fprintf(f, "Target code\n");
-  fprintf(f, "===========\n\n");
-  fprintf(f, mnemonics(code, true).c_str());
+void print_target_code(FILE *f, Instr::List const &code) {
+  title(f, "Target code");
+
+  if (code.empty()) {
+    fprintf(f, "<No target code to print>\n");
+  } else {
+    fprintf(f, code.mnemonics(true).c_str());
+  }
   fprintf(f, "\n");
   fflush(f);
 }
 
 }  // anon namespace
 
-// ============================================================================
+
+///////////////////////////////////////////////////////////////////////////////
 // Compile kernel
-// ============================================================================
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * @param targetCode  output variable for the target code assembled from the AST and adjusted
  */
-void compile_postprocess(Seq<Instr> &targetCode) {
+void compile_postprocess(Instr::List &targetCode) {
   assertq(!targetCode.empty(), "compile_postprocess(): passed target code is empty");
 
-  // Load/store pass
   loadStorePass(targetCode);
 
-  // Construct control-flow graph
-  CFG cfg;
-  buildCFG(targetCode, cfg);
+  //compile_data.target_code_before_regalloc = targetCode.dump();
 
   // Perform register allocation
-  getSourceTranslate().regAlloc(&cfg, &targetCode);
+  getSourceTranslate().regAlloc(targetCode);
 
   // Satisfy target code constraints
-  satisfy(&targetCode);
+  satisfy(targetCode);
 }
 
 
 /**
- * Don't clean up `body` here, it's a pointer to the top of the AST.
+ * NOTE: Don't clean up `body` here, it's a pointer to the top of the AST.
  */
 KernelDriver::~KernelDriver() {}
+
 
 /**
  * Reset the state for compilation
@@ -83,22 +112,23 @@ KernelDriver::~KernelDriver() {}
  * @param set_qpu_uniforms  if true, initialize the uniforms for QPU ID and number of QPU's
  * @param numVars           number of variables already assigned prior to compilation
  */
-void KernelDriver::init_compile(bool set_qpu_uniforms, int numVars) {
-  initStmt(m_stmtStack);
-  resetFreshVarGen(numVars);
+void KernelDriver::init_compile() {
+  initStmt();
+  initStack(m_stmtStack);
+  VarGen::reset();
   resetFreshLabelGen();
+  Pointer::reset_increment();
+  compile_data.clear();
 
-  if (set_qpu_uniforms) {
-    // Reserved general-purpose variables
-    Int qpuId, qpuCount;
-    qpuId    = getUniformInt();
-    qpuCount = getUniformInt();
-  }
+  // Initialize reserved general-purpose variables
+  Int qpuId, qpuCount;
+  qpuId    = getUniformInt();
+  qpuCount = getUniformInt();
 }
 
 
 void KernelDriver::obtain_ast() {
-  finishStmt();
+  clearStack();
   m_body = m_stmtStack.pop();
 }
 
@@ -108,19 +138,37 @@ void KernelDriver::obtain_ast() {
  *
  * This method is here to just handle thrown exceptions.
  */
-void KernelDriver::compile() {
+void KernelDriver::compile(std::function<void()> create_ast) {
   try {
+    create_ast();
     compile_intern();
+    m_numVars = VarGen::count();
+    m_compile_data = compile_data;
+    //clearStack();
   } catch (V3DLib::Exception const &e) {
     std::string msg = "Exception occured during compilation: ";
     msg << e.msg();
+
+    clearStack();
 
     if (e.msg().compare(0, 5, "ERROR") == 0) {
       errors << msg;
     } else {
       throw;  // Must be a fatal()
     }
+
   }
+}
+
+
+std::string KernelDriver::get_errors() const {
+  std::string ret;
+
+  for (auto const &err : errors) {
+    ret << "  " << err << "\n";
+  }
+
+  return ret;
 }
 
 
@@ -131,17 +179,12 @@ bool KernelDriver::handle_errors() {
   using std::cout;
   using std::endl;
 
-  if (errors.empty()) {
-    return false;
-  }
+  if (errors.empty()) return false;
 
-  cout << "Errors encountered during compilation and/or encoding:\n";
+  cout << "Errors encountered during compilation and/or encoding:\n"
+       << get_errors()
+       << "\nNot running the kernel" << endl;
 
-  for (auto const &err : errors) {
-    cout << "  " << err << "\n";
-  }
-
-  cout << "\nNot running the kernel" << endl;
   return true;      
 }
 
@@ -151,19 +194,9 @@ bool KernelDriver::handle_errors() {
 *
 * @param filename  if specified, print the output to this file. Otherwise, print to stdout
 */
-void KernelDriver::pretty(int numQPUs, const char *filename) {
-  FILE *f = nullptr;
-
-  if (filename == nullptr)
-    f = stdout;
-  else {
-    f = fopen(filename, "w");
-    if (f == nullptr) {
-      fprintf(stderr, "ERROR: could not open file '%s' for pretty output\n", filename);
-      return;
-    }
-  }
-
+void KernelDriver::pretty(char const *filename, bool output_qpu_code) {
+  FILE *f = open_file(filename, "pretty");
+  if (f == nullptr) return;
 
   if (has_errors()) {
     fprintf(f, "=== There were errors during compilation, the output here is likely incorrect or incomplete  ===\n");
@@ -174,10 +207,9 @@ void KernelDriver::pretty(int numQPUs, const char *filename) {
   print_source_code(f, sourceCode());
   print_target_code(f, m_targetCode);
 
-  if (!has_errors()) {
-    encode(numQPUs);  // generate opcodes if not already done
+  if (output_qpu_code) {
+    emit_opcodes(f);
   }
-  emit_opcodes(f);
 
   if (filename != nullptr) {
     assert(f != nullptr);
@@ -187,25 +219,41 @@ void KernelDriver::pretty(int numQPUs, const char *filename) {
 }
 
 
-void KernelDriver::invoke(int numQPUs, Seq<int32_t> &params) {
-  if (!has_errors()) {
-    encode(numQPUs);
+void KernelDriver::dump_compile_data(char const *filename) const {
+  FILE *f = open_file(filename, "compile_data");
+  if (f == nullptr) return;
+
+  fprintf(f, m_compile_data.dump().c_str());
+
+  title(f, "ACC usage");
+  fprintf(f, m_targetCode.check_acc_usage().c_str());
+
+  if (filename != nullptr) {
+    fclose(f);
   }
+}
+
+
+void KernelDriver::invoke(int numQPUs, IntList &params) {
+  assert(params.size() != 0);
 
   if (handle_errors()) {
     fatal("Errors during kernel compilation/encoding, can't continue.");
   }
 
    // Invoke kernel on QPUs
-  invoke_intern(numQPUs, &params);
+  invoke_intern(numQPUs, params);
 }
 
 
-#ifdef DEBUG
-// Only here for autotest
-void KernelDriver::add_stmt(Stmt::Ptr stmt) {
-  m_stmtStack << stmt;
+std::string KernelDriver::compile_info() const {
+  std::string ret;
+
+  ret << "  compile num generated variables: " << numVars() << "\n"
+      << "  num accs introduced            : " << numAccs() << "\n"
+      << "  num compile errors             : " << errors.size();
+
+  return ret;
 }
-#endif
 
 }  // namespace V3DLib

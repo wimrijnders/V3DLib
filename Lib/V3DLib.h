@@ -5,6 +5,7 @@
 #include "Source/Cond.h"
 #include "Source/Lang.h"
 #include "Source/gather.h"
+#include "Source/Functions.h"
 #include "Kernel.h"
 
 #endif

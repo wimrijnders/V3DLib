@@ -5,10 +5,8 @@
 #include "Target/Satisfy.h"
 #include "Target/Pretty.h"
 
-
 namespace V3DLib {
 namespace vc4 {
-
 namespace {
 
 // ===============
@@ -27,9 +25,9 @@ uint32_t encodeAssignCond(AssignCond cond) {
         case NC: return 5;
      }
 
-		default:
-  		fatal("V3DLib: missing case in encodeAssignCond");
-			return 0;
+    default:
+      fatal("V3DLib: missing case in encodeAssignCond");
+      return 0;
   }
 }
 
@@ -60,9 +58,9 @@ uint32_t encodeBranchCond(BranchCond cond) {
         default: break;
       }
 
-		default:
-		  fatal("V3DLib: missing case in encodeBranchCond");
-			return 0;
+    default:
+      fatal("V3DLib: missing case in encodeBranchCond");
+      return 0;
   }
 }
 
@@ -133,9 +131,9 @@ uint32_t encodeDestReg(Reg reg, RegTag* file) {
       // NONE maps to 'NOP' in regfile.
       *file = AorB; return 39;
 
-		default:
-  		fatal("V3DLib: missing case in encodeDestReg");
-			return 0;
+    default:
+      fatal("V3DLib: missing case in encodeDestReg");
+      return 0;
   }
 }
 
@@ -214,9 +212,9 @@ uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux) {
         case SPECIAL_DMA_ST_WAIT: assert(file == REG_B); *mux = 7; return 50;
       }
 
-		default:
-  		fatal("V3DLib: missing case in encodeSrcReg");
-			return 0;
+    default:
+      fatal("V3DLib: missing case in encodeSrcReg");
+      return 0;
   }
 }
 
@@ -234,8 +232,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       instr.LI.cond.tag   = AssignCond::Tag::ALWAYS;
       instr.LI.dest.tag   = SPECIAL;
       instr.LI.dest.regId = SPECIAL_HOST_INT;
-      instr.LI.imm.tag    = IMM_INT32;
-      instr.LI.imm.intVal = 1;
+      instr.LI.imm        = Imm(1);
       break;
 
     case DMA_LOAD_WAIT:
@@ -247,30 +244,28 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
       instr.ALU.op                = ALUOp(ALUOp::A_BOR);
       instr.ALU.dest.tag          = NONE;
-      instr.ALU.srcA.tag          = REG;
-      instr.ALU.srcA.reg.tag      = SPECIAL;
-      instr.ALU.srcA.reg.regId    = src;
-      instr.ALU.srcB.tag          = REG;
-      instr.ALU.srcB.reg          = instr.ALU.srcA.reg;
+
+      instr.ALU.srcA.set_reg(SPECIAL, src);  // srcA is same as srcB
+      instr.ALU.srcB.set_reg(SPECIAL, src);
       break;
     }
 
-		default:
-			break;  // rest passes through
+    default:
+      break;  // rest passes through
   }
 
   // Encode core instruction
   switch (instr.tag) {
-		// Not expecting these any more after previous step
+    // Not expecting these any more after previous step
     case IRQ:
     case DMA_LOAD_WAIT:
     case DMA_STORE_WAIT:
-			assertq(false, "encodeInstr(): intermediate instruction can not be handled as core instruction");
-			return;
+      assertq(false, "encodeInstr(): intermediate instruction can not be handled as core instruction");
+      return;
 
     // Load immediate
     case LI: {
-			auto &li = instr.LI;
+      auto &li = instr.LI;
 
       RegTag file;
       uint32_t cond = encodeAssignCond(li.cond) << 17;
@@ -279,7 +274,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       uint32_t ws   = (file == REG_A ? 0 : 1) << 12;
       uint32_t sf   = (li.m_setCond.flags_set()? 1 : 0) << 13;
       *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
-      *low          = (uint32_t) li.imm.intVal;
+      *low          = li.imm.encode();
       return;
     }
 
@@ -299,7 +294,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 
     // ALU
     case ALU: {
-			auto &alu = instr.ALU;
+      auto &alu = instr.ALU;
 
       RegTag file;
       uint32_t sig   = ((instr.hasImm() || alu.op.isRot()) ? 13 : 1) << 28;
@@ -321,15 +316,15 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
 
       if (alu.op.isRot()) {
-        assert(alu.srcA.tag == REG && alu.srcA.reg.tag == ACC && alu.srcA.reg.regId == 0);
-        assert(alu.srcB.tag == REG ?  alu.srcB.reg.tag == ACC && alu.srcB.reg.regId == 5 : true);
+        assert(alu.srcA.is_reg() && alu.srcA.reg().tag == ACC && alu.srcA.reg().regId == 0);
+        assert(alu.srcB.is_reg()? alu.srcB.reg().tag == ACC && alu.srcB.reg().regId == 5 : true);
         uint32_t mulOp = ALUOp(ALUOp::M_V8MIN).vc4_encodeMulOp() << 29;
         uint32_t raddrb;
 
-        if (alu.srcB.tag == REG) {
+        if (alu.srcB.is_reg()) {
           raddrb = 48;
         } else {
-          uint32_t n = (uint32_t) alu.srcB.smallImm.val;
+          uint32_t n = (uint32_t) alu.srcB.imm().val;
           assert(n >= 1 || n <= 15);
           raddrb = 48 + n;
         }
@@ -344,46 +339,46 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
         uint32_t muxa, muxb;
         uint32_t raddra, raddrb;
 
-        // Both operands are registers
-        if (alu.srcA.tag == REG && alu.srcB.tag == REG) {
-          RegTag aFile = regFileOf(alu.srcA.reg);
-          RegTag bFile = regFileOf(alu.srcB.reg);
-          RegTag aTag  = alu.srcA.reg.tag;
-          RegTag bTag  = alu.srcB.reg.tag;
+        if (alu.srcA.is_imm() && alu.srcB.is_imm()) {
+          assertq(false, "srcA and srcB can not both be (small) immediates", true);
+        } else if (alu.srcA.is_reg() && alu.srcB.is_reg()) { // Both operands are registers
+          RegTag aFile = regFileOf(alu.srcA.reg());
+          RegTag bFile = regFileOf(alu.srcB.reg());
+          RegTag aTag  = alu.srcA.reg().tag;
+          RegTag bTag  = alu.srcB.reg().tag;
 
           // If operands are the same register
-          if (aTag != NONE && aTag == bTag && alu.srcA.reg.regId == alu.srcB.reg.regId) {
+          if (aTag != NONE && aTag == bTag && alu.srcA.reg().regId == alu.srcB.reg().regId) {
             if (aFile == REG_A) {
-              raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
+              raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
               muxb = muxa; raddrb = 39;
             } else {
-              raddrb = encodeSrcReg(alu.srcA.reg, REG_B, &muxa);
+              raddrb = encodeSrcReg(alu.srcA.reg(), REG_B, &muxa);
               muxb = muxa; raddra = 39;
             }
           } else {
             // Operands are different registers
             assert(aFile == NONE || bFile == NONE || aFile != bFile);  // TODO examine why aFile == bFile is disallowed here
             if (aFile == REG_A || bFile == REG_B) {
-              raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
-              raddrb = encodeSrcReg(alu.srcB.reg, REG_B, &muxb);
+              raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
+              raddrb = encodeSrcReg(alu.srcB.reg(), REG_B, &muxb);
             } else {
-              raddrb = encodeSrcReg(alu.srcA.reg, REG_B, &muxa);
-              raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
+              raddrb = encodeSrcReg(alu.srcA.reg(), REG_B, &muxa);
+              raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
             }
           }
-        } else if (alu.srcB.tag == IMM) {
+        } else if (alu.srcB.is_imm()) {
           // Second operand is a small immediate
-          raddra = encodeSrcReg(alu.srcA.reg, REG_A, &muxa);
-          raddrb = (uint32_t) alu.srcB.smallImm.val;
+          raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
+          raddrb = (uint32_t) alu.srcB.imm().val;
           muxb   = 7;
-        } else if (alu.srcA.tag == IMM) {
+        } else if (alu.srcA.is_imm()) {
           // First operand is a small immediate
-          raddra = encodeSrcReg(alu.srcB.reg, REG_A, &muxb);
-          raddrb = (uint32_t) alu.srcA.smallImm.val;
+          raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
+          raddrb = (uint32_t) alu.srcA.imm().val;
           muxa   = 7;
         } else {
-          // Both operands are small immediates
-          assert(false);
+          assert(false);  // Not expecting this
         }
 
         *low = mulOp | addOp | (raddra << 18) | (raddrb << 12)
@@ -420,54 +415,52 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 
     // No-op & ignored instructions
     case NO_OP:
-    case PRI:
-    case PRS:
-    case PRF:
-		case INIT_BEGIN:
-		case INIT_END: {
+    case INIT_BEGIN:
+    case INIT_END: {
       uint32_t waddr_add = 39 << 6;
       uint32_t waddr_mul = 39;
       *high  = 0xe0000000 | waddr_add | waddr_mul;
       *low   = 0;
       return;
-		}
+    }
 
-		default:
-  		fatal("V3DLib: missing case in vc4 encodeInstr");
-			return;
+    default:
+      fatal("V3DLib: missing case in vc4 encodeInstr");
+      return;
   }
 }
 
 }  // anon namespace
 
-// =================
+
+// ============================================================================
 // Top-level encoder
-// =================
+// ============================================================================
 
 uint64_t encode(Instr instr) {
-	uint64_t ret;
-	uint32_t low;
-	uint32_t high;
+  uint32_t low;
+  uint32_t high;
 
-	encodeInstr(instr, &high, &low);
+  encodeInstr(instr, &high, &low);
 
-	ret = (((uint64_t) high) << 32) + low;
-
-	return ret;
+  uint64_t ret = (((uint64_t) high) << 32) + low;
+  return ret;
 }
 
-void encode(Seq<Instr>* instrs, Seq<uint32_t>* code) {
-  uint32_t high, low;
-  for (int i = 0; i < instrs->size(); i++) {
-    Instr instr = instrs->get(i);
-		check_instruction_tag_for_platform(instr.tag, true);
 
-		if (instr.tag == INIT_BEGIN || instr.tag == INIT_END) {
-			continue;  // Don't encode these block markers
-		}
+void encode(Instr::List &instrs, UIntList &code) {
+  uint32_t high, low;
+
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs.get(i);
+    check_instruction_tag_for_platform(instr.tag, true);
+
+    if (instr.tag == INIT_BEGIN || instr.tag == INIT_END) {
+      continue;  // Don't encode these block markers
+    }
 
     encodeInstr(instr, &high, &low);
-    *code << low << high;
+    code << low << high;
   }
 }
 

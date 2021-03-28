@@ -27,6 +27,9 @@ inline void debug_break(const char *str) {}
 
 #endif  // DEBUG
 
+inline void debug(std::string const &str)   { return debug(str.c_str()); }
+inline void warning(std::string const &str) { return warning(str.c_str()); }
+
 void error(const char *str, bool do_throw = false);
 inline void error(std::string const &msg, bool do_throw = false) { error(msg.c_str(), do_throw); }
 

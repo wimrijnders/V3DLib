@@ -8,17 +8,17 @@ namespace instr {
 
 class RFAddress : public Location {
 public:
-	RFAddress(uint8_t val) : m_val(val) { m_is_rf = true; }
+  RFAddress(uint8_t val) : m_val(val) { m_is_rf = true; }
 
-	v3d_qpu_waddr to_waddr() const override { return (v3d_qpu_waddr) m_val; }
-	v3d_qpu_mux to_mux() const override;
+  v3d_qpu_waddr to_waddr() const override { return (v3d_qpu_waddr) m_val; }
+  v3d_qpu_mux to_mux() const override;
 
-	RFAddress l() const;
-	RFAddress h() const;
-	RFAddress abs() const;
+  RFAddress l() const;
+  RFAddress h() const;
+  RFAddress abs() const;
 
 private:
-	uint8_t m_val;
+  uint8_t m_val;
 };
 
 }  // instr

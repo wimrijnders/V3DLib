@@ -9,7 +9,7 @@ Jump straight to the actual [Basic Build Instructions](#basic-build-instructions
 - Indent is two spaces. Not because I want it to (I vastly prefer tabs), but because `github`
   otherwise makes a mess of the source display, especially when tabs and spaces are mixed.
 
-In the code:
+In this project:
 
 - `VideoCore IV` is referred to as `vc4`
 - `VideoCore VI` is referred to as `v3d`
@@ -36,7 +36,7 @@ All platforms mentioned below run `Raspbian Buster 32-bits`, unless otherwise sp
 
 The following platforms are used for unit testing:
 
-- Raspberry Pi 4 Model B Rev 1.1
+- Raspberry Pi 4 Model B Rev 1.1, 32 as well as 64 bits
 - Raspberry Pi 3 Model B Rev 1.2
 - Raspberry Pi 2 - **TODO Set up**
 - Raspberry Pi Model B Rev 2
@@ -75,8 +75,21 @@ This build step is the reason that the very first build takes a significantly lo
 You need to run the example programs with sudo in the following situations:
 
 - On Pis prior to `Pi 4`
-- On a `Pi 4` when running on Raspbian 64-bits (`aarch64`) - *unfortunately! I was hoping to avoid this*
 - When using command line option `-pc`
+- On a `Pi 4` when running on Raspbian 64-bits (`aarch64`). This can be avoided by running command:
+
+    > sudo setfacl -m u:((your user name here)):rw /dev/dri/card*
+
+
+## Version Numbering
+
+The API is still a moving target and keeps on breaking.
+Officially, I should be changing the major version continually, but with the project still in its infancy
+and having exactly two users (Update 2021027: three!), I consider this overkill.
+I up the minor version instead as a compromise.
+
+I decided to go to `1.0.0` when the TODO list has been completely cleared.
+Don't hold your breath, though, it is still very much a moving target.
 
 
 ## Basic Build Instructions
@@ -174,6 +187,45 @@ The following table lists the build times on the oldest and newest Pis.
 
 The difference in speed is staggering. Even if you want to run on a `Pi 1`,
 you're probably better off building on a `Pi 4`.
+
+
+## Known Issues
+
+### Not `OpenGL` compatible
+
+`V3DLib` can not work on a Pi4 with `OpenGL` running. You need to run it without a GUI ('headless'),
+except for simple cases such as the `Hello` demo, which only outputs data.
+The issue is that the VideoCore L2 cache can not be shared with other applications when `OpenGL` is hogging it.
+
+It *is* possible to disable the L2 cache. This will affect performance badly, though.
+Also, from what I understand, youi will need a specially compiled linux kernel to deal with a disabled L2 cache.
+
+For `vc4`, there is a workaround for this: use DMA exclusively. For `v3d`, this is not an option.
+
+
+### 32-bit programs will not run with a 64-bit kernel
+
+While it is certainly possible to run 32-bit programs with a 64-bit kernel, the initialization code
+for buffer objects fails. The memory offset returned by the `v3d` device driver is invalid (in fact, it
+is the amount of available memory).
+
+To run with a 64-bit kernel, programs using `v3d` will need to be compiled as 64-bits also.
+
+
+### Some things will not run due to kernel issues
+
+There are still some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
+will run *sometimes* on `v3d`, and otherwise hang.
+
+**NOTE 20210317:** `Mandelbrot` on 32-bit `v3d` is running fine now.
+                   There are still issues on 64-bit, where 'Timer expired' can still occur. Once that happens,
+                   the message pops up of every usage.
+
+This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
+There are also some unit tests which have the same problem, these are disabled when running on `VideoCore VI`.
+
+I haven't been able to resolve these issues and I am waiting for a kernel update with fixes.
+All code for the `VideoCore IV` compiles and runs fine.
 
 
 ## CPU/GPU memory split

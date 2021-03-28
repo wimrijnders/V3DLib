@@ -1,6 +1,7 @@
 #include "support.h"
 #include <sys/time.h>
 
+
 double get_time() {
   struct timeval t;
   gettimeofday(&t, NULL);
@@ -55,7 +56,7 @@ void match_kernel_outputs(
 bool running_on_v3d() {
   static bool did_first = false;
 
-  if (V3DLib::Platform::instance().has_vc4) {
+  if (V3DLib::Platform::has_vc4()) {
     if (!did_first) {
       printf("Skipping v3d tests with calls to driver\n");
       did_first = true;
@@ -69,7 +70,7 @@ bool running_on_v3d() {
 
 #ifdef QPU_MODE
 //  #pragma message "QPU mode enabled"
-const char *SUDO = (V3DLib::Platform::instance().has_vc4)? "sudo " : "";  // sudo needed for vc4
+const char *SUDO = (V3DLib::Platform::has_vc4())? "sudo " : "";  // sudo needed for vc4
 #else
 const char *SUDO = "";
 #endif
@@ -90,40 +91,59 @@ void make_test_dir() {
 namespace {
 
 template<typename T>
-void dump_array_template(T const &a, int size,  int linesize) {
+std::string dump_array_template(T const &a, int size,  int linesize, bool as_int = false) {
   std::string str("<");
 
   for (int i = 0; i < (int) size; i++) {
-
     if (linesize != -1) {
       if (i % linesize == 0) {
         str << "\n";
       }
     }
-    str << a[i] << ", " ;
+
+    if (as_int) {
+      str << (int) a[i] << ", " ;
+    } else {
+      str << a[i] << ", " ;
+    }
   }
 
+
   str << ">";
-  printf("%s\n", str.c_str());
+  return str;
 }
+
 }  // anon namespace
 
 /**
  * Show contents of main memory array
  */
 void dump_array(float *a, int size,  int linesize) {
-  dump_array_template(a, size, linesize);
+  auto str = dump_array_template(a, size, linesize);
+  printf("%s\n", str.c_str());
+}
+
+
+std::string dump_array2(float *a, int size,  int linesize) {
+  return dump_array_template(a, size, linesize);
 }
 
 
 /**
  * Show contents of SharedArray instance
  */
-void dump_array(V3DLib::SharedArray<float> const &a, int linesize) {
-  dump_array_template(a, a.size(), linesize);
+void dump_array(V3DLib::Float::Array const &a, int linesize) {
+  auto str = dump_array_template(a, a.size(), linesize, no_fractions(a));
+  printf("%s\n", str.c_str());
 }
 
 
-void dump_array(V3DLib::SharedArray<int> const &a, int linesize) {
-  dump_array_template(a, a.size(), linesize);
+std::string dump_array2(V3DLib::Float::Array const &a, int linesize) {
+  return dump_array_template(a, a.size(), linesize, no_fractions(a));
+}
+
+
+void dump_array(V3DLib::Int::Array const &a, int linesize) {
+  auto str = dump_array_template(a, a.size(), linesize);
+  printf("%s\n", str.c_str());
 }

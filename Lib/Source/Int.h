@@ -1,9 +1,12 @@
+///////////////////////////////////////////////////////////////////////////////
 // This module defines type 'Int' for a vector of 16 x 32-bit integers.
-
+///////////////////////////////////////////////////////////////////////////////
 #ifndef _V3DLIB_SOURCE_INT_H_
 #define _V3DLIB_SOURCE_INT_H_
-#include "Source/Expr.h"
-#include "Source/Float.h"
+#include "Common/SharedArray.h"
+#include "Common/Seq.h"
+#include "Ptr.h"
+#include "Expr.h"
 
 namespace V3DLib {
 
@@ -17,38 +20,37 @@ template <typename T> struct Deref; // Forward declaration template class
 
 
 // ============================================================================
-// Types                   
+// Class Int                   
 // ============================================================================
 
-// An 'IntExpr' defines an integer vector expression which can
-// only be used on the RHS of assignment statements.
-
-struct IntExpr : public BaseExpr {
-  IntExpr(int x);
-  IntExpr(Expr::Ptr e) : BaseExpr(e) {}
-};
-
-// An 'Int' defines an integer vector variable which can be used in
-// both the LHS and RHS of an assignment.
-
+/**
+ * An 'Int' defines an integer vector variable which can be used in
+ * both the LHS and RHS of an assignment.
+ */
 struct Int : public BaseExpr {
+  using Array = V3DLib::SharedArray<int>;
+  using Ptr   = V3DLib::ptr::Ptr<Int>;
+
   Int();
   Int(int x);
-  Int(IntExpr e);
   Int(Deref<Int> d);
+  Int(IntExpr e);
+  Int(Int const &x);
 
-  // Copy constructors
-  Int(Int& x);
-  Int(const Int& x);
+  static Int mkArg();
+  static bool passParam(IntList &uniforms, int val);
 
-  // Cast to an IntExpr
-  operator IntExpr();
+  operator IntExpr() const;
 
-  Int& operator=(Int& rhs);
+  Int& operator=(int x);
+  Int& operator=(Int const &rhs);
   IntExpr operator=(IntExpr rhs);
 
   void operator++(int);
+  void operator--(int);
   Int &operator+=(IntExpr rhs);
+  Int &operator-=(IntExpr rhs);
+  Int &operator|=(IntExpr rhs);
 };
 
 
@@ -63,11 +65,10 @@ IntExpr numQPUs();
 IntExpr vpmGetInt();
 
 IntExpr rotate(IntExpr a, IntExpr b);
-FloatExpr rotate(FloatExpr a, IntExpr b);
 
 IntExpr operator+(IntExpr a, IntExpr b);
 IntExpr operator-(IntExpr a, IntExpr b);
-IntExpr operator*(IntExpr a, IntExpr b);
+IntExpr operator*(IntExpr a, IntExpr b) ;
 IntExpr min(IntExpr a, IntExpr b);
 IntExpr max(IntExpr a, IntExpr b);
 IntExpr operator<<(IntExpr a, IntExpr b);
@@ -78,8 +79,6 @@ IntExpr operator^(IntExpr a, IntExpr b);
 IntExpr operator~(IntExpr a);
 IntExpr shr(IntExpr a, IntExpr b);
 IntExpr ror(IntExpr a, IntExpr b);
-IntExpr toInt(FloatExpr a);
-FloatExpr toFloat(IntExpr a);
 
 }  // namespace V3DLib
 

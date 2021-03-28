@@ -1,11 +1,15 @@
 #include "KernelDriver.h"
+#include <iostream>
+#include <sstream>
 #include "Source/Lang.h"
 #include "Source/Translate.h"
 #include "Target/RemoveLabels.h"
-#include "Translate.h"
 #include "vc4.h"
 #include "Encode.h"
-#include "DMA.h"
+#include "DMA/Operations.h"
+#include "dump_instr.h"
+#include "Target/instr/Instructions.h"
+#include "SourceTranslate.h"  // add_uniform_pointer_offset()
 #include "dump_instr.h"
 
 namespace V3DLib {
@@ -14,19 +18,14 @@ namespace vc4 {
 KernelDriver::KernelDriver() : V3DLib::KernelDriver(Vc4Buffer) {}
 
 
-void KernelDriver::compile_init(bool set_qpu_uniforms, int numVars) {
-  Parent::init_compile(set_qpu_uniforms, numVars);
-  Platform::compiling_for_vc4(true);
-}
-
-
 /**
  * Add the postfix code to the kernel.
  *
  * Note that this emits kernel code.
  */
 void KernelDriver::kernelFinish() {
-  dmaWaitRead();                comment("Ensure outstanding DMAs have completed");
+  dmaWaitRead();                header("Kernel termination");
+                                comment("Ensure outstanding DMAs have completed");
   dmaWaitWrite();
 
   If (me() == 0)
@@ -44,10 +43,12 @@ void KernelDriver::kernelFinish() {
 /**
  * Encode target instrs into array of 32-bit ints
  */
-void KernelDriver::encode(int numQPUs) {
-  if (code.size() > 0) return;  // Don't bother if already encoded
+void KernelDriver::encode() {
+  if (code.size() > 0) return;      // Don't bother if already encoded
+  if (has_errors()) return;         // Don't do this if compile errors occured
+  assert(!qpuCodeMem.allocated());
 
-  V3DLib::vc4::encode(&m_targetCode, &code);
+  V3DLib::vc4::encode(m_targetCode, code);
 }
 
 
@@ -56,13 +57,19 @@ void KernelDriver::emit_opcodes(FILE *f) {
   fprintf(f, "===============\n\n");
   fflush(f);
 
-  Seq<uint64_t> instructions;
+  if (code.empty()) {
+    fprintf(f, "<No opcodes to print>\n");
+  } else {
+    // Note: this is the same as code, but code is uint64_t and this is uint64_t.
+    Seq<uint64_t> instructions;
 
-  for (int i = 0; i < m_targetCode.size(); ++i ) {
-    instructions << vc4::encode(m_targetCode[i]);
+    for (int i = 0; i < m_targetCode.size(); ++i ) {
+      instructions << vc4::encode(m_targetCode[i]);
+    }
+
+    assert(instructions.size()*2 == code.size());
+    dump_instr(f, instructions.data(), instructions.size());
   }
-
-  dump_instr(f, instructions.data(), instructions.size());
 }
 
 
@@ -77,7 +84,21 @@ void KernelDriver::compile_intern() {
 
   V3DLib::translate_stmt(m_targetCode, m_body);
 
-  insertInitBlock(m_targetCode);  // TODO init block not used for vc4, remove
+  {
+    using namespace V3DLib::Target::instr;  // for mov()
+    // Add final dummy uniform handling - See Note 1, function `invoke()` in `vc4/Invoke.cpp`,
+    // and uniform ptr index offsets
+
+    Instr::List ret;
+
+    ret << mov(VarGen::fresh(), Var(UNIFORM)).comment("Last uniform load is dummy value")
+        << add_uniform_pointer_offset(m_targetCode);  // !!! NOTE: doesn't take dummy in previous into account
+                                                      // This should not be a problem
+
+    int index = m_targetCode.lastUniformOffset();
+    assert(index > 0);
+    m_targetCode.insert(index + 1, ret);
+  }
 
   m_targetCode << Instr(END);
 
@@ -85,12 +106,14 @@ void KernelDriver::compile_intern() {
 
   // Translate branch-to-labels to relative branches
   removeLabels(m_targetCode);
+
+  encode();
 }
 
 
-void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
+void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   //debug("Called vc4 KernelDriver::invoke()");  
-  assert(code.size() > 0);
+  assertq(code.size() > 0, "invoke_intern() vc4: no code to invoke", true );
 
   unsigned numWords = code.size() + 12*MAX_KERNEL_PARAMS + 12*2;
 
@@ -112,7 +135,7 @@ void KernelDriver::invoke_intern(int numQPUs, Seq<int32_t>* params) {
   }
 
   enableQPUs();
-  V3DLib::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
+  V3DLib::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, &params);
   disableQPUs();
 }
 

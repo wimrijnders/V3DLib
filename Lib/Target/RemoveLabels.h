@@ -1,9 +1,6 @@
 #ifndef _V3DLIB_REMOVELABELS_H_
 #define _V3DLIB_REMOVELABELS_H_
-#include "Target/Syntax.h"
-#include "Target/CFG.h"
 #include "Target/Liveness.h"
-#include "Common/Seq.h"
 #include "Support/basics.h"
 
 namespace V3DLib {
@@ -18,6 +15,7 @@ namespace V3DLib {
  */
 template<typename Instructions>
 void removeLabels(Instructions &instrs) {
+  using ::operator<<;  // C++ weirdness
   Instructions newInstrs;
 
   // The number of labels in the instruction sequence
@@ -32,53 +30,49 @@ void removeLabels(Instructions &instrs) {
 
   // First, remove labels, remembering the index of the instruction
   // pointed to by each label.
-	std::string last_comment;
+  std::string last_comment;
   for (int i = 0, j = 0; i < (int) instrs.size(); i++) {
     auto &instr = instrs[i];
 
     if (instr.is_label()) {
       labels[instr.label()] = j;
 
-			// Grumbl why doesnt 'cmt << work' here?
-			if (!last_comment.empty()) {
-				last_comment += "; ";
-			}
+      if (!last_comment.empty()) {
+        last_comment << "; ";
+      }
 
-			last_comment += "Label L";
-			last_comment += std::to_string(instr.label());
+      last_comment << "Label L" << instr.label();
     } else {
-      newInstrs << instr;
-
-     	newInstrs.back().comment(last_comment);
-			last_comment.clear();
+      newInstrs << instr.comment(last_comment);
+      last_comment.clear();
 
       j++;
     }
   }
-	assert(last_comment.empty());
+  assert(last_comment.empty());
 
   // Second, convert branch-label instructions.
   for (int i = 0; i < (int) newInstrs.size(); i++) {
     auto &instr = newInstrs[i];
 
     if (instr.is_branch_label()) {
-			Label label = instr.branch_label();
-      assert(0 <= label && label < numLabels);
+      Label label = instr.branch_label();
+      assertq(0 <= label && label < numLabels, "Unexpected number of labels", true);
 
-			// Convert branch-to-label to branch-to-target
+      // Convert branch-to-label to branch-to-target
       int dest = labels[label];
       assert(dest >= 0);
 
-			instr.label_to_target(dest - i);  // pass in offset to label from current instruction
+      instr.label_to_target(dest - i);  // pass in offset to label from current instruction
 
-			std::string cmt;
-			cmt += "Jump to label L";
-			cmt += std::to_string(label);
-			instr.comment(cmt);
+      std::string cmt;
+      cmt << "Jump to label L" << label;
+
+      instr.comment(cmt);
     }
   }
 
-	instrs = newInstrs;
+  instrs = newInstrs;
 
   delete [] labels;
 }

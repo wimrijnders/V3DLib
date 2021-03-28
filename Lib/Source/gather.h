@@ -3,49 +3,43 @@
 #include "Support/Platform.h"
 #include "StmtStack.h"
 #include "Ptr.h"
+#include "Float.h"
 
 namespace V3DLib {
 
 //=============================================================================
-// Receive, request, store operations
+// Gather and receive operations
 //=============================================================================
 
-inline void gatherExpr(Expr::Ptr e) {
-  stmtStack() << Stmt::create_assign(mkVar(Var(TMU0_ADDR)), e);
-}
+Stmt::Ptr gatherExpr(Expr::Ptr e);
 
+void gatherBaseExpr(BaseExpr const &addr);
 
 template <typename T>
 inline void gather(PtrExpr<T> addr) {
-	if (Platform::instance().compiling_for_vc4()) {
-		Ptr<T> temp = addr + index();
-		gatherExpr(temp.expr());
-	} else {
-		gatherExpr(addr.expr());
-	}
+  gatherBaseExpr(addr);
 }
 
-template <typename T>
-inline void gather(Ptr<T>& addr) {
-	if (Platform::instance().compiling_for_vc4()) {
-		Ptr<T> temp = addr + index();
-		gatherExpr(temp.expr());
-	} else {
-		gatherExpr(addr.expr());
-	}
+
+inline void gather(Pointer &addr) {
+  gatherBaseExpr(addr);
 }
+
 
 void receiveExpr(Expr::Ptr e);
 void receive(Int &dest);
 void receive(Float &dest);
 
-template <typename T>
-inline void receive(Ptr<T> &dest) { receiveExpr(dest.expr); }
+inline void receive(BaseExpr &dest) { receiveExpr(dest.expr()); }
 
-void store(IntExpr data, PtrExpr<Int> addr);
-void store(FloatExpr data, PtrExpr<Float> addr);
-void store(IntExpr data, Ptr<Int> &addr);
-void store(FloatExpr data, Ptr<Float> &addr);
+
+//=============================================================================
+// Gather, receive with gather limit
+//=============================================================================
+
+void gather(Float::Ptr &addr_a, Float::Ptr &addr_b);
+void receive(Float &dst, Float::Ptr &src);
+void receive();
 
 }  // namespace V3DLib
 

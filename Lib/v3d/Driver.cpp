@@ -1,3 +1,5 @@
+#ifdef QPU_MODE
+
 // 
 // Converted from: https://github.com/Idein/py-videocore6/blob/ec275f668f8aa4c89839fb8095b74f402260b1a6/videocore6/driver.py
 //
@@ -56,7 +58,7 @@ namespace v3d {
  *
  * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
  */
-bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniforms, uint32_t thread) {
+bool Driver::execute(Code &code, UniformArr *uniforms, uint32_t thread) {
   uint32_t code_phyaddr = code.getAddress();
   uint32_t unif_phyaddr = (uniforms == nullptr)?0u:uniforms->getAddress();
 
@@ -106,3 +108,5 @@ bool Driver::execute(SharedArray<uint64_t> &code, SharedArray<uint32_t> *uniform
 
 }  // v3d
 }  // V3DLib
+
+#endif  // QPU_MODE

@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_SOURCE_COND_H_
 #define _V3DLIB_SOURCE_COND_H_
 #include "Int.h"
+#include "Float.h"
 #include "CExpr.h"
 
 namespace V3DLib {
@@ -66,6 +67,7 @@ BoolExpr operator>=(FloatExpr a, FloatExpr b);
 BoolExpr operator!(BoolExpr a);
 BoolExpr operator&&(BoolExpr a, BoolExpr b);
 BoolExpr operator||(BoolExpr a, BoolExpr b);
+BoolExpr operator!=(BoolExpr a, BoolExpr b);
 
 Cond any(BoolExpr a);
 Cond all(BoolExpr a);

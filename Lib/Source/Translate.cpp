@@ -1,10 +1,8 @@
 #include "Translate.h"
 #include "Support/Platform.h"
 #include "SourceTranslate.h"
-#include "Source/Stmt.h"
 #include "Target/SmallLiteral.h"
-#include "Common/Seq.h"
-
+#include "Target/instr/Instructions.h"
 
 namespace V3DLib {
 namespace {
@@ -20,16 +18,13 @@ RegOrImm operand(Expr::Ptr e) {
   RegOrImm x;
 
   if (e->tag() == Expr::VAR) {
-    x.tag = REG;
-    x.reg = srcReg(e->var());
+    x.set_reg(srcReg(e->var()));
     return x;
   }
 
   int enc = encodeSmallLit(*e);
   assert(enc >= 0);
-  x.tag          = IMM;
-  x.smallImm.tag = SMALL_IMM;
-  x.smallImm.val = enc;
+  x.set_imm(enc);
   return x;
 }
 
@@ -42,14 +37,19 @@ RegOrImm operand(Expr::Ptr e) {
  * Translate an expression to a simple expression, generating
  * instructions along the way.
  */
-Expr::Ptr simplify(Seq<Instr>* seq, Expr::Ptr e) {
+Expr::Ptr simplify(Instr::List *seq, Expr::Ptr e) {
   if (e->isSimple()) {
     return e;
   }
 
-  Var tmp = freshVar();
-  *seq << varAssign(tmp, e);
-  return mkVar(tmp);
+  Var tmp_var = VarGen::fresh();
+
+  Instr::List tmp;
+  tmp << varAssign(tmp_var, e);
+  //tmp.front().comment("simplify varAssign");
+  *seq << tmp;
+
+  return mkVar(tmp_var);
 }
 
 
@@ -62,7 +62,7 @@ Expr::Ptr simplify(Seq<Instr>* seq, Expr::Ptr e) {
  * @param lhsExpr  Expression on left-hand side
  * @param rhs      Expression on right-hand side
  */
-void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
+void assign(Instr::List *seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   Expr lhs = *lhsExpr;
 
   // -----------------------------------------------------------
@@ -90,13 +90,13 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
   // (According to previous code, that is)
   bool handle_case = (lhs.tag() == Expr::DEREF && (lhs.deref_ptr()->tag() == Expr::VAR || rhs->tag() == Expr::VAR));
   if (handle_case) {
-    *seq << getSourceTranslate().deref_var_var(lhs.deref_ptr()->var(), rhs->var());
+    *seq << getSourceTranslate().store_var(lhs.deref_ptr()->var(), rhs->var());
     return;
   }
 
-  // This case should not be reachable
-  assert(false);
+  assert(false);  // Should not be reachable
 }
+
 
 // ============================================================================
 // Condition flag helpers
@@ -149,84 +149,11 @@ void assign(Seq<Instr>* seq, Expr::Ptr lhsExpr, Expr::Ptr rhs) {
 // ============================================================================
 
 /**
- * NOT USED ANY MORE
- * Kept here for reference and fall-back
- *
- * Pre:
- * - Hypothesis: condVar set for condA
- * - Implicit condition vector set for condB
- *
- * ## Truth Table
- * ```
- *        | B
- * ------------------------------------
- * A      | never    | always | flag
- * ------------------------------------
- * never  | never    | always | B
- * always | always   | always | always
- * flag   | A        | always |
- * ------------------------------------
- * ```
- *
- * ------
- * ## NOTES
- *
- * 1. In the case of `cond = condB`, I would be expecting `condVar` to be completely reset,
- *    i.e. first init `condVar = 0` for all vector values.
- *
- *    This would be OK if `condA == Never` and `condvar` still zeroes.
- *
- *    TODO investigate if possible
- * /
-AssignCond boolOr(Seq<Instr> &seq, AssignCond condA, Var condVar, AssignCond condB) {
-  using namespace Target::instr;
-
-  //breakpoint
-
-  // Determine a value that will cause the specified flag bit to be set in the condition vector.
-  auto determineCondVar = [] (AssignCond cond) -> int {
-    int val = 0;
-
-    switch (cond.flag) {
-      case ZS: val =  0; break;
-      case ZC: val =  1; break;
-      case NS: val = -1; break;
-      case NC: val =  0; break;  // TODO set to unique value (e.g. 2) -> need to research logic for correctness
-      default: assert(false); val = -1; break;
-    }
-
-    return val;
-  };
-
-
-  if (condA.is_always() || condB.is_always()) return always;
-  if (condA.is_never()  && condB.is_never() ) return never;
-
-  if (condB.is_never()) {                     // condA == FLAG
-    seq << mov(None, condVar).setCondFlag(condA.flag);     // Set implicit condition vector to variable
-    return condA;
-  } else if (condA.is_never()) {              // condB == FLAG
-    int val = determineCondVar(condB);
-
-    seq << li(condVar, val).cond(condB);      // set condB values in condVar, See Note 1
-    return condB;
-  } else {                                    // condA == flag and condB == FLAG
-    int val = determineCondVar(condA);
-
-    seq << li(condVar, val).cond(condB)       // Adjust condVar for condB
-        << mov(None, condVar).setCondFlag(condB.flag);     // Set implicit condition vector for new value condVar
-    return condA;
-  }
-}
-*/
-
-
-/**
  * Creates the instructions for this comparison.
  *
  * The comparison is internally implemented as a subtract-operation.
  */
-void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
+void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
   BExpr b = *bexpr;
   assert(b.tag() == CMP);
 
@@ -256,7 +183,7 @@ void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
   }
 
   if (b.cmp_rhs()->isLit() && b.cmp_rhs()->isLit()) {  // 'x op y', where x and y are both literals
-    Var tmpVar = freshVar();
+    Var tmpVar = VarGen::fresh();
     *seq << varAssign(tmpVar, b.cmp_lhs());
     b.cmp_lhs(mkVar(tmpVar));
   }
@@ -267,8 +194,8 @@ void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
   //
   using namespace V3DLib::Target::instr;
 
-  Var dummy  = freshVar();
-  Var dummy2 = freshVar();
+  Var dummy  = VarGen::fresh();
+  Var dummy2 = VarGen::fresh();
   AssignCond assign_cond(b.cmp);
 
   // Implement comparison using subtraction instruction
@@ -281,46 +208,32 @@ void cmpExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
   instr.ALU.op       = ALUOp(op);
   instr.ALU.srcB     = operand(b.cmp_rhs());
 
-  *seq << li(v, 0)
+  *seq << li(v, 0).comment("Store condition as Bool var")
        << instr
        << mov(v, 1).cond(assign_cond)            // TODO: would be better if this used acc-reg
        << mov(dummy2, v).setCondFlag(Flag::ZC);  // Reset flags so that Z-flag is used
 
-  seq->back().comment("Store condition as Bool var");
+  seq->back().comment("End store condition as Bool var");
 }
 
 
-AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v);  // Forward declaration
+AssignCond boolExp(Instr::List *seq, BExpr::Ptr bexpr, Var v);  // Forward declaration
 
 
-/**
- * Previous case for or:
- * 
- *     AssignCond condA = boolExp(seq, b.disj.lhs, v);
- *     Var w = freshVar();
- *     AssignCond condB = boolExp(seq, b.disj.rhs, w);
- *     return boolOr(*seq, condA, v, condB);
- * 
- * Previous case for and:
- *  
- *     // Use De Morgan's law
- *     BExpr* demorgan = b.conj.lhs->Not()->Or(b.conj.rhs->Not())->Not();
- *     return boolExp(seq, demorgan, v);
- */
-void boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
+void boolVarExp(Instr::List &seq, BExpr b, Var v) {
   using namespace V3DLib::Target::instr;
 
-  boolExp(&seq, b.lhs(), v);                     // return val ignored
+  // TODO maybe not necessary, check. Otherwise, use v directly
+  Var v1 = VarGen::fresh();
+  boolExp(&seq, b.lhs(), v1);  // return val ignored
 
-  Var w = freshVar();
+  Var w = VarGen::fresh();
   boolExp(&seq, b.rhs(), w);  // idem
 
   if (b.tag() == OR) {
-    seq << bor(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
-    seq.back().comment("Bool var OR");
+    seq << bor(dstReg(v), srcReg(v1), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var OR");
   } else if (b.tag() == AND) {
-    seq << band(dstReg(v), srcReg(v), srcReg(w)).setCondFlag(Flag::ZC);
-    seq.back().comment("Bool var AND");
+    seq << band(dstReg(v), srcReg(v1), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var AND");
   } else {
     assert(false);
   }
@@ -346,7 +259,7 @@ void boolVarExp(Seq<Instr> &seq, BExpr b, Var v) {
  *
  * @return the condition to use when checking the flags for this comparison
  */
-AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
+AssignCond boolExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
   using namespace V3DLib::Target::instr;
   BExpr b = *bexpr;
 
@@ -376,8 +289,8 @@ AssignCond boolExp(Seq<Instr> *seq, BExpr::Ptr bexpr, Var v) {
 // Conditional expressions
 // ============================================================================
 
-BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
-  Var v = freshVar();
+BranchCond condExp(Instr::List &seq, CExpr &c) {
+  Var v = VarGen::fresh();
   AssignCond cond = boolExp(&seq, c.bexpr(), v);
 
   return cond.to_branch_cond(c.tag() == ALL);
@@ -388,18 +301,17 @@ BranchCond condExp(Seq<Instr> &seq, CExpr &c) {
 // Where statements
 // ============================================================================
 
-Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
+Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
   using namespace V3DLib::Target::instr;
-  Seq<Instr> ret;
+  Instr::List ret;
 
   if (s.get() == nullptr) return ret;
-  if (s->tag == SKIP) return ret;
-
+  if (s->tag == Stmt::SKIP) return ret;
 
   // ------------------------------------------------------
   // Case: v = e, where v is a variable and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::VAR) {
+  if (s->tag == Stmt::ASSIGN && s->assign_lhs()->tag() == Expr::VAR) {
     assign(&ret, s->assign_lhs(), s->assign_rhs());
     ret.back().cond(cond); //.comment("Assign var in Where");
     return ret;
@@ -408,16 +320,16 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
   // ------------------------------------------------------
   // Case: *v = e, where v is a pointer and e an expression
   // ------------------------------------------------------
-  if (s->tag == ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
+  if (s->tag == Stmt::ASSIGN && s->assign_lhs()->tag() == Expr::DEREF) {
     assign(&ret, s->assign_lhs(), s->assign_rhs());
-    ret.back().cond(cond); //.comment("Assign *var (deref) in Where");
+    ret.back().cond(cond); // .comment("Assign *var (deref) in Where");
     return ret;
   }
 
   // ---------------------------------------------
   // Case: s0 ; s1, where s0 and s1 are statements
   // ---------------------------------------------
-  if (s->tag == SEQ) {
+  if (s->tag == Stmt::SEQ) {
     ret << whereStmt(s->seq_s0(), condVar, cond, true)
         << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
     return ret;
@@ -427,17 +339,17 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
   // Case: where (b) s0 s1, where b is a boolean expression and
   //                        s0 and s1 are statements.
   // ----------------------------------------------------------
-  if (s->tag == WHERE) {
+  if (s->tag == Stmt::WHERE) {
     using Target::instr::mov;
     AssignCond andCond(CmpOp(CmpOp::NEQ, INT32));  // Wonky syntax to get the flags right
 
     if (cond.is_always()) {
       // Top-level handling of where-statements
 
-      Var newCondVar   = freshVar();
+      Var newCondVar   = VarGen::fresh();
       AssignCond newCond;
       {
-        Seq<Instr> seq;
+        Instr::List seq;
         // Compile new boolean expression
         newCond = boolExp(&seq, s->where_cond(), newCondVar);
         if (!seq.empty()) seq.front().comment("Start where (always)");
@@ -453,26 +365,21 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
 
       // Compile 'else' statement
       if (s->elseStmt().get() != nullptr) {
-        Var v2 = freshVar();
+        Var v2 = VarGen::fresh();
         ret << bxor(v2, newCondVar, 1).setCondFlag(Flag::ZC);
 
         auto seq = whereStmt(s->elseStmt(), v2, andCond, false);
         if (!seq.empty()) seq.front().comment("else-branch of where (always)");
         ret << seq;
       }
-
-      // Reset flags to initial value
-      // TODO check if really needed
-      Var dummy = freshVar();
-      ret << mov(dummy, condVar).setCondFlag(Flag::ZC);
     } else {
       // Where-statements nested in other where-statements
 
       // Compile new boolean expression
-      Var newCondVar   = freshVar();
+      Var newCondVar   = VarGen::fresh();
       AssignCond newCond;
       {
-        Seq<Instr> seq;
+        Instr::List seq;
         // Compile new boolean expression
         newCond = boolExp(&seq, s->where_cond(), newCondVar);
         if (!seq.empty()) seq.front().comment("Start where (nested)");
@@ -481,7 +388,7 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
 
       if (s->thenStmt().get() != nullptr) {  // NOTE: syntax allows then-stmt to be empty and else not empty
         // AND new boolean expression with original condition
-        Var dummy   = freshVar();
+        Var dummy   = VarGen::fresh();
         ret << band(dummy, condVar, newCondVar).setCondFlag(Flag::ZC);
 
         // Compile 'then' statement
@@ -493,10 +400,11 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
       }
 
       if (s->elseStmt() != nullptr) {
-        Var v2   = freshVar();
-        Var dummy   = freshVar();
-        ret << bxor(v2, newCondVar, 1);
-        ret << band(dummy, condVar, v2).setCondFlag(Flag::ZC);
+        Var v2    = VarGen::fresh();
+        Var dummy = VarGen::fresh();
+
+        ret << bxor(v2, newCondVar, 1)
+            << band(dummy, condVar, v2).setCondFlag(Flag::ZC);
 
         // Compile 'else' statement
         {
@@ -505,57 +413,12 @@ Seq<Instr> whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore
           ret << seq;
         }
       }
-
-      // Reset flags to initial value
-      Var dummy = freshVar();
-      ret << mov(dummy, condVar).setCondFlag(Flag::ZC);
     }
 
     return ret;
   }
 
   assertq(false, "V3DLib: only assignments and nested 'where' statements can occur in a 'where' statement", true);
-  return ret;
-}
-
-
-// ============================================================================
-// Print statements
-// ============================================================================
-
-Seq<Instr> printStmt(Stmt::Ptr stmt) {
-  Seq<Instr> ret;
-  Instr instr;
-
-  auto expr_to_reg = [&ret] (Expr::Ptr expr) -> Reg {
-    if (expr ->tag() == Expr::VAR) {
-       return srcReg(expr->var());
-    } else {
-      Var tmpVar = freshVar();
-      ret << varAssign(tmpVar, expr);
-      return srcReg(tmpVar);
-    }
-  };
-
-  switch (stmt->print.tag()) {
-    case PRINT_INT:
-      instr.tag = PRI;
-      instr.PRI = expr_to_reg(stmt->print_expr());
-      break;
-    case PRINT_FLOAT:
-      instr.tag = PRF;
-      instr.PRI = expr_to_reg(stmt->print_expr());
-      break;
-    case PRINT_STR:
-      instr.tag = PRS;
-      instr.PRS = stmt->print.str();
-    break;
-    default:
-      assert(false);
-      break;
-  }
-
-  ret << instr;
   return ret;
 }
 
@@ -569,12 +432,13 @@ Instr loadReceive(Expr::Ptr dest) {
 }
 
 
-void stmt(Seq<Instr>* seq, Stmt::Ptr s);  // Forward declaration
+void stmt(Instr::List *seq, Stmt::Ptr s);  // Forward declaration
+
 
 /**
  * Translate if-then-else statement to target code
  */
-void translateIf(Seq<Instr> &seq, Stmt &s) {
+void translateIf(Instr::List &seq, Stmt &s) {
   using namespace Target::instr;
 
   Label endifLabel = freshLabel();
@@ -600,7 +464,7 @@ void translateIf(Seq<Instr> &seq, Stmt &s) {
 }
 
 
-void translateWhile(Seq<Instr> &seq, Stmt &s) {
+void translateWhile(Instr::List &seq, Stmt &s) {
   using namespace Target::instr;
 
   Label startLabel = freshLabel();
@@ -623,34 +487,32 @@ void translateWhile(Seq<Instr> &seq, Stmt &s) {
 // Statements
 // ============================================================================
 
-void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
+void stmt(Instr::List *seq, Stmt::Ptr s) {
   if (s == nullptr) return;
 
   switch (s->tag) {
-    case SKIP:
+    case Stmt::GATHER_PREFETCH:          // Remove if still present
+    case Stmt::SKIP:
       break;
-    case ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
+    case Stmt::ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
       assign(seq, s->assign_lhs(), s->assign_rhs());
       break;
-    case SEQ:                      // 's0 ; s1', where s1 and s2 are statements
+    case Stmt::SEQ:                      // 's0 ; s1', where s1 and s2 are statements
       stmt(seq, s->seq_s0());
       stmt(seq, s->seq_s1());
       break;
-    case IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
+    case Stmt::IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
       translateIf(*seq, *s);
       break;
-    case WHILE:                    // 'while (c) s', where c is a condition, and s a statement
+    case Stmt::WHILE:                    // 'while (c) s', where c is a condition, and s a statement
       translateWhile(*seq, *s);
       break;
-    case WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
-        Var condVar = freshVar();  // This is the top-level definition of condVar
+    case Stmt::WHERE: {                  // 'where (b) s0 s1', where c is a boolean expr, and s0, s1 statements
+        Var condVar = VarGen::fresh();   // This is the top-level definition of condVar
         *seq << whereStmt(s, condVar, always, false);
       }
       break;
-    case PRINT:                    // 'print(e)', where e is an expr or a string
-      *seq << printStmt(s);
-      break;
-    case LOAD_RECEIVE:             // 'receive(e)', where e is an expr
+    case Stmt::LOAD_RECEIVE:             // 'receive(e)', where e is an expr
       *seq << loadReceive(s->address());
       break;
     default:
@@ -663,21 +525,10 @@ void stmt(Seq<Instr>* seq, Stmt::Ptr s) {
   if (!seq->empty()) {
     seq->back().transfer_comments(*s);
   }
-}
 
-
-/**
- * Get the instruction of the last uniform load
- */
-int lastUniformOffset(Seq<Instr> &code) {
-  // Detmine the first offset that is not a uniform load
-  int index = 0;
-  for (; index < code.size(); ++index) {
-    if (!code[index].isUniformLoad()) break; 
+  if (s->do_break_point()) {
+    seq->back().break_point();
   }
-
-  assertq(index >= 2, "Expecting at least two uniform loads.", true);
-  return index - 1;
 }
 
 }  // anon namespace
@@ -688,20 +539,11 @@ int lastUniformOffset(Seq<Instr> &code) {
  *
  * Only used for `v3d`.
  */
-void insertInitBlock(Seq<Instr> &code) {
-  using namespace V3DLib::Target::instr;  // for mov()
-
-  int index = lastUniformOffset(code);
-  Seq<Instr> ret;
-
-  if (Platform::instance().compiling_for_vc4()) {
-    // Add final dummy uniform handling
-    // See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
-    ret << mov(freshVar(), Var(UNIFORM));
-    ret.back().comment("Last uniform load is dummy value");
-  }
-
+void insertInitBlock(Instr::List &code) {
+  int index = code.lastUniformOffset();
+  Instr::List ret;
   ret << Instr(INIT_BEGIN) << Instr(INIT_END);
+
   code.insert(index + 1, ret);
 }
 
@@ -721,9 +563,9 @@ void insertInitBlock(Seq<Instr> &code) {
  *
  * @return  A sequence of instructions
  */
-Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
+Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
   using namespace V3DLib::Target::instr;
-  Seq<Instr> ret;
+  Instr::List ret;
   Expr e = *expr;
 
   switch (e.tag()) {
@@ -743,26 +585,18 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       }
 
       if (e.lhs()->isLit() && e.rhs()->isLit()) {         // x and y are both literals
-        Var tmpVar = freshVar();
+        Var tmpVar = VarGen::fresh();
         ret << varAssign(cond, tmpVar, e.lhs());
         e.lhs(mkVar(tmpVar));
       }
 
       switch (e.apply_op.op) {                            // x and y are simple
-      case RECIP:
-        ret << recip(v, e.lhs()->var());
-        break;
-      case RECIPSQRT:
-        ret << recipsqrt(v, e.lhs()->var());
-        break;
-      case EXP:
-        ret << bexp(v, e.lhs()->var());
-        break;
-      case LOG:
-        ret << blog(v, e.lhs()->var());
-        break;
+      case RECIP:     ret << recip(v, e.lhs()->var());     break;
+      case RECIPSQRT: ret << recipsqrt(v, e.lhs()->var()); break;
+      case EXP:       ret << bexp(v, e.lhs()->var());      break;
+      case LOG:       ret << blog(v, e.lhs()->var());      break;
       default:
-        // Everythin else is considered to be a single binary operation
+        // Everything else is considered to be a single binary operation
         Instr instr(ALU);
         instr.ALU.cond       = cond;
         instr.ALU.dest       = dstReg(v);
@@ -782,12 +616,12 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       }
                                                                      // w is a variable
       //
-      // Restriction: we disallow dereferencing in conditional ('where')
-      // assignments for simplicity.  In most (all?) cases it should be
-      // trivial to lift these outside the 'where'.
+      // Restriction:
+      // dereferencing is disallowed in conditional ('where') assignments for simplicity.
+      // In most (all?) cases it should be trivial to lift these outside the 'where'.
       //
       assertq(cond.is_always(), "V3DLib: dereferencing not yet supported inside 'where'");
-      getSourceTranslate().varassign_deref_var(&ret, v, e);
+      ret << getSourceTranslate().load_var(v, e);
       break;
     default:
       assertq(false, "This case should not be reachable");
@@ -798,7 +632,7 @@ Seq<Instr> varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
 }
 
 
-Seq<Instr> varAssign(Var v, Expr::Ptr expr) {
+Instr::List varAssign(Var v, Expr::Ptr expr) {
   return varAssign(always, v, expr);  // TODO: For some reason, `always` *must* be passed in.
                                       //       Overloaded call generates segfault
 }
@@ -807,12 +641,13 @@ Seq<Instr> varAssign(Var v, Expr::Ptr expr) {
 /**
  * Similar to 'simplify' but ensure that the result is a variable.
  */
-Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
+Expr::Ptr putInVar(Instr::List *seq, Expr::Ptr e) {
   if (e->tag() == Expr::VAR) {
     return e;
   }
 
-  Var tmp = freshVar();
+  Var tmp = VarGen::fresh();
+  //seq->back().comment("putInVar starts next");
   *seq << varAssign(tmp, e);
   return mkVar(tmp);
 }
@@ -823,7 +658,8 @@ Expr::Ptr putInVar(Seq<Instr>* seq, Expr::Ptr e) {
  *
  * Entry point for translation of statements.
  */
-void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
+void translate_stmt(Instr::List &seq, Stmt::Ptr s) {
+  assert(seq.empty());  // TODO perhaps move this test up, or seq as return value
   stmt(&seq, s);
 }
 
@@ -832,19 +668,19 @@ void translate_stmt(Seq<Instr> &seq, Stmt::Ptr s) {
 // Load/Store pass
 // ============================================================================
 
-void loadStorePass(Seq<Instr> &instrs) {
+void loadStorePass(Instr::List &instrs) {
   using namespace V3DLib::Target::instr;
 
-  Seq<Instr> newInstrs(instrs.size()*2);
+  Instr::List newInstrs(instrs.size()*2);
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
 
     switch (instr.tag) {
       case RECV: {
-        newInstrs << Instr(TMU0_TO_ACC4);
-        newInstrs.back().transfer_comments(instr);
-        newInstrs << mov(instr.RECV.dest, ACC4);
+        newInstrs << Instr(TMU0_TO_ACC4)
+                  << mov(instr.RECV.dest, ACC4);
+        newInstrs.front().transfer_comments(instr);
         break;
       }
       default:
@@ -858,6 +694,5 @@ void loadStorePass(Seq<Instr> &instrs) {
   instrs.clear();
   instrs << newInstrs;
 }
-
 
 }  // namespace V3DLib

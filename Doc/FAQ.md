@@ -15,7 +15,7 @@ Frequently Asked Questions
 
 # What are the differences between VideoCore IV and VI?
 
-There is no architecture specification available yet for VC5 and/or VC6.
+There is no architecture specification available yet for `VideoCore VI`.
 The stuff below is cobbled from whatever I and others have found out.
 The strategy appears to be to investigate the available open source drivers.
 
@@ -23,7 +23,7 @@ The strategy appears to be to investigate the available open source drivers.
 
 ## What remains the same
 - The QPU pipeline stays mostly the same
-- you still have an add ALU and a multiply ALU and it can issue two ALU OPs per cycle.
+- You still have an add ALU and a multiply ALU and it can issue two ALU OPs per cycle.
 - There is still 4 SIMD lanes, interleaved over 4 cycles.
 - The theoretical max FLOPs per QPU remains the same at two per cycle
 
@@ -32,18 +32,29 @@ The strategy appears to be to investigate the available open source drivers.
 
 Here is an overview for the easily comparable stuff:
 
-| Item                | vc4             | v3d              | Comment |
-|---------------------|-----------------|------------------|-|
-| **Clock speed :**   | 400MHz (Pi3+)   | 500MHz           | |
-| **Num QPU's:**      | 12              | 8                | |
-| **Threads per QPU** |                 |                  | *Shows num available registers in register file per thread* |
-| 1 thread            | 64 registers    |  *not supported* | |
-| 2 threads           | 32 registers    | 64 registers     | |
-| 4 threads           | *not supported* | 32 registers     | |
+| Item                 | vc4             | v3d              | Comment |
+|----------------------|-----------------|------------------|-|
+| **Clock Speed :**    | 400MHz (Pi3+)   | 500MHz           | |
+| **Num QPU's:**       | 12              | 8                | |
+| **TMU gather limit:**|  4              | 8                | The maximum number of concurrent prefetches before QPU execution blocks |
+| **Threads per QPU**  |                 |                  | *Shows num available registers in register file per thread* |
+| 1 thread             | 64 registers    |  *not supported* | |
+| 2 threads            | 32 registers    | 64 registers     | |
+| 4 threads            | *not supported* | 32 registers     | |
+| **Data Transfer**    |                 |                  | |
+| DMA                  | read/write      | *not supported*  | |
+| VPM                  | read only       | read/write       | |
+| **Register File**    | 2x32 registers  | 1x64 registers   | |
 
-- vc5 added a four thread per QPU mode, with 16 registers per thread. vc5 was skipped in the Pi's.
-- v3d doubled the size of the register file (A and B combined).
+- There was also a 'VideoCore V' (let's call it `vc5`), which was skipped in the Pis.
+- `vc5` added a four thread per QPU mode, with 16 registers per thread.
+- Using threads in the QPU has effect upon the available resources: e.g. for two threads, the
+  TMU depth is halved (to 4) and only half the registers in a register file are available.
+- `vc4` has two 32-register register files, A and B. `v3d` has a single 64-register register file.
 
+`V3DLib` **does not implement multi-threading** and never will.
+The complexity is not worth it IMHO, and the benefits dubious.
+I believe that there is no performance gain to be found here, quite the contrary. 
 
 Further:
 
@@ -52,8 +63,10 @@ Further:
 - Instructions for packed 8 bit int math has been dropped, along with most of the pack modes.
 - Instructions for packed 16 bit float math has been added (2 floats at in a single operation)
 - the multiply ALU can now fadd, so you can issue two fadds per instruction.
-- the add ALU has gained a bunch of new instructions, that I don't recognise by name and I haven't explored.
-- the A and B register files have been merged. You still only get an A read and a B read per instruction, but they read from one big register file (which means the underlying memory block has gone from two sets of "one read port, one write port" to one "two read ports, one write port" block)
+- the add ALU has gained a bunch of new instructions.
+- the A and B register files have been merged.
+  You still only get an A read and a B read per instruction, but they read from one big register filei
+  (which means the underlying memory block has gone from two sets of "one read port, one write port" to one "two read ports, one write port" block)
 - It looks like a lot of effort has been put putting the theoretical FLOPs to better use.
 - Most of the design changes have gone to improving the fixed function hardware around the QPUs.
 - A fixed function blend unit has been added, which should reduce load on the QPUs when doing alpha blending.
@@ -71,6 +84,73 @@ This section records differences between the `vc4` and `v3d` QPU hardware and co
 
 The `vc4`-specific items can be found in the "VideoCore IV Architecture Reference Guide";
 the corresponding `v3d` stuff has mostly been found due to empirical research and hard thinking.
+
+### Data Transfer
+
+There are two transfer options, **VPM (DMA)** and **TMU**
+
+- `vc4` has VPM for read/write and *read-only* TMU 
+- `v3d` has *no* VPM<sup>[I]</sup>, and uses TMU for read/write
+
+**VPM** can execute one read and on write in parallel, but multiple reads and multiple writes block each other.
+The QPU will stall if a read has to wait on a read, or a write has to wait on a write.
+It has the advantage of being able to handle multiple 16-vectors in one go.
+
+**TMU** does not block *and* operations can overlap, up to a limit.
+Up to 4 (`vc4`) or 8 (`v3d`) read operations can be performed together,
+and (apparently) an unlimited number of writes.
+The read/write can perform in parallel with the QPU execution.
+The QPU does not need to stall at all (but it *is* possible).
+However, only one 16-vector is handled per go.
+
+**[I]**: *VPM IS mentioned in the QPU registers though, so it might be that I just never encountered*
+       *its usage for `v3d`. This might be something I may investigate when bored and nothing else to do.*
+
+#### Comparing VPM and TMU
+
+The following statements are the standard syntax used for transferring a 16-vector
+(a block of 16 float or int values, size 64 bytes) between QPU and main memory:
+
+    a = *ptr;
+    *ptr = a;
+
+On `vc4`, VPM was used for this by default. 
+I have lived under the assumption that VPM is faster than TMU, due to online hearsay,
+but I have now taken the time to check it.
+
+I took two IO-intensive kernels and changed the memory access to TMU while keeping
+the rest of the logic intact. This is the result:
+
+
+![VPM vs TMU](./images/vpm_tmu_compare.png)
+
+It turns out that TMU usage is actually faster.
+
+I examined further combinations as well with multiple QPU's:
+
+![VPM vs TMU multi-QPU](./images/vpm_tmu_compare_multi_qpu.png)
+
+*Various execution combinations for kernel Rot3D*
+
+To be honest, I was expecting more of a difference here between VPM and TMU.
+I expected TMU to be vastly better here.
+
+Of special note is that with kernels not optimized for multi-QPU usage, performance actually gets
+worse if more QPUs are added.
+
+In any case, the conclusion is inescapable:
+
+-----
+
+**For regular usage, TMU is always faster than VPM**
+
+-----
+
+It might be the case that TMU is still faster if more than one 16-vector is loaded per go,
+but I'm not going there.
+
+Based on this, I am making TMU usage the default for `vc4`. DMA will still be supported and checked in
+the unit tests.
 
 
 ### Setting of condition flags

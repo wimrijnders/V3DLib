@@ -63,7 +63,7 @@ void *mapmem(unsigned base, unsigned size)
 //#endif  // DEBUG
 
    if (mem == MAP_FAILED) {
-			char buf[64];
+      char buf[64];
       sprintf(buf, "mmap error %p\n", mem);
       fatal(buf);
    }
@@ -75,7 +75,7 @@ void unmapmem(void *addr, unsigned size)
 {
    int s = munmap(addr, size);
    if (s != 0) {
-			char buf[64];
+      char buf[64];
       sprintf(buf, "munmap error %d\n", s);
       fatal(buf);
    }
@@ -278,12 +278,12 @@ int mbox_open() {
    // open a char device file used for communicating with kernel mbox driver
    file_desc = open(DEVICE_FILE_NAME, 0);
    if (file_desc < 0) {
-			char buf[128];
+      char buf[128];
       sprintf(buf,
-					"Can't open device file: %s\n"
-      		"Try creating a device file with: sudo mknod %s c %d 0\n",
-					DEVICE_FILE_NAME, DEVICE_FILE_NAME, MAJOR_NUM
-			);
+          "Can't open device file: %s\n"
+          "Try creating a device file with: sudo mknod %s c %d 0\n",
+          DEVICE_FILE_NAME, DEVICE_FILE_NAME, MAJOR_NUM
+      );
       fatal(buf);
    }
    return file_desc;

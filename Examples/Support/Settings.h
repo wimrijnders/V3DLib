@@ -6,7 +6,7 @@
 
 namespace V3DLib {
 
-class KernelBase;
+class BaseKernel;
 
 struct Settings {
   std::string name;
@@ -22,9 +22,9 @@ struct Settings {
 
   Settings(CmdParameters *derived_params = nullptr, bool use_num_qpus = false);
 
-  int init(int argc, const char *argv[]);
-  void process(KernelBase &k);
-  virtual void init_params() {}
+  void init(int argc, const char *argv[]);
+  void process(BaseKernel &k);
+  virtual bool init_params() { return true; }
 
 private:
   CmdParameters * const m_derived_params;
