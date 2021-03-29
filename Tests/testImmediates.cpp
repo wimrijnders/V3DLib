@@ -7,7 +7,7 @@
  * two can be loaded directly, other values have to be constructed.
  * I haven't figured this out yet to full satisfaction.
  ******************************************************************************/
-#include "catch.hpp"
+#include "doctest.h"
 #include <V3DLib.h>
 
 using namespace V3DLib;
@@ -33,7 +33,7 @@ void immediate_kernel(Int::Ptr int_result, Float::Ptr float_result) {
 }  // anon namespace
 
 
-TEST_CASE("Test loading of immediates", "[dsl][imm]") {
+TEST_CASE("Test loading of immediates [dsl][imm]") {
   int const N = 3;  // Number of distinct results (1 more for float)
 
   Int::Array int_result(16*N);

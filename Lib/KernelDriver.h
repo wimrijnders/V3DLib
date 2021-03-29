@@ -6,7 +6,6 @@
 #include "Common/BufferType.h"
 #include "Common/CompileData.h"
 #include "Source/StmtStack.h"
-#include "Target/CFG.h"
 
 namespace V3DLib {
 

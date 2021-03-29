@@ -115,3 +115,29 @@ Message from syslogd@pi4-3 at Nov 21 05:12:55 ...    # Gets repeated before ever
 
 There is a [pending fix](https://github.com/raspberrypi/linux/pull/3816) for this.
 I am anxiously waiting for its release.
+
+
+## Fixed Issues
+
+This lists things never to forget.
+
+## Pi1 QPUs not enabled
+
+Call to `qpu_enable()` in `Mailbox.cpp` was failing. `/boot/config.txt` was as follows:
+
+```
+...
+[pi4]
+# Enable DRM VC4 V3D driver on top of the dispmanx display stack
+dtoverlay=vc4-fkms-v3d
+max_framebuffers=2
+
+[all]
+#dtoverlay=vc4-fkms-v3d
+dtoverlay=vc4-kms-v3d
+gpu_mem=128
+```
+
+Turns out that `dtoverlay` shouldi *not* be specified for Pi1. Commenting out `dtoverlay` in the all-section
+resolved the issue.
+ 

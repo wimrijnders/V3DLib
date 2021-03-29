@@ -1,9 +1,5 @@
-//
-// Control-flow graphs (CFGs)
-//
-// ============================================================================
-#ifndef _V3DLIB_CFG_H_
-#define _V3DLIB_CFG_H_
+#ifndef _V3DLIB_LIVENESS_CFG_H_
+#define _V3DLIB_LIVENESS_CFG_H_
 #include "Common/Set.h"
 #include "Target/instr/Instr.h"
 
@@ -14,7 +10,7 @@ using Succs = SmallSet<InstrId>;               // Set of successors.
 
 
 /**
- * Control Flow Graph
+ * Control Flow Graph (CFG)
  *
  * Set of successors for each instruction.
  */
@@ -41,4 +37,4 @@ private:
 
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_CFG_H_
+#endif  // _V3DLIB_LIVENESS_CFG_H_

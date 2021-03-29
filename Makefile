@@ -180,6 +180,7 @@ clean:
 	rm -rf obj/emu obj/emu-debug obj/qpu obj/qpu-debug obj/test
 
 init:
+	@./script/install.sh
 	@./script/detect_tabs.sh
 	@mkdir -p ./obj/test
 

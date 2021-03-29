@@ -2,12 +2,12 @@
 
 ## General
 
-- [ ] Automate loading of new versions external libraries
-- [ ] Get `Pi 1` running again; fails in `qpu_enable()`
 - [ ] Make heap memory size configurable (ideally cmdline option)
 - [ ] Initializing a Float/Complex(/Int?) variable without value may not add variable to target code.
       This is a consequence of fixing liveness allocation for dst vars in  conditional instructions.
       Examine, report, prevent, fix.
+- [x] Get `Pi 1` running again; fails in `qpu_enable()`
+- [x] Automate loading of new versions external libraries
 - [x] Fix indentation tabs/spaces
 - [x] `vc4` set TMU transfer as default. Selecting DMA should still be possible (also unit test it)
 - [x] Refactor derived settings in examples, too much duplicated screen noise.
@@ -33,7 +33,15 @@
 
 ## Compile source code
 
-- [ ] Following source lang leads to infinite recursion and segfault during compile, fix and/or prevent:
+- [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
+- [x] This does not work in source lang code, fix: `*dst = *src`, where dst/src are uniform pointers
+- [x] `If (a != b)` appears to do the same as `any(a != b)`, verify. *Result: Verified, identical*
+- [x] v3d, following generation is wrong: *Result: Verified, now correct*.
+- [x] Initializng with initializing var  in source lang leads to infinite recursion and segfault during compile
+
+*This can not be fixed - just keep it in mind*
+
+Example:
 ```
 Float x = freq*(x + toFloat(index() - offset));  // Note usage x in RHS (redacted from original)
 ```
@@ -53,10 +61,6 @@ warning: ‘x’ may be used uninitialized in this function [-Wmaybe-uninitializ
 In the case of `Int x = x` the compiler will happily compile, but the contents of `x` on the rhs
 are uninitialized and therefore garbage. Due to this, things likely explode on execution.
 
-- [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
-- [x] This does not work in source lang code, fix: `*dst = *src`, where dst/src are uniform pointers
-- [x] `If (a != b)` appears to do the same as `any(a != b)`, verify. *Result: Verified, identical*
-- [x] v3d, following generation is wrong: *Result: Verified, now correct*.
 - [x] ! Fix '+ 0' hack for kernel pointers, this is confusing
 
 Source code:

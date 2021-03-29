@@ -1,6 +1,6 @@
-#ifndef _V3DLIB_REMOVELABELS_H_
-#define _V3DLIB_REMOVELABELS_H_
-#include "Target/Liveness.h"
+#ifndef _V3DLIB_TARGET_REMOVELABELS_H_
+#define _V3DLIB_TARGET_REMOVELABELS_H_
+#include "Liveness/Liveness.h"
 #include "Support/basics.h"
 
 namespace V3DLib {
@@ -79,4 +79,4 @@ void removeLabels(Instructions &instrs) {
 
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_REMOVELABELS_H_
+#endif  // _V3DLIB_TARGET_REMOVELABELS_H_

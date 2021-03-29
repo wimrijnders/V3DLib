@@ -2,8 +2,6 @@
 #include "Support/basics.h"
 #include "Source/Interpreter.h"
 #include "Target/Emulator.h"
-#include "Target/CFG.h"
-#include "Target/Liveness.h"
 #include "Target/Pretty.h"
 
 namespace V3DLib {
@@ -87,8 +85,6 @@ void BaseKernel::emu() {
 
 /**
  * Invoke the interpreter
- *
- * The interpreter parses the CFG ('source code') directly.
  */
 void BaseKernel::interpret() {
   if (vc4().has_errors()) {

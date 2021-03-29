@@ -2,7 +2,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include "Support/Platform.h"
-#include "Target/Liveness.h"
+#include "Liveness/Liveness.h"
 #include "Target/instr/Instructions.h"
 
 namespace V3DLib {

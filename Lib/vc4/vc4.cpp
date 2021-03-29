@@ -7,22 +7,29 @@
 #include "../Support/debug.h"
 
 namespace V3DLib {
+namespace {
 
-// Globals
-int mailbox = -1;
+int mailbox     = -1;
 int numQPUUsers = 0;
 
-// Get mailbox (open if not already opened)
-int getMailbox()
-{
+}  // anon namespace
+
+
+/**
+ * Get mailbox id, opening it if not already open.
+ */
+int getMailbox() {
   if (mailbox < 0) mailbox = mbox_open();
   return mailbox;
 }
 
-// Enable QPUs (if not already enabled)
-void enableQPUs()
-{
+
+/**
+ * Enable QPUs if not already enabled.
+ */
+void enableQPUs() {
   int mb = getMailbox();
+
   if (numQPUUsers == 0) {
     int qpu_enabled = !qpu_enable(mb, 1);
     if (!qpu_enabled) {
@@ -32,11 +39,14 @@ void enableQPUs()
   numQPUUsers++;
 }
 
-// Disable QPUs
-void disableQPUs()
-{
+
+/**
+ * Disable QPUs
+ */
+void disableQPUs() {
   assert(numQPUUsers > 0);
   int mb = getMailbox();
+
   numQPUUsers--;
   if (numQPUUsers == 0) {
     qpu_enable(mb, 0);

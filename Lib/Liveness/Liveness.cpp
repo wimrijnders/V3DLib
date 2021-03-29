@@ -1,14 +1,14 @@
 ///////////////////////////////////////////////////////////////////////////////
-// Liveness analysis
+// Liveness Analysis
 //
 ///////////////////////////////////////////////////////////////////////////////
+#include "Liveness.h"
 #include <iostream>
 #include "Support/basics.h"
 #include "Support/Platform.h"
 #include "Target/Subst.h"
-#include "Target/Liveness.h"
 #include "Common/CompileData.h"
-#include "liveness/Optimizations.h"
+#include "Optimizations.h"
 
 namespace V3DLib {
 namespace {

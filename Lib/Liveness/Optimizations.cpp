@@ -1,6 +1,6 @@
 #include "Optimizations.h"
 #include <iostream>
-#include "../Liveness.h"
+#include "Liveness.h"
 #include "Support/Platform.h"
 #include "Target/Subst.h"
 

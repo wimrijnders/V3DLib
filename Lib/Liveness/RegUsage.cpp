@@ -1,7 +1,7 @@
 #include "RegUsage.h"
 #include "Support/basics.h"
 #include "Support/Platform.h"  // size_regfile()
-#include "../Liveness.h"
+#include "Liveness.h"
 #include "UseDef.h"
 
 namespace V3DLib {

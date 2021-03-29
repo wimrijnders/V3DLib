@@ -1,4 +1,4 @@
-#include "catch.hpp"
+#include "doctest.h"
 #include <math.h>
 #include "Kernels/Rot3D.h"
 #include "LibSettings.h"
@@ -38,8 +38,8 @@ void compareResults(
       REQUIRE(x1[i] == x2[i]);
       REQUIRE(y1[i] == y2[i]);
     } else {
-      REQUIRE(x1[i] == Approx(x2[i]).epsilon(0.001));
-      REQUIRE(y1[i] == Approx(y2[i]).epsilon(0.001));
+      REQUIRE(x1[i] == doctest::Approx(x2[i]).epsilon(0.001));
+      REQUIRE(y1[i] == doctest::Approx(y2[i]).epsilon(0.001));
     }
   }
 }
@@ -49,7 +49,7 @@ void compareResults(
 // The actual tests
 // ============================================================================
 
-TEST_CASE("Test working of Rot3D example", "[rot3d]") {
+TEST_CASE("Test working of Rot3D example [rot3d]") {
   // Number of vertices and angle of rotation
   const int N = 16*12*10;  // 1920
   const float THETA = (float) 3.14159;
@@ -76,7 +76,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
    * For this reason, separate contexts are used for each kernel. This results in the BO being completely
    * cleared for the next kernel.
    */
-  SECTION("All kernel versions should return the same") {
+  SUBCASE("All kernel versions should return the same") {
     //
     // Run the scalar version
     //
@@ -192,7 +192,7 @@ TEST_CASE("Test working of Rot3D example", "[rot3d]") {
   }
 
 
-  SECTION("Multiple kernel definitions should be possible") {
+  SUBCASE("Multiple kernel definitions should be possible") {
     if (!Platform::has_vc4()) {
       printf("NB: Rot3D unit test multiple kernels  not working on v3d, timeout hang (TODO)\n");
       return;

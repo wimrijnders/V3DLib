@@ -51,11 +51,15 @@ The following external libraries are used:
 1. **[CmdParameter](https://github.com/wimrijnders/CmdParameter)** 
 
 This is a library for handling command line parameters in a sane way, of my own making.
+The installation is included in the makefile, so usually you do not need to think about it.
 
-Use script `scripts/install.sh` to clone its repo and to build it.
+For explicit manual install, run script `scripts/install.sh` to clone its repo and to build it.
+This script needs to be run before the initial build of `V3DLib`, and after that only
+if the version number of `CmdParameter` changes.
 
-This script needs to be run only once, before the initial build of `V3DLib`.
-If project `CmdParameter` is changed, rerun this script to get and build the latest version.
+The update is handled in the makefile, but you can rerun it manually if desired.
+In that case, variable `expected_version` in script `scripts/install.sh` will probably also
+need to be updated.
 
 
 2. **[The Mesa 3D Graphics Library](https://gitlab.freedesktop.org/mesa/mesa)**

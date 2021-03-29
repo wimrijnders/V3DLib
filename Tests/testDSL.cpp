@@ -1,4 +1,3 @@
-#include "catch.hpp"
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -271,10 +270,10 @@ void complex_kernel(Complex::Ptr input, Complex::Ptr result) {
 // Unit tests
 //=============================================================================
 
-TEST_CASE("Test correct working DSL", "[dsl]") {
+TEST_CASE("Test correct working DSL [dsl]") {
   const int N = 25;  // Number of expected result vectors
 
-  SECTION("Test specific int instructions") {
+  SUBCASE("Test specific int instructions") {
     int const NUM = 1;
     vector<int> expected = {1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14};
 
@@ -295,7 +294,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
   }
 
 
-  SECTION("Test specific float instructions") {
+  SUBCASE("Test specific float instructions") {
     vector<float> expected;
    	expected.resize(16); 
 
@@ -331,7 +330,7 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
   //
   // Test all variations of If and When
   //
-  SECTION("Conditionals work as expected") {
+  SUBCASE("Conditionals work as expected") {
     auto k = compile(kernelIfWhen);
 
     Int::Array result(16*N);
@@ -359,8 +358,8 @@ TEST_CASE("Test correct working DSL", "[dsl]") {
 }
 
 
-TEST_CASE("Test construction of composed types in DSL", "[dsl][complex]") {
-  SECTION("Test Complex composed type") {
+TEST_CASE("Test construction of composed types in DSL [dsl][complex]") {
+  SUBCASE("Test Complex composed type") {
     const int N = 1;  // Number Complex items in vectors
 
     auto k = compile(complex_kernel);
@@ -452,8 +451,8 @@ void float_ops_kernel(Float::Ptr result) {
 }
 
 
-TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
-  SECTION("Test integer operations") {
+TEST_CASE("Test specific operations in DSL [dsl][ops]") {
+  SUBCASE("Test integer operations") {
     int const N = 11;  // Number of expected results
 
     auto k = compile(int_ops_kernel);
@@ -488,7 +487,7 @@ TEST_CASE("Test specific operations in DSL", "[dsl][ops]") {
   }
 
 
-  SECTION("Test float operations") {
+  SUBCASE("Test float operations") {
     int const N = 1;  // Number of expected results
 
     auto k = compile(float_ops_kernel);
@@ -528,10 +527,10 @@ void nested_for_kernel(Int::Ptr result) {
 }
 
 
-TEST_CASE("Test For-loops", "[dsl][for]") {
+TEST_CASE("Test For-loops [dsl][for]") {
   Platform::use_main_memory(true);
 
-  SECTION("Test nested For-loops") {
+  SUBCASE("Test nested For-loops") {
     auto k = compile(nested_for_kernel);
 
     Int::Array result(16);
@@ -566,7 +565,7 @@ void rot_kernel(Ptr result, Ptr a) {
 
 
 // This went wrong at some point
-TEST_CASE("Test rotate on emulator", "[emu][rotate]") {
+TEST_CASE("Test rotate on emulator [emu][rotate]") {
   Platform::use_main_memory(true);
   int const N = 4;
 
@@ -639,7 +638,7 @@ void offsets_kernel(Ptr result, Ptr src) {
 /**
  * Created in order to test init uniforms pointers with index() for vc4
  */
-TEST_CASE("Initialization with index() on uniform pointers should work as expected", "[dsl][offsets]") {
+TEST_CASE("Initialization with index() on uniform pointers should work as expected [dsl][offsets]") {
   int const N = 6;
 
   Int::Array a(3*16);
@@ -673,7 +672,7 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
   };
 
 
-  SECTION("Test with TMU") {
+  SUBCASE("Test with TMU") {
     auto k = compile(offsets_kernel<Int, Int::Ptr>);
     k.load(&result, &a);
 
@@ -691,7 +690,7 @@ TEST_CASE("Initialization with index() on uniform pointers should work as expect
   }
 
 
-  SECTION("Test with DMA") {
+  SUBCASE("Test with DMA") {
     LibSettings::use_tmu_for_load(false);
 
     auto k = compile(offsets_kernel<Int, Int::Ptr>);
@@ -761,7 +760,7 @@ float calc_max_diff(T1 &arr1, T2 &arr2, int size) {
 }
 
 
-TEST_CASE("Test functions", "[dsl][func]") {
+TEST_CASE("Test functions [dsl][func]") {
   int const NumValues       = 15;
   int const SharedArraySize = (NumValues/16 +1)*16;
 
@@ -795,7 +794,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
   /**
    * NOTE: Remember, sin/cos normalized on 2*M_PI
    */
-  SECTION("Test trigonometric functions") {
+  SUBCASE("Test trigonometric functions") {
     float const MAX_DIFF = 0.57f;  // Test value for extra_precision == false
 
     const int size   = 1000;
@@ -859,7 +858,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
   }
 
 
-  SECTION("Test ffloor()") {
+  SUBCASE("Test ffloor()") {
     float results_scalar[NumValues];
     for (int n = 0; n < NumValues; ++n) {
      results_scalar[n] = (float) floor(input[n]);
@@ -883,7 +882,7 @@ TEST_CASE("Test functions", "[dsl][func]") {
   }
 
 
-  SECTION("Test fabs()") {
+  SUBCASE("Test fabs()") {
     float results_scalar[NumValues];
     for (int n = 0; n < NumValues; ++n) {
      results_scalar[n] = (float) abs(input[n]);
@@ -953,10 +952,10 @@ void init_self_3_kernel() { Complex y = y; }
 }  // anon namespace
 
 
-TEST_CASE("Test issues", "[dsl][issues]") {
+TEST_CASE("Test issues [dsl][issues]") {
   Platform::use_main_memory(true);
 
-  SECTION("Verify issues") {
+  SUBCASE("Verify issues") {
     int const N = 6;
 
     auto k = compile(issues_kernel);
@@ -996,7 +995,7 @@ TEST_CASE("Test issues", "[dsl][issues]") {
    * This test only checks for `Int x = x;`, the simplest case possible.
    * Anything more elaborate, forget it. I've racked my brain on this, there is no salvation.
    */
-  SECTION("Check init self issue") {
+  SUBCASE("Check init self issue") {
     {
       auto k = compile(init_self_1_kernel);
       REQUIRE(k.has_errors());
