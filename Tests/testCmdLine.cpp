@@ -1,4 +1,3 @@
-#include "catch.hpp"
 #include <unistd.h>           // for geteuid()
 #include <sys/types.h>        // idem
 #include "Support/Platform.h"
@@ -104,7 +103,7 @@ void check_output_example(std::string const &program, std::string const &extra_p
 //
 // Better would be to check if the first line is the same
 //
-TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline]") {
+TEST_CASE("Detect platform scripts should both return the same thing [cmdline]") {
   init_msg();
   int ret1 = system(BIN_PATH "/detectPlatform > /dev/null");
   bool success1 = (ret1 == 0);
@@ -117,16 +116,16 @@ TEST_CASE("Detect platform scripts should both return the same thing", "[cmdline
 }
 
 
-TEST_CASE("Check correct output example programs for all three run options", "[cmdline]") {
+TEST_CASE("Check correct output example programs for all three run options [cmdline]") {
   init_msg();
   make_test_dir();
 
-  SECTION("Check output ReqRecv") { check_output_example("ReqRecv"); }
-  SECTION("Check output ID")      { check_output_example("ID"); }
-  SECTION("Check output Hello")   { check_output_example("Hello"); }
-  SECTION("Check output GCD")     { check_output_example("GCD"); }
-  SECTION("Check output Tri")     { check_output_example("Tri"); }
-  SECTION("Check output OET")     { check_output_example("OET"); }
+  SUBCASE("Check output ReqRecv") { check_output_example("ReqRecv"); }
+  SUBCASE("Check output ID")      { check_output_example("ID"); }
+  SUBCASE("Check output Hello")   { check_output_example("Hello"); }
+  SUBCASE("Check output GCD")     { check_output_example("GCD"); }
+  SUBCASE("Check output Tri")     { check_output_example("Tri"); }
+  SUBCASE("Check output OET")     { check_output_example("OET"); }
 
   // Rot3D, the expected output is taken from the scalar kernel
   // For v3d, the match should be exact in all cases.
@@ -135,8 +134,8 @@ TEST_CASE("Check correct output example programs for all three run options", "[c
   // In addition, at time of writing the multi-QPU version of kernel 2 is not working
 
   if (running_on_v3d()) {
-    SECTION("Check output Rot3D")   { check_output_example("Rot3D", "-d -k=2"); }
-    SECTION("Check output Rot3D")   { check_output_example("Rot3D", "-d -k=1"); }
+    SUBCASE("Check output Rot3D")   { check_output_example("Rot3D", "-d -k=2"); }
+    SUBCASE("Check output Rot3D")   { check_output_example("Rot3D", "-d -k=1"); }
   } else {
     // These should be no problem
     check_output_run("Rot3D", INTERPRETER, "-d -k=1");

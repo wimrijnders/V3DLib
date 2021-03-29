@@ -7,7 +7,7 @@
 #include <cstdio>
 #include <vector>
 #include <stdint.h>
-#include "../catch.hpp"
+#include "../doctest.h"
 #include "Support/basics.h"
 #include "Source/Int.h"
 #include "Source/Float.h"

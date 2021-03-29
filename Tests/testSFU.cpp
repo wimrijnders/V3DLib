@@ -1,5 +1,6 @@
-#include "catch.hpp"
+#include "doctest.h"
 #include <iostream>
+#include <cmath>
 #include "V3DLib.h"
 
 using namespace V3DLib;
@@ -30,7 +31,7 @@ void check(Float::Array &results, double precision) {
 }  // anon namespace
 
 
-TEST_CASE("Test SFU functions", "[sfu]") {
+TEST_CASE("Test SFU functions [sfu]") {
   //Platform::use_main_memory(true);  // Remove this when testing on hardware QPUs
 
   int N = 6;  // Number of results returned

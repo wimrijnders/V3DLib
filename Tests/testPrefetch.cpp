@@ -1,4 +1,3 @@
-#include "catch.hpp"
 #include <V3DLib.h>
 #include "support/support.h"
 
@@ -85,10 +84,10 @@ void multi_prefetch_kernel(Int::Ptr result, Int::Ptr src) {
 }  // anon namespace
 
 
-TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
+TEST_CASE("Test prefetch on stmt stack [prefetch]") {
   int const N = 7;
 
-  SECTION("Test prefetch with integers") {
+  SUBCASE("Test prefetch with integers") {
     Int::Array src(16*N);
     for (int i = 0; i < (int) src.size(); ++i) {
       src[i] = i + 1;
@@ -113,7 +112,7 @@ TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
   }
 
 
-  SECTION("Test prefetch with floats") {
+  SUBCASE("Test prefetch with floats") {
     Float::Array src(16*N);
     for (int i = 0; i < (int) src.size(); ++i) {
       src[i] = (float) (i + 1);
@@ -133,7 +132,7 @@ TEST_CASE("Test prefetch on stmt stack", "[prefetch]") {
   } 
 
 
-  SECTION("Test more fetches than prefetch slots") {
+  SUBCASE("Test more fetches than prefetch slots") {
     const int N = 10;  // anything over 8 will result in prefetches after loads
 
     Int::Array src(16*N);
