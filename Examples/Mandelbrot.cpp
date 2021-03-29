@@ -50,7 +50,7 @@ CmdParameters params = {
     "Dimension",
     "-dim=",
     ParamType::POSITIVE_INTEGER,
-    "Number of steps (or i'pixels') in horizontal and vertical direction",
+    "Number of steps (or 'pixels') in horizontal and vertical direction",
     1024
   }}
 };

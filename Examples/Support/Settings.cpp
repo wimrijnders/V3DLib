@@ -65,12 +65,12 @@ CmdParameters base_params = {
   {{
     "Output Generated Code",
     "-f",
-    ParamType::NONE,     // Prefix needed to dsambiguate
+    ParamType::NONE,     // Prefix needed to disambiguate
     "Write representations of the generated code to file"
   }, { 
     "Compile Only",
     "-c",
-    ParamType::NONE,     // Prefix needed to dsambiguate
+    ParamType::NONE,
     "Compile the kernel but do not run it"
   }, {
     "Select run type",
@@ -80,14 +80,14 @@ CmdParameters base_params = {
   }, {
     "Disable logging",
     {"-s", "-silent"},
-    ParamType::NONE,     // Prefix needed to dsambiguate
+    ParamType::NONE,
     "Do not show the logging output on standard output"
 #ifdef QPU_MODE
     }, {
     "Performance Counters",
     "-pc",
     ParamType::NONE,
-    "Show the values of the performance counters (vc4 only)"
+    "Show the values of the performance counters"
 #endif  // QPU_MODE
     }, {
     "QPU timeout",

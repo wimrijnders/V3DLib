@@ -1,9 +1,10 @@
-#include "catch.hpp"
+#include "doctest.h"
+#include <memory>
 #include "Common/SharedArray.h"
 #include "Target/BufferObject.h"
 
 
-TEST_CASE("Test Buffer Objects", "[bo]") {
+TEST_CASE("Test Buffer Objects [bo]") {
   using Data = V3DLib::Data;
   using SharedArrays = std::vector<std::unique_ptr<Data>>;
 
@@ -16,7 +17,7 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
   };
     
 
-  SECTION("Freeing up a BO in a controlled manner should work") {
+  SUBCASE("Freeing up a BO in a controlled manner should work") {
     const int NUM_ARRAYS = 7;
 
     REQUIRE(heap.empty());
@@ -45,7 +46,7 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
   }
 
 
-  SECTION("BO should be empty when SharedArray instances go out of scope") {
+  SUBCASE("BO should be empty when SharedArray instances go out of scope") {
     const int NUM_ARRAYS = 5;
 
     {
@@ -68,7 +69,7 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
   }
 
 
-  SECTION("BO should survive chaotic assignment of SharedArray instances") {
+  SUBCASE("BO should survive chaotic assignment of SharedArray instances") {
     const int NUM_PASSES = 200;  // Not too big, to prevent heap overflow
     const int NUM_ARRAYS = 10;
 
@@ -100,7 +101,7 @@ TEST_CASE("Test Buffer Objects", "[bo]") {
   }
 
 
-  SECTION("Heap view should not be marked as freed space") {
+  SUBCASE("Heap view should not be marked as freed space") {
     {
       Data view;
       view.heap_view(heap);

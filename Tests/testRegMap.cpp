@@ -1,4 +1,4 @@
-#include "catch.hpp"
+#include "doctest.h"
 #include <cstdlib>
 #include "../Lib/Target/Emulator.h"  // MAX_QPUS
 #include "../Lib/Support/Platform.h"
@@ -10,9 +10,9 @@
 
 using V3DLib::Platform;
 
-TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
+TEST_CASE("Test correct working of RegisterMap [regmap]") {
 
-  SECTION("Check num QPU's vc4") {
+  SUBCASE("Check num QPU's vc4") {
     if (!Platform::has_vc4()) return;
     const int MAX_QPUS = 12;
 
@@ -26,7 +26,7 @@ TEST_CASE("Test correct working of RegisterMap", "[regmap]") {
     V3DLib::disableQPUs();
   }
 
-  SECTION("Check num QPU's v3d") {
+  SUBCASE("Check num QPU's v3d") {
     if (Platform::has_vc4()) return; 
     const int MAX_QPUS_V3D = 8;  // Expected num QPU's
 

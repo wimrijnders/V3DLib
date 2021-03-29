@@ -1,6 +1,6 @@
 # V3DLib
 
-**Version 0.5.5**
+**Version 0.5.6**
 
 `V3DLib` is a C++ library for creating programs to run on the VideoCore GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 
@@ -38,11 +38,6 @@ See the Build Instructions for details.
 
 > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # Get only latest commit
 > cd V3DLib
-    
-# As long as the external libraries don't change, you need to run this script only once.
-> script/install.sh                                              # Pull in and build external library
-# After this, it is sufficient to do just the following line for a build
-    
 > make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
                                                                  # GPU support.
     

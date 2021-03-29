@@ -2,7 +2,7 @@
 #define _V3DLIB_LIVENESS_REGUSAGE_H_
 #include <vector>
 #include <string>
-#include "../instr/Instr.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 

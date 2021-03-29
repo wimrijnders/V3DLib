@@ -1,6 +1,6 @@
 #ifndef _V3DLIB_LIVENESS_OPTIMIZATIONS_H_
 #define _V3DLIB_LIVENESS_OPTIMIZATIONS_H_
-#include "../instr/Instr.h"
+#include "Target/instr/Instr.h"
 
 namespace V3DLib {
 

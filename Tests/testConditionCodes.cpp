@@ -117,29 +117,18 @@ ByteCode qpu_cond_push_a() {
   return bytecode;
 }
 
-/*
-void dump_code(ByteCode &code) {
-  for (uint32_t offset = 0; offset < code.size(); ++offset) {
-    std::cout << Instr::mnemonic(code[offset]) << "\n";
-  }
-
-  std::cout << std::endl;
-}
-*/
-
 }  // anon namespace
 
 
-TEST_CASE("Check v3d condition codes", "[v3d][cond]") {
+TEST_CASE("Check v3d condition codes [v3d][cond]") {
   using namespace V3DLib::v3d;
 
-  SECTION("Test condition push a") {
+  SUBCASE("Test condition push a") {
     if (!running_on_v3d()) return;
     const int DATA_SIZE = 16;
 
     ByteCode bytecode = qpu_cond_push_a();
     BufferObject heap(10*1024);  // arbitrary size, large enough
-    //dump_code(bytecode);
 
     Code code((uint32_t) bytecode.size(), heap);
     code.copyFrom(bytecode);
@@ -216,9 +205,8 @@ void andor_kernel(Int::Ptr result) {
 
   Where ( a >=  4 &&  a <= 8)             r = 1; End; next(result, r);
   Where ( a <   4 ||  a >  8)             r = 1; End; next(result, r);
-  Where ( a >   4 &&  a <  8  || a > 12)  r = 1; End; next(result, r);
-  Where ( a >   4 && (a <  8  || a > 12)) r = 1; End; next(result, r); // BORING! Same result as previous
   Where ((a >   4 &&  a <  8) || a > 12)  r = 1; End; next(result, r); // TODO find better examples with differing res
+  Where ( a >   4 && (a <  8  || a > 12)) r = 1; End; next(result, r); // BORING! Same result as previous
 
   Int b = index();
   Where ( a > 6 && a < 12  &&  b >  8 && b < 14)  r = 1; End; next(result, r);
@@ -389,11 +377,10 @@ void check_andor_result(Int::Array  &result) {
   check(result, 1, expected_or);
   check(result, 2, expected_combined);
   check(result, 3, expected_combined);
-  check(result, 4, expected_combined);
+  check(result, 4, expected_multi_and);
   check(result, 5, expected_multi_and);
-  check(result, 6, expected_multi_and);
-  check(result, 7, expected_multi_andor);
-  check(result, 8, expected_multi_else);
+  check(result, 6, expected_multi_andor);
+  check(result, 7, expected_multi_else);
 }
 
 
@@ -419,7 +406,7 @@ void check_pgm(std::string const &filename) {
 }  // anon namespace
 
 
-TEST_CASE("Test Where blocks", "[where][cond]") {
+TEST_CASE("Test Where blocks [where][cond]") {
   int const NUM_TESTS = 7;
 
   auto k = compile(where_kernel);
@@ -485,7 +472,7 @@ namespace {
  * This is meant as a precursor for the following test,
  * to ensure that the contents of the double loops work as expected
  */
-TEST_CASE("Test if/where without loop", "[noloop][cond]") {
+TEST_CASE("Test if/where without loop [noloop][cond]") {
   //printf(" Doing test: Test if/where without loop\n");
 
   make_test_dir();
@@ -493,7 +480,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   uint32_t expected_2[VEC_SIZE]  = {1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1};
 
 
-  SECTION("Testing noloop_where_kernel") {
+  SUBCASE("Testing noloop_where_kernel") {
     Int::Array result(VEC_SIZE);
 
     auto k1 = compile(noloop_where_kernel);
@@ -509,7 +496,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   }
 
 
-  SECTION("Testing noloop_if_and_where_kernel") {
+  SUBCASE("Testing noloop_if_and_where_kernel") {
     Int::Array result(VEC_SIZE);
 
     auto k2 = compile(noloop_if_and_kernel);
@@ -522,7 +509,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   }
 
 
-  SECTION("Testing noloop_multif_kernel") {
+  SUBCASE("Testing noloop_multif_kernel") {
     Int::Array result(VEC_SIZE);
 
     auto k3 = compile(noloop_multif_kernel);
@@ -541,7 +528,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
   }
 
 
-  SECTION("Testing noloop_if_andor_kernel") {
+  SUBCASE("Testing noloop_if_andor_kernel") {
     Int::Array result(VEC_SIZE);
 
     auto k4 = compile(noloop_if_andor_kernel);
@@ -560,7 +547,7 @@ TEST_CASE("Test if/where without loop", "[noloop][cond]") {
 }
 
 
-TEST_CASE("Test multiple and/or", "[andor][cond]") {
+TEST_CASE("Test multiple and/or [andor][cond]") {
   make_test_dir();
 
   int const width  = 48;
@@ -574,7 +561,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
   };
 
 
-  SECTION("Test Where blocks with and/or") {
+  SUBCASE("Test Where blocks with and/or") {
     const int NUM_TESTS = 9;
     Int::Array result(NUM_TESTS*VEC_SIZE);
 
@@ -595,7 +582,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
   }
 
 
-  SECTION("Test andor_where_kernel") {
+  SUBCASE("Test andor_where_kernel") {
     Float::Array result(width*height);
 
     auto k1 = compile(andor_where_kernel);
@@ -616,7 +603,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
   }
 
 
-  SECTION("Test andor_if_kernel") {
+  SUBCASE("Test andor_if_kernel") {
     Float::Array result(width*height);
 
     auto k2 = compile(andor_if_kernel);
@@ -636,7 +623,7 @@ TEST_CASE("Test multiple and/or", "[andor][cond]") {
   }
 
 
-  SECTION("Test andor_multi_if_kernel") {
+  SUBCASE("Test andor_multi_if_kernel") {
     Float::Array result(width*height);
 
     auto k3 = compile(andor_multi_if_kernel);

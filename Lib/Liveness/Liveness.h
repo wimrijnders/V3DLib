@@ -2,13 +2,13 @@
 // Liveness analysis
 //
 ///////////////////////////////////////////////////////////////////////////////
-#ifndef _V3DLIB_LIVENESS_H_
-#define _V3DLIB_LIVENESS_H_
+#ifndef _V3DLIB_LIVENESS_LIVENESS_H_
+#define _V3DLIB_LIVENESS_LIVENESS_H_
 #include <string>
 #include <vector>
 #include "CFG.h"
-#include "liveness/RegUsage.h"
-#include "liveness/UseDef.h"
+#include "RegUsage.h"
+#include "UseDef.h"
 
 namespace V3DLib {
 
@@ -96,4 +96,4 @@ void allocate_registers(Instr::List &instrs, RegUsage const &alloc);
 
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_LIVENESS_H_
+#endif  // _V3DLIB_LIVENESS_LIVENESS_H_

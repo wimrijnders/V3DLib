@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sun 21 Mar 2021 07:31:38 AM CET
+# Generated on: Sun 28 Mar 2021 06:10:10 AM CEST
 #
 ###############################################################################
 
@@ -10,9 +10,6 @@ OBJ := \
   Target/Subst.o  \
   Target/BufferObject.o  \
   Target/Pretty.o  \
-  Target/liveness/UseDef.o  \
-  Target/liveness/Optimizations.o  \
-  Target/liveness/RegUsage.o  \
   Target/instr/ALUOp.o  \
   Target/instr/Conditions.o  \
   Target/instr/Reg.o  \
@@ -22,10 +19,8 @@ OBJ := \
   Target/instr/Imm.o  \
   Target/SmallLiteral.o  \
   Target/EmuSupport.o  \
-  Target/Liveness.o  \
   Target/Emulator.o  \
   Target/Satisfy.o  \
-  Target/CFG.o  \
   BaseKernel.o  \
   Source/Lang.o  \
   Source/Cond.o  \
@@ -59,6 +54,11 @@ OBJ := \
   Common/CompileData.o  \
   Kernels/Rot3D.o  \
   Kernels/Matrix.o  \
+  Liveness/UseDef.o  \
+  Liveness/Optimizations.o  \
+  Liveness/RegUsage.o  \
+  Liveness/Liveness.o  \
+  Liveness/CFG.o  \
   LibSettings.o  \
   v3d/PerformanceCounters.o  \
   v3d/v3d.o  \

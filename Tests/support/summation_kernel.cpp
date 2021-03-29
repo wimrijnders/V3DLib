@@ -6,32 +6,8 @@ namespace {
 
 using Data = V3DLib::Data;
 using Code = V3DLib::SharedArray<uint64_t>;
-
-/*
-void check_returned_registers(Data &Y) {
-  uint32_t cur_QPU;
-
-  for (uint32_t offset = 0; offset < Y.size(); ++offset) {
-    uint32_t this_QPU = offset / 16;
-
-    if (this_QPU != cur_QPU) {
-      printf("\n");
-      cur_QPU = this_QPU;
-      printf("%u: ", cur_QPU);
-    } 
-
-    bool used = Y[offset] != 0;
-    if (used) {
-      printf("%u, ", offset % 16);
-    }
-  }
-
-  printf("\n");
-}
-*/
-
-
 using Instructions = V3DLib::v3d::Instructions;
+
 
 /**
  * Determine address offset for address registers.
@@ -1014,26 +990,6 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
   drv.add_bo(heap);
   REQUIRE(drv.execute(code, &unif, num_qpus));
 
-  //dump_data(Y, true);
-  //check_returned_registers(Y);
-  //heap.detect_used_blocks();
-
-/*
-  // Check if code not overwritten
-  for (uint32_t offset = 0; offset < summation.size(); ++offset) {
-    INFO("Code offset: " << offset);
-    REQUIRE(code[offset] == summation[offset]);
-  }
-
-  // Check if X not overwritten
-  for (uint32_t offset = 0; offset < X.size(); ++offset) {
-    INFO("X offset: " << offset);
-    REQUIRE(X[offset] == offset);
-  }
-
-  heap.find_value(1736704u); // 4278190080u;
-*/
-  
   // Check if values supplied
   REQUIRE(sumY()  == 1llu*(length - 1)*length/2);
 #endif  // QPU_MODE

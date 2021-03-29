@@ -3,14 +3,12 @@
 // This tests the required components for matrix multiplication
 //
 ///////////////////////////////////////////////////////////////////////////////
-#include "catch.hpp"
 #include <iostream>
 #include <string>
 #include <V3DLib.h>
 #include "LibSettings.h"
 #include "support/support.h"
 #include "Support/basics.h"
-#include "support/support.h"
 #include "Support/Timer.h"
 #include "Support/pgm.h"
 #include "Kernels/Matrix.h"
@@ -194,7 +192,7 @@ void test_dotvector() {
       INFO("N: " << N);
       REQUIRE(result[i] == expected);
     } else {
-      REQUIRE(result[i] == -2);
+      REQUIRE(result[i] == -2.0f);
     }
   }
 
@@ -202,7 +200,7 @@ void test_dotvector() {
   a.fill(1);
   k.load(&b, &a, &result);
   run_kernel(k);
-  REQUIRE(result[0] == 16*N);
+  REQUIRE(result[0] == (float) (16*N));
 }
 
 
@@ -242,9 +240,9 @@ void check_matrix_results(
   for (int r = 0; r < a.rows(); r++) {
     for (int c = 0; c < a.columns(); c++) {
       if (r == c) {
-        REQUIRE(a[r][c] == 1);
+        REQUIRE(a[r][c] == 1.0f);
       } else {
-        REQUIRE(a[r][c] == 0);
+        REQUIRE(a[r][c] == 0.0f);
       }
     }
   }
@@ -259,9 +257,9 @@ void check_matrix_results(
     for (int c = 0; c < result.columns(); c++) {
       INFO("rows: " << result.rows() << ", (r,c): (" << r << ", " << c << ")");
       if (r == c) {
-        REQUIRE(result[r][c] == 1);
+        REQUIRE(result[r][c] == 1.0f);
       } else {
-        REQUIRE(result[r][c] == 0);
+        REQUIRE(result[r][c] == 0.0f);
       }
     }
   }
@@ -389,10 +387,10 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
 }  // anon namespace
 
 
-TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
+TEST_CASE("Test matrix algebra components [matrix][comp]") {
   using namespace V3DLib;
 
-  SECTION("Check scalar matrix multiplication") {
+  SUBCASE("Check scalar matrix multiplication") {
     int const N = 16;  // Dimension of square matrix
     int const SIZE = N*N;
 
@@ -408,12 +406,12 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
     kernels::square_matrix_mult_scalar(N, c, a, b);
     
     for (int i = 0; i < SIZE; i++) {
-      REQUIRE(c[i] == 32);
+      REQUIRE(c[i] == (float) 32);
     }
   }
 
 
-  SECTION("Check rotate sum") {
+  SUBCASE("Check rotate sum") {
     Float::Array vec(16);
     vec.fill(0.3f);
 
@@ -441,7 +439,7 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
   }
 
 
-  SECTION("Check setting single vector element") {
+  SUBCASE("Check setting single vector element") {
     Float::Array vec(16);
 
     for (int i = 0; i < (int) vec.size(); i++) {
@@ -459,7 +457,7 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
       if (i == 0) {
         REQUIRE(result[i] == vec[i]);
       } else {
-        REQUIRE(result[i] == -1);
+        REQUIRE(result[i] == -1.0f);
       }
     }
 
@@ -470,13 +468,13 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
       if (i == 0 || i == 7) {
         REQUIRE(result[i] == vec[i]);
       } else {
-        REQUIRE(result[i] == -1);
+        REQUIRE(result[i] == -1.0f);
       }
     }
   }
 
 
-  SECTION("Check correct working dotvector") {
+  SUBCASE("Check correct working dotvector") {
     test_dotvector<1>();
     test_dotvector<2>();
     test_dotvector<4>();
@@ -485,8 +483,8 @@ TEST_CASE("Test matrix algebra components", "[matrix][comp]") {
 }
 
 
-TEST_CASE("Test matrix algebra", "[matrix][mult]") {
-  SECTION("Check matrix multiplication") {
+TEST_CASE("Test matrix algebra [matrix][mult]") {
+  SUBCASE("Check matrix multiplication") {
     test_square_matrix_multiplication(16);
     test_square_matrix_multiplication(2*16);
     test_square_matrix_multiplication(5*16);
@@ -497,8 +495,8 @@ TEST_CASE("Test matrix algebra", "[matrix][mult]") {
 }
 
 
-TEST_CASE("Test matrix algebra with varying sizes", "[matrix][mult][varying]") {
-  SECTION("Check matrix multiplication") {
+TEST_CASE("Test matrix algebra with varying sizes [matrix][mult][varying]") {
+  SUBCASE("Check matrix multiplication") {
     test_matrix_multiplication( 1,    16,   1);
     test_matrix_multiplication( 1,  5*16,   1);
     test_matrix_multiplication(10,    16,   5);
@@ -636,14 +634,14 @@ void test_complex_matrix_multiplication(
 }
 
 
-TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]") {
-  SECTION("Check correct working complex dotvector") {
+TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
+  SUBCASE("Check correct working complex dotvector") {
     test_complex_dotvector<1>();
     test_complex_dotvector<4>();
     test_complex_dotvector<10>();
   }
 
-  SECTION("Check complex matrix multiplication") {
+  SUBCASE("Check complex matrix multiplication") {
     test_complex_matrix_multiplication( 1,    16,   1, 1);
     test_complex_matrix_multiplication( 2,  3*16,   2, 1, {-1.0f, 2.0f});
     test_complex_matrix_multiplication( 2,  3*16,   2, 1, {-1.0f, 2.0f}, { 1.0f, -1.0f });
@@ -655,7 +653,7 @@ TEST_CASE("Test complex matrix algebra with varying sizes", "[matrix][complex]")
   }
 
 
-  SECTION("Compare pure real/im complex matrixes with real") {
+  SUBCASE("Compare pure real/im complex matrixes with real") {
     int const Dim = 16;
     int const Size = Dim*Dim;
 
@@ -973,13 +971,13 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
 }  // anon namespace
 
 
-TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
+TEST_CASE("Discrete Fourier Transform [matrix][dft]") {
 
   /**
    * Check out how DFT with a matrix looks like
    * Turns out that the precision is pretty lousy - still usable, though.
    */
-  SECTION("Check DFT matrix") {
+  SUBCASE("Check DFT matrix") {
     int const DimShift = 4;
     int const Dim = 1 << DimShift;
 
@@ -1029,7 +1027,7 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
   }
 
 
-  SECTION("Check DFT using standard matrix multiplication") {
+  SUBCASE("Check DFT using standard matrix multiplication") {
     int const Dim = DimTest;
 
     Complex::Array2D input(1, Dim);  // Create input; remember, transposed!
@@ -1084,8 +1082,8 @@ TEST_CASE("Discrete Fourier Transform", "[matrix][dft]") {
 }
 
 
-TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
-  SECTION("Check DFT with inline sin/cos") {
+TEST_CASE("Discrete Fourier Transform tmp [matrix][dft2]") {
+  SUBCASE("Check DFT with inline sin/cos") {
     int const Dim = 16*2;  // max vc4: 16*4. Max v3d is higher, at least 64*8
 
     Complex::Array2D input(1, Dim);  // Create input; remember, transposed!
@@ -1109,7 +1107,7 @@ TEST_CASE("Discrete Fourier Transform tmp", "[matrix][dft2]") {
     output_dft(input, result, "dft_inline");
   }
 
-  SECTION("All DFT calculations should return the same") {
+  SUBCASE("All DFT calculations should return the same") {
     bool do_profiling = false;
 
     if (!do_profiling) {

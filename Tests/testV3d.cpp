@@ -82,7 +82,7 @@ bool v3d_init() {
 // The actual tests
 //////////////////////////////////
 
-TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
+TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
   using namespace V3DLib::v3d::instr;
   using Instructions =  V3DLib::v3d::Instructions;
 
@@ -103,7 +103,7 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
    * - sin via register always returns 1.0
    * - ALU op's return nothing
    */
-  SECTION("Test SFU opcodes") {
+  SUBCASE("Test SFU opcodes") {
     // This is bothersome
     // TODO find way to avoid qualifying namespaces
     auto sin =  V3DLib::v3d::instr::sin;
@@ -219,7 +219,7 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
    * Added to investigate strange output with add/mov.
    * Works now, is a canary
    */
-  SECTION("Test add/mov") {
+  SUBCASE("Test add/mov") {
     Instructions instrs;
 
     instrs << nop().ldunifrf(rf(0))       // value to operate on
@@ -283,10 +283,10 @@ TEST_CASE("Test v3d opcodes", "[v3d][code][opcodes]") {
 /*
  * Adjusted from: https://gist.github.com/notogawa/36d0cc9168ae3236902729f26064281d
  */
-TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
+TEST_CASE("Check v3d code is working properly [v3d][code]") {
   if (!v3d_init()) return;
 
-  SECTION("Direct v3d calls should work with SharedArray") {
+  SUBCASE("Direct v3d calls should work with SharedArray") {
     using namespace V3DLib::v3d;
 
     uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
@@ -309,7 +309,7 @@ TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
     //printf("[submit done: %.6lf sec]\n", end - start);
   }
 
-  SECTION("v3d SharedArray should work as expected") {
+  SUBCASE("v3d SharedArray should work as expected") {
     const int SIZE = 16;
 
     Data arr(SIZE);
@@ -331,10 +331,10 @@ TEST_CASE("Check v3d code is working properly", "[v3d][code]") {
 }
 
 
-TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
+TEST_CASE("Driver call for v3d should work [v3d][driver]") {
   if (!v3d_init()) return;
 
-  SECTION("Summation example should work from bytecode") {
+  SUBCASE("Summation example should work from bytecode") {
     uint8_t num_qpus = 8;  // Don't change these values! That's how the summation kernel bytecode
     int unroll_shift = 5;  // was compiled.
 
@@ -342,7 +342,7 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
   }
 
 
-  SECTION("Summation example should work from kernel output") {
+  SUBCASE("Summation example should work from kernel output") {
     uint8_t num_qpus = 8;
     int unroll_shift = 5;
 
@@ -357,21 +357,21 @@ TEST_CASE("Driver call for v3d should work", "[v3d][driver]") {
   }
 
 
-  SECTION("Rotate example should work from bytecode") {
+  SUBCASE("Rotate example should work from bytecode") {
     run_rotate_alias_kernel(qpu_rotate_alias_code);
   }
 
 
-  SECTION("Rotate example should work from kernel output") {
+  SUBCASE("Rotate example should work from kernel output") {
     run_rotate_alias_kernel(rotate_kernel());
   }
 }
 
 
-TEST_CASE("Check v3d rotate assembly/disassembly", "[v3d][asm]") {
+TEST_CASE("Check v3d rotate assembly/disassembly [v3d][asm]") {
   using namespace V3DLib::v3d::instr;
 
-  SECTION("rotate kernel generates correctly encoded output") {
+  SUBCASE("rotate kernel generates correctly encoded output") {
     std::vector<uint64_t> arr = rotate_kernel();
     REQUIRE(arr.size() > 0);
 
@@ -381,10 +381,10 @@ TEST_CASE("Check v3d rotate assembly/disassembly", "[v3d][asm]") {
 }
 
 
-TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
+TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
   using namespace V3DLib::v3d::instr;
 
-  SECTION("Correct output of dump program") {
+  SUBCASE("Correct output of dump program") {
     struct v3d_device_info devinfo;  // NOTE: uninitialized struct! For test OK
     devinfo.ver = 42;               //        <-- only this needs to be set
 
@@ -416,7 +416,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
   }
 
 
-  SECTION("Summation kernel generates correctly encoded output") {
+  SUBCASE("Summation kernel generates correctly encoded output") {
     auto arr = summation_kernel(8, 5, 0);
     REQUIRE(arr.size() > 0);
 
@@ -427,7 +427,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
   }
 
 
-  SECTION("Register without mux definition should throw on usage") {
+  SUBCASE("Register without mux definition should throw on usage") {
     using namespace V3DLib::v3d::instr;
 
     REQUIRE_NOTHROW(r0.to_waddr());
@@ -441,13 +441,13 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
   }
 
 
-  SECTION("For opcode with two small immediates values, value should be the same") {
+  SUBCASE("For opcode with two small immediates values, value should be the same") {
     REQUIRE_THROWS(shl(r0, 1, 5));
     REQUIRE_NOTHROW(shl(r3, 4, 4));
   }
 
 
-  SECTION("Selected opcode should be encoded correctly") {
+  SUBCASE("Selected opcode should be encoded correctly") {
     using std::cout;
     using std::endl;
     //printf("Selected opcode should be encoded correctly\n");
@@ -468,7 +468,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
   }
 
 
-  SECTION("Opcode compare should work") {
+  SUBCASE("Opcode compare should work") {
     using namespace V3DLib::v3d::instr;
 
     // Non-branch instructions: direct compare
@@ -481,7 +481,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
   }
 
 
-  SECTION("qpu_disasm kernel generates correctly encoded output") {
+  SUBCASE("qpu_disasm kernel generates correctly encoded output") {
     auto &bytecode      = qpu_disasm_bytecode();
     auto  kernel_output = qpu_disasm_kernel();
     REQUIRE(kernel_output.size() > 0);
@@ -490,7 +490,7 @@ TEST_CASE("Check v3d assembly/disassembly", "[v3d][asm]") {
   }
 
 
-  SECTION("Opcodes not in qpu_disasm kernel assembled correctly") {
+  SUBCASE("Opcodes not in qpu_disasm kernel assembled correctly") {
     std::vector<Instr> ret;
 
     ret
