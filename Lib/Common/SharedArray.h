@@ -27,15 +27,7 @@ protected:
   BaseSharedArray(BufferObject *heap, uint32_t element_size);
   BaseSharedArray(uint32_t element_size) : BaseSharedArray(nullptr, element_size) {}
 
- /**
-  * Get actual offset within the heap for given index of current shared array.
-  */
-  uint32_t phy(uint32_t i) {
-    assert(m_phyaddr % m_element_size == 0);
-    int index = (int) (i - ((uint32_t) m_phyaddr/m_element_size));
-    assert(index >= 0);
-    return (uint32_t) index;
-  }
+  uint32_t phy(uint32_t i);
 
 private:
   BufferObject *m_heap = nullptr;  // Reference to used heap
@@ -84,16 +76,8 @@ public:
   }
 
 
-  T& operator[] (int i) { return access(i); }
-
-  T operator[] (int i) const {
-    assert(allocated());
-    assert(i >= 0);
-    assert(i < (int) size());
-
-    T* base = (T *) m_usraddr;
-    return (T) base[i];
-  }
+  T& operator[] (int i)       { return access(i); }
+  T  operator[] (int i) const { return access(i); }
 
 
   /**
@@ -157,12 +141,21 @@ public:
 
 protected:
 
-  T& access(int i) { 
+  T &access(int i) { 
     assert(allocated());
     assertq(i >= 0 && i < (int) size(), "SharedArray::[]: index outside of possible range", true);
 
-    T* base = (T *) m_usraddr;
+    T *base = (T *) m_usraddr;
     return (T&) base[i];
+  }
+
+  // grumbl
+  T access(int i) const { 
+    assert(allocated());
+    assertq(i >= 0 && i < (int) size(), "SharedArray::[]: index outside of possible range", true);
+
+    T *base = (T *) m_usraddr;
+    return base[i];
   }
 };
 
