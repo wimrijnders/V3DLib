@@ -18,6 +18,7 @@ public:
 
   uint32_t size() const { return m_size; }
   bool empty() const { return m_offset == 0; }
+  std::string dump() const;
 
   // Intended for unit tests
   uint32_t num_free_ranges() const { return (uint32_t) m_free_ranges.size(); }
