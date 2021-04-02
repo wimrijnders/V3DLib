@@ -193,45 +193,6 @@ The difference in speed is staggering. Even if you want to run on a `Pi 1`,
 you're probably better off building on a `Pi 4`.
 
 
-## Known Issues
-
-### Not `OpenGL` compatible
-
-`V3DLib` can not work on a Pi4 with `OpenGL` running. You need to run it without a GUI ('headless'),
-except for simple cases such as the `Hello` demo, which only outputs data.
-The issue is that the VideoCore L2 cache can not be shared with other applications when `OpenGL` is hogging it.
-
-It *is* possible to disable the L2 cache. This will affect performance badly, though.
-Also, from what I understand, youi will need a specially compiled linux kernel to deal with a disabled L2 cache.
-
-For `vc4`, there is a workaround for this: use DMA exclusively. For `v3d`, this is not an option.
-
-
-### 32-bit programs will not run with a 64-bit kernel
-
-While it is certainly possible to run 32-bit programs with a 64-bit kernel, the initialization code
-for buffer objects fails. The memory offset returned by the `v3d` device driver is invalid (in fact, it
-is the amount of available memory).
-
-To run with a 64-bit kernel, programs using `v3d` will need to be compiled as 64-bits also.
-
-
-### Some things will not run due to kernel issues
-
-There are still some parts which will compile perfectly but not run properly; notably the `Mandelbrot` demo
-will run *sometimes* on `v3d`, and otherwise hang.
-
-**NOTE 20210317:** `Mandelbrot` on 32-bit `v3d` is running fine now.
-                   There are still issues on 64-bit, where 'Timer expired' can still occur. Once that happens,
-                   the message pops up of every usage.
-
-This is in part due to issues in the linux kernel, see the [Issues page](Doc/Issues.md).
-There are also some unit tests which have the same problem, these are disabled when running on `VideoCore VI`.
-
-I haven't been able to resolve these issues and I am waiting for a kernel update with fixes.
-All code for the `VideoCore IV` compiles and runs fine.
-
-
 ## CPU/GPU memory split
 
 Depending on your plans, it may be useful to ensure that plenty of memory is available to the GPU.
