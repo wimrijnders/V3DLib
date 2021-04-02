@@ -102,5 +102,16 @@ void BaseSharedArray::heap_view(BufferObject &heap) {
   m_phyaddr = m_heap->phy_address();
 }
 
+
+/**
+ * Get actual offset within the heap for given index of current shared array.
+ */
+uint32_t BaseSharedArray::phy(uint32_t i) {
+  assert(m_phyaddr % m_element_size == 0);
+  int index = (int) (i - ((uint32_t) m_phyaddr/m_element_size));
+  assert(index >= 0);
+  return (uint32_t) index;
+}
+
 }  // namespace V3DLib
 

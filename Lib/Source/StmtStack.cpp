@@ -216,7 +216,10 @@ StmtStack &stmtStack() {
 
 
 void clearStack() {
-  assert(p_stmtStack != nullptr);
+  if (p_stmtStack == nullptr) {
+    // May occur if error occurs on init
+    return;
+  }
 
   p_stmtStack->resolve_prefetches();
   p_stmtStack = nullptr;
