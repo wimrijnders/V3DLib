@@ -41,7 +41,7 @@ bool HeapManager::check_available(uint32_t n) {
   assert(n > 0);
 
   if (m_offset + n >= m_size) {
-    fatal("V3DLib: heap overflow (increase heap size)");  // NOTE: doesn't return
+    fatal("V3DLib: heap overflow (increase heap size)");  // throws, doesn't return
     return false;
   }
 
@@ -218,6 +218,25 @@ void HeapManager::dealloc_array(FreeRange const in_range) {
     m_free_ranges.clear();
     //debug("BufferObject empty again!");
   }
+}
+
+
+std::string HeapManager::dump() const {
+  std::string ret;
+
+  uint32_t used_size = m_offset;
+
+  for (int i = 0; i < (int) m_free_ranges.size(); i++) {
+    auto const &item = m_free_ranges[i];
+    used_size -= item.size();
+  }
+
+  ret << "HeapManager Usage\n"
+      << "-----------------\n"
+      << "  Size/used      : " << size() << ", " << used_size << "\n"
+      << "  Num free ranges: " << num_free_ranges() << "\n";
+
+  return ret;
 }
 
 }  // namespace V3DLib

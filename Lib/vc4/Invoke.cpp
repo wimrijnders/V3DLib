@@ -65,12 +65,12 @@ void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList *params) {
   // Launch QPUs
   unsigned result = execute_qpu(mb, numQPUs, (uint32_t) launchMsgsPtr, 1, LibSettings::qpu_timeout()*1000);
 #else
-  assertq(false, "invoke() will not run on this platform, only on ARM 32-bits");
+  error("invoke() will not run on this platform, only on ARM 32-bits");
   unsigned result = 1;  // Force error message
 #endif
 
   if (result != 0) {
-    printf("Failed to invoke kernel on QPUs\n");
+    error("Failed to invoke kernel on QPUs\n");
   }
 }
 

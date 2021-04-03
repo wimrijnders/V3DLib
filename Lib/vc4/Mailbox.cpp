@@ -84,20 +84,16 @@ void unmapmem(void *addr, unsigned size)
 /*
  * use ioctl to send mbox property message
  */
-
 static int mbox_property(int file_desc, void *buf)
 {
    int ret_val = ioctl(file_desc, IOCTL_MBOX_PROPERTY, buf);
 
    if (ret_val < 0) {
-      printf("ioctl_set_msg failed:%d\n", ret_val);
-   }
 
-//#ifdef DEBUG
-//   unsigned *p = (unsigned*) buf; int i; unsigned size = *(unsigned *)buf;
-//    for (i=0; i<size/4; i++)
-//       printf("%04x: 0x%08x\n", i * (unsigned) sizeof(*p), p[i]);
-//#endif  // DEBUG
+//breakpoint
+
+      printf("ioctl_set_msg failed: %d\n", ret_val);
+   }
 
    return ret_val;
 }
@@ -123,6 +119,7 @@ unsigned get_version(int file_desc)
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
    mbox_property(file_desc, p);
+   //printf("get_version returns %d\n", p[5]);
    return p[5];
 }
 
@@ -144,6 +141,7 @@ unsigned mem_alloc(int file_desc, unsigned size, unsigned align, unsigned flags)
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
    mbox_property(file_desc, p);
+   //printf("mem_alloc returns %d\n", p[5]);
    return p[5];
 }
 
@@ -162,8 +160,13 @@ unsigned mem_free(int file_desc, unsigned handle)
    p[i++] = 0x00000000; // end tag
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
-   mbox_property(file_desc, p);
-   return p[5];
+   int ret = mbox_property(file_desc, p);
+   if (ret < 0) {
+     return (uint32_t) -1;  // Failure
+   } else {
+     // printf("mem_free returns %d\n", p[5]);
+     return p[5];  // On failure, this would return the passed in handle
+   }
 }
 
 unsigned mem_lock(int file_desc, unsigned handle)
@@ -182,9 +185,14 @@ unsigned mem_lock(int file_desc, unsigned handle)
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
    mbox_property(file_desc, p);
+   //printf("mem_lock returns %d\n", p[5]);
    return p[5];
 }
 
+
+/**
+ * @return ioctl return code on success, -1 on iotctl error
+ */
 unsigned mem_unlock(int file_desc, unsigned handle)
 {
    unsigned i=0;
@@ -200,10 +208,23 @@ unsigned mem_unlock(int file_desc, unsigned handle)
    p[i++] = 0x00000000; // end tag
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
-   mbox_property(file_desc, p);
-   return p[5];
+   int ret = mbox_property(file_desc, p);
+   if (ret < 0) {
+     return (uint32_t) -1;  // Failure
+   } else {
+     //printf("mem_unlock returns %d\n", p[5]);
+     return p[5];  // On failure, this would return the passed in handle
+   }
 }
 
+
+/**
+ * TODO What does this do??
+ *
+ * Apparently, a single instruction is passed in with values for all acc's.
+ * Is this a kind a debug statement, to check working of an instruction??
+ *
+ */
 unsigned execute_code(int file_desc, unsigned code, unsigned r0, unsigned r1, unsigned r2, unsigned r3, unsigned r4, unsigned r5)
 {
    unsigned int i=0;
@@ -226,6 +247,7 @@ unsigned execute_code(int file_desc, unsigned code, unsigned r0, unsigned r1, un
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
    mbox_property(file_desc, p);
+   //printf("execute_code returns %d\n", p[5]);
    return p[5];
 }
 
@@ -269,6 +291,7 @@ unsigned execute_qpu(int file_desc, unsigned num_qpus, unsigned control, unsigne
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
    mbox_property(file_desc, p);
+   //printf("execute_qpu returns %d\n", p[5]);
    return p[5];
 }
 

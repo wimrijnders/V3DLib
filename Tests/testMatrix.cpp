@@ -804,8 +804,10 @@ void output_dft(Complex::Array2D &input, Complex::Array2D &result, char const *f
  * @return  true if all kernels compiled something,
  *          false if any kernel failed compilation for vc4 as well as v3d
  */ 
-bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
-  assert(Dim > 0 && (Dim % 16 == 0));
+bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num_iterations = 1) {
+  REQUIRE(Dim > 0);
+  REQUIRE(Dim % 16 == 0);
+  REQUIRE(num_iterations > 0);
 
   //
   // Support Stuff
@@ -823,9 +825,10 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
 
     std::string str() const {
       std::string ret;
+      std::string params;
+      params << "\"-n=" << num_qpus << " " << "-d=" << Dim << "\"";
 
-      ret << tabbed(2, num_qpus) << ", " << tabbed(3, Dim) << ", "
-          << tabbed(16, label) << ", " << timer;
+      ret << tabbed(14, params) << ", " << timer;
 
       return ret;
     }
@@ -888,15 +891,18 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
     auto k = compile(kernels::complex_matrix_mult_decorator(input, dft_matrix, result_mult), for_platform);
     add_compile(label, timer1, Dim, 0);
 
-    if (!k.has_errors()) compiled += 1;
 
     if (!k.has_errors()) {
+      compiled += 1;
       k.load(&result_mult, &input, &dft_matrix);
 
       for (auto num : num_qpus) {
         k.setNumQPUs(num);
         Timer timer;
-        k.call();
+
+        for (int i = 0; i < num_iterations; i++) {
+          k.call();
+        }
         add_call(label, timer, Dim, num);
       }
     }
@@ -909,16 +915,17 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
     auto k = compile(kernels::dft_inline_decorator(input, result_complex), for_platform);
     add_compile(label, timer1, Dim, 0);
 
-    if (!k.has_errors()) compiled += 2;
-    //std::cout << k.get_errors() << "\n";
-
     if (!k.has_errors()) {
+      compiled += 2;
       k.load(&result_complex, &input);
 
       for (auto num : num_qpus) {
         k.setNumQPUs(num);
         Timer timer;
         k.call();
+        for (int i = 0; i < num_iterations; i++) {
+          k.call();
+        }
         add_call(label, timer, Dim, num);
       }
 
@@ -933,15 +940,18 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
     auto k = compile(kernels::dft_inline_decorator(input_float, result_float), for_platform);
     add_compile(label, timer1, Dim, 0);
 
-    if (!k.has_errors()) compiled += 4;
 
     if (!k.has_errors()) {
+      compiled += 4;
       k.load(&result_float, &input_float);
 
       for (auto num : num_qpus) {
         k.setNumQPUs(num);
         Timer timer;
-        k.call();
+
+        for (int i = 0; i < num_iterations; i++) {
+          k.call();
+        }
         add_call(label, timer, Dim, num);
       }
 
@@ -953,10 +963,21 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling) {
   //std::cout << result_complex.dump() << std::endl;
 
   if (do_profiling) {
-    std::string platform = (Platform::has_vc4())?"vc4":"v3d";
+    std::string platform = (Platform::pi_version());
+    std::string last_label;
 
     for (int i = 0; i < (int) output.size(); ++i) {
-      std::cout << platform << "     , " << output[i].str() << "\n";
+      auto const &item = output[i];
+
+      std::string str;
+      str << platform << "     , " << item.str() << ", ";
+
+      if (last_label != item.label) {
+        str << item.label;
+        last_label = item.label; 
+      }
+
+      std::cout << str << "\n";
     }
   } else {
     REQUIRE(compiled == 7);  // All bits for all kernels should be set
@@ -1108,7 +1129,7 @@ TEST_CASE("Discrete Fourier Transform tmp [matrix][dft2]") {
   }
 
   SUBCASE("All DFT calculations should return the same") {
-    bool do_profiling = false;
+    bool do_profiling = true;
 
     if (!do_profiling) {
       // Following is enough for the unit test
@@ -1117,9 +1138,11 @@ TEST_CASE("Discrete Fourier Transform tmp [matrix][dft2]") {
         REQUIRE(no_errors);
       }
     } else {
+      int const num_iterations = 10;
+
       // Profiling: try all sizes until compilation fails
-      std::cout << "DFT compare\n"
-                << "Platform,#QPU,DIM, Label           , Time\n";
+      std::cout << "DFT compare - " << num_iterations << " iterations\n"
+                << "Platform,         Params,     Time, Comments\n";
 
       std::vector<int> num_qpus;
       int Step = 1;
@@ -1135,9 +1158,9 @@ TEST_CASE("Discrete Fourier Transform tmp [matrix][dft2]") {
       int N = 1;
       bool can_continue = true;
       while (can_continue) {
-        can_continue = compare_dfts(16*N, num_qpus, true);
+        can_continue = compare_dfts(16*N, num_qpus, true, num_iterations);
         N += Step;
-        if (N > 6) break;
+        //if (N > 2) break;
       }
     }
   }

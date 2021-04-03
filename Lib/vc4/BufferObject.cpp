@@ -44,6 +44,8 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
 
 // Deallocation
 void BufferObject::dealloc() {
+  uint32_t const IOCTL_ERROR = (uint32_t) -1;
+
   if (arm_base == nullptr) {
     assert(handle == 0);
     assert(empty());
@@ -57,8 +59,13 @@ void BufferObject::dealloc() {
   // Free memory
   if (arm_base) unmapmem(arm_base, size());
   if (handle) {
-    mem_unlock(mb, handle);
-    mem_free(mb, handle);
+    if (IOCTL_ERROR == mem_unlock(mb, handle)) {
+      warning("BufferObject::dealloc(): mem_unlock failed");
+    }
+
+    if (IOCTL_ERROR == mem_free(mb, handle)) {
+      warning("BufferObject::dealloc(): mem_free failed");
+    }
   }
 
   handle = 0;

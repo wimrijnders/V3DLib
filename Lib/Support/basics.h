@@ -15,7 +15,7 @@ namespace V3DLib {
  * This is significant for Buffer Objects, which are system-global resource. If these are not properly
  * deallocated, eventually the memory will clog up and the GPU can't be used any more.
  * This is an issue notably with vc4. The v3d has a higher tolerance level, but the issue is real there
- * as well (TODO research, it might be smart enough to clean up on program exit).
+ * as well.
  */
 inline void fatal(const char *msg) {
   std::string str = "FATAL: ";
