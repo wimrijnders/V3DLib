@@ -43,6 +43,7 @@ bool loadFileInString(const char *filename, std::string & out_str) {
  *         false otherwise.
  */
 bool get_platform_string(std::string &content) {
+  // Alternative: cat /proc/device-tree/model
   const char *filename = "/sys/firmware/devicetree/base/model";
 
   bool success = loadFileInString(filename, content);
@@ -316,6 +317,34 @@ int Platform::gather_limit() {
   } else {
     return 8;
   }
+}
+
+
+/**
+ * Return short string with main version of the current pi
+ */
+std::string Platform::pi_version() {
+  std::string ret = "Not Pi";
+  std::string val;
+
+  if (!get_platform_string(val)) {
+    return ret;
+  }
+
+  std::string const prefix = "Raspberry Pi ";
+
+  if (val.find(prefix) != 0) {
+    ret = "Not Pi 2";
+    return ret;
+  }
+
+  char version = val[prefix.length()];
+  ret = "pi";
+  ret += version;
+
+  assertq('1' <= version && version <= '4', "Unknown pi version number");
+
+  return ret;
 }
 
 }  // namespace V3DLib
