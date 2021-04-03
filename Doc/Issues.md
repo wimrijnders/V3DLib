@@ -1,8 +1,34 @@
 # Known Issues
 
+## Memory and run issues Pi1 and Pi2
+
+The `Pi1` and `Pi2` have problems running kernels which make use of large reserved allocations in shared memory.
+
+E.g. on `Pi2`:
+
+```
+> sudo ./obj/qpu-debug/bin/Matrix -d=320
+ioctl_set_msg failed: -1
+ERROR: Failed to invoke kernel on QPUs
+
+ioctl_set_msg failed: -1
+Run time: 1.097135s
+Ran kernel 'qpu' 1 time(s) with matrix size 320 and 1 QPU's.
+```
+
+...where `-d=320   is the square matrix dimension of input and output values.
+Setting this one step lower, `-d=304`, runs fine.
+
+This happens especially for example applications `Matrix` and `Mandelbrot`.
+The `Pi3` and `Pi4` do not have these issues. This is especially interesting for the case of the `Pi3`, since
+this is also a `vc4`.
+
+It is unclear why this happens. I have been investigating this a lot without any definite conclusion.
+
+
 ## Not `OpenGL` compatible
 
-`V3DLib` can not work on a Pi4 with `OpenGL` running. You need to run it without a GUI ('headless'),
+`V3DLib` can not work on a Pi with `OpenGL` running. You need to run it without a GUI ('headless'),
 except for simple cases such as the `Hello` demo, which only outputs data.
 The issue is that the VideoCore L2 cache can not be shared with other applications when `OpenGL` is hogging it.
 
@@ -19,6 +45,8 @@ for buffer objects fails. The memory offset returned by the `v3d` device driver 
 is the amount of available memory).
 
 To run with a 64-bit kernel, programs using `v3d` will need to be compiled as 64-bits also.
+
+*I actually went through the kernel code to determine what is causing this; no success.*
 
 
 ## Some things will not run due to kernel issues
