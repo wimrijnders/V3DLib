@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sun 28 Mar 2021 06:10:10 AM CEST
+# Generated on: Sun 04 Apr 2021 07:27:55 AM CEST
 #
 ###############################################################################
 
@@ -117,6 +117,7 @@ TESTS_FILES := \
   Tests/testV3d.o  \
   Tests/testRot3D.o  \
   Tests/testPrefetch.o  \
+  Tests/testFunctions.o  \
   Tests/support/disasm_kernel.o  \
   Tests/support/rotate_kernel.o  \
   Tests/support/support.o  \
