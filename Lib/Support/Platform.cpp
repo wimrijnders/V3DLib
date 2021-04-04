@@ -334,11 +334,14 @@ std::string Platform::pi_version() {
   std::string const prefix = "Raspberry Pi ";
 
   if (val.find(prefix) != 0) {
-    ret = "Not Pi 2";
+    ret = "Not RPi";
     return ret;
   }
 
   char version = val[prefix.length()];
+  if (version == 'M') {  // Pi1 has no explicit number in version string; this checks the 'M' in 'Raspberry Pi Model B Rev 2'
+    version = '1';
+  }
   ret = "pi";
   ret += version;
 
