@@ -177,20 +177,22 @@ The build directory depends on the make flags passed. The combinations are:
 The first build can take a *long* time, especially on older Pi's.
 The culprit here is mainly the included code from the `Mesa` library.
 
-The following table lists the build times on the oldest and newest Pis.
+The following table lists the build times on all Pii versions.
 
 | Platform | Make                 | Time    | Comment                            |
 | -------- | -------------------- | ------- | -----------------------------------|
 | Pi 1     | Full Initial build   | 170m    | Also builds the MESA code          |
 |          | Library and examples |  22m    ||
-|          | Unit tests           |  22m    | without building the library       |
+| **REDO for doctest **         | Unit tests           |  22m    | without building the library       |
+| Pi 2     | Full Initial build   |  65m    | Also builds the MESA code          |
+|          | Library and examples |  12m    ||
+|          | Unit tests           |   4m    | without building the library       |
+| Pi 3     | Full Initial build   |  21m    | Also builds the MESA code          |
+|          | Library and examples |   5m    ||
+|          | Unit tests           |   1.5m  | without building the library       |
 | Pi 4     | Full Initial build   |  13m    | Also builds the MESA code          |
-|          | Library and examples |   2m    ||
-|          | Unit tests           |   1.25m | without building the library       |
-
-
-The difference in speed is staggering. Even if you want to run on a `Pi 1`,
-you're probably better off building on a `Pi 4`.
+|          | Library and examples |   3m    ||
+|          | Unit tests           |   0.75m | without building the library       |
 
 
 ## CPU/GPU memory split
