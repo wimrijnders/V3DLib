@@ -5,6 +5,23 @@ using namespace V3DLib;
 
 namespace {
 
+IntExpr hello_function() {
+  Stmt::Ptr stmt = tempStmt([] {
+    Int Q = 42;
+
+    // Prepare an expression which can be assigned
+    // dummy is not used, only the rhs matters
+    Int dummy;
+    dummy = Q;
+  });
+
+  //std::cout << stmt->dump() << std::endl;
+  stmtStack() << stmt;
+  Stmt *ret = stmt->last_in_seq();
+  return ret->assign_rhs();
+}
+
+
 void hello_kernel(Int::Ptr result) {
 /*
   Def hello()
@@ -14,7 +31,9 @@ void hello_kernel(Int::Ptr result) {
   *result = Call hello();
 */
 
- *result = 42;
+ //*result = 42;
+
+ *result = hello_function();
 }
 
 }  // anon namespace
@@ -26,6 +45,7 @@ TEST_CASE("Test functions [funcs]") {
     result.fill(-1);
 
     auto k = compile(hello_kernel);
+    k.pretty(false, "obj/test/hello_kernel_vc4.txt", false);
     k.load(&result);
     k.interpret();
 
