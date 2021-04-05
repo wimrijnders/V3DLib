@@ -120,6 +120,7 @@ The following works were *very* helpful in the development.
 ### Tools
 
 * [vcgencmd](https://www.raspberrypi.org/documentation/raspbian/applications/vcgencmd.md)
+* [doctest](https://github.com/onqtam/doctest) - unit test framework, [Documentation links](https://github.com/onqtam/doctest#documentation)
 
 --------------------------
 

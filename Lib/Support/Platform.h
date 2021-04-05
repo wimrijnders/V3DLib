@@ -10,6 +10,7 @@ class Platform {
 public:
   static bool is_pi_platform();
   static std::string platform_info();
+  static std::string pi_version();
   static bool has_vc4();
   static void compiling_for_vc4(bool val);
   static bool compiling_for_vc4();

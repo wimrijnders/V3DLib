@@ -203,6 +203,6 @@ dtoverlay=vc4-kms-v3d
 gpu_mem=128
 ```
 
-Turns out that `dtoverlay` shouldi *not* be specified for Pi1. Commenting out `dtoverlay` in the all-section
+Turns out that `dtoverlay` should *not* be specified for Pi1. Commenting out `dtoverlay` in the all-section
 resolved the issue.
  

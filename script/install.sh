@@ -26,7 +26,6 @@ echo "Updating library CmdParameters..."
 #
 # Pull in project CmdParameter
 # 
-pwd=`pwd`
 cd ..
 
 if [ ! -d "CmdParameter" ]; then
@@ -36,7 +35,6 @@ fi
 cd CmdParameter
 git checkout master
 git pull origin master
-cd $pwd
 
 # Sanity check
 get_version
