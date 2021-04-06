@@ -25,6 +25,7 @@ int count_skips(Instr::List &instrs) {
   return ret;
 }
 
+
 /**
  * Replace the variables with the assigned registers for the given instruction
  *
@@ -119,9 +120,10 @@ void remove_replaced_instructions(Instr::List &instrs) {
 
 void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
   clear();
-  for (int j = 0; j < set.size(); j++) {
-    if (!use.def.member(set[j]))
-      Parent::insert(set[j]);
+
+  for (auto it : set) {
+    if (!use.def.member(it))
+      Parent::insert(it);
   }
 }
 
@@ -130,18 +132,43 @@ std::string LiveSet::dump() const {
   std::string ret;
 
   ret << "(";
-  for (int j = 0; j < size(); j++) {
-    ret << (*this)[j] << ", ";
+
+  for (auto it : *this) {
+    ret << it << ", ";
   }
+
   ret << ")";
 
   return ret;
 }
 
 
+bool LiveSet::member(RegId rhs) const {
+  return find(rhs) != end();
+}
+
+
+void LiveSet::add(LiveSet const &rhs) {
+  for (auto it : rhs) {
+    insert(it);
+  }
+}
+
+
+void LiveSet::add(Set<RegId> const &set) {
+  for (int j = 0; j < set.size(); j++)
+    insert(set[j]);
+}
+
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class LiveSet
+///////////////////////////////////////////////////////////////////////////////
+
 LiveSets::LiveSets(int size) : m_size(size) {
   assert(size > 0);
-  m_sets = new LiveSet [size];  // confirmed: default ctor LiveSet called here (notably ctor SmallSeq)
+  m_sets = new LiveSet[size];
 }
 
 
@@ -157,11 +184,8 @@ void LiveSets::init(Instr::List &instrs, Liveness &live) {
     live.computeLiveOut(i, liveOut);
     useDefSet.set_used(instrs[i]);
 
-    for (int j = 0; j < liveOut.size(); j++) {
-      RegId rx = liveOut[j];
-
-      for (int k = 0; k < liveOut.size(); k++) {
-        RegId ry = liveOut[k];
+    for (auto rx : liveOut) {
+      for (auto ry : liveOut) {
         if (rx != ry) (*this)[rx].insert(ry);
       }
 
@@ -200,8 +224,10 @@ std::vector<bool> LiveSets::possible_registers(int index, RegUsage &alloc, RegTa
   LiveSet &set = (*this)[index];
 
   // Eliminate impossible choices of register for this variable
-  for (int j = 0; j < set.size(); j++) {
-    Reg neighbour = alloc[set[j]].reg;
+  for (auto it : set) {
+  //for (int j = 0; j < set.size(); j++) {
+  //  Reg neighbour = alloc[set[j]].reg;
+    Reg neighbour = alloc[it].reg;
     if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
   }
 
@@ -403,8 +429,13 @@ void Liveness::setSize(int size) {
 bool Liveness::insert(int index, LiveSet const &set) {
   bool changed = false;
 
-  for (int j = 0; j < set.size(); j++) {
-    if (m_set[index].insert(set[j])) {
+  for (auto it : set) {
+    bool present = m_set[index].member(it);
+
+    m_set[index].insert(it);
+    assert(m_set[index].member(it));
+
+    if (!present) {
       changed = true;
     }
   }
@@ -421,14 +452,16 @@ std::string Liveness::dump() {
 
     auto &item = m_set[i];
     bool did_first = false;
-    for (int j = 0; j < item.size(); j++) {
+
+    for (auto it : item) {
       if (did_first) {
         ret += ", ";
       } else {
         did_first = true;
       }
-      ret += std::to_string(item[j]);
+      ret += std::to_string(it);
     }
+
     ret += "\n";
   }
 

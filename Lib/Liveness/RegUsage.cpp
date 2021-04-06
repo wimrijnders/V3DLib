@@ -231,8 +231,8 @@ void RegUsage::set_live(Liveness &live) {
   for (int i = 0; i < live.size(); i++) {
     auto &item = live[i];
 
-    for (int j = 0; j < item.size(); j++) {
-      (*this)[item[j]].add_live(i);
+    for (auto it : item) {
+      (*this)[it].add_live(i);
     }
   }
 }
@@ -245,8 +245,6 @@ void RegUsage::set_live(Liveness &live) {
  */
 void RegUsage::check() const {
   std::string ret;
-
-
   std::string tmp;
 
   //
@@ -394,6 +392,5 @@ void RegUsage::check_overlap_usage(Reg acc, RegUsageItem const &item) const {
     assertq(!cur.use_overlaps(item), "Detected conflicting usage of replacement acc", true);
   }
 }
-
 
 }  // namespace V3DLib

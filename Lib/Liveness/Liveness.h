@@ -6,6 +6,7 @@
 #define _V3DLIB_LIVENESS_LIVENESS_H_
 #include <string>
 #include <vector>
+#include <set>
 #include "CFG.h"
 #include "RegUsage.h"
 #include "UseDef.h"
@@ -15,12 +16,14 @@ namespace V3DLib {
 /**
  * A live set contains the variables that are live-in to an instruction.
  */
-class LiveSet : public SmallSet<RegId> {
- using Parent = SmallSet<RegId>;
-
+class LiveSet : public std::set<RegId> {
+  using Parent = std::set<RegId>;
 public:
   void add_not_used(LiveSet const &def, UseDef const &use);
+  void add(LiveSet const &rhs);
+  void add(Set<RegId> const &rhs);
   std::string dump() const;
+  bool member(RegId rhs) const;
 };
 
 
