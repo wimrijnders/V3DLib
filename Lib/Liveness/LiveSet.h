@@ -35,15 +35,43 @@ public:
 class LiveSet : private std::vector<bool> {
   using Parent = std::vector<bool>;
 public:
-  using Parent::begin;
-  using Parent::end;
 
+  /**
+   * I hate this so much.
+   * All I wanted is clean code with ranges fors, and then I have to deal with waste overhead like this.
+   */
+  class const_it {
+  public:
+    const_it(LiveSet const &set);
+    const_it(LiveSet const &set, bool set_end);
+
+    bool operator==(const_it const &rhs) const;
+    bool operator!=(const_it const &rhs) const { return !(*this == rhs); }
+
+    const_it &operator++();
+    RegId operator*() const { return m_cur; }
+
+  private:
+    RegId    m_cur;
+    LiveSet const &m_set;
+
+    void next();
+  };
+
+  const_it begin() const { return const_it(*this); }
+  const_it end() const { return const_it(*this, true); }
+
+  LiveSet() = default;
+  LiveSet(int size) { Parent::resize(size); }
+
+  void resize(int size);
   void insert(RegId id);
   void clear();
   bool member(RegId rhs) const;
   void add(LiveSet const &rhs);
   void add(Set<RegId> const &rhs);
   void add_not_used(LiveSet const &def, UseDef const &use);
+  bool no_items() const;
   std::string dump() const;
 };
 
@@ -62,7 +90,7 @@ public:
   static RegId choose_register(std::vector<bool> &possible, bool check_limit = true);  
   static void  dump_possible(std::vector<bool> &possible, int index = -1);
 
-  std::string dump() const;
+  std::string dump2() const;
 
 private:
   int m_size = 0;

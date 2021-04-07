@@ -128,8 +128,8 @@ void Liveness::compute_liveness(Instr::List &instrs) {
   UseDef useDef;
 
   // For temporarily storing live-in and live-out variables
-  LiveSet liveIn;
-  LiveSet liveOut;
+  LiveSet liveIn(m_set.size());
+  LiveSet liveOut(m_set.size());
 
   bool changed = true;
   int count = 0;
@@ -255,6 +255,10 @@ void Liveness::computeLiveOut(InstrId i, LiveSet &liveOut) {
 
 void Liveness::setSize(int size) {
   m_set.set_size(size);
+
+  for (int i = 0; i < m_set.size(); i++) {
+    m_set[i].resize(m_set.size());
+  }
 }
 
 
