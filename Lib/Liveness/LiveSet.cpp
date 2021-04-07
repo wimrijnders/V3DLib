@@ -8,15 +8,68 @@ namespace V3DLib {
 // Class LiveSet
 ///////////////////////////////////////////////////////////////////////////////
 
+void LiveSet::insert(RegId id) {
+  assert(id >= 0); // && id < (int) size());
+  (*this)[id] = true;
+}
+
+
+void LiveSet::clear() {
+  for (int i = 0; i < (int) size(); ++i) {
+    (*this)[i] = false;
+  }
+}
+
+
+bool LiveSet::member(RegId rhs) const {
+  return (*this)[rhs] ;
+}
+
+
+// Common to both set implementations
+void LiveSet::add(LiveSet const &rhs) {
+  for (auto it : rhs) {
+    insert(it);
+  }
+}
+
+
+// Common to both set implementations
+void LiveSet::add(Set<RegId> const &set) {
+  for (int j = 0; j < set.size(); j++)
+    insert(set[j]);
+}
+
+
+// Common to both set implementations
 void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
   clear();
 
   for (auto it : set) {
     if (!use.def.member(it))
-      Parent::insert(it);
+      insert(it);
   }
 }
 
+
+std::string LiveSet::dump() const {
+  std::string ret;
+
+  ret << "(";
+
+  for (int j = 0; j < (int) size(); j++) {
+    if ((*this)[j])
+      ret << j << ", ";
+  }
+
+  ret << ")";
+
+  return ret;
+}
+
+
+#if 0
+// Implementation using std::set
 
 std::string LiveSet::dump() const {
   std::string ret;
@@ -37,18 +90,7 @@ bool LiveSet::member(RegId rhs) const {
   return find(rhs) != end();
 }
 
-
-void LiveSet::add(LiveSet const &rhs) {
-  for (auto it : rhs) {
-    insert(it);
-  }
-}
-
-
-void LiveSet::add(Set<RegId> const &set) {
-  for (int j = 0; j < set.size(); j++)
-    insert(set[j]);
-}
+#endif
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -114,8 +156,6 @@ std::vector<bool> LiveSets::possible_registers(int index, RegUsage &alloc, RegTa
 
   // Eliminate impossible choices of register for this variable
   for (auto it : set) {
-  //for (int j = 0; j < set.size(); j++) {
-  //  Reg neighbour = alloc[set[j]].reg;
     Reg neighbour = alloc[it].reg;
     if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
   }
@@ -168,6 +208,17 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
   }
 
   return chosenA;
-}  
+}
+
+
+std::string LiveSets::dump() const {
+  std::string ret;
+
+  for (int j = 0; j < m_size; j++) {
+    ret << j << ": " << m_sets[j].dump() << "\n";
+  }
+
+  return ret;
+}
 
 }  // namespace V3DLib

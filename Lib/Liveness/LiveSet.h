@@ -1,7 +1,7 @@
 #ifndef _V3DLIB_LIVENESS_LIVESET_H_
 #define _V3DLIB_LIVENESS_LIVESET_H_
 #include <string>
-#include <set>
+//#include <set>
 #include <vector>
 #include "UseDef.h"
 
@@ -10,6 +10,9 @@ namespace V3DLib {
 class Liveness;
 class RegUsage;
 
+
+#if 0
+// Implementation using std::set
 
 /**
  * A live set contains the variables that are live-in to an instruction.
@@ -22,6 +25,26 @@ public:
   void add(Set<RegId> const &rhs);
   std::string dump() const;
   bool member(RegId rhs) const;
+};
+#endif
+
+
+/**
+ * A live set contains the variables that are live-in to an instruction.
+ */
+class LiveSet : private std::vector<bool> {
+  using Parent = std::vector<bool>;
+public:
+  using Parent::begin;
+  using Parent::end;
+
+  void insert(RegId id);
+  void clear();
+  bool member(RegId rhs) const;
+  void add(LiveSet const &rhs);
+  void add(Set<RegId> const &rhs);
+  void add_not_used(LiveSet const &def, UseDef const &use);
+  std::string dump() const;
 };
 
 
@@ -38,6 +61,8 @@ public:
 
   static RegId choose_register(std::vector<bool> &possible, bool check_limit = true);  
   static void  dump_possible(std::vector<bool> &possible, int index = -1);
+
+  std::string dump() const;
 
 private:
   int m_size = 0;

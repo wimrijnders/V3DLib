@@ -204,6 +204,7 @@ void regAlloc(Instr::List &instrs) {
 //  Timer t("vc4 regAlloc liveWith", true);
   liveWith.init(instrs, live);
 //}
+  debug(liveWith.dump());
 
   // Step 3 - Allocate a register to each variable
   RegTag prevChosenRegFile = REG_B;
