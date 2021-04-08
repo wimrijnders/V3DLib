@@ -1,0 +1,94 @@
+* Failed Refactoring
+
+[[./images/refactor-1.png]]
+
+The x-values are the dimensions of the input vectors.
+The y-values are the compile times in seconds.
+
+The compile times on =Pi4= are added for reference. This version of the Raspberry Pi
+has a newer version version of the GPU (=VideoCore 6= instead of 4), which has an instruction
+to calculate the sine. On the =Pi3=, the sine is calculated inline using regular instructions.
+This goes a long way in explaining the compile time differences.
+
+But these were bad scores. Having an input vector of, say, 688 points for the DFT is not a big deal,
+you would probably want to add more.
+So I looked how to optimize this. The first upcoming thought was to use an data type in the standard
+template library (=STL=). Surely, this would be better than the homegrown data type present in =V3DLib=?
+
+The obvious candidate to use here was =std::set<>=. The refactoring was fairly straightforward and
+led to the following graph:
+
+[[./images/refactor-2.png]]
+
+I would say, much better. A notable difference in the data types is that =std::set<>= stores the
+values in sorted order, whereas =V3dLib::Set<>= does not. This probably vastly contributes to the speedup
+
+Emboldened by this improvement, I thought about how to further speed this up.
+The thought came to mind that using bit arrays to implement sets would be better.
+After all, setting a single bit should be way faster that maintaining a sorted list of values, no?
+So, I set to work.
+
+Aside, I ran into the following; I happen to like ranged loops as in the following:
+
+#+BEGIN_SRC c++
+ for (auto it : set) {
+   // Do something useful with it
+ }   
+#+END_SRC
+
+It's compact and tidy code, and these loops where already present in the library.
+But to make the refactoring work, I had to add some scaffolding to the set class.
+
+This hurts my eyes and feels like such a waste of effort.
+I couldn't resist adding the block comment to ventilate.
+
+#+BEGIN_SRC c++
+class LiveSet : private std::vector<bool> {
+  ...
+  
+  /**
+   * I hate this so much. 
+   * All I wanted is clean code with ranges fors, and then I have to deal with waste overhead like this.
+   */
+  class const_it {
+  public:
+    const_it(LiveSet const &set);
+    const_it(LiveSet const &set, bool set_end);
+    
+    bool operator==(const_it const &rhs) const;
+    bool operator!=(const_it const &rhs) const { return !(*this == rhs); }
+      
+    const_it &operator++();
+    RegId operator*() const { return m_cur; }
+    
+  private:
+    RegId    m_cur;
+    LiveSet const &m_set;
+
+    void next();
+  };
+
+  const_it begin() const { return const_it(*this); }
+  const_it end() const { return const_it(*this, true); }
+
+  ...
+};
+#+END_SRC
+
+Grudgingly, I did add this shameless piece of obligatory overhead.
+And now the compilation should rock, right? The compile times should now just plummet, was the expectation.
+So I checked:
+
+
+[[./images/refactor-3.png]]
+
+What you are viewing is the first couple of points of the previous graph, with the times for the
+bool array set implementation added.
+Urgh. Well, crap. This is worse by orders of magnitude.
+
+I was bold enough to examine what was happening here. Turns out that the sets are pretty sparse,
+and with arrays of booleans you need a bit for every possible value in the set. The overhead for 
+handling this (hundreds of possible values), just kills the performance.
+
+If anything, the lesson learnt is to always measure. /And/ ensure you can go back to previous code
+easily. Which I did ensure in this case. Hereby reverting this brainfart.
