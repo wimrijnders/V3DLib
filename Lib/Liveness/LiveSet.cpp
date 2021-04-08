@@ -5,33 +5,10 @@
 namespace V3DLib {
 
 ///////////////////////////////////////////////////////////////////////////////
-// Class LiveSet::const_it
-///////////////////////////////////////////////////////////////////////////////
-
-LiveSet::const_it::const_it(LiveSet const &set) : m_cur(-1), m_set(set) { next(); }
-LiveSet::const_it::const_it(LiveSet const &set, bool set_end) : m_cur(set.size()), m_set(set) { assert(set_end); }
-
-bool LiveSet::const_it::operator==(const_it const &rhs) const { return &m_set == &rhs.m_set && m_cur == rhs.m_cur; }
-
-
-LiveSet::const_it &LiveSet::const_it::operator++() {
-  next();
-  return *this;
-}
-
-
-void LiveSet::const_it::next() {
-  while (m_cur < (int) m_set.size()) {
-    m_cur++;
-    if (m_set.member(m_cur)) break;
-  }
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
 // Class LiveSet
 ///////////////////////////////////////////////////////////////////////////////
 
+/*
 void LiveSet::resize(int size) {
   assert(size > 0);
 
@@ -84,7 +61,6 @@ void LiveSet::add(Set<RegId> const &set) {
 }
 
 
-// Common to both set implementations
 void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
   clear();
 
@@ -96,38 +72,24 @@ void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
 }
 
 
-bool LiveSet::no_items() const {
-  for (auto id : *this) {
-    assertq(id >= 0, "Shut the warning up");
-    return false;
-  }
-
-  return true;
-}
-
-
-std::string LiveSet::dump() const {
-  std::string ret;
-
-  ret << "(";
-
-  for (int j = 0; j < (int) size(); j++) {
-    if ((*this)[j])
-      ret << j << ", ";
-  }
-
-  ret << ")";
-
-  return ret;
-}
-
-
-#if 0
-// Implementation using std::set
-
 void LiveSet::add(LiveSet const &rhs) {
   for (auto it : rhs) {
     insert(it);
+  }
+}
+*/
+
+void LiveSet::add(LiveSet const &rhs) {
+  for (auto j : rhs) {
+  //  if (rhs.member(j))
+      insert(j);
+  }
+}
+
+
+void LiveSet::add(Set<RegId> const &set) {
+  for (int j = 0; j < set.size(); j++) {
+    insert(set[j]);
   }
 }
 
@@ -135,9 +97,9 @@ void LiveSet::add(LiveSet const &rhs) {
 void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
   clear();
 
-  for (auto it : set) {
-    if (!use.def.member(it))
-      insert(it);
+  for (auto j : set) {
+    if (!use.def.member(j))
+      insert(j);
   }
 }
 
@@ -147,8 +109,8 @@ std::string LiveSet::dump() const {
 
   ret << "(";
 
-  for (auto it : *this) {
-    ret << it << ", ";
+  for (auto j : *this) {
+    ret << j << ", ";
   }
 
   ret << ")";
@@ -161,8 +123,6 @@ bool LiveSet::member(RegId rhs) const {
   return find(rhs) != end();
 }
 
-#endif
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Class LiveSets
@@ -171,10 +131,6 @@ bool LiveSet::member(RegId rhs) const {
 LiveSets::LiveSets(int size) : m_size(size) {
   assert(size > 0);
   m_sets = new LiveSet[size];
-
-  for (int i = 0; i < size; i++) {
-    m_sets[i].resize(size);
-  }
 }
 
 
@@ -230,8 +186,8 @@ std::vector<bool> LiveSets::possible_registers(int index, RegUsage &alloc, RegTa
   LiveSet &set = (*this)[index];
 
   // Eliminate impossible choices of register for this variable
-  for (auto it : set) {
-    Reg neighbour = alloc[it].reg;
+  for (auto j : set) {
+    Reg neighbour = alloc[j].reg;
     if (neighbour.tag == reg_tag) possible[neighbour.regId] = false;
   }
 
@@ -286,11 +242,11 @@ RegId LiveSets::choose_register(std::vector<bool> &possible, bool check_limit) {
 }
 
 
-std::string LiveSets::dump2() const {
+std::string LiveSets::dump() const {
   std::string ret;
 
   for (int j = 0; j < m_size; j++) {
-    if (m_sets[j].no_items()) continue;
+    if (m_sets[j].empty()) continue;
     ret << j << ": " << m_sets[j].dump() << "\n";
   }
 
