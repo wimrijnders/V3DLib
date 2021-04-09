@@ -1368,6 +1368,29 @@ Instr bsin(Location const &dst, Location const &a) { return Instr(V3D_QPU_A_SIN,
 Instr bexp(Location const &dst, Location const &a) { return Instr(V3D_QPU_A_EXP, dst, a, r4); }        // r4 implicit
 Instr blog(Location const &dst, Location const &a) { return Instr(V3D_QPU_A_LOG, dst, a, r5); }        // r5 implicit
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Aggregated Instructions
+///////////////////////////////////////////////////////////////////////////////
+
+/**
+ * a is a multiple of PI; i.e. a = 0.5 corresponds with PI/2
+ *
+ * Returns values for -0.5 <= a <= 0.5
+ * Anything above is always 1, anything below always -1.
+ */
+Instructions fsin(Location const &dst, Location const &a) {
+  Instructions ret;
+
+  // bsin returns nothing, use the SFU reg instead
+  ret << mov(sin, a).comment("v3d sin")
+      << nop()   // This to prevent r4 used in the meantime, can be specified further
+      << nop()
+      << mov(dst, r4);
+
+  return ret;
+}
+
 }  // instr
 }  // v3d
 }  // V3DLib

@@ -436,6 +436,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 
       switch (src_instr.ALU.op.value()) {
         case ALUOp::A_FFLOOR:  ret << ffloor(*dst_reg, *src_a); break;
+        case ALUOp::A_FSIN:    ret << fsin(*dst_reg, *src_a);    break;
         default:
           assertq("unimplemented op, input reg", true);
           did_something = false;

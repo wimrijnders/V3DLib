@@ -92,6 +92,8 @@ FloatExpr recipsqrt(FloatExpr x);
 FloatExpr exp(FloatExpr x);
 FloatExpr log(FloatExpr x);  
 
+FloatExpr sin(FloatExpr x);
+
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_SOURCE_FLOAT_H_

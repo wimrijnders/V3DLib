@@ -1,8 +1,15 @@
 #include "Source/Float.h"
 #include "Lang.h"  // only for assign()!
-#include "Functions.h"  // ::set_at()
+#include "Functions.h"
 
 namespace V3DLib {
+
+FloatExpr unary_float_op(OpId op_id, FloatExpr a) {
+  Expr::Ptr dummy = mkVar(Var(DUMMY));
+  Expr::Ptr e = mkApply(a.expr(), Op(op_id, FLOAT), dummy);
+  return FloatExpr(e);
+}
+
 
 // ============================================================================
 // Class FloatExpr
@@ -165,12 +172,7 @@ FloatExpr toFloat(IntExpr a) {
 }
 
 
-FloatExpr ffloor(FloatExpr a) {
-  Expr::Ptr dummy = mkVar(Var(DUMMY));
-  Expr::Ptr e = mkApply(a.expr(), Op(FFLOOR, FLOAT), dummy);
-  return FloatExpr(e);
-}
-
+FloatExpr ffloor(FloatExpr a) { return unary_float_op(FFLOOR, a); }
 
 FloatExpr operator+(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(ADD, FLOAT), b); }
 FloatExpr operator-(FloatExpr a, FloatExpr b) { return mkFloatApply(a, Op(SUB, FLOAT), b); }
@@ -189,4 +191,13 @@ FloatExpr recipsqrt(FloatExpr x) { return mkFloatApply(x, Op(RECIPSQRT, FLOAT));
 FloatExpr exp(FloatExpr x)       { return mkFloatApply(x, Op(EXP, FLOAT)); }
 FloatExpr log(FloatExpr x)       { return mkFloatApply(x, Op(LOG, FLOAT)); }
 
+FloatExpr sin(FloatExpr x) {
+  if(Platform::compiling_for_vc4()) {
+    return functions::sin(x);
+  } else {
+    return unary_float_op(SIN, x);
+  }
+}
+
 }  // namespace V3DLib
+

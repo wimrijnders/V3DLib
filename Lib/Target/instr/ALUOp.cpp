@@ -2,6 +2,7 @@
 #include <stdint.h>
 #include "Support/Platform.h"
 #include "Support/basics.h"
+#include "Source/OpItems.h"
 
 namespace V3DLib {
 
@@ -13,6 +14,9 @@ ALUOp::ALUOp(Op const &op) : m_value(opcode(op)) {}
  */
 ALUOp::Enum ALUOp::opcode(Op const &op) const {
   if (op.type == BaseType::FLOAT) {
+    auto const *item = OpItems::find(op.op);
+    if (item != nullptr) return item->aluop_float();
+
     switch (op.op) {
       case ADD:    return A_FADD;
       case SUB:    return A_FSUB;
@@ -122,6 +126,7 @@ char const *ALUOp::pretty_op() const {
     case A_TIDX:    return "tidx";
     case A_EIDX:    return "eidx";
     case A_FFLOOR:  return "ffloor";
+    case A_FSIN:    return "sin";
     default:
       assertq(false, "pretty_op(): Unknown alu opcode", true);
       return "";

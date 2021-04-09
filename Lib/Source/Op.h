@@ -27,6 +27,9 @@ enum OpId {
   EXP,
   LOG,
 
+  // Other combined operators
+  SIN,
+
   // v3d only
   TIDX,
   EIDX,

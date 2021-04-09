@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Wed 07 Apr 2021 05:47:09 AM CEST
+# Generated on: Fri 09 Apr 2021 09:20:15 AM CEST
 #
 ###############################################################################
 
@@ -24,6 +24,7 @@ OBJ := \
   BaseKernel.o  \
   Source/Lang.o  \
   Source/Cond.o  \
+  Source/OpItems.o  \
   Source/Interpreter.o  \
   Source/Translate.o  \
   Source/Ptr.o  \
@@ -122,8 +123,10 @@ TESTS_FILES := \
   Tests/support/disasm_kernel.o  \
   Tests/support/rotate_kernel.o  \
   Tests/support/support.o  \
+  Tests/support/matrix_support.o  \
   Tests/support/summation_kernel.o  \
   Tests/testSFU.o  \
+  Tests/testDFT.o  \
   Tests/testConditionCodes.o  \
   Tests/testMain.o  \
   Tests/testDSL.o  \

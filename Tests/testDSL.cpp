@@ -6,6 +6,7 @@
 #include "Support/pgm.h"
 #include "support/support.h"
 #include "Source/Complex.h"
+#include "Source/Functions.h"
 
 using namespace V3DLib;
 using namespace std;
@@ -1013,4 +1014,34 @@ TEST_CASE("Test issues [dsl][issues]") {
   }
 
   Platform::use_main_memory(false);
+}
+
+
+void sincos_kernel(Float::Ptr result) {
+  Float param = toFloat(index())/16.0f;
+
+  Float func_val  = functions::sin(param, true);
+  *result = func_val;  result.inc();
+
+  Float instr_val = sin(param*2);
+  *result = instr_val;  result.inc();
+
+  instr_val = sin(param*-2);
+  *result = instr_val;
+}
+
+
+TEST_CASE("Test sin/cos instructions [dsl][sincos]") {
+//  Platform::use_main_memory(true);
+
+  Float::Array result(3*16);
+  auto k = compile(sincos_kernel);
+  //k.pretty(false);
+  k.load(&result);
+  k.call();
+  debug(showResult(result, 0));
+  debug(showResult(result, 1));
+  debug(showResult(result, 2));
+
+//  Platform::use_main_memory(false);
 }
