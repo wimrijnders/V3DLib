@@ -201,7 +201,8 @@ void DotVector::dot_product(Float::Ptr rhs, Float &result) {
 /**
  * Multiply current instance with the DFT elements of line `k`.
  *
- * The DFT matrix elements are calculated inline
+ * The DFT matrix elements are calculated inline.
+ * Note that low-precision sin/cos is used.
  */
 void DotVector::dft_dot_product(Int const &k, Complex &result) {
   Complex tmp(0, 0);               comment("DotVector::dft_dot_product()");
@@ -431,7 +432,8 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
 /**
  * Multiply current instance with the DFT elements of line `k`.
  *
- * The DFT matrix elements are calculated inline
+ * The DFT matrix elements are calculated inline.
+ * Note that low-precision sin/cos is used.
  */
 void ComplexDotVector::dft_dot_product(Int const &k, Complex &result) {
   Complex tmp(0, 0);               comment("ComplexDotVector::dft_dot_product()");
