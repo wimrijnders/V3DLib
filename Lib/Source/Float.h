@@ -92,7 +92,9 @@ FloatExpr recipsqrt(FloatExpr x);
 FloatExpr exp(FloatExpr x);
 FloatExpr log(FloatExpr x);  
 
+FloatExpr sin_op(FloatExpr x);
 FloatExpr sin(FloatExpr x);
+FloatExpr cos(FloatExpr x);
 
 }  // namespace V3DLib
 

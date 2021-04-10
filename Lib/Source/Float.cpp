@@ -191,11 +191,20 @@ FloatExpr recipsqrt(FloatExpr x) { return mkFloatApply(x, Op(RECIPSQRT, FLOAT));
 FloatExpr exp(FloatExpr x)       { return mkFloatApply(x, Op(EXP, FLOAT)); }
 FloatExpr log(FloatExpr x)       { return mkFloatApply(x, Op(LOG, FLOAT)); }
 
+
+/**
+ * Should not be used directly in code.
+ * use `sin()` below instead
+ */
+FloatExpr sin_op(FloatExpr x) { return unary_float_op(SIN, x); }
+
+FloatExpr cos(FloatExpr x) { return sin(0.25f - x); }
+
 FloatExpr sin(FloatExpr x) {
-  if(Platform::compiling_for_vc4()) {
+  if (Platform::compiling_for_vc4()) {
     return functions::sin(x);
   } else {
-    return unary_float_op(SIN, x);
+    return functions::sin_v3d(x);
   }
 }
 

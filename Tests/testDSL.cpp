@@ -17,13 +17,68 @@ namespace {
 // Helper methods
 //=============================================================================
 
+/**
+ * Generate cos values to compare with
+ */
+std::vector<float> lib_cos_values(int size, float freq = -1.0f, float offset = 0.0f) {
+  if (freq == -1.0f) {
+    freq = 1.0f/((float) size);
+  }
+
+  std::vector<float> ret;
+  ret.resize(size);
+
+  for (int x = 0; x < size; ++x) {
+    ret[x] = cos((float) (freq*(2*M_PI)*(((float) x) - offset)));
+  }
+
+  return ret;
+}
+
+
+std::vector<float> lib_sin_values(int size, float freq = -1.0f, float offset = 0.0f) {
+  if (freq == -1.0f) {
+    freq = 1.0f/((float) size);
+  }
+
+  std::vector<float> ret;
+  ret.resize(size);
+
+  for (int x = 0; x < size; ++x) {
+    ret[x] = sin((float) (freq*(2*M_PI)*(((float) x) - offset)));
+  }
+
+  return ret;
+}
+
+
+/**
+ * Calculate max abs difference for arrays
+ */
+float max_abs_value(std::vector<float> const &a, float const *b) {
+  REQUIRE(b != nullptr);
+
+  float ret = -1.0f;
+
+  for (int i = 0; i < (int) a.size(); ++i) {
+    float diff = abs(a[i] - b[i]);
+    if (ret == -1.0f || ret < diff) {
+      ret = diff;
+    }
+  }
+
+  return ret;
+} 
+
+
 template<typename Array>
-string showResult(Array &result, int index) {
+string showResult(Array &result, int index, int size = 16) {
+  REQUIRE(size % 16 == 0);
   ostringstream buf;
 
   buf << "result  : ";
-  for (int j = 0; j < 16; j++) {
-    buf << result[16*index + j] << " ";
+  for (int j = 0; j < size; j++) {
+    buf << result[size*index + j] << " ";
   }
   buf << "\n";
 
@@ -802,14 +857,7 @@ TEST_CASE("Test functions [dsl][func]") {
     const int offset = size/2;
     const float freq = (float) (1.0f/((double) size));
 
-    //
-    // Lib cos, to compare with
-    //
-    float lib_cos[size];
-    for (int x = 0; x < size; ++x) {
-      lib_cos[x] = cos((float) (freq*(2*M_PI)*(x - offset)));
-    };
-
+    auto lib_cos = lib_cos_values(size, freq, offset);  // cos lib values, to compare with
 
     //
     // Calc with scalar kernel
@@ -851,7 +899,7 @@ TEST_CASE("Test functions [dsl][func]") {
     }
 
     PGM pgm(size, 400);
-    pgm.plot(lib_cos, size, 64)
+    pgm.plot(lib_cos, 64)
      //.plot(scalar_cos, size)
        .plot(qpu_cos.ptr(), size, 32)
        .plot(qpu_sin.ptr(), size, 32)
@@ -1017,32 +1065,86 @@ TEST_CASE("Test issues [dsl][issues]") {
 }
 
 
-void sincos_kernel(Float::Ptr result) {
-  Float param = toFloat(index())/16.0f;
+void sincos_kernel(Float::Ptr result, Int size) {
+  Int count = size >> 4;
 
-  Float func_val  = functions::sin(param, true);
-  *result = func_val;  result.inc();
+  For (Int n = 0, n < count, n++)
+    Float param = toFloat((n << 4) + index())/toFloat(size);
 
-  Float instr_val = sin(param*2);
-  *result = instr_val;  result.inc();
+    Float val  = functions::sin(param, true);
+    *result = val;  result.inc();
+  End
 
-  instr_val = sin(param*-2);
-  *result = instr_val;
+  For (Int n = 0, n < count, n++)
+    Float param = toFloat((n << 4) + index())/toFloat(size);
+
+    Float val  = functions::sin(param, false);
+    *result = val;  result.inc();
+  End
+
+  For (Int n = 0, n < count, n++)
+    Float param = toFloat((n << 4) + index())/toFloat(size);
+
+    Float instr_val = sin(param);
+    *result = instr_val;  result.inc();
+  End
+
+  For (Int n = 0, n < count, n++)
+    Float param = toFloat((n << 4) + index())/toFloat(size);
+
+    Float instr_val = sin(param*-1);
+    *result = instr_val;  result.inc();
+  End
+
+  For (Int n = 0, n < count, n++)
+    Float param = toFloat((n << 4) + index())/toFloat(size);
+
+    Float instr_val = cos(param);       // This one not unit tested
+    *result = instr_val;  result.inc();
+  End
 }
 
 
 TEST_CASE("Test sin/cos instructions [dsl][sincos]") {
-//  Platform::use_main_memory(true);
+  int const N = 5*16;
 
-  Float::Array result(3*16);
+  Float::Array result(5*N);
+  auto lib_sin = lib_sin_values(N);  // cos lib values, to compare with
+
   auto k = compile(sincos_kernel);
   //k.pretty(false);
-  k.load(&result);
-  k.emu();
-  //k.call();
-  debug(showResult(result, 0));
-  debug(showResult(result, 1));
-  debug(showResult(result, 2));
+  k.load(&result, N);
+  k.call();
 
-//  Platform::use_main_memory(false);
+  float const hi_precision = 1.1e-3f;
+  float const lo_precision = 5.7e-2f;
+  float const v3d_precision = (Platform::compiling_for_vc4())?lo_precision:1.0e-6f;  // vc4 will use the lo-res sin function, v3d the hardware, which is really precise
+
+  {
+    float diff = max_abs_value(lib_sin, result.ptr());
+    INFO("max abs diff hi-prec sin: " << diff);
+    REQUIRE(diff <= hi_precision);
+  }
+
+  {
+    float diff = max_abs_value(lib_sin, result.ptr() + N);
+    INFO("max abs diff lo-prec sin: " << diff);
+    REQUIRE(diff <= lo_precision);
+  }
+
+  {
+    float diff = max_abs_value(lib_sin, result.ptr() + 2*N);
+    INFO("max abs diff v3d sin: " << diff);
+    REQUIRE(diff <= v3d_precision);
+  }
+
+//  debug(showResult(lib_sin, 0, N));
+//  debug(showResult(result, 4, N));
+
+  // Check proper values negative sin
+  // You would expect this to be exact, but tiny differences crop up.
+  float const neg_precision = 1.0e-6f;
+  for (int i = 0; i < N; ++i) {
+    REQUIRE(abs(result[2*N + i] + result[3*N + i]) < neg_precision);
+  }
 }

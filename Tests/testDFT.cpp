@@ -295,9 +295,9 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num
   } else {
     REQUIRE(compiled == 7);  // All bits for all kernels should be set
 
-    std::cout << result_mult.dump();
-    std::cout << result_float.dump();
-    std::cout << result_complex.dump();
+//    std::cout << result_mult.dump();
+//    std::cout << result_float.dump();
+//    std::cout << result_complex.dump();
 
     INFO("Comparing inline complex with inline float");
     compare_arrays(result_complex, result_float, 0.0f);  // Match should be exact

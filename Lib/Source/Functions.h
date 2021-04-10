@@ -18,6 +18,8 @@ float sin(float x_in, bool extra_precision = false) noexcept;
 
 FloatExpr cos(FloatExpr x_in, bool extra_precision = false);
 FloatExpr sin(FloatExpr x_in, bool extra_precision = false);
+FloatExpr sin_v3d(FloatExpr x_in);
+FloatExpr cos_v3d(FloatExpr x_in);
 
 FloatExpr ffloor(FloatExpr x);
 FloatExpr fabs(FloatExpr x);

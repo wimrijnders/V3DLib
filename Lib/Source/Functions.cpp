@@ -210,6 +210,8 @@ float sin(float x_in, bool extra_precision) noexcept {
 
 
 FloatExpr cos(FloatExpr x_in, bool extra_precision) {
+  extra_precision |= LibSettings::use_high_precision_sincos(); // setting to true in param overrides lib setting
+
   Float x = x_in;
 
   x -= 0.25f + functions::ffloor(x + 0.25f);  comment("Start cosine");
@@ -224,7 +226,36 @@ FloatExpr cos(FloatExpr x_in, bool extra_precision) {
 
 
 FloatExpr sin(FloatExpr x_in, bool extra_precision) {
-  return cos(0.25f - x_in, extra_precision);
+    return cos(0.25f - x_in, extra_precision);
+}
+
+
+/**
+ * Calculate sine for v3d using  hardware
+ * 
+ * Use this for v3d only.
+ *
+ * v3d sin takes params in which are multiples of PI.
+ * Also works only in range -PI/2..PI/2.
+ *
+ * Incoming values are multiples of 2*PI.
+ * Following preamble to actual sin() is to get int param within the allowed range.
+ */
+FloatExpr sin_v3d(FloatExpr x_in) {
+  //debug("using v3d sin");
+
+  Float tmp = x_in;
+  tmp = tmp - functions::ffloor(tmp);  // Sneaky way to isolate the fractional part
+
+  Where (tmp > 0.75f)                  // Adjust value to the range -PI/2...PI/2
+    tmp = tmp - 1.0f;
+  Else Where (tmp > 0.25f)
+    tmp = -1*(tmp - 0.5f);
+  End End
+
+  tmp *= 2;                            // Convert to multiple of PI
+
+  return sin_op(tmp);
 }
 
 
