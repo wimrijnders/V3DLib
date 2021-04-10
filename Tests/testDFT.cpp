@@ -8,6 +8,7 @@
 #include "support/matrix_support.h"
 #include "Kernel.h"
 #include "Kernels/Matrix.h"
+#include "LibSettings.h"
 
 using namespace V3DLib;
 
@@ -324,8 +325,7 @@ TEST_CASE("Discrete Fourier Transform [dft]") {
     int const Dim = 1 << DimShift;
 
     Complex::Array2D dft_matrix(Dim);
-    create_dft_matrix(dft_matrix, true);  // Interim test for high precision
-    create_dft_matrix(dft_matrix, false);   // Value actually used in unit test
+    create_dft_matrix(dft_matrix, true);  // Setting high_precision = false fails the test miserably
     //std::cout << dft_matrix.dump();
 
     // Tranpose should be equal to self
@@ -354,6 +354,8 @@ TEST_CASE("Discrete Fourier Transform [dft]") {
 
     float const precision2 = 2e-2f;
 
+    //INFO(result.dump());
+
     for (int r = 0; r < Dim; ++r) {
       for (int c = 0; c < Dim; ++c) {
 
@@ -362,7 +364,10 @@ TEST_CASE("Discrete Fourier Transform [dft]") {
           test = (float) Dim;
         }
 
-        INFO("r: " << r << ", c: " << c);
+        INFO("r: " << r << ", c: " << c 
+                   << ", expected: (" << test << ", 0.0)" 
+                   << ", got: " << result[r][c].dump());
+
         REQUIRE(abs(result[r][c].re() - test) < precision2);
         REQUIRE(abs(result[r][c].im() - 0.0f) < precision2);
       }
