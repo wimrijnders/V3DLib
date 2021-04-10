@@ -37,13 +37,21 @@ void Return(Int const &val) {
 
 
 /**
- * This hijacks the global statement stack to generate from source lang,
- * and then isolates the code in a separate expression.
+ * Create a function snippet from the generation of the passed callback
  *
- * The benefit of this is:
- *   - to define source lang constructs in the source lang itself
- *   - have code snippets which are relocatable and can be inserted anywhere
- *   - potentialy more, e.g. memoization, true functions (currently everything generated inline)
+ * This hijacks the global statement stack to generate from source lang,
+ * and then isolates the generation in a separate expression.
+ *
+ * The immediate benefit of this is to be able to define source lang
+ * constructs using the source lang itself.
+
+ * This can be done to some extent directly, but defining them as standalone code
+ * is more flexible.
+ * The code snippets are relocatable and can be inserted anywhere
+ *
+ * Potential other uses:
+ *   - memoization
+ *   - true functions (currently everything generated inline)
  *
  * Because this uses the global statement stack, it is **not** threadsafe.
  * But then again, nothing using the global statement stack is.
