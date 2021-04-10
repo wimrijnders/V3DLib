@@ -1038,7 +1038,8 @@ TEST_CASE("Test sin/cos instructions [dsl][sincos]") {
   auto k = compile(sincos_kernel);
   //k.pretty(false);
   k.load(&result);
-  k.call();
+  k.emu();
+  //k.call();
   debug(showResult(result, 0));
   debug(showResult(result, 1));
   debug(showResult(result, 2));

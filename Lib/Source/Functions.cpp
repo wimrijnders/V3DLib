@@ -19,6 +19,45 @@ namespace {
 
 int const MAX_INT = 2147483647;  // Largest positive 32-bit integer that can be negated
 
+/**
+ * Ensure a common exit method for function snippets.
+ *
+ * The return value should actually be an IntExpr instance, which is derived downstream
+ * from the `dummy` variable as defined here.
+ *
+ * This is more of a semantics thing; it's a tiny bit of code, but the name implies
+ * what the intention is.
+ */
+void Return(Int const &val) {
+  // Prepare an expression which can be assigned
+  // dummy is not used downstream, only the rhs matters
+  Int dummy;
+  dummy = val;
+}
+
+
+/**
+ * This hijacks the global statement stack to generate from source lang,
+ * and then isolates the code in a separate expression.
+ *
+ * The benefit of this is:
+ *   - to define source lang constructs in the source lang itself
+ *   - have code snippets which are relocatable and can be inserted anywhere
+ *   - potentialy more, e.g. memoization, true functions (currently everything generated inline)
+ *
+ * Because this uses the global statement stack, it is **not** threadsafe.
+ * But then again, nothing using the global statement stack is.
+ */
+IntExpr create_function_snippet(StackCallback f) {
+  Stmt::Ptr stmt = tempStmt(f);
+
+  //std::cout << stmt->dump() << std::endl;
+  stmtStack() << stmt;
+
+  Stmt *ret = stmt->last_in_seq();
+  return ret->assign_rhs();
+}
+
 }  // anon namespace
 
 
@@ -28,43 +67,25 @@ int const MAX_INT = 2147483647;  // Largest positive 32-bit integer that can be 
  * Used as an alternative for `-1*a`, because vc4 does 24-bit multiplication only.
  */
 IntExpr two_complement(IntExpr a) {
-  Stmt::Ptr stmt = tempStmt([a] {
+  return create_function_snippet([a] {
     Int tmp = a;
     tmp = (tmp ^ 0xffffffff) + 1;  // take the 1's complement
 
-    // Prepare an expression which can be assigned
-    // dummy is not used, only the rhs matters
-    Int dummy;
-    dummy = tmp;
+    Return(tmp);
   });
-
-  //std::cout << stmt->dump() << std::endl;
-  stmtStack() << stmt;
-
-  Stmt *ret = stmt->last_in_seq();
-  return ret->assign_rhs();
 }
 
 
 IntExpr abs(IntExpr a) {
-  Stmt::Ptr stmt = tempStmt([a] {
+  return create_function_snippet([a] {
     Int tmp = a;
 
     Where (tmp < 0)
       tmp = (tmp ^ 0xffffffff) + 1;  // take the 1's complement
     End
 
-    // Prepare an expression which can be assigned
-    // dummy is not used, only the rhs matters
-    Int dummy;
-    dummy = tmp;
+    Return(tmp);
   });
-
-  //std::cout << stmt->dump() << std::endl;
-  stmtStack() << stmt;
-
-  Stmt *ret = stmt->last_in_seq();
-  return ret->assign_rhs();
 }
 
 
@@ -75,7 +96,7 @@ IntExpr abs(IntExpr a) {
  * a == 0 will return -1.
  */
 IntExpr topmost_bit(IntExpr in_a) {
-  Stmt::Ptr stmt = tempStmt([in_a] {
+  return create_function_snippet([in_a] {
     Int a = in_a;
     Int topmost = -1;
 
@@ -87,17 +108,8 @@ IntExpr topmost_bit(IntExpr in_a) {
       End
     End
 
-    // Prepare an expression which can be assigned
-    // dummy is not used, only the rhs matters
-    Int dummy;
-    dummy = topmost;
+    Return(topmost);
   });
-
-  //std::cout << stmt->dump() << std::endl;
-  stmtStack() << stmt;
-
-  Stmt *ret = stmt->last_in_seq();
-  return ret->assign_rhs();
 }
 
 
@@ -106,8 +118,7 @@ IntExpr topmost_bit(IntExpr in_a) {
  * Source: https://en.wikipedia.org/wiki/Division_algorithm#Integer_division_(unsigned)_with_remainder
  */
 IntExpr operator/(IntExpr in_a, IntExpr in_b) {
-
-  Stmt::Ptr stmt = tempStmt([in_a, in_b] {
+  return create_function_snippet([in_a, in_b] {
     Int N = in_a;  comment("Start long integer divide");
     Int D = in_b;
 
@@ -147,16 +158,8 @@ IntExpr operator/(IntExpr in_a, IntExpr in_b) {
  
     comment("End integer divide");
 
-    // Prepare an expression which can be assigned
-    // dummy is not used, only the rhs matters
-    Int dummy;
-    dummy = Q;
+    Return(Q);
   });
-
-  //std::cout << stmt->dump() << std::endl;
-  stmtStack() << stmt;
-  Stmt *ret = stmt->last_in_seq();
-  return ret->assign_rhs();
 }
 
 
@@ -337,6 +340,5 @@ void set_at(Float &dst, Int n, Float const &src) {
     dst = src;
   End 
 }
-
 
 }  // namespace V3DLib
