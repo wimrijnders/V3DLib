@@ -11,6 +11,7 @@
 #include "Support/Platform.h"
 #include "StmtStack.h"
 #include "Lang.h"
+#include "LibSettings.h"
 
 namespace V3DLib {
 namespace functions {
@@ -172,6 +173,8 @@ IntExpr operator/(IntExpr in_a, IntExpr in_b) {
  * Source: https://stackoverflow.com/questions/18662261/fastest-implementation-of-sine-cosine-and-square-root-in-c-doesnt-need-to-b/28050328#28050328
  */
 float cos(float x_in, bool extra_precision) noexcept {
+  extra_precision |= LibSettings::use_high_precision_sincos(); // setting to true in param overrides lib setting
+
   double x = x_in;
 
   x -= .25 + std::floor(x + .25);
