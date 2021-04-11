@@ -25,6 +25,7 @@ struct OpItem {
   ALUOp::Enum aluop_int() const;
   bool v3d_specific() const { return m_v3d_specific; }
 
+  std::string disp(std::string const &lhs, std::string const &rhs) const;
   std::string dump() const;
 
 private:

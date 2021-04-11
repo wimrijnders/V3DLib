@@ -103,24 +103,7 @@ void Expr::deref_ptr(Ptr p) {
 }
 
 
-std::string Expr::disp_apply() const {
-  std::string ret;
-
-  auto op = apply_op();
-
-  if (op.noParams()) {
-    ret << op.to_string() << "()";
-  } else if (op.isFunction()) {
-    ret << op.to_string() << "(" << lhs()->pretty() << ")";
-  } else if (op.isUnary()) {
-    ret << "(" << op.to_string() << lhs()->pretty() << ")";
-  } else {
-    ret << "(" << lhs()->pretty() << op.to_string() << rhs()->pretty() <<  ")";
-  }
-
-  return ret;
-}
-
+std::string Expr::disp_apply() const { return apply_op().disp(lhs()?lhs()->pretty():"", rhs()?rhs()->pretty():""); }
 
 std::string Expr::pretty() const {
   std::string ret;

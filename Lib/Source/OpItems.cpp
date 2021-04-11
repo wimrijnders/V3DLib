@@ -27,8 +27,8 @@ std::vector<OpItem> m_list = {
   // v3d-specific
   {FFLOOR, "ffloor",    true, ALUOp::A_FFLOOR, ALUOp::NONE,   true},
   {SIN,    "sin",       true, ALUOp::A_FSIN,   ALUOp::NONE,   true},  // also SFU function
-  {TIDX,   "tidx",     false, ALUOp::NONE,     ALUOp::A_TIDX, true},
-  {EIDX,   "eidx",     false, ALUOp::NONE,     ALUOp::A_EIDX, true},
+  {TIDX,   "tidx",     false, ALUOp::NONE,     ALUOp::A_TIDX, true, 0},
+  {EIDX,   "eidx",     false, ALUOp::NONE,     ALUOp::A_EIDX, true, 0},
 
   // SFU functions
   {RECIP,     "recip",     true, ALUOp::NONE,     ALUOp::NONE},
@@ -77,6 +77,28 @@ ALUOp::Enum OpItem::aluop_float() const {
 ALUOp::Enum OpItem::aluop_int() const {
   assertq(m_aluop_int != ALUOp::NONE, "ALU Op int not defined for OpItem");
   return m_aluop_int;
+}
+
+
+std::string OpItem::disp(std::string const &lhs, std::string const &rhs) const {
+  std::string ret;
+
+  if (num_params() == 0) {
+    ret << str << "()";
+  } else if (is_function) {
+    assert(!lhs.empty());
+    ret << str << "(" << lhs << ")";
+  } else if (num_params() == 1) {
+    assert(!lhs.empty());
+    ret << "(" << str << lhs << ")";
+  } else {
+    assert(num_params() == 2);
+    assert(!lhs.empty());
+    assert(!rhs.empty());
+    ret << "(" << lhs << str << rhs <<  ")";
+  }
+
+  return ret;
 }
 
 

@@ -1,11 +1,62 @@
 #include "ALUOp.h"
 #include <stdint.h>
 #include "Support/basics.h"
-#include "Source/OpItems.h"
+#include "Source/Op.h"
 
 namespace V3DLib {
+namespace {
 
-ALUOp::ALUOp(Op const &op) : m_value(OpItems::opcode(op)) {}
+char const *pretty_op(ALUOp::Enum value) {
+  using Enum = ALUOp::Enum;
+
+  switch (value) {
+    case Enum::NOP:       return "nop";
+    case Enum::A_FADD:    return "addf";
+    case Enum::A_FSUB:    return "subf";
+    case Enum::A_FMIN:    return "minf";
+    case Enum::A_FMAX:    return "maxf";
+    case Enum::A_FMINABS: return "minabsf";
+    case Enum::A_FMAXABS: return "maxabsf";
+    case Enum::A_FtoI:    return "ftoi";
+    case Enum::A_ItoF:    return "itof";
+    case Enum::A_ADD:     return "add";
+    case Enum::A_SUB:     return "sub";
+    case Enum::A_SHR:     return "shr";
+    case Enum::A_ASR:     return "asr";
+    case Enum::A_ROR:     return "ror";
+    case Enum::A_SHL:     return "shl";
+    case Enum::A_MIN:     return "min";
+    case Enum::A_MAX:     return "max";
+    case Enum::A_BAND:    return "and";
+    case Enum::A_BOR:     return "or";
+    case Enum::A_BXOR:    return "xor";
+    case Enum::A_BNOT:    return "not";
+    case Enum::A_CLZ:     return "clz";
+    case Enum::A_V8ADDS:  return "addsatb";
+    case Enum::A_V8SUBS:  return "subsatb";
+    case Enum::M_FMUL:    return "fmul";
+    case Enum::M_MUL24:   return "mul24";
+    case Enum::M_V8MUL:   return "mulb";
+    case Enum::M_V8MIN:   return "minb";
+    case Enum::M_V8MAX:   return "maxb";
+    case Enum::M_V8ADDS:  return "m_addsatb";
+    case Enum::M_V8SUBS:  return "m_subsatb";
+    case Enum::M_ROTATE:  return "rotate";
+    // v3d-specific
+    case Enum::A_TIDX:    return "tidx";
+    case Enum::A_EIDX:    return "eidx";
+    case Enum::A_FFLOOR:  return "ffloor";
+    case Enum::A_FSIN:    return "sin";
+    default:
+      assertq(false, "pretty_op(): Unknown alu opcode", true);
+      return "";
+  }
+}
+
+}  // anon namespace
+
+
+ALUOp::ALUOp(Op const &op) : m_value(op.opcode()) {}
 
 
 /**
@@ -25,58 +76,7 @@ bool ALUOp::isMul() const {
 }
 
 
-std::string ALUOp::pretty() const {
-  std::string ret;
-
-  ret << pretty_op();
-  return ret;
-}
-
-
-char const *ALUOp::pretty_op() const {
-  switch (m_value) {
-    case NOP:       return "nop";
-    case A_FADD:    return "addf";
-    case A_FSUB:    return "subf";
-    case A_FMIN:    return "minf";
-    case A_FMAX:    return "maxf";
-    case A_FMINABS: return "minabsf";
-    case A_FMAXABS: return "maxabsf";
-    case A_FtoI:    return "ftoi";
-    case A_ItoF:    return "itof";
-    case A_ADD:     return "add";
-    case A_SUB:     return "sub";
-    case A_SHR:     return "shr";
-    case A_ASR:     return "asr";
-    case A_ROR:     return "ror";
-    case A_SHL:     return "shl";
-    case A_MIN:     return "min";
-    case A_MAX:     return "max";
-    case A_BAND:    return "and";
-    case A_BOR:     return "or";
-    case A_BXOR:    return "xor";
-    case A_BNOT:    return "not";
-    case A_CLZ:     return "clz";
-    case A_V8ADDS:  return "addsatb";
-    case A_V8SUBS:  return "subsatb";
-    case M_FMUL:    return "fmul";
-    case M_MUL24:   return "mul24";
-    case M_V8MUL:   return "mulb";
-    case M_V8MIN:   return "minb";
-    case M_V8MAX:   return "maxb";
-    case M_V8ADDS:  return "m_addsatb";
-    case M_V8SUBS:  return "m_subsatb";
-    case M_ROTATE:  return "rotate";
-    // v3d-specific
-    case A_TIDX:    return "tidx";
-    case A_EIDX:    return "eidx";
-    case A_FFLOOR:  return "ffloor";
-    case A_FSIN:    return "sin";
-    default:
-      assertq(false, "pretty_op(): Unknown alu opcode", true);
-      return "";
-  }
-}
+std::string ALUOp::pretty() const { return pretty_op(m_value); }
 
 
 uint32_t ALUOp::vc4_encodeAddOp() const {

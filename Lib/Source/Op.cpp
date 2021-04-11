@@ -1,6 +1,6 @@
 #include "Op.h"
 #include <vector>
-#include "Support/debug.h"
+#include "Support/basics.h"
 #include "OpItems.h"
 
 namespace V3DLib {
@@ -8,43 +8,10 @@ namespace V3DLib {
 Op::Op(Op const &rhs) : op(rhs.op), type(rhs.type), m_item(OpItems::get(rhs.op)) {}
 Op::Op(OpId in_op, BaseType in_type) : op(in_op), type(in_type), m_item(OpItems::get(in_op)) {}
 
-const char *Op::to_string() const {
-  OpItem const *item = OpItems::find(op);
-  if (item != nullptr) {
-    return item->str;
-  }
+bool Op::isUnary()       const { return (m_item.num_params() == 1); }
+std::string Op::dump()   const { return m_item.dump(); }
+ALUOp::Enum Op::opcode() const { return OpItems::opcode(*this); }
 
-  assertq(false, "Op::to_string(): unknown opcode", true);
-  return nullptr;
-}
-
-
-bool Op::noParams() const {
-  return (op == TIDX  || op == EIDX);
-}
-
-
-bool Op::isUnary() const {
-  OpItem const *item = OpItems::find(op);
-  assert(item != nullptr);
-  return (item->num_params() == 1);
-}
-
-
-bool Op::isFunction() const {
-  OpItem const *item = OpItems::find(op);
-  assert(item != nullptr);
-  return item->is_function;
-}
-
-
-std::string Op::dump() const {
-  OpItem const *item = OpItems::find(op);
-  if (item != nullptr) {
-    return item->dump();
-  } else {
-    return "<Unknown Op>";
-  }
-}
+std::string Op::disp(std::string const &lhs, std::string const &rhs) const { return m_item.disp(lhs, rhs); }
 
 }  // namespace V3DLib

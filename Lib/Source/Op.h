@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_SOURCE_OP_H_
 #define _V3DLIB_SOURCE_OP_H_
 #include <string>
+#include "Target/instr/ALUOp.h"
 
 namespace V3DLib {
 
@@ -42,6 +43,9 @@ enum OpId {
 
 /**
  * Pair containing operator and base type
+ *
+ * This data class has degenerated to a facade for OpItem.
+ * TODO cleanup and/or consolidate
  */
 struct Op {
   OpId op;
@@ -50,12 +54,12 @@ struct Op {
   Op(Op const &rhs);
   Op(OpId in_op, BaseType in_type);
 
-  const char *to_string() const;
-  bool noParams() const;  // Yes, I know, doesn't make sense. Happens anyway
   bool isUnary() const;
-  bool isFunction() const;
 
+  std::string disp(std::string const &lhs, std::string const &rhs) const;
   std::string dump() const;
+
+  ALUOp::Enum opcode() const;
 
 private:
   OpItem const &m_item;
