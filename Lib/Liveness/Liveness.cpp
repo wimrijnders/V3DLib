@@ -105,9 +105,11 @@ void remove_replaced_instructions(Instr::List &instrs) {
   }
 
   if (count > 0) {
+/*
     std::string msg;
     msg << "remove_replaced_instructions() removed " << count << " SKIPs";
     debug(msg);
+*/
   }
 }
 

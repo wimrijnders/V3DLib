@@ -247,13 +247,18 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 }  // anon namespace
 
 
-void combineImmediates(Liveness &live, Instr::List &instrs) {
+/**
+ * @return true if any replacements were made, false otherwise
+ */
+bool combineImmediates(Liveness &live, Instr::List &instrs) {
   bool found_something = false;
 
   for (int i = 0; i < (int) instrs.size(); i++) {
     Instr &instr = instrs[i];
     if (instr.tag != InstrTag::LI) continue;
     if (instr.LI.imm.is_basic()) continue;
+
+   //std::cout << "  Scanning for LI: " << instr.dump() << std::endl; 
 
 /*
     std::cout << "LI at " << i << " (block " << live.cfg().block_at(i) << "): "
@@ -265,14 +270,13 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
     int const LAST_USE_LIMIT = 50;
 
     for (int j = i + 1; j < (int) instrs.size(); j++) {
-      auto &instr = instrs[j];
-
-      if (instr.is_branch()) {  // Don't go over branches, this affects liveness in a bad way
+      if (instrs[j].is_branch()) {  // Don't go over branches, this affects liveness in a bad way
         break;
       }
 
-      if (last_use + LAST_USE_LIMIT < j) {
-        debug("Hit last use limit, stopping forward scan");
+      if (last_use + LAST_USE_LIMIT < j) {  // This is here for performance reasons, to avoid fully scanning
+                                            // huge kernels.
+        //debug("Hit last use limit, stopping forward scan");
         break;
       }
 
@@ -302,12 +306,12 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
       if (!(instr2.tag == InstrTag::LI && instr2.LI.imm == instr.LI.imm)) continue;
       if (!live.cfg().is_parent_block(j, live.cfg().block_at(i))) continue;
 
-/*
-      std::cout << "  Could replace LI at " << j << " (block " << live.cfg().block_at(j) << "): "
-                << instr2.mnemonic(false) << std::endl;
 
-      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl; 
-*/
+//      std::cout << "  Could replace LI at " << j << " (block " << live.cfg().block_at(j) << "): "
+//                << instr2.mnemonic(false) << std::endl;
+
+//      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl; 
+
 
       int block_end = live.cfg().block_end(j);
       UseDefReg regs;
@@ -317,6 +321,7 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
         regs.set_used(instrs[k]);
 
         if (regs.is_dest(instr2.LI.dest)) {
+/*
           std::string msg;
           msg << "Stopping replacing same LIs: "
               << "instrs[" << k << "] uses reg " << instr2.LI.dest.dump()
@@ -327,6 +332,7 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
             msg << " (Conditional assign!)";
           }
           debug(msg);
+*/
 
           break;  // Stop if var to replace is rewritten
         }
@@ -335,10 +341,12 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
         Reg replace_with = instr.LI.dest;
 
         if (regs.is_src(current)) {
+/*
+          // Shows an actual replacement
           std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
                     << current.dump() << " -> " << replace_with.dump()
                     << ": " << instrs[k].mnemonic(false) << std::endl;
-
+*/
           renameUses(instrs[k], current, replace_with);
           num_subsitutions++;
         }
@@ -358,9 +366,13 @@ void combineImmediates(Liveness &live, Instr::List &instrs) {
     found_something = true;
   }
 
+/*
   if (found_something) {
-//    std::cout << live.cfg().dump_blocks() << std::endl;
+    std::cout << live.cfg().dump_blocks() << std::endl;
   }
+*/
+
+  return found_something;
 }
 
 

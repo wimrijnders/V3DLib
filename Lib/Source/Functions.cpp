@@ -250,7 +250,7 @@ FloatExpr sin_v3d(FloatExpr x_in) {
   Where (tmp > 0.75f)                  // Adjust value to the range -PI/2...PI/2
     tmp = tmp - 1.0f;
   Else Where (tmp > 0.25f)
-    tmp = -1*(tmp - 0.5f);
+    tmp = 0.5f - tmp;
   End End
 
   tmp *= 2;                            // Convert to multiple of PI
