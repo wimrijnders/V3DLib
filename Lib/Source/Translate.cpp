@@ -590,7 +590,7 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
         e.lhs(mkVar(tmpVar));
       }
 
-      switch (e.apply_op.op) {                            // x and y are simple
+      switch (e.apply_op().op) {                          // x and y are simple
       case RECIP:     ret << recip(v, e.lhs()->var());     break;
       case RECIPSQRT: ret << recipsqrt(v, e.lhs()->var()); break;
       case EXP:       ret << bexp(v, e.lhs()->var());      break;
@@ -601,7 +601,7 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
         instr.ALU.cond       = cond;
         instr.ALU.dest       = dstReg(v);
         instr.ALU.srcA       = operand(e.lhs());
-        instr.ALU.op         = ALUOp(e.apply_op);
+        instr.ALU.op         = ALUOp(e.apply_op());
         instr.ALU.srcB       = operand(e.rhs());
 
         ret << instr;

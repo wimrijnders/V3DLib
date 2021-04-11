@@ -88,7 +88,6 @@ private:
   Enum m_value = NOP;
 
   char const *pretty_op() const;
-  Enum opcode(Op const &op) const;
 };
 
 }  // namespace V3DLib

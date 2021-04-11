@@ -107,13 +107,13 @@ Float &Float::operator*=(FloatExpr rhs) { *this = *this * rhs; return *this; }
 // Generic operations
 // ============================================================================
 
-inline FloatExpr mkFloatApply(FloatExpr lhs, Op op, FloatExpr rhs) {
+inline FloatExpr mkFloatApply(FloatExpr lhs, Op const &op, FloatExpr rhs) {
   Expr::Ptr e = mkApply(lhs.expr(), op, rhs.expr());
   return FloatExpr(e);
 }
 
 
-inline FloatExpr mkFloatApply(FloatExpr rhs, Op op) {
+inline FloatExpr mkFloatApply(FloatExpr rhs, Op const &op) {
   Expr::Ptr e = mkApply(rhs.expr(), op);
   return FloatExpr(e);
 }

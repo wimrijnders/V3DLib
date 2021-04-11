@@ -1,7 +1,10 @@
 #ifndef _V3DLIB_SOURCE_OP_H_
 #define _V3DLIB_SOURCE_OP_H_
+#include <string>
 
 namespace V3DLib {
+
+class OpItem;
 
 // ============================================================================
 // Operators
@@ -44,13 +47,18 @@ struct Op {
   OpId op;
   BaseType type;
 
-  Op(OpId in_op, BaseType in_type) : op(in_op), type(in_type) {}
+  Op(Op const &rhs);
+  Op(OpId in_op, BaseType in_type);
 
   const char *to_string() const;
   bool noParams() const;  // Yes, I know, doesn't make sense. Happens anyway
   bool isUnary() const;
   bool isFunction() const;
-  bool isCommutative() const;
+
+  std::string dump() const;
+
+private:
+  OpItem const &m_item;
 };
 
 }  // namespace V3DLib

@@ -12,7 +12,8 @@ namespace V3DLib {
 
 
 struct Expr {
-  using Ptr = std::shared_ptr<Expr>;
+  using Ptr   = std::shared_ptr<Expr>;
+  using OpPtr = std::unique_ptr<Op>;
 
   enum Tag {
     INT_LIT,
@@ -22,10 +23,11 @@ struct Expr {
     DEREF       // Dereference a pointer
   };
 
+  Expr(Expr const & in_lit);
   Expr(Var in_var);
   Expr(int in_lit);
   Expr(float in_lit);
-  Expr(Ptr in_lhs, Op op, Ptr in_rhs);
+  Expr(Ptr in_lhs, Op const &op, Ptr in_rhs);
   Expr(Ptr ptr);
 
   Tag tag() const { return m_tag; }
@@ -37,25 +39,27 @@ struct Expr {
   void lhs(Ptr p);
   void rhs(Ptr p);
   void deref_ptr(Ptr p);
+  Op const &apply_op() const;
 
-  Var var();
+  Var var() const;
 
   std::string pretty() const;
   std::string dump() const;
 
   union {
-    int   intLit;   // Integer literal
-    float floatLit; // Float literal
-    Var   m_var;      // Variable identifier
-    Op apply_op;    // Application of a binary operator
+    int   intLit;      // Integer literal
+    float floatLit;    // Float literal
+    Var   m_var;       // Variable identifier
   };
 
   bool isSimple() const;
 
 private:
-  Tag m_tag;    // What kind of expression is it?
-  Ptr m_exp_a;  // lhs for apply, ptr for deref
-  Ptr m_exp_b;  // rhs for apply
+  OpPtr m_apply_op;          // Application of a binary operator
+
+  Tag m_tag;                 // What kind of expression is it?
+  Ptr m_exp_a;               // lhs for apply, ptr for deref
+  Ptr m_exp_b;               // rhs for apply
 
   std::string disp_apply() const;
 };
@@ -102,8 +106,8 @@ public:
 // Functions to construct expressions
 Expr::Ptr mkIntLit(int lit);
 Expr::Ptr mkVar(Var var);
-Expr::Ptr mkApply(Expr::Ptr lhs, Op op, Expr::Ptr rhs);
-Expr::Ptr mkApply(Expr::Ptr rhs, Op op);
+Expr::Ptr mkApply(Expr::Ptr lhs, Op const &op, Expr::Ptr rhs);
+Expr::Ptr mkApply(Expr::Ptr rhs, Op const &op);
 Expr::Ptr mkDeref(Expr::Ptr ptr);
 
 }  // namespace V3DLib

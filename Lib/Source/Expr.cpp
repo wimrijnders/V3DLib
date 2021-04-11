@@ -8,6 +8,24 @@ namespace V3DLib {
 using ::operator<<;  // C++ weirdness
 
 
+Expr::Expr(Expr const &rhs) :
+  m_tag(rhs.m_tag),
+  m_exp_a(rhs.m_exp_a),
+  m_exp_b(rhs.m_exp_b)
+{
+  // sort out union and other things dependent on tag
+  switch(m_tag) {
+    case INT_LIT  : intLit     = rhs.intLit; break;
+    case FLOAT_LIT: floatLit   = rhs.floatLit; break;
+    case VAR:       m_var      = rhs.m_var; break;
+    case APPLY:     m_apply_op.reset(new Op(*rhs.m_apply_op)); break;  // I hate this
+
+    case DEREF: break;
+    default: assert(false); break;
+  }
+}
+
+
 Expr::Expr(Var in_var) : m_var(in_var), m_tag(VAR) {}
 
 
@@ -23,15 +41,15 @@ Expr::Expr(float in_lit) {
 }
 
 
-Expr::Expr(Ptr in_lhs, Op op, Ptr in_rhs) {
+Expr::Expr(Ptr in_lhs, Op const &op, Ptr in_rhs) {
   m_tag = APPLY;
   lhs(in_lhs);
-  apply_op = op;
+  m_apply_op.reset(new Op(op));  // urgh
   rhs(in_rhs);
 }
 
 
-Var Expr::var() {
+Var Expr::var() const {
   assertq(m_tag == VAR, "Expr is not a VAR, shouldn't access var member.", true);
   return m_var;
 }
@@ -52,6 +70,12 @@ Expr::Ptr Expr::lhs() const {
 Expr::Ptr Expr::rhs() const {
   assert(m_tag == APPLY && m_exp_b.get() != nullptr);
   return m_exp_b;
+}
+
+
+Op const &Expr::apply_op() const {
+  assert(m_tag == APPLY && m_apply_op != nullptr);
+  return *m_apply_op;
 }
 
 
@@ -80,17 +104,18 @@ void Expr::deref_ptr(Ptr p) {
 
 
 std::string Expr::disp_apply() const {
-  assert(tag() == APPLY);
   std::string ret;
 
-  if (apply_op.noParams()) {
-    ret << apply_op.to_string() << "()";
-  } else if (apply_op.isFunction()) {
-    ret << apply_op.to_string() << "(" << lhs()->pretty() << ")";
-  } else if (apply_op.isUnary()) {
-    ret << "(" << apply_op.to_string() << lhs()->pretty() << ")";
+  auto op = apply_op();
+
+  if (op.noParams()) {
+    ret << op.to_string() << "()";
+  } else if (op.isFunction()) {
+    ret << op.to_string() << "(" << lhs()->pretty() << ")";
+  } else if (op.isUnary()) {
+    ret << "(" << op.to_string() << lhs()->pretty() << ")";
   } else {
-    ret << "(" << lhs()->pretty() << apply_op.to_string() << rhs()->pretty() <<  ")";
+    ret << "(" << lhs()->pretty() << op.to_string() << rhs()->pretty() <<  ")";
   }
 
   return ret;
@@ -205,7 +230,7 @@ Expr::Ptr mkDeref(Expr::Ptr ptr) { return std::make_shared<Expr>(ptr); }
  * Unary operation can be passed in, the second parameter 'rhs'
  * will be ignored in the assembly.
  */
-Expr::Ptr mkApply(Expr::Ptr lhs, Op op, Expr::Ptr rhs) {
+Expr::Ptr mkApply(Expr::Ptr lhs, Op const &op, Expr::Ptr rhs) {
   return std::make_shared<Expr>(lhs, op, rhs);
 }
 
@@ -213,8 +238,12 @@ Expr::Ptr mkApply(Expr::Ptr lhs, Op op, Expr::Ptr rhs) {
 /**
  * Unary op version
  */
-Expr::Ptr mkApply(Expr::Ptr lhs, Op op) {
-  assert(op.isUnary());
+Expr::Ptr mkApply(Expr::Ptr lhs, Op const &op) {
+  if (!op.isUnary()) {
+    std::string msg;
+    msg << "mkApply(): " << op.dump() << " expected to be unary";
+    assertq(false, msg);
+  }
   return std::make_shared<Expr>(lhs, op, mkIntLit(0));
 }
 

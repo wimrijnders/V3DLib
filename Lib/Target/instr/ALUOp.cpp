@@ -1,66 +1,11 @@
 #include "ALUOp.h"
 #include <stdint.h>
-#include "Support/Platform.h"
 #include "Support/basics.h"
 #include "Source/OpItems.h"
 
 namespace V3DLib {
 
-ALUOp::ALUOp(Op const &op) : m_value(opcode(op)) {}
-
-
-/**
- * Translate source operator to target opcode
- */
-ALUOp::Enum ALUOp::opcode(Op const &op) const {
-  if (op.type == BaseType::FLOAT) {
-    auto const *item = OpItems::find(op.op);
-    if (item != nullptr) return item->aluop_float();
-
-    switch (op.op) {
-      case ADD:    return A_FADD;
-      case SUB:    return A_FSUB;
-      case MUL:    return M_FMUL;
-      case MIN:    return A_FMIN;
-      case MAX:    return A_FMAX;
-      case ItoF:   return A_ItoF;
-      case ROTATE: return M_ROTATE;
-      case FFLOOR: return A_FFLOOR;
-      default:
-        assertq(false, "opcode(): Unhandled op for float", true);
-        break;
-    }
-  } else {
-    switch (op.op) {
-      case ADD:    return A_ADD;
-      case SUB:    return A_SUB;
-      case MUL:    return M_MUL24;
-      case MIN:    return A_MIN;
-      case MAX:    return A_MAX;
-      case FtoI:   return A_FtoI;
-      case SHL:    return A_SHL;
-      case SHR:    return A_ASR;
-      case USHR:   return A_SHR;
-      case ROR:    return A_ROR;
-      case BAND:   return A_BAND;
-      case BOR:    return A_BOR;
-      case BXOR:   return A_BXOR;
-      case BNOT:   return A_BNOT;
-      case ROTATE: return M_ROTATE;
-      case TIDX: 
-        assertq(!Platform::compiling_for_vc4(), "opcode(): TIDX is only for v3d", true);
-        return A_TIDX;
-      case EIDX: 
-        assertq(!Platform::compiling_for_vc4(), "opcode(): EIDX is only for v3d", true);
-        return A_EIDX;
-      default:
-        assertq(false, "opcode(): Unhandled op for int", true);
-        break;
-    }
-  }
-
-  return NOP;
-}
+ALUOp::ALUOp(Op const &op) : m_value(OpItems::opcode(op)) {}
 
 
 /**

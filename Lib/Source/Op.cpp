@@ -5,47 +5,16 @@
 
 namespace V3DLib {
 
+Op::Op(Op const &rhs) : op(rhs.op), type(rhs.type), m_item(OpItems::get(rhs.op)) {}
+Op::Op(OpId in_op, BaseType in_type) : op(in_op), type(in_type), m_item(OpItems::get(in_op)) {}
+
 const char *Op::to_string() const {
-  switch (op) {
-    case ADD:    return "+";
-    case SUB:    return "-";
-    case MUL:    return "*";
-    case MIN:    return " min ";
-    case MAX:    return " max ";
-    case ROTATE: return " rotate ";
-    case SHL:    return " << ";
-    case SHR:    return " >> ";
-    case USHR:   return " _>> ";
-    case ROR:    return " ror ";
-    case BOR:    return " | ";
-    case BAND:   return " & ";
-    case BXOR:   return " ^ ";
-    case BNOT:   return "~";
-    case ItoF:   return "(Float) ";
-    case FtoI:   return "(Int) ";
-
-    // SFU functions
-    case RECIP:  return "recip";
-    case RECIPSQRT: return "recipsqrt";
-    case EXP:    return "exp";
-    case LOG:    return "log";
-
-    case SIN:    return "sin";
-
-    // v3d-specific
-    case TIDX:   return "tidx";
-    case EIDX:   return "eidx";
-    case FFLOOR:  return "ffloor";
-
-    default:
-      OpItem const *item = OpItems::find(op);
-      if (item != nullptr) {
-        return item->str;
-      }
-      assertq(false, "Unknown OpId in Op::to_string()");
+  OpItem const *item = OpItems::find(op);
+  if (item != nullptr) {
+    return item->str;
   }
 
-  assertq(false, "opToString(): unknown opcode", true);
+  assertq(false, "Op::to_string(): unknown opcode", true);
   return nullptr;
 }
 
@@ -57,37 +26,25 @@ bool Op::noParams() const {
 
 bool Op::isUnary() const {
   OpItem const *item = OpItems::find(op);
-  if (item != nullptr) {
-    return item->is_unary();
-  }
-
-  return (op == BNOT || op == ItoF || op == FtoI || op == FFLOOR || isFunction());
+  assert(item != nullptr);
+  return (item->num_params() == 1);
 }
 
 
 bool Op::isFunction() const {
   OpItem const *item = OpItems::find(op);
-  if (item != nullptr) {
-    return item->is_function;
-  }
-
-  return (op == RECIP || op == RECIPSQRT || op == EXP || op == LOG || op == FFLOOR);
+  assert(item != nullptr);
+  return item->is_function;
 }
 
 
-// Is given operator commutative?
-bool Op::isCommutative() const {
-  if (type != FLOAT) {
-    return op == ADD
-        || op == MUL
-        || op == BOR
-        || op == BAND
-        || op == BXOR
-        || op == MIN
-        || op == MAX;
+std::string Op::dump() const {
+  OpItem const *item = OpItems::find(op);
+  if (item != nullptr) {
+    return item->dump();
+  } else {
+    return "<Unknown Op>";
   }
-
-  return false;
 }
 
 }  // namespace V3DLib
