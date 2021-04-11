@@ -198,7 +198,13 @@ FloatExpr log(FloatExpr x)       { return mkFloatApply(x, Op(LOG, FLOAT)); }
  */
 FloatExpr sin_op(FloatExpr x) { return unary_float_op(SIN, x); }
 
-FloatExpr cos(FloatExpr x) { return sin(0.25f - x); }
+FloatExpr cos(FloatExpr x) {
+  if (Platform::compiling_for_vc4()) {
+    return functions::cos(x);
+  } else {
+    return functions::sin_v3d(0.25f - x);
+  }
+}
 
 FloatExpr sin(FloatExpr x) {
   if (Platform::compiling_for_vc4()) {

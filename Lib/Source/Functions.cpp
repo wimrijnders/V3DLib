@@ -244,7 +244,7 @@ FloatExpr sin(FloatExpr x_in, bool extra_precision) {
 FloatExpr sin_v3d(FloatExpr x_in) {
   //debug("using v3d sin");
 
-  Float tmp = x_in;
+  Float tmp = x_in;                    comment("Start source lang v3d sin");
   tmp = tmp - functions::ffloor(tmp);  // Sneaky way to isolate the fractional part
 
   Where (tmp > 0.75f)                  // Adjust value to the range -PI/2...PI/2

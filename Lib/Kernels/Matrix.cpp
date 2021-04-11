@@ -202,7 +202,7 @@ void DotVector::dot_product(Float::Ptr rhs, Float &result) {
  * Multiply current instance with the DFT elements of line `k`.
  *
  * The DFT matrix elements are calculated inline.
- * Note that low-precision sin/cos is used.
+ * Note that low-precision sin/cos is used for vc4.
  */
 void DotVector::dft_dot_product(Int const &k, Complex &result) {
   Complex tmp(0, 0);               comment("DotVector::dft_dot_product()");
@@ -210,7 +210,7 @@ void DotVector::dft_dot_product(Int const &k, Complex &result) {
   int num_elements = ((int) size())* 16;
   for (int i = 0; i < (int) size(); ++i) {
     Float param = -1.0f*toFloat(k*(i*16 + index()))/toFloat(num_elements);
-    Complex tmp1(elements[i]*functions::cos(param), elements[i]*functions::sin(param));
+    Complex tmp1(elements[i]*cos(param), elements[i]*sin(param));
 
     tmp += tmp1;
   }
@@ -433,7 +433,7 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
  * Multiply current instance with the DFT elements of line `k`.
  *
  * The DFT matrix elements are calculated inline.
- * Note that low-precision sin/cos is used.
+ * Note that low-precision sin/cos is used for vc4.
  */
 void ComplexDotVector::dft_dot_product(Int const &k, Complex &result) {
   Complex tmp(0, 0);               comment("ComplexDotVector::dft_dot_product()");
@@ -442,7 +442,7 @@ void ComplexDotVector::dft_dot_product(Int const &k, Complex &result) {
   for (int i = 0; i < (int) size(); ++i) {
     Float param = -1.0f*toFloat(k*(i*16 + index()))/toFloat(num_elements);
     Complex tmp1(re[i], im[i]);
-    Complex tmp2(functions::cos(param), functions::sin(param));
+    Complex tmp2(cos(param), sin(param));
 
     tmp += tmp1*tmp2;
   }
