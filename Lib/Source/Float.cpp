@@ -196,7 +196,9 @@ FloatExpr log(FloatExpr x)       { return mkFloatApply(x, Op(LOG, FLOAT)); }
  * Should not be used directly in code.
  * use `sin()` below instead
  */
-FloatExpr sin_op(FloatExpr x) { return unary_float_op(SIN, x); }
+FloatExpr sin_op(FloatExpr x) {
+  return unary_float_op(SIN, x);
+}
 
 FloatExpr cos(FloatExpr x) {
   if (Platform::compiling_for_vc4()) {

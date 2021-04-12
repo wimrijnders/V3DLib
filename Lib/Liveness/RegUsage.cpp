@@ -245,7 +245,6 @@ void RegUsage::set_live(Liveness &live) {
  */
 void RegUsage::check() const {
   std::string ret;
-  std::string tmp;
 
   //
   // Following is pretty common and not much of an issue (any more).
@@ -256,6 +255,7 @@ void RegUsage::check() const {
   // and intended to be used as dummy's (TODO?)
   //
 /*
+  std::string tmp;
   tmp = get_assigned_only_list(*this);
   if (!tmp.empty()) {
     std::string msg = prefix;

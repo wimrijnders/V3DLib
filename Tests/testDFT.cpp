@@ -251,7 +251,8 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num
 
     Timer timer1;
     auto k = compile(kernels::dft_inline_decorator(input_float, result_float), for_platform);
-    k.pretty(false, "obj/test/df_inline_float_v3d_hardware_sin.txt");
+    k.pretty(false, "obj/test/dft_inline_float_v3d_hardware_sin.txt");
+    k.dump_compile_data(false, "obj/test/dft_inline_float_v3d_hardware_sin_data.txt");
     add_compile(label, timer1, Dim, 0);
 
 

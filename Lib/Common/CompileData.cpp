@@ -10,10 +10,12 @@ CompileData compile_data;
 std::string CompileData::dump() const {
   std::string ret;
 
-  ret << "Liveness dump"
+  ret << title("Liveness dump")
       << liveness_dump
+      << title("Reg usage dump")
+      << reg_usage_dump
       << title("Allocated registers to variables")
-      << allocated_registers_dump.c_str();
+      << allocated_registers_dump;
 
   if (!target_code_before_optimization.empty()) {
     ret << title("Target code before optimization")

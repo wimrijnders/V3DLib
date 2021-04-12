@@ -104,13 +104,13 @@ void remove_replaced_instructions(Instr::List &instrs) {
     }
   }
 
-  if (count > 0) {
 /*
+  if (count > 0) {
     std::string msg;
     msg << "remove_replaced_instructions() removed " << count << " SKIPs";
     debug(msg);
-*/
   }
+*/
 }
 
 }  // anon namespace
@@ -230,8 +230,8 @@ void Liveness::compute(Instr::List &instrs) {
 */
 
   m_reg_usage.set_live(*this);
-  //debug(m_reg_usage.dump(true));
 
+  compile_data.reg_usage_dump = m_reg_usage.dump(true);
   compile_data.liveness_dump = dump();
 
   m_reg_usage.check();

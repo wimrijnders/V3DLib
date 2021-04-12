@@ -314,7 +314,17 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
 
   REQUIRE(a.columns() == b.columns());
 
+  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols
+    << ", num QPUs: " << num_qpus);  // NOTE repeated below
+
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
+
+  if (k.has_errors()) {
+    k.pretty(false, "obj/test/test_matrix_multiplication_v3d.txt");
+    k.dump_compile_data(false, "obj/test/test_matrix_multiplication_v3d_data.txt");
+  }
+  REQUIRE(!k.has_errors());
+
   k.setNumQPUs(num_qpus);
   result.fill(-1.0f);
 
@@ -334,7 +344,8 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
   std::cout << result.dump() << std::endl;
 */
 
-  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
+  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols
+    << ", num QPUs: " << num_qpus);
 
   // NOTE: this does not compare the entire results array, just the relevant bit(s)
   for (int r = 0; r < rows; ++r) {
@@ -458,20 +469,17 @@ TEST_CASE("Test matrix algebra [matrix][mult]") {
 
 TEST_CASE("Test matrix algebra with varying sizes [matrix][mult][varying]") {
   SUBCASE("Check matrix multiplication") {
-    test_matrix_multiplication( 1,    16,   1);
-    test_matrix_multiplication( 1,  5*16,   1);
-    test_matrix_multiplication(10,    16,   5);
-    test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f);
-    test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f);  // Going over the top here with big dimensions
+    auto test = [] (int num_qpus) {
+      test_matrix_multiplication( 1,    16,   1,  1   , 1   , num_qpus);
+      test_matrix_multiplication( 1,  5*16,   1,  1   , 1   , num_qpus);
+      test_matrix_multiplication(10,    16,   5,  1   , 1   , num_qpus);
+      test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f, num_qpus);
+      test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f, num_qpus);  // Going over the top with big dimensions
+    };
 
-    // same thing with > 1 QPUs
-    test_matrix_multiplication( 1,    16,   1,  1   , 1, 8);
-    test_matrix_multiplication( 1,  5*16,   1,  1   , 1, 8);
-    test_matrix_multiplication(10,    16,   5,  1   , 1, 8);
-    test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f);
-    test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f);  // Going over the top here with big dimensions
+    test(1);
+    test(8);  // same thing with > 1 QPUs
   }
-
 }
 
 

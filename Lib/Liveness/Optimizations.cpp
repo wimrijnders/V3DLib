@@ -404,10 +404,11 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
 #endif  // DEBUG
 
   int subst_count = 0;
+  int const MAX_RANGE_SIZE = 15;  // 10 -> so that tmp var in sin_v3d() gets replaced
 
   //debug(allocated_vars.dump_use_ranges());
   // Picks up a lot usually, but range_size > 1 seldom results in something
-  for (int range_size = 1; range_size <= 10; range_size++) {
+  for (int range_size = 1; range_size <= MAX_RANGE_SIZE; range_size++) {
     int count = peephole_0(range_size, instrs, allocated_vars);
 
 /*
