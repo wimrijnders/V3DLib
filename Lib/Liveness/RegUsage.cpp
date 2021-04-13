@@ -55,7 +55,7 @@ std::string get_assigned_only_list(RegUsage const &alloc_list) {
 ///////////////////////////////////////////////////////////////////////////////
 
 bool RegUsageItem::unused() const {
-  return (use.dst.empty() && use.src_use == 0);
+  return (use_dst.empty() && src_range.count() == 0);
 }
 
 
@@ -70,53 +70,28 @@ std::string RegUsageItem::dump() const {
   ret << reg.dump() << "; ";
 
   ret << "use(src_first, src_last, src_count, dst): ("
-      << use.src_first << ", "
-      << use.src_last  << ", "
-      << use.src_use   << ", {";
+      << src_range.dump() << ", {";
 
-  for (int i = 0; i < (int) use.dst.size(); ++i) {
+  for (int i = 0; i < (int) use_dst.size(); ++i) {
     if (i != 0) {
       ret << ", ";
     }
-    ret << use.dst[i];
+    ret << use_dst[i];
   }
 
-  ret << "}); live(first, last, count): ("
-      << live.first << ", " << live.last << ", " << live.count << ")";
+  ret << "}); live(first, last, count): (" << m_live_range.dump() << ")";
   return ret;
 }
 
 
 void RegUsageItem::add_dst(int n) {
-  assertq(use.dst.empty() || use.dst.back() < n, "RegUsageItem::add_dst() failed", true);
-  use.dst << n;
+  assertq(use_dst.empty() || use_dst.back() < n, "RegUsageItem::add_dst() failed", true);
+  use_dst << n;
 }
 
 
-void RegUsageItem::add_src(int n) {
-  use.src_use++;
-
-  if (use.src_first == -1 || use.src_first > n) {
-    use.src_first = n;
-  }
-
-  if (use.src_last == -1 || use.src_last < n) {
-    use.src_last = n;
-  }
-}
-
-
-void RegUsageItem::add_live(int n) {
-  if (live.first == -1 || live.first > n) {
-    live.first = n;
-  }
-
-  if (live.last == -1 || live.last < n) {
-    live.last = n;
-  }
-
-  live.count++;
-}
+void RegUsageItem::add_src(int n)  { src_range.add(n); }
+void RegUsageItem::add_live(int n) { m_live_range.add(n); }
 
 
 /**
@@ -127,16 +102,7 @@ void RegUsageItem::add_live(int n) {
  * This could happen if the variable assigned to within this range.
  */
 int RegUsageItem::live_range() const {
-  if (live.first == -1 && live.last == -1) {
-    assert(use.src_use == 0);  // dst_use may be nonzero!
-    return 0;
-  }
-
-  assert(live.first != -1 && live.last != -1);
-
-  // NOTE: this is not true: `(live.last - live.first + 1) == live.count)`,
-  //       because there can conceivably be gaps for liveness, due to interim assignments.
-  return (live.last - live.first + 1);
+  return m_live_range.range();
 }
 
 
@@ -146,10 +112,10 @@ int RegUsageItem::live_range() const {
 int RegUsageItem::use_range() const {
   if (unused()) return 0;
 
-   int first = live.first;
-  if (!use.dst.empty()) first = use.dst[0];  // Guard for case where var is read only (eg. dummy input)
+  int first = m_live_range.first();
+  if (!use_dst.empty()) first = use_dst[0];  // Guard for case where var is read only (eg. dummy input)
 
-  int last = live.last;
+  int last = m_live_range.last();
   if (last == -1) {                        // Guard for case where var is write only (eg. dummy output)
     last = first;
   }
@@ -161,18 +127,18 @@ int RegUsageItem::use_range() const {
 
 
 int RegUsageItem::first_dst() const {
-  assert(!use.dst.empty());
-  return use.dst[0];
+  assert(!use_dst.empty());
+  return use_dst[0];
 }
 
 
 /**
- * Return the first in in which this variable is used (either as src or dst)
+ * Return the first line in which this variable is used (either as src or dst)
  */
 int RegUsageItem::first_usage() const {
-  assert(use.src_first == -1 || use.src_first >= first_dst());
-  assert(!use.dst.empty());
-  return use.dst[0];
+  assert(src_range.first() == -1 || src_range.first() >= first_dst());
+  assert(!use_dst.empty());
+  return use_dst[0];
 }
 
 
@@ -181,8 +147,7 @@ int RegUsageItem::first_usage() const {
  */
 int RegUsageItem::last_usage() const {
   if (only_assigned()) return first_dst();
-  assert(use.src_last == -1 || use.src_last >= use.src_first);
-  return use.src_last;
+  return src_range.last();
 }
 
 

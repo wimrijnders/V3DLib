@@ -221,13 +221,11 @@ void Liveness::compute(Instr::List &instrs) {
   compute_liveness(instrs);
   assert(instrs.size() == size());
 
-/*
   {
     std::string msg;
-    msg << " Liveness table:\n" << dump();
+    msg << " CFG table:\n" << cfg().dump();
     debug(msg);
   }
-*/
 
   m_reg_usage.set_live(*this);
 
