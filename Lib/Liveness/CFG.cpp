@@ -1,5 +1,6 @@
 #include "CFG.h"
-#include <assert.h>
+#include <iostream>
+#include "Support/debug.h"
 
 namespace V3DLib {
 
@@ -81,7 +82,7 @@ std::string CFG::Blocks::dump() const {
 
   // Make a kind of header
   // Show the index every LINE_MAX steps
-  int const LINE_MAX = 150;
+  int const LINE_MAX = (block_tabs == 1)?210:110;
 
   auto header = [&ret, this, tabs, block_tabs] (int min, int max) {
     int list_size = (int) this->list.size();
@@ -121,7 +122,8 @@ std::string CFG::Blocks::dump() const {
 
   ret << "\n";
 
-  if (block_tabs > 1) {
+  if (block_tabs > 2) {
+    std::cout << ret << std::endl;
     breakpoint  // Check what happens in this case
   }
 
