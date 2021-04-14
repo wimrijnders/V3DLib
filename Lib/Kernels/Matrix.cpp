@@ -269,10 +269,12 @@ void square_matrix_mult_scalar(int N, float *dst, float *a, float *b) {
 void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
   int const DIM = settings.inner;
+  Int STEP = DIM*numQPUs();
 
   a += me()*DIM;
 
   DotVector vec(settings.inner/16);
+  Float result = 0;  // NOTE explicit init required (TODO enforce)
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
     Float::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
@@ -280,7 +282,6 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
 
     vec.load(a);
 
-    Float result = 0;  // NOTE explicit init required (TODO enforce)
     Int b_index;
 
     For (b_index = 0, b_index < settings.columns, b_index++)
@@ -301,7 +302,7 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
     End
 
     // TODO make similar changes to other related kernels
-    a += DIM*numQPUs();  // Go to next row for current QPU
+    a += STEP; //DIM*numQPUs();  // Go to next row for current QPU
   End
 }
 
@@ -468,7 +469,6 @@ void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
     Complex::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
-
     Complex::Ptr b_local = b;
 
     vec.load(a);

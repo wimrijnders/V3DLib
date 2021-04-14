@@ -221,11 +221,13 @@ void Liveness::compute(Instr::List &instrs) {
   compute_liveness(instrs);
   assert(instrs.size() == size());
 
+/*
   {
     std::string msg;
     msg << " CFG table:\n" << cfg().dump();
     debug(msg);
   }
+*/
 
   m_reg_usage.set_live(*this);
 
@@ -321,8 +323,9 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
   live.compute(instrs);
   //live.dump();
 
-  combineImmediates(live, instrs);
-  live.compute(instrs);  // instructions may have changed in previous step, redo liveness
+  if (combineImmediates(live, instrs)) {
+    live.compute(instrs);  // instructions have changed, redo liveness
+  }
 
   int prev_count_skips = count_skips(instrs);
   compile_data.num_accs_introduced = introduceAccum(live, instrs);

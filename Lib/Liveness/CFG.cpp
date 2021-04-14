@@ -148,14 +148,6 @@ int CFG::Blocks::end(InstrId line_num) const {
 
 
 /**
- * Check if given block is same as or parent of block at line_num
- */
-bool CFG::is_parent_block(InstrId line_num, int block) const {
-  int cur_block = blocks.list[line_num];
-  return blocks.block_in(cur_block, block);
-}
-
-/**
  * Check if given cur_block is same as or embedded in parent_block
  *
  * This method assumes that all blocks are numbered uniquely.
@@ -174,6 +166,7 @@ bool CFG::Blocks::block_in(int cur_block, int parent_block) const {
   if (cur_block == parent_block) return true;
 
   if (ranges[parent_block].is_embedded(ranges[cur_block])) {
+    breakpoint
     return true;
   }
 
@@ -310,6 +303,16 @@ int CFG::block_at(InstrId line_num) const {
 void CFG::clear() {
   Parent::clear();
   blocks.clear();
+}
+
+
+/**
+ * Check if given block is same as or parent of block at line_num
+ */
+bool CFG::is_parent_block(InstrId line_num, int block) const {
+  int cur_block = blocks.list[line_num];
+
+  return blocks.block_in(cur_block, block);
 }
 
 }  // namespace V3DLib
