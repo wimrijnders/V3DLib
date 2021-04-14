@@ -29,18 +29,33 @@ struct matrix_settings {
   MatrixReadMethod read_method = DO_PREFETCH;
 
   /**
-   * The column size of the result array needs to be a multiple of 16
+   * The rows size of the result array needs to be a multiple of the number of QPUs running.
+   *
+   * This is a consequence of the for-loop in matrix_mult, which might be specified better.
+   */
+  int rows_result() const {
+    return adjust_dimension(rows, 12);
+  }
+
+
+  /**
+   * The column size of the result array needs to be a multiple of 16, i.e. vector size.
    */
   int cols_result() const {
-    assert(columns > 0);
-    int ret = columns;
+    return adjust_dimension(columns, 16);
+  }
 
-    if (columns % 16 != 0) {
-      ret = 16*(columns/16 + 1);
+private:
+
+  int adjust_dimension(int val, int multiple) const {
+    assert(val > 0);
+    if (val % multiple != 0) {
+      val  = multiple*(val/multiple + 1);
     }
 
-    return ret;
+    return val;
   }
+
 } settings;
 
 
@@ -140,13 +155,14 @@ void check_allocate_result_array(Complex::Array2D &result) {
     result.alloc(settings.rows, settings.cols_result());
   } else {
     if (result.rows() != settings.rows) {
-      std::string msg = "matrix_mult_decorator(): result array should have the same number of rows as matrix a ";
+      std::string msg = "check_allocate_result_array(): result array "
+                        "should have the same number of rows as matrix a ";
       msg << "(" << settings.rows << ")";
       assertq(msg);
     }
 
     if (result.columns() != settings.cols_result()) {
-      std::string msg = "matrix_mult_decorator(): result array should have a columns size of ";
+      std::string msg = "check_allocate_result_array(): result array should have a columns size of ";
       msg << settings.cols_result();
       assertq(msg);
     }
@@ -368,7 +384,7 @@ FuncType *matrix_mult_decorator(
   // Result array requires column size which is a multiple of 16
   // Ensure enough padding for result so that size is multiple of 16
   // It may become too big but never mind
-  result.alloc(a.rows(), settings.cols_result());
+  result.alloc(settings.rows_result(), settings.cols_result());
 
   return ret;
 }

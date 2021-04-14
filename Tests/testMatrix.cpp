@@ -8,7 +8,6 @@
 #include "LibSettings.h"
 #include "support/support.h"
 #include "Support/basics.h"
-#include "Support/Timer.h"
 #include "Kernels/Matrix.h"
 #include "support/matrix_support.h"
 
@@ -318,10 +317,7 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
   result.fill(-1.0f);
 
   k.load(&result, &a, &b);
-  {
-    Timer t("test_matrix_multiplication", true);
-    k.call();
-  }
+  k.call();
 
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols
     << ", num QPUs: " << num_qpus);
@@ -453,12 +449,7 @@ TEST_CASE("Test matrix algebra with varying sizes [matrix][mult][varying]") {
       test_matrix_multiplication( 1,  5*16,   1,  1   , 1   , num_qpus);
       test_matrix_multiplication(10,    16,   5,  1   , 1   , num_qpus);
       test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f, num_qpus);
-
-      test_matrix_multiplication(65, 10*16, /* 65 */  85,  2.0f, 3.0f, num_qpus);  // Going over the top with big dimensions
-
-      if (num_qpus == 1) {
-        test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f, num_qpus);  // Going over the top with big dimensions
-      }
+      test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f, num_qpus);  // Going over the top with big dimensions
     };
 
     test(1);

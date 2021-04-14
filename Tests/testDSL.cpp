@@ -220,7 +220,11 @@ void kernelIfWhen(Int::Ptr result) {
 
   // any
   test(any(a <   0), result);
+
+  comment("Start any(a < 8) below");
   test(any(a <   8), result);
+  comment("Done any(a < 8)");
+
   test(any(a <=  0), result);  // Boundary check
   test(any(a >= 15), result);  // Boundary check
   test(any(a <  32), result);
@@ -290,6 +294,7 @@ void check_conditionals(Int::Array &result, int N) {
   assertResult(result,  3, allOnes);
   assertResult(result,  4, allOnes);
   assertResult(result,  5, allZeroes);
+
   // all
   assertResult(result,  6, allZeroes);
   assertResult(result,  7, allZeroes);
@@ -297,6 +302,7 @@ void check_conditionals(Int::Array &result, int N) {
   assertResult(result,  9, allZeroes);
   assertResult(result, 10, allOnes);
   assertResult(result, 11, allZeroes);
+
   // Just If - should be same as any
   assertResult(result, 12, allZeroes);
   assertResult(result, 13, allOnes);
@@ -304,6 +310,7 @@ void check_conditionals(Int::Array &result, int N) {
   assertResult(result, 15, allOnes);
   assertResult(result, 16, allOnes);
   assertResult(result, 17, allZeroes);
+
   // where
   assertResult(result, 18, allZeroes);
   assertResult(result, 19, {1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0});
@@ -327,8 +334,6 @@ void complex_kernel(Complex::Ptr input, Complex::Ptr result) {
 //=============================================================================
 
 TEST_CASE("Test correct working DSL [dsl]") {
-  const int N = 25;  // Number of expected result vectors
-
   SUBCASE("Test specific int instructions") {
     int const NUM = 1;
     vector<int> expected = {1,0,3,2,5,4,7,6,9,8,11,10,13,12,15,14};
@@ -381,13 +386,22 @@ TEST_CASE("Test correct working DSL [dsl]") {
     check_vector(result, 0, expected, precision);
 
   }
+}
 
 
+TEST_CASE("Test Conditionals [dsl][cond]") {
   //
   // Test all variations of If and When
   //
   SUBCASE("Conditionals work as expected") {
+    int const N = 25;  // Number of expected result vectors
+
     auto k = compile(kernelIfWhen);
+/*
+    k.pretty(true, "obj/test/kernelIfWhen_vc4.txt", false);
+    k.pretty(false, "obj/test/kernelIfWhen_v3d.txt");
+    k.dump_compile_data(false, "obj/test/kernelIfWhen_v3d_data.txt");
+*/
 
     Int::Array result(16*N);
 
@@ -399,16 +413,18 @@ TEST_CASE("Test correct working DSL [dsl]") {
     //
     // Run kernel in the three different run modes
     //
+    INFO("Checking conditionals");
+/*
     reset();
-    k.load(&result).call();
+    k.load(&result).interpret();
     check_conditionals(result, N);
 
     reset();
     k.load(&result).emu();
     check_conditionals(result, N);
-
+*/
     reset();
-    k.load(&result).interpret();
+    k.load(&result).call();
     check_conditionals(result, N);
   }
 }

@@ -226,11 +226,16 @@ void Liveness::compute(Instr::List &instrs) {
     std::string msg;
     msg << " CFG table:\n" << cfg().dump();
     debug(msg);
-  }
+}
 */
 
   m_reg_usage.set_live(*this);
-
+/*
+  if (!Platform::compiling_for_vc4()) {
+    debug(m_reg_usage.dump(true));
+    breakpoint
+  }
+*/
   compile_data.reg_usage_dump = m_reg_usage.dump(true);
   compile_data.liveness_dump = dump();
 

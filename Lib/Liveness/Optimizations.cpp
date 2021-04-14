@@ -11,6 +11,13 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
   Reg current(REG_A, var_id);
   Reg replace_with(ACC, acc_id);
 
+  for (int i = item.first_usage(); i <= item.last_usage(); i++) {
+    auto &instr = instrs[i];
+    renameDest(instr, current, replace_with);
+    renameUses(instr, current, replace_with);
+  }
+
+/*
   auto &instr = instrs[item.first_usage()];
 
   if (item.only_assigned()) {
@@ -52,6 +59,7 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
 
     renameUses(instr, current, replace_with);
   }
+*/
 
   // DANGEROUS! Do not use this value downstream.   
   // Currently stored for debug display purposes only! 
