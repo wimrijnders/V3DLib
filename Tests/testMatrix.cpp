@@ -162,7 +162,6 @@ void check_matrix_results(
   float *a_scalar,
   float *expected) {
 
-/*
   //
   // Multiplication of empty input matrix
   //
@@ -178,7 +177,6 @@ void check_matrix_results(
   result.fill(-1);
   k.call();
   compare_array_scalar(result, (float) dimension);
-*/
 
   //
   // Square of unit matrix

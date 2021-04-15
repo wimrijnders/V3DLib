@@ -13,53 +13,11 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
 
   for (int i = item.first_usage(); i <= item.last_usage(); i++) {
     auto &instr = instrs[i];
+
+    // Both replace 'current' register only if present
     renameDest(instr, current, replace_with);
     renameUses(instr, current, replace_with);
   }
-
-/*
-  auto &instr = instrs[item.first_usage()];
-
-  if (item.only_assigned()) {
-    assert(item.use_range() == 1);
-    renameDest(instr, current, replace_with);
-    return;
-  }
-
-  if (instr.tag != InstrTag::NO_OP && instr.tag != InstrTag::SKIP) {
-    int tmp = renameDest(instr, current, replace_with);
-    if (tmp == 0) {  // Not expecting this
-      std::string msg;
-      msg << "Failed to rename dest for instruction: " << instr.dump();
-      assertq(false, msg, true);
-    }
-  }
-
-  // There can possibly be more assignments between first usage and live range
-  // Following serves to capture them all - this might just be paranoia
-  int tmp_count = 0;
-  for (int i = item.first_usage() + 1; i <= item.first_live() - 1; i++) {
-    tmp_count += renameDest(instrs[item.first_dst()], current, replace_with);
-  }
-
-  if (tmp_count > 0) {
-    std::string msg = "Detected extra assignments for var ";
-    msg << var_id
-        << " in range " << (item.first_usage() + 1) << "-" << (item.first_live() - 1);
-
-    debug(msg);
-  }
-
-  for (int i = item.first_live(); i <= item.last_live(); i++) {
-    auto &instr = instrs[i];
-
-    renameDest(instr, current, replace_with);
-    //int tmp = renameDest(instr, current, replace_with);
-    //assert(tmp == 0);  // Happens sporadically, eg. Hello vc4
-
-    renameUses(instr, current, replace_with);
-  }
-*/
 
   // DANGEROUS! Do not use this value downstream.   
   // Currently stored for debug display purposes only! 
