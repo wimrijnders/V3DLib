@@ -141,7 +141,7 @@ void mandelbrot_cpu(int *result) {
  * Common part of the QPU kernels
  */
 void mandelbrotCore(
-  Complex c,
+  Complex const &c,
   Int &numIterations,
   Int::Ptr &dst
 ) {
@@ -176,14 +176,17 @@ void mandelbrot_single(
   Int::Ptr result
 ) {
   For (Int yStep = 0, yStep < numStepsHeight, yStep++)
-    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
+    Int::Ptr dst = result + yStep*numStepsWidth;
+
+    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep += 16)
       Int xIndex = xStep + index();
-      Int::Ptr dst = result + xStep + yStep*numStepsWidth;
 
       mandelbrotCore(
-        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm   - offsetY*toFloat(yStep)),
+        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm - offsetY*toFloat(yStep)),
         numIterations,
         dst);
+
+      dst.inc();
     End
   End
 }
@@ -199,17 +202,19 @@ void mandelbrot_multi(
   Int numIterations,
   Int::Ptr result
 ) {
-  For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep = yStep + numQPUs())
+  For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep += numQPUs())
     Int yIndex = yStep + me();
+    Int::Ptr dst = result + yIndex*numStepsWidth;
 
-    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
+    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep += 16)
       Int xIndex = xStep + index();
-      Int::Ptr dst = result + xStep + yIndex*numStepsWidth;
 
       mandelbrotCore(
-        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm   - offsetY*toFloat(yIndex)),
+        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm - offsetY*toFloat(yIndex)),
         numIterations,
         dst);
+
+      dst.inc();
     End
   End
 }
@@ -237,7 +242,7 @@ void output_pgm(Array &result) {
 
 
 void run_qpu_kernel(KernelType &kernel) {
-  assert(0 == settings.numStepsWidth % 16);       // width needs to be a multiple of 16
+  assertq(0 == settings.numStepsWidth % 16, "Width dimension must be a multiple of 16");
 
   auto k = compile(kernel);
   k.setNumQPUs(settings.num_qpus);
