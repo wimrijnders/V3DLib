@@ -5,6 +5,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 #include "Settings.h"
+#include <cassert>
 #include <memory>
 #include <iostream>
 #include "Kernel.h"
