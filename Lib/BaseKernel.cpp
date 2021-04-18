@@ -20,20 +20,20 @@ V3DLib::KernelDriver &BaseKernel::vc4() {
 }
 
 
-V3DLib::KernelDriver &BaseKernel::v3d() {
-  assertq(has_v3d(), "v3d driver not enabled for this kernel");
-  return *m_v3d_driver;
-}
-
-
 V3DLib::KernelDriver const &BaseKernel::vc4() const {
   assertq(has_vc4(), "vc4 driver not enabled for this kernel");
   return *m_vc4_driver;
 }
 
 
+V3DLib::KernelDriver &BaseKernel::v3d() {
+  assertq(has_v3d(), "v3d driver not enabled for this kernel", true);
+  return *m_v3d_driver;
+}
+
+
 V3DLib::KernelDriver const &BaseKernel::v3d() const {
-  assertq(has_v3d(), "v3d driver not enabled for this kernel");
+  assertq(has_v3d(), "v3d driver not enabled for this kernel", true);
   return *m_v3d_driver;
 }
 
