@@ -1,9 +1,10 @@
 #ifndef _V3DLIB_TARGET_SYNTAX_INSTR_ALUOP_H_
 #define _V3DLIB_TARGET_SYNTAX_INSTR_ALUOP_H_
 #include <string>
-#include "Source/Op.h"
 
 namespace V3DLib {
+
+class Op;
 
 class ALUOp {
 public:
@@ -86,9 +87,6 @@ public:
 
 private:
   Enum m_value = NOP;
-
-  char const *pretty_op() const;
-  Enum opcode(Op const &op) const;
 };
 
 }  // namespace V3DLib

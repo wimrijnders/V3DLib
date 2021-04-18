@@ -104,11 +104,13 @@ void remove_replaced_instructions(Instr::List &instrs) {
     }
   }
 
+/*
   if (count > 0) {
     std::string msg;
     msg << "remove_replaced_instructions() removed " << count << " SKIPs";
     debug(msg);
   }
+*/
 }
 
 }  // anon namespace
@@ -222,14 +224,19 @@ void Liveness::compute(Instr::List &instrs) {
 /*
   {
     std::string msg;
-    msg << " Liveness table:\n" << dump();
+    msg << " CFG table:\n" << cfg().dump();
     debug(msg);
-  }
+}
 */
 
   m_reg_usage.set_live(*this);
-  //debug(m_reg_usage.dump(true));
-
+/*
+  if (!Platform::compiling_for_vc4()) {
+    debug(m_reg_usage.dump(true));
+    breakpoint
+  }
+*/
+  compile_data.reg_usage_dump = m_reg_usage.dump(true);
   compile_data.liveness_dump = dump();
 
   m_reg_usage.check();
@@ -321,8 +328,9 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
   live.compute(instrs);
   //live.dump();
 
-  combineImmediates(live, instrs);
-  live.compute(instrs);  // instructions may have changed in previous step, redo liveness
+  if (combineImmediates(live, instrs)) {
+    live.compute(instrs);  // instructions have changed, redo liveness
+  }
 
   int prev_count_skips = count_skips(instrs);
   compile_data.num_accs_introduced = introduceAccum(live, instrs);

@@ -62,7 +62,7 @@ void Int::operator--(int)  { *this = *this - 1; }
 // Generic operations
 // ============================================================================
 
-inline IntExpr mkIntApply(IntExpr a, Op op, IntExpr b) {
+inline IntExpr mkIntApply(IntExpr a, Op const &op, IntExpr b) {
   Expr::Ptr e = mkApply(a.expr(), op, b.expr());
   return IntExpr(e);
 }

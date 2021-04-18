@@ -129,6 +129,23 @@ public:
   }
 
 
+  std::string dump() const {
+    using ::operator<<;
+    std::string ret;
+
+    for (int c = 0; c < (int) size(); ++c) {
+      ret << "( ";
+
+      if ( c != 0 && c % 16 == 0) ret << "\n";
+
+      ret << (*this)[c] << ", ";
+      ret << ")\n";
+    }
+
+    return ret;
+  }
+
+
   bool operator==(SharedArray const &rhs) const { 
     if (size() != rhs.size()) return false;
 
@@ -250,7 +267,7 @@ public:
 
 
   std::string dump() const {
-    using ::operator<<;  // C++ weirdness
+    using ::operator<<;
     std::string ret;
 
     for (int r = 0; r < rows(); ++r) {

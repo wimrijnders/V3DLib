@@ -508,7 +508,7 @@ std::string Instr::List::check_acc_usage(int first, int last) const {
 
     if (accs == 0) continue;
 
-    ret << "Acc usage:\n"
+    ret //<< "Acc usage: "
         << index << ": ";
 
     if (accs &  1) ret << "0, ";

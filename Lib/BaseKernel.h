@@ -81,9 +81,6 @@ public:
   bool has_errors() const;
   std::string get_errors() const;
 
-//protected:
-//  void encode();
-
 protected:
   int numQPUs = 1;                 // Number of QPUs to run on
   IntList uniforms;                // Parameters to be passed to kernel

@@ -1,6 +1,5 @@
 #ifndef _EXAMPLE_SUPPORT_SETTINGS_H
 #define _EXAMPLE_SUPPORT_SETTINGS_H
-#include <cassert>
 #include <string>
 #include <CmdParameters.h>
 

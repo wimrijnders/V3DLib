@@ -6,7 +6,7 @@ namespace V3DLib {
 
 class Liveness;
 
-void combineImmediates(Liveness &live, Instr::List &instrs);
+bool combineImmediates(Liveness &live, Instr::List &instrs);
 int introduceAccum(Liveness &live, Instr::List &instrs);
 
 }  // namespace V3DLib

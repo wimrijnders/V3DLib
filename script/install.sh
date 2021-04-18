@@ -2,7 +2,7 @@
 ######################################33
 
 # Expected version of CmdParameter
-expected_version=0.3.0
+expected_version=0.3.1
 
 function get_version() {
   cur_version=`grep Version ../CmdParameter/README.md`

@@ -208,7 +208,7 @@ Vec eval(CoreState* s, Expr::Ptr e) {
       Vec a = eval(s, e->lhs());
       Vec b = eval(s, e->rhs());
 
-      bool did_something = v.apply(e->apply_op, a, b);
+      bool did_something = v.apply(e->apply_op(), a, b);
       assert(did_something);
 
       return v;
