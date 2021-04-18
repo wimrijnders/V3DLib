@@ -1116,9 +1116,9 @@ TEST_CASE("Test sin/cos instructions [dsl][sincos]") {
   k.load(&result, N);
   k.call();
 
-  float const hi_precision = 1.1e-3f;
+  float const hi_precision = 1.2e-3f;
   float const lo_precision = 5.7e-2f;
-  float const v3d_precision = (Platform::compiling_for_vc4())?lo_precision:1.0e-6f;  // vc4 will use the lo-res sin function, v3d the hardware, which is really precise
+  float const qpu_precision = (Platform::has_vc4())?lo_precision:1.0e-6f;  // vc4 will use the lo-res sin function, v3d the hardware, which is really precise
 
   {
     float diff = max_abs_value(lib_sin, result.ptr());
@@ -1135,7 +1135,7 @@ TEST_CASE("Test sin/cos instructions [dsl][sincos]") {
   {
     float diff = max_abs_value(lib_sin, result.ptr() + 2*N);
     INFO("max abs diff v3d sin: " << diff);
-    REQUIRE(diff <= v3d_precision);
+    REQUIRE(diff <= qpu_precision);
   }
 
 //  debug(showResult(lib_sin, 0, N));
