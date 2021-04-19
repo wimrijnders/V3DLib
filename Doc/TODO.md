@@ -146,8 +146,8 @@ Source code:
 
 ## CmdParameter
 - [x] Allow for chained blocks of parameter definitions
-- [ ] For display, sort the parameters (except for `--help`, which should be at top)
-- Issue, when leaving out `=` for param `-n`:
+- [x] For display, sort the parameters (except for `--help`, which should be at top)
+- [x] Issue, when leaving out `=` for param `-n`:
 
 ```
 > sudo ./obj/qpu-debug/bin/Mandelbrot  -n12
