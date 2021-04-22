@@ -21,7 +21,7 @@
 namespace {
 
 /**
- * Get the base filename, without extension from a path
+ * Get the base filename, without the extension, from a path
  *
  * Source: https://stackoverflow.com/a/8520815
  *
@@ -116,7 +116,7 @@ CmdParameters numqpu_params = {
 
 std::unique_ptr<CmdParameters> params;
 
-CmdParameters &instance(bool use_numqpus = false) {
+CmdParameters &base_params_instance(bool use_numqpus = false) {
   if (!params) {
     CmdParameters *p = new CmdParameters(base_params);
 
@@ -141,41 +141,48 @@ Settings::Settings(CmdParameters *derived_params, bool use_num_qpus) :
 {}
 
 
-CmdParameters &Settings::base_params() {
-  return instance(m_use_num_qpus);
+void Settings::init(int argc, const char *argv[]) {
+  // Store the app name
+  name = stem(argv[0]);
+
+  // Load the parameter definitions
+  if (m_derived_params != nullptr) {
+    m_all_params.add(*m_derived_params);
+  }
+  m_all_params.add(base_params_instance(m_use_num_qpus));
+
+  check_params(m_all_params, argc, argv);
 }
 
 
 /**
  * Parse the params from the commandline.
+ * 
+ * Also checks the params definition for correctness.
  *
  * Will exit locally if an error occured or help is displayed.
  * In other words, if it returns all is well.
  */
-void Settings::init(int argc, const char *argv[]) {
-  int ret = CmdParameters::ALL_IS_WELL;
-
-  set_name(argv[0]);
-
-  CmdParameters *params = nullptr;
-  if (m_derived_params != nullptr) {
-    m_derived_params->add(base_params());
-    params = m_derived_params;
-  } else {
-    params = &instance();
+void Settings::check_params(CmdParameters &params, int argc, char const *argv[]) {
+  if (params.has_errors()) {
+    std::cout << params.get_errors();
+    exit(CmdParameters::EXIT_ERROR);
   }
 
-  if (params->has_errors()) {
-    std::cout << params->get_errors();
-    ret = CmdParameters::EXIT_ERROR;
-  } else {
-    ret = params->handle_commandline(argc, argv, false);
+/**
+  TODO: this displays the intention here
 
-    if (ret == CmdParameters::ALL_IS_WELL) {
-      bool success = process(*params) && init_params();
-      if (!success) {
-        ret = CmdParameters::EXIT_ERROR;
-      }
+  if (params.has_help(argc, argv)) {    // This mask the call to handle_help() in handle_commandline()
+    assert(!scan_action(argc, argv));  // No actions expected for V3DLib examples
+  }
+*/
+
+  int ret = params.handle_commandline(argc, argv, false);
+
+  if (ret == CmdParameters::ALL_IS_WELL) {
+    bool success = process() && init_params();
+    if (!success) {
+      ret = CmdParameters::EXIT_ERROR;
     }
   }
 
@@ -183,13 +190,9 @@ void Settings::init(int argc, const char *argv[]) {
 }
 
 
-void Settings::set_name(const char *in_name) {
-  assert(in_name != nullptr);
-  name = stem(in_name);
-}
+bool Settings::process() {
+  CmdParameters &in_params = m_all_params;
 
-
-bool Settings::process(CmdParameters &in_params) {
   output_code  = in_params.parameters()["Output Generated Code"]->get_bool_value();
   compile_only = in_params.parameters()["Compile Only"]->get_bool_value();
   silent       = in_params.parameters()["Disable logging"]->get_bool_value();

@@ -27,12 +27,12 @@ struct Settings {
 
 private:
   CmdParameters * const m_derived_params;
+  CmdParameters m_all_params;
   bool const m_use_num_qpus;
   int output_count = 0;
 
-  void set_name(const char *in_name);
-  bool process(CmdParameters &in_params);
-  CmdParameters &base_params();
+  void check_params(CmdParameters &params, int argc, char const *argv[]);
+  bool process();
   void startPerfCounters();
   void stopPerfCounters();
 };
