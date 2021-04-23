@@ -54,9 +54,11 @@ struct Rot3DSettings : public Settings {
   Rot3DSettings() : Settings(&params, true) {}
 
   bool init_params() override {
-    kernel       = params.parameters()["Kernel"]->get_int_value();
-    show_results = params.parameters()["Display Results"]->get_bool_value();
-    num_vertices = params.parameters()["Number of vertices"]->get_int_value();
+    auto const &p = parameters();
+
+    kernel       = p["Kernel"]->get_int_value();
+    show_results = p["Display Results"]->get_bool_value();
+    num_vertices = p["Number of vertices"]->get_int_value();
 
     if (num_vertices % 16 != 0) {
       printf("ERROR: Number of vertices must be a multiple of 16.\n");

@@ -206,6 +206,7 @@ void Settings::check_params(CmdParameters &params, int argc, char const *argv[])
   } else {
     ret = params.handle_commandline(argc, argv, false);
 
+
     if (ret == CmdParameters::ALL_IS_WELL) {
       bool success = process() && init_params();
       if (!success) {
@@ -213,6 +214,7 @@ void Settings::check_params(CmdParameters &params, int argc, char const *argv[])
       }
     }
   }
+
 
   if (ret != CmdParameters::ALL_IS_WELL) exit(ret);
 }

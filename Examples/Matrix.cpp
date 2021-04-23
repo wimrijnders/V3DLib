@@ -59,13 +59,15 @@ struct MatrixSettings : public Settings {
   MatrixSettings() : Settings(&params, true) {}
 
   bool init_params() override {
-    kernel      = params.parameters()["Kernel"           ]->get_int_value();
-    dimension   = params.parameters()["Matrix dimension" ]->get_int_value();
-    repeats     = params.parameters()["Number of repeats"]->get_int_value();
+    auto const &p = parameters();
 
-    int in_read_method = params.parameters()["Read method"]->get_int_value();
+    kernel      = p["Kernel"           ]->get_int_value();
+    dimension   = p["Matrix dimension" ]->get_int_value();
+    repeats     = p["Number of repeats"]->get_int_value();
 
-    switch(in_read_method) {
+    int in_read_method = p["Read method"]->get_int_value();
+
+    switch (in_read_method) {
       case 0: read_method = DEFAULT;      break;
       case 1: read_method = DO_PREFETCH;  break;
       case 2: read_method = NO_READWRITE; break;
