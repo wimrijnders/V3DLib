@@ -24,6 +24,7 @@ struct Settings {
   void init(int argc, const char *argv[]);
   void process(BaseKernel &k);
   virtual bool init_params() { return true; }
+  TypedParameter::List const &parameters() const { return m_all_params.parameters(); }
 
 private:
   CmdParameters * const m_derived_params;
@@ -35,8 +36,8 @@ private:
   bool process();
   void startPerfCounters();
   void stopPerfCounters();
+  void show_help();
 };
-
 
 }  // namespace
 

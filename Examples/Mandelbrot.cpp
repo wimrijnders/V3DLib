@@ -60,7 +60,6 @@ struct MandSettings : public Settings {
   const int ALL = 3;
 
   int    kernel;
-  string kernel_name;
   bool   output_pgm;
   bool   output_ppm;
   int    num_iterations;
@@ -88,13 +87,14 @@ struct MandSettings : public Settings {
   MandSettings() : Settings(&params, true) {}
 
   bool init_params() override {
-    kernel         = params.parameters()["Kernel"]->get_int_value();
-    kernel_name    = params.parameters()["Kernel"]->get_string_value();
-    output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
-    output_ppm     = params.parameters()["Output PPM file"]->get_bool_value();
-    num_iterations = params.parameters()["Number of steps"]->get_int_value();
-    numStepsWidth  = params.parameters()["Dimension"]->get_int_value();
-    numStepsHeight = params.parameters()["Dimension"]->get_int_value();
+    auto const &p = parameters();
+
+    kernel         = p["Kernel"]->get_int_value();
+    output_pgm     = p["Output PGM file"]->get_bool_value();
+    output_ppm     = p["Output PPM file"]->get_bool_value();
+    num_iterations = p["Number of steps"]->get_int_value();
+    numStepsWidth  = p["Dimension"]->get_int_value();
+    numStepsHeight = p["Dimension"]->get_int_value();
 
     return true;
   }
@@ -299,13 +299,16 @@ int main(int argc, const char *argv[]) {
   //printf("Check pre\n");
   //RegisterMap::checkThreadErrors();   // TODO: See if it's useful to check this every time after a kernel has run
 
-#ifdef ARM64
-  printf("\nWARNING: Mandelbrot will run *sometimes* on 64-bit Raspbian when GPU kernels are used "
-         "(-k=multi or -k=single).\n"
-         "Running it has the potential to lock up your Pi. Please use with care.\n\n");
-#endif  // ARM64
-
   settings.init(argc, argv);
+
+#ifdef ARM32
+  if (!Platform::has_vc4() && settings.kernel <= 1) {
+    printf("\nWARNING: Mandelbrot will run *sometimes* on a Pi4 with 32-bit Raspbian when GPU kernels are used "
+           "(-k=multi or -k=single).\n"
+           "Running it has the potential to lock up your Pi. Please use with care.\n\n");
+  }
+#endif  // ARM32
+
 
   if (settings.kernel == settings.ALL) {
     for (int i = 0; i < settings.ALL; ++i ) {

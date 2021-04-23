@@ -10,6 +10,7 @@
 #include <iostream>
 #include "Kernel.h"
 #include "LibSettings.h"
+#include "Support/basics.h"
 
 #ifdef QPU_MODE
 #include "Support/Platform.h"
@@ -135,6 +136,9 @@ CmdParameters &base_params_instance(bool use_numqpus = false) {
 
 namespace V3DLib {
 
+using ::operator<<;  // C++ weirdness
+
+
 Settings::Settings(CmdParameters *derived_params, bool use_num_qpus) :
   m_derived_params(derived_params),
   m_use_num_qpus(use_num_qpus)
@@ -155,6 +159,24 @@ void Settings::init(int argc, const char *argv[]) {
 }
 
 
+void Settings::show_help() {
+  std::string ret;
+
+  ret << m_all_params.description() << "\n"
+      << "General Parameters:\n"
+      << base_params_instance(m_use_num_qpus).params_usage(true)
+      << "\n";
+
+  if (m_derived_params != nullptr) {
+    ret << "Application Parameters:\n"
+        << m_derived_params->params_usage(false)
+        << "\n";
+  }
+
+  std::cout << ret;
+}
+
+
 /**
  * Parse the params from the commandline.
  * 
@@ -164,25 +186,31 @@ void Settings::init(int argc, const char *argv[]) {
  * In other words, if it returns all is well.
  */
 void Settings::check_params(CmdParameters &params, int argc, char const *argv[]) {
-  if (params.has_errors()) {
+  if (params.has_errors()) {  // Prob not necessary. Keeping it in for now
     std::cout << params.get_errors();
     exit(CmdParameters::EXIT_ERROR);
   }
 
-/**
-  TODO: this displays the intention here
+  int ret = CmdParameters::EXIT_ERROR;
 
-  if (params.has_help(argc, argv)) {    // This mask the call to handle_help() in handle_commandline()
-    assert(!scan_action(argc, argv));  // No actions expected for V3DLib examples
-  }
-*/
+  //
+  // This mask the call to handle_help() in handle_commandline()
+  //
+  // This skips the init() and reset() calls in handle_commandline();
+  // TODO check if this is OK
+  //
+  if (params.has_help(argc, argv)) {
+    assert(!params.scan_action(argc, argv));  // No actions expected for V3DLib examples
+    show_help();
+    ret = CmdParameters::EXIT_NO_ERROR;
+  } else {
+    ret = params.handle_commandline(argc, argv, false);
 
-  int ret = params.handle_commandline(argc, argv, false);
-
-  if (ret == CmdParameters::ALL_IS_WELL) {
-    bool success = process() && init_params();
-    if (!success) {
-      ret = CmdParameters::EXIT_ERROR;
+    if (ret == CmdParameters::ALL_IS_WELL) {
+      bool success = process() && init_params();
+      if (!success) {
+        ret = CmdParameters::EXIT_ERROR;
+      }
     }
   }
 
@@ -191,21 +219,21 @@ void Settings::check_params(CmdParameters &params, int argc, char const *argv[])
 
 
 bool Settings::process() {
-  CmdParameters &in_params = m_all_params;
+  auto const &p = m_all_params.parameters();
 
-  output_code  = in_params.parameters()["Output Generated Code"]->get_bool_value();
-  compile_only = in_params.parameters()["Compile Only"]->get_bool_value();
-  silent       = in_params.parameters()["Disable logging"]->get_bool_value();
-  run_type     = in_params.parameters()["Select run type"]->get_int_value();
+  output_code  = p["Output Generated Code"]->get_bool_value();
+  compile_only = p["Compile Only"]->get_bool_value();
+  silent       = p["Disable logging"]->get_bool_value();
+  run_type     = p["Select run type"]->get_int_value();
 #ifdef QPU_MODE
-  show_perf_counters = in_params.parameters()["Performance Counters"]->get_bool_value();
+  show_perf_counters = p["Performance Counters"]->get_bool_value();
 #endif  // QPU_MODE
 
-  int qpu_timeout  = in_params.parameters()["QPU timeout"]->get_int_value();
+  int qpu_timeout  = p["QPU timeout"]->get_int_value();
   LibSettings::qpu_timeout(qpu_timeout);
 
   if (m_use_num_qpus) {
-    num_qpus    = in_params.parameters()["Num QPU's"]->get_int_value();
+    num_qpus    = p["Num QPU's"]->get_int_value();
 
     if (run_type != 0 || Platform::has_vc4()) {  // vc4 only
       if (num_qpus < 0 || num_qpus > 12) {
