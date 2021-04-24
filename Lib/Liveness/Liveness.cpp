@@ -169,8 +169,9 @@ void Liveness::compute_liveness(Instr::List &instrs) {
             // Sanity check: in this case, we expect the variable to be in the condition assign block only
             AssignCond assign_cond = instr.assign_cond();
             for (int j = item.first_usage(); j <= item.last_usage(); j++) {
-              assert((assign_cond == instrs[j].assign_cond())            // expected usage
-                   || (instrs[j].is_always() && !instrs[j].is_branch())  // Interim basic usage allowed (happens)
+              assertq((assign_cond == instrs[j].assign_cond())            // expected usage
+                   || (instrs[j].is_always() && !instrs[j].is_branch()),  // Interim basic usage allowed (happens)
+                ""
               );
             }
           }
@@ -329,6 +330,7 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
   //live.dump();
 
   if (combineImmediates(live, instrs)) {
+    std::cout << instrs.dump(true) << std::endl;  // Useful sometimes for debug
     live.compute(instrs);  // instructions have changed, redo liveness
   }
 

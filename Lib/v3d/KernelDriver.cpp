@@ -705,9 +705,7 @@ bool encode_float(Instructions &ret, std::unique_ptr<Location> &dst, float value
   bool success = true;
   int rep_value;
 
-  if (value == 0.0) {
-    ret << nop().fmov(*dst, 0.0);                 // Works because float zero is 0x0
-  } else if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
+  if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
     ret << nop().fmov(*dst, rep_value)
         << fsub(*dst, 0, *dst);                   // Works because float zero is 0x0
   } else if (SmallImm::float_to_opcode_value(value, rep_value)) {
