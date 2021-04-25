@@ -6,6 +6,7 @@
 - [ ] Initializing a Float/Complex(/Int?) variable without value may not add variable to target code.
       This is a consequence of fixing liveness allocation for dst vars in  conditional instructions.
       Examine, report, prevent, fix.
+- [ ] Check in interpreter/emulator for writing out of shared array bounds
 - [x] Get `Pi 1` running again; fails in `qpu_enable()`
 - [x] Automate loading of new versions external libraries
 - [x] Fix indentation tabs/spaces
@@ -26,6 +27,7 @@
 
 ## vc4
 
+- [ ] Warning (at least)  in interpreter/emulator for 24-bit multiply overflow
 - [ ] Consider using device driver interface for vc4 - this will get rid of need for `sudo`
 - [ ] Enforce acc4 (r4) as a read-only register, notably in emulator
 - [ ] Enforce non-usage of acc4 (r4) during sfu-call, notably in emulator
@@ -181,13 +183,18 @@ Error(s) on command line:
 	  
 ## Consider these
 
+- Cellular Automata
+ * [ ] **Navier-Stokes**.
+      [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
+      looks promising.
+ * [ ] [Cyclic Cellular Automaton](https://www.arnevogel.com/cyclic-cellular-automaton/) - That spiral thing of long ago.
+ * [ ] [Simple Fluid Simulation](https://w-shadow.com/blog/2009/09/01/simple-fluid-simulation/)
+ * [ ] [Lattice gas automaton](https://en.wikipedia.org/wiki/Lattice_gas_automaton)
+- [ ] [GAN Models](https://machinelearningmastery.com/what-are-generative-adversarial-networks-gans/)
 - [ ] Enhanced precision using [correction of rounding errors](http://andrewthall.org/papers/df64_qf128.pdf)
 - [ ] Option for disabling L2 cache, for decent cooperation with `OpenGL`.
       **NOTE:** Perhaps needs  kernel built for L2 cache disabled. 
       **TODO** profile this!
-- [ ] Adding **Navier-Stokes** as an example.
-      [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
-      looks promising.
 - [ ] Implement [Raytracing](https://gabrielgambetta.com/computer-graphics-from-scratch/02-basic-raytracing.html).
 - [ ] Make [ARCHITECTURE.md](https://matklad.github.io//2021/02/06/ARCHITECTURE.md.html) - [example](https://github.com/rust-analyzer/rust-analyzer/blob/master/docs/dev/architecture.md)
 - [ ] Use [inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
