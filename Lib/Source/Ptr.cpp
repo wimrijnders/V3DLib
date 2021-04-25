@@ -56,9 +56,9 @@ PointerExpr Pointer::operator+=(int b)      { return addself(b); }
 PointerExpr Pointer::operator+(IntExpr b)   { return add(b); }
 PointerExpr Pointer::operator-(IntExpr b)   { return sub(b); }
 
-PointerExpr Pointer::add(int b)           { return mkApply(expr(), Op(ADD, INT32), mkIntLit(4*b)); }
-PointerExpr Pointer::add(IntExpr b)       { return mkApply(expr(), Op(ADD, INT32), (b << 2).expr()); }
-PointerExpr Pointer::sub(IntExpr b)       { return mkApply(expr(), Op(SUB, INT32), (b << 2).expr()); }
+PointerExpr Pointer::add(int b)     const { return mkApply(expr(), Op(ADD, INT32), mkIntLit(4*b)); }
+PointerExpr Pointer::add(IntExpr b) const { return mkApply(expr(), Op(ADD, INT32), (b << 2).expr()); }
+PointerExpr Pointer::sub(IntExpr b) const { return mkApply(expr(), Op(SUB, INT32), (b << 2).expr()); }
 PointerExpr Pointer::addself(int b)       { return (self() = self() + b); }
 PointerExpr Pointer::addself(IntExpr b)   { return (self() = self() + b); }
 PointerExpr Pointer::subself(IntExpr b)   { return (self() = self() - b); }

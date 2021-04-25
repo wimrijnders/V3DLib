@@ -60,9 +60,9 @@ protected:
   PointerExpr bare_addself(IntExpr b);
   PointerExpr addself(IntExpr b);
   PointerExpr subself(IntExpr b);
-  PointerExpr add(int b);
-  PointerExpr add(IntExpr b);
-  PointerExpr sub(IntExpr b);
+  PointerExpr add(int b) const;
+  PointerExpr add(IntExpr b) const;
+  PointerExpr sub(IntExpr b) const;
 
 private:
   Pointer &self();
@@ -142,6 +142,8 @@ namespace ptr {  // Used to convert Ptr's to member classes of data types
 /**
  * A 'Ptr<T>' defines a pointer variable which can be used in both the lhs and
  * rhs of an assignment.
+ *
+ * This exists to have some type safety when dealing with pointers.
  */
 template <typename T>
 class Ptr : public Pointer {
@@ -164,7 +166,7 @@ public:
   static Ptr<T> mkArg();
 
   // Assignments
-  Ptr<T>&    operator=(Ptr<T> const &rhs) { assign(expr(), rhs.expr()); return *this; /* rhs; */ }
+  Ptr<T>&    operator=(Ptr<T> const &rhs) { assign(expr(), rhs.expr()); return *this; }
   PtrExpr<T> operator=(PtrExpr<T> rhs)    { assign(expr(), rhs.expr()); return rhs; }
 
 
@@ -186,12 +188,12 @@ public:
     return Deref<T>(e);
   }
 
-  PtrExpr<T> operator+(int b)      { Expr::Ptr e = add(b).expr();     return PtrExpr<T>(e); }
-  PtrExpr<T> operator+(IntExpr b)  { Expr::Ptr e = add(b).expr();     return PtrExpr<T>(e); }
-  PtrExpr<T> operator-(IntExpr b)  { Expr::Ptr e = sub(b).expr();     return PtrExpr<T>(e); }
-  PtrExpr<T> operator+=(int b)     { Expr::Ptr e = addself(b).expr(); return PtrExpr<T>(e); }
-  PtrExpr<T> operator+=(IntExpr b) { Expr::Ptr e = addself(b).expr(); return PtrExpr<T>(e); }
-  PtrExpr<T> operator-=(IntExpr b) { Expr::Ptr e = subself(b).expr(); return PtrExpr<T>(e); }
+  PtrExpr<T> operator+(int b)     const { Expr::Ptr e = add(b).expr();     return PtrExpr<T>(e); }
+  PtrExpr<T> operator+(IntExpr b) const { Expr::Ptr e = add(b).expr();     return PtrExpr<T>(e); }
+  PtrExpr<T> operator-(IntExpr b) const { Expr::Ptr e = sub(b).expr();     return PtrExpr<T>(e); }
+  PtrExpr<T> operator+=(int b)          { Expr::Ptr e = addself(b).expr(); return PtrExpr<T>(e); }
+  PtrExpr<T> operator+=(IntExpr b)      { Expr::Ptr e = addself(b).expr(); return PtrExpr<T>(e); }
+  PtrExpr<T> operator-=(IntExpr b)      { Expr::Ptr e = subself(b).expr(); return PtrExpr<T>(e); }
 };
 
 

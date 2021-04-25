@@ -330,7 +330,7 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
   //live.dump();
 
   if (combineImmediates(live, instrs)) {
-    std::cout << instrs.dump(true) << std::endl;  // Useful sometimes for debug
+    //std::cout << instrs.dump(true) << std::endl;  // Useful sometimes for debug
     live.compute(instrs);  // instructions have changed, redo liveness
   }
 
