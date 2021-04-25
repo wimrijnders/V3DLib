@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Fri 09 Apr 2021 09:20:15 AM CEST
+# Generated on: Tue 13 Apr 2021 06:34:39 AM CEST
 #
 ###############################################################################
 
@@ -55,6 +55,7 @@ OBJ := \
   Common/CompileData.o  \
   Kernels/Rot3D.o  \
   Kernels/Matrix.o  \
+  Liveness/Range.o  \
   Liveness/LiveSet.o  \
   Liveness/UseDef.o  \
   Liveness/Optimizations.o  \

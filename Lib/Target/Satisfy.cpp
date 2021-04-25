@@ -133,31 +133,41 @@ Instr::List insertMoves(Instr::List &instrs) {
 Instr::List insertNops(Instr::List &instrs) {
   Instr::List newInstrs(instrs.size() * 2);
 
-  UseDefReg mySet, prevSet;
+  UseDefReg prevSet, curSet;
 
   Instr prev = Instr::nop();
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
 
-    // Insert NOPs to avoid data hazards
-    prevSet.set_used(prev);
-    mySet.set_used(instr);
+    // 
+    // For vc4, if an rf-register is set, you must wait one cycle before the value is available.
+    //
+    // If an rf-register is set, and used immediately in the next instruction, insert a NOP in between.
+    //
+    // v3d does not have this restriction.
+    //
+    if (Platform::compiling_for_vc4()) {
+      prevSet.set_used(prev);
+      curSet.set_used(instr);
 
-    for (int j = 0; j < prevSet.def.size(); j++) {
-      Reg defReg = prevSet.def[j];
-      bool needNop = defReg.tag == REG_A || defReg.tag == REG_B;
+      for (int j = 0; j < prevSet.def.size(); j++) {
+        Reg defReg = prevSet.def[j];
+        bool needNop = defReg.tag == REG_A || defReg.tag == REG_B;  // rf-registers only
 
-      if (needNop && mySet.use.member(defReg)) {
-        newInstrs << Instr::nop();
-        break;
+        if (needNop && curSet.use.member(defReg)) {
+          newInstrs << Instr::nop();
+          break;
+        }
       }
     }
 
-    // Put current instruction into the new sequence
-    newInstrs << instr;
+    newInstrs << instr;                                           // Put current instruction into the new sequence
 
+
+    // 
     // Insert NOPs in branch delay slots
+    //
     if (instr.tag == BRL || instr.tag == END) {
       for (int j = 0; j < 3; j++)
         newInstrs << Instr::nop();
@@ -165,8 +175,7 @@ Instr::List insertNops(Instr::List &instrs) {
       prev = Instr::nop();
     }
 
-    // Update previous instruction
-    if (instr.tag != LAB) prev = instr;
+    if (instr.tag != LAB) prev = instr;                           // Update previous instruction
   }
 
   return newInstrs;

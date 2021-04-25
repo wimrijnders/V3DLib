@@ -3,6 +3,7 @@
 #include <vector>
 #include <string>
 #include "Target/instr/Instr.h"
+#include "Range.h"
 
 namespace V3DLib {
 
@@ -13,14 +14,14 @@ struct RegUsageItem {
   void add_src(int n);
   void add_live(int n);
   bool unused() const;
-  bool only_assigned() const  { return !use.dst.empty() && use.src_use == 0; }
-  bool never_assigned() const { return !unused() && use.dst.empty(); }
+  bool only_assigned() const  { return !use_dst.empty() && src_range.count() == 0; }
+  bool never_assigned() const { return !unused() && use_dst.empty(); }
   std::string dump() const;
   int live_range() const;
   int use_range() const;
   int first_dst() const;
-  int first_live() const      { return live.first; }
-  int last_live() const       { return live.last; }
+  int first_live() const      { return m_live_range.first(); }
+  int last_live() const       { return m_live_range.last(); }
   int first_usage() const;
   int last_usage() const;
   bool use_overlaps(RegUsageItem const &rhs) const;
@@ -31,19 +32,11 @@ struct RegUsageItem {
 
 private:
 
-  struct {
-    int src_use = 0;       // Number of times used as src in code
-    int src_first = -1;    // First instruction where var is used as src
-    int src_last = -1;     // Last instruction where var is used as src
-    std::vector<int> dst;  // List of line numbers where var is set
-  } use;
-
-  struct {
-    int first = -1;
-    int last = -1;
-    int count = 0;
-  } live;
+  Range src_range;           // First and last instructions where var is used as src
+  std::vector<int> use_dst;  // List of line numbers where var is set
+  Range m_live_range;
 };
+
 
 class Liveness;
 

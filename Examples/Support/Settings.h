@@ -1,6 +1,5 @@
 #ifndef _EXAMPLE_SUPPORT_SETTINGS_H
 #define _EXAMPLE_SUPPORT_SETTINGS_H
-#include <cassert>
 #include <string>
 #include <CmdParameters.h>
 
@@ -25,19 +24,20 @@ struct Settings {
   void init(int argc, const char *argv[]);
   void process(BaseKernel &k);
   virtual bool init_params() { return true; }
+  TypedParameter::List const &parameters() const { return m_all_params.parameters(); }
 
 private:
   CmdParameters * const m_derived_params;
+  CmdParameters m_all_params;
   bool const m_use_num_qpus;
   int output_count = 0;
 
-  void set_name(const char *in_name);
-  bool process(CmdParameters &in_params);
-  CmdParameters &base_params();
+  void check_params(CmdParameters &params, int argc, char const *argv[]);
+  bool process();
   void startPerfCounters();
   void stopPerfCounters();
+  void show_help();
 };
-
 
 }  // namespace
 

@@ -198,7 +198,7 @@ TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
     Data unif(2, heap);
 
     // Some magic to store a float in a uint32_t
-    float x = 2.5f;
+    float x = 0.125f; //2.5f;
     int32_t *bits = (int32_t*) &x;
     unif[0] = *bits;
 
@@ -210,6 +210,8 @@ TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
 
     //dump_data(result, true, true);
     //printf("\n");
+
+    //debug(result.dump());
 
     // TODO: add REQUIRE's for expected output
   }

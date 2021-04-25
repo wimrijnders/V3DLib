@@ -130,7 +130,7 @@ public:
 
   PGM &plot(float const *arr, int size, int color = MAX_COLOR);
   PGM &plot(V3DLib::Float::Array const &arr, int color = MAX_COLOR);
-  PGM &plot(std::vector<float> const arr, int color = MAX_COLOR) { return plot(arr.data(), arr.size(), color); }
+  PGM &plot(std::vector<float> const arr, int color = MAX_COLOR) { return plot(arr.data(), (int) arr.size(), color); }
   void save(char const *filename);
 
 private:

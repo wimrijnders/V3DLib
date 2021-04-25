@@ -143,7 +143,6 @@ void KernelDriver::compile(std::function<void()> create_ast) {
     create_ast();
     compile_intern();
     m_numVars = VarGen::count();
-    m_compile_data = compile_data;
     //clearStack();
   } catch (V3DLib::Exception const &e) {
     std::string msg = "Exception occured during compilation: ";
@@ -154,10 +153,13 @@ void KernelDriver::compile(std::function<void()> create_ast) {
     if (e.msg().compare(0, 5, "ERROR") == 0) {
       errors << msg;
     } else {
+      m_compile_data = compile_data;
       throw;  // Must be a fatal()
     }
 
   }
+
+  m_compile_data = compile_data;
 }
 
 

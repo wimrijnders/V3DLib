@@ -24,16 +24,17 @@ bool SmallImm::int_to_opcode_value(int value, int &rep_value) {
  */
 bool SmallImm::float_to_opcode_value(float value, int &rep_value) {
   bool converted  = true;
-  // NOTE: Apparently, these are the hex representations of the floats
-  // TODO check this
-  if      (value ==   1) rep_value = 0x3f800000; /* 2.0^0 */
-  else if (value ==   2) rep_value = 0x40000000; /* 2.0^1 */
-  else if (value ==   4) rep_value = 0x40800000; /* 2.0^2 */
-  else if (value ==   8) rep_value = 0x41000000; /* 2.0^3 */
-  else if (value ==  16) rep_value = 0x41800000; /* 2.0^4 */
-  else if (value ==  32) rep_value = 0x42000000; /* 2.0^5 */
-  else if (value ==  64) rep_value = 0x42800000; /* 2.0^6 */
-  else if (value == 128) rep_value = 0x43000000; /* 2.0^7 */
+
+  // The rep_value is the hex representation of the IEEE 754 floats (confirmed)
+  if      (value ==   0)   rep_value = 0x00000000; /* 0, same as int 0 */
+  else if (value ==   1)   rep_value = 0x3f800000; /* 2.0^0 */
+  else if (value ==   2)   rep_value = 0x40000000; /* 2.0^1 */
+  else if (value ==   4)   rep_value = 0x40800000; /* 2.0^2 */
+  else if (value ==   8)   rep_value = 0x41000000; /* 2.0^3 */
+  else if (value ==  16)   rep_value = 0x41800000; /* 2.0^4 */
+  else if (value ==  32)   rep_value = 0x42000000; /* 2.0^5 */
+  else if (value ==  64)   rep_value = 0x42800000; /* 2.0^6 */
+  else if (value == 128)   rep_value = 0x43000000; /* 2.0^7 */
   else if (value == 2e-8f) rep_value = 0x3b800000; /* 2.0^-8 */
   else if (value == 2e-7f) rep_value = 0x3c000000; /* 2.0^-7 */
   else if (value == 2e-6f) rep_value = 0x3c800000; /* 2.0^-6 */

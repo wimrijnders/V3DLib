@@ -29,18 +29,33 @@ struct matrix_settings {
   MatrixReadMethod read_method = DO_PREFETCH;
 
   /**
-   * The column size of the result array needs to be a multiple of 16
+   * The rows size of the result array needs to be a multiple of the number of QPUs running.
+   *
+   * This is a consequence of the for-loop in matrix_mult, which might be specified better.
+   */
+  int rows_result() const {
+    return adjust_dimension(rows, 12);
+  }
+
+
+  /**
+   * The column size of the result array needs to be a multiple of 16, i.e. vector size.
    */
   int cols_result() const {
-    assert(columns > 0);
-    int ret = columns;
+    return adjust_dimension(columns, 16);
+  }
 
-    if (columns % 16 != 0) {
-      ret = 16*(columns/16 + 1);
+private:
+
+  int adjust_dimension(int val, int multiple) const {
+    assert(val > 0);
+    if (val % multiple != 0) {
+      val  = multiple*(val/multiple + 1);
     }
 
-    return ret;
+    return val;
   }
+
 } settings;
 
 
@@ -140,13 +155,14 @@ void check_allocate_result_array(Complex::Array2D &result) {
     result.alloc(settings.rows, settings.cols_result());
   } else {
     if (result.rows() != settings.rows) {
-      std::string msg = "matrix_mult_decorator(): result array should have the same number of rows as matrix a ";
+      std::string msg = "check_allocate_result_array(): result array "
+                        "should have the same number of rows as matrix a ";
       msg << "(" << settings.rows << ")";
       assertq(msg);
     }
 
     if (result.columns() != settings.cols_result()) {
-      std::string msg = "matrix_mult_decorator(): result array should have a columns size of ";
+      std::string msg = "check_allocate_result_array(): result array should have a columns size of ";
       msg << settings.cols_result();
       assertq(msg);
     }
@@ -202,7 +218,7 @@ void DotVector::dot_product(Float::Ptr rhs, Float &result) {
  * Multiply current instance with the DFT elements of line `k`.
  *
  * The DFT matrix elements are calculated inline.
- * Note that low-precision sin/cos is used.
+ * Note that low-precision sin/cos is used for vc4.
  */
 void DotVector::dft_dot_product(Int const &k, Complex &result) {
   Complex tmp(0, 0);               comment("DotVector::dft_dot_product()");
@@ -210,7 +226,8 @@ void DotVector::dft_dot_product(Int const &k, Complex &result) {
   int num_elements = ((int) size())* 16;
   for (int i = 0; i < (int) size(); ++i) {
     Float param = -1.0f*toFloat(k*(i*16 + index()))/toFloat(num_elements);
-    Complex tmp1(elements[i]*functions::cos(param), elements[i]*functions::sin(param));
+
+    Complex tmp1(elements[i]*cos(param), elements[i]*sin(param));
 
     tmp += tmp1;
   }
@@ -277,7 +294,6 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
     Float::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
-
     Float::Ptr b_local = b;
 
     vec.load(a);
@@ -301,7 +317,8 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
       pre_write(dst_local, result);
     End
 
-    a += STEP;
+    // TODO make similar changes to other related kernels
+    a += STEP; //DIM*numQPUs();  // Go to next row for current QPU
   End
 }
 
@@ -367,7 +384,7 @@ FuncType *matrix_mult_decorator(
   // Result array requires column size which is a multiple of 16
   // Ensure enough padding for result so that size is multiple of 16
   // It may become too big but never mind
-  result.alloc(a.rows(), settings.cols_result());
+  result.alloc(settings.rows_result(), settings.cols_result());
 
   return ret;
 }
@@ -433,7 +450,7 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
  * Multiply current instance with the DFT elements of line `k`.
  *
  * The DFT matrix elements are calculated inline.
- * Note that low-precision sin/cos is used.
+ * Note that low-precision sin/cos is used for vc4.
  */
 void ComplexDotVector::dft_dot_product(Int const &k, Complex &result) {
   Complex tmp(0, 0);               comment("ComplexDotVector::dft_dot_product()");
@@ -442,7 +459,7 @@ void ComplexDotVector::dft_dot_product(Int const &k, Complex &result) {
   for (int i = 0; i < (int) size(); ++i) {
     Float param = -1.0f*toFloat(k*(i*16 + index()))/toFloat(num_elements);
     Complex tmp1(re[i], im[i]);
-    Complex tmp2(functions::cos(param), functions::sin(param));
+    Complex tmp2(cos(param), sin(param));
 
     tmp += tmp1*tmp2;
   }
@@ -468,7 +485,6 @@ void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
     Complex::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
-
     Complex::Ptr b_local = b;
 
     vec.load(a);

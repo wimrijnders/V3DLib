@@ -35,6 +35,14 @@ void Return(Int const &val) {
   dummy = val;
 }
 
+// TODO see if this can be merged with the Int version.
+void Return(Float const &val) {
+  // Prepare an expression which can be assigned
+  // dummy is not used downstream, only the rhs matters
+  Float dummy;
+  dummy = val;
+}
+
 
 /**
  * Create a function snippet from the generation of the passed callback
@@ -57,6 +65,18 @@ void Return(Int const &val) {
  * But then again, nothing using the global statement stack is.
  */
 IntExpr create_function_snippet(StackCallback f) {
+  Stmt::Ptr stmt = tempStmt(f);
+
+  //std::cout << stmt->dump() << std::endl;
+  stmtStack() << stmt;
+
+  Stmt *ret = stmt->last_in_seq();
+  return ret->assign_rhs();
+}
+
+
+// TODO see if this can be merged with the Int version.
+FloatExpr create_float_function_snippet(StackCallback f) {
   Stmt::Ptr stmt = tempStmt(f);
 
   //std::cout << stmt->dump() << std::endl;
@@ -240,22 +260,65 @@ FloatExpr sin(FloatExpr x_in, bool extra_precision) {
  *
  * Incoming values are multiples of 2*PI.
  * Following preamble to actual sin() is to get int param within the allowed range.
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * In `DotVector::dft_dot_product()`:
+ *
+ *    Complex tmp1(elements[i]*cos(param), elements[i]*sin(param));
+ *
+ *   ... without `create_function_snippet()`, the calculation was split as follows:
+ *
+ *     - calc var tmp for cos()
+ *     - calc var tmp for sin()
+ *     - call sin() for cos
+ *     - mult cos result with elements[i]
+ *     - call sin() for sin
+ *     - mult sin result with elements[i]
+ *
+ *   I.e., the sin() calls are delayed till they are actually used.
+ *
+ *   IMO this is because the tmp calculation is added immediately to the statement stack.
+ *   However, the addition of the sin() operation is delayed; it is returned as an expression and 
+ *   added directly after the current function has returned.
+ *
+ *   It's a bit of a stretch of imagination to see this happening, but it's definitely possible.
+ *
+ *   Nice to see that the calculation works fine, even with this happening.
+ *  
+ *   ... with `create_function_snippet()`, the calculation has the expected order:
+ *
+ *     - calc var tmp for cos()
+ *     - call sin() for cos
+ *     - calc var tmp for sin()
+ *     - call sin() for sin
+ *     - mult cos result with elements[i]
+ *     - mult sin result with elements[i]
+ * 
+ *   This is yet another reason for using function snippets.
+ *
+ *   Okay, that was real interesting.
  */
 FloatExpr sin_v3d(FloatExpr x_in) {
   //debug("using v3d sin");
 
-  Float tmp = x_in;
-  tmp = tmp - functions::ffloor(tmp);  // Sneaky way to isolate the fractional part
+  return create_float_function_snippet([x_in] {
+    Float tmp = x_in;                    comment("Start source lang v3d sin");
 
-  Where (tmp > 0.75f)                  // Adjust value to the range -PI/2...PI/2
-    tmp = tmp - 1.0f;
-  Else Where (tmp > 0.25f)
-    tmp = -1*(tmp - 0.5f);
-  End End
+    tmp += 0.25f;                        // Modulo to range -0.25...0.75
+    tmp -= functions::ffloor(tmp);       // Get the fractional part
+    tmp -= 0.25f;
 
-  tmp *= 2;                            // Convert to multiple of PI
+    Where (tmp > 0.25f)                  // Adjust value to the range -PI/2...PI/2
+      tmp = 0.5f - tmp;
+    End
 
-  return sin_op(tmp);
+    tmp *= 2;                            // Convert to multiple of PI
+
+    Return(sin_op(tmp));
+  });
 }
 
 

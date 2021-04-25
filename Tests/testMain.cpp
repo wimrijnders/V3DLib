@@ -5,7 +5,7 @@
 //
 // See the documentation section for an overview: https://github.com/onqtam/doctest#documentation
 //
-// Running with filtering of CATCH2 flags:
+// Running with filtering of flags:
 //
 //    > sudo ./obj/qpu-debug/bin/runTests -tc=*[ops]*,*[dft]*    // all tests matching at least one tag
 //    > sudo ./obj/qpu-debug/bin/runTests -tce=*[matrix]*        // Exclude all tags in list

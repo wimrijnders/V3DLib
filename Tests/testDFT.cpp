@@ -125,7 +125,7 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num
   //
   // Support Stuff
   //
-  bool const ShowCompile = false;
+  bool const ShowCompile = true;
   CompileFor for_platform = (Platform::has_vc4())?CompileFor::VC4:CompileFor::V3D;
 
   struct out_data {
@@ -251,6 +251,8 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num
 
     Timer timer1;
     auto k = compile(kernels::dft_inline_decorator(input_float, result_float), for_platform);
+    //k.pretty(false, "obj/test/dft_inline_float_v3d_hardware_sin.txt");
+    //k.dump_compile_data(false, "obj/test/dft_inline_float_v3d_hardware_sin_data.txt");
     add_compile(label, timer1, Dim, 0);
 
 

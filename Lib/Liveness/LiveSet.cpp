@@ -8,80 +8,8 @@ namespace V3DLib {
 // Class LiveSet
 ///////////////////////////////////////////////////////////////////////////////
 
-/*
-void LiveSet::resize(int size) {
-  assert(size > 0);
-
-  if ((int) Parent::size() < size) Parent::resize(size);
-}
-
-
-void LiveSet::insert(RegId id) {
-  assert(id >= 0);
-
-  if (id >= (int) size()) {
-    warning("Resizing in LiveSet::insert()");
-    resize(id + 1);
-  }
-
-  (*this)[id] = true;
-}
-
-
-void LiveSet::clear() {
-  for (int i = 0; i < (int) size(); ++i) {
-    (*this)[i] = false;
-  }
-}
-
-
-bool LiveSet::member(RegId rhs) const {
-  assert(rhs >= 0);
-
-  if (rhs >= (int) size()) return false;
-  return (*this)[rhs];
-}
-
-
-void LiveSet::add(LiveSet const &rhs) {
-  resize(rhs.size());
-
-  for (int j = 0; j < (int) rhs.size(); j++) {
-    if (rhs.member(j))
-      insert(j);
-  }
-}
-
-
-// Common to both set implementations
-void LiveSet::add(Set<RegId> const &set) {
-  for (int j = 0; j < set.size(); j++) {
-    insert(set[j]);
-  }
-}
-
-
-void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
-  clear();
-
-  for (auto j : set) {
-  //for (int j = 0; j < (int) set.size(); j++) {
-    if (!use.def.member(j))
-      insert(j);
-  }
-}
-
-
-void LiveSet::add(LiveSet const &rhs) {
-  for (auto it : rhs) {
-    insert(it);
-  }
-}
-*/
-
 void LiveSet::add(LiveSet const &rhs) {
   for (auto j : rhs) {
-  //  if (rhs.member(j))
       insert(j);
   }
 }

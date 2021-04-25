@@ -23,7 +23,7 @@ struct TriSettings : public Settings {
   TriSettings() : Settings(&params, true) {}
 
   bool init_params() override {
-    kernel = params.parameters()[0]->get_int_value();
+    kernel = parameters()[0]->get_int_value();
     return true;
   }
 

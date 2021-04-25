@@ -8,7 +8,6 @@
 #include "LibSettings.h"
 #include "support/support.h"
 #include "Support/basics.h"
-//#include "Support/Timer.h"
 #include "Kernels/Matrix.h"
 #include "support/matrix_support.h"
 
@@ -56,17 +55,6 @@ void compare_array_scalar(Float::Array2D &arr, float scalar) {
       REQUIRE(arr[r][c] == scalar);
     }
   }
-}
-
-
-/**
- * Convenience method to make switching run modes easier
- */
-template<typename Kernel>
-void run_kernel(Kernel &k) {
-  //k.interpret();
-  //k.emu();
-  k.call();  // k.qpu() is the intention, but is not compiled on non-arm
 }
 
 
@@ -135,7 +123,7 @@ void test_dotvector() {
   auto k = compile(check_dotvector<N>);
   //k.pretty(true, "obj/test/check_dotvector.txt", false);
   k.load(&b, &a, &result);
-  run_kernel(k);
+  k.call();
 
   for (int i = 0; i < (int) a.size(); i++) {
     INFO("N: " << N << ", i: " << i);
@@ -160,7 +148,7 @@ void test_dotvector() {
   // Do it again with simpler values for hand calculation
   a.fill(1);
   k.load(&b, &a, &result);
-  run_kernel(k);
+  k.call();
   REQUIRE(result[0] == (float) (16*N));
 }
 
@@ -174,13 +162,12 @@ void check_matrix_results(
   float *a_scalar,
   float *expected) {
 
-/*
   //
   // Multiplication of empty input matrix
   //
   a.fill(0);
   result.fill(-1);
-  run_kernel(k);
+  k.call();
   compare_array_scalar(result, 0.0f);
 
   //
@@ -188,9 +175,8 @@ void check_matrix_results(
   //
   a.fill(1);
   result.fill(-1);
-  run_kernel(k);
+  k.call();
   compare_array_scalar(result, (float) dimension);
-*/
 
   //
   // Square of unit matrix
@@ -208,7 +194,7 @@ void check_matrix_results(
     }
   }
 
-  run_kernel(k);
+  k.call();
   //k.pretty(true, "obj/test/unitary_matrix_mult_vc4.txt");
   //k.dump_compile_data(true, "obj/test/compile_data_unitary_matrix_mult_vc4.txt");
   //dump_array(a.get_parent(), a.columns());
@@ -238,7 +224,7 @@ void check_matrix_results(
 
   kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_transposed);
   k.load(&result, &a, &a);
-  run_kernel(k);
+  k.call();
 
   compare_arrays(result, expected);
 }
@@ -314,27 +300,25 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
 
   REQUIRE(a.columns() == b.columns());
 
+  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols
+    << ", num QPUs: " << num_qpus);  // NOTE repeated below
+
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
+
+//  if (k.has_errors()) {
+    k.pretty(false, "obj/test/test_matrix_multiplication_v3d.txt");
+    k.dump_compile_data(false, "obj/test/test_matrix_multiplication_v3d_data.txt");
+//  }
+  REQUIRE(!k.has_errors());
+
   k.setNumQPUs(num_qpus);
   result.fill(-1.0f);
 
   k.load(&result, &a, &b);
-  run_kernel(k);
+  k.call();
 
-/*
-  // Clear the irrelevant parts of the array before displaying
-  for (int r = 0; r < result.rows(); ++r) {
-    for (int c = 0; c < result.columns(); ++c) {
-      if (r >= rows || c >= cols) {
-        result[r][c] = 0;
-      }
-    }
-  }
-
-  std::cout << result.dump() << std::endl;
-*/
-
-  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
+  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols
+    << ", num QPUs: " << num_qpus);
 
   // NOTE: this does not compare the entire results array, just the relevant bit(s)
   for (int r = 0; r < rows; ++r) {
@@ -381,7 +365,7 @@ TEST_CASE("Test matrix algebra components [matrix][comp]") {
 
     auto k = compile(check_sum_kernel);
     k.load(&vec, &result);
-    run_kernel(k);
+    k.call();
 
     float precision = 0.0f;
     if (Platform::has_vc4()) {
@@ -395,7 +379,7 @@ TEST_CASE("Test matrix algebra components [matrix][comp]") {
     }
 
     k.load(&vec, &result);
-    run_kernel(k);
+    k.call();
     REQUIRE(abs(result[0] - 0.1f*(16*17/2)) <= precision);
   }
 
@@ -412,7 +396,7 @@ TEST_CASE("Test matrix algebra components [matrix][comp]") {
 
     auto k = compile(check_set_at);
     k.load(&vec, &result, 0);
-    run_kernel(k);
+    k.call();
 
     for (int i = 0; i < (int) result.size(); i++) {
       if (i == 0) {
@@ -423,7 +407,7 @@ TEST_CASE("Test matrix algebra components [matrix][comp]") {
     }
 
     k.load(&vec, &result, 7);
-    run_kernel(k);
+    k.call();
 
     for (int i = 0; i < (int) result.size(); i++) {
       if (i == 0 || i == 7) {
@@ -458,20 +442,17 @@ TEST_CASE("Test matrix algebra [matrix][mult]") {
 
 TEST_CASE("Test matrix algebra with varying sizes [matrix][mult][varying]") {
   SUBCASE("Check matrix multiplication") {
-    test_matrix_multiplication( 1,    16,   1);
-    test_matrix_multiplication( 1,  5*16,   1);
-    test_matrix_multiplication(10,    16,   5);
-    test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f);
-    test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f);  // Going over the top here with big dimensions
+    auto test = [] (int num_qpus) {
+      test_matrix_multiplication( 1,    16,   1,  1   , 1   , num_qpus);
+      test_matrix_multiplication( 1,  5*16,   1,  1   , 1   , num_qpus);
+      test_matrix_multiplication(10,    16,   5,  1   , 1   , num_qpus);
+      test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f, num_qpus);
+      test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f, num_qpus);  // Going over the top with big dimensions
+    };
 
-    // same thing with > 1 QPUs
-    test_matrix_multiplication( 1,    16,   1,  1   , 1, 8);
-    test_matrix_multiplication( 1,  5*16,   1,  1   , 1, 8);
-    test_matrix_multiplication(10,    16,   5,  1   , 1, 8);
-    test_matrix_multiplication( 3,  3*16,   3, -1.0f, 2.0f);
-    test_matrix_multiplication(65, 10*16, 128,  2.0f, 3.0f);  // Going over the top here with big dimensions
+    test(1);
+    test(8);  // same thing with > 1 QPUs
   }
-
 }
 
 
@@ -581,7 +562,7 @@ void test_complex_matrix_multiplication(
   result.fill({-1.0f, -1.0f});
 
   k.load(&result, &a, &b);
-  run_kernel(k);
+  k.call();
   //dump_array(result.get_parent(), cols_result);
 
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);

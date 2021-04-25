@@ -60,7 +60,6 @@ struct MandSettings : public Settings {
   const int ALL = 3;
 
   int    kernel;
-  string kernel_name;
   bool   output_pgm;
   bool   output_ppm;
   int    num_iterations;
@@ -88,13 +87,14 @@ struct MandSettings : public Settings {
   MandSettings() : Settings(&params, true) {}
 
   bool init_params() override {
-    kernel         = params.parameters()["Kernel"]->get_int_value();
-    kernel_name    = params.parameters()["Kernel"]->get_string_value();
-    output_pgm     = params.parameters()["Output PGM file"]->get_bool_value();
-    output_ppm     = params.parameters()["Output PPM file"]->get_bool_value();
-    num_iterations = params.parameters()["Number of steps"]->get_int_value();
-    numStepsWidth  = params.parameters()["Dimension"]->get_int_value();
-    numStepsHeight = params.parameters()["Dimension"]->get_int_value();
+    auto const &p = parameters();
+
+    kernel         = p["Kernel"]->get_int_value();
+    output_pgm     = p["Output PGM file"]->get_bool_value();
+    output_ppm     = p["Output PPM file"]->get_bool_value();
+    num_iterations = p["Number of steps"]->get_int_value();
+    numStepsWidth  = p["Dimension"]->get_int_value();
+    numStepsHeight = p["Dimension"]->get_int_value();
 
     return true;
   }
@@ -141,7 +141,7 @@ void mandelbrot_cpu(int *result) {
  * Common part of the QPU kernels
  */
 void mandelbrotCore(
-  Complex c,
+  Complex const &c,
   Int &numIterations,
   Int::Ptr &dst
 ) {
@@ -176,14 +176,17 @@ void mandelbrot_single(
   Int::Ptr result
 ) {
   For (Int yStep = 0, yStep < numStepsHeight, yStep++)
-    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
+    Int::Ptr dst = result + yStep*numStepsWidth;
+
+    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep += 16)
       Int xIndex = xStep + index();
-      Int::Ptr dst = result + xStep + yStep*numStepsWidth;
 
       mandelbrotCore(
-        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm   - offsetY*toFloat(yStep)),
+        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm - offsetY*toFloat(yStep)),
         numIterations,
         dst);
+
+      dst.inc();
     End
   End
 }
@@ -199,17 +202,19 @@ void mandelbrot_multi(
   Int numIterations,
   Int::Ptr result
 ) {
-  For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep = yStep + numQPUs())
+  For (Int yStep = 0, yStep < numStepsHeight - numQPUs(), yStep += numQPUs())
     Int yIndex = yStep + me();
+    Int::Ptr dst = result + yIndex*numStepsWidth;
 
-    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep = xStep + 16)
+    For (Int xStep = 0, xStep < numStepsWidth - 16, xStep += 16)
       Int xIndex = xStep + index();
-      Int::Ptr dst = result + xStep + yIndex*numStepsWidth;
 
       mandelbrotCore(
-        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm   - offsetY*toFloat(yIndex)),
+        Complex(topLeftReal + offsetX*toFloat(xIndex), topLeftIm - offsetY*toFloat(yIndex)),
         numIterations,
         dst);
+
+      dst.inc();
     End
   End
 }
@@ -237,7 +242,7 @@ void output_pgm(Array &result) {
 
 
 void run_qpu_kernel(KernelType &kernel) {
-  assert(0 == settings.numStepsWidth % 16);       // width needs to be a multiple of 16
+  assertq(0 == settings.numStepsWidth % 16, "Width dimension must be a multiple of 16");
 
   auto k = compile(kernel);
   k.setNumQPUs(settings.num_qpus);
@@ -294,13 +299,16 @@ int main(int argc, const char *argv[]) {
   //printf("Check pre\n");
   //RegisterMap::checkThreadErrors();   // TODO: See if it's useful to check this every time after a kernel has run
 
-#ifdef ARM64
-  printf("\nWARNING: Mandelbrot will run *sometimes* on 64-bit Raspbian when GPU kernels are used "
-         "(-k=multi or -k=single).\n"
-         "Running it has the potential to lock up your Pi. Please use with care.\n\n");
-#endif  // ARM64
-
   settings.init(argc, argv);
+
+#ifdef ARM32
+  if (!Platform::has_vc4() && settings.kernel <= 1) {
+    printf("\nWARNING: Mandelbrot will run *sometimes* on a Pi4 with 32-bit Raspbian when GPU kernels are used "
+           "(-k=multi or -k=single).\n"
+           "Running it has the potential to lock up your Pi. Please use with care.\n\n");
+  }
+#endif  // ARM32
+
 
   if (settings.kernel == settings.ALL) {
     for (int i = 0; i < settings.ALL; ++i ) {
