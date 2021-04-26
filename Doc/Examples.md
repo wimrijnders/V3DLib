@@ -496,11 +496,16 @@ void heatmap_kernel(Float::Ptr map, Float::Ptr mapOut, Int height, Int width) {
 
 Times taken to simulate a 512x506 surface for 1500 steps:
 
-```
-  Version | Number of QPUs | Run-time (s) |
-  --------| -------------: | -----------: |
-  Scalar  | 0              | 431.46       |
-  Vector  | 1              | 49.34        |
-  Vector  | 2              | 24.91        |
-  Vector  | 4              | 20.36        |
-```
+| Pi version | Kernel | Number of QPUs | Run-time (s) | Notes |
+| ---------- | -------| -------------: | -----------: | ----- |
+| Pi4        | Scalar |  0             | 17.63        ||
+|            | Vector |  1             | 34.45        | Slower than scalar! |
+|            | Vector |  8             |  4.43        |
+| Pi3        | Scalar |  0             | 75.61        ||
+|            | Vector |  1             | 58.48        ||
+|            | Vector |  2             | 29.67        ||
+|            | Vector |  4             | 16.26        ||
+|            | Vector |  8             | 16.24        | No more improvement|
+|            | Vector | 12             | 16.25        ||
+
+![HeatMap performance](./images/heatmap_perf.png)
