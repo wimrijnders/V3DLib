@@ -410,8 +410,13 @@ After 1500 iterations, this becomes:
 
 ![HeatMap step 1500](./images/heatmap_1500.png)
 
+| ![HeatMap step 0](./images/heatmap_0.png) | ![HeatMap step 100](./images/heatmap_100.png) | ![HeatMap step 1500](./images/heatmap_1500.png) |
+|:---:|:---:|:---:|
+| Step 0 | Step 100 | Step 1500 |
 
-### <a name="scalar-version-2"></a> Scalar version
+
+
+### <a name="scalar-version-2"></a> Scalar Version
 
 The following function simulates a single time-step of the
 differential equation, applied to each object in the 2D grid.
@@ -432,134 +437,72 @@ void scalar_step(float** map, float** mapOut, int width, int height) {
 ```
 
 
-### Vector version
+### Kernel Version
 
-This introduces the concept of a **cursor**, which is useful for implementing sliding window algorithms.
+The kernel program uses a **cursor** to iterate over the values.
+The cursor implementation for `HeatMap` preloads and iterates over three consecutive lines simultaneously.
+This allows for a kernel program to access all direct neighbors of a particular location.
 
-A cursor points to a window of three continguous vectors in memory: `prev`, `current` and `next`.
+Conceptually, you can think of it as follows:
+
 
 ```
-  cursor  ------>  +---------+---------+---------+
-                   |  prev   | current |  next   |
-                   +---------+---------+---------+
-                 +0:      +16:      +32:      +48:
+               prev     current    next
+columns:       i - 1       i       i + 1
+            +---------+---------+---------+
+line j -1   |         |         |         |
+            +---------+---------+---------+
+line j      |         | (i , j) |         |
+            +---------+---------+---------+
+line j + 1  |         |         |         |
+            +---------+---------+---------+
 ```
+Keep in mind, though, that in the implementation every cell is actually a 16-vector,
+and represents 16 consecutive values.
 
-and supports three main operations:
 
-  1. **advance** the cursor by one vector, i.e. slide the window right
-     by one vector;
 
-  2. **shift-left** the `current` vector by one element,
-     using the value of the `next` vector;
+For the kernel program, a 1D-array with a width offset ('pitch') is used to implement the 2D array.
+The kernel simulation step using cursors is expressed below (taken from example `HeatMap`).
 
-  3. **shift-right** the `current` vector by one element,
-     using the value of the `prev` vector.
-
-Here is a `V3DLib` implementation of a cursor, using a C++ class.
-
-```c++
-struct Cursor {
-  Float::Ptr addr;
-  Float prev, current, next;
-
-  void init(Float::Ptr p) {
-    gather(p); comment("Cursor init");
-    current = 0.0f;
-    addr = p + 16;
-  }
-
-  void prime() {
-    receive(next);
-    gather(addr);
-  }
-
-  void advance() {
-    addr.inc();     comment("Cursor advance");
-    prev = current;
-    gather(addr);
-    current = next;
-    receive(next);
-  }
-
-  void finish() {
-    receive(next);
-  }
-
-  void shiftLeft(Float& result) {
-    result = rotate(current, 15); comment("Cursor shiftLeft");
-    Float nextRot = rotate(next, 15);
-    Where (index() == 15)
-      result = nextRot;
-    End
-  }
-
-  void shiftRight(Float& result) {
-    result = rotate(current, 1); comment("Cursor shiftRight");
-    Float prevRot = rotate(prev, 1);
-    Where (index() == 0)
-      result = prevRot;
-    End
-  }
-};
-```
-
-Given a vector `x`, the operation `rotate(x, n)` will rotate
-`x` right by `n` places where `n` is a integer in the range 0 to 15.
-Noe that rotating right by 15 is the same as rotating left by 1.
-
-The vectorised simulation step using cursors is expressed below.
-A difference from the scalar version is that the grid is not a 2D array:
-it is instead 1D array with a `pitch` parameter that gives the increment needed to get
-from the start of one row to the start of the next.
 
 ```C++
 /**
  * Performs a single step for the heat transfer
  */
 void heatmap_kernel(Float::Ptr map, Float::Ptr mapOut, Int height, Int width) {
-  Cursor row[3];
+  Cursor cursor(width);
 
-  For (Int y = 1, y < height - 1 - numQPUs(), y = y + numQPUs())
-    // Point p to the in- and output row
-    Float::Ptr p_in = map    + (y + me())*width;
-    Float::Ptr p    = mapOut + (y + me())*width;
+  For (Int offset = cursor.offset()*me() + 1,
+       offset < height - cursor.offset() - 1,
+       offset += cursor.offset()*numQPUs())
 
-    // Initialize three cursors for the three input rows
-    for (int i = 0; i < 3; i++) row[i].init(p_in + (i - 1)*width);
-    for (int i = 0; i < 3; i++) row[i].prime();
+    Float::Ptr src = map    + offset*width;
+    Float::Ptr dst = mapOut + offset*width;
+
+    cursor.init(src, dst);
 
     // Compute one output row
     For (Int x = 0, x < width, x = x + 16)
-      for (int i = 0; i < 3; i++) row[i].advance();
+      cursor.step([&x, &width] (Cursor::Block const &b, Float &output) {
+        Float sum = b.left(0) + b.current(0) + b.right(0) +
+                    b.left(1) +                b.right(1) +
+                    b.left(2) + b.current(2) + b.right(2);
 
-      Float left[3], right[3];
-      for (int i = 0; i < 3; i++) {
-        row[i].shiftLeft(right[i]);
-        row[i].shiftRight(left[i]);
-      }
+        output = b.current(1) - K * (b.current(1) - sum * 0.125);
 
-      Float sum = left[0] + row[0].current + right[0] +
-                  left[1] +                  right[1] +
-                  left[2] + row[2].current + right[2];
-
-       Float output = row[1].current - K * (row[1].current - sum * 0.125);
-
-      // Ensure left and right borders are zero
-      Int actual_x = x + index();
-      Where (actual_x == 0)
-        output = 0.0f;
-      End
-      Where (actual_x == width - 1)
-        output = 0.0f;
-      End
-
-       *p = output;
-      p.inc();
+        // Ensure left and right borders are zero
+        Int actual_x = x + index();
+        Where (actual_x == 0)
+          output = 0.0f;
+        End
+        Where (actual_x == width - 1)
+          output = 0.0f;
+        End
+      });
     End
 
-    // Cursors are finished for this row
-    for (int i = 0; i < 3; i++) row[i].finish();
+    cursor.finish();
   End
 }
 ```

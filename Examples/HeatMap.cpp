@@ -1,10 +1,11 @@
 #include <V3DLib.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <CmdParameters.h>
 #include "Support/Settings.h"
 #include "Support/Timer.h"
 #include "Support/pgm.h"
-#include <CmdParameters.h>
+#include "Kernels/Cursor.h"
 
 using namespace V3DLib;
 using std::string;
@@ -139,144 +140,11 @@ void run_scalar() {
 // Vector version
 // ============================================================================
 
-
-
-class Cursor {
-public:
-  /**
-   * Represent a 3x3 block of values which are currently active
-   */
-  struct Block {
-    Block(Cursor const &c, int in_first_index) : m_cursor(c), first_index(in_first_index) {
-      for (int i = 0; i < 3; i++) {
-        c.row[first_index - 1 + i].shiftLeft(m_right[i]);
-        c.row[first_index - 1 + i].shiftRight(m_left[i]);
-      }
-    }
-
-    Float const &left(int n)    const  { return m_left[n]; }
-    Float const &current(int n) const  { return m_cursor.row[first_index - 1 + n].current; }
-    Float const &right(int n)   const  { return m_right[n]; }
-
-  private:
-    Cursor const &m_cursor;
-    int    first_index;
-    Float  m_left[3];
-    Float  m_right[3];
-  };
-
-
-  Cursor(Int const &width, int numlines = 3) : m_num_lines(numlines), m_width(width) {
-    assert(numlines >= 3);
-    row.resize(m_num_lines);
-  }
-
-
-  int offset() const { return m_num_lines -2; }
-
-
-  void init(Float::Ptr const &in_src, Float::Ptr const &in_dst) {
-    // Initialize three cursor lines for the three input rows
-    for (int i = 0; i < m_num_lines; i++) row[i].init(in_src + (i - 1)*m_width, in_dst + (i - 1)*m_width);
-    for (int i = 0; i < m_num_lines; i++) row[i].prime();
-  }
-
-
-  void step(std::function<void(Block const &, Float &)> f) {
-    advance();
-
-    for (int i = 1; i < m_num_lines - 1; ++i) {
-      Block b(*this, i);
-
-      Float output = 0.0f;
-      f(b, output);
-
-      *row[i].dst = output;
-      row[i].dst.inc();
-    }
-  }
-
-
-  void finish() {
-    for (int i = 0; i < m_num_lines; i++) row[i].finish();
-  }
-
-
-private:
-
-  struct CursorLine {
-    void init(Float::Ptr in_src, Float::Ptr const &in_dst) {
-      gather(in_src); comment("Cursor init");
-      current = 0.0f;
-      src = in_src + 16;
-      dst = in_dst;
-    }
-
-    void prime() {
-      receive(next);
-      gather(src);
-    }
-
-    void advance() {
-      src.inc();     comment("Cursor advance");
-      prev = current;
-      gather(src);
-      current = next;
-      receive(next);
-    }
-
-    void finish() {
-      receive(next);
-    }
-
-    void shiftLeft(Float& result) const {
-      result = rotate(current, 15); comment("Cursor shiftLeft");
-      Float nextRot = rotate(next, 15);
-      Where (index() == 15)
-        result = nextRot;
-      End
-    }
-
-    void shiftRight(Float& result) const {
-      result = rotate(current, 1); comment("Cursor shiftRight");
-      Float prevRot = rotate(prev, 1);
-      Where (index() == 0)
-        result = prevRot;
-      End
-    }
-
-    Float::Ptr src;
-    Float::Ptr dst;
-    Float prev, current, next;
-  };
-
-
-  void advance() {
-    for (int i = 0; i < m_num_lines; i++) row[i].advance();
-  }
-
-  std::vector<CursorLine> row;
-
-  private:
-    int m_num_lines = 3;
-    Int m_width;
-};
-
-
 /**
  * Performs a single step for the heat transfer
  */
 void heatmap_kernel(Float::Ptr map, Float::Ptr mapOut, Int height, Int width) {
-  //
-  // 20210424, 2nd param:
-  //
-  //   Works okay for <= 8, with small differences in output
-  //   9, 10 breaks down - white screen
-  //   11: register allocation failed, insufficient capacity
-  //
-  // The insult here is that 3 still appears to work best
-  //
-  Cursor cursor(width, 3);
+  Cursor cursor(width);
 
   For (Int offset = cursor.offset()*me() + 1,
        offset < height - cursor.offset() - 1,
