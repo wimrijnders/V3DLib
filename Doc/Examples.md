@@ -232,14 +232,11 @@ This example is just for illustration purposes)
 
 If this is applied to the vertices of
 [Newell's teapot](https://github.com/rm-hull/newell-teapot/blob/master/teapot)
-(rendered using [Richard Hull's wireframes](https://github.com/rm-hull/wireframes) tool)
+(rendered using [Richard Hull's wireframes](https://github.com/rm-hull/wireframes) tool):
 
-![Newell's teapot](./images/teapot.png)
-
-with &theta; = 180 degrees, the result is:
-
-![Newell's teapot rotated](./images/teapot180.png)
-
+| ![Newell's teapot](./images/teapot.png) | ![Newell's teapot rotated](./images/teapot180.png) |
+|:---:|:---:|
+| &theta; = 0&deg; | &theta; = 180&deg; |
 
 ### <a name="scalar-version-1">Scalar version</a>
 
@@ -397,22 +394,12 @@ and the ambient temperature of each object to be the average of the temperatures
 This is very similar to 2D convolution using a mean filter.
 
 The `HeatMap` example program initializes a number of heat points and then
-iteratively calculates the diffusion. The default implementation starts out
-as follows:
-
-![HeatMap step 0](./images/heatmap_0.png)
-
-After 100 iterations, this becomes:
-
-![HeatMap step 100](./images/heatmap_100.png)
-
-After 1500 iterations, this becomes:
-
-![HeatMap step 1500](./images/heatmap_1500.png)
+iteratively calculates the diffusion.
+The following images show what happens with progressive iterations:
 
 | ![HeatMap step 0](./images/heatmap_0.png) | ![HeatMap step 100](./images/heatmap_100.png) | ![HeatMap step 1500](./images/heatmap_1500.png) |
 |:---:|:---:|:---:|
-| Step 0 | Step 100 | Step 1500 |
+| 0 steps | 100 steps | 1500 steps |
 
 
 
@@ -445,7 +432,6 @@ This allows for a kernel program to access all direct neighbors of a particular 
 
 Conceptually, you can think of it as follows:
 
-
 ```
                prev     current    next
 columns:       i - 1       i       i + 1
@@ -459,7 +445,6 @@ line j + 1  |         |         |         |
 ```
 Keep in mind, though, that in the implementation every cell is actually a 16-vector,
 and represents 16 consecutive values.
-
 
 
 For the kernel program, a 1D-array with a width offset ('pitch') is used to implement the 2D array.
@@ -509,7 +494,7 @@ void heatmap_kernel(Float::Ptr map, Float::Ptr mapOut, Int height, Int width) {
 
 ### <a name="performance-1"></a> Performance
 
-Times taken to simulate a 512x512 surface for 2000 steps:
+Times taken to simulate a 512x506 surface for 1500 steps:
 
 ```
   Version | Number of QPUs | Run-time (s) |

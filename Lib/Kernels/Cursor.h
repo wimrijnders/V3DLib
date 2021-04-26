@@ -8,6 +8,8 @@ namespace V3DLib {
 /**
  * Handle multiple lines of input data.
  *
+ * Useful for implementing sliding window algorithms.
+ *
  * (Pre)loads values for lines and iterates over them.
  *
  * Extracted from example HeatMap, because it has more potential uses.
