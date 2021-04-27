@@ -153,6 +153,22 @@ void test_dotvector() {
 }
 
 
+void check_unitary(Float::Array2D &a) {
+  REQUIRE(a.rows() == a.columns());
+
+  for (int r = 0; r < a.rows(); r++) {
+    for (int c = 0; c < a.columns(); c++) {
+      INFO("rows: " << a.rows() << ", (r,c): (" << r << ", " << c << ")");
+      if (r == c) {
+        REQUIRE(a[r][c] == 1.0f);
+      } else {
+        REQUIRE(a[r][c] == 0.0f);
+      }
+    }
+  }
+}
+
+
 template<typename Kernel>
 void check_matrix_results(
   int dimension,
@@ -182,17 +198,7 @@ void check_matrix_results(
   // Square of unit matrix
   //
   a.make_unit_matrix();
-
-  // Check if indeed unitary
-  for (int r = 0; r < a.rows(); r++) {
-    for (int c = 0; c < a.columns(); c++) {
-      if (r == c) {
-        REQUIRE(a[r][c] == 1.0f);
-      } else {
-        REQUIRE(a[r][c] == 0.0f);
-      }
-    }
-  }
+  check_unitary(a);
 
   k.call();
   //k.pretty(true, "obj/test/unitary_matrix_mult_vc4.txt");
@@ -200,17 +206,7 @@ void check_matrix_results(
   //dump_array(a.get_parent(), a.columns());
   //dump_array(result.get_parent(), result.columns());
 
-  for (int r = 0; r < result.rows(); r++) {
-    for (int c = 0; c < result.columns(); c++) {
-      INFO("rows: " << result.rows() << ", (r,c): (" << r << ", " << c << ")");
-      if (r == c) {
-        REQUIRE(result[r][c] == 1.0f);
-      } else {
-        REQUIRE(result[r][c] == 0.0f);
-      }
-    }
-  }
-
+  check_unitary(result);
 
   //
   // Test Random values in array
@@ -306,8 +302,8 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
 
 //  if (k.has_errors()) {
-    k.pretty(false, "obj/test/test_matrix_multiplication_v3d.txt");
-    k.dump_compile_data(false, "obj/test/test_matrix_multiplication_v3d_data.txt");
+//    k.pretty(false, "obj/test/test_matrix_multiplication_v3d.txt");
+//    k.dump_compile_data(false, "obj/test/test_matrix_multiplication_v3d_data.txt");
 //  }
   REQUIRE(!k.has_errors());
 
@@ -645,4 +641,41 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
     compare_arrays(result.re(), scalar_result);
     compare_array_scalar(result.im(), 0.0f);
   }
+}
+
+
+TEST_CASE("Test block matrix multiplication [matrix][block]") {
+
+Platform::use_main_memory(true);
+
+  SUBCASE("Test simple block") {
+    int dimension = 2*16;
+
+    Float::Array2D a(dimension);
+    a.make_unit_matrix();
+    check_unitary(a);
+
+    // Do regular multiplication
+    {
+      Float::Array2D result;
+      auto k = compile(kernels::matrix_mult_decorator(a, a, result));
+      result.fill(-1.0f);  // Init with silly values
+      k.load(&result, &a, &a);
+      k.interpret();
+      check_unitary(result);
+    }
+
+    // Do same with blocks
+    {
+      Float::Array2D result;
+      auto k = compile(kernels::matrix_mult_decorator(a, a, result));
+      result.fill(-1.0f);  // Init with silly values
+      k.load(&result, &a, &a);
+      k.interpret();
+      check_unitary(result);
+    }
+  }
+
+Platform::use_main_memory(false);
+
 }

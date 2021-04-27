@@ -55,7 +55,7 @@ private:
 ////////////////////////////////////////////////////////////////////////////////
 
 enum MatrixReadMethod {
-  DEFAULT,
+  DEFAULT,      // No prefetch
   DO_PREFETCH,
   NO_READWRITE
 };
@@ -64,13 +64,19 @@ void square_matrix_mult_scalar(int N, float *dst, float *a, float *b);
 void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b);
 
 using FuncType = decltype(matrix_mult);
-FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method = DEFAULT);
+FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method = DO_PREFETCH);
 
 FuncType *matrix_mult_decorator(
   Float::Array2D &a,
   Float::Array2D &b,
   Float::Array2D &result,
-  MatrixReadMethod read_method = DEFAULT);
+  MatrixReadMethod read_method = DO_PREFETCH);
+
+FuncType *matrix_mult_decorator_block(
+  Float::Array2D &a,
+  Float::Array2D &b,
+  Float::Array2D &result,
+  MatrixReadMethod read_method = DO_PREFETCH);
 
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -32,9 +32,12 @@ struct matrix_settings {
    * The rows size of the result array needs to be a multiple of the number of QPUs running.
    *
    * This is a consequence of the for-loop in matrix_mult, which might be specified better.
+   *
+   * TODO: Check if edit is acceptable for all #QPUs, make concrete if so.
    */
   int rows_result() const {
-    return adjust_dimension(rows, 12);
+    //return adjust_dimension(rows, 12);
+    return rows;
   }
 
 
@@ -292,8 +295,8 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
   DotVector vec(settings.inner/16);
   Float result = 0;  // NOTE explicit init required (TODO enforce)
 
-  For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
-    Float::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
+  For (Int a_index = me(), a_index < settings.rows, a_index += numQPUs())
+    Float::Ptr dst_local = dst + a_index*settings.cols_result();
     Float::Ptr b_local = b;
 
     vec.load(a);
@@ -390,6 +393,16 @@ FuncType *matrix_mult_decorator(
 }
 
 
+FuncType *matrix_mult_decorator_block(
+  Float::Array2D &a,
+  Float::Array2D &b,
+  Float::Array2D &result,
+  MatrixReadMethod read_method
+) {
+  return matrix_mult_decorator(a, b, result, read_method);
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Complex arrays
 ///////////////////////////////////////////////////////////////////////////////
@@ -483,8 +496,8 @@ void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
   ComplexDotVector vec(settings.inner/16);
   Complex result(0,0);  // NOTE explicit init required (TODO enforce)
 
-  For (Int a_index = 0,  a_index < settings.rows, a_index += numQPUs())
-    Complex::Ptr dst_local = dst + (a_index + me())*settings.cols_result();
+  For (Int a_index = me(),  a_index < settings.rows, a_index += numQPUs())
+    Complex::Ptr dst_local = dst + a_index*settings.cols_result();
     Complex::Ptr b_local = b;
 
     vec.load(a);

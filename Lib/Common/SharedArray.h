@@ -68,9 +68,7 @@ public:
   T *ptr() { return (T *) m_usraddr; }
 
   void fill(T val) {
-    assert(allocated());
-    //assertq(allocated(), "Can not fill unallocated array");
-
+    assertq(allocated(), "Can not fill unallocated array");
     for (int i = 0; i < (int) size(); i++)
       (*this)[i] = val;
   }
