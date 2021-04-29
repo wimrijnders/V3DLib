@@ -154,6 +154,22 @@ void test_dotvector() {
 }
 
 
+void check_unitary(std::vector<float> &a, int dim) {
+
+  for (int r = 0; r < dim; r++) {
+    for (int c = 0; c < dim; c++) {
+      INFO("rows: " << dim << ", (r,c): (" << r << ", " << c << ")");
+      int offset = r*dim + c;
+      if (r == c) {
+        REQUIRE(a[offset] == 1.0f);
+      } else {
+        REQUIRE(a[offset] == 0.0f);
+      }
+    }
+  }
+}
+
+
 void check_unitary(Float::Array2D &a) {
   REQUIRE(a.rows() == a.columns());
 
@@ -638,37 +654,60 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
 //Platform::use_main_memory(true);
 
   SUBCASE("Test simple block") {
-    int dimension = 2*16;
+
+    // Do full multiplication
+    auto run_mult = [] (Float::Array2D &a) -> std::vector<float> {
+      Matrix m(a, a);
+      m.mult();
+      //std::cout << m.result().dump() << std::endl;
+
+      std::vector<float> result;
+      m.result().copyTo(result);
+      return result;
+    };
+
+    // Do block multiplication
+    auto run_block_mult = [] (Float::Array2D &a) -> std::vector<float> {
+      Matrix m(a, a);
+      m.block_mult();
+      //std::cout << m.result().dump() << std::endl;
+
+      std::vector<float> result;
+      m.result().copyTo(result);
+      return result;
+    };
+
+    int dimension = 2*16;  // 8 tested OK
 
     Float::Array2D a(dimension);
     Float::Array2D result(dimension);
+
+    std::vector<float> result_full;
+    std::vector<float> result_block;
+
+    //
+    // Check identity matrix
+    //
     a.make_unit_matrix();
     check_unitary(a);
 
-    // Do regular multiplication
-    {
-      auto k = compile(kernels::matrix_mult_decorator(a, a, result));
-      result.fill(-1.0f);  // Init with silly values
-      k.load(&result, &a, &a);
-      k.call();
-      check_unitary(result);
-    }
+    result_full = run_mult(a);
+    INFO("full multiply identity matrix");
+    check_unitary(result_full, dimension);
 
-    {
-      Matrix m1(a, a);
-      m1.mult();
-      INFO("multiply with Matrix instance");
-      check_unitary(m1.result());
-    }
+    result_block = run_block_mult(a);
+    INFO("Block multiply identity matrix");
+    check_unitary(result_block, dimension);
 
-    // Do same with blocks
-    {
-      Matrix m2(a, a);
-      m2.block_mult();
-      INFO("Block multiply with Matrix instance");
-      std::cout << m2.result().dump() << std::endl;
-      check_unitary(m2.result());
-    }
+    REQUIRE(result_full == result_block);
+
+    //
+    // Square of input matrix containing all ones
+    //
+    a.fill(1);
+    result_full = run_mult(a);
+    result_block = run_block_mult(a);
+    REQUIRE(result_full == result_block);
   }
 
 //Platform::use_main_memory(false);

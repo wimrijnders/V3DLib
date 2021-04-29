@@ -17,6 +17,7 @@ public:
   bool allocated() const;
   uint32_t getAddress() const { return m_phyaddr; }
   uint32_t size() const { return m_size; }
+  bool empty() const { return size() == 0; }
   uint32_t *getPointer();
 
   void heap_view(BufferObject &heap);
@@ -108,6 +109,32 @@ public:
     }
   }
 
+  void copyTo(std::vector<T> &dst) {
+    assert(!empty());
+
+    dst.resize(size());
+
+    // TODO: consider using memcpy() instead
+    for (uint32_t offset = 0; offset < size(); ++offset) {
+      dst[offset] = (*this)[offset];
+    }
+  }
+
+/*
+  // Compile conflict with Shared2DArray::copyTo
+
+  void copyTo(std::vector<T> &dst) {
+    assert(!empty());
+
+    dst.resize(size());
+
+    // TODO: consider using memcpy() instead
+    for (uint32_t offset = 0; offset < size(); ++offset) {
+      dst[offset] = (*this)[offset];
+    }
+  }
+*/
+
 
   /**
    * Debug method for showing a range in a shared array
@@ -180,6 +207,8 @@ class Shared2DArray : private SharedArray<T> {
   using Parent = SharedArray<T>;
 
 public:
+  using Parent::ptr;
+
   // made public for Complex::Array2D. In all other cases should be regarded as private
   // TODO examine if this can be enforced
   struct Row {
@@ -281,6 +310,21 @@ public:
     }
 
     return ret;
+  }
+
+
+  void copyTo(std::vector<T> &dst) {
+    assert(rows() > 0);
+    assert(columns() > 0);
+
+    dst.resize(rows()*columns());
+
+    for (int r = 0; r < rows(); ++r) {
+      for (int c = 0; c < columns(); ++c) {
+        int offset = r*columns() + c;
+        dst[offset] = (*this)[r][c];
+      }
+    }
   }
 
 private:

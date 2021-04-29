@@ -179,16 +179,17 @@ void pre_read(Float &dst, Float::Ptr &src, int prefetch_label) {
 }
 
 
+/**
+ * on v3d, TMU is used always
+ */
 void pre_write(Float::Ptr &dst, Float &src) {
-  // on v3d, TMU is used always
-
   switch (settings.read_method) {
     case DEFAULT:
     case DO_PREFETCH:
       // on vc4 this uses DMA
       // on v3d this uses TMU
       if (settings.add_result) {
-       *dst = *dst + src;
+       *dst = *dst + src;  // TODO optimize for prefetch
       } else {
        *dst = src;
       }
@@ -371,6 +372,7 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
       b_local += settings.stride();
     End  // IDIOT }  - never forget
 
+    // TODO check if following relevant
     If ((b_index & 0xf) != 0)
       pre_write(dst_local, result);
     End
@@ -732,6 +734,8 @@ Matrix::Matrix(Float::Array2D &a, Float::Array2D &b) : m_a(a), m_b(b) {
 void Matrix::mult() {
   assert(k.get() != nullptr);
   assert(m_doing_full);
+
+  m_result.fill(0.0f);
   k->call();
 }
 
@@ -753,8 +757,7 @@ void Matrix::block_mult() {
   assert(k.get() != nullptr);
   assert(!m_doing_full);
 
-  m_result.fill(0.0f);
-
+  m_result.fill(0.0f);  // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
   k->load(&m_result, &m_a, &m_b);
   k->call();
 }
