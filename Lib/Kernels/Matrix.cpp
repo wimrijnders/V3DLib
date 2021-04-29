@@ -23,10 +23,44 @@ using namespace V3DLib;
 namespace {
 
 struct matrix_settings {
-  int rows;                                   // Rows of the result array
+  int rows;                                   // Num rows of the result array
+  int block_rowsize;                          // Row size for the (block array) multiplication
   int inner;                                  // Inner dimension of the multiplication
-  int columns;                                // Columns of the result array
+                                              // inner == columns of a == rows of b (which is transposed)
+  int columns;                                // Num columns of the result array
+
   MatrixReadMethod read_method = DO_PREFETCH;
+  bool add_result = false;
+
+  void set(
+    int in_rows,
+    int in_inner,
+    int in_columns,
+    int in_block_rowsize = -1
+  ) {
+    assert(in_rows > 0);
+    assert(in_columns > 0);
+    assertq(in_inner % 16 == 0, "Inner dimension must be a multiple of 16");
+
+    rows          = in_rows;
+    inner         = in_inner;
+    columns       = in_columns;
+
+    if (in_block_rowsize == -1) {
+      block_rowsize = in_inner;
+    } else {
+      set_blockrowsize(in_block_rowsize);
+    }
+  }
+
+
+  void set_blockrowsize(int in_block_rowsize) {
+    assertq(inner > 0 && inner % 16 == 0, "Inner dimension must be a multiple of 16");
+    assertq(inner % in_block_rowsize == 0, "Expecting block rows to be a multiple of inner");
+
+    block_rowsize = in_block_rowsize;
+  }
+
 
   /**
    * The rows size of the result array needs to be a multiple of the number of QPUs running.
@@ -46,6 +80,14 @@ struct matrix_settings {
    */
   int cols_result() const {
     return adjust_dimension(columns, 16);
+  }
+
+
+  /**
+   * Number of cells till next row
+   */
+  int stride() {
+    return rows;
   }
 
 private:
@@ -107,6 +149,13 @@ void loop_unroll(int size, int unroll, std::function<void(Int const &)> f) {
 }
 #endif  // 0
 
+int prefetch_label() {
+  static int count = 0;
+
+  count++;
+  return count;
+}
+
 
 void pre_read(Float &dst, Float::Ptr &src, int prefetch_label) {
   // on v3d, TMU is used always
@@ -138,7 +187,11 @@ void pre_write(Float::Ptr &dst, Float &src) {
     case DO_PREFETCH:
       // on vc4 this uses DMA
       // on v3d this uses TMU
-      *dst = src;
+      if (settings.add_result) {
+       *dst = *dst + src;
+      } else {
+       *dst = src;
+      }
       dst.inc();
       break;
     case NO_READWRITE:
@@ -186,8 +239,10 @@ DotVector::DotVector(int size) {
 
 
 void DotVector::load(Float::Ptr input) {
+  int label = prefetch_label();
+
   for (int i = 0; i < (int) elements.size(); ++i) {
-    pre_read(elements[i], input, 1);
+    pre_read(elements[i], input, label);
   }
 }
 
@@ -205,11 +260,12 @@ void DotVector::save(Float::Ptr output) {
  * All vector elements of the result will contain the same value.
  */
 void DotVector::dot_product(Float::Ptr rhs, Float &result) {
+  int label = prefetch_label();
   Float tmp = 0;  comment("DotVector::dot_product()");
 
   for (int i = 0; i < (int) elements.size(); ++i) {
     Float tmp2;
-    pre_read(tmp2, rhs, 2);
+    pre_read(tmp2, rhs, label);
     tmp += elements[i]*tmp2;
   }
 
@@ -287,12 +343,11 @@ void square_matrix_mult_scalar(int N, float *dst, float *a, float *b) {
  */
 void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
-  int const DIM = settings.inner;
-  Int STEP = DIM*numQPUs();
+  Int STEP = settings.stride()*numQPUs();
 
-  a += me()*DIM;
+  a += me()*settings.stride();
 
-  DotVector vec(settings.inner/16);
+  DotVector vec(settings.block_rowsize/16);  comment("DotVector init");
   Float result = 0;  // NOTE explicit init required (TODO enforce)
 
   For (Int a_index = me(), a_index < settings.rows, a_index += numQPUs())
@@ -313,7 +368,7 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
         pre_write(dst_local, result);
       End
 
-      b_local += DIM;
+      b_local += settings.stride();
     End  // IDIOT }  - never forget
 
     If ((b_index & 0xf) != 0)
@@ -323,6 +378,15 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
     // TODO make similar changes to other related kernels
     a += STEP; //DIM*numQPUs();  // Go to next row for current QPU
   End
+}
+
+
+void matrix_mult_block(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
+  matrix_mult(dst, a, b);
+
+  //Int offset = settings.stride()*settings.block_rowsize + settings.block_rowsize;
+  Int offset = settings.block_rowsize;
+  matrix_mult(dst + 0, a + offset, b + offset);
 }
 
 
@@ -348,16 +412,14 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
  *
  * @return  pointer to the actual kernel function
  */
-FuncType *matrix_mult_decorator(int rows, int inner, int columns, MatrixReadMethod read_method) {
-  assert(rows > 0);
-  assert(columns > 0);
-  assertq(inner % 16 == 0, "Inner dimension must be a multiple of 16");
-
-  settings.rows        = rows;
-  settings.inner       = inner;
-  settings.columns     = columns;
+FuncType *matrix_mult_decorator(
+  int rows,
+  int inner,
+  int columns,
+  MatrixReadMethod read_method
+) {
+  settings.set(rows, inner, columns);
   settings.read_method = read_method;
-
   return matrix_mult;
 }
 
@@ -380,26 +442,20 @@ FuncType *matrix_mult_decorator(
 ) {
   assert(a.allocated());
   assert(b.allocated());
-  assertq(!result.allocated(), "matrix_mult_decorator(): result array should not be allocated beforehand.");
 
   auto ret = matrix_mult_decorator(a.rows(), a.columns(), b.rows(), read_method);
 
-  // Result array requires column size which is a multiple of 16
-  // Ensure enough padding for result so that size is multiple of 16
-  // It may become too big but never mind
-  result.alloc(settings.rows_result(), settings.cols_result());
+  if (result.allocated()) {
+    assertq(result.rows()    == settings.rows_result(), "Preallocated result array has incorrect number of rows");
+    assertq(result.columns() == settings.cols_result(), "Preallocated result array has incorrect number of columns");
+  } else {
+    // Result array requires column size which is a multiple of 16
+    // Ensure enough padding for result so that size is multiple of 16
+    // It may become too big but never mind
+    result.alloc(settings.rows_result(), settings.cols_result());
+  }
 
   return ret;
-}
-
-
-FuncType *matrix_mult_decorator_block(
-  Float::Array2D &a,
-  Float::Array2D &b,
-  Float::Array2D &result,
-  MatrixReadMethod read_method
-) {
-  return matrix_mult_decorator(a, b, result, read_method);
 }
 
 
@@ -414,21 +470,23 @@ size_t ComplexDotVector::size() const {
 
 
 void ComplexDotVector::load(Complex::Ptr const &rhs) {
+  int label = prefetch_label();
   Float::Ptr rhs_re = rhs.re();  // Need to init ptr's here so that they are initialized before prefetch
   Float::Ptr rhs_im = rhs.im();
 
   for (int i = 0; i < (int) size(); ++i) {
-    pre_read(re[i], rhs_re, 1);
-    pre_read(im[i], rhs_im, 1);
+    pre_read(re[i], rhs_re, label);
+    pre_read(im[i], rhs_im, label);
   }
 }
 
 
 void ComplexDotVector::load(Float::Ptr const &rhs) {
+  int label = prefetch_label();
   Float::Ptr rhs_re = rhs;  // Need to init ptr's here so that they are initialized before prefetch
 
   for (int i = 0; i < (int) size(); ++i) {
-    pre_read(re[i], rhs_re, 1);
+    pre_read(re[i], rhs_re, label);
     im[i] = 0;
   }
 }
@@ -441,6 +499,7 @@ void pre_write(Complex::Ptr &dst, Complex &src) {
 
 
 void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
+  int label = prefetch_label();
   Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
   Float::Ptr rhs_re = rhs.re();
   Float::Ptr rhs_im = rhs.im();
@@ -449,8 +508,8 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
     Complex tmp1(re[i], im[i]);
     Float re2;
     Float im2;
-    pre_read(re2, rhs_re, 2);
-    pre_read(im2, rhs_im, 2);
+    pre_read(re2, rhs_re, label);
+    pre_read(im2, rhs_im, label);
     tmp += tmp1*Complex(re2, im2);
   }
 
@@ -661,5 +720,73 @@ DftFuncType2 dft_inline_decorator(Float::Array &a, Complex::Array2D &result, Mat
   return dft_inline_kernel<Float::Ptr, DotVector>;
 }
 
-
 }  // namespace kernels
+
+namespace V3DLib {
+
+Matrix::Matrix(Float::Array2D &a, Float::Array2D &b) : m_a(a), m_b(b) {
+  init_full();
+}
+
+
+void Matrix::mult() {
+  assert(k.get() != nullptr);
+  assert(m_doing_full);
+  k->call();
+}
+
+
+/**
+ * This multiplies the input matrices using block matrix calculation,
+ * with the following block matrices:
+ * 
+ *                        | B1 |
+ *    AxB = | A1 | A2 | x | -- | = | A1xB1 + B1xB2 ]
+ *                        | B2 |
+ *
+ * ...where the split dimension is halved for A1/A2 and B1/B2.
+ * 
+ * Further splitting is possible, but this serves our purposes for now.
+ */
+void Matrix::block_mult() {
+  init_block();
+  assert(k.get() != nullptr);
+  assert(!m_doing_full);
+
+  m_result.fill(0.0f);
+
+  k->load(&m_result, &m_a, &m_b);
+  k->call();
+}
+
+
+void Matrix::init_full() {
+  if (m_doing_full) return;
+
+  k.reset(new KernelType(compile(kernels::matrix_mult_decorator(m_a, m_b, m_result))));
+  kernels::settings.add_result = false;
+  k->load(&m_result, &m_a, &m_b);
+
+  m_doing_full = true;
+}
+
+
+/**
+ * Prepare the block matrix multiplication
+ */
+void Matrix::init_block() {
+  if (!m_doing_full) return;
+
+  kernels::settings.set(m_a.rows(), m_a.columns(), m_b.rows());
+  kernels::settings.set_blockrowsize(m_a.columns()/2);
+  kernels::settings.add_result = true;
+
+  k.reset(new KernelType(compile(kernels::matrix_mult_block)));
+  k->dump_compile_data(true, "block_mult_vc4.txt");
+  k->load(&m_result, &m_a, &m_b);
+
+  m_doing_full = false;
+}
+
+}  // namespace V3DLib
+

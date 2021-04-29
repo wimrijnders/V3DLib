@@ -72,12 +72,6 @@ FuncType *matrix_mult_decorator(
   Float::Array2D &result,
   MatrixReadMethod read_method = DO_PREFETCH);
 
-FuncType *matrix_mult_decorator_block(
-  Float::Array2D &a,
-  Float::Array2D &b,
-  Float::Array2D &result,
-  MatrixReadMethod read_method = DO_PREFETCH);
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Complex arrays
@@ -140,5 +134,31 @@ DftFuncType2 dft_inline_decorator(
 
 
 }  // namespace kernels
+
+
+namespace V3DLib {
+
+class Matrix {
+ using KernelType = V3DLib::Kernel<Float::Ptr, Float::Ptr, Float::Ptr>;
+
+public:
+  Matrix(Float::Array2D &a, Float::Array2D &b);
+
+  Float::Array2D &result() { return m_result; }
+  void mult();
+  void block_mult();
+
+private:
+  bool m_doing_full = false;
+  Float::Array2D &m_a;
+  Float::Array2D &m_b;
+  Float::Array2D m_result;
+  std::unique_ptr<KernelType> k;
+
+  void init_full();
+  void init_block();
+};
+
+}  // namespace V3DLib
 
 #endif  // _V3DLIB_KERNELS_MATRIX_H_

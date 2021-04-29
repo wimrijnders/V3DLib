@@ -4,6 +4,7 @@
 //
 ///////////////////////////////////////////////////////////////////////////////
 #include <string>
+#include <iostream>
 #include <V3DLib.h>
 #include "LibSettings.h"
 #include "support/support.h"
@@ -201,11 +202,6 @@ void check_matrix_results(
   check_unitary(a);
 
   k.call();
-  //k.pretty(true, "obj/test/unitary_matrix_mult_vc4.txt");
-  //k.dump_compile_data(true, "obj/test/compile_data_unitary_matrix_mult_vc4.txt");
-  //dump_array(a.get_parent(), a.columns());
-  //dump_array(result.get_parent(), result.columns());
-
   check_unitary(result);
 
   //
@@ -272,7 +268,7 @@ void test_square_matrix_multiplication(int dimension) {
     INFO("Doing DMA");
 
     auto k2 = compile(kernels::matrix_mult_decorator(dimension));
-    k2.pretty(false, "obj/test/Matrix_code_prefetch_dma.txt");  // TODO check on vc4
+    //k2.pretty(false, "obj/test/Matrix_code_prefetch_dma.txt");  // TODO check on vc4
     k2.load(&result, &a, &a);
     check_matrix_results(dimension, k2, a, result, a_scalar, expected);
 
@@ -300,11 +296,6 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
     << ", num QPUs: " << num_qpus);  // NOTE repeated below
 
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
-
-//  if (k.has_errors()) {
-//    k.pretty(false, "obj/test/test_matrix_multiplication_v3d.txt");
-//    k.dump_compile_data(false, "obj/test/test_matrix_multiplication_v3d_data.txt");
-//  }
   REQUIRE(!k.has_errors());
 
   k.setNumQPUs(num_qpus);
@@ -495,7 +486,6 @@ void test_complex_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_complex_dotvector<N>);
-  //k.pretty(true, "obj/test/check_complex_dotvector.txt", false);
   k.load(&b, &a, &result);
   k.call();
 
@@ -559,7 +549,6 @@ void test_complex_matrix_multiplication(
 
   k.load(&result, &a, &b);
   k.call();
-  //dump_array(result.get_parent(), cols_result);
 
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
   for (int r = 0; r < rows; ++r) {
@@ -646,36 +635,42 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
 
 TEST_CASE("Test block matrix multiplication [matrix][block]") {
 
-Platform::use_main_memory(true);
+//Platform::use_main_memory(true);
 
   SUBCASE("Test simple block") {
     int dimension = 2*16;
 
     Float::Array2D a(dimension);
+    Float::Array2D result(dimension);
     a.make_unit_matrix();
     check_unitary(a);
 
     // Do regular multiplication
     {
-      Float::Array2D result;
       auto k = compile(kernels::matrix_mult_decorator(a, a, result));
       result.fill(-1.0f);  // Init with silly values
       k.load(&result, &a, &a);
-      k.interpret();
+      k.call();
       check_unitary(result);
+    }
+
+    {
+      Matrix m1(a, a);
+      m1.mult();
+      INFO("multiply with Matrix instance");
+      check_unitary(m1.result());
     }
 
     // Do same with blocks
     {
-      Float::Array2D result;
-      auto k = compile(kernels::matrix_mult_decorator(a, a, result));
-      result.fill(-1.0f);  // Init with silly values
-      k.load(&result, &a, &a);
-      k.interpret();
-      check_unitary(result);
+      Matrix m2(a, a);
+      m2.block_mult();
+      INFO("Block multiply with Matrix instance");
+      std::cout << m2.result().dump() << std::endl;
+      check_unitary(m2.result());
     }
   }
 
-Platform::use_main_memory(false);
+//Platform::use_main_memory(false);
 
 }
