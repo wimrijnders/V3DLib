@@ -708,6 +708,26 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
     result_full = run_mult(a);
     result_block = run_block_mult(a);
     REQUIRE(result_full == result_block);
+
+    //
+    // Square of array with random values
+    //
+
+    // Prepare input and expected result
+    int const SIZE = dimension*dimension;
+    float a_scalar[SIZE];
+    float a_transposed[SIZE];
+    float expected[SIZE];
+    fill_random(a_scalar, SIZE);
+    copy_array(a, a_scalar);
+    copy_transposed(a_transposed, a_scalar, dimension, dimension);
+    kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_transposed);
+
+    // Run the kernels
+    result_full  = run_mult(a);
+    compare_arrays(result_full, expected);
+    result_block = run_block_mult(a);
+    compare_arrays(result_block, expected);
   }
 
 //Platform::use_main_memory(false);
