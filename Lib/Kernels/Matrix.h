@@ -38,7 +38,7 @@ public:
   DotVector(int size);
 
   void load(Float::Ptr input);
-  void save(Float::Ptr output);
+  void save(Float::Ptr dst);
   void dot_product(Float::Ptr rhs, Float &result);
   void dft_dot_product(Int const &k, Complex &result);
   size_t size() const { return elements.size(); }

@@ -180,16 +180,24 @@ void pre_read(Float &dst, Float::Ptr &src, int prefetch_label) {
 
 
 /**
- * on v3d, TMU is used always
+ * on v3d, TMU is used always for writes.
+ * on vc4, Either DMA or TMU can be used.
  */
-void pre_write(Float::Ptr &dst, Float &src) {
+void pre_write(Float::Ptr &dst, Float::Ptr &dst_read, Float &src, int pre_label) {
+
   switch (settings.read_method) {
     case DEFAULT:
+      *dst = src;
+      dst.inc();
+    break;
     case DO_PREFETCH:
-      // on vc4 this uses DMA
-      // on v3d this uses TMU
+
       if (settings.add_result) {
-       *dst = *dst + src;  // TODO optimize for prefetch
+       debug("Doing add prefetch");
+       //*dst = *dst + src;
+       Float tmp = 0;
+       prefetch(tmp, dst_read, pre_label);
+       *dst = tmp + src;
       } else {
        *dst = src;
       }
@@ -201,6 +209,13 @@ void pre_write(Float::Ptr &dst, Float &src) {
     default:
       assert(false);
   }
+}
+
+
+void pre_write(Float::Ptr &dst, Float &src) {
+  int pre_label = prefetch_label();
+  Float::Ptr dst_read = dst;
+  pre_write(dst, dst_read, src, pre_label);
 }
 
 
@@ -248,9 +263,12 @@ void DotVector::load(Float::Ptr input) {
 }
 
 
-void DotVector::save(Float::Ptr output) {
+void DotVector::save(Float::Ptr dst) {
+  int label = prefetch_label();
+  Float::Ptr dst_read = dst;
+
   for (int i = 0; i < (int) elements.size(); ++i) {
-    pre_write(output, elements[i]);
+    pre_write(dst, dst_read, elements[i], label);
   }
 }
 
@@ -358,6 +376,7 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
     vec.load(a);
 
     Int b_index;
+    int label = prefetch_label();
 
     For (b_index = 0, b_index < settings.columns, b_index++)
       Float tmp;
@@ -365,8 +384,10 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
 
       set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
 
+      //prefetch(label);
+
       If ((b_index & 0xf) == 15)
-        pre_write(dst_local, result);
+        pre_write(dst_local, result); //, label);
       End
 
       b_local += settings.stride();
