@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Mon 26 Apr 2021 04:39:32 AM CEST
+# Generated on: Fri 30 Apr 2021 07:28:49 AM CEST
 #
 ###############################################################################
 
@@ -120,6 +120,7 @@ TESTS_FILES := \
   Tests/support/disasm_kernel.o  \
   Tests/support/support.o  \
   Tests/support/rotate_kernel.o  \
+  Tests/support/ProfileOutput.o  \
   Tests/testRot3D.o  \
   Tests/testRegMap.o  \
   Tests/testSFU.o  \

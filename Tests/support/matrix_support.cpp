@@ -29,7 +29,7 @@ void compare_arrays(Complex::Array2D &a, Complex::Array2D &b, float precision) {
 
   if ( precision == -1.0f) {
     //precision = 1.0e-4f;   // for high precision sin/cos in kernels
-    precision = 4.0e-1f;     // for low high precision sin/cos in kernels
+    precision = 4.0e-1f;     // for low  precision sin/cos in kernels
   }
 
   for (int r = 0; r < a.rows(); ++r) {
@@ -42,5 +42,14 @@ void compare_arrays(Complex::Array2D &a, Complex::Array2D &b, float precision) {
       REQUIRE(abs(a[r][c].re() - b[r][c].re()) <= precision);
       REQUIRE(abs(a[r][c].im() - b[r][c].im()) <= precision);
     }
+  }
+}
+
+
+void compare_arrays(std::vector<float> &a, float const *b) {
+  float precision = 1e-4f;
+
+  for (int r = 0; r < (int) a.size(); ++r) {
+    REQUIRE(abs(a[r] - b[r]) < precision);
   }
 }

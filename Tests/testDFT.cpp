@@ -9,6 +9,7 @@
 #include "Kernel.h"
 #include "Kernels/Matrix.h"
 #include "LibSettings.h"
+#include "support/ProfileOutput.h"
 
 using namespace V3DLib;
 
@@ -117,58 +118,19 @@ void output_dft(Complex::Array2D &input, Complex::Array2D &result, char const *f
  * @return  true if all kernels compiled something,
  *          false if any kernel failed compilation for vc4 as well as v3d
  */ 
-bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num_iterations = 1) {
+bool compare_dfts(int Dim, bool do_profiling) {
   REQUIRE(Dim > 0);
   REQUIRE(Dim % 16 == 0);
-  REQUIRE(num_iterations > 0);
+  REQUIRE(ProfileOutput::num_iterations > 0);
 
   //
   // Support Stuff
   //
-  bool const ShowCompile = true;
   CompileFor for_platform = (Platform::has_vc4())?CompileFor::VC4:CompileFor::V3D;
 
-  struct out_data {
-    out_data(
-      std::string const &in_label,
-      std::string const &in_timer,
-      int in_Dim,
-      int in_num_qpus
-      ) : label(in_label), Dim(in_Dim), num_qpus(in_num_qpus), timer(in_timer) {}
+  ProfileOutput profile_output;
+  profile_output.show_compile(true);
 
-    std::string str() const {
-      std::string ret;
-      std::string params;
-      params << "\"-n=" << num_qpus << " " << "-d=" << Dim << "\"";
-
-      ret << tabbed(14, params) << ", " << timer;
-
-      return ret;
-    }
-
-    std::string label;
-    int Dim;
-    int num_qpus;
-    std::string timer;
-  };
-
-  std::vector<out_data> output;
-
-  auto add_compile = [ShowCompile, &output] (std::string const &label, Timer &timer, int Dim, int num_qpus) {
-    if (!ShowCompile) return; 
-
-    std::string str;
-    str << "\"compile " << label << "\"";
-
-    output << out_data(str, timer.end(false), Dim, num_qpus);
-  };
-
-  auto add_call = [&output] (std::string const &label, Timer &timer, int Dim, int num_qpus) {
-    std::string str;
-    str << "\"" << label << "\"";
-
-    output << out_data(str, timer.end(false), Dim, num_qpus);
-  };
 
   //
   // Initialize shared arrays
@@ -202,22 +164,12 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num
     // This is slightly more efficient and should not affect the result
     Timer timer1;
     auto k = compile(kernels::complex_matrix_mult_decorator(input, dft_matrix, result_mult), for_platform);
-    add_compile(label, timer1, Dim, 0);
-
+    profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
       compiled += 1;
       k.load(&result_mult, &input, &dft_matrix);
-
-      for (auto num : num_qpus) {
-        k.setNumQPUs(num);
-        Timer timer;
-
-        for (int i = 0; i < num_iterations; i++) {
-          k.call();
-        }
-        add_call(label, timer, Dim, num);
-      }
+      profile_output.run(k, Dim, label);
     }
   }
 
@@ -226,22 +178,12 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num
 
     Timer timer1;
     auto k = compile(kernels::dft_inline_decorator(input, result_complex), for_platform);
-    add_compile(label, timer1, Dim, 0);
+    profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
       compiled += 2;
       k.load(&result_complex, &input);
-
-      for (auto num : num_qpus) {
-        k.setNumQPUs(num);
-        Timer timer;
-        k.call();
-        for (int i = 0; i < num_iterations; i++) {
-          k.call();
-        }
-        add_call(label, timer, Dim, num);
-      }
-
+      profile_output.run(k, Dim, label);
       output_dft(input, result_complex, "dft_inline_complex");
     }
   }
@@ -253,23 +195,12 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num
     auto k = compile(kernels::dft_inline_decorator(input_float, result_float), for_platform);
     //k.pretty(false, "obj/test/dft_inline_float_v3d_hardware_sin.txt");
     //k.dump_compile_data(false, "obj/test/dft_inline_float_v3d_hardware_sin_data.txt");
-    add_compile(label, timer1, Dim, 0);
-
+    profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
       compiled += 4;
       k.load(&result_float, &input_float);
-
-      for (auto num : num_qpus) {
-        k.setNumQPUs(num);
-        Timer timer;
-
-        for (int i = 0; i < num_iterations; i++) {
-          k.call();
-        }
-        add_call(label, timer, Dim, num);
-      }
-
+      profile_output.run(k, Dim, label);
       output_dft(input, result_float, "dft_inline_float");
     }
   }
@@ -278,22 +209,7 @@ bool compare_dfts(int Dim, std::vector<int> num_qpus, bool do_profiling, int num
   //std::cout << result_complex.dump() << std::endl;
 
   if (do_profiling) {
-    std::string platform = (Platform::pi_version());
-    std::string last_label;
-
-    for (int i = 0; i < (int) output.size(); ++i) {
-      auto const &item = output[i];
-
-      std::string str;
-      str << platform << "     , " << item.str() << ", ";
-
-      if (last_label != item.label) {
-        str << item.label;
-        last_label = item.label; 
-      }
-
-      std::cout << str << "\n";
-    }
+      std::cout << profile_output.dump();
   } else {
     REQUIRE(compiled == 7);  // All bits for all kernels should be set
 
@@ -465,33 +381,20 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
     if (!do_profiling) {
       // Following is enough for the unit test
       for (int N = 1; N < 4; ++N) {
-        bool no_errors = compare_dfts(16*N, {1}, false);
+        bool no_errors = compare_dfts(16*N, false);
         REQUIRE(no_errors);
       }
     } else {
-      int const num_iterations = 10;
-
       // Profiling: try all sizes until compilation fails
-      std::cout << "DFT compare - " << num_iterations << " iterations\n"
-                << "Platform,         Params,     Time, Comments\n";
+      std::cout << "DFT compare" << ProfileOutput::header();
 
-      std::vector<int> num_qpus;
-      int Step = 1;
-
-      if (Platform::has_vc4()) {
-        num_qpus = {1,4,8,12};
-        Step = 2;
-      } else {
-        num_qpus = {1,8};
-        Step = 4;
-      }
-
+      int Step = Platform::has_vc4()?2:4;
       int N = 1;
       bool can_continue = true;
       while (can_continue) {
-        can_continue = compare_dfts(16*N, num_qpus, true, num_iterations);
+        can_continue = compare_dfts(16*N, true);
         N += Step;
-        //if (N > 2) break;
+        if (N > 3) break;
       }
     }
   }
