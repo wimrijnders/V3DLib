@@ -16,19 +16,6 @@ Stmt::Ptr gatherExpr(Expr::Ptr e) {
  * Pre: param is pointer type
  */
 void gatherBaseExpr(BaseExpr const &addr) {
-/*
-  if (Platform::compiling_for_vc4()) {
-    // Intention:
-    // Pointer temp = addr + index();
-    Int b = index();
-    Expr::Ptr temp = mkApply(addr.expr(), Op(ADD, INT32), (b << 2).expr());
-
-    stmtStack() << gatherExpr(temp);
-  } else {
-    stmtStack() <<  gatherExpr(addr.expr());
-  }
-*/
-
   stmtStack() <<  gatherExpr(addr.expr());
 }
 
