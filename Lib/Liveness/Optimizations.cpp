@@ -26,26 +26,6 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
 
 
 /**
- * TODO replace usage of this function with Instr::List::get_free_acc().
- *      Couldn't be bothered right now, nothing to gain here.
- */
-Reg replacement_acc(Instr &prev, Instr &instr) {
-    int acc_id =1;
-
-    if (!Platform::compiling_for_vc4()) {
-      // v3d ROT uses ACC1 (r1) internally, don't use it here
-      // TODO better selection of subsitution ACC
-      if (prev.isRot() || instr.isRot()) {
-        //warning("replacement_acc(): subsituting ACC in ROT operation");
-        acc_id = 2;
-      }
-    }
-
-  return Reg(ACC, acc_id);
-}
-
-
-/**
  * Not as useful as I would have hoped. range_size > 1 in practice happens, but seldom.
  */
 int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
@@ -160,7 +140,8 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     }
 
     Reg current(REG_A, def);
-    Reg replace_with = replacement_acc(prev, instr);
+    Reg replace_with(ACC, instrs.get_free_acc(i - 1, i));
+    assert(replace_with.regId != -1);
 
     renameDest( prev, current, replace_with);
     renameUses(instr, current, replace_with);
@@ -177,12 +158,12 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
   return subst_count;
 }
 
-
+/**
+ * Replace assign-only variables with an accumulator
+ */
 int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
   UseDef  useDefCurrent;
   int     subst_count = 0;
-
-  Instr prev;  // NOP
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr instr = instrs[i];
@@ -191,11 +172,11 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     if (useDefCurrent.def.empty()) continue;
     assert(useDefCurrent.def.size() == 1);
     RegId def = useDefCurrent.def[0];
-
     if (!allocated_vars[def].only_assigned()) continue;
 
     Reg current(REG_A, def);
-    Reg replace_with = replacement_acc(prev, instr);
+    Reg replace_with(ACC, instrs.get_free_acc(i, i));
+    assert(replace_with.regId != -1);
 
     renameDest(instr, current, replace_with);
     instrs[i]   = instr;
@@ -388,7 +369,6 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
     subst_count += count;
   }
 
-
   // This peephole still does a lot of useful stuff
   {
     int count = peephole_1(live, instrs, allocated_vars);
@@ -404,12 +384,11 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
     subst_count += count;
   }
 
-  // And some things still get done with this peephole
+  // And some things still get done with this peephole, regularly 1 or 2 per compile
   {
     int count = peephole_2(live, instrs, allocated_vars);
-
 /*
-    {
+    if (count > 0) {
       std::string msg;
       msg << "peephole_2, num substs: " << count;
       debug(msg);

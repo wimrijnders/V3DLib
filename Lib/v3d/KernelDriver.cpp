@@ -1175,10 +1175,6 @@ void KernelDriver::encode() {
 
   errors << local_errors;
   local_errors.clear();
-
-  if (!has_errors()) {
-    allocate();
-  }
 }
 
 
@@ -1238,6 +1234,9 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
     error("Num QPU's must be 1 or 8", true);
   }
 
+  assertq(!has_errors(), "v3d kernels has errors, can not invoke");
+
+  allocate();
   assert(qpuCodeMem.allocated());
 
   // Allocate memory for the parameters if not done already

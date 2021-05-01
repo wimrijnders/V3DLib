@@ -670,7 +670,7 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
     auto run_block_mult = [] (Float::Array2D &a) -> std::vector<float> {
       Matrix m(a, a);
       m.block_mult();
-      //std::cout << m.result().dump() << std::endl;
+      std::cout << m.result().dump() << std::endl;
 
       std::vector<float> result;
       m.result().copyTo(result);

@@ -217,6 +217,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
 //    std::cout << result_float.dump();
 //    std::cout << result_complex.dump();
 
+    INFO("Dimension: " << Dim);
     INFO("Comparing inline complex with inline float");
     compare_arrays(result_complex, result_float, 0.0f);  // Match should be exact
 

@@ -2,6 +2,7 @@
 #include <functional>
 #include "Support/basics.h"
 #include "Source/Functions.h"
+#include "vc4/DMA/Operations.h" // dmaWaitWrite()
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -45,6 +46,7 @@ struct matrix_settings {
     rows          = in_rows;
     inner         = in_inner;
     columns       = in_columns;
+    add_result    = false;       // override after this call to explicitly set
 
     if (in_block_rowsize == -1) {
       block_rowsize = in_inner;
@@ -264,11 +266,8 @@ void DotVector::load(Float::Ptr input) {
 
 
 void DotVector::save(Float::Ptr dst) {
-  int label = prefetch_label();
-  Float::Ptr dst_read = dst;
-
   for (int i = 0; i < (int) elements.size(); ++i) {
-    pre_write(dst, dst_read, elements[i], label);
+    pre_write(dst, elements[i]);
   }
 }
 
@@ -376,7 +375,6 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
     vec.load(a);
 
     Int b_index;
-    int label = prefetch_label();
 
     For (b_index = 0, b_index < settings.columns, b_index++)
       Float tmp;
@@ -384,10 +382,8 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
 
       set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
 
-      //prefetch(label);
-
       If ((b_index & 0xf) == 15)
-        pre_write(dst_local, result); //, label);
+        pre_write(dst_local, result);
       End
 
       b_local += settings.stride();
@@ -404,12 +400,14 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
 }
 
 
-void matrix_mult_block(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
-  matrix_mult(dst, a, b);
+void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b) {
+  matrix_mult(in_dst, in_a, in_b);
+
+  *in_dst = toFloat(index());
 
   //Int offset = settings.stride()*settings.block_rowsize + settings.block_rowsize;
-  Int offset = settings.block_rowsize;
-  matrix_mult(dst + 0, a + offset, b + offset);
+  Int offset = settings.block_rowsize;          header("second call matrix_mult");
+//  matrix_mult(in_dst, in_a + offset, in_b + offset);
 }
 
 
@@ -788,7 +786,6 @@ void Matrix::init_full() {
   if (m_doing_full) return;
 
   k.reset(new KernelType(compile(kernels::matrix_mult_decorator(m_a, m_b, m_result))));
-  kernels::settings.add_result = false;
   k->load(&m_result, &m_a, &m_b);
 
   m_doing_full = true;
@@ -806,7 +803,9 @@ void Matrix::init_block() {
   kernels::settings.add_result = true;
 
   k.reset(new KernelType(compile(kernels::matrix_mult_block)));
-  k->dump_compile_data(true, "block_mult_vc4.txt");
+  k->pretty(true, "block_mult_vc4.txt");
+  k->pretty(false, "block_mult_v3d.txt");
+  k->dump_compile_data(true, "block_mult_data_vc4.txt");
   k->load(&m_result, &m_a, &m_b);
 
   m_doing_full = false;

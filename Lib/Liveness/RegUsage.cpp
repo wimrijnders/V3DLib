@@ -358,4 +358,12 @@ void RegUsage::check_overlap_usage(Reg acc, RegUsageItem const &item) const {
   }
 }
 
+/*
+RegUsageItem &RegUsageItem::find(RegId id) {
+  assert(id >= 0 && id < size());
+  assert((*this)[id].tag == NONE); 
+  return (*this)[id];
+}
+*/
+
 }  // namespace V3DLib

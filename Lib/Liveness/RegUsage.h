@@ -55,6 +55,8 @@ struct RegUsage : private std::vector<RegUsageItem> {
   std::string dump_use_ranges() const;
   void check_overlap_usage(Reg acc, RegUsageItem const &item) const;
 
+//  RegUsageItem &find(RegId id);
+
 private:
   std::string allocated_registers_dump() const;
 };
