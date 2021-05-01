@@ -54,7 +54,6 @@ public:
 
   void show_compile(bool val) { ShowCompile = val; }
   void add_compile(std::string const &label, Timer &timer, int Dim);
-  void add_call(std::string const &label, Timer &timer, int Dim, int num_qpus);
   std::string dump();
 
   static std::string header();
@@ -63,6 +62,8 @@ private:
   std::vector<int> num_qpus;
   bool ShowCompile = false;
   std::vector<out_data> output;
+
+  void add_call(std::string const &label, Timer &timer, int Dim, int num_qpus);
 };
 
 #endif  // _TEST_SUPPORT_PROFILEOUTPUT_H

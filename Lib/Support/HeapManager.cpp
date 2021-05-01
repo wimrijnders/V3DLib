@@ -10,6 +10,15 @@ int const INITIAL_FREE_RANGE_SIZE = 32;
 
 namespace V3DLib {
 
+/**
+ * Explicit virtual here to avoid compile errors
+ * It should actually be a pure virtual.
+ */
+void HeapManager::alloc_mem(uint32_t size_in_bytes) {
+  assertq(false, "HeapManager::alloc_mem(): this virtual method must be overridden in derived classes", true);
+}
+
+
 unsigned HeapManager::FreeRange::size() const {
   int ret = (int) right - (int) left + 1;
   assert(ret >= 0);  // empty range will have left + 1 == right
@@ -40,7 +49,7 @@ void HeapManager::set_size(uint32_t val) {
 bool HeapManager::check_available(uint32_t n) {
   assert(n > 0);
 
-  if (m_offset + n >= m_size) {
+  if (m_offset + n > m_size) {
     fatal("V3DLib: heap overflow (increase heap size)");  // throws, doesn't return
     return false;
   }

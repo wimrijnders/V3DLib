@@ -6,7 +6,6 @@
 #include "Common/SharedArray.h"
 #include "v3d.h"
 
-
 namespace V3DLib {
 namespace v3d {
 
@@ -19,8 +18,8 @@ class Driver {
   using UniformArr = SharedArray<uint32_t>;
 
 public:
-  void add_bo(BufferObject const &bo) {
-    m_bo_handles.push_back(bo.getHandle());
+  void add_bo(uint32_t handle) {
+    m_bo_handles.push_back(handle);
   }
 
   bool execute(Code &code, UniformArr *uniforms = nullptr, uint32_t thread = 1);

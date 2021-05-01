@@ -9,15 +9,15 @@ class BufferObject : public V3DLib::BufferObject {
   using Parent = V3DLib::BufferObject;
 
 public:
-  BufferObject(uint32_t size) { alloc_heap(size); }
   ~BufferObject() { dealloc(); }
+
+  void alloc_mem(uint32_t size_in_bytes) override;
 
   uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
 
   const BufferType buftype = HeapBuffer;
 
 private:
-  void alloc_heap(uint32_t size);
   void dealloc() { delete [] arm_base; arm_base = nullptr; }
 };
 

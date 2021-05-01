@@ -15,13 +15,13 @@ namespace v3d {
  */
 class BufferObject : public V3DLib::BufferObject {
 public:
-  BufferObject(uint32_t size) { alloc_mem(size); }
+  //BufferObject(uint32_t size) { alloc_mem(size); }
   BufferObject() {} 
   ~BufferObject(); 
 
   uint32_t getHandle() const override { return  (uint32_t) handle; }
 
-  void alloc_mem(uint32_t size_in_bytes);
+  void alloc_mem(uint32_t size_in_bytes) override;
 
   // Debug methods
   void fill(uint32_t value);

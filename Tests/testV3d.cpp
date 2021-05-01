@@ -191,7 +191,8 @@ TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
       bytecode << instrs.code(); 
     }
 
-    BufferObject heap(1024);
+    BufferObject heap;
+    heap.alloc_mem(1024);
     Code codeMem((uint32_t) bytecode.size(), heap);
     codeMem.copyFrom(bytecode);
     V3DLib::Float::Array result(16, heap);
@@ -205,7 +206,7 @@ TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
     unif[1] = result.getAddress();
 
     V3DLib::v3d::Driver driver;
-    driver.add_bo(heap);
+    driver.add_bo(heap.getHandle());
     REQUIRE(driver.execute(codeMem, &unif));
 
     //dump_data(result, true, true);
@@ -256,7 +257,8 @@ TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
       bytecode << instrs.code(); 
     }
 
-    BufferObject heap(1024);
+    BufferObject heap;
+    heap.alloc_mem(1024);
     Code codeMem((uint32_t) bytecode.size(), heap);
     codeMem.copyFrom(bytecode);
     V3DLib::Int::Array result(16, heap);
@@ -266,7 +268,7 @@ TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
     unif[1] = result.getAddress();
 
     V3DLib::v3d::Driver driver;
-    driver.add_bo(heap);
+    driver.add_bo(heap.getHandle());
     REQUIRE(driver.execute(codeMem, &unif));
 
     //dump_data(result, true);
@@ -294,7 +296,8 @@ TEST_CASE("Check v3d code is working properly [v3d][code]") {
     uint32_t array_length = ARRAY_LENGTH(do_nothing, uint64_t);
     REQUIRE(array_length == 8);
 
-    BufferObject heap(1024);
+    BufferObject heap;
+    heap.alloc_mem(1024);
     //printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
     Code codeMem(array_length, heap);
@@ -305,7 +308,7 @@ TEST_CASE("Check v3d code is working properly [v3d][code]") {
     // See Note 1
     //double start = get_time();
     Driver driver;
-    driver.add_bo(heap);
+    driver.add_bo(heap.getHandle());
     REQUIRE(driver.execute(codeMem));
     //double end = get_time();
     //printf("[submit done: %.6lf sec]\n", end - start);

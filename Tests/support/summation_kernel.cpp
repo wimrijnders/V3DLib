@@ -944,7 +944,8 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
   uint32_t data_area_size = (length + 1024) * 4;
   //printf("data_area_size size: %u\n", data_area_size);
 
-  BufferObject heap(code_area_size + data_area_size);
+  BufferObject heap;
+  heap.alloc_mem(code_area_size + data_area_size);
   //printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
   heap.fill(0xdeadbeef);
@@ -987,7 +988,7 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
   //printf("unif phyaddr: %u, size: %u\n", unif.getAddress(), 4*unif.size());
 
   V3DLib::v3d::Driver drv;
-  drv.add_bo(heap);
+  drv.add_bo(heap.getHandle());
   REQUIRE(drv.execute(code, &unif, num_qpus));
 
   // Check if values supplied

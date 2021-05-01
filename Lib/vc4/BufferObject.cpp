@@ -26,6 +26,10 @@ BufferObject heap;
  * Allocate GPU memory and map it into ARM address space
  */
 void BufferObject::alloc_mem(uint32_t size_in_bytes) {
+  assert(size_in_bytes > 0);
+  assertq(size() == 0, "vc4 alloc_mem(): Buffer object already allocated");
+  assert(handle == 0);
+
   int mb = getMailbox();  // Mailbox, for talking to vc4
 
   // Allocate memory

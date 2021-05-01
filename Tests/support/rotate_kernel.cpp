@@ -413,7 +413,8 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
   uint32_t code_area_size = (uint32_t) (8*bytecode.size());  // size in bytes
   uint32_t data_area_size = (10 * 1024) * 4;                 // taken amply
 
-  BufferObject heap(code_area_size + data_area_size);
+  BufferObject heap;
+  heap.alloc_mem(code_area_size + data_area_size);
   Code code((uint32_t) bytecode.size(), heap);
   code.copyFrom(bytecode);
 
@@ -436,7 +437,7 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
   unif[1] = Y.getAddress();
 
   V3DLib::v3d::Driver drv;
-  drv.add_bo(heap);
+  drv.add_bo(heap.getHandle());
   REQUIRE(drv.execute(code, &unif, 1));
 
   for(int count = 0; count < 2; ++count) { // Output is double, first with small imm, then with r5

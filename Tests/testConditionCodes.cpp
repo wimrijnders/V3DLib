@@ -128,7 +128,8 @@ TEST_CASE("Check v3d condition codes [v3d][cond]") {
     const int DATA_SIZE = 16;
 
     ByteCode bytecode = qpu_cond_push_a();
-    BufferObject heap(10*1024);  // arbitrary size, large enough
+    BufferObject heap;
+    heap.alloc_mem(10*1024);  // arbitrary size, large enough
 
     Code code((uint32_t) bytecode.size(), heap);
     code.copyFrom(bytecode);
@@ -142,7 +143,7 @@ TEST_CASE("Check v3d condition codes [v3d][cond]") {
     unif[0] = data.getAddress();
 
     V3DLib::v3d::Driver drv;
-    drv.add_bo(heap);
+    drv.add_bo(heap.getHandle());
     REQUIRE(drv.execute(code, &unif));
 
     //dump_data(data, true); 

@@ -16,6 +16,8 @@ public:
   HeapManager();
   HeapManager(HeapManager *object) = delete;
 
+  virtual void alloc_mem(uint32_t size_in_bytes);
+
   uint32_t size() const { return m_size; }
   bool empty() const { return m_offset == 0; }
   std::string dump() const;

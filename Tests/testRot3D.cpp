@@ -192,12 +192,7 @@ TEST_CASE("Test working of Rot3D example [rot3d]") {
   }
 
 
-  SUBCASE("Multiple kernel definitions should be possible") {
-    if (!Platform::has_vc4()) {
-      printf("NB: Rot3D unit test multiple kernels  not working on v3d, timeout hang (TODO)\n");
-      return;
-    }
-
+  SUBCASE("Multiple kernel definitions in the same context should be possible") {
     auto k_1 = compile(rot3D_1);
     Float::Array x_1(N), y_1(N);
     initArrays(x_1, y_1, N);

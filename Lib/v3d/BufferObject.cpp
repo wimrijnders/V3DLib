@@ -28,6 +28,7 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
   }
 
   assert(size_in_bytes > 0);
+  assertq(size() == 0, "v3d alloc_mem(): Buffer object already allocated");
   assert(handle == 0);
 
   void    *tmp_addr = nullptr;
@@ -129,7 +130,8 @@ BufferObject &getMainHeap() {
   if (!Platform::has_vc4()) {
     if (!mainHeap) {
       //debug("Allocating main heap v3d\n");
-      mainHeap.reset(new BufferObject(LibSettings::heap_size()));
+      mainHeap.reset(new BufferObject());
+      mainHeap->alloc_mem(LibSettings::heap_size());
     }
   }
 

@@ -59,6 +59,7 @@ public:
   SharedArray() : BaseSharedArray(sizeof(T)) {}
   SharedArray(uint32_t n) : SharedArray() { Parent::alloc(n); }
   SharedArray(uint32_t n, BufferObject &heap) : BaseSharedArray(&heap, sizeof(T)) { Parent::alloc(n); }
+  SharedArray(BufferObject &heap) : BaseSharedArray(&heap, sizeof(T)) {}
 
   SharedArray(SharedArray &&a) = default;
   SharedArray &operator=(SharedArray &&a) = default; 

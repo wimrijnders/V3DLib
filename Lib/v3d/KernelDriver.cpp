@@ -1144,7 +1144,7 @@ void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList &params) {
   unif[offset] = (uint32_t) done.getAddress();
 
   Driver drv;
-  drv.add_bo(getBufferObject());
+  drv.add_bo(getBufferObject().getHandle());
   drv.execute(codeMem, &unif, numQPUs);
 #endif  // QPU_MODE
 }
@@ -1157,7 +1157,7 @@ void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList &params) {
 // Class KernelDriver
 ///////////////////////////////////////////////////////////////////////////////
 
-KernelDriver::KernelDriver() : V3DLib::KernelDriver(V3dBuffer) {}
+KernelDriver::KernelDriver() : V3DLib::KernelDriver(V3dBuffer), qpuCodeMem(code_bo)  {}
 
 
 void KernelDriver::encode() {
@@ -1223,10 +1223,12 @@ void KernelDriver::allocate() {
     assert(!code.empty());
 
     // Allocate memory for the QPU code
+    uint32_t size_in_bytes = (uint32_t) (sizeof(uint64_t)*code.size());
+    code_bo.alloc_mem(size_in_bytes);
     qpuCodeMem.alloc((uint32_t) code.size());
     qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
 
-    qpuCodeMemOffset = (int) (8*code.size());
+    qpuCodeMemOffset = (int) size_in_bytes;
   }
 }
 
@@ -1247,6 +1249,12 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
     paramMem.alloc(numWords);
   }
 
+  //
+  // NOTE: it doesn't appear to be necessary to add the BO for the code to the
+  //       used BO list in Driver (used in next call). All unit tests pass without
+  //       calling Driver::add_bo() in next call.
+  //       This is something to keep in mind; it might go awkwards later on.
+  //
   v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
 }
 

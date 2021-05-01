@@ -12,7 +12,7 @@ class BufferObject : public V3DLib::BufferObject {
 public:
   ~BufferObject() { dealloc(); }
 
-  void alloc_mem(uint32_t size_in_bytes);
+  void alloc_mem(uint32_t size_in_bytes) override;
 
 private:
   uint32_t handle = 0;
