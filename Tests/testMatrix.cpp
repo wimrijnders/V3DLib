@@ -19,7 +19,6 @@ using namespace V3DLib;
 // Support routines
 // ============================================================================
 
-
 void fill_random(float *arr, int size) {
   for (int n = 0; n < size; n++) {
     arr[n] = random_float();
@@ -27,10 +26,16 @@ void fill_random(float *arr, int size) {
 }
 
 
+void fill_random(std::vector<float> &arr) {
+  assert(!arr.empty());
+  fill_random(arr.data(), arr.size());
+}
+
+
 /**
  * Pre: dst properly initialized, matches with src
  */
-void copy_array(Float::Array2D &dst, float *src) {
+void copy_array(Float::Array2D &dst, float const *src) {
   for (int r = 0; r < dst.rows(); r++) {
     for (int c = 0; c < dst.columns(); c++) {
       dst[r][c] = src[r*dst.columns() + c];
@@ -38,13 +43,24 @@ void copy_array(Float::Array2D &dst, float *src) {
   }
 }
 
+void copy_array(Float::Array2D &dst, std::vector<float> const &src) {
+  assert(!src.empty());
+  assert((int) src.size() == dst.rows()*dst.columns());
+  copy_array(dst, src.data());
+}
 
-void copy_transposed(float *dst, float *src, int rows, int columns) {
+
+void copy_transposed(float *dst, float const *src, int rows, int columns) {
   for (int r = 0; r < rows; r++) {
     for (int c = 0; c < columns; c++) {
       dst[c*rows + r] = src[r*columns + c];
     }
   }
+}
+
+
+void copy_transposed(std::vector<float> &dst, std::vector<float> const &src, int rows, int columns) {
+  copy_transposed(dst.data(), src.data(), rows, columns);
 }
 
 
@@ -56,6 +72,19 @@ void compare_array_scalar(Float::Array2D &arr, float scalar) {
       REQUIRE(arr[r][c] == scalar);
     }
   }
+}
+
+
+void prepare_random(Float::Array2D &a, std::vector<float> &expected, int dimension) {
+  int const SIZE = dimension*dimension;
+  std::vector<float> a_scalar(SIZE);
+  std::vector<float> a_transposed(SIZE);
+  expected.resize(SIZE);
+
+  fill_random(a_scalar);
+  copy_array(a, a_scalar);
+  copy_transposed(a_transposed, a_scalar, dimension, dimension);
+  kernels::square_matrix_mult_scalar(dimension, expected.data(), a_scalar.data(), a_transposed.data());
 }
 
 
@@ -151,38 +180,6 @@ void test_dotvector() {
   k.load(&b, &a, &result);
   k.call();
   REQUIRE(result[0] == (float) (16*N));
-}
-
-
-void check_unitary(std::vector<float> &a, int dim) {
-
-  for (int r = 0; r < dim; r++) {
-    for (int c = 0; c < dim; c++) {
-      INFO("rows: " << dim << ", (r,c): (" << r << ", " << c << ")");
-      int offset = r*dim + c;
-      if (r == c) {
-        REQUIRE(a[offset] == 1.0f);
-      } else {
-        REQUIRE(a[offset] == 0.0f);
-      }
-    }
-  }
-}
-
-
-void check_unitary(Float::Array2D &a) {
-  REQUIRE(a.rows() == a.columns());
-
-  for (int r = 0; r < a.rows(); r++) {
-    for (int c = 0; c < a.columns(); c++) {
-      INFO("rows: " << a.rows() << ", (r,c): (" << r << ", " << c << ")");
-      if (r == c) {
-        REQUIRE(a[r][c] == 1.0f);
-      } else {
-        REQUIRE(a[r][c] == 0.0f);
-      }
-    }
-  }
 }
 
 
@@ -654,35 +651,11 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
 //Platform::use_main_memory(true);
 
   SUBCASE("Test simple block") {
-
-    // Do full multiplication
-    auto run_mult = [] (Float::Array2D &a) -> std::vector<float> {
-      Matrix m(a, a);
-      m.mult();
-      //std::cout << m.result().dump() << std::endl;
-
-      std::vector<float> result;
-      m.result().copyTo(result);
-      return result;
-    };
-
-    // Do block multiplication
-    auto run_block_mult = [] (Float::Array2D &a) -> std::vector<float> {
-      Matrix m(a, a);
-      m.block_mult();
-      //std::cout << m.result().dump() << std::endl;
-
-      std::vector<float> result;
-      m.result().copyTo(result);
-      return result;
-    };
-
     int dimension = 2*16;  // 8 tested OK
 
     Float::Array2D a(dimension);
     Float::Array2D result(dimension);
 
-    std::vector<float> result_full;
     std::vector<float> result_block;
 
     //
@@ -691,45 +664,58 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
     a.make_unit_matrix();
     check_unitary(a);
 
-    result_full = run_mult(a);
-    INFO("full multiply identity matrix");
-    check_unitary(result_full, dimension);
+    {
+      Matrix m1(a, a);
+      m1.mult();
+      //std::cout << m.result().dump() << std::endl;
+      INFO("full multiply identity matrix");
+      check_unitary(m1.result());
 
-    result_block = run_block_mult(a);
-    INFO("Block multiply identity matrix");
-    check_unitary(result_block, dimension);
+      Matrix m2(a, a);
+      m2.mult();
+      //std::cout << m.result().dump() << std::endl;
+      INFO("Block multiply identity matrix");
+      check_unitary(m2.result());
 
-    REQUIRE(result_full == result_block);
+      REQUIRE(m1.result() == m2.result());
+    }
+
 
     //
     // Square of input matrix containing all ones
     //
-    a.fill(1);
-    result_full = run_mult(a);
-    result_block = run_block_mult(a);
-    REQUIRE(result_full == result_block);
+    {
+      a.fill(1);
+
+      Matrix m1(a, a);
+      m1.mult();
+
+      Matrix m2(a, a);
+      m2.mult();
+
+      REQUIRE(m1.result() == m2.result());
+    }
+
 
     //
     // Square of array with random values
     //
+    {
+      // Prepare input and expected result
+      std::vector<float> expected;
+      prepare_random(a, expected, dimension);
 
-    // Prepare input and expected result
-    int const SIZE = dimension*dimension;
-    float a_scalar[SIZE];
-    float a_transposed[SIZE];
-    float expected[SIZE];
-    fill_random(a_scalar, SIZE);
-    copy_array(a, a_scalar);
-    copy_transposed(a_transposed, a_scalar, dimension, dimension);
-    kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_transposed);
+      Matrix m1(a, a);
+      m1.mult();
+      compare_arrays(m1.result(), expected);
 
-    // Run the kernels
-    result_full  = run_mult(a);
-    compare_arrays(result_full, expected);
-    result_block = run_block_mult(a);
-    compare_arrays(result_block, expected);
+      Matrix m2(a, a);
+      m2.mult();
+      compare_arrays(m2.result(), expected);
+
+      REQUIRE(m1.result() == m2.result());
+    }
   }
 
 //Platform::use_main_memory(false);
-
 }

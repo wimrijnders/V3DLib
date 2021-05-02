@@ -271,6 +271,10 @@ public:
     return m_rows == m_columns;
   }
 
+  bool operator==(Shared2DArray const &rhs) const { 
+    return ((Parent &) *this) == rhs;
+  }
+
   Row operator[] (int row) {
     assert(0 <= row && row < m_rows);
     return Row(this, row, m_columns);

@@ -53,3 +53,34 @@ void compare_arrays(std::vector<float> &a, float const *b) {
     REQUIRE(abs(a[r] - b[r]) < precision);
   }
 }
+
+
+void check_unitary(std::vector<float> &a, int dim) {
+  for (int r = 0; r < dim; r++) {
+    for (int c = 0; c < dim; c++) {
+      INFO("rows: " << dim << ", (r,c): (" << r << ", " << c << ")");
+      int offset = r*dim + c;
+      if (r == c) {
+        REQUIRE(a[offset] == 1.0f);
+      } else {
+        REQUIRE(a[offset] == 0.0f);
+      }
+    }
+  }
+}
+
+
+void check_unitary(Float::Array2D &a) {
+  REQUIRE(a.rows() == a.columns());
+
+  for (int r = 0; r < a.rows(); r++) {
+    for (int c = 0; c < a.columns(); c++) {
+      INFO("rows: " << a.rows() << ", (r,c): (" << r << ", " << c << ")");
+      if (r == c) {
+        REQUIRE(a[r][c] == 1.0f);
+      } else {
+        REQUIRE(a[r][c] == 0.0f);
+      }
+    }
+  }
+}
