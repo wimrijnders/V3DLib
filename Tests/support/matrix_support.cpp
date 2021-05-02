@@ -23,6 +23,35 @@ void compare_arrays(Float::Array2D &a, float const *b) {
 }
 
 
+/**
+ * This is better than:
+ *
+ *    REQUIRE(m1.result() == m2.result());
+ *
+ *    ....which has been known to fail incorrectly.
+ */
+void compare_arrays(Float::Array2D &a, Float::Array2D &b, float precision) {
+  REQUIRE(a.rows() == b.rows());
+  REQUIRE(a.columns() == b.columns());
+
+  if ( precision == -1.0f) {
+    //precision = 1.0e-4f;   // for high precision sin/cos in kernels
+    precision = 4.0e-1f;     // for low  precision sin/cos in kernels
+  }
+
+  for (int r = 0; r < a.rows(); ++r) {
+    for (int c = 0; c < a.columns(); ++c) {
+      INFO("(r, c): ( " << r << ", " << c << ")");
+      INFO(a[r][c] << " == " << b[r][c]);
+
+      // <= for dealing with precision 0.0f
+      REQUIRE(abs(a[r][c] - b[r][c]) <= precision);
+      REQUIRE(abs(a[r][c] - b[r][c]) <= precision);
+    }
+  }
+}
+
+
 void compare_arrays(Complex::Array2D &a, Complex::Array2D &b, float precision) {
   REQUIRE(a.rows() == b.rows());
   REQUIRE(a.columns() == b.columns());

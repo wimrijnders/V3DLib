@@ -116,6 +116,14 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 
     useDefPrev.set_used(prev);        // Compute vars defined by prev
     if (useDefPrev.def.empty()) continue;
+
+    // Guard for this special case for the time being.
+    // It should actually be possible to load a uniform in an accumulator,
+    // not bothering right now.
+    if (instr.isUniformLoad()) {
+      continue;
+    }
+
     RegId def = useDefPrev.def[0];
 
     useDefCurrent.set_used(instr);    // Compute vars used by instr
@@ -167,6 +175,13 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr instr = instrs[i];
+
+    // Guard for this special case for the time being.
+    // It should actually be possible to load a uniform in an accumulator,
+    // not bothering right now.
+    if (instr.isUniformLoad()) {
+      continue;
+    }
 
     useDefCurrent.set_used(instr);    // Compute vars used by instr
     if (useDefCurrent.def.empty()) continue;

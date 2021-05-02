@@ -395,7 +395,7 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
       while (can_continue) {
         can_continue = compare_dfts(16*N, true);
         N += Step;
-        if (N > 3) break;
+        if (N > 3) break;  // Comment this out for full profiling
       }
     }
   }

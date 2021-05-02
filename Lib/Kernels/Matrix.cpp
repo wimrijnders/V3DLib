@@ -243,6 +243,22 @@ void check_allocate_result_array(Complex::Array2D &result) {
   }
 }
 
+
+/**
+ * Pre: settings initialized
+ */
+void init_result_array(Float::Array2D &result) {
+  if (result.allocated()) {
+    assertq(result.rows()    == settings.rows_result(), "Preallocated result array has incorrect number of rows");
+    assertq(result.columns() == settings.cols_result(), "Preallocated result array has incorrect number of columns");
+  } else {
+    // Result array requires column size which is a multiple of 16
+    // Ensure enough padding for result so that size is multiple of 16
+    // It may become too big but never mind
+    result.alloc(settings.rows_result(), settings.cols_result());
+  }
+}
+
 }  // anon namespace
 
 
@@ -481,15 +497,7 @@ FuncType *matrix_mult_decorator(
 
   auto ret = matrix_mult_decorator(a.rows(), a.columns(), b.rows(), read_method);
 
-  if (result.allocated()) {
-    assertq(result.rows()    == settings.rows_result(), "Preallocated result array has incorrect number of rows");
-    assertq(result.columns() == settings.cols_result(), "Preallocated result array has incorrect number of columns");
-  } else {
-    // Result array requires column size which is a multiple of 16
-    // Ensure enough padding for result so that size is multiple of 16
-    // It may become too big but never mind
-    result.alloc(settings.rows_result(), settings.cols_result());
-  }
+  init_result_array(result);
 
   return ret;
 }
@@ -788,7 +796,7 @@ void Matrix::mult() {
  */
 void Matrix::block_mult() {
   init_block();
-  assert(k.get() != nullptr);
+  assert(k_block.get() != nullptr);
   bool const do_call = true;  // Can be set to false when using interpret() or emu() instead of call() below
 
   Timer t;
@@ -830,6 +838,7 @@ void Matrix::init_block() {
   kernels::settings.set(m_a.rows(), m_a.columns(), m_b.rows());
   kernels::settings.set_blockrowsize(m_a.columns()/2);
   kernels::settings.add_result = true;
+  kernels::init_result_array(m_result);
 
   k_block.reset(new BlockKernelType(compile(kernels::matrix_mult_block)));
   m_block_compile_time = t.end(false);

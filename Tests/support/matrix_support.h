@@ -11,6 +11,8 @@ inline void compare_arrays(V3DLib::Float::Array2D &a, std::vector<float> const &
   compare_arrays(a, b.data());
 }
 
+void compare_arrays(V3DLib::Float::Array2D &a, V3DLib::Float::Array2D &b, float precision = -1.0f);
+
 void compare_arrays(V3DLib::Complex::Array2D &a, V3DLib::Complex::Array2D &b, float precision = -1.0f);
 void compare_arrays(std::vector<float> &a, float const *b);
 
