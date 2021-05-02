@@ -2,7 +2,6 @@
 #include <functional>
 #include "Support/basics.h"
 #include "Source/Functions.h"
-#include "vc4/DMA/Operations.h" // dmaWaitWrite()
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -183,7 +182,7 @@ void pre_read(Float &dst, Float::Ptr &src, int prefetch_label) {
 
 /**
  * on v3d, TMU is used always for writes.
- * on vc4, Either DMA or TMU can be used.
+ * on vc4, DMA is used always.
  */
 void pre_write(Float::Ptr &dst, Float::Ptr &dst_read, Float &src, int pre_label) {
 
@@ -400,14 +399,30 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
 }
 
 
-void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b) {
-  matrix_mult(in_dst, in_a, in_b);
-
-  *in_dst = toFloat(index());
-
-  //Int offset = settings.stride()*settings.block_rowsize + settings.block_rowsize;
-  Int offset = settings.block_rowsize;          header("second call matrix_mult");
-//  matrix_mult(in_dst, in_a + offset, in_b + offset);
+/**
+ * Previously, the kernel looked like this:
+ *
+ *
+ *    void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b) {
+ *      matrix_mult(in_dst, in_a, in_b);
+ *      Int offset = settings.block_rowsize;
+ *      matrix_mult(in_dst, in_a + offset_a, in_b + offset_b);
+ *    }
+ *
+ * This worked great on v3d, but not on vc4. Only the result of the last matrix_mult() was stored.
+ *
+ * It took a while to figure it out:
+ *
+ *  - vc4 reads using the TMU and writes using VPM/DMA.
+ *  - There is a cache before the TMU part
+ *  - The DMA writes directly to memory; this does not invalidate the cache (!)
+ *  - On the second call to matrix_mult(), the cache data is used, which by then is not the same as memory
+ *
+ * The v3d does not have this issue, since it reads as well as writes with TMU, thus always using the cache.
+ * It drove me crazy a whole day. I solved it by calling the kernel >1 times with different offset parameters.
+ */ 
+void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b, Int offset_a, Int offset_b) {
+  matrix_mult(in_dst, in_a + offset_a, in_b + offset_b);
 }
 
 
@@ -777,8 +792,12 @@ void Matrix::block_mult() {
   assert(!m_doing_full);
 
   m_result.fill(0.0f);  // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
-  k->load(&m_result, &m_a, &m_b);
-  k->call();
+  k_block->load(&m_result, &m_a, &m_b, 0, 0);
+  k_block->call();
+
+  int offset = kernels::settings.block_rowsize;
+  k_block->load(&m_result, &m_a, &m_b, offset, offset);
+  k_block->call();
 }
 
 
@@ -802,11 +821,10 @@ void Matrix::init_block() {
   kernels::settings.set_blockrowsize(m_a.columns()/2);
   kernels::settings.add_result = true;
 
-  k.reset(new KernelType(compile(kernels::matrix_mult_block)));
-  k->pretty(true, "block_mult_vc4.txt");
-  k->pretty(false, "block_mult_v3d.txt");
-  k->dump_compile_data(true, "block_mult_data_vc4.txt");
-  k->load(&m_result, &m_a, &m_b);
+  k_block.reset(new BlockKernelType(compile(kernels::matrix_mult_block)));
+  k_block->pretty(true, "block_mult_vc4.txt");
+  k_block->pretty(false, "block_mult_v3d.txt");
+  k_block->dump_compile_data(true, "block_mult_data_vc4.txt");
 
   m_doing_full = false;
 }

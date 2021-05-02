@@ -140,6 +140,7 @@ namespace V3DLib {
 
 class Matrix {
  using KernelType = V3DLib::Kernel<Float::Ptr, Float::Ptr, Float::Ptr>;
+ using BlockKernelType = V3DLib::Kernel<Float::Ptr, Float::Ptr, Float::Ptr, Int, Int>;
 
 public:
   Matrix(Float::Array2D &a, Float::Array2D &b);
@@ -154,6 +155,7 @@ private:
   Float::Array2D &m_b;
   Float::Array2D m_result;
   std::unique_ptr<KernelType> k;
+  std::unique_ptr<BlockKernelType> k_block;
 
   void init_full();
   void init_block();
