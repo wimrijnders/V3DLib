@@ -2,6 +2,7 @@
 #include <functional>
 #include "Support/basics.h"
 #include "Source/Functions.h"
+#include "Support/Timer.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -400,29 +401,28 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
 
 
 /**
- * Previously, the kernel looked like this:
- *
- *
- *    void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b) {
- *      matrix_mult(in_dst, in_a, in_b);
- *      Int offset = settings.block_rowsize;
- *      matrix_mult(in_dst, in_a + offset_a, in_b + offset_b);
- *    }
- *
- * This worked great on v3d, but not on vc4. Only the result of the last matrix_mult() was stored.
- *
- * It took a while to figure it out:
+ * The v3d part of the kernel does not work on vc4, even though the target lang code
+ * is practically identical. It took a while to figure it out:
  *
  *  - vc4 reads using the TMU and writes using VPM/DMA.
  *  - There is a cache before the TMU part
  *  - The DMA writes directly to memory; this does not invalidate the cache (!)
- *  - On the second call to matrix_mult(), the cache data is used, which by then is not the same as memory
+ *  - On the second call to matrix_mult(), the cache data is used, which by then 
+ *    is not the same as memory
  *
- * The v3d does not have this issue, since it reads as well as writes with TMU, thus always using the cache.
- * It drove me crazy a whole day. I solved it by calling the kernel >1 times with different offset parameters.
+ * The v3d does not have this issue, since it reads as well as writes with TMU,
+ * thus always using the cache.
+ * It drove me crazy a whole day. I solved it by calling the kernel >1 times
+ * with different offset parameters for vc4.
  */ 
-void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b, Int offset_a, Int offset_b) {
-  matrix_mult(in_dst, in_a + offset_a, in_b + offset_b);
+void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b, Int in_offset) {
+  if (Platform::compiling_for_vc4()) {
+    matrix_mult(in_dst, in_a + in_offset, in_b + in_offset);
+  } else {
+    matrix_mult(in_dst, in_a, in_b);
+    Int offset = settings.block_rowsize;
+    matrix_mult(in_dst, in_a + offset, in_b + offset);
+  }
 }
 
 
@@ -760,17 +760,17 @@ DftFuncType2 dft_inline_decorator(Float::Array &a, Complex::Array2D &result, Mat
 
 namespace V3DLib {
 
-Matrix::Matrix(Float::Array2D &a, Float::Array2D &b) : m_a(a), m_b(b) {
-  init_full();
-}
+Matrix::Matrix(Float::Array2D &a, Float::Array2D &b) : m_a(a), m_b(b) { }
 
 
 void Matrix::mult() {
+  init_full();
   assert(k.get() != nullptr);
-  assert(m_doing_full);
 
+  Timer t;
   m_result.fill(0.0f);
   k->call();
+  m_full_run_time = t.end(false);
 }
 
 
@@ -789,25 +789,34 @@ void Matrix::mult() {
 void Matrix::block_mult() {
   init_block();
   assert(k.get() != nullptr);
-  assert(!m_doing_full);
+  bool const do_call = true;  // Can be set to false when using interpret() or emu() instead of call() below
 
-  m_result.fill(0.0f);  // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
-  k_block->load(&m_result, &m_a, &m_b, 0, 0);
-  k_block->call();
+  Timer t;
+  m_result.fill(0.0f);        // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
 
-  int offset = kernels::settings.block_rowsize;
-  k_block->load(&m_result, &m_a, &m_b, offset, offset);
-  k_block->call();
+  if (Platform::has_vc4() && do_call) {
+    // This part required for vc4 hardware; see header comment matrix_block_mult() kernel.
+    k_block->load(&m_result, &m_a, &m_b, 0);
+    k_block->call();
+
+    int offset = kernels::settings.block_rowsize;
+    k_block->load(&m_result, &m_a, &m_b, offset);
+    k_block->call();
+  } else {
+    // This part will also work for interpret() and emu()
+    k_block->call();
+  }
+  m_block_run_time = t.end(false);
 }
 
 
 void Matrix::init_full() {
-  if (m_doing_full) return;
+  if (k.get() != nullptr) return;
 
+  Timer t;
   k.reset(new KernelType(compile(kernels::matrix_mult_decorator(m_a, m_b, m_result))));
   k->load(&m_result, &m_a, &m_b);
-
-  m_doing_full = true;
+  m_full_compile_time = t.end(false);
 }
 
 
@@ -815,18 +824,18 @@ void Matrix::init_full() {
  * Prepare the block matrix multiplication
  */
 void Matrix::init_block() {
-  if (!m_doing_full) return;
+  if (k_block.get() != nullptr) return;
 
+  Timer t;
   kernels::settings.set(m_a.rows(), m_a.columns(), m_b.rows());
   kernels::settings.set_blockrowsize(m_a.columns()/2);
   kernels::settings.add_result = true;
 
   k_block.reset(new BlockKernelType(compile(kernels::matrix_mult_block)));
-  k_block->pretty(true, "block_mult_vc4.txt");
-  k_block->pretty(false, "block_mult_v3d.txt");
-  k_block->dump_compile_data(true, "block_mult_data_vc4.txt");
-
-  m_doing_full = false;
+  m_block_compile_time = t.end(false);
+  //k_block->pretty(true, "block_mult_vc4.txt");
+  //k_block->pretty(false, "block_mult_v3d.txt");
+  //k_block->dump_compile_data(true, "block_mult_data_vc4.txt");
 }
 
 }  // namespace V3DLib

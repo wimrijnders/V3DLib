@@ -138,24 +138,47 @@ DftFuncType2 dft_inline_decorator(
 
 namespace V3DLib {
 
+/**
+ * Do block matrix multiplication
+ *
+ * Currently, the matrices are each split into 2 blocks.
+ * This serves as a proof of concept; in due time it, is possible
+ * to split them into any number of block matricesi, thereby allowing
+ * arbitrary dimensions for the matrices (multiples of 16, always).
+ *
+ * mult() is here to be able to compare results with block_mult().
+ * In due time, it will be removed.
+ */
 class Matrix {
  using KernelType = V3DLib::Kernel<Float::Ptr, Float::Ptr, Float::Ptr>;
- using BlockKernelType = V3DLib::Kernel<Float::Ptr, Float::Ptr, Float::Ptr, Int, Int>;
+ using BlockKernelType = V3DLib::Kernel<Float::Ptr, Float::Ptr, Float::Ptr, Int>;
 
 public:
   Matrix(Float::Array2D &a, Float::Array2D &b);
 
   Float::Array2D &result() { return m_result; }
+
   void mult();
+  std::string const &full_compile_time()  { return m_full_compile_time; }
+  std::string const &full_run_time()      { return m_full_run_time; }
+
   void block_mult();
+  std::string const &block_compile_time() { return m_block_compile_time; }
+  std::string const &block_run_time()     { return m_block_run_time; }
+
 
 private:
-  bool m_doing_full = false;
   Float::Array2D &m_a;
   Float::Array2D &m_b;
   Float::Array2D m_result;
+
   std::unique_ptr<KernelType> k;
+  std::string m_full_compile_time;
+  std::string m_full_run_time;
+
   std::unique_ptr<BlockKernelType> k_block;
+  std::string m_block_compile_time;
+  std::string m_block_run_time;
 
   void init_full();
   void init_block();

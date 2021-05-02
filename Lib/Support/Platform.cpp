@@ -170,6 +170,7 @@ public:
   bool is_pi_platform;
   bool m_use_main_memory   = false;
   bool m_compiling_for_vc4 = true;
+  bool m_running_on_v3d    = false;
 
   std::string output() const;
 };
@@ -261,16 +262,13 @@ void Platform::use_main_memory(bool val) {
  * This is distinct from the platform we are actually running on.
  * The compilation can occur on any platform, including non-pi.
  */
-void Platform::compiling_for_vc4(bool val) {
-  instance().m_compiling_for_vc4 = val;
-}
+void Platform::compiling_for_vc4(bool val) { instance().m_compiling_for_vc4 = val; }
 
-
-std::string Platform::platform_info() { return instance().output(); }
-bool Platform::has_vc4()           { return instance().has_vc4; }
 bool Platform::compiling_for_vc4() { return instance().m_compiling_for_vc4; }
 bool Platform::use_main_memory()   { return instance().m_use_main_memory; }
+std::string Platform::platform_info() { return instance().output(); }
 bool Platform::is_pi_platform()    { return instance().is_pi_platform; }
+bool Platform::has_vc4()           { return instance().has_vc4; }
 
 
 /**
