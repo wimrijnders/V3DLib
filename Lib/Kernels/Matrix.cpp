@@ -435,6 +435,7 @@ void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b, Int 
   if (Platform::compiling_for_vc4()) {
     matrix_mult(in_dst, in_a + in_offset, in_b + in_offset);
   } else {
+    // Offset param ignored here
     matrix_mult(in_dst, in_a, in_b);
     Int offset = settings.block_rowsize;
     matrix_mult(in_dst, in_a + offset, in_b + offset);
@@ -809,6 +810,7 @@ void Matrix::block_mult() {
     k_block->call();
   } else {
     // This part would also work for interpret() and emu()
+    k_block->load(&m_result, &m_a, &m_b, 0);
     k_block->call();
   }
 }

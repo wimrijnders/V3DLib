@@ -4,14 +4,15 @@
 using namespace V3DLib;
 
 
-void compare_arrays(Float::Array2D &a, float const *b) {
-  float precision = 0;
+void compare_arrays(Float::Array2D &a, float const *b, float precision) {
 
   // Values empirically determined - the bigger the matrices, the less precise
-  if (Platform::has_vc4()) {
-    precision = 1.0e-3f;
-  } else {
-    precision = 2.5e-4f;  // This value works for 640x640 matrices
+  if (precision == -1.0f) {
+    if (Platform::has_vc4()) {
+      precision = 1.0e-3f;
+    } else {
+      precision = 2.5e-4f;  // This value works for 640x640 matrices
+    }
   }
 
   for (int r = 0; r < a.rows(); r++) {

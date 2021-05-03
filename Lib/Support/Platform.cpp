@@ -3,6 +3,7 @@
 #include <fstream>
 #include <memory>
 #include <string.h>  // strstr()
+#include "defines.h"
 #include "basics.h"
 
 namespace V3DLib {
@@ -344,6 +345,10 @@ std::string Platform::pi_version() {
   ret += version;
 
   assertq('1' <= version && version <= '4', "Unknown pi version number");
+
+#ifdef ARM64
+  ret += "-64";
+#endif
 
   return ret;
 }

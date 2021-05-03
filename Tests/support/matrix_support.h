@@ -5,10 +5,10 @@
 #include "Source/Complex.h"
 #include "Support/pgm.h"
 
-void compare_arrays(V3DLib::Float::Array2D &a, float const *b);
+void compare_arrays(V3DLib::Float::Array2D &a, float const *b, float precision = -1.0f);
 
-inline void compare_arrays(V3DLib::Float::Array2D &a, std::vector<float> const &b) {
-  compare_arrays(a, b.data());
+inline void compare_arrays(V3DLib::Float::Array2D &a, std::vector<float> const &b, float precision = -1.0f) {
+  compare_arrays(a, b.data(), precision);
 }
 
 void compare_arrays(V3DLib::Float::Array2D &a, V3DLib::Float::Array2D &b, float precision = -1.0f);

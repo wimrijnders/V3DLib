@@ -30,7 +30,7 @@ void fill_random(float *arr, int size) {
 
 void fill_random(std::vector<float> &arr) {
   assert(!arr.empty());
-  fill_random(arr.data(), arr.size());
+  fill_random(arr.data(), (int) arr.size());
 }
 
 
@@ -683,29 +683,29 @@ bool profile_block_mult(int dimension) {
     profile_output.run(m1.full_kernel(), dimension, label1, [&m1] () {
       m1.mult();
     });
+
+    // Sanity check
+    INFO("Compare full result with expected");
+    compare_arrays(m1.result(), expected, 1e-3f);   // precision becomes significant at dimension == 520
   }
 
 
   std::string label2 = "Block mult";
-  Matrix m2(a, a);
 
   Timer timer2;
-  m2.block_compile();
+  m1.block_compile();
   profile_output.add_compile(label2, timer2.end(false), dimension);
 
-  if (!m2.block_has_errors()) {
+  if (!m1.block_has_errors()) {
     compiled += 2;
 
-    profile_output.run(m2.block_kernel(), dimension, label1, [&m2] () {
-      m2.block_mult();
+    profile_output.run(m1.block_kernel(), dimension, label2, [&m1] () {
+      m1.block_mult();
     });
-  }
 
-
-  if (compiled == 3) {
     // Sanity check
-    compare_arrays(m1.result(), expected);
-    compare_arrays(m1.result(), m2.result());  // prob better than REQUIRE
+    INFO("Compare block result with expected");
+    compare_arrays(m1.result(), expected, 1e-3f);   // just using same precision as full mult
   }
 
   std::cout << profile_output.dump();
@@ -798,7 +798,7 @@ TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
     while (can_continue) {
       can_continue = profile_block_mult(16*N);
       N += Step;
-//      if (N > 4) break;
+      if (N > 4) break;
     }
   }
 
