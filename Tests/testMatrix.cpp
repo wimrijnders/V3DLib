@@ -11,6 +11,8 @@
 #include "Support/basics.h"
 #include "Kernels/Matrix.h"
 #include "support/matrix_support.h"
+#include "support/ProfileOutput.h"
+#include "Support/Timer.h"
 
 namespace {
 using namespace V3DLib;
@@ -646,17 +648,79 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
 }
 
 
+namespace {
+
+bool profile_block_mult(int dimension) {
+  using V3DLib::Timer;
+
+  REQUIRE(dimension > 0);
+  REQUIRE(dimension % 2*16 == 0);
+  REQUIRE(ProfileOutput::num_iterations > 0);
+
+  ProfileOutput profile_output;
+  profile_output.show_compile(true);
+
+  // Prepare input and expected result
+  Float::Array2D a(dimension);
+  std::vector<float> expected;
+  prepare_random(a, expected, dimension);
+
+  //
+  // Run the kernels
+  //
+  int compiled = 0;
+
+  std::string label1 = "Full mult";
+  Matrix m1(a, a);
+
+  Timer timer1;
+  m1.full_compile();
+  profile_output.add_compile(label1, timer1.end(false), dimension);
+
+  if (!m1.full_has_errors()) {
+    compiled += 1;
+
+    profile_output.run(m1.full_kernel(), dimension, label1, [&m1] () {
+      m1.mult();
+    });
+  }
+
+
+  std::string label2 = "Block mult";
+  Matrix m2(a, a);
+
+  Timer timer2;
+  m2.block_compile();
+  profile_output.add_compile(label2, timer2.end(false), dimension);
+
+  if (!m2.block_has_errors()) {
+    compiled += 2;
+
+    profile_output.run(m2.block_kernel(), dimension, label1, [&m2] () {
+      m2.block_mult();
+    });
+  }
+
+
+  if (compiled == 3) {
+    // Sanity check
+    compare_arrays(m1.result(), expected);
+    compare_arrays(m1.result(), m2.result());  // prob better than REQUIRE
+  }
+
+  std::cout << profile_output.dump();
+  return (compiled != 0);
+}
+
+}  // anon namespace
+
+
 TEST_CASE("Test block matrix multiplication [matrix][block]") {
-
-//Platform::use_main_memory(true);
-
   SUBCASE("Test simple block") {
     int dimension = 2*16;  // 8 tested OK
 
     Float::Array2D a(dimension);
     Float::Array2D result(dimension);
-
-    std::vector<float> result_block;
 
     //
     // Check identity matrix
@@ -710,12 +774,33 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
       compare_arrays(m1.result(), expected);
 
       Matrix m2(a, a);
-      m2.mult();
+      m2.block_mult();
       compare_arrays(m2.result(), expected);
 
-      REQUIRE(m1.result() == m2.result());
+      compare_arrays(m1.result(), m2.result());
+    }
+  }
+}
+
+
+TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
+//  Platform::use_main_memory(true);
+  SUBCASE("Profile") {
+    bool do_profiling = true;
+    if (!do_profiling) return; 
+
+    // Profiling: try all sizes until compilation fails
+    std::cout << "DFT compare" << ProfileOutput::header();
+
+    int Step = 2;
+    int N = 2;
+    bool can_continue = true;
+    while (can_continue) {
+      can_continue = profile_block_mult(16*N);
+      N += Step;
+//      if (N > 4) break;
     }
   }
 
-//Platform::use_main_memory(false);
+//  Platform::use_main_memory(false);
 }

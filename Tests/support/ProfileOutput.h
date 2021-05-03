@@ -3,6 +3,7 @@
 #include <cassert>
 #include <vector>
 #include <string>
+#include <functional>
 #include "Support/Timer.h"
 #include "Support/Platform.h"
 
@@ -37,6 +38,22 @@ public:
   ProfileOutput();
 
   template<typename KernelType>
+  void run(KernelType &k, int Dim, std::string const &label, std::function<void()> f) {
+    assert(!num_qpus.empty());
+
+    for (auto num : num_qpus) {
+      k.setNumQPUs(num);
+      Timer timer;
+
+      for (int i = 0; i < num_iterations; i++) {
+        f();
+      }
+      add_call(label, timer, Dim, num);
+    }
+  };
+
+
+  template<typename KernelType>
   void run(KernelType &k, int Dim, std::string const &label) {
     assert(!num_qpus.empty());
 
@@ -53,6 +70,7 @@ public:
 
 
   void show_compile(bool val) { ShowCompile = val; }
+  void add_compile(std::string const &label, std::string const &timer_val, int Dim);
   void add_compile(std::string const &label, Timer &timer, int Dim);
   std::string dump();
 

@@ -159,12 +159,14 @@ public:
   Float::Array2D &result() { return m_result; }
 
   void mult();
-  std::string const &full_compile_time()  { return m_full_compile_time; }
-  std::string const &full_run_time()      { return m_full_run_time; }
+  KernelType &full_kernel() { return *k; }
+  void full_compile()  { init_full(); }
+  bool full_has_errors() const { return k->has_errors(); }
 
   void block_mult();
-  std::string const &block_compile_time() { return m_block_compile_time; }
-  std::string const &block_run_time()     { return m_block_run_time; }
+  BlockKernelType &block_kernel() { return *k_block; }
+  void block_compile()  { init_block(); }
+  bool block_has_errors() const { return k_block->has_errors(); }
 
 
 private:
@@ -173,12 +175,7 @@ private:
   Float::Array2D m_result;
 
   std::unique_ptr<KernelType> k;
-  std::string m_full_compile_time;
-  std::string m_full_run_time;
-
   std::unique_ptr<BlockKernelType> k_block;
-  std::string m_block_compile_time;
-  std::string m_block_run_time;
 
   void init_full();
   void init_block();

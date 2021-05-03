@@ -31,13 +31,18 @@ std::string ProfileOutput::header() {
 }
 
 
-void ProfileOutput::add_compile(std::string const &label, Timer &timer, int Dim) {
+void ProfileOutput::add_compile(std::string const &label, std::string const &timer_val, int Dim) {
   if (!ShowCompile) return; 
 
   std::string str;
   str << "\"compile " << label << "\"";
 
-  output << out_data(str, timer.end(false), Dim, 0);
+  output << out_data(str, timer_val, Dim, 0);
+}
+
+
+void ProfileOutput::add_compile(std::string const &label, Timer &timer, int Dim) {
+  ProfileOutput::add_compile(label, timer.end(false), Dim);
 }
 
 

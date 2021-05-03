@@ -2,7 +2,6 @@
 #include <functional>
 #include "Support/basics.h"
 #include "Source/Functions.h"
-#include "Support/Timer.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -195,8 +194,9 @@ void pre_write(Float::Ptr &dst, Float::Ptr &dst_read, Float &src, int pre_label)
     case DO_PREFETCH:
 
       if (settings.add_result) {
-       debug("Doing add prefetch");
-       //*dst = *dst + src;
+       //debug("Doing add prefetch");
+       //Intention: *dst = *dst + src;
+
        Float tmp = 0;
        prefetch(tmp, dst_read, pre_label);
        *dst = tmp + src;
@@ -775,10 +775,8 @@ void Matrix::mult() {
   init_full();
   assert(k.get() != nullptr);
 
-  Timer t;
   m_result.fill(0.0f);
   k->call();
-  m_full_run_time = t.end(false);
 }
 
 
@@ -799,7 +797,6 @@ void Matrix::block_mult() {
   assert(k_block.get() != nullptr);
   bool const do_call = true;  // Can be set to false when using interpret() or emu() instead of call() below
 
-  Timer t;
   m_result.fill(0.0f);        // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
 
   if (Platform::has_vc4() && do_call) {
@@ -811,20 +808,17 @@ void Matrix::block_mult() {
     k_block->load(&m_result, &m_a, &m_b, offset);
     k_block->call();
   } else {
-    // This part will also work for interpret() and emu()
+    // This part would also work for interpret() and emu()
     k_block->call();
   }
-  m_block_run_time = t.end(false);
 }
 
 
 void Matrix::init_full() {
   if (k.get() != nullptr) return;
 
-  Timer t;
   k.reset(new KernelType(compile(kernels::matrix_mult_decorator(m_a, m_b, m_result))));
   k->load(&m_result, &m_a, &m_b);
-  m_full_compile_time = t.end(false);
 }
 
 
@@ -834,14 +828,12 @@ void Matrix::init_full() {
 void Matrix::init_block() {
   if (k_block.get() != nullptr) return;
 
-  Timer t;
   kernels::settings.set(m_a.rows(), m_a.columns(), m_b.rows());
   kernels::settings.set_blockrowsize(m_a.columns()/2);
   kernels::settings.add_result = true;
   kernels::init_result_array(m_result);
 
   k_block.reset(new BlockKernelType(compile(kernels::matrix_mult_block)));
-  m_block_compile_time = t.end(false);
   //k_block->pretty(true, "block_mult_vc4.txt");
   //k_block->pretty(false, "block_mult_v3d.txt");
   //k_block->dump_compile_data(true, "block_mult_data_vc4.txt");
