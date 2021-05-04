@@ -658,7 +658,8 @@ bool profile_block_mult(int dimension) {
   REQUIRE(ProfileOutput::num_iterations > 0);
 
   ProfileOutput profile_output;
-  profile_output.show_compile(true);
+  profile_output.show_compile(false);
+  profile_output.use_max_qpus(true);
 
   // Prepare input and expected result
   Float::Array2D a(dimension);
@@ -670,96 +671,80 @@ bool profile_block_mult(int dimension) {
   //
   int compiled = 0;
 
-  std::string label1 = "Full mult";
-  Matrix m1(a, a);
+  Matrix m(a, a);
 
-  Timer timer1;
-  m1.full_compile();
-  profile_output.add_compile(label1, timer1.end(false), dimension);
-
-  if (!m1.full_has_errors()) {
-    compiled += 1;
-
-    profile_output.run(m1.full_kernel(), dimension, label1, [&m1] () {
-      m1.mult();
-    });
-
-    // Sanity check
-    INFO("Compare full result with expected");
-    compare_arrays(m1.result(), expected, 1e-3f);   // precision becomes significant at dimension == 520
-  }
-
-
-  std::string label2 = "Block mult";
+  // Running with 1 block is practically identical with a full mult, only extra is offsets passed.
+  std::string label1 = "Mult 1 block";
+  m.num_blocks(1);
 
   Timer timer2;
-  m1.block_compile();
-  profile_output.add_compile(label2, timer2.end(false), dimension);
+  m.block_compile();
+  profile_output.add_compile(label1, timer2.end(false), dimension);
 
-  if (!m1.block_has_errors()) {
-    compiled += 2;
+  if (!m.block_has_errors()) {
+    compiled += 1;
 
-    profile_output.run(m1.block_kernel(), dimension, label2, [&m1] () {
-      m1.block_mult();
+    profile_output.run(m.block_kernel(), dimension, label1, [&m] () {
+      m.mult();
     });
 
     // Sanity check
-    INFO("Compare block result with expected");
-    compare_arrays(m1.result(), expected, 1e-3f);   // just using same precision as full mult
+    INFO("Compare 1 block result with expected");
+    compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
+  }
+
+  std::string label2 = "Mult 2 blocks";
+  m.num_blocks(2);
+
+  Timer timer3;
+  m.block_compile();
+  profile_output.add_compile(label2, timer3.end(false), dimension);
+
+  if (!m.block_has_errors()) {
+    compiled += 2;
+
+    profile_output.run(m.block_kernel(), dimension, label2, [&m] () {
+      m.mult();
+    });
+
+    // Sanity check
+    INFO("Compare 2 blocks result with expected");
+    compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
   }
 
   std::cout << profile_output.dump();
   return (compiled != 0);
 }
 
-}  // anon namespace
 
-
-TEST_CASE("Test block matrix multiplication [matrix][block]") {
-  SUBCASE("Test simple block") {
-    int dimension = 2*16;  // 8 tested OK
-
+void test_simple_block(int dimension) {
     Float::Array2D a(dimension);
     Float::Array2D result(dimension);
+
+    Matrix m(a, a);
 
     //
     // Check identity matrix
     //
-    a.make_unit_matrix();
-    check_unitary(a);
-
     {
-      Matrix m1(a, a);
-      m1.mult();
-      //std::cout << m.result().dump() << std::endl;
-      INFO("full multiply identity matrix");
-      check_unitary(m1.result());
+      a.make_unit_matrix();
+      check_unitary(a);
 
-      Matrix m2(a, a);
-      m2.mult();
+      m.mult();
       //std::cout << m.result().dump() << std::endl;
-      INFO("Block multiply identity matrix");
-      check_unitary(m2.result());
-
-      REQUIRE(m1.result() == m2.result());
+      INFO("Checking mult unit matrix");
+      check_unitary(m.result());
     }
-
 
     //
     // Square of input matrix containing all ones
     //
     {
       a.fill(1);
-
-      Matrix m1(a, a);
-      m1.mult();
-
-      Matrix m2(a, a);
-      m2.mult();
-
-      REQUIRE(m1.result() == m2.result());
+      m.mult();
+      INFO("Checking mult all ones");
+      compare_array_scalar(m.result(), (float) dimension);
     }
-
 
     //
     // Square of array with random values
@@ -769,22 +754,35 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
       std::vector<float> expected;
       prepare_random(a, expected, dimension);
 
-      Matrix m1(a, a);
-      m1.mult();
-      compare_arrays(m1.result(), expected);
+      m.mult();
+      INFO("Checking mult random values");
 
-      Matrix m2(a, a);
-      m2.block_mult();
-      compare_arrays(m2.result(), expected);
+      float precision = -1.0f;
+      if (dimension >  Matrix::MAX_FULL_BLOCKS_V3D) {
+        precision = 1e-3f;  // For big arrays using blocks
+      }
 
-      compare_arrays(m1.result(), m2.result());
+      compare_arrays(m.result(), expected, precision);
     }
+}
+
+}  // anon namespace
+
+
+TEST_CASE("Test block matrix multiplication [matrix][block]") {
+  SUBCASE("Test simple block") {
+    test_simple_block(2*16);
+    test_simple_block(8*16);
+
+    // Following works but takes long! Enable if you really want to check
+    //test_simple_block(832);  // Test huge matrix above block limit as well
   }
 }
 
 
 TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
 //  Platform::use_main_memory(true);
+
   SUBCASE("Profile") {
     bool do_profiling = true;
     if (!do_profiling) return; 
@@ -798,7 +796,7 @@ TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
     while (can_continue) {
       can_continue = profile_block_mult(16*N);
       N += Step;
-      if (N > 4) break;
+      if (N > 10) break;
     }
   }
 

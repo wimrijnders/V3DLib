@@ -35,13 +35,17 @@ public:
     num_iterations = 10
   };
 
-  ProfileOutput();
+  void use_max_qpus(bool val) { m_use_max_qpus = val; }
+  void show_compile(bool val) { ShowCompile = val; }
+  void add_compile(std::string const &label, std::string const &timer_val, int Dim);
+  void add_compile(std::string const &label, Timer &timer, int Dim);
+  std::string dump();
+
+  static std::string header();
 
   template<typename KernelType>
   void run(KernelType &k, int Dim, std::string const &label, std::function<void()> f) {
-    assert(!num_qpus.empty());
-
-    for (auto num : num_qpus) {
+    for (auto num : num_qpus()) {
       k.setNumQPUs(num);
       Timer timer;
 
@@ -55,9 +59,7 @@ public:
 
   template<typename KernelType>
   void run(KernelType &k, int Dim, std::string const &label) {
-    assert(!num_qpus.empty());
-
-    for (auto num : num_qpus) {
+    for (auto num : num_qpus()) {
       k.setNumQPUs(num);
       Timer timer;
 
@@ -68,17 +70,10 @@ public:
     }
   }
 
-
-  void show_compile(bool val) { ShowCompile = val; }
-  void add_compile(std::string const &label, std::string const &timer_val, int Dim);
-  void add_compile(std::string const &label, Timer &timer, int Dim);
-  std::string dump();
-
-  static std::string header();
-
 private:
-  std::vector<int> num_qpus;
+  std::vector<int> num_qpus() const;
   bool ShowCompile = false;
+  bool m_use_max_qpus = false;
   std::vector<out_data> output;
 
   void add_call(std::string const &label, Timer &timer, int Dim, int num_qpus);

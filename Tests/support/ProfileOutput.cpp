@@ -12,12 +12,24 @@ std::string ProfileOutput::out_data::str() const {
 }
 
 
-ProfileOutput::ProfileOutput() {
-  if (Platform::has_vc4()) {
-    num_qpus = {1,4,8,12};
+std::vector<int> ProfileOutput::num_qpus() const {
+  std::vector<int> ret;
+
+  if (m_use_max_qpus) {
+    if (Platform::has_vc4()) {
+      ret = {12};
+    } else {
+      ret = {8};
+    }
   } else {
-    num_qpus = {1,8};
+    if (Platform::has_vc4()) {
+      ret = {1,4,8,12};
+    } else {
+      ret = {1,8};
+    }
   }
+
+  return ret;
 }
 
 

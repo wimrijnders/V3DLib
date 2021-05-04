@@ -24,6 +24,7 @@ namespace {
 
 struct matrix_settings {
   int rows;                                   // Num rows of the result array
+  int num_blocks = -1;
   int block_rowsize;                          // Row size for the (block array) multiplication
   int inner;                                  // Inner dimension of the multiplication
                                               // inner == columns of a == rows of b (which is transposed)
@@ -436,9 +437,18 @@ void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b, Int 
     matrix_mult(in_dst, in_a + in_offset, in_b + in_offset);
   } else {
     // Offset param ignored here
+    using kernels::settings;
+
+    // First call doesn't need to get the result values for addition; they are zero anyway
+    settings.add_result = false;
     matrix_mult(in_dst, in_a, in_b);
-    Int offset = settings.block_rowsize;
-    matrix_mult(in_dst, in_a + offset, in_b + offset);
+
+    assert(settings.num_blocks == 1 || settings.num_blocks == 2);
+    if (settings.num_blocks == 2) {
+      settings.add_result = true;
+      Int offset = settings.block_rowsize;
+      matrix_mult(in_dst, in_a + offset, in_b + offset);
+    }
   }
 }
 
@@ -772,15 +782,6 @@ namespace V3DLib {
 Matrix::Matrix(Float::Array2D &a, Float::Array2D &b) : m_a(a), m_b(b) { }
 
 
-void Matrix::mult() {
-  init_full();
-  assert(k.get() != nullptr);
-
-  m_result.fill(0.0f);
-  k->call();
-}
-
-
 /**
  * This multiplies the input matrices using block matrix calculation,
  * with the following block matrices:
@@ -793,7 +794,7 @@ void Matrix::mult() {
  * 
  * Further splitting is possible, but this serves our purposes for now.
  */
-void Matrix::block_mult() {
+void Matrix::mult() {
   init_block();
   assert(k_block.get() != nullptr);
   bool const do_call = true;  // Can be set to false when using interpret() or emu() instead of call() below
@@ -801,13 +802,18 @@ void Matrix::block_mult() {
   m_result.fill(0.0f);        // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
 
   if (Platform::has_vc4() && do_call) {
-    // This part required for vc4 hardware; see header comment matrix_block_mult() kernel.
-    k_block->load(&m_result, &m_a, &m_b, 0);
-    k_block->call();
+    // This part required for vc4 hardware; see header of kernel matrix_mult_block().
+    assert(k_block_first_vc4.get() != nullptr);
 
-    int offset = kernels::settings.block_rowsize;
-    k_block->load(&m_result, &m_a, &m_b, offset);
-    k_block->call();
+    // First call doesn't need to get the result values for addition; they are zero anyway
+    k_block_first_vc4->load(&m_result, &m_a, &m_b, 0);
+    k_block_first_vc4->call();
+
+    if (m_num_blocks == 2) {
+      int offset = kernels::settings.block_rowsize;
+      k_block->load(&m_result, &m_a, &m_b, offset);
+      k_block->call();
+   }
   } else {
     // This part would also work for interpret() and emu()
     k_block->load(&m_result, &m_a, &m_b, 0);
@@ -816,29 +822,60 @@ void Matrix::block_mult() {
 }
 
 
-void Matrix::init_full() {
-  if (k.get() != nullptr) return;
-
-  k.reset(new KernelType(compile(kernels::matrix_mult_decorator(m_a, m_b, m_result))));
-  k->load(&m_result, &m_a, &m_b);
-}
-
-
 /**
  * Prepare the block matrix multiplication
  */
 void Matrix::init_block() {
-  if (k_block.get() != nullptr) return;
+  using kernels::settings;
 
-  kernels::settings.set(m_a.rows(), m_a.columns(), m_b.rows());
-  kernels::settings.set_blockrowsize(m_a.columns()/2);
-  kernels::settings.add_result = true;
+
+  if (k_block.get() != nullptr) {
+    if (settings.num_blocks == num_blocks()) {
+      return;
+    }
+
+    //debug("Recompiling block");
+  }
+
+  settings.set(m_a.rows(), m_a.columns(), m_b.rows());
+  int new_block_size = m_a.columns()/num_blocks();
+  settings.num_blocks = num_blocks();
+  settings.set_blockrowsize(new_block_size);
   kernels::init_result_array(m_result);
 
+  settings.add_result = false;
+  k_block_first_vc4.reset(new BlockKernelType(compile(kernels::matrix_mult_block)));
+
+  settings.add_result = true;
   k_block.reset(new BlockKernelType(compile(kernels::matrix_mult_block)));
   //k_block->pretty(true, "block_mult_vc4.txt");
   //k_block->pretty(false, "block_mult_v3d.txt");
   //k_block->dump_compile_data(true, "block_mult_data_vc4.txt");
+}
+
+
+void Matrix::num_blocks(int val) {
+  assert(DEFAULT_NUM_BLOCKS == val || 0 < val);
+  if (val > 0) {
+    assertq(val == 1 || val == 2, "Number of block matrices can only be 1 or 2" );
+  }
+
+  m_num_blocks = val;
+}
+
+
+/**
+ * Determine number of blocks to use
+ */
+int Matrix::num_blocks() const {
+  assert(MAX_FULL_BLOCKS_VC4 == MAX_FULL_BLOCKS_V3D);  // Handle this when it happens
+
+  if (m_num_blocks == DEFAULT_NUM_BLOCKS) {
+    assert(m_a.columns() > 0);
+    return (m_a.columns() <= MAX_FULL_BLOCKS_VC4)? 1: 2;
+  }
+
+  return m_num_blocks;
 }
 
 }  // namespace V3DLib

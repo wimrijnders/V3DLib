@@ -145,40 +145,45 @@ namespace V3DLib {
  * This serves as a proof of concept; in due time it, is possible
  * to split them into any number of block matricesi, thereby allowing
  * arbitrary dimensions for the matrices (multiples of 16, always).
- *
- * mult() is here to be able to compare results with block_mult().
- * In due time, it will be removed.
  */
 class Matrix {
  using KernelType = V3DLib::Kernel<Float::Ptr, Float::Ptr, Float::Ptr>;
  using BlockKernelType = V3DLib::Kernel<Float::Ptr, Float::Ptr, Float::Ptr, Int>;
 
 public:
+
+  enum {
+    DEFAULT_NUM_BLOCKS  =  -1,  // Let instance figure out itself whether to use full or block mult
+
+    // Following values are empirically determined (i.e. by trying out)
+    // There is actually some point in lowering the max value for vc4, because block mult is more efficient
+    MAX_FULL_BLOCKS_VC4 = 800,  // Highest dimension where full mult can be used for vc4
+    MAX_FULL_BLOCKS_V3D = 800,  // Highest dimension where full mult can be used for v3d
+  };
+
   Matrix(Float::Array2D &a, Float::Array2D &b);
 
+  void num_blocks(int val);
   Float::Array2D &result() { return m_result; }
 
   void mult();
-  KernelType &full_kernel() { return *k; }
-  void full_compile()  { init_full(); }
-  bool full_has_errors() const { return k->has_errors(); }
-
-  void block_mult();
   BlockKernelType &block_kernel() { return *k_block; }
   void block_compile()  { init_block(); }
   bool block_has_errors() const { return k_block->has_errors(); }
 
 
 private:
+  int m_num_blocks      = DEFAULT_NUM_BLOCKS;
   Float::Array2D &m_a;
   Float::Array2D &m_b;
   Float::Array2D m_result;
 
-  std::unique_ptr<KernelType> k;
   std::unique_ptr<BlockKernelType> k_block;
+  std::unique_ptr<BlockKernelType> k_block_first_vc4;
 
-  void init_full();
   void init_block();
+
+  int num_blocks() const;
 };
 
 }  // namespace V3DLib
