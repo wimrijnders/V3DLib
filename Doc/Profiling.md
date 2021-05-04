@@ -1,6 +1,6 @@
 # Profiling Matrix multiplication
 
-This examines the efficiency of *full* matrix multiplications with
+This compares the efficiency of *full* matrix multiplications with
 [block matrix](https://en.wikipedia.org/wiki/Block_matrix) multiplications.
 
 Block matrix multiplications were added to overcome compilation limits, notably compilation failure
@@ -38,10 +38,11 @@ From here on, the profiling times for the maximum number of QPUs will be compare
 
 ![vc4 comparing full and block multiplication](./images/vc4_full_block_mult.png)
 
-Eventually, both full and block multiplications fail due to 'insuffient register capacity.
+Eventually, both full and block multiplications fail due to 'insuffient register capacity'.
 The full multiplication fails at dimension 832x832, block multiplication fails at 864x864.
 
-Interestingly, for large matrix dimensions is slightly more efficient than the full multiplication.
+Interestingly, for large matrix dimensions, the block multiplication is slightly more
+efficient than the full multiplication.
 This is due to block multiplication needing less computations overall (*citation needed*);
 this is the basis of many Fast Fourier Transforms (FFT).
 
@@ -58,7 +59,7 @@ by increasing the size of shared memory.
 The throughput is more erratic than on `vc4`. This can be explained by the fact that
 `v3d` uses TMU for both reads and writes, which go via a cache. You need to be a bit lucky
 with the cache misses on reads.
-`vc4` reads using TMU and writes using DMA. 
+`vc4` reads using TMU and writes using DMA, therefore it doesn't have this effect. 
 
 Also, the full multiplication has overall better throughput than the block multiplication.
 This is due to extra reads being added to sum partial block results.
@@ -70,11 +71,11 @@ While doing this profiling, it struct me that the first block multiplication doe
 to retrieve result values for addition, since these are zero anyway.
 Implementing this results in:
 
-![v3d first block mult without reads](v3d_block_first_mult_noreads.png)
+![v3d first block mult without reads](./images/v3d_block_first_mult_noreads.png)
 
 For `v3d`, the throughput is overall faster and more stable.
 
-![vc4 first block mult without reads](vc4_block_first_mult_noreads.png)
+![vc4 first block mult without reads](./images/vc4_block_first_mult_noreads.png)
 
 For `vc4`, the difference is not too staggering. This would be expected.
 As a very minor point, block mult just slightly beats full mult for dimension <= 544.
