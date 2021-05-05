@@ -75,6 +75,11 @@ Implementing this results in:
 
 For `v3d`, the throughput is overall faster and more stable.
 
+By expanding the shared memory size to 64MB, the kernel manages to multiply 1504x1504
+matrices before failing with the register allocation.
+This can be overcome by using more block matrices for the multiplication.
+This is now trivial to implement, and might be done if a use case for it comes along.
+
 ![vc4 first block mult without reads](./images/vc4_block_first_mult_noreads.png)
 
 For `vc4`, the difference is not too staggering. This rould be expected, I guess.
