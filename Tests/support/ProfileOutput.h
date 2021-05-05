@@ -44,13 +44,12 @@ public:
   static std::string header();
 
   template<typename KernelType>
-  void run(KernelType &k, int Dim, std::string const &label, std::function<void()> f) {
+  void run(KernelType &k, int Dim, std::string const &label, std::function<void(int numQPUs)> f) {
     for (auto num : num_qpus()) {
-      k.setNumQPUs(num);
       Timer timer;
 
       for (int i = 0; i < num_iterations; i++) {
-        f();
+        f(num);
       }
       add_call(label, timer, Dim, num);
     }

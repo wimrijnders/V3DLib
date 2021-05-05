@@ -796,28 +796,30 @@ Matrix::Matrix(Float::Array2D &a, Float::Array2D &b) : m_a(a), m_b(b) { }
  */
 void Matrix::mult() {
   init_block();
-  assert(k_block.get() != nullptr);
+  assertq(!has_errors(), "Can not run Matrix::mult(), there are errors");
+  assert(m_k.get() != nullptr);
   bool const do_call = true;  // Can be set to false when using interpret() or emu() instead of call() below
 
   m_result.fill(0.0f);        // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
 
   if (Platform::has_vc4() && do_call) {
     // This part required for vc4 hardware; see header of kernel matrix_mult_block().
-    assert(k_block_first_vc4.get() != nullptr);
+    assert(m_k_first_vc4.get() != nullptr);
 
     // First call doesn't need to get the result values for addition; they are zero anyway
-    k_block_first_vc4->load(&m_result, &m_a, &m_b, 0);
-    k_block_first_vc4->call();
+    m_k_first_vc4->load(&m_result, &m_a, &m_b, 0);
+    m_k_first_vc4->call();
 
-    if (m_num_blocks == 2) {
+    if (num_blocks() == 2) {
+      //debug("Calling second block");
       int offset = kernels::settings.block_rowsize;
-      k_block->load(&m_result, &m_a, &m_b, offset);
-      k_block->call();
+      m_k->load(&m_result, &m_a, &m_b, offset);
+      m_k->call();
    }
   } else {
     // This part would also work for interpret() and emu()
-    k_block->load(&m_result, &m_a, &m_b, 0);
-    k_block->call();
+    m_k->load(&m_result, &m_a, &m_b, 0);
+    m_k->call();
   }
 }
 
@@ -829,11 +831,10 @@ void Matrix::init_block() {
   using kernels::settings;
 
 
-  if (k_block.get() != nullptr) {
+  if (m_k.get() != nullptr) {
     if (settings.num_blocks == num_blocks()) {
       return;
     }
-
     //debug("Recompiling block");
   }
 
@@ -844,13 +845,25 @@ void Matrix::init_block() {
   kernels::init_result_array(m_result);
 
   settings.add_result = false;
-  k_block_first_vc4.reset(new BlockKernelType(compile(kernels::matrix_mult_block)));
+  m_k_first_vc4.reset(new BlockKernelType(V3DLib::compile(kernels::matrix_mult_block)));
+
+  if (m_k_first_vc4->has_errors()) {
+    warning("compile failed of first kernel");
+    m_k.reset(nullptr);
+    return;
+  }
 
   settings.add_result = true;
-  k_block.reset(new BlockKernelType(compile(kernels::matrix_mult_block)));
-  //k_block->pretty(true, "block_mult_vc4.txt");
-  //k_block->pretty(false, "block_mult_v3d.txt");
-  //k_block->dump_compile_data(true, "block_mult_data_vc4.txt");
+  m_k.reset(new BlockKernelType(V3DLib::compile(kernels::matrix_mult_block)));
+  //m_k->pretty(true, "block_mult_vc4.txt");
+  //m_k->pretty(false, "block_mult_v3d.txt");
+  //m_k->dump_compile_data(true, "block_mult_data_vc4.txt");
+}
+
+
+void Matrix::setNumQPUs(int val) {
+  if (m_k_first_vc4.get() != nullptr) m_k_first_vc4->setNumQPUs(val);
+  if (m_k.get() != nullptr) m_k->setNumQPUs(val);
 }
 
 

@@ -673,18 +673,19 @@ bool profile_block_mult(int dimension) {
 
   Matrix m(a, a);
 
-  // Running with 1 block is practically identical with a full mult, only extra is offsets passed.
+  // Running with 1 block is practically identical to a full mult, only extra is offsets passed.
   std::string label1 = "Mult 1 block";
   m.num_blocks(1);
 
-  Timer timer2;
-  m.block_compile();
-  profile_output.add_compile(label1, timer2.end(false), dimension);
+  Timer timer1;
+  m.compile();
+  profile_output.add_compile(label1, timer1.end(false), dimension);
 
-  if (!m.block_has_errors()) {
+  if (!m.has_errors()) {
     compiled += 1;
 
-    profile_output.run(m.block_kernel(), dimension, label1, [&m] () {
+    profile_output.run(m.kernel(), dimension, label1, [&m] (int numQPUs) {
+      m.setNumQPUs(numQPUs);
       m.mult();
     });
 
@@ -696,14 +697,15 @@ bool profile_block_mult(int dimension) {
   std::string label2 = "Mult 2 blocks";
   m.num_blocks(2);
 
-  Timer timer3;
-  m.block_compile();
-  profile_output.add_compile(label2, timer3.end(false), dimension);
+  Timer timer2;
+  m.compile();
+  profile_output.add_compile(label2, timer2.end(false), dimension);
 
-  if (!m.block_has_errors()) {
+  if (!m.has_errors()) {
     compiled += 2;
 
-    profile_output.run(m.block_kernel(), dimension, label2, [&m] () {
+    profile_output.run(m.kernel(), dimension, label2, [&m] (int numQPUs) {
+      m.setNumQPUs(numQPUs);
       m.mult();
     });
 
@@ -711,6 +713,7 @@ bool profile_block_mult(int dimension) {
     INFO("Compare 2 blocks result with expected");
     compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
   }
+
 
   std::cout << profile_output.dump();
   return (compiled != 0);
@@ -796,7 +799,7 @@ TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
     while (can_continue) {
       can_continue = profile_block_mult(16*N);
       N += Step;
-      if (N > 10) break;
+      if (N > 20) break;
     }
   }
 

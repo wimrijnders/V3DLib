@@ -163,13 +163,14 @@ public:
 
   Matrix(Float::Array2D &a, Float::Array2D &b);
 
+  void setNumQPUs(int val);
   void num_blocks(int val);
   Float::Array2D &result() { return m_result; }
 
   void mult();
-  BlockKernelType &block_kernel() { return *k_block; }
-  void block_compile()  { init_block(); }
-  bool block_has_errors() const { return k_block->has_errors(); }
+  BlockKernelType &kernel() { return *m_k; }
+  void compile()  { init_block(); }
+  bool has_errors() const { return m_k_first_vc4->has_errors() || m_k->has_errors(); }
 
 
 private:
@@ -178,8 +179,8 @@ private:
   Float::Array2D &m_b;
   Float::Array2D m_result;
 
-  std::unique_ptr<BlockKernelType> k_block;
-  std::unique_ptr<BlockKernelType> k_block_first_vc4;
+  std::unique_ptr<BlockKernelType> m_k;
+  std::unique_ptr<BlockKernelType> m_k_first_vc4;
 
   void init_block();
 
