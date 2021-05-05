@@ -621,7 +621,7 @@ bool profile_block_mult(int dimension) {
   std::string label1 = "Mult 1 block";
   m.num_blocks(1);
 
-  if (false) {
+  if (true) {
     Timer timer1;
     m.compile();
     profile_output.add_compile(label1, timer1.end(false), dimension);
