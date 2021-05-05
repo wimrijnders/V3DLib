@@ -16,8 +16,7 @@ public:
   HeapManager();
   HeapManager(HeapManager *object) = delete;
 
-  virtual void alloc_mem(uint32_t size_in_bytes);
-
+  void alloc(uint32_t size_in_bytes);
   uint32_t size() const { return m_size; }
   bool empty() const { return m_offset == 0; }
   std::string dump() const;
@@ -26,6 +25,7 @@ public:
   uint32_t num_free_ranges() const { return (uint32_t) m_free_ranges.size(); }
 
 protected:
+  virtual void alloc_mem(uint32_t size_in_bytes);
   int alloc_array(uint32_t size_in_bytes);
   void dealloc_array(uint32_t index, uint32_t size);
   void set_size(uint32_t val);

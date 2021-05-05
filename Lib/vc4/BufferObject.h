@@ -12,15 +12,16 @@ class BufferObject : public V3DLib::BufferObject {
 public:
   ~BufferObject() { dealloc(); }
 
-  void alloc_mem(uint32_t size_in_bytes) override;
+  static BufferObject &getHeap();
 
 private:
   uint32_t handle = 0;
 
+  void alloc_mem(uint32_t size_in_bytes) override;
   void dealloc();
 };
 
-BufferObject &getHeap();
+
 
 }  // namespace vc4
 }  // namespace V3DLib

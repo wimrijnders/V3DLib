@@ -1220,7 +1220,7 @@ void KernelDriver::allocate() {
 
     // Allocate memory for the QPU code
     uint32_t size_in_bytes = (uint32_t) (sizeof(uint64_t)*code.size());
-    code_bo.alloc_mem(size_in_bytes);
+    code_bo.alloc(size_in_bytes);
     qpuCodeMem.alloc((uint32_t) code.size());
     qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
 

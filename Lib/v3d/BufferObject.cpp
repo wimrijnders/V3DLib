@@ -19,23 +19,15 @@ BufferObject::~BufferObject() {
  *
  */
 void BufferObject::alloc_mem(uint32_t size_in_bytes) {
-  if (Platform::has_vc4()) {
-    fatal("Trying to run v3d code on a vc4");
-  }
-
-  if (!v3d_open()) {
-    assert(false);   // Open device if not already done so
-  }
-
-  assert(size_in_bytes > 0);
-  assertq(size() == 0, "v3d alloc_mem(): Buffer object already allocated");
+  if (Platform::has_vc4()) fatal("Trying to run v3d code on a vc4");
+  if (!v3d_open()) assert(false);   // Only open device if not already done so
   assert(handle == 0);
 
   void    *tmp_addr = nullptr;
   uint32_t phy_addr = 0;
 
   if (!v3d_alloc(size_in_bytes, handle, phy_addr, &tmp_addr)) {
-    assert(false);
+    assertq(false, "Failed to allocate v3d shared memory");
   }
   arm_base = (uint8_t *) tmp_addr;
 
@@ -126,12 +118,12 @@ std::unique_ptr<BufferObject> mainHeap;
 }
 
 
-BufferObject &getMainHeap() {
+BufferObject &BufferObject::getHeap() {
   if (!Platform::has_vc4()) {
     if (!mainHeap) {
       //debug("Allocating main heap v3d\n");
       mainHeap.reset(new BufferObject());
-      mainHeap->alloc_mem(LibSettings::heap_size());
+      mainHeap->alloc(LibSettings::heap_size());
     }
   }
 

@@ -945,7 +945,7 @@ void run_summation_kernel(ByteCode &bytecode, uint8_t num_qpus, int unroll_shift
   //printf("data_area_size size: %u\n", data_area_size);
 
   BufferObject heap;
-  heap.alloc_mem(code_area_size + data_area_size);
+  heap.alloc(code_area_size + data_area_size);
   //printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
   heap.fill(0xdeadbeef);

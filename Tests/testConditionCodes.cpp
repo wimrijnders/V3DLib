@@ -129,7 +129,7 @@ TEST_CASE("Check v3d condition codes [v3d][cond]") {
 
     ByteCode bytecode = qpu_cond_push_a();
     BufferObject heap;
-    heap.alloc_mem(10*1024);  // arbitrary size, large enough
+    heap.alloc(10*1024);  // arbitrary size, large enough
 
     Code code((uint32_t) bytecode.size(), heap);
     code.copyFrom(bytecode);
