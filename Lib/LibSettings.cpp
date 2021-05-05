@@ -35,6 +35,9 @@ void LibSettings::qpu_timeout(int val) {
 }
 
 
+/**
+ * Get heap size in bytes
+ */
 int LibSettings::heap_size() {
   if (settings.heap_size == -1) {
     settings.heap_size = DEFAULT_HEAP_SIZE;
@@ -44,9 +47,13 @@ int LibSettings::heap_size() {
 }
 
 
+/**
+ * Set heap size
+ *
+ * @param size_in_bytes  size of heap in bytes
+ */
 void LibSettings::heap_size(int val) {
-  assert(val > 0);
-  assert(settings.heap_size == -1); // For now, allow setting it only once
+  assert(val > 0);                  // also to guard against overflow
   settings.heap_size = val;
 }
 

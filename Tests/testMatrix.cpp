@@ -621,21 +621,23 @@ bool profile_block_mult(int dimension) {
   std::string label1 = "Mult 1 block";
   m.num_blocks(1);
 
-  Timer timer1;
-  m.compile();
-  profile_output.add_compile(label1, timer1.end(false), dimension);
+  if (false) {
+    Timer timer1;
+    m.compile();
+    profile_output.add_compile(label1, timer1.end(false), dimension);
 
-  if (!m.has_errors()) {
-    compiled += 1;
+    if (!m.has_errors()) {
+      compiled += 1;
 
-    profile_output.run(dimension, label1, [&m] (int numQPUs) {
-      m.setNumQPUs(numQPUs);
-      m.mult();
-    });
+      profile_output.run(dimension, label1, [&m] (int numQPUs) {
+        m.setNumQPUs(numQPUs);
+        m.mult();
+      });
 
-    // Sanity check
-    INFO("Compare 1 block result with expected");
-    compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
+      // Sanity check
+      INFO("Compare 1 block result with expected");
+      compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
+    }
   }
 
   std::string label2 = "Mult 2 blocks";
@@ -734,16 +736,19 @@ TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
     bool do_profiling = true;
     if (!do_profiling) return; 
 
+    //LibSettings::heap_size(64 << 20);  // works! :-)
+
     // Profiling: try all sizes until compilation fails
     std::cout << "DFT compare" << ProfileOutput::header();
 
     int Step = 2;
-    int N = 2;
+    int N = 2; // 992 >> 4;
     bool can_continue = true;
     while (can_continue) {
       can_continue = profile_block_mult(16*N);
       N += Step;
       if (N > 20) break;
+      //if (N > (992 >> 4)) break;
     }
   }
 

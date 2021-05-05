@@ -2,11 +2,11 @@
 
 ## General
 
-- [ ] Make heap memory size configurable (ideally cmdline option)
 - [ ] Initializing a Float/Complex(/Int?) variable without value may not add variable to target code.
       This is a consequence of fixing liveness allocation for dst vars in  conditional instructions.
       Examine, report, prevent, fix.
 - [ ] Check in interpreter/emulator for writing out of shared array bounds
+- [x] Make heap memory size configurable (ideally cmdline option)
 - [x] Get `Pi 1` running again; fails in `qpu_enable()`
 - [x] Automate loading of new versions external libraries
 - [x] Fix indentation tabs/spaces
