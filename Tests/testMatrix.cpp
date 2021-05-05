@@ -21,62 +21,6 @@ using namespace V3DLib;
 // Support routines
 // ============================================================================
 
-void fill_random(float *arr, int size) {
-  for (int n = 0; n < size; n++) {
-    arr[n] = random_float();
-  }
-}
-
-
-void fill_random(std::vector<float> &arr) {
-  assert(!arr.empty());
-  fill_random(arr.data(), (int) arr.size());
-}
-
-
-/**
- * Pre: dst properly initialized, matches with src
- */
-void copy_array(Float::Array2D &dst, float const *src) {
-  for (int r = 0; r < dst.rows(); r++) {
-    for (int c = 0; c < dst.columns(); c++) {
-      dst[r][c] = src[r*dst.columns() + c];
-    }
-  }
-}
-
-void copy_array(Float::Array2D &dst, std::vector<float> const &src) {
-  assert(!src.empty());
-  assert((int) src.size() == dst.rows()*dst.columns());
-  copy_array(dst, src.data());
-}
-
-
-void copy_transposed(float *dst, float const *src, int rows, int columns) {
-  for (int r = 0; r < rows; r++) {
-    for (int c = 0; c < columns; c++) {
-      dst[c*rows + r] = src[r*columns + c];
-    }
-  }
-}
-
-
-void copy_transposed(std::vector<float> &dst, std::vector<float> const &src, int rows, int columns) {
-  copy_transposed(dst.data(), src.data(), rows, columns);
-}
-
-
-void compare_array_scalar(Float::Array2D &arr, float scalar) {
-  for (int r = 0; r < arr.rows(); ++r) {
-    for (int c = 0; c < arr.columns(); ++c) {
-      INFO("r: " << r << ", c: " << c);
-      INFO("result: " << arr[r][c] << ", expected: " << scalar);
-      REQUIRE(arr[r][c] == scalar);
-    }
-  }
-}
-
-
 void prepare_random(Float::Array2D &a, std::vector<float> &expected, int dimension) {
   int const SIZE = dimension*dimension;
   std::vector<float> a_scalar(SIZE);
@@ -684,7 +628,7 @@ bool profile_block_mult(int dimension) {
   if (!m.has_errors()) {
     compiled += 1;
 
-    profile_output.run(m.kernel(), dimension, label1, [&m] (int numQPUs) {
+    profile_output.run(dimension, label1, [&m] (int numQPUs) {
       m.setNumQPUs(numQPUs);
       m.mult();
     });
@@ -704,7 +648,7 @@ bool profile_block_mult(int dimension) {
   if (!m.has_errors()) {
     compiled += 2;
 
-    profile_output.run(m.kernel(), dimension, label2, [&m] (int numQPUs) {
+    profile_output.run(dimension, label2, [&m] (int numQPUs) {
       m.setNumQPUs(numQPUs);
       m.mult();
     });

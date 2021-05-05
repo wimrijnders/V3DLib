@@ -39,35 +39,11 @@ public:
   void show_compile(bool val) { ShowCompile = val; }
   void add_compile(std::string const &label, std::string const &timer_val, int Dim);
   void add_compile(std::string const &label, Timer &timer, int Dim);
+  void run(int Dim, std::string const &label, std::function<void(int numQPUs)> f);
   std::string dump();
 
   static std::string header();
 
-  template<typename KernelType>
-  void run(KernelType &k, int Dim, std::string const &label, std::function<void(int numQPUs)> f) {
-    for (auto num : num_qpus()) {
-      Timer timer;
-
-      for (int i = 0; i < num_iterations; i++) {
-        f(num);
-      }
-      add_call(label, timer, Dim, num);
-    }
-  };
-
-
-  template<typename KernelType>
-  void run(KernelType &k, int Dim, std::string const &label) {
-    for (auto num : num_qpus()) {
-      k.setNumQPUs(num);
-      Timer timer;
-
-      for (int i = 0; i < num_iterations; i++) {
-        k.call();
-      }
-      add_call(label, timer, Dim, num);
-    }
-  }
 
 private:
   std::vector<int> num_qpus() const;

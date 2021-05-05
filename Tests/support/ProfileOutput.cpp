@@ -88,3 +88,15 @@ std::string ProfileOutput::dump() {
 
   return ret;
 }
+
+
+void ProfileOutput::run(int Dim, std::string const &label, std::function<void(int numQPUs)> f) {
+  for (auto num : num_qpus()) {
+    Timer timer;
+
+    for (int i = 0; i < num_iterations; i++) {
+      f(num);
+    }
+    add_call(label, timer, Dim, num);
+  }
+}
