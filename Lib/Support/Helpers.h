@@ -4,6 +4,8 @@
 
 namespace V3DLib {
 
+float random_float();
+
 std::string indentBy(int indent);
 
 }  // namespace V3DLib

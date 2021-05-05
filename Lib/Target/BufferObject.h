@@ -11,17 +11,16 @@ class BufferObject : public V3DLib::BufferObject {
 public:
   ~BufferObject() { dealloc(); }
 
-  void alloc_mem(uint32_t size_in_bytes) override;
-
   uint32_t alloc_array(uint32_t size_in_bytes, uint8_t *&array_start_address);
 
   const BufferType buftype = HeapBuffer;
+  static BufferObject &getHeap();
 
 private:
+  void alloc_mem(uint32_t size_in_bytes) override;
   void dealloc() { delete [] arm_base; arm_base = nullptr; }
 };
 
-BufferObject &getHeap();
 
 }  // namespace emu
 }  // namespace V3DLib

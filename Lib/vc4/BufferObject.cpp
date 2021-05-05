@@ -26,8 +26,6 @@ BufferObject heap;
  * Allocate GPU memory and map it into ARM address space
  */
 void BufferObject::alloc_mem(uint32_t size_in_bytes) {
-  assert(size_in_bytes > 0);
-  assertq(size() == 0, "vc4 alloc_mem(): Buffer object already allocated");
   assert(handle == 0);
 
   int mb = getMailbox();  // Mailbox, for talking to vc4
@@ -35,7 +33,7 @@ void BufferObject::alloc_mem(uint32_t size_in_bytes) {
   // Allocate memory
   handle = mem_alloc(mb, size_in_bytes*4, 4096, GPU_MEM_FLG);
   if (!handle) {
-    fatal("Failed to allocate GPU memory.");
+    fatal("Failed to allocate vc4 shared  memory.");
   }
 
   uint32_t phyaddr = mem_lock(mb, handle);
@@ -78,11 +76,11 @@ void BufferObject::dealloc() {
 }
 
 
-BufferObject &getHeap() {
+BufferObject &BufferObject::getHeap() {
   if (Platform::has_vc4()) {
     if (heap.size() == 0) {
       //debug("Allocating main heap vc4\n");
-      heap.alloc_mem(LibSettings::heap_size());
+      heap.alloc(LibSettings::heap_size());
     }
   }
 

@@ -10,6 +10,13 @@ int const INITIAL_FREE_RANGE_SIZE = 32;
 
 namespace V3DLib {
 
+void HeapManager::alloc(uint32_t size_in_bytes) {
+  assert(size_in_bytes > 0);
+  assertq(size() == 0, "HeapManager::alloc(): Buffer object already allocated");
+
+  alloc_mem(size_in_bytes);
+}
+
 /**
  * Explicit virtual here to avoid compile errors
  * It should actually be a pure virtual.

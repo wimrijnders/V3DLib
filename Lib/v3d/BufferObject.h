@@ -15,29 +15,26 @@ namespace v3d {
  */
 class BufferObject : public V3DLib::BufferObject {
 public:
-  //BufferObject(uint32_t size) { alloc_mem(size); }
   BufferObject() {} 
   ~BufferObject(); 
 
   uint32_t getHandle() const override { return  (uint32_t) handle; }
-
-  void alloc_mem(uint32_t size_in_bytes) override;
 
   // Debug methods
   void fill(uint32_t value);
   void find_value(uint32_t in_val);
   void detect_used_blocks();
 
+  static BufferObject &getHeap();
+
 private:
   uint32_t handle  = 0;
 
+  void alloc_mem(uint32_t size_in_bytes) override;
   void dealloc_mem();
   uint32_t &operator[] (int i);
   uint32_t size_word() const { return (uint32_t) (size()/sizeof(uint32_t)); }  // Returns size in words
 };
-
-
-BufferObject &getMainHeap();
 
 }  // namespace v3d
 }  // namespace V3DLib

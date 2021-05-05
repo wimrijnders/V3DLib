@@ -414,7 +414,7 @@ void run_rotate_alias_kernel(ByteCode const &bytecode) {
   uint32_t data_area_size = (10 * 1024) * 4;                 // taken amply
 
   BufferObject heap;
-  heap.alloc_mem(code_area_size + data_area_size);
+  heap.alloc(code_area_size + data_area_size);
   Code code((uint32_t) bytecode.size(), heap);
   code.copyFrom(bytecode);
 

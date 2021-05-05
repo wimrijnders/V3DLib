@@ -21,8 +21,6 @@ std::unique_ptr<BufferObject> emuHeap;
  * Allocate memory for buffer object if not already done so
  */
 void BufferObject::alloc_mem(uint32_t size_in_bytes) {
-  assert(size_in_bytes > 0);
-  assertq(size() == 0, "emu alloc_mem(): Buffer object already allocated");
   assert(arm_base  == nullptr);
 
   arm_base = new uint8_t [size_in_bytes];
@@ -36,11 +34,11 @@ uint32_t BufferObject::alloc_array(uint32_t size_in_bytes, uint8_t *&array_start
 }
 
 
-BufferObject &getHeap() {
+BufferObject &BufferObject::getHeap() {
   if (!emuHeap) {
     //debug("Allocating emu heap v3d\n");
     emuHeap.reset(new BufferObject());
-    emuHeap->alloc_mem(LibSettings::heap_size());
+    emuHeap->alloc(LibSettings::heap_size());
   }
 
   return *emuHeap;

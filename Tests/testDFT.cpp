@@ -10,6 +10,8 @@
 #include "Kernels/Matrix.h"
 #include "LibSettings.h"
 #include "support/ProfileOutput.h"
+#include "Support/Helpers.h"  // random_float()
+
 
 using namespace V3DLib;
 
@@ -169,7 +171,10 @@ bool compare_dfts(int Dim, bool do_profiling) {
     if (!k.has_errors()) {
       compiled += 1;
       k.load(&result_mult, &input, &dft_matrix);
-      profile_output.run(k, Dim, label);
+      profile_output.run(Dim, label, [&k] (int numQPUs) {
+        k.setNumQPUs(numQPUs);
+        k.call();
+      });
     }
   }
 
@@ -183,7 +188,10 @@ bool compare_dfts(int Dim, bool do_profiling) {
     if (!k.has_errors()) {
       compiled += 2;
       k.load(&result_complex, &input);
-      profile_output.run(k, Dim, label);
+      profile_output.run(Dim, label, [&k] (int numQPUs) {
+        k.setNumQPUs(numQPUs);
+        k.call();
+      });
       output_dft(input, result_complex, "dft_inline_complex");
     }
   }
@@ -200,7 +208,10 @@ bool compare_dfts(int Dim, bool do_profiling) {
     if (!k.has_errors()) {
       compiled += 4;
       k.load(&result_float, &input_float);
-      profile_output.run(k, Dim, label);
+      profile_output.run(Dim, label, [&k] (int numQPUs) {
+        k.setNumQPUs(numQPUs);
+        k.call();
+      });
       output_dft(input, result_float, "dft_inline_float");
     }
   }

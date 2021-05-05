@@ -9,7 +9,7 @@ TEST_CASE("Test Buffer Objects [bo]") {
   using SharedArrays = std::vector<std::unique_ptr<Data>>;
 
   V3DLib::emu::BufferObject heap;  // Using in-memory version to avoid having to use devices
-  heap.alloc_mem(1024*1024);
+  heap.alloc(1024*1024);
 
   auto init_arrays = [&heap] (SharedArrays &arrays, int size) {
     for (int i = 0; i < size; ++i) {

@@ -8,13 +8,6 @@
 // Utility functions
 ////////////////////////////////////////////////////////////////////////////////
 
-/**
- * Return a random float value between -1 and 1
- */ 
-float random_float() {
-  return  (1.0f*(((float) (rand() % 200)) - 100.0f))/100.0f;
-}
-
 
 namespace kernels {
 

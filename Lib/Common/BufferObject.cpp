@@ -60,14 +60,14 @@ bool BufferObject::is_cleared() const {
 BufferObject &getBufferObject() {
 #ifdef QPU_MODE
   if (Platform::use_main_memory()) {
-    return emu::getHeap();
+    return emu::BufferObject::getHeap();
   } else if (Platform::has_vc4()) {
-    return vc4::getHeap();
+    return vc4::BufferObject::getHeap();
   } else {
-    return v3d::getMainHeap();
+    return v3d::BufferObject::getHeap();
   }
 #else
-  return emu::getHeap();
+  return emu::BufferObject::getHeap();
 #endif
 }
 

@@ -192,7 +192,7 @@ TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
     }
 
     BufferObject heap;
-    heap.alloc_mem(1024);
+    heap.alloc(1024);
     Code codeMem((uint32_t) bytecode.size(), heap);
     codeMem.copyFrom(bytecode);
     V3DLib::Float::Array result(16, heap);
@@ -258,7 +258,7 @@ TEST_CASE("Test v3d opcodes [v3d][code][opcodes]") {
     }
 
     BufferObject heap;
-    heap.alloc_mem(1024);
+    heap.alloc(1024);
     Code codeMem((uint32_t) bytecode.size(), heap);
     codeMem.copyFrom(bytecode);
     V3DLib::Int::Array result(16, heap);
@@ -297,7 +297,7 @@ TEST_CASE("Check v3d code is working properly [v3d][code]") {
     REQUIRE(array_length == 8);
 
     BufferObject heap;
-    heap.alloc_mem(1024);
+    heap.alloc(1024);
     //printf("heap phyaddr: %u, size: %u\n", heap.phy_address(), heap.size());
 
     Code codeMem(array_length, heap);

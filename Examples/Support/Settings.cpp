@@ -85,18 +85,24 @@ CmdParameters base_params = {
     ParamType::NONE,
     "Do not show the logging output on standard output"
 #ifdef QPU_MODE
-    }, {
+  }, {
     "Performance Counters",
     "-pc",
     ParamType::NONE,
     "Show the values of the performance counters"
 #endif  // QPU_MODE
-    }, {
+  }, {
     "QPU timeout",
     { "-t=", "-timeout="},
     ParamType::POSITIVE_INTEGER,
     "Time in seconds to wait for a result to come back from the QPUs",
     10
+  }, {
+    "Shared Memory Size",
+    { "-m=", "-mem="},
+    ParamType::POSITIVE_INTEGER,
+    "Size in MB of the shared memory to use",
+    V3DLib::LibSettings::heap_size() >> 20 
   }}
 };
 
@@ -233,6 +239,9 @@ bool Settings::process() {
 
   int qpu_timeout  = p["QPU timeout"]->get_int_value();
   LibSettings::qpu_timeout(qpu_timeout);
+
+  int heap_mem     = p["Shared Memory Size"]->get_int_value();
+  V3DLib::LibSettings::heap_size(heap_mem << 20);
 
   if (m_use_num_qpus) {
     num_qpus    = p["Num QPU's"]->get_int_value();
