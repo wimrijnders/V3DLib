@@ -67,7 +67,7 @@ This should be improved by prefetching, but I haven't figured it out yet for thi
 
 # Further Optimization
 
-While doing this profiling, it struct me that the first block multiplication does not need
+While doing this profiling, it struck me that the first block multiplication does not need
 to retrieve result values for addition, since these are zero anyway.
 Implementing this results in:
 
@@ -77,7 +77,7 @@ For `v3d`, the throughput is overall faster and more stable.
 
 ![vc4 first block mult without reads](./images/vc4_block_first_mult_noreads.png)
 
-For `vc4`, the difference is not too staggering. This would be expected.
+For `vc4`, the difference is not too staggering. This rould be expected, I guess.
 As a very minor point, block mult just slightly beats full mult for dimension <= 544.
 After that, it becomes slower.
 

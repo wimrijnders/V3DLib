@@ -182,7 +182,8 @@ Error(s) on command line:
 
 	  
 ## Consider these
-
+- [ ] Fluid Simulator
+  * [simFluid](https://github.com/mlhonke/simFluid) - C++ Fluid simulator, of interest: `src/sim_water.cpp` 
 - Cellular Automata
  * [ ] **Navier-Stokes**.
       [This document](http://graphics.cs.cmu.edu/nsp/course/15-464/Fall09/papers/StamFluidforGames.pdf)
