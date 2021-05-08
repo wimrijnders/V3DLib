@@ -195,6 +195,12 @@ Complex::Array::ref &Complex::Array::ref::operator=(complex const &rhs) {
   return *this;
 }
 
+Complex::Array::ref &Complex::Array::ref::operator=(ref const &rhs) {
+  m_re_ref = rhs.m_re_ref;
+  m_im_ref = rhs.m_im_ref;
+  return *this;
+}
+
 
 std::string Complex::Array::ref::dump() const {
   auto tmp = complex(m_re_ref, m_im_ref);

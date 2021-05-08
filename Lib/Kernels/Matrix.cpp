@@ -240,6 +240,9 @@ void check_allocate_result_array(Complex::Array2D &result) {
 
 /**
  * Pre: settings initialized
+ *
+ * If result has already been initialized, does a check on dimensions.
+ * Otherwise, properly initialize results.
  */
 void init_result_array(Float::Array2D &result) {
   if (result.allocated()) {
@@ -371,7 +374,6 @@ void square_matrix_mult_scalar(int N, float *dst, float *a, float *b) {
  */
 void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
-  Int STEP = settings.stride()*numQPUs();
 
   a += me()*settings.stride();
 
@@ -405,7 +407,7 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
     End
 
     // TODO make similar changes to other related kernels
-    a += STEP; //DIM*numQPUs();  // Go to next row for current QPU
+    a += settings.stride()*numQPUs();  // Go to next row for current QPU
   End
 }
 
@@ -487,8 +489,6 @@ FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method) {
 
 /**
  * Override with extra safety checks of matrix dimensions
- *
- * The result array should not have been allocated beforehand, done here.
  */
 FuncType *matrix_mult_decorator(
   Float::Array2D &a,

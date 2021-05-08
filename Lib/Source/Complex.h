@@ -121,6 +121,7 @@ public:
       ref(float &re_ref, float &im_ref);
 
       ref &operator=(complex const &rhs);
+      ref &operator=(ref const &rhs);
       bool operator==(complex const &rhs) const;
       bool operator==(ref const &rhs) const;
       complex operator*(ref const &rhs) const;
