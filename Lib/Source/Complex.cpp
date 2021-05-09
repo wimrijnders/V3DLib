@@ -76,6 +76,11 @@ Complex Complex::operator+(Complex rhs) const {
 }
 
 
+Complex Complex::operator-(Complex rhs) const {
+  return Complex(m_re - rhs.m_re, m_im - rhs.m_im);
+}
+
+
 Complex &Complex::operator+=(Complex rhs) {
   m_re += rhs.m_re;
   m_im += rhs.m_im;
@@ -145,9 +150,21 @@ Complex::Ptr::Deref Complex::Ptr::operator*() {
 }
 
 
+Complex::Ptr::Deref Complex::Ptr::operator[](IntExpr index) {
+  return Deref(m_re[index], m_im[index]);
+}
+
+
 Complex::Ptr &Complex::Ptr::operator+=(IntExpr rhs) {
   m_re += rhs;
   m_im += rhs;
+  return *this;
+}
+
+
+Complex::Ptr &Complex::Ptr::operator-=(IntExpr rhs) {
+  m_re -= rhs;
+  m_im -= rhs;
   return *this;
 }
 
@@ -160,12 +177,6 @@ Complex::Ptr::Expr Complex::Ptr::Expr::operator+(IntExpr b)  {
 // TODO: can this be combined with previous?
 Complex::Ptr::Expr Complex::Ptr::operator+(IntExpr b)  {
   return Expr(m_re + b, m_im + b);
-/*
-  Expr ret(*this);
-  ret.m_re = m_re + b;
-  ret.m_im = m_im + b;
-  return ret;
-*/
 }
 
 

@@ -220,6 +220,7 @@ public:
     class Deref {
     public:
       Deref(V3DLib::Expr::Ptr re, V3DLib::Expr::Ptr im);
+      Deref(V3DLib::Deref<Float> re, V3DLib::Deref<Float> im) : m_re(re), m_im(im) {}
 
       Deref &operator=(Complex const &rhs);
 
@@ -243,8 +244,10 @@ public:
     Ptr(Ptr::Expr rhs);
 
     Deref operator*();
+    Deref operator[](IntExpr index);
     Ptr::Expr operator+(IntExpr b);
     Ptr &operator+=(IntExpr rhs);
+    Ptr &operator-=(IntExpr rhs);
     void inc() { m_re.inc(); m_im.inc(); }
 
     Float::Ptr &re() { return  m_re; }
@@ -277,6 +280,7 @@ public:
   Float mag_square() const;
 
   Complex operator+(Complex rhs) const;
+  Complex operator-(Complex rhs) const;
   Complex &operator+=(Complex rhs);
   Complex operator*(Complex rhs) const;
   Complex &operator*=(Complex rhs);
