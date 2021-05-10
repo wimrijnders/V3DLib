@@ -180,4 +180,10 @@ std::string BaseKernel::get_errors() const {
   return ret;
 }
 
+
+int BaseKernel::v3d_kernel_size() const {
+  assert(m_v3d_driver.get() != nullptr);
+  return m_v3d_driver->kernel_size();
+}
+
 }  // namespace V3DLib

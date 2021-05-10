@@ -30,6 +30,7 @@ public:
   KernelDriver(KernelDriver &&a) = default;
 
   void encode() override;
+  int kernel_size() const { return (int) instructions.size(); }
 
 private:
   Params        paramMem;

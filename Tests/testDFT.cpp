@@ -6,11 +6,11 @@
 #include "Source/Complex.h"
 #include "support/support.h"
 #include "support/matrix_support.h"
+#include "support/dft_support.h"
 #include "Kernel.h"
 #include "Kernels/Matrix.h"
 #include "LibSettings.h"
 #include "support/ProfileOutput.h"
-#include "Support/Helpers.h"  // random_float()
 
 
 using namespace V3DLib;
@@ -22,19 +22,8 @@ int const DimTest = 128;
 void create_test_wavelet(Complex::Array2D &input, int const Dim) {
   REQUIRE(input.columns() == Dim);
 
-  float offset = 0.1f;
-
-  float freq_filter =  0.5f / ((float) Dim);
-  float freq1       =  1.0f / ((float) Dim);
-  float freq2       = 45.0f / ((float) Dim);
-
   for (int c = 0; c < Dim; ++c) {
-    float filter = functions::sin(freq_filter*((float) c), true);
-    float noise = 0.3f *random_float();
-    float val1  = 1.0f *functions::sin(freq1*((float) c), true);
-    float val2  = 0.75f*functions::sin(freq2*((float) c), true);
-
-    input[0][c] = complex(offset + noise + (filter*filter)*(val1 + val2), 0.0f);
+    input[0][c] = complex(wavelet_function(c, Dim), 0.0f);
   }
 }
 

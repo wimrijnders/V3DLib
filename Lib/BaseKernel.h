@@ -78,6 +78,7 @@ public:
 
   std::string compile_info() const;
   void dump_compile_data(bool output_for_vc4, char const *filename);
+  int v3d_kernel_size() const;
   bool has_errors() const;
   std::string get_errors() const;
 

@@ -4,6 +4,10 @@
 #include <cmath>
 #include <V3DLib.h>
 #include "Support/Platform.h"
+#include "Support/Timer.h"
+#include "Support/pgm.h"
+#include "support/dft_support.h"
+#include "Kernels/Matrix.h"
 
 using namespace V3DLib;
 
@@ -172,7 +176,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
     std::vector<int> k_m2_index;
 
     for (int j = 0; j < m2; j++) {
-      create_dft_offsets(k_index, k_m2_index, j, n, m, m2, true);
+      create_dft_offsets(k_index, k_m2_index, j, n, m, m2); //, true);
       assert(k_index.size() == k_m2_index.size());
 
       for (int offset = 0; offset < (int) k_index.size(); offset += 16) {
@@ -216,7 +220,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
 }  // anon namespace
 
 
-TEST_CASE("FFT [fft]") {
+TEST_CASE("FFT test with scalar [fft]") {
   cx a[] = { cx(0,0), cx(1,1), cx(3,3), cx(4,4), cx(4, 4), cx(3, 3), cx(1,1), cx(0,0) };
 
   //
@@ -244,10 +248,12 @@ TEST_CASE("FFT [fft]") {
       REQUIRE(abs(b[i] - expected[i]) < precision);
     }
 
+/*
     std::cout << "Scalar output: ";
     for (int i=0; i < 8; ++i) 
       std::cout << b[i] << ", ";
     std::cout << std::endl;
+*/
   }
 
 
@@ -283,12 +289,92 @@ TEST_CASE("FFT [fft]") {
     //k.pretty(true, nullptr, false);
     k.load(&result, &devnull);
     k.call();
-    std::cout << "Kernel output: " << result.dump() << std::endl;
+    //std::cout << "Kernel output: " << result.dump() << std::endl;
 
     float precision = 5.0e-5f;
     for (int i = 0; i < NUM_POINTS; ++i) {
       INFO("diff " << i << ": " << abs(scalar_result[i] - result[i].to_complex()));
       REQUIRE(abs(scalar_result[i] - result[i].to_complex()) < precision);
+    }
+  }
+}
+
+
+TEST_CASE("FFT test with DFT [fft]") {
+  SUBCASE("Compare FFT and DFT output") {
+    int log2n = 7;
+    int Dim = 1 << log2n;
+
+    int size = Dim;
+    if (size < 16) size = 16;
+
+    Float::Array a(size);
+    for (int c = 0; c < Dim; ++c) {
+      a[c] = wavelet_function(c, Dim);
+    }
+
+    // Run DFT for comparison
+    Complex::Array2D result_float;
+    {
+      Timer timer1("DFT compile time");
+      auto k = compile(kernels::dft_inline_decorator(a, result_float), V3D);
+      timer1.end();
+      std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
+
+      Timer timer2("DFT run time");
+      k.load(&result_float, &a);
+      //k.setNumQPUs(1);
+      k.call();
+      timer2.end();
+
+      //std::cout << "DFT result: " << result_float.dump() << std::endl;
+    }
+
+
+    Complex::Array result(size);
+    result.fill(V3DLib::complex(0.0f, 0.0f));
+
+    Complex::Array devnull(16);
+
+    // Perform bit reversal outside of kernel
+    for (int i = 0; i < Dim; ++i) {
+      result[bitReverse(i, log2n)] = complex(a[i], 0.0f);
+    }
+
+    fft_context.log2n = log2n;
+
+    Timer timer1("FFT compile time");
+    auto k = compile(fft_kernel, V3D);
+    timer1.end();
+    std::cout << "FFT kernel size: " << k.v3d_kernel_size() << std::endl;
+
+    Timer timer2("FFT run time");
+    k.load(&result, &devnull);
+    k.call();
+    timer2.end();
+
+    //std::cout << "FFT result: " << result.dump() << std::endl;
+
+    {
+      float real_result[Dim];
+      for (int c = 0; c < Dim; ++c) {
+        real_result[c] = result[c].to_complex().magnitude();
+      }
+
+
+      char const *file_prefix = "fft";
+      std::string filename = "obj/test/";
+      filename << file_prefix << "_result.pgm";
+
+      PGM pgm(Dim, 100);
+      pgm.plot(real_result, Dim)
+         .save(filename.c_str());
+    }
+
+    float precision = 5.0e-5f;
+    for (int i = 0; i < Dim; ++i) {
+      INFO("diff " << i << ": " << (result_float[0][i] - result[i].to_complex()).magnitude());
+      REQUIRE((result_float[0][i] - result[i].to_complex()).magnitude() < precision);
     }
   }
 }

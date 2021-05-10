@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sat 08 May 2021 07:46:41 AM CEST
+# Generated on: Mon 10 May 2021 06:25:30 AM CEST
 #
 ###############################################################################
 
@@ -119,6 +119,7 @@ TESTS_FILES := \
   Tests/support/matrix_support.o  \
   Tests/support/disasm_kernel.o  \
   Tests/support/support.o  \
+  Tests/support/fft_support.o  \
   Tests/support/rotate_kernel.o  \
   Tests/support/ProfileOutput.o  \
   Tests/testFFT.o  \
