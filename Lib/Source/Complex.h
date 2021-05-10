@@ -125,6 +125,7 @@ public:
       bool operator==(complex const &rhs) const;
       bool operator==(ref const &rhs) const;
       complex operator*(ref const &rhs) const;
+      complex to_complex() const;
 
       std::string dump() const;
 

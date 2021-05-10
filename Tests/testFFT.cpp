@@ -13,26 +13,78 @@ namespace {
 // Support routines 
 ///////////////////////////////////////////////////////////////////////////////
 
+typedef std::complex<double> cx;
+
+cx operator-(cx const &a, complex const &b) {
+  return cx(a.real() - b.re(), a.imag() - b.im());
+}
+
 /**
  * Load values into a 16-register
  */
-void load_16vec(std::vector<int> &src, Int &dst, int unused_index = 15) {
+void load_16vec(std::vector<int> const &src, Int &dst, int offset = 0, int unused_index = 16) {
+  assert(offset < (int) src.size());
+
   dst = unused_index;
 
-  for (int n = 0; n < (int) src.size(); ++n) {
+  int size = (int) src.size() - offset;
+  if (size > 16) size = 16;
+
+  for (int n = 0; n < size; ++n) {
     Where (index() == n)
-      dst = src[n];
+      dst = src[n + offset];
     End
   }
 }
 
+
+template<typename t, typename Ptr>
+void load_16ptr(std::vector<t> const &src_vec, Ptr &ptr, Ptr &devnull, int offset = 0) {
+  int unused = -1;
+  Int s_index = 0;
+  load_16vec(src_vec, s_index, offset, unused);
+
+  ptr += s_index;
+  Where (s_index == unused)
+    ptr = devnull;
+  End
+}
+
+
+void create_dft_offsets(
+  std::vector<int> &k_index,
+  std::vector<int> &k_m2_index,
+  int j, int n, int m, int m2,
+  bool debug_output = false) {
+  k_index.clear();
+  k_m2_index.clear();
+
+  for (int k = j; k < n; k += m) {
+    k_index << k;
+    k_m2_index << (k + m2);
+  }
+
+  // Debug output
+  if (debug_output) {
+    std::cout << "k: ";
+    for (int n = 0; n < (int) k_index.size(); ++n) {
+      std::cout << k_index[n] << ", ";
+    }
+    std::cout << std::endl;
+
+    std::cout << "k + m2: ";
+    for (int n = 0; n < (int) k_m2_index.size(); ++n) {
+      std::cout << k_m2_index[n] << ", ";
+    }
+    std::cout << std::endl;
+  }
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // FFT 
 ///////////////////////////////////////////////////////////////////////////////
 
 const double PI = 3.1415926536;
-typedef std::complex<double> cx;
 
 unsigned int bitReverse(unsigned int x, int log2n) {
   int n = 0;
@@ -59,60 +111,94 @@ void fft(cx *a, cx *b, int log2n) {
     cx w(1, 0);
     cx wm(cos(-PI/m2), sin(-PI / m2));
 
-
     std::vector<int> k_index;
     std::vector<int> k_m2_index;
 
     for (int j = 0; j < m2; ++j) {
-      for (int k = j; k < n; k += m) {
-        k_index << k;
-        k_m2_index << (k + m2);
+/*
+      create_dft_offsets(k_index, k_m2_index, j, n, m, m2);
+      REQUIRE(k_index.size() == k_m2_index.size());
+
+      for (int i = 0; i < (int) k_index.size(); i++) {
+        cx t = w * b[k_m2_index[i]];
+        cx u = b[k_index[i]];
+
+        b[k_index[i]] = u + t;
+        b[k_m2_index[i]] = u - t;
       }
-    }
+*/
+    // Original:
 
-    std::cout << "s " << s << ", k: ";
-    for (int n = 0; n < (int) k_index.size(); ++n) {
-      std::cout << k_index[n] << ", ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "s " << s << ", k + m2: ";
-    for (int n = 0; n < (int) k_m2_index.size(); ++n) {
-      std::cout << k_m2_index[n] << ", ";
-    }
-    std::cout << std::endl;
-
-
-    for (int j = 0; j < m2; ++j) {
       for (int k = j; k < n; k += m) {
         cx t = w * b[k + m2];
         cx u = b[k];
         b[k] = u + t;
         b[k + m2] = u - t;
       }
+
       w *= wm;
     }
   }
 }
 
 
-//
-// Kernel derived from scalar
-//
-// Result is returned in b
-//
-void fft_kernel(Complex::Ptr b, Int log2n) {
+struct {
+  int log2n;
+} fft_context;
+
+/**
+ * Kernel derived from scalar
+ *
+ * The result is returned in b.
+ *
+ * This kernel works with `emu()` and on `v3d` with `call()`, *not* with `interpret()` or on `vc4`.
+ * So be it. Life sucks sometimes.
+ */
+void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
   b -= index();
 
-  Int n = 1 << log2n;
+  int n = 1 << fft_context.log2n;
 
-  For (Int s = 1, s <= log2n, s++) 
-    Int m = 1 << s;
-    Int m2 = m >> 1;
+  for (int s = 1; s <= fft_context.log2n; s++) {
+    int m = 1 << s;
+    int m2 = m >> 1;
     Complex w(1, 0);
-    Complex wm(cos(Float(-1.0f)/(toFloat(m2)*2)), sin(Float(-1.0f)/(toFloat(m2)*2)));
 
-    For (Int j = 0, j < m2, j++)
+    //Complex wm(cos(Float(-1.0f)/(toFloat(m2)*2)), sin(Float(-1.0f)/(toFloat(m2)*2)));
+    float phase = -1.0f/((float) (m2*2));
+    Complex wm(V3DLib::cos(phase), V3DLib::sin(phase));  // library sin/cos may be more efficient here
+
+    std::vector<int> k_index;
+    std::vector<int> k_m2_index;
+
+    for (int j = 0; j < m2; j++) {
+      create_dft_offsets(k_index, k_m2_index, j, n, m, m2, true);
+      assert(k_index.size() == k_m2_index.size());
+
+      for (int offset = 0; offset < (int) k_index.size(); offset += 16) {
+        Complex::Ptr b_k    = b;
+        Complex::Ptr b_k_m2 = b;
+        load_16ptr(k_index, b_k, devnull, offset);
+        load_16ptr(k_m2_index, b_k_m2, devnull, offset);
+
+        Complex t = w * (*b_k_m2);
+        Complex u = *b_k;
+
+        *b_k    = u + t;
+        *b_k_m2 = u - t;
+      }
+
+/*
+      for (int i = 0; i < (int) k_index.size(); i++) {
+        Complex t = w * b[k_m2_index[i]];
+        Complex u = b[k_index[i]];
+
+        b[k_index[i]]    = u + t;
+        b[k_m2_index[i]] = u - t;
+      }
+*/
+
+/*
       For (Int k = j, k < n, k += m)
         Complex t = w * b[k + m2];
         Complex u = b[k];
@@ -120,9 +206,10 @@ void fft_kernel(Complex::Ptr b, Int log2n) {
         b[k]      = u + t;
         b[k + m2] = u - t;
       End 
+*/
       w *= wm;
-    End
-  End
+    }
+  }
 }
 
 
@@ -173,9 +260,13 @@ TEST_CASE("FFT [fft]") {
     int const NUM_POINTS = 8;
     int log2n = 3;  // Relates to NUM_POINTS
 
+    cx scalar_result[8];
+    fft(a, scalar_result, log2n);
+
     Complex::Array aa(16);
     aa.fill(V3DLib::complex(0.0f, 0.0f));
-    Complex::Array b(16);
+    Complex::Array result(16);
+    Complex::Array devnull(16);
 
     for (int i=0; i < NUM_POINTS; ++i) {
       aa.re()[i] = (float) a[i].real();
@@ -184,14 +275,21 @@ TEST_CASE("FFT [fft]") {
 
     // Perform bit reversal outside of kernel
     for (int i = 0; i < NUM_POINTS; ++i) {
-      b[bitReverse(i, log2n)] = aa[i];
+      result[bitReverse(i, log2n)] = aa[i];
     }
 
-    auto k = compile(fft_kernel);
+    fft_context.log2n = log2n;
+    auto k = compile(fft_kernel, V3D);
     //k.pretty(true, nullptr, false);
-    k.load(&b, log2n);
+    k.load(&result, &devnull);
     k.call();
-    std::cout << "Kernel output: " << b.dump() << std::endl;
+    std::cout << "Kernel output: " << result.dump() << std::endl;
+
+    float precision = 5.0e-5f;
+    for (int i = 0; i < NUM_POINTS; ++i) {
+      INFO("diff " << i << ": " << abs(scalar_result[i] - result[i].to_complex()));
+      REQUIRE(abs(scalar_result[i] - result[i].to_complex()) < precision);
+    }
   }
 }
 
@@ -207,17 +305,17 @@ void vecload_kernel(Int::Ptr dst) {
 }
 
 
-void vecoffset_kernel(Int::Ptr dst, Int::Ptr src) {
+void vecoffset_kernel(Int::Ptr dst, Int::Ptr src, Int::Ptr devnull) {
   dst -= index();
   src -= index();
 
-  Int s_index = 0;
-  load_16vec(src_vec, s_index);
+  load_16ptr(src_vec, src, devnull);
+  load_16ptr(src_vec, dst, devnull);
 
   Int tmp;
-  tmp = *(src + s_index);
+  tmp = *src;
   tmp++;
-  *(dst + s_index) = tmp;
+  *dst = tmp;
 }
 
 }  // anon namespace
@@ -235,9 +333,9 @@ TEST_CASE("FFT Support [fft]") {
       src_vec = k_index;
       auto k = compile(vecload_kernel);
       k.load(&result);
-      k.interpret();
-      std::cout << "16vec output: " << result.dump() << std::endl;
+      k.call();
 
+      //std::cout << "16vec output: " << result.dump() << std::endl;
       for (int i = 0; i < (int) k_index.size(); ++i) {
         REQUIRE(k_index[i] == result[i]);
       }
@@ -248,9 +346,9 @@ TEST_CASE("FFT Support [fft]") {
       src_vec = k_m2_index;
       auto k = compile(vecload_kernel);
       k.load(&result);
-      k.emu();
-      std::cout << "16vec output: " << result.dump() << std::endl;
+      k.call();
 
+      //std::cout << "16vec output: " << result.dump() << std::endl;
       for (int i = 0; i < (int) k_m2_index.size(); ++i) {
         REQUIRE(k_m2_index[i] == result[i]);
       }
@@ -266,14 +364,22 @@ TEST_CASE("FFT Support [fft]") {
       a[i] = i;
     }
 
+    Int::Array devnull(16);
     Int::Array result(16);
-    result.fill(-1);
+    result.fill(0);
+
+    std::vector<int> expected = { 1, 0, 3, 0, 5, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 0};
 
     src_vec = k_index;
     auto k = compile(vecoffset_kernel);
-    k.load(&result, &a);
+    k.load(&result, &a, &devnull);
     k.call();
 
-    std::cout << "16vec output: " << result.dump() << std::endl;
+    //std::cout << "16vec output: " << result.dump() << std::endl;
+
+    REQUIRE(expected.size() == result.size());
+    for (int i = 0; i < (int) expected.size(); ++i) {
+      REQUIRE(expected[i] == result[i]);
+    }
   }
 }

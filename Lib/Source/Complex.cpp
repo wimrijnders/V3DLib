@@ -234,6 +234,11 @@ complex Complex::Array::ref::operator*(ref const &rhs) const {
 }
 
 
+complex Complex::Array::ref::to_complex() const {
+  return complex(m_re_ref, m_im_ref);
+}
+
+
 Complex::Array::Array(int size) : m_re(size), m_im(size) {}
 
 
