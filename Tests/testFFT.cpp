@@ -29,6 +29,29 @@ cx operator-(cx const &a, complex const &b) {
 void load_16vec(std::vector<int> const &src, Int &dst, int offset = 0, int unused_index = 16) {
   assert(offset < (int) src.size());
 
+  if (src.size() >= 16) {
+    assert(offset + 16 <= (int) src.size());
+    // Find linear sequence, if any
+
+    int step = src[offset + 1] - src[offset];
+    bool verified = true;
+    for (int n = 1; n < 16; ++n) {
+      if (src[offset] + n*step != src[offset + n]) {
+        verified = false;
+        break;
+      }
+    }
+
+    if (verified) {
+      //debug("Verified success");
+      dst = src[offset];
+      dst += index()*step;
+      return;
+    }
+
+    debug("Verified fail");
+  }
+ 
   dst = unused_index;
 
   int size = (int) src.size() - offset;
@@ -49,9 +72,12 @@ void load_16ptr(std::vector<t> const &src_vec, Ptr &ptr, Ptr &devnull, int offse
   load_16vec(src_vec, s_index, offset, unused);
 
   ptr += s_index;
-  Where (s_index == unused)
-    ptr = devnull;
-  End
+
+  if (src_vec.size() < 16) {
+    Where (s_index == unused)
+      ptr = devnull;
+    End
+  }
 }
 
 
@@ -69,14 +95,14 @@ void create_dft_offsets(
   }
 
   // Debug output
-  if (debug_output) {
-    std::cout << "k: ";
+  if (debug_output && k_index.size() < 16) {
+    std::cout << "j: " << j << ", k: ";
     for (int n = 0; n < (int) k_index.size(); ++n) {
       std::cout << k_index[n] << ", ";
     }
     std::cout << std::endl;
 
-    std::cout << "k + m2: ";
+    std::cout << "j: " << j << ", k + m2: ";
     for (int n = 0; n < (int) k_m2_index.size(); ++n) {
       std::cout << k_m2_index[n] << ", ";
     }
@@ -115,24 +141,7 @@ void fft(cx *a, cx *b, int log2n) {
     cx w(1, 0);
     cx wm(cos(-PI/m2), sin(-PI / m2));
 
-    std::vector<int> k_index;
-    std::vector<int> k_m2_index;
-
     for (int j = 0; j < m2; ++j) {
-/*
-      create_dft_offsets(k_index, k_m2_index, j, n, m, m2);
-      REQUIRE(k_index.size() == k_m2_index.size());
-
-      for (int i = 0; i < (int) k_index.size(); i++) {
-        cx t = w * b[k_m2_index[i]];
-        cx u = b[k_index[i]];
-
-        b[k_index[i]] = u + t;
-        b[k_m2_index[i]] = u - t;
-      }
-*/
-    // Original:
-
       for (int k = j; k < n; k += m) {
         cx t = w * b[k + m2];
         cx u = b[k];
@@ -149,6 +158,7 @@ void fft(cx *a, cx *b, int log2n) {
 struct {
   int log2n;
 } fft_context;
+
 
 /**
  * Kernel derived from scalar
@@ -176,7 +186,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
     std::vector<int> k_m2_index;
 
     for (int j = 0; j < m2; j++) {
-      create_dft_offsets(k_index, k_m2_index, j, n, m, m2); //, true);
+      create_dft_offsets(k_index, k_m2_index, j, n, m, m2, true);
       assert(k_index.size() == k_m2_index.size());
 
       for (int offset = 0; offset < (int) k_index.size(); offset += 16) {
@@ -192,25 +202,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
         *b_k_m2 = u - t;
       }
 
-/*
-      for (int i = 0; i < (int) k_index.size(); i++) {
-        Complex t = w * b[k_m2_index[i]];
-        Complex u = b[k_index[i]];
-
-        b[k_index[i]]    = u + t;
-        b[k_m2_index[i]] = u - t;
-      }
-*/
-
-/*
-      For (Int k = j, k < n, k += m)
-        Complex t = w * b[k + m2];
-        Complex u = b[k];
-
-        b[k]      = u + t;
-        b[k + m2] = u - t;
-      End 
-*/
       w *= wm;
     }
   }
@@ -302,7 +293,7 @@ TEST_CASE("FFT test with scalar [fft]") {
 
 TEST_CASE("FFT test with DFT [fft]") {
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 7;
+    int log2n = 6;
     int Dim = 1 << log2n;
 
     int size = Dim;
