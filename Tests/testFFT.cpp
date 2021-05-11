@@ -8,6 +8,7 @@
 #include "Support/pgm.h"
 #include "support/dft_support.h"
 #include "Kernels/Matrix.h"
+//#include "Source/gather.h"
 
 using namespace V3DLib;
 
@@ -350,7 +351,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
     int m2 = m >> 1;
     Complex w(1, 0);
 
-    //Complex wm(cos(Float(-1.0f)/(toFloat(m2)*2)), sin(Float(-1.0f)/(toFloat(m2)*2)));
     float phase = -1.0f/((float) (m2*2));
     Complex wm(V3DLib::cos(phase), V3DLib::sin(phase));  // library sin/cos may be more efficient here
 
@@ -374,8 +374,8 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
         Int k_m2_off  = 0;
         co.init_k(w_off, wm, k_off, k_m2_off);
 
-        Complex::Ptr b_k    = b + k_off;
         Complex::Ptr b_k_m2 = b + k_m2_off;
+        Complex::Ptr b_k    = b + k_off;
         calc_step(b_k, b_k_m2, w_off);
        
         // Extra loop offset for combined rows
@@ -497,6 +497,21 @@ TEST_CASE("FFT test with DFT [fft]") {
     Float::Array a(size);
     for (int c = 0; c < Dim; ++c) {
       a[c] = wavelet_function(c, Dim);
+    }
+
+    // Run scalar FFT for comparison
+    {
+      cx a[Dim];
+      for (int c = 0; c < Dim; ++c) {
+        a[c] = cx(wavelet_function(c, Dim), 0.0f);
+      }
+      cx scalar_result[Dim];
+
+      Timer timer1("scalar FFT run time");
+      fft(a, scalar_result, log2n);
+      timer1.end();
+
+      // Perhaps TODO: compare scalar result with kernel output
     }
 
     // Run DFT for comparison
