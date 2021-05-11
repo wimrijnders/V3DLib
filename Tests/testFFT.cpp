@@ -23,6 +23,43 @@ cx operator-(cx const &a, complex const &b) {
   return cx(a.real() - b.re(), a.imag() - b.im());
 }
 
+
+
+/**
+ * Determine and check the incremental step for the items in the vector
+ *
+ * at most 16 consecutive values are handled, starting from offset
+ *
+ * @return step  incremental step value if found, -1 otherwise
+ */
+int determine_step(std::vector<int> const &src, int offset = 0) {
+  assert(src.size() >= 4);  // Handle other cases when we get to them
+
+  int size = (int) src.size() - offset;
+  if (size > 16) {
+    size = 16;
+  }
+  
+  int step = src[offset + 1] - src[offset];
+
+  bool verified = true;
+  for (int n = 1; n < size; ++n) {
+    if (src[offset] + n*step != src[offset + n]) {
+      verified = false;
+      break;
+    }
+  }
+
+  if (verified) {
+    return step;
+  } else {
+    debug("determine_step() fail");
+    return -1;
+  }
+}
+
+
+
 /**
  * Load values into a 16-register
  */
@@ -32,24 +69,14 @@ void load_16vec(std::vector<int> const &src, Int &dst, int offset = 0, int unuse
   if (src.size() >= 16) {
     assert(offset + 16 <= (int) src.size());
     // Find linear sequence, if any
+    int step =  determine_step(src, offset);
 
-    int step = src[offset + 1] - src[offset];
-    bool verified = true;
-    for (int n = 1; n < 16; ++n) {
-      if (src[offset] + n*step != src[offset + n]) {
-        verified = false;
-        break;
-      }
-    }
-
-    if (verified) {
-      //debug("Verified success");
+    if (step != -1) {
       dst = src[offset];
       dst += index()*step;
       return;
     }
 
-    debug("Verified fail");
   }
  
   dst = unused_index;
@@ -84,8 +111,7 @@ void load_16ptr(std::vector<t> const &src_vec, Ptr &ptr, Ptr &devnull, int offse
 void create_dft_offsets(
   std::vector<int> &k_index,
   std::vector<int> &k_m2_index,
-  int j, int n, int m, int m2,
-  bool debug_output = false) {
+  int j, int n, int m, int m2) {
   k_index.clear();
   k_m2_index.clear();
 
@@ -94,20 +120,6 @@ void create_dft_offsets(
     k_m2_index << (k + m2);
   }
 
-  // Debug output
-  if (debug_output && k_index.size() < 16) {
-    std::cout << "j: " << j << ", k: ";
-    for (int n = 0; n < (int) k_index.size(); ++n) {
-      std::cout << k_index[n] << ", ";
-    }
-    std::cout << std::endl;
-
-    std::cout << "j: " << j << ", k + m2: ";
-    for (int n = 0; n < (int) k_m2_index.size(); ++n) {
-      std::cout << k_m2_index[n] << ", ";
-    }
-    std::cout << std::endl;
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -160,6 +172,159 @@ struct {
 } fft_context;
 
 
+struct OffsetItem {
+  int s;
+  std::vector<int> k_index;
+  std::vector<int> k_m2_index;
+
+  std::string dump() {
+    std::string ret;
+
+    ret << "s: " << s << "\n     k: ";
+    for (int n = 0; n < (int) k_index.size(); ++n) {
+      ret << k_index[n] << ", ";
+    }
+
+    ret << "\n  k+m2: ";
+
+    for (int n = 0; n < (int) k_m2_index.size(); ++n) {
+      ret << k_m2_index[n] << ", ";
+    }
+
+    return ret;
+  }
+};
+
+using Offsets = std::vector<OffsetItem>;
+
+
+/**
+ * Precalculate the offsets to use for FFT
+ */
+Offsets prepare_offsets(int s, int m, int m2) {
+  Offsets ret;
+
+  int n = 1 << fft_context.log2n;
+
+  for (int j = 0; j < m2; j++) {
+    OffsetItem item;
+    item.s = s;
+
+    create_dft_offsets(item.k_index, item.k_m2_index, j, n, m, m2);
+    assert(item.k_index.size() == item.k_m2_index.size());
+
+    ret << item;
+  }
+
+  return ret;
+}
+
+
+/**
+ * Interim construct to combine consecutive offset rows
+ */
+struct CombinedOffsets {
+  int k_count = -1;
+  int step    = -1;
+  std::vector<std::vector<int> *> k_vec;
+  std::vector<std::vector<int> *> k_m2_vec;
+
+  CombinedOffsets(Offsets &offsets, int j, int in_k_count) : k_count(in_k_count) {
+    if (j + k_count > (int) offsets.size()) {
+      std::string msg = "CombinedOffsets() size check failed: ";
+      msg << "j = " << j << ", k_count: " << k_count << ", size: " << offsets.size();
+      assertq(false, msg);
+    }
+
+    for (int k = 1; k < k_count; k++) {
+      int cur_size = 16/k_count;
+      assert(offsets[j].s == offsets[j + k].s);
+      assert((int) offsets[j + k].k_index.size() == cur_size);
+    }
+
+    for (int k = 0; k < k_count; k++) {
+      k_vec << &offsets[j + k].k_index;
+    }
+
+    for (int k = 0; k < k_count; k++) {
+      k_m2_vec << &offsets[j+k].k_m2_index;
+    }
+
+    step = determine_step(*k_vec[0]);
+    assert(step != -1);
+
+    for (int k = 1; k < k_count; k++) {
+      assert(step == determine_step(*k_vec[k]));
+      assert(step == determine_step(*k_m2_vec[k]));
+    }
+/*
+    {
+      std::string msg;
+      msg << "step for j = " << j << ": " << step;
+      debug(msg);
+    }
+*/
+
+  }
+
+
+  /**
+   * Construct mult factor and reg offsets to use
+   */
+  void init_k(Complex &w_off, Complex &wm, Int &k_off, Int &k_m2_off) {
+    k_off    = (*k_vec[0])[0];
+    k_m2_off = (*k_m2_vec[0])[0];
+    k_off += index()*step;
+    k_m2_off += index()*step;
+
+    if (k_count == 2) {
+      Int offset = index() - 8;
+      Where (offset >= 0)
+        w_off *= wm;
+
+        k_off = (*k_vec[1])[0];
+        k_off += offset*step;
+        k_m2_off = (*k_m2_vec[1])[0];
+        k_m2_off += offset*step;
+      End
+    } else if (k_count == 4) {
+      Int offset = index() - 4;
+
+      Where (offset >= 0)
+        w_off *= wm;
+
+        k_off = (*k_vec[1])[0];
+        k_off += offset*step;
+        k_m2_off = (*k_m2_vec[1])[0];
+        k_m2_off += offset*step;
+      End
+
+      offset = index() - 8;
+      Where (offset >= 0)
+        w_off *= wm;
+
+        k_off = (*k_vec[2])[0];
+        k_off += offset*step;
+        k_m2_off = (*k_m2_vec[2])[0];
+        k_m2_off += offset*step;
+      End
+
+      offset = index() - 12;
+      Where (offset >= 0)
+        w_off *= wm;
+
+        k_off = (*k_vec[3])[0];
+        k_off += offset*step;
+        k_m2_off = (*k_m2_vec[3])[0];
+        k_m2_off += offset*step;
+      End
+    } else {
+      assert(false);  // TODO
+    }
+  }
+};
+
+
 /**
  * Kernel derived from scalar
  *
@@ -171,7 +336,14 @@ struct {
 void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
   b -= index();
 
-  int n = 1 << fft_context.log2n;
+  auto calc_step = [] (Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex &w) {
+    Complex t = w * (*b_k_m2);
+    Complex u = *b_k;
+
+    *b_k    = u + t;
+    *b_k_m2 = u - t;
+  };
+
 
   for (int s = 1; s <= fft_context.log2n; s++) {
     int m = 1 << s;
@@ -182,24 +354,47 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
     float phase = -1.0f/((float) (m2*2));
     Complex wm(V3DLib::cos(phase), V3DLib::sin(phase));  // library sin/cos may be more efficient here
 
-    std::vector<int> k_index;
-    std::vector<int> k_m2_index;
+    auto offsets = prepare_offsets(s, m, m2);
 
-    for (int j = 0; j < m2; j++) {
-      create_dft_offsets(k_index, k_m2_index, j, n, m, m2, true);
-      assert(k_index.size() == k_m2_index.size());
+    for (int j = 0; j < (int) offsets.size(); j++) {
+      auto &item = offsets[j];
 
-      for (int offset = 0; offset < (int) k_index.size(); offset += 16) {
-        Complex::Ptr b_k    = b;
-        Complex::Ptr b_k_m2 = b;
-        load_16ptr(k_index, b_k, devnull, offset);
-        load_16ptr(k_m2_index, b_k_m2, devnull, offset);
+      if (item.k_index.size() < 4) {
+        std::cout << "j: " << j << ", item:" << item.dump();
+        std::cout << std::endl;
+      }
+      
+      int cur_size = (int) item.k_index.size();
 
-        Complex t = w * (*b_k_m2);
-        Complex u = *b_k;
+      if ((j + cur_size <= (int) offsets.size()) && (cur_size == 8 || cur_size == 4)) {
+        CombinedOffsets co(offsets, j, 16/cur_size);
 
-        *b_k    = u + t;
-        *b_k_m2 = u - t;
+        Complex w_off = w;
+        Int k_off     = 0;
+        Int k_m2_off  = 0;
+        co.init_k(w_off, wm, k_off, k_m2_off);
+
+        Complex::Ptr b_k    = b + k_off;
+        Complex::Ptr b_k_m2 = b + k_m2_off;
+        calc_step(b_k, b_k_m2, w_off);
+       
+        // Extra loop offset for combined rows
+        for (int k = 1; k < co.k_count; k++) {
+          w *= wm; 
+          j++;
+        }
+      } else {
+        auto &k_index    = offsets[j].k_index;
+        auto &k_m2_index = offsets[j].k_m2_index;
+
+        for (int offset = 0; offset < (int) k_index.size(); offset += 16) {
+          Complex::Ptr b_k    = b;
+          Complex::Ptr b_k_m2 = b;
+          load_16ptr(k_index, b_k, devnull, offset);
+          load_16ptr(k_m2_index, b_k_m2, devnull, offset);
+
+          calc_step(b_k, b_k_m2, w);
+        }
       }
 
       w *= wm;
@@ -364,8 +559,9 @@ TEST_CASE("FFT test with DFT [fft]") {
 
     float precision = 5.0e-5f;
     for (int i = 0; i < Dim; ++i) {
-      INFO("diff " << i << ": " << (result_float[0][i] - result[i].to_complex()).magnitude());
-      REQUIRE((result_float[0][i] - result[i].to_complex()).magnitude() < precision);
+      float diff = (result_float[0][i] - result[i].to_complex()).magnitude();
+      INFO("diff " << i << ": " << diff);
+      REQUIRE(diff < precision);
     }
   }
 }

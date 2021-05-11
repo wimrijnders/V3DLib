@@ -349,8 +349,8 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
       Var newCondVar   = VarGen::fresh();
       AssignCond newCond;
       {
-        Instr::List seq;
         // Compile new boolean expression
+        Instr::List seq;
         newCond = boolExp(&seq, s->where_cond(), newCondVar);
         if (!seq.empty()) seq.front().comment("Start where (always)");
         ret << seq;
@@ -375,12 +375,11 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
     } else {
       // Where-statements nested in other where-statements
 
-      // Compile new boolean expression
       Var newCondVar   = VarGen::fresh();
       AssignCond newCond;
       {
-        Instr::List seq;
         // Compile new boolean expression
+        Instr::List seq;
         newCond = boolExp(&seq, s->where_cond(), newCondVar);
         if (!seq.empty()) seq.front().comment("Start where (nested)");
         ret << seq;
