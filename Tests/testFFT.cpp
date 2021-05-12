@@ -213,39 +213,35 @@ Offsets prepare_offsets(int s, int m) {
  * Interim construct to combine consecutive offset rows
  */
 struct CombinedOffsets {
-  int step    = -1;
   std::vector<std::vector<int> *> k_vec;
   std::vector<std::vector<int> *> k_m2_vec;
 
-  int k_count() const { return (m_k_count < 1)?1:m_k_count; }
-
-private:
-  int m_k_count = -1;
-
-public:
 
   CombinedOffsets(Offsets &offsets, int j) {
     assert(!offsets.empty());
     assert(0 <= j && j < (int) offsets.size());
-    int cur_size = (int) offsets[j].k_index.size();
-    m_k_count = 16/cur_size;
+    m_lines   = (int) offsets.size();
+    m_size    = (int) offsets[j].k_index.size();
+    m_k_count = 16/m_size;
 
-    if (j + m_k_count > (int) offsets.size()) {
+    if (!valid_index(j)) {
+/*
       std::string msg = "CombinedOffsets() size check failed: ";
       msg << "j = " << j << ", k_count: " << m_k_count << ", size: " << offsets.size();
       assertq(false, msg);
+*/
+      return;
     }
 
 
     // All handled rows should have same s-index and size
-    for (int k = 1; k < m_k_count; k++) {
-//      int cur_size = 16/m_k_count;
+    for (int k = 1; k < k_count(); k++) {
       assert(offsets[j].s == offsets[j + k].s);
-      assert((int) offsets[j + k].k_index.size() == cur_size);
+      assert((int) offsets[j + k].k_index.size() == m_size);
     }
 
     // Load in vectors to handle
-    if (m_k_count <= 1) {
+    if (k_count() == 1) {
       k_vec    << &offsets[j].k_index;
       k_m2_vec << &offsets[j].k_m2_index;
     } else {
@@ -280,9 +276,17 @@ public:
   }
 
 
-  int size() {
-    assert(!k_vec.empty());
-    return (int) k_vec[0]->size();
+  int k_count() const {
+    assert(m_k_count != -1);
+    return (m_k_count < 1)?1:m_k_count;
+  }
+
+
+  bool valid_index(int j) const { return (j + k_count() <= m_lines); }
+
+  int size() const {
+    assert(m_size != -1);
+    return m_size;
   }
 
 
@@ -343,6 +347,13 @@ public:
       End
     }
   }
+
+
+private:
+  int m_k_count  = -1;
+  int step       = -1;
+  int m_lines    = -1;
+  int m_size     = -1;
 };
 
 
@@ -376,24 +387,20 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
     auto offsets = prepare_offsets(s, m);
 
     for (int j = 0; j < (int) offsets.size(); j++) {
-      auto &item = offsets[j];
 /*
+      auto &item = offsets[j];
       if (item.k_index.size() < 4) {
         std::cout << "j: " << j << ", item:" << item.dump();
         std::cout << std::endl;
       }
 */
-      int cur_size = (int) item.k_index.size();
-      int k_count = 16/cur_size;
-
       int last_k_count  = -1;
       int k_count_hits  = 0;
       int k_count_total = 0;
       Complex w_off;
 
-      if ((j + k_count <= (int) offsets.size())) {
-        CombinedOffsets co(offsets, j);
-
+      CombinedOffsets co(offsets, j);
+      if (co.valid_index(j)) {
         if (last_k_count != co.k_count()) {
           w_off = w;
           co.init_mult_factor(w_off, wm);
@@ -532,7 +539,7 @@ TEST_CASE("FFT test with scalar [fft]") {
 
 TEST_CASE("FFT test with DFT [fft]") {
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 9;
+    int log2n = 6;
     int Dim = 1 << log2n;
 
     int size = Dim;
