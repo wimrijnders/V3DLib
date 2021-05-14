@@ -119,6 +119,7 @@ public:
     class ref {
     public:
       ref(float &re_ref, float &im_ref);
+      ref(float const &re, float const &im);
 
       ref &operator=(complex const &rhs);
       ref &operator=(ref const &rhs);
@@ -130,6 +131,8 @@ public:
       std::string dump() const;
 
     private:
+      float m_re_const = -1.0f;
+      float m_im_const = -1.0f;
       float &m_re_ref;
       float &m_im_ref;
     };
@@ -149,6 +152,7 @@ public:
     Float::Array &im() { return  m_im; }
 
     ref operator[] (int i);
+    ref operator[] (int i) const;  // grumbl
 
   private:
     Float::Array m_re;
@@ -159,6 +163,11 @@ public:
   class Array2D {
     struct Row {
       Row(Array2D &parent, int row, int row_size) :
+        m_re(&parent.re(), row, row_size),
+        m_im(&parent.im(), row, row_size)
+        {}
+
+      Row(Array2D const &parent, int row, int row_size) :
         m_re(&parent.re(), row, row_size),
         m_im(&parent.im(), row, row_size)
         {}
@@ -191,8 +200,10 @@ public:
     Array2D(int rows, int columns);
     Array2D(int dimension) : Array2D(dimension, dimension) {}
 
-    Float::Array2D &re() { return  m_re; }
-    Float::Array2D &im() { return  m_im; }
+    Float::Array2D &re() { return m_re; }
+    Float::Array2D &im() { return m_im; }
+    Float::Array2D const &re() const { return m_re; }  // grmbl
+    Float::Array2D const &im() const { return m_im; }
 
     void fill(complex val);
     int rows() const;
@@ -206,6 +217,7 @@ public:
     bool allocated() const { return m_re.allocated() && m_im.allocated(); }
 
     Row operator[] (int row) { return Row(*this, row, columns()); }
+    Row operator[] (int row) const { return Row(*this, row, columns()); }  // grumbl
 
     void make_unit_matrix();
     std::string dump() const;
@@ -270,6 +282,7 @@ public:
   Complex(Complex const &rhs);
   Complex(ComplexExpr input);
   Complex(Ptr::Deref d);
+  Complex(float phase);
 
   Float &re() { return m_re; }
   Float const &re() const { return m_re; }
@@ -295,6 +308,10 @@ private:
 
   Complex &self();
 };
+
+
+void gather(Complex::Ptr const &addr);
+void receive(Complex &dst);
 
 }  // namespace V3DLib
 

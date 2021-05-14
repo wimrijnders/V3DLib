@@ -439,9 +439,9 @@ TEST_CASE("Test construction of composed types in DSL [dsl][complex]") {
     // Allocate and array for input and result values
     Complex::Array input(16*N);
     input.fill({0,0});
-    input[0] = { 1, 0};
-    input[1] = { 0, 1};
-    input[2] = { 1, 1};
+    input[0] = complex(1, 0);
+    input[1] = complex(0, 1);
+    input[2] = complex(1, 1);
 
     Complex::Array result(16*N);
 

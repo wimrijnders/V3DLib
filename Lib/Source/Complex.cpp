@@ -2,6 +2,7 @@
 #include <cmath>
 #include "Support/basics.h"
 #include "Functions.h"  // ::set_at()
+#include "gather.h"
 
 namespace V3DLib {
 
@@ -58,6 +59,17 @@ Complex::Complex(Ptr::Deref d) {
   m_re = d.m_re;
   m_im = d.m_im;
 }
+
+
+/*
+ * Init value with phase
+ *
+ * NOTE: Param phase is in units of 2PI.
+ *       Thus, phase = 0.5 corresponds with PI.
+ *
+ * library sin/cos may be more efficient here.
+ */
+Complex::Complex(float phase) : Complex(V3DLib::cos(phase), V3DLib::sin(phase)) {}
 
 
 Complex &Complex::self() { return *(const_cast<Complex *>(this)); }
@@ -274,7 +286,18 @@ void Complex::Array::fill(complex const &rhs) {
 
 Complex::Array::ref::ref(float &re_ref, float &im_ref) : m_re_ref(re_ref), m_im_ref(im_ref) {}
 
+Complex::Array::ref::ref(float const &re, float const &im) :
+  m_re_const(re),
+  m_im_const(im),
+  m_re_ref(m_re_const),
+  m_im_ref(m_im_const) {}
+
+
 Complex::Array::ref Complex::Array::operator[] (int i) {
+  return ref(m_re[i], m_im[i]);
+}
+
+Complex::Array::ref Complex::Array::operator[] (int i) const {
   return ref(m_re[i], m_im[i]);
 }
 
@@ -336,5 +359,18 @@ void Complex::Array2D::make_unit_matrix() {
     }
   }
 }
+
+
+void gather(Complex::Ptr const &addr) {
+  gatherBaseExpr(addr.re());
+  gatherBaseExpr(addr.im());
+}
+
+
+void receive(Complex &dst) {
+  receive(dst.re());
+  receive(dst.im());
+}
+
 
 }  // namespace V3DLib

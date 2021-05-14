@@ -733,13 +733,13 @@ TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
 //  Platform::use_main_memory(true);
 
   SUBCASE("Profile") {
-    bool do_profiling = true;
+    bool do_profiling = false;
     if (!do_profiling) return; 
 
     //LibSettings::heap_size(64 << 20);  // works! :-)
 
     // Profiling: try all sizes until compilation fails
-    std::cout << "DFT compare" << ProfileOutput::header();
+    std::cout << "Block matrix compare" << ProfileOutput::header();
 
     int Step = 2;
     int N = 2; // 992 >> 4;

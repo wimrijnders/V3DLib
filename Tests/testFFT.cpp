@@ -8,7 +8,7 @@
 #include "Support/pgm.h"
 #include "support/dft_support.h"
 #include "Kernels/Matrix.h"
-//#include "Source/gather.h"
+#include "Source/gather.h"
 
 using namespace V3DLib;
 
@@ -155,11 +155,6 @@ void fft(cx *a, cx *b, int log2n) {
 }
 
 
-struct {
-  int log2n;
-} fft_context;
-
-
 struct OffsetItem {
   int s;
   int j;
@@ -190,11 +185,11 @@ using Offsets = std::vector<OffsetItem>;
 /**
  * Precalculate the offsets to use for FFT
  */
-Offsets prepare_offsets(int s, int m) {
+Offsets prepare_offsets(int s, int m, int log2n) {
   Offsets ret;
 
   int m2 = m >> 1;
-  int n = 1 << fft_context.log2n;
+  int n = 1 << log2n;
 
   for (int j = 0; j < m2; j++) {
     OffsetItem item;
@@ -219,63 +214,10 @@ std::vector<Offsets> prepare_fft_indexes(int log2n) {
 
   for (int s = 1; s <= log2n; s++) {
     int m = 1 << s;
-    ret << prepare_offsets(s, m);
+    ret << prepare_offsets(s, m, log2n);
   }
 
   return ret;
-}
-
-
-
-/**
- * Construct mult factor to use
- */
-void init_mult_factor(Complex &w_off, Complex &wm, int k_count) {
-  if (k_count == 1) return;
-
-  int width = 16/k_count;
-  for (int i = 1; i < k_count; i++) {
-    Int offset = index() - width*i;
-    Where (offset >= 0)
-      w_off *= wm;
-    End
-  }
-}
-
-
-void init_k(
-  Int &k_off, Int &k_m2_off,
-  std::vector<int> const &k_tmp,
-  std::vector<int> const &k_m2_tmp,
-  int step, int k_count) {
-
-  if (k_count == 16) {
-    // There is no step; load values in directly
-    load_16vec(k_tmp, k_off);
-    load_16vec(k_m2_tmp, k_m2_off);
-    return;
-  }
-
-
-  assert(step != -1);
-  k_off     = k_tmp[0];
-  k_m2_off  = k_m2_tmp[0];
-  k_off    += index()*step;
-  k_m2_off += index()*step;
-
-  if (k_count == 1) return;
-
-  int width = 16/k_count;
-  for (int i = 1; i < k_count; i++) {
-    Int offset2 = index() - width*i;
-
-    Where (offset2 >= 0)
-      k_off     = k_tmp[i*width];
-      k_off    += offset2*step;
-      k_m2_off  = k_m2_tmp[i*width];
-      k_m2_off += offset2*step;
-    End
-  }
 }
 
 
@@ -333,7 +275,6 @@ struct CombinedOffsets {
       debug(msg);
     }
 */
-
   }
 
 
@@ -343,41 +284,12 @@ struct CombinedOffsets {
   }
 
   int step() const { return m_step; }
-
-
   bool valid_index(int j) const { return (j + k_count() <= m_lines); }
 
   int size() const {
     assert(m_size != -1);
     return m_size;
   }
-
-
-  /**
-   * Construct reg offsets to use
-   */
-  void init_k(Int &k_off, Int &k_m2_off, int offset = 0) {
-    std::vector<int> k_tmp;
-    std::vector<int> k_m2_tmp;
-
-    if (k_count() == 16) {
-      assert(k_vec.size() == 16);
-      assert(k_m2_vec.size() == 16);
-      k_tmp    = k_vec;
-      k_m2_tmp = k_m2_vec;
-    } else {
-      assert(offset + 16 <= (int) k_vec.size());
-      assert(offset + 16 <= (int) k_m2_vec.size());
-
-      for (int k = 0; k < 16; k++) {
-        k_tmp    << k_vec[offset + k];
-        k_m2_tmp << k_m2_vec[offset + k];
-      }
-    }
-
-    ::init_k(k_off, k_m2_off, k_tmp, k_m2_tmp, m_step, k_count());
-  }
-
 
 private:
   int m_k_count  = -1;
@@ -480,12 +392,94 @@ std::vector<Indexes16> indexes_to_16vectors(std::vector<Offsets> const &fft_inde
 }
 
 
-void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex &w) {
-    Complex t = w * (*b_k_m2);
-    Complex u = *b_k;
+struct {
+  int log2n = -1;
+  std::vector<Offsets> fft_indexes;
+  std::vector<Indexes16> vectors16;
 
-    *b_k    = u + t;
-    *b_k_m2 = u - t;
+  void init(int in_log2n) {
+    if (log2n != in_log2n) {
+      fft_indexes = prepare_fft_indexes(in_log2n);
+      vectors16   = indexes_to_16vectors(fft_indexes);
+    }
+
+    log2n = in_log2n;
+  }
+
+  bool valid_index() {
+    assert(!vectors16.empty());
+    return vectors16[0].valid_index;
+  }
+} fft_context;
+
+
+/**
+ * Construct mult factor to use
+ */
+void init_mult_factor(Complex &w_off, Complex &wm, int k_count) {
+  if (k_count == 1) return;
+
+  int width = 16/k_count;
+  for (int i = 1; i < k_count; i++) {
+    Int offset = index() - width*i;
+    Where (offset >= 0)
+      w_off *= wm;
+    End
+  }
+}
+
+
+void init_k(
+  Int &k_off, Int &k_m2_off,
+  std::vector<int> const &k_tmp,
+  std::vector<int> const &k_m2_tmp,
+  int step, int k_count) {
+
+  if (k_count == 16) {
+    // There is no step; load values in directly
+    load_16vec(k_tmp, k_off);
+    load_16vec(k_m2_tmp, k_m2_off);
+    return;
+  }
+
+
+  assert(step != -1);
+  k_off     = k_tmp[0];
+  k_m2_off  = k_m2_tmp[0];
+  k_off    += index()*step;
+  k_m2_off += index()*step;
+
+  if (k_count == 1) return;
+
+  int width = 16/k_count;
+  for (int i = 1; i < k_count; i++) {
+    Int offset2 = index() - width*i;
+
+    Where (offset2 >= 0)
+      k_off     = k_tmp[i*width];
+      k_off    += offset2*step;
+      k_m2_off  = k_m2_tmp[i*width];
+      k_m2_off += offset2*step;
+    End
+  }
+}
+
+
+void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex &w) {
+  // using gather here makes very little difference in the overall
+  // throughput time for inline complex offsets
+  gather(b_k_m2);
+  gather(b_k);
+
+  Complex t;
+  receive(t);
+  t *= w;
+
+  Complex u;
+  receive(u);
+
+  *b_k    = u + t;
+  *b_k_m2 = u - t;
 }
 
 
@@ -500,15 +494,13 @@ void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex &w) {
  * only one value is used in the 16-vec registers.
  */
 void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull, std::vector<Offsets> const &fft_indexes) {
-  debug("Fallback!");
+  //debug("Fallback!");
 
   for (int i = 0; i < (int) fft_indexes.size(); i++) {
     int s = i + 1;
 
     Complex w(1, 0);
-
-    float phase = -1.0f/((float) (1 << s));
-    Complex wm(V3DLib::cos(phase), V3DLib::sin(phase));  // library sin/cos may be more efficient here
+    Complex wm(-1.0f/((float) (1 << s)));
 
     auto offsets = fft_indexes[i];
 
@@ -545,12 +537,8 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull, std::vector<Offsets> const
 void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
   b -= index();
 
-  auto fft_indexes = prepare_fft_indexes(fft_context.log2n);
-  std::vector<Indexes16> vectors16 = indexes_to_16vectors(fft_indexes);
-  assert(!vectors16.empty());
-
-  if (!vectors16[0].valid_index) {
-    tiny_fft(b, devnull, fft_indexes);
+  if (!fft_context.valid_index()) {
+    tiny_fft(b, devnull, fft_context.fft_indexes);
     return;
   }
 
@@ -562,15 +550,12 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
   int last_j        = -1;
   Complex w_off;
 
-  for (int i = 0; i < (int) vectors16.size(); i++) {
-    auto &item = vectors16[i];
+  for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
+    auto &item = fft_context.vectors16[i];
 
     if (last_s != item.s) {
       w = Complex(1, 0);
-
-      float phase = -1.0f/((float) (1 << item.s));
-      wm = Complex(V3DLib::cos(phase), V3DLib::sin(phase));  // library sin/cos may be more efficient here
-   
+      wm = Complex(-1.0f/((float) (1 << item.s)));
       last_s = item.s; 
     }
 
@@ -596,8 +581,8 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
 
     fft_step(b_k, b_k_m2, w_off);
 
-    if (i + 1 < (int) vectors16.size()) {
-      auto &next_item = vectors16[i + 1];
+    if (i + 1 < (int) fft_context.vectors16.size()) {
+      auto &next_item = fft_context.vectors16[i + 1];
       if (item.j != next_item.j) {
         // Extra loop offset for combined rows
         for (int k = 1; k < item.k_count; k++) {
@@ -608,59 +593,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
       }
     }
   }
-
-#if 0
-  for (int i = 0; i < (int) fft_indexes.size(); i++) {
-    int s = i + 1;
-
-    Complex w(1, 0);
-
-    float phase = -1.0f/((float) (1 << s));
-    Complex wm(V3DLib::cos(phase), V3DLib::sin(phase));  // library sin/cos may be more efficient here
-
-    auto offsets = fft_indexes[i];
-
-    for (int j = 0; j < (int) offsets.size(); j++) {
-/*
-      auto &item = offsets[j];
-      if (item.k_index.size() < 4) {
-        std::cout << "j: " << j << ", item:" << item.dump();
-        std::cout << std::endl;
-      }
-*/
-      int last_k_count  = -1;
-      Complex w_off;
-
-      CombinedOffsets co(offsets, j);
-      assert(co.valid_index(j));
-
-      if (last_k_count != co.k_count()) {
-        w_off = w;
-        init_mult_factor(w_off, wm, co.k_count());
-        last_k_count = co.k_count();
-      }
-
-      for (int offset = 0; offset < (int) co.size(); offset += 16) {
-        Int k_off     = 0;
-        Int k_m2_off  = 0;
-        co.init_k(k_off, k_m2_off, offset);
-
-        Complex::Ptr b_k    = b + k_off;
-        Complex::Ptr b_k_m2 = b + k_m2_off;
-
-        fft_step(b_k, b_k_m2, w_off);
-      }
-       
-      // Extra loop offset for combined rows
-      for (int k = 1; k < co.k_count(); k++) {
-        w *= wm; 
-        j++;
-      }
-
-      w *= wm;
-    }
-  }
-#endif
 }
 
 
@@ -731,7 +663,7 @@ TEST_CASE("FFT test with scalar [fft]") {
       result[bitReverse(i, log2n)] = aa[i];
     }
 
-    fft_context.log2n = log2n;
+    fft_context.init(log2n);
     auto k = compile(fft_kernel, V3D);
     //k.pretty(true, nullptr, false);
     k.load(&result, &devnull);
@@ -748,6 +680,25 @@ TEST_CASE("FFT test with scalar [fft]") {
 
 
 TEST_CASE("FFT test with DFT [fft]") {
+  auto init_result = [] (Complex::Array &result, Float::Array &a, int Dim, int log2n) {
+    result.fill(V3DLib::complex(0.0f, 0.0f));
+
+    // Perform bit reversal outside of kernel
+    for (int i = 0; i < Dim; ++i) {
+      result[bitReverse(i, log2n)] = complex(a[i], 0.0f);
+    }
+  };
+
+  float precision = 5.0e-4f;  // adequate for log2n <= 8:  5.0e-5f;
+
+  auto check_result = [precision] (Complex::Array2D const &result_float, Complex::Array const &result, int Dim) {
+    for (int i = 0; i < Dim; ++i) {
+      float diff = (result_float[0][i] - result[i].to_complex()).magnitude();
+      INFO("diff " << i << ": " << diff);
+      REQUIRE(diff < precision);
+    }
+  };
+
   SUBCASE("Compare FFT and DFT output") {
     int log2n = 6;
     int Dim = 1 << log2n;
@@ -792,35 +743,55 @@ TEST_CASE("FFT test with DFT [fft]") {
       //std::cout << "DFT result: " << result_float.dump() << std::endl;
     }
 
-
-    Complex::Array result(size);
-    result.fill(V3DLib::complex(0.0f, 0.0f));
-
     Complex::Array devnull(16);
 
-    // Perform bit reversal outside of kernel
-    for (int i = 0; i < Dim; ++i) {
-      result[bitReverse(i, log2n)] = complex(a[i], 0.0f);
+    // FFT inline offsets
+    Complex::Array result_inline(size);
+    {
+      init_result(result_inline, a, Dim, log2n);
+
+      fft_context.init(log2n);
+
+      Timer timer1("FFT inline compile time");
+      auto k = compile(fft_kernel, V3D);
+      timer1.end();
+      std::cout << "FFT inline kernel size: " << k.v3d_kernel_size() << std::endl;
+
+      Timer timer2("FFT inline run time");
+      k.load(&result_inline, &devnull);
+      k.call();
+      timer2.end();
+
+      //std::cout << "FFT result: " << result.dump() << std::endl;
+      check_result(result_float, result_inline, Dim);
     }
 
-    fft_context.log2n = log2n;
 
-    Timer timer1("FFT compile time");
-    auto k = compile(fft_kernel, V3D);
-    timer1.end();
-    std::cout << "FFT kernel size: " << k.v3d_kernel_size() << std::endl;
+    // FFT offsets in buffer
+    Complex::Array result_buf(size);
+    {
+      init_result(result_buf, a, Dim, log2n);
 
-    Timer timer2("FFT run time");
-    k.load(&result, &devnull);
-    k.call();
-    timer2.end();
+      fft_context.init(log2n);
 
-    //std::cout << "FFT result: " << result.dump() << std::endl;
+      Timer timer1("FFT buffer compile time");
+      auto k = compile(fft_kernel, V3D);
+      timer1.end();
+      std::cout << "FFT buffer kernel size: " << k.v3d_kernel_size() << std::endl;
 
+      Timer timer2("FFT buffer run time");
+      k.load(&result_buf, &devnull);
+      k.call();
+      timer2.end();
+
+      check_result(result_float, result_buf, Dim);
+    }
+
+    // output plot
     {
       float real_result[Dim];
       for (int c = 0; c < Dim; ++c) {
-        real_result[c] = result[c].to_complex().magnitude();
+        real_result[c] = result_buf[c].to_complex().magnitude();
       }
 
 
@@ -833,12 +804,6 @@ TEST_CASE("FFT test with DFT [fft]") {
          .save(filename.c_str());
     }
 
-    float precision = 5.0e-4f;  // adequate for log2n <= 8:  5.0e-5f;
-    for (int i = 0; i < Dim; ++i) {
-      float diff = (result_float[0][i] - result[i].to_complex()).magnitude();
-      INFO("diff " << i << ": " << diff);
-      REQUIRE(diff < precision);
-    }
   }
 }
 
