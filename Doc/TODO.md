@@ -201,9 +201,7 @@ Error(s) on command line:
 - [ ] Use [inherited enums](https://stackoverflow.com/questions/644629/base-enum-class-inheritance#644651) - for isolating DMA stuff
 - [ ] Fourier Transform
   * [x] Implement DFT
-  * [ ] Implement FFT - viable implementations: [github gist](https://gist.github.com/agrafix/aa49c17cd32c8ba63b6a7cb8dce8b0bd),
-        [O'Reilly](https://www.oreilly.com/library/view/c-cookbook/0596007612/ch11s18.html),
-        [Turbo-C++](https://www.electronicsforu.com/electronics-projects/software-projects-ideas/implementation-fast-fourier-transform-using-c)
+  * [ ] Implement FFT - [O'Reilly](https://www.oreilly.com/library/view/c-cookbook/0596007612/ch11s18.html)
   * [ ]  consider [sliding windows](https://github.com/glidernet/ogn-rf/issues/36#issuecomment-775688969)
 - [ ] Etherium mining - [Proof of Work algorithm](https://github.com/chfast/ethash), [ethash spec revision 23](https://eth.wiki/en/concepts/ethash/ethash)
   * [ ] Keccak - derive from PoW project
