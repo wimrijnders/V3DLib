@@ -21,6 +21,15 @@ ComplexExpr::ComplexExpr(Complex const &rhs) {
 // Class complex
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Init value with phase
+ *
+ * Param phase is in units of 2PI.
+ * Thus, phase = 0.5 corresponds with PI.
+ */
+complex::complex(float phase) : complex(cosf(2*((float) M_PI)*phase), sinf(2*((float) M_PI)*phase)) {}
+
+
 float complex::magnitude() const {
  return (float) sqrt(m_re*m_re + m_im*m_im);  // sqrt here is a cmath function
 }
@@ -61,15 +70,16 @@ Complex::Complex(Ptr::Deref d) {
 }
 
 
-/*
+Complex::Complex(complex c) : Complex(c.re(), c.im()) {}
+
+
+/**
  * Init value with phase
  *
- * NOTE: Param phase is in units of 2PI.
- *       Thus, phase = 0.5 corresponds with PI.
- *
- * library sin/cos may be more efficient here.
+ * Param phase is in units of 2PI.
+ * Thus, phase = 0.5 corresponds with PI.
  */
-Complex::Complex(float phase) : Complex(V3DLib::cos(phase), V3DLib::sin(phase)) {}
+Complex::Complex(float phase) : Complex(complex(phase)) {}
 
 
 Complex &Complex::self() { return *(const_cast<Complex *>(this)); }

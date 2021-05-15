@@ -38,6 +38,7 @@ class complex {
 public:
   complex() = default;
   complex(float re, float im) : m_re(re), m_im(im) {}
+  complex(float phase);
 
   float re() const { return m_re; }
   float im() const { return m_im; }
@@ -54,8 +55,7 @@ public:
   }
 
   complex operator*(float rhs) const {
-    complex tmp(rhs, 0);
-    return complex(m_re*tmp.m_re - m_im*tmp.m_im, m_re*tmp.m_im + m_im*tmp.m_re);
+    return complex(m_re*rhs, m_im*rhs);
   }
 
 
@@ -282,6 +282,7 @@ public:
   Complex(Complex const &rhs);
   Complex(ComplexExpr input);
   Complex(Ptr::Deref d);
+  Complex(complex c);
   Complex(float phase);
 
   Float &re() { return m_re; }

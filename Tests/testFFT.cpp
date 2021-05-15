@@ -396,20 +396,114 @@ struct {
   int log2n = -1;
   std::vector<Offsets> fft_indexes;
   std::vector<Indexes16> vectors16;
+  bool use_offsets = false;
 
-  void init(int in_log2n) {
+  int const k_limit = 2;
+
+  void init(int in_log2n, bool in_use_offsets) {
     if (log2n != in_log2n) {
       fft_indexes = prepare_fft_indexes(in_log2n);
       vectors16   = indexes_to_16vectors(fft_indexes);
     }
 
     log2n = in_log2n;
+    use_offsets = in_use_offsets;
   }
+
 
   bool valid_index() {
     assert(!vectors16.empty());
     return vectors16[0].valid_index;
   }
+
+
+  void init_offsets_array(Int::Array &offsets) {
+    offsets.alloc((uint32_t) (2*16*offsets_size()));
+    int dst_index = 0;
+
+    for (int i = 0; i < (int) vectors16.size(); i++) {
+      auto &vec = vectors16[i];
+      if (vec.k_count < k_limit) continue;
+      assert(vec.k_16.size() == 16);
+      assert(vec.k_m2_16.size() == 16);
+
+      for (int j = 0; j < 16; j++) {
+        offsets[dst_index] = vec.k_16[j];
+        dst_index++;
+      }
+
+      for (int j = 0; j < 16; j++) {
+        offsets[dst_index] = vec.k_m2_16[j];
+        dst_index++;
+      }
+    }
+  }
+
+
+  int offsets_size() {
+    int count = 0;
+
+    for (int i = 0; i < (int) vectors16.size(); i++) {
+      auto &item = vectors16[i];
+      if (item.k_count >= k_limit) count++;     
+    }
+
+    assert(count > 0);
+    return count;
+  }
+
+
+  std::string dump() {
+    std::string ret;
+
+    ret << "log2n: " << log2n << ", size: " << vectors16.size() <<  "\n";
+
+    if (vectors16.empty()) {
+      return ret;
+    }
+
+    int max_s = -1;
+    int max_j = -1;
+    int max_k = -1;
+    for (int i = 0; i < (int) vectors16.size(); i++) {
+      auto &item = vectors16[i];
+      if (max_s == -1 || max_s < item.s)       { max_s = item.s; }
+      if (max_j == -1 || max_j < item.j)       { max_j = item.j; }
+      if (max_k == -1 || max_k < item.k_count) { max_k = item.k_count; }
+    }
+    ret << "max_s : " << max_s << ", "
+        << "max_j : " << max_j << ", "
+        << "max_k : " << max_k << "\n";
+
+    std::vector<std::vector<int>> counts;
+    counts.resize(max_s + 1);
+
+    for (int i = 0; i < (int) counts.size(); i++) {
+      counts[i].resize(max_k + 1);
+      for (int j = 0; j < (int) counts[i].size(); j++) {
+        counts[i][j] = 0;
+      }
+    }
+
+   
+    for (int i = 0; i < (int) vectors16.size(); i++) {
+      auto &item = vectors16[i];
+      counts[item.s][item.k_count]++;
+    }
+
+    for (int i = 1; i < (int) counts.size(); i++) {  // Start with 1, there is no s == 0
+      ret << "  s: " << i << "\n";
+      for (int j = 0; j < (int) counts[i].size(); j++) {
+        if (counts[i][j] != 0) {
+          ret << "    k: " << j << ", " << counts[i][j] << " 16vecs\n";
+        }
+      }
+    }
+
+
+    return ret;
+  }
+
 } fft_context;
 
 
@@ -466,11 +560,6 @@ void init_k(
 
 
 void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex &w) {
-  // using gather here makes very little difference in the overall
-  // throughput time for inline complex offsets
-  gather(b_k_m2);
-  gather(b_k);
-
   Complex t;
   receive(t);
   t *= w;
@@ -493,16 +582,16 @@ void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex &w) {
  * It actually works for larger dimensions, but the performance will be horrid;
  * only one value is used in the 16-vec registers.
  */
-void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull, std::vector<Offsets> const &fft_indexes) {
+void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
   //debug("Fallback!");
 
-  for (int i = 0; i < (int) fft_indexes.size(); i++) {
+  for (int i = 0; i < (int) fft_context.fft_indexes.size(); i++) {
     int s = i + 1;
 
     Complex w(1, 0);
     Complex wm(-1.0f/((float) (1 << s)));
 
-    auto offsets = fft_indexes[i];
+    auto offsets = fft_context.fft_indexes[i];
 
     for (int j = 0; j < (int) offsets.size(); j++) {
       Complex w_off;
@@ -513,10 +602,13 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull, std::vector<Offsets> const
       auto &k_index    = offsets[j].k_index;
       auto &k_m2_index = offsets[j].k_m2_index;
 
-      Complex::Ptr b_k    = b;
       Complex::Ptr b_k_m2 = b;
-      load_16ptr(k_index, b_k, devnull);
       load_16ptr(k_m2_index, b_k_m2, devnull);
+      gather(b_k_m2);
+
+      Complex::Ptr b_k    = b;
+      load_16ptr(k_index, b_k, devnull);
+      gather(b_k);
 
       fft_step(b_k, b_k_m2, w);
 
@@ -534,11 +626,11 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull, std::vector<Offsets> const
  * This kernel works with `emu()` and on `v3d` with `call()`, *not* with `interpret()` or on `vc4`.
  * So be it. Life sucks sometimes.
  */
-void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
+void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
   b -= index();
 
   if (!fft_context.valid_index()) {
-    tiny_fft(b, devnull, fft_context.fft_indexes);
+    tiny_fft(b, devnull);
     return;
   }
 
@@ -574,10 +666,22 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull) {
 
     Int k_off     = 0;
     Int k_m2_off  = 0;
-    init_k(k_off, k_m2_off, item.k_16, item.k_m2_16, item.step, item.k_count);
+    if (fft_context.use_offsets && item.k_count >= fft_context.k_limit) {
+      gather(offsets);
+      offsets.inc();
+      gather(offsets);
+      offsets.inc();
 
-    Complex::Ptr b_k    = b + k_off;
+      receive(k_off);
+      receive(k_m2_off);
+    } else {
+      init_k(k_off, k_m2_off, item.k_16, item.k_m2_16, item.step, item.k_count);
+    }
+
     Complex::Ptr b_k_m2 = b + k_m2_off;
+    gather(b_k_m2);
+    Complex::Ptr b_k = b + k_off;
+    gather(b_k);
 
     fft_step(b_k, b_k_m2, w_off);
 
@@ -652,6 +756,7 @@ TEST_CASE("FFT test with scalar [fft]") {
     aa.fill(V3DLib::complex(0.0f, 0.0f));
     Complex::Array result(16);
     Complex::Array devnull(16);
+    Int::Array offsets;
 
     for (int i=0; i < NUM_POINTS; ++i) {
       aa.re()[i] = (float) a[i].real();
@@ -663,10 +768,10 @@ TEST_CASE("FFT test with scalar [fft]") {
       result[bitReverse(i, log2n)] = aa[i];
     }
 
-    fft_context.init(log2n);
+    fft_context.init(log2n, false);
     auto k = compile(fft_kernel, V3D);
     //k.pretty(true, nullptr, false);
-    k.load(&result, &devnull);
+    k.load(&result, &devnull, &offsets);
     k.call();
     //std::cout << "Kernel output: " << result.dump() << std::endl;
 
@@ -700,7 +805,7 @@ TEST_CASE("FFT test with DFT [fft]") {
   };
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 6;
+    int log2n = 8;
     int Dim = 1 << log2n;
 
     int size = Dim;
@@ -744,13 +849,14 @@ TEST_CASE("FFT test with DFT [fft]") {
     }
 
     Complex::Array devnull(16);
+    Int::Array offsets;
 
     // FFT inline offsets
     Complex::Array result_inline(size);
     {
       init_result(result_inline, a, Dim, log2n);
 
-      fft_context.init(log2n);
+      fft_context.init(log2n, false);
 
       Timer timer1("FFT inline compile time");
       auto k = compile(fft_kernel, V3D);
@@ -758,7 +864,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       std::cout << "FFT inline kernel size: " << k.v3d_kernel_size() << std::endl;
 
       Timer timer2("FFT inline run time");
-      k.load(&result_inline, &devnull);
+      k.load(&result_inline, &devnull, &offsets);
       k.call();
       timer2.end();
 
@@ -772,7 +878,9 @@ TEST_CASE("FFT test with DFT [fft]") {
     {
       init_result(result_buf, a, Dim, log2n);
 
-      fft_context.init(log2n);
+      fft_context.init(log2n, true);
+      //std::cout << fft_context.dump() << std::endl;
+      fft_context.init_offsets_array(offsets);
 
       Timer timer1("FFT buffer compile time");
       auto k = compile(fft_kernel, V3D);
@@ -780,7 +888,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       std::cout << "FFT buffer kernel size: " << k.v3d_kernel_size() << std::endl;
 
       Timer timer2("FFT buffer run time");
-      k.load(&result_buf, &devnull);
+      k.load(&result_buf, &devnull, &offsets);
       k.call();
       timer2.end();
 
