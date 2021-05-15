@@ -18,11 +18,10 @@ namespace {
 // Support routines 
 ///////////////////////////////////////////////////////////////////////////////
 
-typedef std::complex<double> cx;
+using cx = std::complex<double>;
 
-cx operator-(cx const &a, complex const &b) {
-  return cx(a.real() - b.re(), a.imag() - b.im());
-}
+cx operator-(cx const &a, complex const &b) { return cx(a.real() - b.re(), a.imag() - b.im()); }
+//cx operator-(complex const &a, cx const &b) { return cx(a.re() - b.real(), a.im() - b.imag()); }
 
 
 
@@ -777,8 +776,9 @@ TEST_CASE("FFT test with scalar [fft]") {
 
     float precision = 5.0e-5f;
     for (int i = 0; i < NUM_POINTS; ++i) {
-      INFO("diff " << i << ": " << abs(scalar_result[i] - result[i].to_complex()));
-      REQUIRE(abs(scalar_result[i] - result[i].to_complex()) < precision);
+      float diff = (float) abs(scalar_result[i] - result[i].to_complex());
+      INFO("diff " << i << ": " << diff);
+      REQUIRE(diff < precision);
     }
   }
 }
@@ -796,16 +796,24 @@ TEST_CASE("FFT test with DFT [fft]") {
 
   float precision = 5.0e-4f;  // adequate for log2n <= 8:  5.0e-5f;
 
-  auto check_result = [precision] (Complex::Array2D const &result_float, Complex::Array const &result, int Dim) {
+  auto check_result1 = [precision] (cx const *expected, Complex::Array2D const &result, int Dim) {
     for (int i = 0; i < Dim; ++i) {
-      float diff = (result_float[0][i] - result[i].to_complex()).magnitude();
+      float diff = (float) abs(expected[i] - result[0][i]);
+      INFO("diff " << i << ": " << diff);
+      REQUIRE(diff < precision);
+    }
+  };
+
+  auto check_result = [precision] (Complex::Array2D const &expected, Complex::Array const &result, int Dim) {
+    for (int i = 0; i < Dim; ++i) {
+      float diff = (expected[0][i] - result[i].to_complex()).magnitude();
       INFO("diff " << i << ": " << diff);
       REQUIRE(diff < precision);
     }
   };
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 8;
+    int log2n = 6;
     int Dim = 1 << log2n;
 
     int size = Dim;
@@ -817,35 +825,42 @@ TEST_CASE("FFT test with DFT [fft]") {
     }
 
     // Run scalar FFT for comparison
+    cx scalar_result[Dim];
     {
       cx a[Dim];
       for (int c = 0; c < Dim; ++c) {
         a[c] = cx(wavelet_function(c, Dim), 0.0f);
       }
-      cx scalar_result[Dim];
 
       Timer timer1("scalar FFT run time");
       fft(a, scalar_result, log2n);
       timer1.end();
 
-      // Perhaps TODO: compare scalar result with kernel output
+      std::cout << "scalar result: ";
+      for (int i = 0; i < Dim; ++i) {
+        std::cout << scalar_result[i] << ", ";
+      }
+      std::cout << std::endl;
     }
 
     // Run DFT for comparison
-    Complex::Array2D result_float;
+    Complex::Array2D result_dft;
     {
       Timer timer1("DFT compile time");
-      auto k = compile(kernels::dft_inline_decorator(a, result_float), V3D);
+      auto k = compile(kernels::dft_inline_decorator(a, result_dft), V3D);
       timer1.end();
       std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
 
       Timer timer2("DFT run time");
-      k.load(&result_float, &a);
+      k.load(&result_dft, &a);
       //k.setNumQPUs(1);
       k.call();
       timer2.end();
 
-      //std::cout << "DFT result: " << result_float.dump() << std::endl;
+      std::cout << "DFT result: " << result_dft.dump() << std::endl;
+
+      // Compare scalar result with kernel output
+      check_result1(scalar_result, result_dft, Dim);
     }
 
     Complex::Array devnull(16);
@@ -869,7 +884,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       timer2.end();
 
       //std::cout << "FFT result: " << result.dump() << std::endl;
-      check_result(result_float, result_inline, Dim);
+      check_result(result_dft, result_inline, Dim);
     }
 
 
@@ -879,7 +894,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       init_result(result_buf, a, Dim, log2n);
 
       fft_context.init(log2n, true);
-      //std::cout << fft_context.dump() << std::endl;
+      std::cout << fft_context.dump() << std::endl;
       fft_context.init_offsets_array(offsets);
 
       Timer timer1("FFT buffer compile time");
@@ -892,7 +907,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       k.call();
       timer2.end();
 
-      check_result(result_float, result_buf, Dim);
+      check_result(result_dft, result_buf, Dim);
     }
 
     // output plot
