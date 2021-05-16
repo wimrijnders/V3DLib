@@ -137,17 +137,11 @@ void Liveness::compute_liveness(Instr::List &instrs) {
   bool changed = true;
   int count = 0;
 
-/*
-  {
-    std::string msg;
-    msg << "compute_liveness CFG:\n"
-        << m_cfg.dump();
-
-    debug(msg);
-}
-*/
-
   // Iterate until no change, i.e. fixed point
+  Timer t3("compute liveOut");
+  Timer t4("compute use/def rest");
+  Timer t5("compute insert");
+
   while (changed) {
     changed = false;
 
@@ -181,23 +175,36 @@ void Liveness::compute_liveness(Instr::List &instrs) {
 
       // Compute 'use' and 'def' sets
       useDef.set_used(instr, also_set_used);
+
+      t3.start();
       computeLiveOut(i, liveOut);
+      t3.stop();
+
+      t4.start();
       liveIn.add_not_used(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
       liveIn.add(useDef.use);
+      t4.stop();
 
+      t5.start();
       if (insert(i, liveIn)) {
         changed = true;
       }
+      t5.stop();
     }
 
     count++;
   }
+
+  t3.end();
+  t4.end();
+  t5.end();
 
 /*
   std::string msg;
   msg << "compute_liveness count: " << count;
   debug(msg);
 */
+  debug(dump());
 }
 
 
@@ -269,14 +276,12 @@ void Liveness::setSize(int size) {
 
 bool Liveness::insert(int index, LiveSet const &set) {
   bool changed = false;
+  auto &item = m_set[index];
 
   for (auto it : set) {
-    bool present = m_set[index].member(it);
+    auto ret = item.insert(it);  // return value is a pair, second value if 'false' if the item was already present
 
-    m_set[index].insert(it);
-    assert(m_set[index].member(it));
-
-    if (!present) {
+    if (ret.second) {
       changed = true;
     }
   }

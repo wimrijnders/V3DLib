@@ -67,10 +67,16 @@ std::string CFG::Blocks::dump() const {
   auto tabs = [] (int i) -> int {
     int ret = -1;
 
-   if (i < 10)        ret = 1;
-   else if (i < 100)  ret = 2;
-   else if (i < 1000) ret = 3;
-   else assert(false);  // Expand this list if this happens
+   if      (i < 10)     ret = 1;
+   else if (i < 100)    ret = 2;
+   else if (i < 1000)   ret = 3;
+   else if (i < 10000)  ret = 4;
+   else if (i < 100000) ret = 5;
+   else {
+     std::string msg =  "Blocks::dump() i: ";
+     msg << i;
+     assertq(false, msg);  // Expand this list if this happens
+   }
 
     return ret;
   };
