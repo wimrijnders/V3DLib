@@ -93,33 +93,36 @@ Float Complex::mag_square() const {
 }
 
 
-Complex Complex::operator+(Complex rhs) const {
+Complex Complex::operator+(Complex const &rhs) const {
   return Complex(m_re + rhs.m_re, m_im + rhs.m_im);
 }
 
 
-Complex Complex::operator-(Complex rhs) const {
+Complex Complex::operator-(Complex const &rhs) const {
   return Complex(m_re - rhs.m_re, m_im - rhs.m_im);
 }
 
 
-Complex &Complex::operator+=(Complex rhs) {
+Complex &Complex::operator+=(Complex const &rhs) {
   m_re += rhs.m_re;
   m_im += rhs.m_im;
   return *this;
 }
 
 
-Complex Complex::operator*(Complex rhs) const {
+Complex Complex::operator*(Complex const &rhs) const {
+/*
   Complex tmp;
   tmp.m_re = m_re*rhs.m_re - m_im*rhs.m_im;
   tmp.m_im = m_re*rhs.m_im + m_im*rhs.m_re;
 
   return tmp;
+*/
+  return Complex(m_re*rhs.m_re - m_im*rhs.m_im, m_re*rhs.m_im + m_im*rhs.m_re);
 }
 
 
-Complex &Complex::operator*=(Complex rhs) {
+Complex &Complex::operator*=(Complex const &rhs) {
   *this = (*this)*rhs;
   return *this;
 }

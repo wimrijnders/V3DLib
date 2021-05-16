@@ -9,6 +9,7 @@
 #include "Target/Subst.h"
 #include "Common/CompileData.h"
 #include "Optimizations.h"
+#include "Support/Timer.h"
 
 namespace V3DLib {
 namespace {
@@ -325,18 +326,23 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
 
   compile_data.target_code_before_optimization = instrs.dump();
 
+  Timer t1("live compute");
   Liveness live(numVars);
   live.compute(instrs);
   //live.dump();
+  t1.end();
 
   if (combineImmediates(live, instrs)) {
     //std::cout << instrs.dump(true) << std::endl;  // Useful sometimes for debug
+    Timer t3("combine immediates compute", true);
     live.compute(instrs);  // instructions have changed, redo liveness
   }
 
+  Timer t3("introduceAccum");
   int prev_count_skips = count_skips(instrs);
   compile_data.num_accs_introduced = introduceAccum(live, instrs);
   assertq(prev_count_skips == count_skips(instrs), "SKIP count changed after introduceAccum()");
+	t3.end();
 
   remove_replaced_instructions(instrs);
   assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list after cleanup");

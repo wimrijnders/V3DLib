@@ -129,6 +129,7 @@ void KernelDriver::init_compile() {
 
 void KernelDriver::obtain_ast() {
   clearStack();
+  //std::cout << m_stmtStack.dump() << std::endl;
   m_body = m_stmtStack.pop();
 }
 

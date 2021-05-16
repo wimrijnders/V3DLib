@@ -237,7 +237,7 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
             msg << "; tag out of range";
           }
 
-          assertq(false, msg);
+          assertq(false, msg, true);
         }
         ret << tmp;
       }

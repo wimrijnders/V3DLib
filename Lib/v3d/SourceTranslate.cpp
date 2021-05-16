@@ -34,6 +34,7 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
 
 void SourceTranslate::regAlloc(Instr::List &instrs) {
   int numVars = VarGen::count();
+
   Liveness::optimize(instrs, numVars);
 
   // Step 0 - Perform liveness analysis
@@ -65,6 +66,7 @@ void SourceTranslate::regAlloc(Instr::List &instrs) {
   }
 
   compile_data.allocated_registers_dump = live.reg_usage().dump(true);
+
 
   // Step 4 - Apply the allocation to the code
   allocate_registers(instrs, live.reg_usage());

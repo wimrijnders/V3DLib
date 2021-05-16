@@ -294,11 +294,11 @@ public:
 
   Float mag_square() const;
 
-  Complex operator+(Complex rhs) const;
-  Complex operator-(Complex rhs) const;
-  Complex &operator+=(Complex rhs);
-  Complex operator*(Complex rhs) const;
-  Complex &operator*=(Complex rhs);
+  Complex operator+(Complex const &rhs) const;
+  Complex operator-(Complex const &rhs) const;
+  Complex &operator+=(Complex const &rhs);
+  Complex operator*(Complex const &rhs) const;
+  Complex &operator*=(Complex const &rhs);
   void operator=(Complex const &rhs);
 
   void set_at(Int n, Complex const &src);

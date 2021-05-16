@@ -800,11 +800,21 @@ TEST_CASE("FFT test with DFT [fft]") {
     }
   };
 
-  float precision = 5.0e-4f;  // adequate for log2n <= 8:  5.0e-5f;
+  // adequate for log2n <= 8:  5.0e-5f;
+  // adequate for log2n <= 9:  5.0e-4f;
+  float precision = 5.0e-3f;
 
   auto check_result1 = [precision] (cx const *expected, Complex::Array2D const &result, int Dim) {
     for (int i = 0; i < Dim; ++i) {
       float diff = (float) abs(expected[i] - result[0][i]);
+      INFO("diff " << i << ": " << diff);
+      REQUIRE(diff < precision);
+    }
+  };
+
+  auto check_result2 = [precision] (cx const *expected, Complex::Array const &result, int Dim) {
+    for (int i = 0; i < Dim; ++i) {
+      float diff = (float) abs(expected[i] - result[i].to_complex());
       INFO("diff " << i << ": " << diff);
       REQUIRE(diff < precision);
     }
@@ -819,7 +829,7 @@ TEST_CASE("FFT test with DFT [fft]") {
   };
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 6;
+    int log2n = 8;
     int Dim = 1 << log2n;
 
     int size = Dim;
@@ -838,7 +848,7 @@ TEST_CASE("FFT test with DFT [fft]") {
     std::cout << std::endl;
 */
 
-    // Run scalar FFT for comparison
+    // Run scalar FFT for results comparison
     cx scalar_result[Dim];
     {
       cx a_scalar[Dim];
@@ -860,9 +870,9 @@ TEST_CASE("FFT test with DFT [fft]") {
 */
     }
 
-    // Run DFT for comparison
-    Complex::Array2D result_dft;
-    {
+    // Run DFT for time comparison
+    if (log2n <= 9) {
+      Complex::Array2D result_dft;
       Timer timer1("DFT compile time");
       auto k = compile(kernels::dft_inline_decorator(a, result_dft), V3D);
       timer1.end();
@@ -884,14 +894,16 @@ TEST_CASE("FFT test with DFT [fft]") {
     Int::Array offsets;
 
     // FFT inline offsets
-    Complex::Array result_inline(size);
     {
+      Complex::Array result_inline(size);
       init_result(result_inline, a, Dim, log2n);
 
       fft_context.init(log2n, false);
 
       Timer timer1("FFT inline compile time");
       auto k = compile(fft_kernel, V3D);
+      k.pretty(false, "fft_inline_v3d.txt", false);  // segfault for log2n == 9
+      k.dump_compile_data(false, "fft_inline_dump_v3d.txt");
       timer1.end();
       std::cout << "FFT inline kernel size: " << k.v3d_kernel_size() << std::endl;
 
@@ -901,7 +913,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       timer2.end();
 
       //std::cout << "FFT result: " << result.dump() << std::endl;
-      check_result(result_dft, result_inline, Dim);
+      check_result2(scalar_result, result_inline, Dim);
     }
 
 
@@ -924,7 +936,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       k.call();
       timer2.end();
 
-      check_result(result_dft, result_buf, Dim);
+      check_result2(scalar_result, result_buf, Dim);
     }
 
     // output plot

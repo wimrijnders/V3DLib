@@ -3,6 +3,7 @@
 #include "Liveness.h"
 #include "Support/Platform.h"
 #include "Target/Subst.h"
+//#include "Support/Timer.h"
 
 namespace V3DLib {
 namespace {
@@ -267,13 +268,10 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
       if (!(instr2.tag == InstrTag::LI && instr2.LI.imm == instr.LI.imm)) continue;
       if (!live.cfg().is_parent_block(j, live.cfg().block_at(i))) continue;
-
-
 //      std::cout << "  Could replace LI at " << j << " (block " << live.cfg().block_at(j) << "): "
 //                << instr2.mnemonic(false) << std::endl;
 
 //      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl; 
-
 
       int block_end = live.cfg().block_end(j);
       UseDefReg regs;
@@ -295,7 +293,6 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
           }
           debug(msg);
 */
-
           break;  // Stop if var to replace is rewritten
         }
 
