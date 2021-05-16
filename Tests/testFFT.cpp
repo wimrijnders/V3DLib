@@ -113,8 +113,6 @@ void create_dft_offsets(
 // FFT 
 ///////////////////////////////////////////////////////////////////////////////
 
-const double PI = 3.1415926536;
-
 unsigned int bitReverse(unsigned int x, int log2n) {
   int n = 0;
 
@@ -129,8 +127,8 @@ unsigned int bitReverse(unsigned int x, int log2n) {
 
 
 void fft(cx *a, cx *b, int log2n) {
-  int n = 1 << log2n;
-  for (int i=0; i < n; ++i) {
+  int Dim = 1 << log2n;
+  for (int i=0; i < Dim; ++i) {
     b[bitReverse(i, log2n)] = a[i];
   }
 
@@ -138,10 +136,10 @@ void fft(cx *a, cx *b, int log2n) {
     int m = 1 << s;
     int m2 = m >> 1;
     cx w(1, 0);
-    cx wm(cos(-PI/m2), sin(-PI / m2));
+    cx wm(cos(-M_PI/m2), sin(-M_PI/m2));
 
     for (int j = 0; j < m2; ++j) {
-      for (int k = j; k < n; k += m) {
+      for (int k = j; k < Dim; k += m) {
         cx t = w * b[k + m2];
         cx u = b[k];
         b[k] = u + t;
@@ -410,13 +408,19 @@ struct {
   }
 
 
-  bool valid_index() {
+  bool valid_index() const {
     assert(!vectors16.empty());
     return vectors16[0].valid_index;
   }
 
 
-  void init_offsets_array(Int::Array &offsets) {
+  /**
+   * For Dim <=4, this will not init the offsets array, because the indexes are invalid.
+   * In the kernel, this means that the offset buffer is not used.
+   */
+  void init_offsets_array(Int::Array &offsets) const {
+    if (!valid_index()) return;
+
     offsets.alloc((uint32_t) (2*16*offsets_size()));
     int dst_index = 0;
 
@@ -439,7 +443,7 @@ struct {
   }
 
 
-  int offsets_size() {
+  int offsets_size() const {
     int count = 0;
 
     for (int i = 0; i < (int) vectors16.size(); i++) {
@@ -452,7 +456,7 @@ struct {
   }
 
 
-  std::string dump() {
+  std::string dump() const {
     std::string ret;
 
     ret << "log2n: " << log2n << ", size: " << vectors16.size() <<  "\n";
@@ -709,7 +713,9 @@ TEST_CASE("FFT test with scalar [fft]") {
   // Source: https://www.oreilly.com/library/view/c-cookbook/0596007612/ch11s18.html
   //
   SUBCASE("Scalar from example") {
-    cx b[8];
+    int const log2n = 3;
+    int const Dim =  1 << log2n;
+    cx b[Dim];
 
     cx expected[] = {
       cx(16,16),
@@ -722,10 +728,10 @@ TEST_CASE("FFT test with scalar [fft]") {
       cx(-11.6569,-4.82843)
     };
 
-    fft(a, b, 3);
+    fft(a, b, log2n);
 
     float precision = 5.0e-5f;
-    for (int i = 0; i < 8; ++i) {
+    for (int i = 0; i < Dim; ++i) {
       INFO("diff " << i << ": " << abs(b[i] - expected[i]));
       REQUIRE(abs(b[i] - expected[i]) < precision);
     }
@@ -745,10 +751,10 @@ TEST_CASE("FFT test with scalar [fft]") {
       return;
     }
 
-    int const NUM_POINTS = 8;
-    int log2n = 3;  // Relates to NUM_POINTS
+    int const log2n = 3;
+    int const Dim =  1 << log2n;
 
-    cx scalar_result[8];
+    cx scalar_result[Dim];
     fft(a, scalar_result, log2n);
 
     Complex::Array aa(16);
@@ -757,13 +763,13 @@ TEST_CASE("FFT test with scalar [fft]") {
     Complex::Array devnull(16);
     Int::Array offsets;
 
-    for (int i=0; i < NUM_POINTS; ++i) {
+    for (int i=0; i < Dim; ++i) {
       aa.re()[i] = (float) a[i].real();
       aa.im()[i] = (float) a[i].imag();
     }
 
     // Perform bit reversal outside of kernel
-    for (int i = 0; i < NUM_POINTS; ++i) {
+    for (int i = 0; i < Dim; ++i) {
       result[bitReverse(i, log2n)] = aa[i];
     }
 
@@ -775,7 +781,7 @@ TEST_CASE("FFT test with scalar [fft]") {
     //std::cout << "Kernel output: " << result.dump() << std::endl;
 
     float precision = 5.0e-5f;
-    for (int i = 0; i < NUM_POINTS; ++i) {
+    for (int i = 0; i < Dim; ++i) {
       float diff = (float) abs(scalar_result[i] - result[i].to_complex());
       INFO("diff " << i << ": " << diff);
       REQUIRE(diff < precision);
@@ -820,27 +826,38 @@ TEST_CASE("FFT test with DFT [fft]") {
     if (size < 16) size = 16;
 
     Float::Array a(size);
+    a.fill(0);
     for (int c = 0; c < Dim; ++c) {
       a[c] = wavelet_function(c, Dim);
     }
+/*
+    std::cout << "Input wavelet: ";
+    for (int c = 0; c < Dim; ++c) {
+      std::cout << a[c] << ", ";
+    }
+    std::cout << std::endl;
+*/
 
     // Run scalar FFT for comparison
     cx scalar_result[Dim];
     {
-      cx a[Dim];
+      cx a_scalar[Dim];
       for (int c = 0; c < Dim; ++c) {
-        a[c] = cx(wavelet_function(c, Dim), 0.0f);
+        //a_scalar[c] = cx(wavelet_function(c, Dim), 0.0f); - This gives the wrong value!!!
+        a_scalar[c] = cx(a[c], 0.0f);
       }
 
       Timer timer1("scalar FFT run time");
-      fft(a, scalar_result, log2n);
+      fft(a_scalar, scalar_result, log2n);
       timer1.end();
 
+/*
       std::cout << "scalar result: ";
       for (int i = 0; i < Dim; ++i) {
         std::cout << scalar_result[i] << ", ";
       }
       std::cout << std::endl;
+*/
     }
 
     // Run DFT for comparison
@@ -857,7 +874,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       k.call();
       timer2.end();
 
-      std::cout << "DFT result: " << result_dft.dump() << std::endl;
+ //     std::cout << "DFT result: " << result_dft.dump() << std::endl;
 
       // Compare scalar result with kernel output
       check_result1(scalar_result, result_dft, Dim);
@@ -894,7 +911,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       init_result(result_buf, a, Dim, log2n);
 
       fft_context.init(log2n, true);
-      std::cout << fft_context.dump() << std::endl;
+      //std::cout << fft_context.dump() << std::endl;
       fft_context.init_offsets_array(offsets);
 
       Timer timer1("FFT buffer compile time");
