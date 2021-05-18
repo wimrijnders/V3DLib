@@ -8,7 +8,7 @@
 #   obj/emu          - using emulator
 #   obj/emu-debug    - output debug info, using emulator
 #   obj/qpu          - using hardware
-#   objiqpu-debug    - output debug info, using hardware
+#   obj/qpu-debug    - output debug info, using hardware
 #
 #==============================================================================
 # NOTES

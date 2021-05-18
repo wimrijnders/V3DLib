@@ -3,7 +3,7 @@
 #include "Liveness.h"
 #include "Support/Platform.h"
 #include "Target/Subst.h"
-//#include "Support/Timer.h"
+#include "Support/Timer.h"
 
 namespace V3DLib {
 namespace {
@@ -14,6 +14,7 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
 
   for (int i = item.first_usage(); i <= item.last_usage(); i++) {
     auto &instr = instrs[i];
+    if (!instr.has_registers()) continue;  // Doesn't  help much
 
     // Both replace 'current' register only if present
     renameDest(instr, current, replace_with);
@@ -77,7 +78,12 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
     }
 
     Reg replace_with(ACC, acc_id);
+
+/*
+    // This call is an extreme performance hog and has not failed in recent memory
+    // Enable if you're totally paranoid
     allocated_vars.check_overlap_usage(replace_with, item);
+*/
 
     replace_acc(instrs, item, var_id, acc_id);
 
@@ -113,6 +119,8 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr prev  = instrs[i-1];
+    if (!prev.has_registers()) continue;  // Doesn't help much
+
     Instr instr = instrs[i];
 
     useDefPrev.set_used(prev);        // Compute vars defined by prev
@@ -176,6 +184,7 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr instr = instrs[i];
+    if (!instr.has_registers()) continue;  // Doesn't help much
 
     // Guard for this special case for the time being.
     // It should actually be possible to load a uniform in an accumulator,
@@ -243,9 +252,11 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
         break;
       }
 
+      Instr &instr2 = instrs[j];
+
       {
         UseDefReg regs;
-        regs.set_used(instrs[j]);
+        regs.set_used(instr2);
 
         if (regs.is_dest(instr.LI.dest)) {
 /*
@@ -264,21 +275,28 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
         }
       }
 
-      Instr &instr2 = instrs[j];
 
       if (!(instr2.tag == InstrTag::LI && instr2.LI.imm == instr.LI.imm)) continue;
       if (!live.cfg().is_parent_block(j, live.cfg().block_at(i))) continue;
 //      std::cout << "  Could replace LI at " << j << " (block " << live.cfg().block_at(j) << "): "
 //                << instr2.mnemonic(false) << std::endl;
 
-//      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl; 
+//      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl;
+/*
+      if (instr2.LI.dest.regId == 4050) {
+        breakpoint
+      }
+*/
 
       int block_end = live.cfg().block_end(j);
       UseDefReg regs;
       int num_subsitutions = 0;
 
       for (int k = j + 1; k <= block_end; k++) {
-        regs.set_used(instrs[k]);
+        Instr &instr3 = instrs[k];
+        if (!instr3.has_registers()) continue;
+
+        regs.set_used(instr2);
 
         if (regs.is_dest(instr2.LI.dest)) {
 /*
@@ -286,9 +304,9 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
           msg << "Stopping replacing same LIs: "
               << "instrs[" << k << "] uses reg " << instr2.LI.dest.dump()
               << " as dst"
-              << ": " << instrs[k].mnemonic(false);
+              << ": " << instr3.mnemonic(false);
 
-          if (instrs[k].isCondAssign()) {
+          if (instr3.isCondAssign()) {
             msg << " (Conditional assign!)";
           }
           debug(msg);
@@ -304,9 +322,9 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
           // Shows an actual replacement
           std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
                     << current.dump() << " -> " << replace_with.dump()
-                    << ": " << instrs[k].mnemonic(false) << std::endl;
+                    << ": " << instr3.mnemonic(false) << std::endl;
 */
-          renameUses(instrs[k], current, replace_with);
+          renameUses(instr3, current, replace_with);
           num_subsitutions++;
         }
       }
@@ -367,6 +385,7 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
 
   //debug(allocated_vars.dump_use_ranges());
   // Picks up a lot usually, but range_size > 1 seldom results in something
+  //Timer t("peephole_0");
   for (int range_size = 1; range_size <= MAX_RANGE_SIZE; range_size++) {
     int count = peephole_0(range_size, instrs, allocated_vars);
 
@@ -380,9 +399,11 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
 
     subst_count += count;
   }
+  //t.end();
 
   // This peephole still does a lot of useful stuff
   {
+    //Timer t("peephole_1", true);
     int count = peephole_1(live, instrs, allocated_vars);
 
 /*
@@ -398,6 +419,7 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
 
   // And some things still get done with this peephole, regularly 1 or 2 per compile
   {
+    //Timer t("peephole_2", true);
     int count = peephole_2(live, instrs, allocated_vars);
 /*
     if (count > 0) {

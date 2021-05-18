@@ -178,6 +178,13 @@ void RegUsage::reset() {
 
 void RegUsage::set_used(Instr::List &instrs) {
   for (int i = 0; i < instrs.size(); i++) {
+/*
+    // WRI DEBUG
+    if (i == 1666) {
+      breakpoint
+    }
+*/
+
     UseDef out;
     out.set_used(instrs[i]);
 

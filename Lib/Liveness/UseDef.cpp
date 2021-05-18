@@ -29,13 +29,13 @@ std::string UseDefReg::dump() const {
 
   ret << "(def: ";
   for (int j = 0; j < def.size(); j++) {
-    ret << def[j].dump();
+    ret << def[j].dump() << ", ";
   }
   ret << "; ";
 
   ret << "use: ";
   for (int j = 0; j < use.size(); j++) {
-    ret << use[j].dump();
+    ret << use[j].dump() << ", ";
   }
   ret << ") ";
 
@@ -133,13 +133,13 @@ std::string UseDef::dump() const {
 
   ret << "(def: ";
   for (int j = 0; j < def.size(); j++) {
-    ret << def[j];
+    ret << def[j] << ", ";
   }
   ret << "; ";
 
   ret << "use: ";
   for (int j = 0; j < use.size(); j++) {
-    ret << use[j];
+    ret << use[j] << ", ";
   }
   ret << ") ";
 

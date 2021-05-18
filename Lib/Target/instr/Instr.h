@@ -224,6 +224,7 @@ struct Instr : public InstructionComment {
   bool isRot() const;
   bool isZero() const;
   bool isLast() const;
+  bool has_registers() const { return tag == InstrTag::LI || tag == InstrTag::ALU || tag == InstrTag::RECV; }
 
   SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;

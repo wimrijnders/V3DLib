@@ -137,11 +137,11 @@ void Liveness::compute_liveness(Instr::List &instrs) {
   bool changed = true;
   int count = 0;
 
-  // Iterate until no change, i.e. fixed point
-  Timer t3("compute liveOut");
-  Timer t4("compute use/def rest");
-  Timer t5("compute insert");
+  //Timer t3("compute liveOut");
+  //Timer t4("compute use/def rest");
+  //Timer t5("compute insert");
 
+  // Iterate until no change, i.e. fixed point
   while (changed) {
     changed = false;
 
@@ -176,35 +176,35 @@ void Liveness::compute_liveness(Instr::List &instrs) {
       // Compute 'use' and 'def' sets
       useDef.set_used(instr, also_set_used);
 
-      t3.start();
+      //t3.start();
       computeLiveOut(i, liveOut);
-      t3.stop();
+      //t3.stop();
 
-      t4.start();
+      //t4.start();
       liveIn.add_not_used(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
       liveIn.add(useDef.use);
-      t4.stop();
+      //t4.stop();
 
-      t5.start();
+      //t5.start();
       if (insert(i, liveIn)) {
         changed = true;
       }
-      t5.stop();
+      //t5.stop();
     }
 
     count++;
   }
 
-  t3.end();
-  t4.end();
-  t5.end();
+  //t3.end();
+  //t4.end();
+  //t5.end();
 
 /*
   std::string msg;
   msg << "compute_liveness count: " << count;
   debug(msg);
 */
-  debug(dump());
+//  debug(dump());
 }
 
 
@@ -226,6 +226,11 @@ void Liveness::compute(Instr::List &instrs) {
 
   m_cfg.build(instrs);
   m_reg_usage.set_used(instrs);
+/*
+  if (!Platform::compiling_for_vc4()) {
+    debug(m_reg_usage.dump(true));
+  }
+*/
 
   compute_liveness(instrs);
   assert(instrs.size() == size());
@@ -245,6 +250,7 @@ void Liveness::compute(Instr::List &instrs) {
     breakpoint
   }
 */
+
   compile_data.reg_usage_dump = m_reg_usage.dump(true);
   compile_data.liveness_dump = dump();
 
@@ -294,20 +300,22 @@ std::string Liveness::dump() {
   std::string ret;
 
   for (int i = 0; i < m_set.size(); ++i) {
-    ret += std::to_string(i) + ": ";
+    std::string line;
+    line += std::to_string(i) + ": ";
 
     auto &item = m_set[i];
     bool did_first = false;
 
     for (auto it : item) {
       if (did_first) {
-        ret += ", ";
+        line += ", ";
       } else {
         did_first = true;
       }
-      ret += std::to_string(it);
+      line += std::to_string(it);
     }
 
+    ret += line;
     ret += "\n";
   }
 
@@ -338,7 +346,9 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
   t1.end();
 
   if (combineImmediates(live, instrs)) {
+    //std::cout << "After combineImmediates:\n"; 
     //std::cout << instrs.dump(true) << std::endl;  // Useful sometimes for debug
+
     Timer t3("combine immediates compute", true);
     live.compute(instrs);  // instructions have changed, redo liveness
   }
