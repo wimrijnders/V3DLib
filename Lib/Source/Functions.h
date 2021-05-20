@@ -7,8 +7,11 @@
 namespace V3DLib {
 namespace functions {
 
-void Return(Int const &val);                       // Exposed for unit tests
-IntExpr create_function_snippet(StackCallback f);  // Idem
+// These exposed for unit tests
+void Return(Int const &val);
+void Return(Float const &val);
+IntExpr create_function_snippet(StackCallback f);
+FloatExpr create_float_function_snippet(StackCallback f);
 
 IntExpr two_complement(IntExpr a);
 IntExpr abs(IntExpr a);

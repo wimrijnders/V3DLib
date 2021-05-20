@@ -39,17 +39,12 @@ void Return(Int const &val) {
 }
 
 
-namespace {
-
-// TODO see if this can be merged with the Int version.
 void Return(Float const &val) {
   // Prepare an expression which can be assigned
   // dummy is not used downstream, only the rhs matters
   Float dummy;
   dummy = val;
 }
-
-}  // anon namespace
 
 
 /**
@@ -74,39 +69,22 @@ void Return(Float const &val) {
  */
 IntExpr create_function_snippet(StackCallback f) {
   auto stmts = tempStmt(f);
-  assert(stmts.size() == 1);
-  auto stmt = stmts[0];
-
-  //std::cout << stmt->dump() << std::endl;
-  stmtStack() << stmt;
-
-  Stmt *ret = stmt->last_in_seq();
+  assert(!stmts.empty());
+  stmtStack() << stmts;
+  Stmt::Ptr ret = stmts.back();
   return ret->assign_rhs();
 }
 
-
-namespace {
 
 // TODO see if this can be merged with the Int version.
 FloatExpr create_float_function_snippet(StackCallback f) {
   auto stmts = tempStmt(f);
 
-  //assert(stmts.size() == 1);
-  //auto stmt = stmts[0];
-  ////std::cout << stmt->dump() << std::endl;
-  //stmtStack() << stmt;
-  //Stmt *ret = stmt->last_in_seq();
-  //return ret->assign_rhs();
-
   assert(!stmts.empty());
   auto stmt = stmts.back();
-
   stmtStack() << stmts;
-
   return stmt->assign_rhs();
 }
-
-}  // anon namespace
 
 
 /**
