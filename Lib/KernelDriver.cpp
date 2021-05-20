@@ -43,14 +43,14 @@ void title(FILE *f, std::string const &in_title) {
 /**
  * Emit source code
  */
-void print_source_code(FILE *f, Stmt::Ptr body) {
+void print_source_code(FILE *f, Stmts const &body) {
   if (f == nullptr) {
     f = stdout;
   }
 
   title(f, "Source code");
 
-  if (body.get() == nullptr) {
+  if (body.empty()) {
     fprintf(f, "<No source code to print>\n");
   } else {
     fprintf(f, pretty(body).c_str());
@@ -130,7 +130,7 @@ void KernelDriver::init_compile() {
 void KernelDriver::obtain_ast() {
   clearStack();
   //std::cout << m_stmtStack.dump() << std::endl;
-  m_body = m_stmtStack.pop();
+  m_body = *m_stmtStack.pop();
 }
 
 
@@ -193,6 +193,16 @@ bool KernelDriver::handle_errors() {
 
 
 /**
+ * Return AST representing the source code
+ *
+ * But it's not really a 'tree' anymore, it's a top-level sequence of statements
+ */
+Stmts &KernelDriver::sourceCode() {
+  return m_body;
+}
+
+
+/**
 * @brief Output a human-readable representation of the source and target code.
 *
 * @param filename  if specified, print the output to this file. Otherwise, print to stdout
@@ -207,7 +217,7 @@ void KernelDriver::pretty(char const *filename, bool output_qpu_code) {
     fprintf(f, "\n\n");
   }
 
-  print_source_code(f, sourceCode());
+  print_source_code(f, m_body);
   print_target_code(f, m_targetCode);
 
   if (output_qpu_code) {

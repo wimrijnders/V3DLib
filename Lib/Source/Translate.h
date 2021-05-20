@@ -5,7 +5,7 @@
 
 namespace V3DLib {
 
-void translate_stmt(Instr::List &seq, Stmt::Ptr s);
+void translate_stmt(Instr::List &seq, Stmts &s);
 void insertInitBlock(Instr::List &code);
 void loadStorePass(Instr::List &instrs);
 

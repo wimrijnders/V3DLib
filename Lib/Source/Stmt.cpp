@@ -463,4 +463,16 @@ Stmt::Ptr Stmt::mkFor(CExpr::Ptr cond, Ptr inc, Ptr body) {
   return s;
 }
 
+
+std::string Stmts::dump() const {
+  if (empty()) return "<Empty";
+  std::string ret;
+
+  for (int i = 0; i < (int) size(); i++) {
+    ret << (*this)[i]->dump() << "\n";
+  }
+
+  return ret;
+}
+
 }  // namespace V3DLib

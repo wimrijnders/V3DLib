@@ -12,7 +12,7 @@ class Seq;
 
 void interpreter(
   int numCores,
-  Stmt::Ptr stmt,
+  Stmts const &stmts,
   int numVars,
   IntList &uniforms,
   BufferObject &heap

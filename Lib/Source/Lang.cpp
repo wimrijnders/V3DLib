@@ -42,60 +42,56 @@ void If_(BoolExpr b) {
 //=============================================================================
 
 void Else_() {
-  int ok = 0;
+  assert(!controlStack.empty());
+  bool ok = false;
 
-  if (controlStack.size() > 0) {
-    Stmt::Ptr s = controlStack.top();
+  Stmt *s = controlStack.top_stmt();
+  assert(s != nullptr);
 
-    if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
-      s->thenStmt(stmtStack().pop());
-      stmtStack().push(mkSkip());
-      ok = 1;
-    }
+  if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
+    s->thenStmt(stmtStack().pop_stmt());
+    stmtStack().push(mkSkip());
+    ok = true;
   }
 
-  if (!ok) {
-    fatal("Syntax error: 'Else' without preceeding 'If' or 'Where'");
-  }
+  assertq(ok, "Syntax error: 'Else' without preceeding 'If' or 'Where'");
 }
+
 
 //=============================================================================
 // 'End' token
 //=============================================================================
 
 void End_() {
-  int ok = 0;
+  assert(!controlStack.empty());
+  bool ok = false;
 
-  if (!controlStack.empty()) {
-    Stmt::Ptr s = controlStack.top();
+  Stmt *s = controlStack.top_stmt();
+  assert(s != nullptr);
 
-    if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
-      if (s->then_is_null()) {
-        s->thenStmt(stmtStack().pop());
-        ok = 1;
-      } else if (s->else_is_null()) {
-        s->elseStmt(stmtStack().pop());
-        ok = 1;
-      }
-    }
-
-    if (s->tag == Stmt::WHILE && s->body_is_null()) {
-      s->body(stmtStack().pop());
-      ok = 1;
-    }
-
-    if (s->tag == Stmt::FOR && s->body_is_null()) {
-      s->for_to_while(stmtStack().pop());
-      ok = 1;
-    }
-
-    if (ok) {
-      stmtStack().append(controlStack.pop());
+  if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
+    if (s->then_is_null()) {
+      s->thenStmt(stmtStack().pop_stmt());
+      ok = true;
+    } else if (s->else_is_null()) {
+      s->elseStmt(stmtStack().pop_stmt());
+      ok = true;
     }
   }
 
-  if (!ok) {
-    fatal("Syntax error: unexpected 'End'");
+  if (s->tag == Stmt::WHILE && s->body_is_null()) {
+    s->body(stmtStack().pop_stmt());
+    ok = true;
+  }
+
+  if (s->tag == Stmt::FOR && s->body_is_null()) {
+    s->for_to_while(stmtStack().pop_stmt());
+    ok = true;
+  }
+
+  assertq(ok, "Syntax error: unexpected 'End'", true);
+  if (ok) {
+    stmtStack().append(controlStack.pop_stmt());
   }
 }
 
@@ -144,28 +140,34 @@ void For_(BoolExpr b) {
 
 
 void ForBody_() {
-  Stmt::Ptr s = controlStack.top();
-  s->inc(stmtStack().pop());
+  Stmt *s = controlStack.top_stmt();
+  assert(s != nullptr);
+
+  //s->last_in_seq()->inc(stmtStack().pop_stmt());
+  s->inc(stmtStack().pop_stmt());
   stmtStack().push(mkSkip());
 }
 
 
 void header(char const *str) {
   assert(stmtStack().top() != nullptr);
-  stmtStack().top()->seq_s1()->header(str);
+  //stmtStack().top_stmt()->seq_s1()->header(str);
+  stmtStack().top_stmt()->header(str);
 }
 
 
 void comment(char const *str) {
-  assert(stmtStack().top() != nullptr);
-  stmtStack().top()->seq_s1()->comment(str);
+  assert(stmtStack().top_stmt() != nullptr);
+  //stmtStack().top_stmt()->seq_s1()->comment(str);
+  stmtStack().top_stmt()->comment(str);
 }
 
 
 void break_point(bool val) {
   if (val) {
-    assert(stmtStack().top() != nullptr);
-    stmtStack().top()->seq_s1()->break_point();
+    assert(stmtStack().top_stmt() != nullptr);
+    //stmtStack().top_stmt()->seq_s1()->break_point();
+    stmtStack().top_stmt()->break_point();
   }
 }
 

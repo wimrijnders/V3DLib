@@ -145,6 +145,11 @@ private:
 Stmt::Ptr mkSkip();
 Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
 
+class Stmts : public std::vector<Stmt::Ptr> {
+public:
+  std::string dump() const;
+};
+
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_SOURCE_STMT_H_

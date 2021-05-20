@@ -5,7 +5,7 @@
 
 namespace V3DLib {
 
-std::string pretty(Stmt::Ptr s);
+std::string pretty(Stmts const &s);
 
 }  // namespace V3DLib
 

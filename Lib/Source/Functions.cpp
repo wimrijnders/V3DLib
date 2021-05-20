@@ -19,6 +19,9 @@ namespace {
 
 int const MAX_INT = 2147483647;  // Largest positive 32-bit integer that can be negated
 
+} // anon namespace
+
+
 /**
  * Ensure a common exit method for function snippets.
  *
@@ -35,6 +38,9 @@ void Return(Int const &val) {
   dummy = val;
 }
 
+
+namespace {
+
 // TODO see if this can be merged with the Int version.
 void Return(Float const &val) {
   // Prepare an expression which can be assigned
@@ -42,6 +48,8 @@ void Return(Float const &val) {
   Float dummy;
   dummy = val;
 }
+
+}  // anon namespace
 
 
 /**
@@ -65,7 +73,9 @@ void Return(Float const &val) {
  * But then again, nothing using the global statement stack is.
  */
 IntExpr create_function_snippet(StackCallback f) {
-  Stmt::Ptr stmt = tempStmt(f);
+  auto stmts = tempStmt(f);
+  assert(stmts.size() == 1);
+  auto stmt = stmts[0];
 
   //std::cout << stmt->dump() << std::endl;
   stmtStack() << stmt;
@@ -75,15 +85,25 @@ IntExpr create_function_snippet(StackCallback f) {
 }
 
 
+namespace {
+
 // TODO see if this can be merged with the Int version.
 FloatExpr create_float_function_snippet(StackCallback f) {
-  Stmt::Ptr stmt = tempStmt(f);
+  auto stmts = tempStmt(f);
 
-  //std::cout << stmt->dump() << std::endl;
-  stmtStack() << stmt;
+  //assert(stmts.size() == 1);
+  //auto stmt = stmts[0];
+  ////std::cout << stmt->dump() << std::endl;
+  //stmtStack() << stmt;
+  //Stmt *ret = stmt->last_in_seq();
+  //return ret->assign_rhs();
 
-  Stmt *ret = stmt->last_in_seq();
-  return ret->assign_rhs();
+  assert(!stmts.empty());
+  auto stmt = stmts.back();
+
+  stmtStack() << stmts;
+
+  return stmt->assign_rhs();
 }
 
 }  // anon namespace

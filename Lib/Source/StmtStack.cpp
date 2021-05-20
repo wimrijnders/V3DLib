@@ -26,10 +26,10 @@ StmtStack::Ptr tempStack(StackCallback f) {
 } // anon namespace
 
 
-Stmt::Ptr tempStmt(StackCallback f) {
+Stmts tempStmt(StackCallback f) {
   StmtStack::Ptr assign = tempStack(f);
   assert(assign->size() == 1);
-  return assign->top();
+  return *assign->top();
 }
 
 
@@ -55,7 +55,15 @@ void StmtStack::PrefetchContext::resolve_prefetches() {
 */
 
     assert(assign->size() == 1);
-    m_prefetch_tags[0]->append(assign->top());
+    auto &assigns = *assign->top();
+
+    assert(!m_prefetch_tags.empty());
+    auto &stmts = m_prefetch_tags;
+
+    // TODO: raise append level
+    for (int i = 0; i < (int) assigns.size() ; i++) {
+      stmts[0]->append(assigns[i]);  // Oof what a headache this was
+    }
   }
 
   for (int i = 1; i < (int) m_prefetch_tags.size(); ++i) {
@@ -65,8 +73,16 @@ void StmtStack::PrefetchContext::resolve_prefetches() {
       break;
     }
 
+    assert(!m_prefetch_tags.empty());
+    auto &stmts = m_prefetch_tags;
+
     assert(m_assigns[assign_index]->size() == 1);
-    m_prefetch_tags[i]->append(m_assigns[assign_index]->top());
+
+    auto &assigns = *m_assigns[assign_index]->top();
+
+    for (int j = 0; j < (int) assigns.size() ; j++) {
+     stmts[i]->append(assigns[j]);
+    }
   }
 
   m_prefetch_tags.clear();
@@ -95,6 +111,11 @@ void StmtStack::PrefetchContext::post_prefetch(Ptr assign) {
   }
 
   m_assigns.push_back(assign);
+}
+
+
+void StmtStack::PrefetchContext::add_prefetch_label(Stmt::Ptr pre) {
+  m_prefetch_tags.push_back(pre);
 }
 
 
@@ -155,14 +176,62 @@ void StmtStack::resolve_prefetches() {
 }
 
 
+void StmtStack::push(Stmt::Ptr s) {
+  if (empty()) {
+    init();
+  }
+
+  top()->push_back(s);
+}
+
+
+Stmt *StmtStack::top_stmt() {
+  assert(!empty());
+  assert(!Parent::top()->empty());
+  auto ptr =  Parent::top()->back();
+  assert(ptr.get() != nullptr);
+
+  return ptr.get();
+}
+
+
+Stmt::Ptr StmtStack::pop_stmt() {
+  assert(!empty());
+  assert(!Parent::top()->empty());
+
+  auto stmts = Parent::top();
+  Stmt::Ptr ptr = stmts->back();
+  stmts->pop_back();
+  assert(ptr.get() != nullptr);
+
+  if (stmts->empty()) {
+    Parent::pop();
+  }
+
+  return ptr;
+}
+
+
+void StmtStack::init() {
+  assert(empty());
+  Stack::Ptr stmts(new Stmts());
+  stmts->push_back(mkSkip());
+
+  Parent::push(stmts);
+}
+
+
 void StmtStack::reset() {
   clear();
-  push(mkSkip());
+  init();
+
   prefetches.clear();
 }
 
 
 /**
+ * TODO review this comment, implementation changed
+ *
  * Add passed statement to the end of the current instructions
  *
  * This is a logical operation;
@@ -174,12 +243,27 @@ void StmtStack::reset() {
  */
 void StmtStack::append(Stmt::Ptr stmt) {
   assert(stmt.get() != nullptr);
-  assert(!empty());
+  if (empty()) {
+    init();
+  }
   
-  //push(Stmt::create_sequence(pop(), stmt));
+  Parent::top()->push_back(stmt);
+
+/*
   auto top = top_item();
-  auto seq = Stmt::create_sequence(top->head, stmt);
-  top->head = seq;
+  auto &head = *top->head;
+  assert(head.size() == 1);
+
+  auto seq = Stmt::create_sequence(head[0], stmt);
+  head[0] = seq;
+*/
+}
+
+
+void StmtStack::append(Stmts const &stmts) {
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    append(stmts[i]);
+  }
 }
 
 
@@ -188,8 +272,10 @@ std::string StmtStack::dump() const {
 
   std::string ret;
 
-  each([&ret] (Stmt const & item) {
-    ret << item.dump() << "\n";
+  each([&ret] (Stmts const &item) {
+    for (int i = 0; i < (int) item.size(); i++) {
+      ret << item[i]->dump() << "\n";
+    }
   });
 
   return ret;
@@ -204,8 +290,10 @@ Stmt *StmtStack::first_in_seq() const {
     return nullptr;
   }
 
-  Stmt::Ptr item = top();
-  return item->first_in_seq();
+  auto item = top();
+  assert(item.get() != nullptr);
+  assert(!item->empty());
+  return (*item)[0]->first_in_seq();
 }
 
 

@@ -24,6 +24,13 @@ cx operator-(cx const &a, complex const &b) { return cx(a.real() - b.re(), a.ima
 //cx operator-(complex const &a, cx const &b) { return cx(a.re() - b.real(), a.im() - b.imag()); }
 
 
+void scalar_dump(cx *b, int size) {
+  std::cout << "Scalar output: ";
+  for (int i=0; i < 8; ++i) 
+    std::cout << b[i] << ", ";
+  std::cout << std::endl;
+}
+
 
 /**
  * Paranoia: check that steps are valid for the entire vector
@@ -736,12 +743,7 @@ TEST_CASE("FFT test with scalar [fft]") {
       REQUIRE(abs(b[i] - expected[i]) < precision);
     }
 
-/*
-    std::cout << "Scalar output: ";
-    for (int i=0; i < 8; ++i) 
-      std::cout << b[i] << ", ";
-    std::cout << std::endl;
-*/
+    //scalar_dump(b, 8);
   }
 
 
@@ -756,6 +758,7 @@ TEST_CASE("FFT test with scalar [fft]") {
 
     cx scalar_result[Dim];
     fft(a, scalar_result, log2n);
+    scalar_dump(scalar_result, Dim);
 
     Complex::Array aa(16);
     aa.fill(V3DLib::complex(0.0f, 0.0f));
@@ -774,11 +777,12 @@ TEST_CASE("FFT test with scalar [fft]") {
     }
 
     fft_context.init(log2n, false);
-    auto k = compile(fft_kernel, V3D);
-    //k.pretty(true, nullptr, false);
+    auto k = compile(fft_kernel); //, V3D);
+    k.pretty(true, "fft_kernel.txt", false);
     k.load(&result, &devnull, &offsets);
-    k.call();
-    //std::cout << "Kernel output: " << result.dump() << std::endl;
+    breakpoint
+    k.interpret();  //call();
+    std::cout << "Kernel output: " << result.dump() << std::endl;
 
     float precision = 5.0e-5f;
     for (int i = 0; i < Dim; ++i) {
@@ -829,7 +833,7 @@ TEST_CASE("FFT test with DFT [fft]") {
   };
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 11;  // 11: seg faults for FFT inline and buffer
+    int log2n = 5;  // 11: seg faults for FFT inline and buffer
     int Dim = 1 << log2n;
 
     int size = Dim;
@@ -861,30 +865,31 @@ TEST_CASE("FFT test with DFT [fft]") {
       fft(a_scalar, scalar_result, log2n);
       timer1.end();
 
-/*
+
       std::cout << "scalar result: ";
       for (int i = 0; i < Dim; ++i) {
         std::cout << scalar_result[i] << ", ";
       }
       std::cout << std::endl;
-*/
+
     }
 
     // Run DFT for time comparison
     if (log2n <= 9) {
       Complex::Array2D result_dft;
       Timer timer1("DFT compile time");
-      auto k = compile(kernels::dft_inline_decorator(a, result_dft), V3D);
+      auto k = compile(kernels::dft_inline_decorator(a, result_dft)); //, V3D);
       timer1.end();
       std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
 
       Timer timer2("DFT run time");
       k.load(&result_dft, &a);
       //k.setNumQPUs(1);
-      k.call();
+      //breakpoint
+      k.interpret();  // call();
       timer2.end();
 
- //     std::cout << "DFT result: " << result_dft.dump() << std::endl;
+      std::cout << "DFT result: " << result_dft.dump() << std::endl;
 
       // Compare scalar result with kernel output
       check_result1(scalar_result, result_dft, Dim);
@@ -901,7 +906,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       fft_context.init(log2n, false);
 
       Timer timer1("FFT inline compile time");
-      auto k = compile(fft_kernel, V3D);
+      auto k = compile(fft_kernel); //, V3D);
       //k.pretty(false, "fft_inline_v3d.txt", false);  // segfault for log2n == 9
       //k.dump_compile_data(false, "fft_inline_dump_v3d.txt");
       timer1.end();
@@ -909,7 +914,7 @@ TEST_CASE("FFT test with DFT [fft]") {
 
       Timer timer2("FFT inline run time");
       k.load(&result_inline, &devnull, &offsets);
-      k.call();
+      k.interpret();  // call();
       timer2.end();
 
       //std::cout << "FFT result: " << result.dump() << std::endl;
@@ -927,13 +932,13 @@ TEST_CASE("FFT test with DFT [fft]") {
       fft_context.init_offsets_array(offsets);
 
       Timer timer1("FFT buffer compile time");
-      auto k = compile(fft_kernel, V3D);
+      auto k = compile(fft_kernel); //, V3D);
       timer1.end();
       std::cout << "FFT buffer kernel size: " << k.v3d_kernel_size() << std::endl;
 
       Timer timer2("FFT buffer run time");
       k.load(&result_buf, &devnull, &offsets);
-      k.call();
+      k.interpret(); // call();
       timer2.end();
 
       check_result2(scalar_result, result_buf, Dim);
@@ -999,7 +1004,7 @@ TEST_CASE("FFT Support [fft]") {
       src_vec = k_index;
       auto k = compile(vecload_kernel);
       k.load(&result);
-      k.call();
+      k.interpret();  // call();
 
       //std::cout << "16vec output: " << result.dump() << std::endl;
       for (int i = 0; i < (int) k_index.size(); ++i) {
@@ -1012,7 +1017,7 @@ TEST_CASE("FFT Support [fft]") {
       src_vec = k_m2_index;
       auto k = compile(vecload_kernel);
       k.load(&result);
-      k.call();
+      k.interpret(); // call();
 
       //std::cout << "16vec output: " << result.dump() << std::endl;
       for (int i = 0; i < (int) k_m2_index.size(); ++i) {
@@ -1039,7 +1044,7 @@ TEST_CASE("FFT Support [fft]") {
     src_vec = k_index;
     auto k = compile(vecoffset_kernel);
     k.load(&result, &a, &devnull);
-    k.call();
+    k.interpret(); // call();
 
     //std::cout << "16vec output: " << result.dump() << std::endl;
 

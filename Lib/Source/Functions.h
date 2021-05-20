@@ -2,9 +2,13 @@
 #define _V3DLIB_SOURCE_FUNCTIONS_H_
 #include "Int.h"
 #include "Float.h"
+#include "StmtStack.h"  // StackCallback
 
 namespace V3DLib {
 namespace functions {
+
+void Return(Int const &val);                       // Exposed for unit tests
+IntExpr create_function_snippet(StackCallback f);  // Idem
 
 IntExpr two_complement(IntExpr a);
 IntExpr abs(IntExpr a);

@@ -1,4 +1,5 @@
 #include "Source/Interpreter.h"
+#include <algorithm>  // reverse()
 #include "Common/SharedArray.h"
 #include "Source/Stmt.h"
 #include "Common/BufferObject.h"
@@ -21,7 +22,7 @@ struct CoreState {
   int writeStride = 0;           // Write stride
   Vec* env = nullptr;            // Environment mapping vars to values
   int sizeEnv;                   // Size of the environment
-  Seq<Stmt::Ptr> stack;          // Control stack
+  Stmts stack;                   // Control stack
   Seq<Vec> loadBuffer;           // Load buffer
   Data emuHeap;
 
@@ -60,7 +61,7 @@ void CoreState::store_to_heap(Vec const &index, Vec &val) {
     //       Better to get rid of it
 
     std::string msg;
-    msg << "store_to_heap(): index does not have all same values" << index.dump();
+    msg << "store_to_heap(): index does not have all same values:" << index.dump();
 
     if (store_show_count == 1) {
       msg << "\n(this message not shown any more for more occurences)";
@@ -72,7 +73,7 @@ void CoreState::store_to_heap(Vec const &index, Vec &val) {
     // The human has been warned, assume that she knows what she's doing
 
     for (int i = 0; i < NUM_LANES; i++) {
-      uint32_t hp = (uint32_t) index[i].intVal + 4*i;
+      uint32_t hp = (uint32_t) index[i].intVal + 4*i;  // TODO examine why '4*i' is necessary
       emuHeap.phy(hp>>2) = val[i].intVal;
     }
   } else {
@@ -503,7 +504,7 @@ bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
     // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
     case Stmt::SEMA_INC:
       assert(semaId >= 0 && semaId < 16);
-      if (state->sema[semaId] == 15) s->stack.push(stmt);
+      if (state->sema[semaId] == 15) s->stack << stmt;
       else state->sema[semaId]++;
       break;
  
@@ -511,7 +512,7 @@ bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
     // Note at SEMA_INC also applies here
     case Stmt::SEMA_DEC:
       assert(semaId >= 0 && semaId < 16);
-      if (state->sema[semaId] == 0) s->stack.push(stmt);
+      if (state->sema[semaId] == 0) s->stack << stmt;
       else state->sema[semaId]--;
       break;
 
@@ -542,11 +543,12 @@ void exec(InterpreterState* state, CoreState* s) {
   // Control stack must be non-empty
   assert(s->stack.size() > 0);
 
-  // Pop the statement at the top of the stack
-  Stmt::Ptr stmt = s->stack.pop();
+  // Get next statement
+  Stmt::Ptr stmt = s->stack.back();
+  s->stack.pop_back();
 
   if (stmt == NULL) { // Apparently this happens
-    //assertq(false, " Interpreter: not expecting nullptr for stmt");
+    assertq(false, " Interpreter: not expecting nullptr for stmt");
     return;
   }
 
@@ -567,8 +569,8 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     case Stmt::SEQ:             // Sequential composition
-      s->stack.push(stmt->seq_s1());
-      s->stack.push(stmt->seq_s0());
+      s->stack << stmt->seq_s1();
+      s->stack << stmt->seq_s0();
       return;
 
     case Stmt::WHERE: {         // Conditional assignment
@@ -580,15 +582,15 @@ void exec(InterpreterState* state, CoreState* s) {
 
     case Stmt::IF:
       if (evalCond(s, stmt->if_cond()))
-        s->stack.push(stmt->thenStmt());
+        s->stack << stmt->thenStmt();
       else
-        s->stack.push(stmt->elseStmt());
+        s->stack << stmt->elseStmt();
       return;
 
     case Stmt::WHILE:
       if (evalCond(s, stmt->loop_cond())) {
-        s->stack.push(stmt);
-        s->stack.push(stmt->body());
+        s->stack << stmt;
+        s->stack << stmt->body();
       }
       return;
 
@@ -638,7 +640,7 @@ void exec(InterpreterState* state, CoreState* s) {
  */
 void interpreter(
   int numCores,
-  Stmt::Ptr stmt,
+  Stmts const &stmts,
   int numVars,
   IntList &uniforms,
   BufferObject &heap
@@ -658,8 +660,12 @@ void interpreter(
   }
 
   // Put statement on each core's control stack
-  for (int i = 0; i < numCores; i++)
-    state.core[i].stack.push(stmt);
+  // Note the reversal, to use it as an actual stack
+  for (int i = 0; i < numCores; i++) {
+    auto &stack = state.core[i].stack;
+    stack = stmts;
+    std::reverse(stack.begin(), stack.end());
+  }
 
   // Run code
   bool running = true;

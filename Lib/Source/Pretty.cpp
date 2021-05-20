@@ -142,9 +142,15 @@ std::string pretty(int indent, Stmt::Ptr s) {
 /**
  * Pretty printer for the V3DLib source language
  */
-std::string pretty(Stmt::Ptr s) {
-  assert(s.get() != nullptr);
-  return pretty(0, s);
+std::string pretty(Stmts const &s) {
+  assert(!s.empty());
+  std::string ret;
+
+  for (int i = 0; i < (int) s.size(); ++i) {
+    ret << pretty(0, s[i]);
+  }
+
+  return ret;
 }
 
 }  // namespace V3DLib
