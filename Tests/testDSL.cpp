@@ -898,12 +898,11 @@ TEST_CASE("Test functions [dsl][func]") {
 
     {
       auto k = compile(cosine_kernel);
-      //k.pretty(false, nullptr, true);
+      k.pretty(false, nullptr, true);
       k.load(&qpu_cos, size, freq, offset);
-      k.call();
+      k.interpret();
 
       float max_diff = calc_max_diff(lib_cos, qpu_cos, size); 
-      //printf("Max diff: %f\n", max_diff);
       INFO("Max diff: " << max_diff);
       REQUIRE(max_diff < MAX_DIFF);
     }
@@ -1024,14 +1023,17 @@ TEST_CASE("Test issues [dsl][issues]") {
     int const N = 6;
 
     auto k = compile(issues_kernel);
-    //k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
+    k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
     //k.pretty(false, "obj/test/issues_kernel_v3d.txt");
 
     Int::Array input(16);
     input.fill(7);
 
     Int::Array result(16*N);
+    result.fill(-1);
+
     k.load(&result, &input);
+breakpoint
     k.emu();
 
     check_vector(result, 0, 0);

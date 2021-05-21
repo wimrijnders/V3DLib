@@ -61,6 +61,12 @@ struct Stmt : public InstructionComment {
     NUM_TAGS
   };
 
+  class Array : public std::vector<Ptr> {
+  public:
+    Ptr to_stmt() const;
+    std::string dump() const;
+  };
+
   ~Stmt() {}
 
   Stmt &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
@@ -87,11 +93,13 @@ struct Stmt : public InstructionComment {
 
   Ptr seq_s0() const;
   Ptr seq_s1() const;
+
   Ptr thenStmt() const;
-  Ptr elseStmt() const;
-  Ptr body() const;
   void thenStmt(Ptr then_ptr);
+
+  Ptr elseStmt() const;
   void elseStmt(Ptr else_ptr);
+  Ptr body() const;
   void body(Ptr ptr);
   void inc(Ptr ptr);
   bool then_is_null() const;
@@ -145,10 +153,8 @@ private:
 Stmt::Ptr mkSkip();
 Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
 
-class Stmts : public std::vector<Stmt::Ptr> {
-public:
-  std::string dump() const;
-};
+
+using Stmts = Stmt::Array;
 
 }  // namespace V3DLib
 

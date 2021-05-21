@@ -464,8 +464,8 @@ Stmt::Ptr Stmt::mkFor(CExpr::Ptr cond, Ptr inc, Ptr body) {
 }
 
 
-std::string Stmts::dump() const {
-  if (empty()) return "<Empty";
+std::string Stmt::Array::dump() const {
+  if (empty()) return "<Empty>";
   std::string ret;
 
   for (int i = 0; i < (int) size(); i++) {
@@ -473,6 +473,18 @@ std::string Stmts::dump() const {
   }
 
   return ret;
+}
+
+
+Stmt::Ptr Stmt::Array::to_stmt() const {
+  assert(!empty());
+  Ptr ptr = mkSkip();
+
+  for (int i = 0; i < (int) size(); i++) {
+    ptr->append((*this)[i]);
+  }
+
+  return ptr;
 }
 
 }  // namespace V3DLib

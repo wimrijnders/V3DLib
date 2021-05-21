@@ -178,23 +178,32 @@ void StmtStack::resolve_prefetches() {
 
 void StmtStack::push(Stmt::Ptr s) {
   if (empty()) {
-    init();
+    push();
   }
 
   top()->push_back(s);
 }
 
 
-Stmt *StmtStack::top_stmt() {
+/**
+ * Return the last added statement on the stack
+ */
+Stmt::Ptr StmtStack::last_stmt() {
   assert(!empty());
-  assert(!Parent::top()->empty());
-  auto ptr =  Parent::top()->back();
+  auto level = Parent::top();
+  assert(level != nullptr);
+  assert(!level->empty());
+
+  auto ptr = level->back();
   assert(ptr.get() != nullptr);
 
-  return ptr.get();
+  return ptr;
 }
 
 
+/**
+ * TODO prob useless, verify and remove
+ */
 Stmt::Ptr StmtStack::pop_stmt() {
   assert(!empty());
   assert(!Parent::top()->empty());
@@ -204,26 +213,29 @@ Stmt::Ptr StmtStack::pop_stmt() {
   stmts->pop_back();
   assert(ptr.get() != nullptr);
 
+  assert(!stmts->empty());  // Deal with this if it happens
+/*
   if (stmts->empty()) {
     Parent::pop();
   }
+*/
 
   return ptr;
 }
 
 
-void StmtStack::init() {
-  assert(empty());
+/**
+ * Create a new level in the stack
+ */
+void StmtStack::push() {
   Stack::Ptr stmts(new Stmts());
-  stmts->push_back(mkSkip());
-
   Parent::push(stmts);
 }
 
 
 void StmtStack::reset() {
   clear();
-  init();
+  push();
 
   prefetches.clear();
 }
@@ -244,7 +256,7 @@ void StmtStack::reset() {
 void StmtStack::append(Stmt::Ptr stmt) {
   assert(stmt.get() != nullptr);
   if (empty()) {
-    init();
+    push();
   }
   
   Parent::top()->push_back(stmt);
@@ -305,7 +317,7 @@ StmtStack &stmtStack() {
 
 void clearStack() {
   if (p_stmtStack == nullptr) {
-    // May occur if error occurs on init
+    // May occur if error during initialization
     return;
   }
 

@@ -28,9 +28,12 @@ void assign(Expr::Ptr lhs, Expr::Ptr rhs) {
 
 void If_(Cond c) {
   Stmt::Ptr s = Stmt::mkIf(c.cexpr(), nullptr, nullptr);
+  controlStack.push();
   controlStack.push(s);
-  stmtStack().push(mkSkip());
+  stmtStack().push();
+  stmtStack().push(mkSkip());  // Prob not necessary any more. TODO scan code for mkSkip() and remove
 }
+
 
 void If_(BoolExpr b) {
   If_(any(b));
@@ -45,12 +48,13 @@ void Else_() {
   assert(!controlStack.empty());
   bool ok = false;
 
-  Stmt *s = controlStack.top_stmt();
-  assert(s != nullptr);
+  assertq(controlStack.top()->size() == 1, "Expecting just 1 statement on control stack  for else-block", true);
+  Stmt::Ptr s = controlStack.last_stmt();
 
   if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
-    s->thenStmt(stmtStack().pop_stmt());
-    stmtStack().push(mkSkip());
+    s->thenStmt(stmtStack().top()->to_stmt());
+    stmtStack().pop();
+    //stmtStack().push(mkSkip());
     ok = true;
   }
 
@@ -66,32 +70,35 @@ void End_() {
   assert(!controlStack.empty());
   bool ok = false;
 
-  Stmt *s = controlStack.top_stmt();
-  assert(s != nullptr);
+  assert(controlStack.top()->size() == 1);
+  Stmt::Ptr s = controlStack.last_stmt();
+  auto block = stmtStack().top()->to_stmt();
 
   if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
     if (s->then_is_null()) {
-      s->thenStmt(stmtStack().pop_stmt());
+      s->thenStmt(block);
       ok = true;
     } else if (s->else_is_null()) {
-      s->elseStmt(stmtStack().pop_stmt());
+      s->elseStmt(block);
       ok = true;
     }
   }
 
   if (s->tag == Stmt::WHILE && s->body_is_null()) {
-    s->body(stmtStack().pop_stmt());
+    s->body(block);
     ok = true;
   }
 
   if (s->tag == Stmt::FOR && s->body_is_null()) {
-    s->for_to_while(stmtStack().pop_stmt());
+    s->for_to_while(block);
     ok = true;
   }
 
   assertq(ok, "Syntax error: unexpected 'End'", true);
   if (ok) {
-    stmtStack().append(controlStack.pop_stmt());
+    stmtStack().pop();
+    stmtStack().append(s);
+    controlStack.pop();
   }
 }
 
@@ -102,7 +109,9 @@ void End_() {
 
 void While_(Cond c) {
   Stmt::Ptr s = Stmt::mkWhile(c.cexpr(), nullptr);
+  controlStack.push();
   controlStack.push(s);
+  stmtStack().push();
   stmtStack().push(mkSkip());
 }
 
@@ -118,7 +127,9 @@ void While_(BoolExpr b) {
 
 void Where__(BExpr::Ptr b) {
   Stmt::Ptr s = mkWhere(b, nullptr, nullptr);
+  controlStack.push();
   controlStack.push(s);
+  stmtStack().push();
   stmtStack().push(mkSkip());
 }
 
@@ -129,7 +140,9 @@ void Where__(BExpr::Ptr b) {
 
 void For_(Cond c) {
   Stmt::Ptr s = Stmt::mkFor(c.cexpr(), nullptr, nullptr);
+  controlStack.push();
   controlStack.push(s);
+  stmtStack().push();
   stmtStack().push(mkSkip());
 }
 
@@ -140,34 +153,33 @@ void For_(BoolExpr b) {
 
 
 void ForBody_() {
-  Stmt *s = controlStack.top_stmt();
-  assert(s != nullptr);
+  assertq(controlStack.top()->size() == 1, "Expecting exactly one statement in for body", true);
+  Stmt::Ptr s = controlStack.last_stmt();
+  auto inc = stmtStack().top()->to_stmt();
 
-  //s->last_in_seq()->inc(stmtStack().pop_stmt());
-  s->inc(stmtStack().pop_stmt());
+  s->inc(inc);
+  stmtStack().pop();  // TODO reuse last item instead
+  stmtStack().push();
   stmtStack().push(mkSkip());
 }
 
 
 void header(char const *str) {
-  assert(stmtStack().top() != nullptr);
   //stmtStack().top_stmt()->seq_s1()->header(str);
-  stmtStack().top_stmt()->header(str);
+  stmtStack().last_stmt()->header(str);
 }
 
 
 void comment(char const *str) {
-  assert(stmtStack().top_stmt() != nullptr);
   //stmtStack().top_stmt()->seq_s1()->comment(str);
-  stmtStack().top_stmt()->comment(str);
+  stmtStack().last_stmt()->comment(str);
 }
 
 
 void break_point(bool val) {
   if (val) {
-    assert(stmtStack().top_stmt() != nullptr);
     //stmtStack().top_stmt()->seq_s1()->break_point();
-    stmtStack().top_stmt()->break_point();
+    stmtStack().last_stmt()->break_point();
   }
 }
 

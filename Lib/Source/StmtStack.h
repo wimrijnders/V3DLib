@@ -18,8 +18,9 @@ class StmtStack : public Stack<Stmts> {
 public:
   using Ptr = std::shared_ptr<StmtStack>;
 
+  void push();
   void push(Stmt::Ptr s);
-  Stmt *top_stmt();
+  Stmt::Ptr last_stmt();
   Stmt::Ptr pop_stmt();
 
   void reset();
@@ -58,7 +59,6 @@ private:
   std::map<int, PrefetchContext> prefetches;
 
   void add_prefetch_label(int prefetch_label);
-  void init();
 };
 
 
