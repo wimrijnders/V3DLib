@@ -548,7 +548,7 @@ void exec(InterpreterState* state, CoreState* s) {
   s->stack.pop_back();
 
   if (stmt == NULL) { // Apparently this happens
-    assertq(false, " Interpreter: not expecting nullptr for stmt");
+    assertq(false, " Interpreter: not expecting nullptr for stmt", true);
     return;
   }
 
@@ -583,8 +583,9 @@ void exec(InterpreterState* state, CoreState* s) {
     case Stmt::IF:
       if (evalCond(s, stmt->if_cond()))
         s->stack << stmt->thenStmt();
-      else
+      else if (stmt->elseStmt().get() != nullptr) {
         s->stack << stmt->elseStmt();
+      }
       return;
 
     case Stmt::WHILE:

@@ -17,7 +17,7 @@ class RegUsage;
 class LiveSet : public std::set<RegId> {
   using Parent = std::set<RegId>;
 public:
-  void add_not_used(LiveSet const &def, UseDef const &use);
+  void remove(LiveSet const &def, UseDef const &use);
   void add(LiveSet const &rhs);
   void add(Set<RegId> const &rhs);
   std::string dump() const;

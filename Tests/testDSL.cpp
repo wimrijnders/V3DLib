@@ -898,7 +898,6 @@ TEST_CASE("Test functions [dsl][func]") {
 
     {
       auto k = compile(cosine_kernel);
-      k.pretty(false, nullptr, true);
       k.load(&qpu_cos, size, freq, offset);
       k.interpret();
 
@@ -1033,7 +1032,6 @@ TEST_CASE("Test issues [dsl][issues]") {
     result.fill(-1);
 
     k.load(&result, &input);
-breakpoint
     k.emu();
 
     check_vector(result, 0, 0);

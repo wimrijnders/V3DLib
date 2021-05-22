@@ -9,9 +9,7 @@ namespace V3DLib {
 ///////////////////////////////////////////////////////////////////////////////
 
 void LiveSet::add(LiveSet const &rhs) {
-  for (auto j : rhs) {
-      insert(j);
-  }
+  insert(rhs.begin(), rhs.end());
 }
 
 
@@ -22,12 +20,14 @@ void LiveSet::add(Set<RegId> const &set) {
 }
 
 
-void LiveSet::add_not_used(LiveSet const &set, UseDef const &use ) {
-  clear();
+/**
+ * Remove the values in set 'use' from 'set' and store result in current instance
+ */
+void LiveSet::remove(LiveSet const &set, UseDef const &use ) {
+  (*this) = set;
 
-  for (auto j : set) {
-    if (!use.def.member(j))
-      insert(j);
+  for (int i = 0; i < use.def.size(); i++) {
+    erase(use.def[i]);
   }
 }
 

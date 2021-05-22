@@ -497,7 +497,7 @@ TEST_CASE("Test if/where without loop [noloop][cond]") {
   }
 
 
-  SUBCASE("Testing noloop_if_and_where_kernel") {
+  SUBCASE("Testing noloop_if_and_kernel") {
     Int::Array result(VEC_SIZE);
 
     auto k2 = compile(noloop_if_and_kernel);

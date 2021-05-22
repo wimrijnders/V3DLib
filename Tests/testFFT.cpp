@@ -1,6 +1,5 @@
 #include "support/support.h"
 #include <iostream>
-#include <complex>
 #include <cmath>
 #include <V3DLib.h>
 #include "Support/Platform.h"
@@ -18,18 +17,35 @@ namespace {
 // Support routines 
 ///////////////////////////////////////////////////////////////////////////////
 
-using cx = std::complex<double>;
-
-cx operator-(cx const &a, complex const &b) { return cx(a.real() - b.re(), a.imag() - b.im()); }
-//cx operator-(complex const &a, cx const &b) { return cx(a.re() - b.real(), a.im() - b.imag()); }
-
-
-void scalar_dump(cx *b, int size) {
-  std::cout << "Scalar output: ";
-  for (int i=0; i < 8; ++i) 
-    std::cout << b[i] << ", ";
-  std::cout << std::endl;
+void check_result1(cx const *expected, Complex::Array2D const &result, int Dim, float precision) {
+  REQUIRE(precision > 0.0f);
+  for (int i = 0; i < Dim; ++i) {
+    float diff = (float) abs(expected[i] - result[0][i]);
+    INFO("diff " << i << ": " << diff);
+    REQUIRE(diff < precision);
+  }
 }
+
+
+void check_result2(cx const *expected, Complex::Array const &result, int Dim, float precision) {
+  REQUIRE(precision > 0.0f);
+  for (int i = 0; i < Dim; ++i) {
+    float diff = (float) abs(expected[i] - result[i].to_complex());
+    INFO("diff " << i << ": " << diff);
+    REQUIRE(diff < precision);
+  }
+}
+
+/*
+void check_result(Complex::Array2D const &expected, Complex::Array const &result, int Dim, float precision) {
+  REQUIRE(precision > 0.0f);
+  for (int i = 0; i < Dim; ++i) {
+    float diff = (expected[0][i] - result[i].to_complex()).magnitude();
+    INFO("diff " << i << ": " << diff);
+    REQUIRE(diff < precision);
+  }
+}
+*/
 
 
 /**
@@ -758,7 +774,7 @@ TEST_CASE("FFT test with scalar [fft]") {
 
     cx scalar_result[Dim];
     fft(a, scalar_result, log2n);
-    scalar_dump(scalar_result, Dim);
+    //scalar_dump(scalar_result, Dim);
 
     Complex::Array aa(16);
     aa.fill(V3DLib::complex(0.0f, 0.0f));
@@ -778,11 +794,10 @@ TEST_CASE("FFT test with scalar [fft]") {
 
     fft_context.init(log2n, false);
     auto k = compile(fft_kernel); //, V3D);
-    k.pretty(true, "fft_kernel.txt", false);
+    //k.pretty(true, "fft_kernel.txt", false);
     k.load(&result, &devnull, &offsets);
-    breakpoint
-    k.interpret();  //call();
-    std::cout << "Kernel output: " << result.dump() << std::endl;
+    k.call();
+    //std::cout << "Kernel output: " << result.dump() << std::endl;
 
     float precision = 5.0e-5f;
     for (int i = 0; i < Dim; ++i) {
@@ -804,37 +819,27 @@ TEST_CASE("FFT test with DFT [fft]") {
     }
   };
 
-  // adequate for log2n <= 8:  5.0e-5f;
-  // adequate for log2n <= 9:  5.0e-4f;
-  float precision = 5.0e-3f;
+  float precision = 0.0f;
 
-  auto check_result1 = [precision] (cx const *expected, Complex::Array2D const &result, int Dim) {
-    for (int i = 0; i < Dim; ++i) {
-      float diff = (float) abs(expected[i] - result[0][i]);
-      INFO("diff " << i << ": " << diff);
-      REQUIRE(diff < precision);
+  // The higher log2n, the more divergence of FFT results with scalar
+  auto set_precision = [&precision] (int log2n) {
+    if (log2n <= 8) {
+      precision = 5.0e-5f;
+    } else if (log2n <= 9) {
+      precision = 5.0e-4f;
+    } else if (log2n <= 11) {
+      precision = 5.0e-3f;
+    } else {  // Tested for log2n = 12 
+      precision = 3e-2f;  // Pretty crappy precision here
     }
   };
 
-  auto check_result2 = [precision] (cx const *expected, Complex::Array const &result, int Dim) {
-    for (int i = 0; i < Dim; ++i) {
-      float diff = (float) abs(expected[i] - result[i].to_complex());
-      INFO("diff " << i << ": " << diff);
-      REQUIRE(diff < precision);
-    }
-  };
-
-  auto check_result = [precision] (Complex::Array2D const &expected, Complex::Array const &result, int Dim) {
-    for (int i = 0; i < Dim; ++i) {
-      float diff = (expected[0][i] - result[i].to_complex()).magnitude();
-      INFO("diff " << i << ": " << diff);
-      REQUIRE(diff < precision);
-    }
-  };
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 5;  // 11: seg faults for FFT inline and buffer
+    int log2n = 7;  // Tested up till 12 (compile times FFT buffer: 238s, inline: 172s)
     int Dim = 1 << log2n;
+    set_precision(log2n);
+    REQUIRE(precision > 0.0f);
 
     int size = Dim;
     if (size < 16) size = 16;
@@ -864,18 +869,18 @@ TEST_CASE("FFT test with DFT [fft]") {
       Timer timer1("scalar FFT run time");
       fft(a_scalar, scalar_result, log2n);
       timer1.end();
-
-
-      std::cout << "scalar result: ";
-      for (int i = 0; i < Dim; ++i) {
-        std::cout << scalar_result[i] << ", ";
-      }
-      std::cout << std::endl;
-
+      //scalar_dump(scalar_result, Dim);
     }
 
     // Run DFT for time comparison
-    if (log2n <= 9) {
+    //
+    // Calling interpret() or emu() actually works here (with warnings), but
+    // the result, while plausible, diverges from the scalar results.
+    // 
+    // Of special note is that these calls return identical results. If there
+    // is an error here, both interpreter and emulator have it in congruent form.
+    //
+    if (log2n <= 9) {  // Reg allocation fails above this
       Complex::Array2D result_dft;
       Timer timer1("DFT compile time");
       auto k = compile(kernels::dft_inline_decorator(a, result_dft)); //, V3D);
@@ -885,21 +890,21 @@ TEST_CASE("FFT test with DFT [fft]") {
       Timer timer2("DFT run time");
       k.load(&result_dft, &a);
       //k.setNumQPUs(1);
-      //breakpoint
-      k.interpret();  // call();
+      k.call();
       timer2.end();
 
-      std::cout << "DFT result: " << result_dft.dump() << std::endl;
+      //std::cout << "DFT result: " << result_dft.dump() << std::endl;
 
       // Compare scalar result with kernel output
-      check_result1(scalar_result, result_dft, Dim);
+      check_result1(scalar_result, result_dft, Dim, precision);
     }
 
     Complex::Array devnull(16);
     Int::Array offsets;
 
+
     // FFT inline offsets
-    if (log2n <= 10) {  // After this segfault
+    /* if (log2n <= 10) */ {  // After this segfault
       Complex::Array result_inline(size);
       init_result(result_inline, a, Dim, log2n);
 
@@ -914,11 +919,11 @@ TEST_CASE("FFT test with DFT [fft]") {
 
       Timer timer2("FFT inline run time");
       k.load(&result_inline, &devnull, &offsets);
-      k.interpret();  // call();
+      k.call();
       timer2.end();
 
       //std::cout << "FFT result: " << result.dump() << std::endl;
-      check_result2(scalar_result, result_inline, Dim);
+      check_result2(scalar_result, result_inline, Dim, precision);
     }
 
 
@@ -938,10 +943,10 @@ TEST_CASE("FFT test with DFT [fft]") {
 
       Timer timer2("FFT buffer run time");
       k.load(&result_buf, &devnull, &offsets);
-      k.interpret(); // call();
+      k.call();
       timer2.end();
 
-      check_result2(scalar_result, result_buf, Dim);
+      check_result2(scalar_result, result_buf, Dim, precision);
     }
 
     // output plot
@@ -1004,7 +1009,7 @@ TEST_CASE("FFT Support [fft]") {
       src_vec = k_index;
       auto k = compile(vecload_kernel);
       k.load(&result);
-      k.interpret();  // call();
+      k.call();
 
       //std::cout << "16vec output: " << result.dump() << std::endl;
       for (int i = 0; i < (int) k_index.size(); ++i) {
@@ -1017,7 +1022,7 @@ TEST_CASE("FFT Support [fft]") {
       src_vec = k_m2_index;
       auto k = compile(vecload_kernel);
       k.load(&result);
-      k.interpret(); // call();
+      k.call();
 
       //std::cout << "16vec output: " << result.dump() << std::endl;
       for (int i = 0; i < (int) k_m2_index.size(); ++i) {
@@ -1044,7 +1049,7 @@ TEST_CASE("FFT Support [fft]") {
     src_vec = k_index;
     auto k = compile(vecoffset_kernel);
     k.load(&result, &a, &devnull);
-    k.interpret(); // call();
+    k.call();
 
     //std::cout << "16vec output: " << result.dump() << std::endl;
 

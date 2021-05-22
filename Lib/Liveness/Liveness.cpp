@@ -181,7 +181,7 @@ void Liveness::compute_liveness(Instr::List &instrs) {
       //t3.stop();
 
       //t4.start();
-      liveIn.add_not_used(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
+      liveIn.remove(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
       liveIn.add(useDef.use);
       //t4.stop();
 
@@ -224,6 +224,8 @@ void Liveness::clear() {
 void Liveness::compute(Instr::List &instrs) {
   clear();
 
+
+
   m_cfg.build(instrs);
   m_reg_usage.set_used(instrs);
 /*
@@ -232,7 +234,11 @@ void Liveness::compute(Instr::List &instrs) {
   }
 */
 
+  // This is the performance hog!
+  // ie. log2n == 12 -> time: 23.439770s of total ~ 28s
+  //Timer t3("compute liveness", false);
   compute_liveness(instrs);
+  //t3.end();
   assert(instrs.size() == size());
 
 /*
@@ -251,8 +257,12 @@ void Liveness::compute(Instr::List &instrs) {
   }
 */
 
+  // This is the second performance hog, but much less
+  // ie. log2n == 12 -> time: 2.952353s of total ~ 28s
+  //Timer t5("compute dump", false);
   compile_data.reg_usage_dump = m_reg_usage.dump(true);
   compile_data.liveness_dump = dump();
+  //t5.end();
 
   m_reg_usage.check();
 }
@@ -284,6 +294,10 @@ bool Liveness::insert(int index, LiveSet const &set) {
   bool changed = false;
   auto &item = m_set[index];
 
+  int prev_size = (int) item.size();
+  item.add(set);
+  changed = ((int) item.size() != prev_size);
+/*
   for (auto it : set) {
     auto ret = item.insert(it);  // return value is a pair, second value if 'false' if the item was already present
 
@@ -291,7 +305,7 @@ bool Liveness::insert(int index, LiveSet const &set) {
       changed = true;
     }
   }
-
+*/
   return changed;
 }
 
@@ -339,25 +353,25 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
 
   compile_data.target_code_before_optimization = instrs.dump();
 
-  Timer t1("live compute");
+  //Timer t1("live compute");
   Liveness live(numVars);
   live.compute(instrs);
   //live.dump();
-  t1.end();
+  //t1.end();
 
   if (combineImmediates(live, instrs)) {
     //std::cout << "After combineImmediates:\n"; 
     //std::cout << instrs.dump(true) << std::endl;  // Useful sometimes for debug
 
-    Timer t3("combine immediates compute", true);
+    //Timer t3("combine immediates compute", true);
     live.compute(instrs);  // instructions have changed, redo liveness
   }
 
-  Timer t3("introduceAccum");
+  //Timer t3("introduceAccum");
   int prev_count_skips = count_skips(instrs);
   compile_data.num_accs_introduced = introduceAccum(live, instrs);
   assertq(prev_count_skips == count_skips(instrs), "SKIP count changed after introduceAccum()");
-	t3.end();
+	//t3.end();
 
   remove_replaced_instructions(instrs);
   assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list after cleanup");

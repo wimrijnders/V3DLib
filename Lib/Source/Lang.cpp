@@ -53,7 +53,7 @@ void Else_() {
 
   if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
     s->thenStmt(stmtStack().top()->to_stmt());
-    stmtStack().pop();
+    stmtStack().top()->clear();  // reuse top stack item for else-block
     //stmtStack().push(mkSkip());
     ok = true;
   }
@@ -73,6 +73,7 @@ void End_() {
   assert(controlStack.top()->size() == 1);
   Stmt::Ptr s = controlStack.last_stmt();
   auto block = stmtStack().top()->to_stmt();
+  stmtStack().pop();
 
   if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
     if (s->then_is_null()) {
@@ -96,7 +97,6 @@ void End_() {
 
   assertq(ok, "Syntax error: unexpected 'End'", true);
   if (ok) {
-    stmtStack().pop();
     stmtStack().append(s);
     controlStack.pop();
   }
@@ -158,9 +158,7 @@ void ForBody_() {
   auto inc = stmtStack().top()->to_stmt();
 
   s->inc(inc);
-  stmtStack().pop();  // TODO reuse last item instead
-  stmtStack().push();
-  stmtStack().push(mkSkip());
+  stmtStack().top()->clear();  // reuse top stack item for end-block
 }
 
 
