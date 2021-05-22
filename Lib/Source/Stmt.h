@@ -108,6 +108,7 @@ struct Stmt : public InstructionComment {
 
   void for_to_while(Ptr in_body);
 
+  void cond(CExpr::Ptr cond);
   CExpr::Ptr if_cond() const;
   CExpr::Ptr loop_cond() const;
 
@@ -115,17 +116,11 @@ struct Stmt : public InstructionComment {
   // Instantiation methods
   //
   static Ptr create(Tag in_tag);
-  static Ptr create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1);  // TODO make private
-  static Ptr create(Tag in_tag, Ptr s0, Ptr s1);
+  static Ptr create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1);
   static Ptr create_assign(Expr::Ptr lhs, Expr::Ptr rhs);
   static Ptr create_sequence(Ptr s0, Ptr s1);
 
-  static Ptr mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt);
-  static Ptr mkWhile(CExpr::Ptr cond, Ptr body);
-  static Ptr mkFor(CExpr::Ptr cond, Ptr inc, Ptr body);
-
-  Tag tag;  // What kind of statement is it?
-
+  Tag tag;
   DMA::Stmt dma;
 
   void break_point() { m_break_point = true; }
@@ -144,14 +139,10 @@ private:
 
   bool m_break_point = false;
 
+  static Ptr create(Tag in_tag, Ptr s0, Ptr s1);
   void init(Tag in_tag);
   std::string disp_intern(bool with_linebreaks, int seq_depth) const;
 };
-
-
-// Functions to construct statements
-Stmt::Ptr mkSkip();
-Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt);
 
 
 using Stmts = Stmt::Array;

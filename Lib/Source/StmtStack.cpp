@@ -260,15 +260,6 @@ void StmtStack::append(Stmt::Ptr stmt) {
   }
   
   Parent::top()->push_back(stmt);
-
-/*
-  auto top = top_item();
-  auto &head = *top->head;
-  assert(head.size() == 1);
-
-  auto seq = Stmt::create_sequence(head[0], stmt);
-  head[0] = seq;
-*/
 }
 
 
@@ -316,8 +307,7 @@ StmtStack &stmtStack() {
 
 
 void clearStack() {
-  if (p_stmtStack == nullptr) {
-    // May occur if error during initialization
+  if (p_stmtStack == nullptr) {  // May occur if error during initialization
     return;
   }
 

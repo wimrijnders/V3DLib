@@ -5,13 +5,16 @@
 #include "StmtStack.h"
 
 namespace V3DLib {
-
 namespace {
-  StmtStack controlStack;
-} // anon namespace
 
+void prepare_stack(Stmt::Ptr s) {
+  auto &stack = stmtStack();
+  stack.push();
+  stack.push(s);
+  stack.push();
+}
 
-// Interface to the embedded language.
+}  // anon namespace
 
 //=============================================================================
 // Assignment token
@@ -23,38 +26,21 @@ void assign(Expr::Ptr lhs, Expr::Ptr rhs) {
 
 
 //=============================================================================
-// 'If' token
-//=============================================================================
-
-void If_(Cond c) {
-  Stmt::Ptr s = Stmt::mkIf(c.cexpr(), nullptr, nullptr);
-  controlStack.push();
-  controlStack.push(s);
-  stmtStack().push();
-  stmtStack().push(mkSkip());  // Prob not necessary any more. TODO scan code for mkSkip() and remove
-}
-
-
-void If_(BoolExpr b) {
-  If_(any(b));
-}
-
-
-//=============================================================================
 // 'Else' token
 //=============================================================================
 
 void Else_() {
-  assert(!controlStack.empty());
   bool ok = false;
 
-  assertq(controlStack.top()->size() == 1, "Expecting just 1 statement on control stack  for else-block", true);
-  Stmt::Ptr s = controlStack.last_stmt();
+  auto block  = stmtStack().top()->to_stmt();
+  stmtStack().pop();
+
+  Stmt::Ptr s = stmtStack().last_stmt();
 
   if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
-    s->thenStmt(stmtStack().top()->to_stmt());
-    stmtStack().top()->clear();  // reuse top stack item for else-block
-    //stmtStack().push(mkSkip());
+    s->thenStmt(block);
+    //stmtStack().top()->clear();  // reuse top stack item for else-block
+    stmtStack().push();
     ok = true;
   }
 
@@ -67,13 +53,12 @@ void Else_() {
 //=============================================================================
 
 void End_() {
-  assert(!controlStack.empty());
   bool ok = false;
 
-  assert(controlStack.top()->size() == 1);
-  Stmt::Ptr s = controlStack.last_stmt();
   auto block = stmtStack().top()->to_stmt();
   stmtStack().pop();
+
+  Stmt::Ptr s = stmtStack().last_stmt();
 
   if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
     if (s->then_is_null()) {
@@ -97,93 +82,78 @@ void End_() {
 
   assertq(ok, "Syntax error: unexpected 'End'", true);
   if (ok) {
+    stmtStack().pop();
     stmtStack().append(s);
-    controlStack.pop();
   }
 }
 
 
 //=============================================================================
-// 'While' token
+// Tokens with block handling
 //=============================================================================
+
+void If_(Cond c) {
+  Stmt::Ptr s = Stmt::create(Stmt::IF);
+  s->cond(c.cexpr());
+  prepare_stack(s);
+}
+
 
 void While_(Cond c) {
-  Stmt::Ptr s = Stmt::mkWhile(c.cexpr(), nullptr);
-  controlStack.push();
-  controlStack.push(s);
-  stmtStack().push();
-  stmtStack().push(mkSkip());
+  Stmt::Ptr s = Stmt::create(Stmt::WHILE);
+  s->cond(c.cexpr());
+  prepare_stack(s);
 }
 
-
-void While_(BoolExpr b) {
-  While_(any(b));
-}
-
-
-//=============================================================================
-// 'Where' token
-//=============================================================================
-
-void Where__(BExpr::Ptr b) {
-  Stmt::Ptr s = mkWhere(b, nullptr, nullptr);
-  controlStack.push();
-  controlStack.push(s);
-  stmtStack().push();
-  stmtStack().push(mkSkip());
-}
-
-
-//=============================================================================
-// 'For' token
-//=============================================================================
 
 void For_(Cond c) {
-  Stmt::Ptr s = Stmt::mkFor(c.cexpr(), nullptr, nullptr);
-  controlStack.push();
-  controlStack.push(s);
-  stmtStack().push();
-  stmtStack().push(mkSkip());
+  Stmt::Ptr s = Stmt::create(Stmt::FOR);
+  s->cond(c.cexpr());
+  prepare_stack(s);
 }
 
 
-void For_(BoolExpr b) {
-  For_(any(b));
+void If_(BoolExpr b)    { If_(any(b)); }
+void While_(BoolExpr b) { While_(any(b)); }
+void For_(BoolExpr b)   { For_(any(b)); }
+
+
+void Where__(BExpr::Ptr b) {
+  Stmt::Ptr s = Stmt::create(Stmt::WHERE);
+  s->where_cond(b);
+  prepare_stack(s);
 }
 
+
+//=============================================================================
+// 'For' handling
+//=============================================================================
 
 void ForBody_() {
-  assertq(controlStack.top()->size() == 1, "Expecting exactly one statement in for body", true);
-  Stmt::Ptr s = controlStack.last_stmt();
   auto inc = stmtStack().top()->to_stmt();
+  stmtStack().pop();
 
+  Stmt::Ptr s = stmtStack().last_stmt();
   s->inc(inc);
-  stmtStack().top()->clear();  // reuse top stack item for end-block
+
+  stmtStack().push();
 }
 
 
 void header(char const *str) {
-  //stmtStack().top_stmt()->seq_s1()->header(str);
   stmtStack().last_stmt()->header(str);
 }
 
 
 void comment(char const *str) {
-  //stmtStack().top_stmt()->seq_s1()->comment(str);
   stmtStack().last_stmt()->comment(str);
 }
 
 
 void break_point(bool val) {
   if (val) {
-    //stmtStack().top_stmt()->seq_s1()->break_point();
     stmtStack().last_stmt()->break_point();
   }
-}
-
-
-void initStmt() {
-  controlStack.clear();
 }
 
 }  // namespace V3DLib

@@ -33,6 +33,10 @@ void Stmt::append(Ptr rhs) {
 }
 
 
+void Stmt::cond(CExpr::Ptr cond) {
+  m_cond = cond;
+}
+
 BExpr::Ptr Stmt::where_cond() const {
   assert(tag == WHERE);
   assert(m_where_cond.get() != nullptr);
@@ -306,45 +310,8 @@ Stmt::Ptr Stmt::create(Tag in_tag, Ptr s0, Ptr s1) {
       ret->m_stmt_a = s0;
       ret->m_stmt_b = s1;
     break;
-    case WHERE:
-      // s0, s1 can be nullptr's
-      assertq(ret->m_stmt_a.get() == nullptr, "create() WHERE: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() WHERE: don't reassign stmt b ptr");
-
-      ret->m_where_cond.reset();  // NOTE: needs to be set elsewhere
-      ret->m_stmt_a = s0;
-      ret->m_stmt_b = s1;
-    break;
-    case IF:
-      // s0, s1 can be nullptr's
-      assertq(ret->m_stmt_a.get() == nullptr, "create() IF: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() IF: don't reassign stmt b ptr");
-
-      ret->m_cond.reset();  // NOTE: needs to be set elsewhere
-      ret->m_stmt_a = s0;
-      ret->m_stmt_b = s1;
-    break;
-    case WHILE:
-      // s0 can be nullptr, s1 not used
-      assertq(ret->m_stmt_a.get() == nullptr, "create() WHILE: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() WHILE: don't reassign stmt b ptr");
-      assertq(s1.get() == nullptr, "create() WHILE: not expecting assignment stmt b ptr");
-
-      ret->m_cond.reset();  // NOTE: needs to be set elsewhere
-      ret->m_stmt_a = s0;
-    break;
-    case FOR:
-      // s0, s1 can be nullptr's
-       // m_stmt_a is body, m_stmt_b is inc.
-      assertq(ret->m_stmt_a.get() == nullptr, "create() FOR: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() FOR: don't reassign stmt b ptr");
-
-      ret->m_cond.reset();  // NOTE: needs to be set elsewhere
-      ret->m_stmt_a = s1;  // NOTE: s1, s0 reversed
-      ret->m_stmt_b = s0;
-    break;
     default:
-      fatal("This tag not handled yet in create(Stmt,Stmt)");
+      fatal("create(Stmt,Stmt): Tag not handled");
     break;
   }
 
@@ -433,35 +400,11 @@ Stmt *Stmt::last_in_seq() const {
 // ============================================================================
 // Functions on statements
 // ============================================================================
+namespace {
 
 Stmt::Ptr mkSkip() { return Stmt::create(Stmt::SKIP); }
 
-Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
-  Stmt::Ptr s = Stmt::create(Stmt::WHERE, thenStmt, elseStmt);
-  s->where_cond(cond);
-  return s;
-}
-
-
-Stmt::Ptr Stmt::mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt) {
-  Stmt::Ptr s = Stmt::create(Stmt::IF, thenStmt, elseStmt);
-  s->m_cond   = cond;
-  return s;
-}
-
-
-Stmt::Ptr Stmt::mkWhile(CExpr::Ptr cond, Ptr body) {
-  Stmt::Ptr s = Stmt::create(Stmt::WHILE, body, Stmt::Ptr());
-  s->m_cond   = cond;
-  return s;
-}
-
-
-Stmt::Ptr Stmt::mkFor(CExpr::Ptr cond, Ptr inc, Ptr body) {
-  Stmt::Ptr s = Stmt::create(Stmt::FOR, inc, body);
-  s->m_cond   = cond;
-  return s;
-}
+}  // anon namespace
 
 
 std::string Stmt::Array::dump() const {

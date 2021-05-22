@@ -113,7 +113,6 @@ KernelDriver::~KernelDriver() {}
  * @param numVars           number of variables already assigned prior to compilation
  */
 void KernelDriver::init_compile() {
-  initStmt();
   initStack(m_stmtStack);
   VarGen::reset();
   resetFreshLabelGen();
