@@ -194,13 +194,13 @@ Complex::Ptr &Complex::Ptr::operator-=(IntExpr rhs) {
 }
 
 
-Complex::Ptr::Expr Complex::Ptr::Expr::operator+(IntExpr b)  {
+Complex::Ptr::Expr Complex::Ptr::Expr::operator+(IntExpr b) {
   return Expr(m_re + b, m_im + b);
 }
 
 
 // TODO: can this be combined with previous?
-Complex::Ptr::Expr Complex::Ptr::operator+(IntExpr b)  {
+Complex::Ptr::Expr Complex::Ptr::operator+(IntExpr b) const {
   return Expr(m_re + b, m_im + b);
 }
 

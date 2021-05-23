@@ -21,7 +21,6 @@ public:
   void push();
   void push(Stmt::Ptr s);
   Stmt::Ptr last_stmt();
-  Stmt::Ptr pop_stmt();
 
   void reset();
   void append(Stmt::Ptr stmt);

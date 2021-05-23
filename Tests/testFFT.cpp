@@ -418,7 +418,7 @@ struct {
   std::vector<Indexes16> vectors16;
   bool use_offsets = false;
 
-  int const k_limit = 2;
+  int const k_limit = 1;
 
   void init(int in_log2n, bool in_use_offsets) {
     if (log2n != in_log2n) {
@@ -476,6 +476,27 @@ struct {
 
     assert(count > 0);
     return count;
+  }
+
+
+  /**
+   * Count the number of consecutive items with the same s, j and k
+   * starting from index i
+   */
+  int same_indexes(int i) const {
+    auto &item = vectors16[i];
+
+    int same_count = 1;
+    for (int j = i + 1; j < (int) vectors16.size(); j++) {
+      auto &item2 = vectors16[j];
+      if (item2.s == item.s && item2.j == item.j && item2.k_count == item.k_count) {
+        same_count++;
+      } else {
+        break;
+      }
+    }
+
+    return same_count;
   }
 
 
@@ -549,11 +570,11 @@ void init_mult_factor(Complex &w_off, Complex &wm, int k_count) {
 }
 
 
-void init_k(
-  Int &k_off, Int &k_m2_off,
-  std::vector<int> const &k_tmp,
-  std::vector<int> const &k_m2_tmp,
-  int step, int k_count) {
+void init_k(Int &k_off, Int &k_m2_off, Indexes16 const &item) {
+  std::vector<int> const &k_tmp    = item.k_16;
+  std::vector<int> const &k_m2_tmp = item.k_m2_16;
+  int step    = item.step;
+  int k_count = item.k_count;
 
   if (k_count == 16) {
     // There is no step; load values in directly
@@ -585,7 +606,7 @@ void init_k(
 }
 
 
-void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex &w) {
+void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex const &w) {
   Complex t;
   receive(t);
   t *= w;
@@ -645,6 +666,38 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
 
 
 /**
+ * Update w for the next round
+ */
+void fft_loop_increment(Complex &w, Complex const &wm, int i) {
+  if (i + 1 >= (int) fft_context.vectors16.size()) {  // Don't bother doing this for the last item
+    return;
+  }
+
+  auto &item = fft_context.vectors16[i];
+  auto &next_item = fft_context.vectors16[i + 1];
+
+  if (item.j != next_item.j) {
+    // Extra loop offset for combined rows
+    for (int k = 1; k < item.k_count; k++) {
+      w *= wm; 
+    }
+
+    w *= wm;
+  }
+}
+
+
+void fft_calc(Complex::Ptr const &b, Int const &k_off, Int const &k_m2_off, Complex &w_off) {
+  Complex::Ptr b_k_m2 = b + k_m2_off;
+  gather(b_k_m2);
+  Complex::Ptr b_k = b + k_off;
+  gather(b_k);
+
+  fft_step(b_k, b_k_m2, w_off);
+}
+
+
+/**
  * Kernel derived from scalar
  *
  * The result is returned in b.
@@ -655,7 +708,7 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
 void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
   b -= index();
 
-  if (!fft_context.valid_index()) {
+  if (!fft_context.valid_index()) {  // this path taken for log2n <= 4
     tiny_fft(b, devnull);
     return;
   }
@@ -692,36 +745,46 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
 
     Int k_off     = 0;
     Int k_m2_off  = 0;
-    if (fft_context.use_offsets && item.k_count >= fft_context.k_limit) {
-      gather(offsets);
-      offsets.inc();
-      gather(offsets);
-      offsets.inc();
 
-      receive(k_off);
-      receive(k_m2_off);
+    bool do_inline = !(fft_context.use_offsets && item.k_count >= fft_context.k_limit);
+
+    if (do_inline) {
+      init_k(k_off, k_m2_off, item);
+      fft_calc(b, k_off, k_m2_off, w_off);
     } else {
-      init_k(k_off, k_m2_off, item.k_16, item.k_m2_16, item.step, item.k_count);
-    }
+      int same_count = fft_context.same_indexes(i);
+/*
+      if (same_count > 1) {  // True for log2n >= 6
+        std::cout << "same_count: " << same_count << std::endl;
+      }
+*/
 
-    Complex::Ptr b_k_m2 = b + k_m2_off;
-    gather(b_k_m2);
-    Complex::Ptr b_k = b + k_off;
-    gather(b_k);
+      if (same_count == 1) {
+        gather(offsets);
+        offsets.inc();
+        gather(offsets);
+        offsets.inc();
 
-    fft_step(b_k, b_k_m2, w_off);
+        receive(k_off);
+        receive(k_m2_off);
+        fft_calc(b, k_off, k_m2_off, w_off);
+      } else {
+        For (Int j = 0, j < same_count, j++)
+          gather(offsets);
+          offsets.inc();
+          gather(offsets);
+          offsets.inc();
 
-    if (i + 1 < (int) fft_context.vectors16.size()) {
-      auto &next_item = fft_context.vectors16[i + 1];
-      if (item.j != next_item.j) {
-        // Extra loop offset for combined rows
-        for (int k = 1; k < item.k_count; k++) {
-          w *= wm; 
-        }
+          receive(k_off);
+          receive(k_m2_off);
 
-        w *= wm;
+          fft_calc(b, k_off, k_m2_off, w_off);
+        End
+        i += same_count - 1;
       }
     }
+
+    fft_loop_increment(w, wm, i);
   }
 }
 
@@ -793,7 +856,7 @@ TEST_CASE("FFT test with scalar [fft]") {
     }
 
     fft_context.init(log2n, false);
-    auto k = compile(fft_kernel); //, V3D);
+    auto k = compile(fft_kernel, V3D);
     //k.pretty(true, "fft_kernel.txt", false);
     k.load(&result, &devnull, &offsets);
     k.call();
@@ -824,7 +887,7 @@ TEST_CASE("FFT test with DFT [fft]") {
   // The higher log2n, the more divergence of FFT results with scalar
   auto set_precision = [&precision] (int log2n) {
     if (log2n <= 8) {
-      precision = 5.0e-5f;
+      precision = 8.0e-5f;
     } else if (log2n <= 9) {
       precision = 5.0e-4f;
     } else if (log2n <= 11) {
@@ -836,7 +899,7 @@ TEST_CASE("FFT test with DFT [fft]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 7;  // Tested up till 12 (compile times FFT buffer: 238s, inline: 172s)
+    int log2n = 12;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
     int Dim = 1 << log2n;
     set_precision(log2n);
     REQUIRE(precision > 0.0f);
@@ -883,7 +946,7 @@ TEST_CASE("FFT test with DFT [fft]") {
     if (log2n <= 9) {  // Reg allocation fails above this
       Complex::Array2D result_dft;
       Timer timer1("DFT compile time");
-      auto k = compile(kernels::dft_inline_decorator(a, result_dft)); //, V3D);
+      auto k = compile(kernels::dft_inline_decorator(a, result_dft), V3D);
       timer1.end();
       std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
 
@@ -911,7 +974,7 @@ TEST_CASE("FFT test with DFT [fft]") {
       fft_context.init(log2n, false);
 
       Timer timer1("FFT inline compile time");
-      auto k = compile(fft_kernel); //, V3D);
+      auto k = compile(fft_kernel, V3D);
       //k.pretty(false, "fft_inline_v3d.txt", false);  // segfault for log2n == 9
       //k.dump_compile_data(false, "fft_inline_dump_v3d.txt");
       timer1.end();
@@ -933,11 +996,11 @@ TEST_CASE("FFT test with DFT [fft]") {
       init_result(result_buf, a, Dim, log2n);
 
       fft_context.init(log2n, true);
-      //std::cout << fft_context.dump() << std::endl;
+      std::cout << fft_context.dump() << std::endl;
       fft_context.init_offsets_array(offsets);
 
       Timer timer1("FFT buffer compile time");
-      auto k = compile(fft_kernel); //, V3D);
+      auto k = compile(fft_kernel, V3D);
       timer1.end();
       std::cout << "FFT buffer kernel size: " << k.v3d_kernel_size() << std::endl;
 

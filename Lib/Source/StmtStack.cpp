@@ -202,29 +202,6 @@ Stmt::Ptr StmtStack::last_stmt() {
 
 
 /**
- * TODO prob useless, verify and remove
- */
-Stmt::Ptr StmtStack::pop_stmt() {
-  assert(!empty());
-  assert(!Parent::top()->empty());
-
-  auto stmts = Parent::top();
-  Stmt::Ptr ptr = stmts->back();
-  stmts->pop_back();
-  assert(ptr.get() != nullptr);
-
-  assert(!stmts->empty());  // Deal with this if it happens
-/*
-  if (stmts->empty()) {
-    Parent::pop();
-  }
-*/
-
-  return ptr;
-}
-
-
-/**
  * Create a new level in the stack
  */
 void StmtStack::push() {
@@ -242,16 +219,7 @@ void StmtStack::reset() {
 
 
 /**
- * TODO review this comment, implementation changed
- *
  * Add passed statement to the end of the current instructions
- *
- * This is a logical operation;
- * a new sequence item is added on top, with the previous tree as the left branch,
- * and the new item as the right branch.
- *
- * The net effect is that the passed instruction is added to the end of the sequence
- * of statements to be compiled.
  */
 void StmtStack::append(Stmt::Ptr stmt) {
   assert(stmt.get() != nullptr);

@@ -258,7 +258,7 @@ public:
 
     Deref operator*();
     Deref operator[](IntExpr index);
-    Ptr::Expr operator+(IntExpr b);
+    Ptr::Expr operator+(IntExpr b) const;
     Ptr &operator+=(IntExpr rhs);
     Ptr &operator-=(IntExpr rhs);
     void inc() { m_re.inc(); m_im.inc(); }

@@ -39,8 +39,7 @@ void Else_() {
 
   if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
     s->thenStmt(block);
-    //stmtStack().top()->clear();  // reuse top stack item for else-block
-    stmtStack().push();
+    stmtStack().push();  // Set top stack item for else-block
     ok = true;
   }
 
@@ -139,6 +138,10 @@ void ForBody_() {
   stmtStack().push();
 }
 
+
+//=============================================================================
+// Comments and breakpoints
+//=============================================================================
 
 void header(char const *str) {
   stmtStack().last_stmt()->header(str);
