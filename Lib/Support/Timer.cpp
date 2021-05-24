@@ -71,9 +71,9 @@ std::string Timer::end(bool show_output) {
         stop();
       }
 
-      auto tmp = (tvTotal.tv_sec*1000000ll + tvTotal.tv_usec)/count;
-      long int avg_sec = tmp/1000000ll;
-      long int avg_usec = tmp % 1000000ll;
+      auto tmp = (tvTotal.tv_sec*1000000l + tvTotal.tv_usec)/count;  // type long int
+      auto avg_sec = tmp/1000000l;
+      auto avg_usec = tmp % 1000000l;
       printf("%s: %ld.%06lds in %d steps, average: %ld.%06lds\n",
         m_label.c_str(),
         tvTotal.tv_sec, tvTotal.tv_usec,
