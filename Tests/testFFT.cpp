@@ -827,10 +827,7 @@ TEST_CASE("FFT test with scalar [fft]") {
 
 
   SUBCASE("Kernel derived from scalar") {
-    if (Platform::has_vc4()) {
-      warning("Test 'Kernel derived from scalar' works only on v3d, skipping");
-      return;
-    }
+    if (!running_on_v3d()) return;  // FFT works only on v3d
 
     int const log2n = 3;
     int const Dim =  1 << log2n;
@@ -873,6 +870,8 @@ TEST_CASE("FFT test with scalar [fft]") {
 
 
 TEST_CASE("FFT test with DFT [fft]") {
+  if (!running_on_v3d()) return;  // FFT works only on v3d
+
   auto init_result = [] (Complex::Array &result, Float::Array &a, int Dim, int log2n) {
     result.fill(V3DLib::complex(0.0f, 0.0f));
 
@@ -1096,6 +1095,8 @@ TEST_CASE("FFT Support [fft]") {
 
 
   SUBCASE("Test 16vec as ptr offset") {
+    if (!running_on_v3d()) return;  // Setting non-consecutive ptr offsets works only on v3d
+
     std::vector<int> k_index = {0, 2, 4, 7};
 
     Int::Array a(16);
@@ -1114,7 +1115,7 @@ TEST_CASE("FFT Support [fft]") {
     k.load(&result, &a, &devnull);
     k.call();
 
-    //std::cout << "16vec output: " << result.dump() << std::endl;
+    std::cout << "16vec output: " << result.dump() << std::endl;
 
     REQUIRE(expected.size() == result.size());
     for (int i = 0; i < (int) expected.size(); ++i) {
