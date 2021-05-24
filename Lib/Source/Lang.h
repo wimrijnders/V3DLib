@@ -30,6 +30,7 @@ void If_(Cond c);
 void If_(BoolExpr c);
 void Else_();
 void End_();
+void While_(Cond c);
 void While_(BoolExpr b);
 void Where__(BExpr::Ptr b);
 inline void Where_(BoolExpr b) { Where__(b.bexpr()); }

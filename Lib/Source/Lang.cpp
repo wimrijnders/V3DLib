@@ -75,13 +75,13 @@ void If_(Cond c) {
 void If_(BoolExpr b) { If_(any(b)); }
 
 
-void While_(BoolExpr b) {
-  Cond c = any(b);
-
+void While_(Cond c) {
   Stmt::Ptr s = Stmt::create(Stmt::WHILE);
   s->cond(c.cexpr());
   prepare_stack(s);
 }
+
+void While_(BoolExpr c) { While_(any(c)); }
 
 
 void For_(Cond c) {
