@@ -128,7 +128,12 @@ void KernelDriver::init_compile() {
 
 void KernelDriver::obtain_ast() {
   clearStack();
-  //std::cout << m_stmtStack.dump() << std::endl;
+
+  if (m_stmtStack.size() != 1) {
+    std::string buf = "Expected exactly one item on stmtstack; perhaps an 'End'-statement is missing.";
+    error(buf, true);
+  }
+
   m_body = *m_stmtStack.pop();
 }
 
@@ -143,7 +148,6 @@ void KernelDriver::compile(std::function<void()> create_ast) {
     create_ast();
     compile_intern();
     m_numVars = VarGen::count();
-    //clearStack();
   } catch (V3DLib::Exception const &e) {
     std::string msg = "Exception occured during compilation: ";
     msg << e.msg();

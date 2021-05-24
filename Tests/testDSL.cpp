@@ -1061,6 +1061,8 @@ TEST_CASE("Test issues [dsl][issues]") {
    * Anything more elaborate, forget it. I've racked my brain on this, there is no salvation.
    */
   SUBCASE("Check init self issue") {
+    log_to_cout(false);
+
     {
       auto k = compile(init_self_1_kernel);
       REQUIRE(k.has_errors());
@@ -1075,10 +1077,108 @@ TEST_CASE("Test issues [dsl][issues]") {
       auto k = compile(init_self_3_kernel);
       REQUIRE(k.has_errors());
     }
+
+    log_to_cout(true);
   }
 
   Platform::use_main_memory(false);
 }
+
+
+//=============================================================================
+// Test Block Syntax
+//
+// Notably, missing End's for If/Where/etc.
+//=============================================================================
+
+void if_noend_kernel(Int::Ptr result) {
+  Int i = 1;
+  Int cond = 1;
+
+  If (cond == 1)
+    i = 42;
+  }  // End
+
+  *result = i;
+}
+
+
+void while_noend_kernel(Int::Ptr result) {
+  Int i = 1;
+  Int cond = 1;
+
+  While (cond == 1)
+    i = 42;
+  }  // End
+
+  *result = i;
+}
+
+
+void where_noend_kernel(Int::Ptr result) {
+  Int i = 1;
+  Int cond = 1;
+
+  Where (cond == 1)
+    i = 42;
+  }  // End
+
+  *result = i;
+}
+
+
+void for_noend_kernel(Int::Ptr result) {
+  Int i = 1;
+
+  For (Int cond = 0, cond < 1, cond++)
+    i = 42;
+  }  // End
+
+  *result = i;
+}
+
+
+TEST_CASE("Test issues [dsl][block]") {
+  int const N = 1;
+
+  Platform::use_main_memory(true);
+  log_to_cout(false);
+
+  Int::Array result(16*N);
+  result.fill(-1);
+
+  {
+    auto k = compile(if_noend_kernel);
+    k.load(&result).interpret();
+    REQUIRE(k.has_errors());
+  }
+
+  {
+    auto k = compile(while_noend_kernel);
+    k.load(&result).interpret();
+    REQUIRE(k.has_errors());
+  }
+
+  {
+    auto k = compile(where_noend_kernel);
+    k.load(&result).interpret();
+    REQUIRE(k.has_errors());
+  }
+
+  {
+    auto k = compile(for_noend_kernel);
+    k.load(&result).interpret();
+    REQUIRE(k.has_errors());
+  }
+
+  log_to_cout(true);
+  Platform::use_main_memory(false);
+}
+
+
+//=============================================================================
+// Test Trigonometric Functions
+//=============================================================================
 
 
 void sincos_kernel(Float::Ptr result, Int size) {

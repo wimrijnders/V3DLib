@@ -260,7 +260,7 @@ bool Settings::process() {
   }
 
   if (silent) {
-    disable_logging();
+    log_to_cout(false);
   }
 
   if (compile_only || run_type != 0) {

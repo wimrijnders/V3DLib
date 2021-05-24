@@ -899,7 +899,7 @@ TEST_CASE("FFT test with DFT [fft]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 12;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
+    int log2n = 7;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
     int Dim = 1 << log2n;
     set_precision(log2n);
     REQUIRE(precision > 0.0f);

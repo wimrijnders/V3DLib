@@ -89,10 +89,13 @@ Stmt::Ptr Stmt::seq_s1() const {
 
 Stmt::Ptr Stmt::thenStmt() const {
   assertq(tag == IF || tag == WHERE || tag == WHILE, "Then-statement only valid for IF, WHERE and WHILE", true);
+
   // while must have then and no else
   assert(tag != WHILE || (m_stmt_a.get() != nullptr || m_stmt_b.get() == nullptr));
-  // where and else stmt may not both be null
-  assert(m_stmt_a.get() != nullptr || m_stmt_b.get() != nullptr);
+
+  assertq(m_stmt_a.get() != nullptr || m_stmt_b.get() != nullptr,
+         "thenStmt(): then and else blocks may not both be null",
+         true);
 
   return m_stmt_a;  // May be null
 }
@@ -120,17 +123,61 @@ void Stmt::thenStmt(Ptr then_ptr) {
 }
 
 
-void Stmt::elseStmt(Ptr else_ptr) {
-  assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
-  assert(m_stmt_b.get() == nullptr);  // Only assign once
-  m_stmt_b = else_ptr;
+/**
+ * @return true if block successfully added, false otherwise
+ */
+bool Stmt::thenStmt(Array const &in_block) {
+  bool ok = false;
+  auto block = in_block.to_stmt();
+
+  bool then_is_null = (m_stmt_a.get() == nullptr);
+
+  if ((tag == Stmt::IF || tag == Stmt::WHERE ) && then_is_null) {
+    thenStmt(block);
+    ok = true;
+  }
+
+  return ok;
 }
 
 
-void Stmt::body(Ptr ptr) {
-  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
-  assert(m_stmt_a.get() == nullptr);  // Only assign once
-  m_stmt_a = ptr;
+/**
+ * @return true if block successfully added, false otherwise
+ */
+bool Stmt::add_block(Array const &in_block) {
+  bool ok = false;
+  auto block = in_block.to_stmt();
+
+  bool then_is_null = (m_stmt_a.get() == nullptr);
+  bool else_is_null = (m_stmt_b.get() == nullptr);
+
+  if (tag == Stmt::IF || tag == Stmt::WHERE) {
+    if (then_is_null) {
+      thenStmt(block);
+      ok = true;
+    } else if (else_is_null) {
+      m_stmt_b = block;
+      ok = true;
+    }
+  }
+
+  if (tag == Stmt::WHILE && body_is_null()) {
+    m_stmt_a = block;
+    ok = true;
+  }
+
+  if (tag == Stmt::FOR && body_is_null()) {
+    // convert For to While
+
+    //m_cond retained as is
+    tag = WHILE;
+    auto inc = m_stmt_b;
+    Stmt::Ptr whileBody = Stmt::create_sequence(block, inc);
+    m_stmt_a = whileBody;
+    ok = true;
+  }
+
+  return ok;
 }
 
 
@@ -138,18 +185,6 @@ void Stmt::inc(Ptr ptr) {
   assertq(tag == FOR, "Inc-statement only valid for FOR", true);
   assert(m_stmt_b.get() == nullptr);  // Only assign once
   m_stmt_b = ptr;
-}
-
-
-bool Stmt::then_is_null() const {
-  assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF and WHERE", true);
-  return m_stmt_a.get() == nullptr;
-}
-
-
-bool Stmt::else_is_null() const {
-  assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
-  return m_stmt_b.get() == nullptr;
 }
 
 
@@ -326,24 +361,6 @@ Stmt::Ptr Stmt::create_assign(Expr::Ptr lhs, Expr::Ptr rhs) {
 
 Stmt::Ptr Stmt::create_sequence(Ptr s0, Ptr s1) {
   return Stmt::create(SEQ, s0, s1);
-}
-
-
-/**
- * Convert 'for' loop to 'while' loop
- *
- * m_stmt_a is body, m_stmt_b is inc.
- */
-void Stmt::for_to_while(Ptr in_body) {
-  assertq(tag == FOR, "Only FOR-statement can be converted to WHILE", true);
-  assert(m_stmt_a.get() == nullptr);  // Don't reassign body
-
-  auto inc = m_stmt_b;  // TODO Check should m_stmt_b be reset to null here?
-
-  tag = WHILE;
-  Stmt::Ptr whileBody = Stmt::create_sequence(in_body, inc);
-  body(whileBody);
-  //m_cond retained as is
 }
 
 

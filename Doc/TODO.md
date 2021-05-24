@@ -35,7 +35,7 @@
 
 ## Compile source code
 
-- [ ] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
+- [x] Find a way to detect `For....}` issue. Should terminate with `End` but compiles fine.
 - [x] This does not work in source lang code, fix: `*dst = *src`, where dst/src are uniform pointers
 - [x] `If (a != b)` appears to do the same as `any(a != b)`, verify. *Result: Verified, identical*
 - [x] v3d, following generation is wrong: *Result: Verified, now correct*.

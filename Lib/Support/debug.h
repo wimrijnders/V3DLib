@@ -33,7 +33,7 @@ inline void warning(std::string const &str) { return warning(str.c_str()); }
 void error(const char *str, bool do_throw = false);
 inline void error(std::string const &msg, bool do_throw = false) { error(msg.c_str(), do_throw); }
 
-void disable_logging();
+void log_to_cout(bool val);
 void assertq(bool cond, const char *msg, bool do_break = false);
 
 inline void assertq(bool cond, std::string const &msg, bool do_break = false) {

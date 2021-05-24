@@ -98,15 +98,11 @@ struct Stmt : public InstructionComment {
   void thenStmt(Ptr then_ptr);
 
   Ptr elseStmt() const;
-  void elseStmt(Ptr else_ptr);
+  bool thenStmt(Array const &in_block);
+  bool add_block(Array const &in_block);
   Ptr body() const;
-  void body(Ptr ptr);
   void inc(Ptr ptr);
-  bool then_is_null() const;
-  bool else_is_null() const;
   bool body_is_null() const;
-
-  void for_to_while(Ptr in_body);
 
   void cond(CExpr::Ptr cond);
   CExpr::Ptr if_cond() const;

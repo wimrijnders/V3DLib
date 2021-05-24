@@ -30,20 +30,16 @@ void assign(Expr::Ptr lhs, Expr::Ptr rhs) {
 //=============================================================================
 
 void Else_() {
-  bool ok = false;
-
-  auto block  = stmtStack().top()->to_stmt();
+  auto block_ptr  = stmtStack().top();
   stmtStack().pop();
 
   Stmt::Ptr s = stmtStack().last_stmt();
 
-  if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
-    s->thenStmt(block);
-    stmtStack().push();  // Set top stack item for else-block
-    ok = true;
+  if (!s->thenStmt(*block_ptr)) {
+    error("Syntax error: 'Else' without preceeding 'If' or 'Where'");
   }
 
-  assertq(ok, "Syntax error: 'Else' without preceeding 'If' or 'Where'");
+  stmtStack().push();  // Set top stack item for else-block
 }
 
 
@@ -52,38 +48,17 @@ void Else_() {
 //=============================================================================
 
 void End_() {
-  bool ok = false;
-
-  auto block = stmtStack().top()->to_stmt();
+  auto block_ptr = stmtStack().top();
   stmtStack().pop();
 
   Stmt::Ptr s = stmtStack().last_stmt();
 
-  if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
-    if (s->then_is_null()) {
-      s->thenStmt(block);
-      ok = true;
-    } else if (s->else_is_null()) {
-      s->elseStmt(block);
-      ok = true;
-    }
+  if (!s->add_block(*block_ptr)) {
+    error("Syntax error: unexpected 'End'", true);
   }
 
-  if (s->tag == Stmt::WHILE && s->body_is_null()) {
-    s->body(block);
-    ok = true;
-  }
-
-  if (s->tag == Stmt::FOR && s->body_is_null()) {
-    s->for_to_while(block);
-    ok = true;
-  }
-
-  assertq(ok, "Syntax error: unexpected 'End'", true);
-  if (ok) {
-    stmtStack().pop();
-    stmtStack().append(s);
-  }
+  stmtStack().pop();
+  stmtStack().append(s);
 }
 
 
@@ -97,8 +72,12 @@ void If_(Cond c) {
   prepare_stack(s);
 }
 
+void If_(BoolExpr b) { If_(any(b)); }
 
-void While_(Cond c) {
+
+void While_(BoolExpr b) {
+  Cond c = any(b);
+
   Stmt::Ptr s = Stmt::create(Stmt::WHILE);
   s->cond(c.cexpr());
   prepare_stack(s);
@@ -112,8 +91,6 @@ void For_(Cond c) {
 }
 
 
-void If_(BoolExpr b)    { If_(any(b)); }
-void While_(BoolExpr b) { While_(any(b)); }
 void For_(BoolExpr b)   { For_(any(b)); }
 
 
