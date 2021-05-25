@@ -39,24 +39,24 @@ public:
   CFG const &cfg() const { return m_cfg; }
   int size() const { return m_set.size(); }
   RegUsage &reg_usage() { return m_reg_usage; }
-  LiveSet &operator[](int index) { return get(index); }
+  RegIdSet &operator[](int index) { return get(index); }
 
   void compute(Instr::List &instrs);
-  void computeLiveOut(InstrId i, LiveSet &liveOut);
+  void computeLiveOut(InstrId i, RegIdSet &liveOut);
   std::string dump();
 
   static void optimize(Instr::List &instrs, int numVars);
 
 private:
   CFG          m_cfg;
-  Seq<LiveSet> m_set;
+  Seq<RegIdSet> m_set;
   RegUsage     m_reg_usage;
 
-  LiveSet &get(int index) { return m_set[index]; }
+  RegIdSet &get(int index) { return m_set[index]; }
   void clear();
   void compute_liveness(Instr::List &instrs);
   void setSize(int size);
-  bool insert(int index, LiveSet const &set);
+  bool insert(int index, RegIdSet const &set);
 };
 
 

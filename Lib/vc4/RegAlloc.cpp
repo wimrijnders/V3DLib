@@ -99,14 +99,11 @@ RegTypeCount count_reg_types(Instr::List &instrs) {
   RegTypeCount reg_types;
 
   for (int i = 0; i < instrs.size(); i++) {
-    UseDefReg def_regs;
-    def_regs.set_used(instrs[i]);
-
-    for (int j = 0; j < def_regs.use.size(); j++) {
-      reg_types.list[def_regs.use[j].tag]++;
+    for (auto const &reg : instrs[i].src_regs()) {
+      reg_types.list[reg.tag]++;
     }
-    for (int j = 0; j < def_regs.def.size(); j++) {
-      reg_types.list[def_regs.def[j].tag]++;
+    for (auto const &reg : instrs[i].dst_regs()) {
+      reg_types.list[reg.tag]++;
     }
   }
 

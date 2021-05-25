@@ -178,22 +178,14 @@ void RegUsage::reset() {
 
 void RegUsage::set_used(Instr::List &instrs) {
   for (int i = 0; i < instrs.size(); i++) {
-/*
-    // WRI DEBUG
-    if (i == 1666) {
-      breakpoint
-    }
-*/
+    UseDef out(instrs[i]);
 
-    UseDef out;
-    out.set_used(instrs[i]);
-
-    for (int j = 0; j < out.def.size(); j++) {
-      (*this)[out.def[j]].add_dst(i);
+    for (auto r : out.def) {
+      (*this)[r].add_dst(i);
     }
 
-    for (int j = 0; j < out.use.size(); j++) {
-      (*this)[out.use[j]].add_src(i);
+    for (auto r : out.use) {
+      (*this)[r].add_src(i);
     }
   }
 }

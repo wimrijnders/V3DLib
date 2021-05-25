@@ -113,6 +113,92 @@ Instr Instr::nop() {
 }
 
 
+std::set<Reg> Instr::dst_regs() const {
+  std::set<Reg> ret;
+
+  switch (tag) {
+    case InstrTag::LI:   ret.insert(LI.dest); break;
+    case InstrTag::ALU:  ret.insert(ALU.dest); break;
+    case InstrTag::RECV: ret.insert(RECV.dest); break;
+    default: break;
+  }  
+
+  return ret;
+}
+
+
+/**
+ * Return all source registers in this instruction
+ *
+ * Param 'set_use_where' need only be true during liveness analysis.
+ *
+ * @param set_use_where  if true, regard assignments in conditional 'where'
+ *                       instructions as usage.
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * 'set_use_where' needs to be true for the following case (target language):
+ *
+ *    LI A5 <- 0                  # assignment
+ *    ...
+ *    where ZC: LI A6 <- 1
+ *    where ZC: A5 <- or(A6, A6)  # Conditional assignment
+ *    ...
+ *    S[VPM_WRITE] <- shl(A5, 0)  # last use
+ *
+ *   If the condition is ignored (`set_use_where == false`), the conditional
+ *   assignment is regarded as an overwrite of the previous one. The variable
+ *   is then considered live from the conditional assignment onward.
+ *   This is wrong, the value of the first assignment may be significant due
+ *   to the condition. The usage of `A5` runs the risk of being assigned different
+ *   registers for the different assignments, which will lead to wrong code execution.
+ *
+ * * However, always using `set_use_where == true` leads to variables being live
+ *   for unnecessarily long. If this is the *only* usage of `A6`:
+ *
+ *    where ZC: LI A6 <- 1
+ *    where ZC: A5 <- or(A6, A6)  # Conditional assignment
+ *
+ *   ... `A6` would be considered live from the start of the program
+ *   onward till the last usage.
+ *   This unnecessarily ties up a register for a long duration, complicating the
+ *   allocation by creating a false shortage of registers.
+ *   This case can not be handled by the liveness analysis as implemented here.
+ *   It is corrected afterwards in methode `Liveness::compute()`.
+ */
+std::set<Reg> Instr::src_regs(bool set_use_where) const {
+  auto ALWAYS = AssignCond::Tag::ALWAYS;
+
+  std::set<Reg> ret;
+
+  switch (tag) {
+    case InstrTag::LI:
+      if (set_use_where) {
+        if (LI.cond.tag != ALWAYS)         // Add destination reg to 'use' set if conditional assigment
+          ret.insert(LI.dest);
+      }
+      break;
+
+    case InstrTag::ALU:
+      if (set_use_where) {
+        if (ALU.cond.tag != ALWAYS)        // Add destination reg to 'use' set if conditional assigment
+          ret.insert(ALU.dest);
+      }
+
+      if (ALU.srcA.is_reg()) ret.insert(ALU.srcA.reg());
+      if (ALU.srcB.is_reg()) ret.insert(ALU.srcB.reg());
+      break;
+
+    default:
+      break;
+  }  
+
+  return ret;
+}
+
+
 /**
  * Initial capital to discern it from member var's `setFlags`.
  */

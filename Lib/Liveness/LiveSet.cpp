@@ -1,56 +1,9 @@
 #include "LiveSet.h"
+#include <iostream>
 #include "Support/Platform.h"
 #include "Liveness.h"
 
 namespace V3DLib {
-
-///////////////////////////////////////////////////////////////////////////////
-// Class LiveSet
-///////////////////////////////////////////////////////////////////////////////
-
-void LiveSet::add(LiveSet const &rhs) {
-  insert(rhs.begin(), rhs.end());
-}
-
-
-void LiveSet::add(Set<RegId> const &set) {
-  for (int j = 0; j < set.size(); j++) {
-    insert(set[j]);
-  }
-}
-
-
-/**
- * Remove the values in set 'use' from 'set' and store result in current instance
- */
-void LiveSet::remove(LiveSet const &set, UseDef const &use ) {
-  (*this) = set;
-
-  for (int i = 0; i < use.def.size(); i++) {
-    erase(use.def[i]);
-  }
-}
-
-
-std::string LiveSet::dump() const {
-  std::string ret;
-
-  ret << "(";
-
-  for (auto j : *this) {
-    ret << j << ", ";
-  }
-
-  ret << ")";
-
-  return ret;
-}
-
-
-bool LiveSet::member(RegId rhs) const {
-  return find(rhs) != end();
-}
-
 
 ///////////////////////////////////////////////////////////////////////////////
 // Class LiveSets
@@ -58,7 +11,7 @@ bool LiveSet::member(RegId rhs) const {
 
 LiveSets::LiveSets(int size) : m_size(size) {
   assert(size > 0);
-  m_sets = new LiveSet[size];
+  m_sets = new RegIdSet[size];
 }
 
 
@@ -68,19 +21,18 @@ LiveSets::~LiveSets() {
 
 
 void LiveSets::init(Instr::List &instrs, Liveness &live) {
-  LiveSet liveOut;
+  RegIdSet liveOut;
 
   for (int i = 0; i < instrs.size(); i++) {
     live.computeLiveOut(i, liveOut);
-    useDefSet.set_used(instrs[i]);
+    UseDef useDefSet(instrs[i]);
 
     for (auto rx : liveOut) {
       for (auto ry : liveOut) {
         if (rx != ry) (*this)[rx].insert(ry);
       }
 
-      for (int k = 0; k < useDefSet.def.size(); k++) {
-        RegId rd = useDefSet.def[k];
+      for (auto rd : useDefSet.def) {
         if (rd != rx) {
           (*this)[rx].insert(rd);
           (*this)[rd].insert(rx);
@@ -91,7 +43,7 @@ void LiveSets::init(Instr::List &instrs, Liveness &live) {
 }
 
 
-LiveSet &LiveSets::operator[](int index) {
+RegIdSet &LiveSets::operator[](int index) {
   assert(index >=0 && index < m_size);
   return m_sets[index];
 }
@@ -111,7 +63,7 @@ std::vector<bool> LiveSets::possible_registers(int index, RegUsage &alloc, RegTa
   for (int j = 0; j < NUM_REGS; j++)
     possible[j] = true;
 
-  LiveSet &set = (*this)[index];
+  RegIdSet &set = (*this)[index];
 
   // Eliminate impossible choices of register for this variable
   for (auto j : set) {

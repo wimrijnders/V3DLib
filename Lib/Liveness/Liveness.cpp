@@ -45,8 +45,7 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
     if (replace_with.tag == REG_A) return true;
     if (Platform::compiling_for_vc4() && replace_with.tag == REG_B) return true;
 
-    UseDefReg out;
-    out.set_used(instr);
+    UseDefReg out(instr);
 
     std::string msg = "regAlloc(): allocated register must be in register file.";
     msg << "\n"
@@ -59,11 +58,9 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
     return false;
   };
 
-  UseDef useDefSet;
-  useDefSet.set_used(instr);  // Registers only usage REG_A
+  UseDef useDefSet(instr);  // Registers only usage REG_A
 
-  for (int j = 0; j < useDefSet.def.size(); j++) {
-    RegId r = useDefSet.def[j];
+  for (auto r : useDefSet.def) {
     assert(!alloc[r].unused());
     Reg replace_with = alloc[r].reg;
 
@@ -73,8 +70,7 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
     renameDest(instr, Reg(REG_A, r), replace_with);
   }
 
-  for (int j = 0; j < useDefSet.use.size(); j++) {
-    RegId r = useDefSet.use[j];
+  for (auto r: useDefSet.use) {
     assert(!alloc[r].unused());
     Reg replace_with = alloc[r].reg;
 
@@ -128,11 +124,9 @@ void Liveness::compute_liveness(Instr::List &instrs) {
   // Initialise live mapping to have one entry per instruction
   setSize(instrs.size());
 
-  UseDef useDef;
-
   // For temporarily storing live-in and live-out variables
-  LiveSet liveIn;
-  LiveSet liveOut;
+  RegIdSet liveIn;
+  RegIdSet liveOut;
 
   bool changed = true;
   int count = 0;
@@ -151,10 +145,10 @@ void Liveness::compute_liveness(Instr::List &instrs) {
 
       bool also_set_used = false;
       if (instr.isCondAssign()) {
-        UseDef useDef;
-        useDef.set_used(instr);
+        UseDef useDef(instr);
+
         if (!useDef.def.empty()) {
-          auto &item = m_reg_usage[useDef.def[0]];
+          auto &item = m_reg_usage[useDef.def.first()];
 
           // If the dst variable is not used before, it should not be set as used as well
           assert(item.first_dst() <= i);
@@ -174,14 +168,17 @@ void Liveness::compute_liveness(Instr::List &instrs) {
       }
 
       // Compute 'use' and 'def' sets
-      useDef.set_used(instr, also_set_used);
+//breakpoint
+      UseDef useDef(instr, also_set_used);
 
       //t3.start();
       computeLiveOut(i, liveOut);
       //t3.stop();
 
       //t4.start();
-      liveIn.remove(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
+//breakpoint
+      liveIn = liveOut;
+      liveIn.remove(useDef.def);  // Remove the 'def' set from the live-out set to give live-in set
       liveIn.add(useDef.use);
       //t4.stop();
 
@@ -274,12 +271,12 @@ void Liveness::compute(Instr::List &instrs) {
  * Compute the live-out variables of an instruction, given the live-in
  * variables of all instructions and the CFG.
  */
-void Liveness::computeLiveOut(InstrId i, LiveSet &liveOut) {
+void Liveness::computeLiveOut(InstrId i, RegIdSet &liveOut) {
   liveOut.clear();
   Succs &s = m_cfg[i];
 
   for (int j = 0; j < s.size(); j++) {
-    LiveSet &set = get(s[j]);
+    RegIdSet &set = get(s[j]);
     liveOut.add(set);
   }
 }
@@ -290,23 +287,15 @@ void Liveness::setSize(int size) {
 }
 
 
-bool Liveness::insert(int index, LiveSet const &set) {
-  bool changed = false;
+/**
+ * @return true if something inserted, false otherwise
+ */
+bool Liveness::insert(int index, RegIdSet const &set) {
   auto &item = m_set[index];
 
   int prev_size = (int) item.size();
   item.add(set);
-  changed = ((int) item.size() != prev_size);
-/*
-  for (auto it : set) {
-    auto ret = item.insert(it);  // return value is a pair, second value if 'false' if the item was already present
-
-    if (ret.second) {
-      changed = true;
-    }
-  }
-*/
-  return changed;
+  return ((int) item.size() != prev_size);
 }
 
 

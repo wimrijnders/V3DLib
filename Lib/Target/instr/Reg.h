@@ -73,6 +73,14 @@ struct Reg {
     return !(*this == rhs);
   }
 
+  bool operator<(Reg const &rhs) const {
+    if (tag != rhs.tag) {
+      return tag < rhs.tag;
+    }    
+
+    return regId < rhs.regId;
+  }
+
   std::string dump() const;
 };
 

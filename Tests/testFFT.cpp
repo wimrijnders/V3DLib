@@ -898,7 +898,7 @@ TEST_CASE("FFT test with DFT [fft]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 7;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
+    int log2n = 12;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
     int Dim = 1 << log2n;
     set_precision(log2n);
     REQUIRE(precision > 0.0f);
@@ -1115,7 +1115,7 @@ TEST_CASE("FFT Support [fft]") {
     k.load(&result, &a, &devnull);
     k.call();
 
-    std::cout << "16vec output: " << result.dump() << std::endl;
+    //std::cout << "16vec output: " << result.dump() << std::endl;
 
     REQUIRE(expected.size() == result.size());
     for (int i = 0; i < (int) expected.size(); ++i) {

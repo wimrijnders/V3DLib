@@ -1,5 +1,6 @@
 #ifndef _V3DLIB_TARGET_INSTR_INSTR_H_
 #define _V3DLIB_TARGET_INSTR_INSTR_H_
+#include <set>
 #include "Support/InstructionComment.h"
 #include "Common/Seq.h"
 #include "Reg.h"
@@ -225,6 +226,9 @@ struct Instr : public InstructionComment {
   bool isZero() const;
   bool isLast() const;
   bool has_registers() const { return tag == InstrTag::LI || tag == InstrTag::ALU || tag == InstrTag::RECV; }
+
+  std::set<Reg> dst_regs() const;
+  std::set<Reg> src_regs(bool set_use_where = false) const;
 
   SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;

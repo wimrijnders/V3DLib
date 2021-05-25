@@ -112,10 +112,8 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
  * @return Number of substitutions performed;
  */
 int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
-  UseDef  useDefPrev;
-  UseDef  useDefCurrent;
-  LiveSet liveOut;
-  int     subst_count = 0;
+  RegIdSet liveOut;
+  int subst_count = 0;
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr prev  = instrs[i-1];
@@ -123,7 +121,7 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 
     Instr instr = instrs[i];
 
-    useDefPrev.set_used(prev);        // Compute vars defined by prev
+    UseDef useDefPrev(prev);        // Compute vars defined by prev
     if (useDefPrev.def.empty()) continue;
 
     // Guard for this special case for the time being.
@@ -133,9 +131,9 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
       continue;
     }
 
-    RegId def = useDefPrev.def[0];
+    RegId def = *useDefPrev.def.begin();
 
-    useDefCurrent.set_used(instr);    // Compute vars used by instr
+    UseDef useDefCurrent(instr);      // Compute vars used by instr
     live.computeLiveOut(i, liveOut);  // Compute vars live-out of instr
 
     // If 'instr' is not last usage of the found var, skip
@@ -179,8 +177,7 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
  * Replace assign-only variables with an accumulator
  */
 int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
-  UseDef  useDefCurrent;
-  int     subst_count = 0;
+  int subst_count = 0;
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr instr = instrs[i];
@@ -193,10 +190,10 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
       continue;
     }
 
-    useDefCurrent.set_used(instr);    // Compute vars used by instr
+    UseDef useDefCurrent(instr);    // Compute vars used by instr
     if (useDefCurrent.def.empty()) continue;
     assert(useDefCurrent.def.size() == 1);
-    RegId def = useDefCurrent.def[0];
+    RegId def = useDefCurrent.def.first();
     if (!allocated_vars[def].only_assigned()) continue;
 
     Reg current(REG_A, def);
@@ -255,8 +252,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
       Instr &instr2 = instrs[j];
 
       {
-        UseDefReg regs;
-        regs.set_used(instr2);
+        UseDefReg regs(instr2);
 
         if (regs.is_dest(instr.LI.dest)) {
 /*
@@ -289,14 +285,13 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 */
 
       int block_end = live.cfg().block_end(j);
-      UseDefReg regs;
       int num_subsitutions = 0;
 
       for (int k = j + 1; k <= block_end; k++) {
         Instr &instr3 = instrs[k];
         if (!instr3.has_registers()) continue;
 
-        regs.set_used(instr2);
+        UseDefReg regs(instr2);
 
         if (regs.is_dest(instr2.LI.dest)) {
 /*

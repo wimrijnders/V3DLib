@@ -133,7 +133,6 @@ Instr::List insertMoves(Instr::List &instrs) {
 Instr::List insertNops(Instr::List &instrs) {
   Instr::List newInstrs(instrs.size() * 2);
 
-  UseDefReg prevSet, curSet;
 
   Instr prev = Instr::nop();
 
@@ -148,14 +147,11 @@ Instr::List insertNops(Instr::List &instrs) {
     // v3d does not have this restriction.
     //
     if (Platform::compiling_for_vc4()) {
-      prevSet.set_used(prev);
-      curSet.set_used(instr);
-
-      for (int j = 0; j < prevSet.def.size(); j++) {
-        Reg defReg = prevSet.def[j];
+      for (auto const &defReg : prev.dst_regs()) {
         bool needNop = defReg.tag == REG_A || defReg.tag == REG_B;  // rf-registers only
+        UseDefReg cur_set(instr);  // TODO might be inefficient
 
-        if (needNop && curSet.use.member(defReg)) {
+        if (needNop && cur_set.is_src(defReg)) {
           newInstrs << Instr::nop();
           break;
         }
@@ -186,12 +182,7 @@ Instr::List insertNops(Instr::List &instrs) {
  * Return true for any instruction that doesn't read from the VPM
  */
 bool notVPMGet(Instr instr) {
-  // Use/def sets
-  UseDefReg useDef;
-  useDef.set_used(instr);
-
-  for (int i = 0; i < useDef.use.size(); i++) {
-    Reg useReg = useDef.use[i];
+  for (auto const &useReg : instr.src_regs()) {
     if (useReg.tag == SPECIAL && useReg.regId == SPECIAL_VPM_READ)
       return false;
   }
@@ -204,9 +195,6 @@ bool notVPMGet(Instr instr) {
  */
 Instr::List removeVPMStall(Instr::List &instrs) {
   Instr::List newInstrs(instrs.size() * 2);
-
-  // Use/def sets
-  UseDefReg useDef;
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
