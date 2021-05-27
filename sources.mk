@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Fri 14 May 2021 06:12:20 AM CEST
+# Generated on: Wed 26 May 2021 06:32:45 AM CEST
 #
 ###############################################################################
 
@@ -27,6 +27,7 @@ OBJ := \
   Support/InstructionComment.o  \
   Support/basics.o  \
   Support/Helpers.o  \
+  Support/RegIdSet.o  \
   Support/pgm.o  \
   Support/Timer.o  \
   Support/HeapManager.o  \

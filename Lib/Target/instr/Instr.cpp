@@ -113,17 +113,63 @@ Instr Instr::nop() {
 }
 
 
-std::set<Reg> Instr::dst_regs() const {
-  std::set<Reg> ret;
+/**
+ * There is at most 1 dst register.
+ *
+ * Absence of it is indicated by tag NONE in the return value
+ */
+Reg Instr::dst_reg() const {
+  Reg ret;
+  ret.tag = NONE;
 
   switch (tag) {
-    case InstrTag::LI:   ret.insert(LI.dest); break;
-    case InstrTag::ALU:  ret.insert(ALU.dest); break;
-    case InstrTag::RECV: ret.insert(RECV.dest); break;
+    case InstrTag::LI:   ret = LI.dest;   break;
+    case InstrTag::ALU:  ret = ALU.dest;  break;
+    case InstrTag::RECV: ret = RECV.dest; break;
     default: break;
   }  
 
   return ret;
+}
+
+
+Reg Instr::dst_a_reg() const {
+  Reg ret = dst_reg();
+
+  if (ret.tag != NONE) {
+    if (ret.tag != REG_A) ret.tag = NONE;
+  }
+
+  return ret;
+}
+
+
+RegIdSet Instr::src_a_regs(bool set_use_where) const {
+  RegIdSet ret;
+
+  for (auto const &r : src_regs(set_use_where)) {
+    if (r.tag == REG_A) ret.insert(r.regId);
+  }
+
+  return ret;
+}
+
+
+bool Instr::is_dst_reg(Reg const &rhs) const {
+  Reg dst = dst_reg();
+
+  if (rhs.tag == NONE) {
+    breakpoint
+  }
+
+  return (dst.tag != NONE && dst == rhs);
+}
+
+
+bool Instr::is_src_reg(Reg const &rhs) const {
+  return is_src_reg_intern(rhs);
+//  auto use = src_regs();
+//  return use.find(rhs) != use.end();
 }
 
 
@@ -199,9 +245,16 @@ std::set<Reg> Instr::src_regs(bool set_use_where) const {
 }
 
 
-/**
- * Initial capital to discern it from member var's `setFlags`.
- */
+bool Instr::is_src_reg_intern(Reg const &rhs) const {
+  if (tag != InstrTag::ALU) return false;
+
+  if (ALU.srcA.is_reg() && ALU.srcA.reg() == rhs) return true;
+  if (ALU.srcB.is_reg() && ALU.srcB.reg() == rhs) return true;
+
+  return false;
+}
+
+
 Instr &Instr::setCondFlag(Flag flag) {
   setCond().setFlag(flag);
   return *this;

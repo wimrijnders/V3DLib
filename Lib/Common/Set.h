@@ -31,18 +31,13 @@ public:
   }
 
 
-  /**
-   * Not too sure yet about this.
-   *
-   * Its direct purpose is make CFG::dump() easier to use,
-   * and is therefors an implicit `dump()` call.
-   *
-   * There is something to be said about making all `dump()` methods
-   * like this. OTOH, I sort of prefer having an explicit `dump()`.
-   *
-   * TODO Think about this, decide something.
-   */
-  operator std::string() const {
+  T first() const {
+    assert(!empty());
+    return (*this)[0];
+  }
+
+
+  std::string dump() const {
     using ::operator<<;
 
     std::string ret;
@@ -54,6 +49,22 @@ public:
     } 
 
     return ret;
+  }
+
+
+  /**
+   * Not too sure yet about this.
+   *
+   * Its direct purpose is make CFG::dump() easier to use,
+   * and is therefore an implicit `dump()` call.
+   *
+   * There is something to be said about making all `dump()` methods
+   * like this. OTOH, I sort of prefer having an explicit `dump()`.
+   *
+   * TODO Think about this, decide something.
+   */
+  operator std::string() const {
+    return dump();
   }
 
 

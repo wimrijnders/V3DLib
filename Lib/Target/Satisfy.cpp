@@ -4,6 +4,7 @@
 #include "Support/Platform.h"
 #include "Liveness/Liveness.h"
 #include "Target/instr/Instructions.h"
+#include "../Liveness/UseDef.h"
 
 namespace V3DLib {
 namespace {
@@ -147,13 +148,12 @@ Instr::List insertNops(Instr::List &instrs) {
     // v3d does not have this restriction.
     //
     if (Platform::compiling_for_vc4()) {
-      for (auto const &defReg : prev.dst_regs()) {
-        bool needNop = defReg.tag == REG_A || defReg.tag == REG_B;  // rf-registers only
-        UseDefReg cur_set(instr);  // TODO might be inefficient
+      Reg dst = prev.dst_reg();
+      if (dst.tag != NONE) {
+        bool needNop = dst.tag == REG_A || dst.tag == REG_B;  // rf-registers only
 
-        if (needNop && cur_set.is_src(defReg)) {
+        if (needNop && instr.is_src_reg(dst)) {
           newInstrs << Instr::nop();
-          break;
         }
       }
     }

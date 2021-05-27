@@ -4,6 +4,7 @@
 #include "Support/Platform.h"
 #include "Target/Subst.h"
 #include "Support/Timer.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 namespace {
@@ -121,8 +122,9 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
 
     Instr instr = instrs[i];
 
-    UseDef useDefPrev(prev);        // Compute vars defined by prev
-    if (useDefPrev.def.empty()) continue;
+    Reg dst = prev.dst_a_reg();
+    if (dst.tag == NONE) continue;
+    RegId def = dst.regId;
 
     // Guard for this special case for the time being.
     // It should actually be possible to load a uniform in an accumulator,
@@ -131,13 +133,10 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
       continue;
     }
 
-    RegId def = *useDefPrev.def.begin();
-
-    UseDef useDefCurrent(instr);      // Compute vars used by instr
     live.computeLiveOut(i, liveOut);  // Compute vars live-out of instr
 
     // If 'instr' is not last usage of the found var, skip
-    if (!(useDefCurrent.use.member(def) && !liveOut.member(def))) continue;
+    if (!(instr.src_a_regs().member(def) && !liveOut.member(def))) continue;
 
     // Can't remove this test.
     // Reason: There may be a preceding instruction which sets the var to be replaced.
@@ -190,10 +189,10 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
       continue;
     }
 
-    UseDef useDefCurrent(instr);    // Compute vars used by instr
-    if (useDefCurrent.def.empty()) continue;
-    assert(useDefCurrent.def.size() == 1);
-    RegId def = useDefCurrent.def.first();
+    Reg dst = instr.dst_a_reg();
+    if (dst.tag == NONE) continue;
+    RegId def = dst.regId;
+
     if (!allocated_vars[def].only_assigned()) continue;
 
     Reg current(REG_A, def);
@@ -220,7 +219,31 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
  * @return true if any replacements were made, false otherwise
  */
 bool combineImmediates(Liveness &live, Instr::List &instrs) {
+  //Timer t("combineImmediates", true);
+
   bool found_something = false;
+
+  auto msg_stop_replace = [] (int k, Instr const &instr2, Instr const &instr3) {
+    std::string msg;
+    msg << "Stopping replacing same LIs: "
+        << "instrs[" << k << "] uses reg " << instr2.LI.dest.dump()
+        << " as dst"
+        << ": " << instr3.mnemonic(false);
+
+    if (instr3.isCondAssign()) {
+      msg << " (Conditional assign!)";
+    }
+    debug(msg);
+  };
+
+/*
+  auto msg_replace = [&live] (int k, Instr const &instr3, Reg current, Reg replace_with) {
+     std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
+               << current.dump() << " -> " << replace_with.dump()
+               << ": " << instr3.mnemonic(false) << std::endl;
+  };
+*/
+  
 
   for (int i = 0; i < (int) instrs.size(); i++) {
     Instr &instr = instrs[i];
@@ -251,26 +274,21 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
       Instr &instr2 = instrs[j];
 
-      {
-        UseDefReg regs(instr2);
-
-        if (regs.is_dest(instr.LI.dest)) {
+      if (instr2.is_dst_reg(instr.LI.dest)) {
 /*
-          std::string msg;
-          msg << "Stopping forward scan LIs: "
-              << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
-              << " as dst"
-              << ": " << instrs[j].mnemonic(false);
+        std::string msg;
+        msg << "Stopping forward scan LIs: "
+            << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
+            << " as dst"
+            << ": " << instrs[j].mnemonic(false);
 
-          if (instrs[j].isCondAssign()) {
-            msg << " (Conditional assign!)";
-          }
-          debug(msg);
-*/
-          break;
+        if (instrs[j].isCondAssign()) {
+          msg << " (Conditional assign!)";
         }
+        debug(msg);
+*/
+        break;
       }
-
 
       if (!(instr2.tag == InstrTag::LI && instr2.LI.imm == instr.LI.imm)) continue;
       if (!live.cfg().is_parent_block(j, live.cfg().block_at(i))) continue;
@@ -278,11 +296,6 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 //                << instr2.mnemonic(false) << std::endl;
 
 //      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl;
-/*
-      if (instr2.LI.dest.regId == 4050) {
-        breakpoint
-      }
-*/
 
       int block_end = live.cfg().block_end(j);
       int num_subsitutions = 0;
@@ -291,34 +304,17 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
         Instr &instr3 = instrs[k];
         if (!instr3.has_registers()) continue;
 
-        UseDefReg regs(instr2);
-
-        if (regs.is_dest(instr2.LI.dest)) {
-/*
-          std::string msg;
-          msg << "Stopping replacing same LIs: "
-              << "instrs[" << k << "] uses reg " << instr2.LI.dest.dump()
-              << " as dst"
-              << ": " << instr3.mnemonic(false);
-
-          if (instr3.isCondAssign()) {
-            msg << " (Conditional assign!)";
-          }
-          debug(msg);
-*/
+        if (instr3.is_dst_reg(instr2.LI.dest)) {
+          msg_stop_replace(k, instr2, instr3);
           break;  // Stop if var to replace is rewritten
         }
 
         Reg current      = instr2.LI.dest;
         Reg replace_with = instr.LI.dest;
 
-        if (regs.is_src(current)) {
-/*
-          // Shows an actual replacement
-          std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
-                    << current.dump() << " -> " << replace_with.dump()
-                    << ": " << instr3.mnemonic(false) << std::endl;
-*/
+        if (instr3.is_src_reg(current)) {
+          // Perform an actual replacement
+          //msg_replace(k, instr3, current, replace_with);
           renameUses(instr3, current, replace_with);
           num_subsitutions++;
         }

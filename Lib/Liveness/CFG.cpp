@@ -1,6 +1,6 @@
 #include "CFG.h"
 #include <iostream>
-#include "Support/debug.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
@@ -19,11 +19,8 @@ void CFG::Blocks::build(CFG const &cfg) {
 
   for (int i = 0; i < (int) cfg.size(); i++) {
     if (cfg.is_regular(i)) continue;
-    auto const &item = cfg[i];
 
-    for (int j = 0; j < (int) item.size(); j++) {
-      int jump_instr = item[j];
-
+    for (auto jump_instr : cfg[i]) {
       if (jump_instr == i + 1) continue;  // Skip regular successor
       if (jump_instr <= i) continue;  // Skip jumps backward for now. TODO investigate if these should be noted here
 
@@ -167,8 +164,6 @@ bool CFG::Blocks::block_in(int cur_block, int parent_block) const {
   assert(list[0] == 0);                                                     // Double-check that top block is zero.
   assert(ranges[0].first() == 0 && ranges[0].last() == ((int)list.size() - 1));  // idem
 
-//  if (block == 0) return true;  // In that case, block is always parent
-
   if (cur_block == parent_block) return true;
 
   if (ranges[parent_block].is_embedded(ranges[cur_block])) {
@@ -206,22 +201,20 @@ int CFG::Blocks::max_block_num() const {
  */
 bool CFG::is_regular(InstrId i) const {
   auto const &item = (*this)[i];
-  return (item.size() == 1 && item[0] == (i + 1));
+  return (item.size() == 1 && item.first() == (i + 1));
 }
 
 
 std::string CFG::dump() const {
-  using ::operator<<;
-
   std::string ret;
 
   ret << "Instruction length: " << size() << "\n";
 
-  for (int i = 0; i < size(); ++i) {
+  for (int i = 0; i < (int) size(); ++i) {
     auto const &item = (*this)[i];
     if (is_regular(i)) continue;
 
-    ret << i << ": " << item << "\n";
+    ret << i << ": " << item.dump() << "\n";
   } 
 
   ret << blocks.dump();
@@ -234,7 +227,8 @@ std::string CFG::dump() const {
  */
 void CFG::build(Instr::List &instrs) {
   assert(empty());
-  set_size(instrs.size());
+  //set_size(instrs.size());
+  resize(instrs.size());
 
   // ----------
   // First pass

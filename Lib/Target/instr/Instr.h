@@ -8,6 +8,7 @@
 #include "Imm.h"
 #include "Conditions.h"
 #include "ALUOp.h"
+#include "Support/RegIdSet.h"
 
 namespace V3DLib {
 
@@ -227,8 +228,16 @@ struct Instr : public InstructionComment {
   bool isLast() const;
   bool has_registers() const { return tag == InstrTag::LI || tag == InstrTag::ALU || tag == InstrTag::RECV; }
 
-  std::set<Reg> dst_regs() const;
+  Reg dst_reg() const;
   std::set<Reg> src_regs(bool set_use_where = false) const;
+  Reg dst_a_reg() const;
+  RegIdSet src_a_regs(bool set_use_where = false) const;
+  bool is_dst_reg(Reg const &rhs) const;
+
+  bool is_src_reg(Reg const &rhs) const;
+private:
+  bool is_src_reg_intern(Reg const &rhs) const;
+public:
 
   SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;

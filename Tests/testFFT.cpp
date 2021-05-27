@@ -869,7 +869,7 @@ TEST_CASE("FFT test with scalar [fft]") {
 }
 
 
-TEST_CASE("FFT test with DFT [fft]") {
+TEST_CASE("FFT test with DFT [fft][test2]") {
   if (!running_on_v3d()) return;  // FFT works only on v3d
 
   auto init_result = [] (Complex::Array &result, Float::Array &a, int Dim, int log2n) {
@@ -898,7 +898,7 @@ TEST_CASE("FFT test with DFT [fft]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 12;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
+    int log2n = 10;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
     int Dim = 1 << log2n;
     set_precision(log2n);
     REQUIRE(precision > 0.0f);
@@ -1000,6 +1000,7 @@ TEST_CASE("FFT test with DFT [fft]") {
 
       Timer timer1("FFT buffer compile time");
       auto k = compile(fft_kernel, V3D);
+      k.dump_compile_data(false, "fft_buffer_data.txt");
       timer1.end();
       std::cout << "FFT buffer kernel size: " << k.v3d_kernel_size() << std::endl;
 

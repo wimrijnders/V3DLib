@@ -102,9 +102,9 @@ RegTypeCount count_reg_types(Instr::List &instrs) {
     for (auto const &reg : instrs[i].src_regs()) {
       reg_types.list[reg.tag]++;
     }
-    for (auto const &reg : instrs[i].dst_regs()) {
-      reg_types.list[reg.tag]++;
-    }
+
+    Reg dst = instrs[i].dst_reg();
+    reg_types.list[dst.tag]++;  // Also counts NONE-tags
   }
 
   return reg_types;

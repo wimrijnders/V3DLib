@@ -1,6 +1,7 @@
 #include "LiveSet.h"
 #include <iostream>
 #include "Support/Platform.h"
+#include "Support/basics.h"
 #include "Liveness.h"
 
 namespace V3DLib {
@@ -25,17 +26,18 @@ void LiveSets::init(Instr::List &instrs, Liveness &live) {
 
   for (int i = 0; i < instrs.size(); i++) {
     live.computeLiveOut(i, liveOut);
-    UseDef useDefSet(instrs[i]);
+    //UseDef useDefSet(instrs[i]);
+    Reg rd = instrs[i].dst_a_reg();
 
     for (auto rx : liveOut) {
       for (auto ry : liveOut) {
         if (rx != ry) (*this)[rx].insert(ry);
       }
 
-      for (auto rd : useDefSet.def) {
-        if (rd != rx) {
-          (*this)[rx].insert(rd);
-          (*this)[rd].insert(rx);
+      if (rd.tag != NONE) {
+        if (rd.regId != rx) {
+          (*this)[rx].insert(rd.regId);
+          (*this)[rd.regId].insert(rx);
         }
       }
     }

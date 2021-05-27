@@ -10,6 +10,7 @@
 #include "Common/CompileData.h"
 #include "Optimizations.h"
 #include "Support/Timer.h"
+#include "UseDef.h"
 
 namespace V3DLib {
 namespace {
@@ -60,14 +61,15 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
 
   UseDef useDefSet(instr);  // Registers only usage REG_A
 
-  for (auto r : useDefSet.def) {
+  if (useDefSet.def.tag != NONE) {
+    RegId r = useDefSet.def.regId; 
     assert(!alloc[r].unused());
     Reg replace_with = alloc[r].reg;
 
-    if (!check_regfile_register(replace_with, r)) continue;
-    replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
-
-    renameDest(instr, Reg(REG_A, r), replace_with);
+    if (check_regfile_register(replace_with, r)) {
+      replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
+      renameDest(instr, Reg(REG_A, r), replace_with);
+    }
   }
 
   for (auto r: useDefSet.use) {
@@ -123,6 +125,9 @@ void remove_replaced_instructions(Instr::List &instrs) {
 void Liveness::compute_liveness(Instr::List &instrs) {
   // Initialise live mapping to have one entry per instruction
   setSize(instrs.size());
+  for (int i = 0; i < m_set.size(); i++) {
+    assert(m_set[i].empty());
+  }
 
   // For temporarily storing live-in and live-out variables
   RegIdSet liveIn;
@@ -145,10 +150,10 @@ void Liveness::compute_liveness(Instr::List &instrs) {
 
       bool also_set_used = false;
       if (instr.isCondAssign()) {
-        UseDef useDef(instr);
+        Reg dst = instr.dst_a_reg();
 
-        if (!useDef.def.empty()) {
-          auto &item = m_reg_usage[useDef.def.first()];
+        if (dst.tag != NONE) {
+          auto &item = m_reg_usage[dst.regId];
 
           // If the dst variable is not used before, it should not be set as used as well
           assert(item.first_dst() <= i);
@@ -168,7 +173,6 @@ void Liveness::compute_liveness(Instr::List &instrs) {
       }
 
       // Compute 'use' and 'def' sets
-//breakpoint
       UseDef useDef(instr, also_set_used);
 
       //t3.start();
@@ -176,9 +180,10 @@ void Liveness::compute_liveness(Instr::List &instrs) {
       //t3.stop();
 
       //t4.start();
-//breakpoint
       liveIn = liveOut;
-      liveIn.remove(useDef.def);  // Remove the 'def' set from the live-out set to give live-in set
+      if (useDef.def.tag != NONE) {
+        liveIn.remove(useDef.def.regId);  // Remove the 'def' set from the live-out set to give live-in set
+      }
       liveIn.add(useDef.use);
       //t4.stop();
 
@@ -195,18 +200,27 @@ void Liveness::compute_liveness(Instr::List &instrs) {
   //t3.end();
   //t4.end();
   //t5.end();
-
 /*
   std::string msg;
-  msg << "compute_liveness count: " << count;
+  msg << "compute_liveness num iterations: " << count;
   debug(msg);
 */
-//  debug(dump());
 }
 
 
 void Liveness::clear() {
   m_cfg.clear();
+
+  // If you don't explicitly clear the items, you get garbage later on.
+  // This is because Seq<T>::clear() doesn't clean up the items, it just resets the element count.
+  // Took me ages to find....
+  //
+  // NOTE: This might be specific to Seq, recheck when m_set is redefined as vector.
+  //
+  for (int i = 0; i < m_set.size(); i++) {
+    m_set[i].clear();
+  }
+
   m_set.clear();
   m_reg_usage.reset();
 
@@ -220,8 +234,6 @@ void Liveness::clear() {
 
 void Liveness::compute(Instr::List &instrs) {
   clear();
-
-
 
   m_cfg.build(instrs);
   m_reg_usage.set_used(instrs);
@@ -273,10 +285,9 @@ void Liveness::compute(Instr::List &instrs) {
  */
 void Liveness::computeLiveOut(InstrId i, RegIdSet &liveOut) {
   liveOut.clear();
-  Succs &s = m_cfg[i];
 
-  for (int j = 0; j < s.size(); j++) {
-    RegIdSet &set = get(s[j]);
+  for (auto val : m_cfg[i]) {
+    RegIdSet &set = get(val);
     liveOut.add(set);
   }
 }
@@ -345,7 +356,7 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
   //Timer t1("live compute");
   Liveness live(numVars);
   live.compute(instrs);
-  //live.dump();
+  //std::cout << live.dump() << std::endl;
   //t1.end();
 
   if (combineImmediates(live, instrs)) {
@@ -354,6 +365,7 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
 
     //Timer t3("combine immediates compute", true);
     live.compute(instrs);  // instructions have changed, redo liveness
+    //std::cout << live.dump() << std::endl;
   }
 
   //Timer t3("introduceAccum");

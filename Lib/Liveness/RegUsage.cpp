@@ -178,10 +178,12 @@ void RegUsage::reset() {
 
 void RegUsage::set_used(Instr::List &instrs) {
   for (int i = 0; i < instrs.size(); i++) {
+    if (!instrs[i].has_registers()) continue;
+
     UseDef out(instrs[i]);
 
-    for (auto r : out.def) {
-      (*this)[r].add_dst(i);
+    if (out.def.tag != NONE) {
+      (*this)[out.def.regId].add_dst(i);
     }
 
     for (auto r : out.use) {

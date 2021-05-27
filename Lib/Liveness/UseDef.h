@@ -9,35 +9,29 @@ namespace V3DLib {
 
 struct UseDefReg {
   std::set<Reg> use;   // the variables used as src in an instruction
-  std::set<Reg> def;   // the variables (at most 1!) used as dst by an instruction
+  Reg  def;            // the variable (at most 1, absence indicated by NONE tag)) used as dst by an instruction
 
   UseDefReg(Instr const &instr, bool set_use_where = false);
 
-  bool is_dest(Reg const &rhs) const { return (def.find(rhs) != def.end()); }
-  bool is_src(Reg const &rhs)  const { return (use.find(rhs) != def.end()); }
+  //bool is_dest(Reg const &rhs) const;
+  //bool is_src(Reg const &rhs)  const { return (use.find(rhs) != use.end()); }
   std::string dump() const;
 };   
 
 
-class RegIdSet : public std::set<RegId> {
-public:
-  void add(RegIdSet const &rhs);
-  void remove(RegIdSet const &rhs);
-  bool member(RegId rhs) const { return (find(rhs) != cend()); }
-  RegId first() const;
-  std::string dump() const;
-};
 
      
+/**
+ * Get variables used in instruction
+ *
+ * Same as `useDefReg`, except only yields ids of registers in register file A.
+ */
 struct UseDef {
   RegIdSet use;
-  RegIdSet def;
+  Reg def;
 
   UseDef(Instr const &instr, bool set_use_where = false);
   std::string dump() const;
-
-private:
-  void set_used(Instr const &instr, bool set_use_where = false);
 };   
 
 }  // namespace V3DLib
