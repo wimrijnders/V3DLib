@@ -1,10 +1,19 @@
 #include "RegIdSet.h"
+//#include <algorithm>  // merge
 #include "basics.h"
 
 namespace V3DLib {
 
 void RegIdSet::add(RegIdSet const &rhs) {
+/*
+  // more than 2x slower than insert
+  RegIdSet m;
+	std::merge(begin(), end(), rhs.begin(), rhs.end(), inserter(m, m.end()));
+   (*this) = m;
+*/
+
   insert(rhs.begin(), rhs.end());  // Doesn't make much of a difference in speed
+
 /*
   for (auto r : rhs) {
     insert(r);

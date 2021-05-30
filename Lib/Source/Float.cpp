@@ -138,7 +138,9 @@ void Float::set_at(Int n, Float const &src) {
 // Operations
 // ============================================================================
 
-// Read vector from VPM
+/**
+ * Read vector from VPM
+ */
 FloatExpr vpmGetFloat() {
   Expr::Ptr e = mkVar(VPM_READ);
   return FloatExpr(e);

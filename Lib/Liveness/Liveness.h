@@ -37,7 +37,7 @@ public:
   Liveness(int numVars) : m_reg_usage(numVars) {}
 
   CFG const &cfg() const { return m_cfg; }
-  int size() const { return m_set.size(); }
+  int size() const { return (int) m_set.size(); }
   RegUsage &reg_usage() { return m_reg_usage; }
   RegIdSet &operator[](int index) { return get(index); }
 
@@ -49,7 +49,7 @@ public:
 
 private:
   CFG          m_cfg;
-  Seq<RegIdSet> m_set;
+  std::vector<RegIdSet> m_set;
   RegUsage     m_reg_usage;
 
   RegIdSet &get(int index) { return m_set[index]; }

@@ -10,7 +10,7 @@ namespace V3DLib {
 struct RegUsageItem {
   Reg reg;
 
-  void add_dst(int n);
+  void add_dst(int n, bool is_cond_assign);
   void add_src(int n);
   void add_live(int n);
   bool unused() const;
@@ -31,7 +31,6 @@ struct RegUsageItem {
   }
 
 private:
-
   Range src_range;           // First and last instructions where var is used as src
   std::vector<int> use_dst;  // List of line numbers where var is set
   Range m_live_range;
@@ -54,8 +53,6 @@ struct RegUsage : private std::vector<RegUsageItem> {
   void check() const;
   std::string dump_use_ranges() const;
   void check_overlap_usage(Reg acc, RegUsageItem const &item) const;
-
-//  RegUsageItem &find(RegId id);
 
 private:
   std::string allocated_registers_dump() const;

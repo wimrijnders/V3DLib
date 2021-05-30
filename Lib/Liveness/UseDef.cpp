@@ -1,4 +1,5 @@
 #include "UseDef.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
@@ -30,13 +31,6 @@ UseDefReg::UseDefReg(Instr const &instr, bool set_use_where) :
   def(instr.dst_reg())
  {}
 
-/*
-bool UseDefReg::is_dest(Reg const &rhs) const {
-  assert(rhs.tag != NONE);
-  if (def.tag == NONE) return false;
-  return (rhs == def);
-}
-*/
 
 ///////////////////////////////////////////////////////////////////////////////
 // Class UseDef

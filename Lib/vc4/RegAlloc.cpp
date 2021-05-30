@@ -92,6 +92,8 @@ struct RegTypeCount {
 };
 
 
+#ifdef DEBUG
+
 /**
  * Determine the register types count in an instruction list
  */
@@ -109,6 +111,8 @@ RegTypeCount count_reg_types(Instr::List &instrs) {
 
   return reg_types;
 }
+
+#endif  // DEBUG
 
 }  // anon namespace
 

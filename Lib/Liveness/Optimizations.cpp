@@ -41,7 +41,6 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
 
   for (int var_id = 0; var_id < (int) allocated_vars.size(); var_id++) {
     auto &item = allocated_vars[var_id];
-    assert(item.unused() || item.use_range() > 0);
 
     if (item.reg.tag != NONE) continue;
     if (item.unused()) continue;
@@ -219,7 +218,8 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
  * @return true if any replacements were made, false otherwise
  */
 bool combineImmediates(Liveness &live, Instr::List &instrs) {
-  //Timer t("combineImmediates", true);
+  //Timer t3("combineImmediates loop3", true);
+  Timer t1("combineImmediates", true);
 
   bool found_something = false;
 
@@ -240,11 +240,13 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
   auto msg_replace = [&live] (int k, Instr const &instr3, Reg current, Reg replace_with) {
      std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
                << current.dump() << " -> " << replace_with.dump()
-               << ": " << instr3.mnemonic(false) << std::endl;
+               << ", result: " << instr3.mnemonic(false) << std::endl;
   };
 */
   
+  int const LAST_USE_LIMIT = 50;
 
+  // Detect all LI instructions
   for (int i = 0; i < (int) instrs.size(); i++) {
     Instr &instr = instrs[i];
     if (instr.tag != InstrTag::LI) continue;
@@ -259,10 +261,12 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
     // Scan forward to find replaceable LI's (i.e. LI's with same value in same or child block)
     int last_use = i;
-    int const LAST_USE_LIMIT = 50;
 
+    // Detect subsequent LI instructions loading the same value
     for (int j = i + 1; j < (int) instrs.size(); j++) {
-      if (instrs[j].is_branch()) {  // Don't go over branches, this affects liveness in a bad way
+      Instr &instr2 = instrs[j];
+
+      if (instr2.is_branch()) {  // Don't go over branches, this affects liveness in a bad way
         break;
       }
 
@@ -272,10 +276,9 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
         break;
       }
 
-      Instr &instr2 = instrs[j];
+
 
       if (instr2.is_dst_reg(instr.LI.dest)) {
-/*
         std::string msg;
         msg << "Stopping forward scan LIs: "
             << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
@@ -286,39 +289,54 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
           msg << " (Conditional assign!)";
         }
         debug(msg);
-*/
         break;
       }
 
-      if (!(instr2.tag == InstrTag::LI && instr2.LI.imm == instr.LI.imm)) continue;
+      if (instr2.tag != InstrTag::LI) continue;
+      if (instr2.LI.imm != instr.LI.imm) continue;
       if (!live.cfg().is_parent_block(j, live.cfg().block_at(i))) continue;
 //      std::cout << "  Could replace LI at " << j << " (block " << live.cfg().block_at(j) << "): "
 //                << instr2.mnemonic(false) << std::endl;
 
 //      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl;
 
-      int block_end = live.cfg().block_end(j);
+      //
+      // Find and replace all occurences of the second LI with the first LI instruction
+      //
       int num_subsitutions = 0;
+      Reg current      = instr2.LI.dest;
+      Reg replace_with = instr.LI.dest;
 
-      for (int k = j + 1; k <= block_end; k++) {
+      // The bulk of the time (99%) in this function goes into the following part, 
+      // last init + loop.
+      //t3.start();
+
+      // Limit search range to reg usage, or until end of block
+      int last = live.cfg().block_end(j);
+      {
+        RegUsage &reg_usage = live.reg_usage();
+        assert(!reg_usage[current.regId].unused());
+        int last_usage = reg_usage[current.regId].last_usage();
+       
+        if (last > last_usage) last = last_usage;
+      }
+
+      for (int k = j + 1; k <= last; k++) {
         Instr &instr3 = instrs[k];
         if (!instr3.has_registers()) continue;
 
-        if (instr3.is_dst_reg(instr2.LI.dest)) {
+        if (instr3.is_dst_reg(current)) {
           msg_stop_replace(k, instr2, instr3);
           break;  // Stop if var to replace is rewritten
         }
 
-        Reg current      = instr2.LI.dest;
-        Reg replace_with = instr.LI.dest;
 
-        if (instr3.is_src_reg(current)) {
-          // Perform an actual replacement
+        if (renameUses(instr3, current, replace_with)) {
           //msg_replace(k, instr3, current, replace_with);
-          renameUses(instr3, current, replace_with);
           num_subsitutions++;
         }
       }
+      //t3.stop();
 
       if (num_subsitutions > 0) {
         last_use = j;

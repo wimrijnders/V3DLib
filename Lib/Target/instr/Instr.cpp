@@ -166,13 +166,6 @@ bool Instr::is_dst_reg(Reg const &rhs) const {
 }
 
 
-bool Instr::is_src_reg(Reg const &rhs) const {
-  return is_src_reg_intern(rhs);
-//  auto use = src_regs();
-//  return use.find(rhs) != use.end();
-}
-
-
 /**
  * Return all source registers in this instruction
  *
@@ -245,7 +238,7 @@ std::set<Reg> Instr::src_regs(bool set_use_where) const {
 }
 
 
-bool Instr::is_src_reg_intern(Reg const &rhs) const {
+bool Instr::is_src_reg(Reg const &rhs) const {
   if (tag != InstrTag::ALU) return false;
 
   if (ALU.srcA.is_reg() && ALU.srcA.reg() == rhs) return true;
@@ -647,8 +640,7 @@ std::string Instr::List::check_acc_usage(int first, int last) const {
 
     if (accs == 0) continue;
 
-    ret //<< "Acc usage: "
-        << index << ": ";
+    ret << index << ": ";
 
     if (accs &  1) ret << "0, ";
     if (accs &  2) ret << "1, ";

@@ -48,6 +48,8 @@ void check_result(Complex::Array2D const &expected, Complex::Array const &result
 */
 
 
+#ifdef DEBUG
+
 /**
  * Paranoia: check that steps are valid for the entire vector
  *
@@ -80,6 +82,8 @@ bool verify_step(std::vector<int> const &src, int step, int width) {
 
   return verified;
 }
+
+#endif  // DEBUG
 
 
 
@@ -272,7 +276,6 @@ struct CombinedOffsets {
       assert((int) offsets[j + k].k_index.size() == m_size);
     }
 
-    int width = 16/k_count();
 
     // Load in vectors to handle
     for (int k = 0; k < k_count(); k++) {
@@ -284,9 +287,13 @@ struct CombinedOffsets {
       m_step = 0;
     } else {
       m_step = k_vec[1] - k_vec[0];
+
+#ifdef DEBUG
+      int width = 16/k_count();
       assert(m_step > 0);
       assert(verify_step(k_vec,    m_step, width));
       assert(verify_step(k_m2_vec, m_step, width));
+#endif  // DEBUG
     }
 /*
     {
@@ -898,7 +905,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 10;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
+    int log2n = 12;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
     int Dim = 1 << log2n;
     set_precision(log2n);
     REQUIRE(precision > 0.0f);

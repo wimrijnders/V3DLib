@@ -233,11 +233,7 @@ struct Instr : public InstructionComment {
   Reg dst_a_reg() const;
   RegIdSet src_a_regs(bool set_use_where = false) const;
   bool is_dst_reg(Reg const &rhs) const;
-
   bool is_src_reg(Reg const &rhs) const;
-private:
-  bool is_src_reg_intern(Reg const &rhs) const;
-public:
 
   SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;

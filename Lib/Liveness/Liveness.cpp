@@ -89,20 +89,26 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
 
 /**
  * Removes all SKIP instructions from the list
+ *
+ * Creating a new list is MUCH faster than inline removal using Instr::remove().
+ * i.e.  Remove 1857 SKIPs from kernel final size 140828
+ *        - remove() -> 28.557023s
+ *        - new list -> 0.170661s
  */
-void remove_replaced_instructions(Instr::List &instrs) {
+Instr::List  remove_replaced_instructions(Instr::List &instrs) {
+  Instr::List ret;
+
   int cur   = 0;
   int count = 0;
 
   while (cur < instrs.size()) {
     if (instrs[cur].tag == InstrTag::SKIP) {
-      instrs.remove(cur);
       count++;
     } else {
-      cur++;
+      ret << instrs[cur];
     }
+    cur++;
   }
-
 /*
   if (count > 0) {
     std::string msg;
@@ -110,6 +116,8 @@ void remove_replaced_instructions(Instr::List &instrs) {
     debug(msg);
   }
 */
+
+  return ret;
 }
 
 }  // anon namespace
@@ -123,11 +131,16 @@ void remove_replaced_instructions(Instr::List &instrs) {
  * Determine the liveness sets for each instruction.
  */
 void Liveness::compute_liveness(Instr::List &instrs) {
+  Timer t("compute_liveness", true);
+
   // Initialise live mapping to have one entry per instruction
   setSize(instrs.size());
-  for (int i = 0; i < m_set.size(); i++) {
+/*
+  // Went wrong with Seq<>, you never know later on
+  for (int i = 0; i < (int) m_set.size(); i++) {
     assert(m_set[i].empty());
   }
+*/
 
   // For temporarily storing live-in and live-out variables
   RegIdSet liveIn;
@@ -136,9 +149,10 @@ void Liveness::compute_liveness(Instr::List &instrs) {
   bool changed = true;
   int count = 0;
 
-  //Timer t3("compute liveOut");
-  //Timer t4("compute use/def rest");
-  //Timer t5("compute insert");
+  Timer t2("compute_liveness loop intern");
+  Timer t3("compute liveOut");
+  Timer t4("compute use/def rest");
+  Timer t5("compute insert");
 
   // Iterate until no change, i.e. fixed point
   while (changed) {
@@ -149,7 +163,8 @@ void Liveness::compute_liveness(Instr::List &instrs) {
       auto &instr = instrs[i];
 
       bool also_set_used = false;
-      if (instr.isCondAssign()) {
+
+      if (instr.isCondAssign()) {  // no performance impact ~ 1.5%
         Reg dst = instr.dst_a_reg();
 
         if (dst.tag != NONE) {
@@ -172,63 +187,49 @@ void Liveness::compute_liveness(Instr::List &instrs) {
         }
       }
 
+      t2.start();
       // Compute 'use' and 'def' sets
       UseDef useDef(instr, also_set_used);
 
-      //t3.start();
+      t3.start();
       computeLiveOut(i, liveOut);
-      //t3.stop();
+      t3.stop();
 
-      //t4.start();
+      t4.start();
       liveIn = liveOut;
       if (useDef.def.tag != NONE) {
         liveIn.remove(useDef.def.regId);  // Remove the 'def' set from the live-out set to give live-in set
       }
       liveIn.add(useDef.use);
-      //t4.stop();
+      t4.stop();
 
-      //t5.start();
+      t5.start();
       if (insert(i, liveIn)) {
         changed = true;
       }
-      //t5.stop();
+      t5.stop();
+      t2.stop();
     }
 
     count++;
   }
 
-  //t3.end();
-  //t4.end();
-  //t5.end();
-/*
+  t2.end();
+  t3.end();
+  t4.end();
+  t5.end();
+
   std::string msg;
   msg << "compute_liveness num iterations: " << count;
   debug(msg);
-*/
+
 }
 
 
 void Liveness::clear() {
   m_cfg.clear();
-
-  // If you don't explicitly clear the items, you get garbage later on.
-  // This is because Seq<T>::clear() doesn't clean up the items, it just resets the element count.
-  // Took me ages to find....
-  //
-  // NOTE: This might be specific to Seq, recheck when m_set is redefined as vector.
-  //
-  for (int i = 0; i < m_set.size(); i++) {
-    m_set[i].clear();
-  }
-
   m_set.clear();
   m_reg_usage.reset();
-
-/*
-  std::string msg;
-  msg << "Liveness after Liveness::clear(): " << this->dump();
-  debug(msg);
-*/
 }
 
 
@@ -237,41 +238,16 @@ void Liveness::compute(Instr::List &instrs) {
 
   m_cfg.build(instrs);
   m_reg_usage.set_used(instrs);
-/*
-  if (!Platform::compiling_for_vc4()) {
-    debug(m_reg_usage.dump(true));
-  }
-*/
 
-  // This is the performance hog!
-  // ie. log2n == 12 -> time: 23.439770s of total ~ 28s
   //Timer t3("compute liveness", false);
-  compute_liveness(instrs);
+  compute_liveness(instrs); // performance hog 23/28s
   //t3.end();
   assert(instrs.size() == size());
 
-/*
-  {
-    std::string msg;
-    msg << " CFG table:\n" << cfg().dump();
-    debug(msg);
-}
-*/
-
   m_reg_usage.set_live(*this);
-/*
-  if (!Platform::compiling_for_vc4()) {
-    debug(m_reg_usage.dump(true));
-    breakpoint
-  }
-*/
 
-  // This is the second performance hog, but much less
-  // ie. log2n == 12 -> time: 2.952353s of total ~ 28s
-  //Timer t5("compute dump", false);
   compile_data.reg_usage_dump = m_reg_usage.dump(true);
   compile_data.liveness_dump = dump();
-  //t5.end();
 
   m_reg_usage.check();
 }
@@ -294,7 +270,7 @@ void Liveness::computeLiveOut(InstrId i, RegIdSet &liveOut) {
 
 
 void Liveness::setSize(int size) {
-  m_set.set_size(size);
+  m_set.resize(size);
 }
 
 
@@ -313,7 +289,7 @@ bool Liveness::insert(int index, RegIdSet const &set) {
 std::string Liveness::dump() {
   std::string ret;
 
-  for (int i = 0; i < m_set.size(); ++i) {
+  for (int i = 0; i < (int) m_set.size(); ++i) {
     std::string line;
     line += std::to_string(i) + ": ";
 
@@ -353,28 +329,30 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
 
   compile_data.target_code_before_optimization = instrs.dump();
 
-  //Timer t1("live compute");
+  Timer t1("live compute");
   Liveness live(numVars);
   live.compute(instrs);
   //std::cout << live.dump() << std::endl;
-  //t1.end();
+  t1.end();
 
   if (combineImmediates(live, instrs)) {
     //std::cout << "After combineImmediates:\n"; 
     //std::cout << instrs.dump(true) << std::endl;  // Useful sometimes for debug
 
-    //Timer t3("combine immediates compute", true);
+    Timer t3("combine immediates compute", true);
     live.compute(instrs);  // instructions have changed, redo liveness
     //std::cout << live.dump() << std::endl;
   }
 
-  //Timer t3("introduceAccum");
+  Timer t3("introduceAccum");
   int prev_count_skips = count_skips(instrs);
   compile_data.num_accs_introduced = introduceAccum(live, instrs);
   assertq(prev_count_skips == count_skips(instrs), "SKIP count changed after introduceAccum()");
-	//t3.end();
+	t3.end();
 
-  remove_replaced_instructions(instrs);
+  // Times for following (now) insignificant
+
+  instrs = remove_replaced_instructions(instrs);
   assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list after cleanup");
 
   //std::cout << count_reg_types(instrs).dump() << std::endl;

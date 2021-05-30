@@ -2,7 +2,6 @@
 #define _V3DLIB_LIVENESS_USEDEF_H_
 #include <string>
 #include <set>
-#include "Common/Set.h"
 #include "Target/instr/Instr.h"
 
 namespace V3DLib {
@@ -13,8 +12,6 @@ struct UseDefReg {
 
   UseDefReg(Instr const &instr, bool set_use_where = false);
 
-  //bool is_dest(Reg const &rhs) const;
-  //bool is_src(Reg const &rhs)  const { return (use.find(rhs) != use.end()); }
   std::string dump() const;
 };   
 

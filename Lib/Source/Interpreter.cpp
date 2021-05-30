@@ -206,11 +206,16 @@ Vec eval(CoreState* s, Expr::Ptr e) {
 
     // Operator application
     case Expr::APPLY: {
+#ifdef DEBUG
       Vec a = eval(s, e->lhs());
       Vec b = eval(s, e->rhs());
 
       bool did_something = v.apply(e->apply_op(), a, b);
       assert(did_something);
+#else
+      eval(s, e->lhs());
+      eval(s, e->rhs());
+#endif  // DEBUG
 
       return v;
     }

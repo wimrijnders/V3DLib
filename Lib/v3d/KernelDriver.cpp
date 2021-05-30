@@ -7,6 +7,7 @@
 #include "Target/RemoveLabels.h"
 #include "instr/Snippets.h"
 #include "Support/basics.h"
+#include "Support/Timer.h"
 #include "SourceTranslate.h"
 
 namespace V3DLib {
@@ -967,6 +968,8 @@ Instructions encode_init() {
 }
 
 
+#ifdef DEBUG
+
 /**
  * Check assumption: uniform loads are always at the top of the instruction list.
  */
@@ -992,6 +995,8 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
 
   return true;
 }
+
+#endif  // DEBUG
 
 
 /**
@@ -1197,13 +1202,20 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 
 
 void KernelDriver::compile_intern() {
+  Timer t1("compile_intern", true);
+
   obtain_ast();
 
-  translate_stmt(m_targetCode, m_body);
+  Timer t3("translate_stmt");
+  translate_stmt(m_targetCode, m_body);  // performance hog 2 12/45s
+  t3.end();
+
   insertInitBlock(m_targetCode);
   add_init(m_targetCode);
 
-  compile_postprocess(m_targetCode);
+  Timer t5("compile_postprocess");
+  compile_postprocess(m_targetCode);  // performance hog 1 31/45s
+  t5.end();
 
   encode();
 }

@@ -91,7 +91,7 @@ void compile_postprocess(Instr::List &targetCode) {
   //compile_data.target_code_before_regalloc = targetCode.dump();
 
   // Perform register allocation
-  getSourceTranslate().regAlloc(targetCode);
+  getSourceTranslate().regAlloc(targetCode);  // performance hog 32/33s
 
   // Satisfy target code constraints
   satisfy(targetCode);

@@ -51,4 +51,5 @@ fi
 # 
 make clean
 make DEBUG=1 all
+make DEBUG=0 all
 make all
