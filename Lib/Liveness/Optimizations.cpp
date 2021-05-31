@@ -219,7 +219,7 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
  */
 bool combineImmediates(Liveness &live, Instr::List &instrs) {
   //Timer t3("combineImmediates loop3", true);
-  Timer t1("combineImmediates", true);
+  //Timer t1("combineImmediates", true);
 
   bool found_something = false;
 

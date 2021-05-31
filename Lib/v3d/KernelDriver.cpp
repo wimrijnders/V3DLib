@@ -1033,12 +1033,14 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
      && next_instr.ALU.srcA != next_instr.ALU.srcB) ++unique_src_count;
 
     if (unique_src_count > 2) {
+/*
       std::string msg = "unique_src_count: ";
       msg << unique_src_count                      << "\n"
           << "  instr     : " << instr.dump()      << "\n"
           << "  next_instr: " << next_instr.dump() << "\n";
 
       assertq(false, msg); // Warn me if this happens, will need unit test
+*/
       return false;
     }
 

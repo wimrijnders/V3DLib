@@ -256,7 +256,7 @@ public:
     Ptr(ComplexExpr rhs);
     Ptr(Ptr::Expr rhs);
 
-    Deref operator*();
+    Deref operator*() const;
     Deref operator[](IntExpr index);
     Ptr::Expr operator+(IntExpr b) const;
     Ptr &operator+=(IntExpr rhs);

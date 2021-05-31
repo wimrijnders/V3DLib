@@ -90,7 +90,7 @@ bool verify_step(std::vector<int> const &src, int step, int width) {
 /**
  * Load values into a 16-register
  */
-void load_16vec(std::vector<int> const &src, Int &dst, int offset = 0, int unused_index = 16) {
+void load_16vec(Int &dst, std::vector<int> const &src, int offset = 0, int unused_index = 16) {
   assert(offset < (int) src.size());
 
   dst = unused_index;
@@ -110,7 +110,7 @@ template<typename t, typename Ptr>
 void load_16ptr(std::vector<t> const &src_vec, Ptr &ptr, Ptr &devnull, int offset = 0) {
   int unused = -1;
   Int s_index = 0;
-  load_16vec(src_vec, s_index, offset, unused);
+  load_16vec(s_index, src_vec, offset, unused);
 
   ptr += s_index;
 
@@ -133,8 +133,8 @@ void create_dft_offsets(
     k_index << k;
     k_m2_index << (k + m2);
   }
-
 }
+
 
 ///////////////////////////////////////////////////////////////////////////////
 // FFT 
@@ -179,6 +179,80 @@ void fft(cx *a, cx *b, int log2n) {
 }
 
 
+class Vec16 : private std::vector<int> {
+  using Parent = std::vector<int>;
+
+public:
+  //using Parent::operator<<;
+  using Parent::operator[];
+  using Parent::size;
+
+  Vec16() {
+    resize(16);
+    for (int i = 0; i < 16; i++) {
+      (*this)[i] = 0;
+    }
+  }
+
+  void operator=(std::vector<int> const &rhs) {
+    assert(rhs.size() == 16);
+    for (int n = 0; n < 16; ++n) {
+      (*this)[n] = rhs[n];
+    }
+  }
+
+  Vec16 operator-(Vec16 const &rhs) const {
+    Vec16 ret;
+
+    for (int n = 0; n < 16; ++n) {
+      ret[n] = (*this)[n] - rhs[n];
+    }
+
+    return ret;
+  }
+
+
+  bool operator==(Vec16 const &rhs) const {
+    for (int n = 0; n < 16; ++n) {
+      if((*this)[n] != rhs[n]) return false;
+    }
+    return true;
+  }
+
+
+  bool operator!=(Vec16 const &rhs) const { return !(*this == rhs); }
+
+
+  bool is_uniform() const {
+    for (int n = 1; n < 16; ++n) {
+      if ((*this)[0] != (*this)[n]) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
+
+  int first() const {
+    return (*this)[0];
+  }
+
+
+  std::string dump() const {
+    std::string ret;
+
+    for (int n = 0; n < (int) size(); ++n) {
+      ret << (*this)[n] << ", ";
+    }
+
+    return ret;
+  }
+
+  Parent const &parent() const { return *this; }
+};
+
+
 struct OffsetItem {
   int s;
   int j;
@@ -194,11 +268,9 @@ struct OffsetItem {
     }
 
     ret << "\n  k+m2: ";
-
     for (int n = 0; n < (int) k_m2_index.size(); ++n) {
       ret << k_m2_index[n] << ", ";
     }
-
     return ret;
   }
 };
@@ -332,8 +404,8 @@ struct Indexes16 {
   int step         = -1;
   int k_count      = -1;
   bool valid_index = false;
-  std::vector<int> k_16;
-  std::vector<int> k_m2_16;
+  Vec16 k_16;
+  Vec16 k_m2_16;
 
   Indexes16(CombinedOffsets const &co, int in_s, int in_j) {
     s = in_s;
@@ -348,6 +420,34 @@ struct Indexes16 {
     s = in_s;
     k_count     = co.k_count();
     valid_index = false;
+  }
+
+
+  bool same_indexes(Indexes16 const &rhs) const {
+    return (s == rhs.s && j == rhs.j && k_count == rhs.k_count);
+  }
+/*
+  bool same_step(Indexes16 const &rhs) const {
+    return (step == rhs.step && k_count == rhs.k_count);
+  }
+*/
+
+
+  /**
+   * @return uniform index offset if there is one, 0 otherwise
+   */
+  int index_offset(Indexes16 const &rhs) const {
+    Vec16 k_tmp    = k_16    - rhs.k_16;
+    Vec16 k_m2_tmp = k_m2_16 - rhs.k_m2_16;
+
+    if (k_tmp.is_uniform() && k_m2_tmp.is_uniform()) {
+      //std::cout << "uniform!\n";
+      assert(k_tmp.first() == k_m2_tmp.first());
+      assert(k_tmp.first() != 0);
+      return k_tmp.first();
+    }
+
+    return 0;
   }
 };
 
@@ -374,8 +474,8 @@ std::vector<Indexes16> indexes_to_16vectors(std::vector<Offsets> const &fft_inde
             Indexes16 item(co, s, j);
 
             for (int k = 0; k < 16; k++) {
-              item.k_16    << co.k_vec[offset + k];
-              item.k_m2_16 << co.k_m2_vec[offset + k];
+              item.k_16[k]    = co.k_vec[offset + k];
+              item.k_m2_16[k] = co.k_m2_vec[offset + k];
             }
 
             ret << item;
@@ -435,6 +535,24 @@ struct {
 
     log2n = in_log2n;
     use_offsets = in_use_offsets;
+
+    // Check assumptions
+    for (int i = 0; i < (int) vectors16.size(); i++) {
+      auto &item  = vectors16[i];
+      Vec16 k_diff = item.k_m2_16 - item.k_16;
+      assert(k_diff.is_uniform());
+
+      if (item.step == 0) {
+        assert((1 << (log2n - 1)) == k_diff.first());
+      } else {
+        assert(item.step/2 == k_diff.first());
+      }
+/*
+      if (item.step/2 != k_diff.first()) {
+        std::cout << "i " << i << ": step " << item.step << " " << k_diff.dump() << std::endl;
+      }
+*/
+    }
   }
 
 
@@ -451,22 +569,16 @@ struct {
   void init_offsets_array(Int::Array &offsets) const {
     if (!valid_index()) return;
 
-    offsets.alloc((uint32_t) (2*16*offsets_size()));
+    offsets.alloc((uint32_t) (16*offsets_size()));
     int dst_index = 0;
 
     for (int i = 0; i < (int) vectors16.size(); i++) {
       auto &vec = vectors16[i];
       if (vec.k_count < k_limit) continue;
       assert(vec.k_16.size() == 16);
-      assert(vec.k_m2_16.size() == 16);
 
       for (int j = 0; j < 16; j++) {
         offsets[dst_index] = vec.k_16[j];
-        dst_index++;
-      }
-
-      for (int j = 0; j < 16; j++) {
-        offsets[dst_index] = vec.k_m2_16[j];
         dst_index++;
       }
     }
@@ -487,7 +599,7 @@ struct {
 
 
   /**
-   * Count the number of consecutive items with the same s, j and k
+   * Count the number of consecutive items with the same s, j and k,
    * starting from index i
    */
   int same_indexes(int i) const {
@@ -496,12 +608,76 @@ struct {
     int same_count = 1;
     for (int j = i + 1; j < (int) vectors16.size(); j++) {
       auto &item2 = vectors16[j];
-      if (item2.s == item.s && item2.j == item.j && item2.k_count == item.k_count) {
+      if (item.same_indexes(item2)) {
         same_count++;
       } else {
         break;
       }
     }
+/*
+    if (same_count > 1) {  // True for log2n >= 6
+      std::cout << "same_count: " << same_count << std::endl;
+    }
+*/
+    return same_count;
+  }
+
+
+  /**
+   * Count the number of consecutive items with the same index offset,
+   * starting from index i
+   *
+   * Invalid index offsets are discounted
+   */
+  int same_index_offsets(int i) const {
+    if (i <= 0) {
+      return 1;
+    } 
+    if (i >= (int) vectors16.size()) {
+      return 1;
+    } 
+
+    int same_count = 1;
+    int prev_offset = vectors16[i].index_offset(vectors16[i - 1]);
+
+    for (int j = i + 1; j < (int) vectors16.size(); j++) {
+      auto &item  = vectors16[j - 1];
+      auto &item2 = vectors16[j];
+
+      int index_offset = item2.index_offset(item);
+      if (index_offset != 0 && prev_offset == index_offset && item.same_indexes(item2)) {
+        same_count++;
+      } else {
+        break;
+      }
+    }
+/*
+    if (same_count > 1) {  // True for log2n >= 6
+      std::cout << "same_count: " << me_count << std::endl;
+    }
+*/
+
+/*
+    // Check assumptions
+
+    if (same_count > 1) {  // True for log2n >= 6
+
+    Vec16 k_base_diff = vectors16[i].k_m2_16 - vectors16[i].k_16;
+    bool checks_out = true;
+    for (int c = 1; c < same_count; c++) {
+      auto &item  = vectors16[i + c];
+      Vec16 k_diff = item.k_m2_16 - item.k_16;
+      if (k_diff != k_base_diff) {
+        checks_out = false;
+        break;
+      }
+    }
+    assert(checks_out);
+    assert(k_base_diff.is_uniform());
+    std::cout << "step " << vectors16[i].step << ": " << k_base_diff.dump() << std::endl;
+
+    }
+*/
 
     return same_count;
   }
@@ -561,6 +737,11 @@ struct {
 } fft_context;
 
 
+int m2_offset(Indexes16 const &item) {
+  return (item.step == 0)? (1 << (fft_context.log2n - 1)): item.step/2;
+}
+
+
 /**
  * Construct mult factor to use
  */
@@ -577,43 +758,48 @@ void init_mult_factor(Complex &w_off, Complex &wm, int k_count) {
 }
 
 
-void init_k(Int &k_off, Int &k_m2_off, Indexes16 const &item) {
-  std::vector<int> const &k_tmp    = item.k_16;
-  std::vector<int> const &k_m2_tmp = item.k_m2_16;
+/**
+ * Do full init test for offsets
+ */
+void init_k(Int &k_off, Indexes16 const &item) {
+  Vec16 const &k_in    = item.k_16;
+
+  // Do the full inits
   int step    = item.step;
   int k_count = item.k_count;
 
+  while (true) {
+
   if (k_count == 16) {
     // There is no step; load values in directly
-    load_16vec(k_tmp, k_off);
-    load_16vec(k_m2_tmp, k_m2_off);
-    return;
+    load_16vec(k_off, k_in.parent());
+    break;;
   }
 
-
   assert(step != -1);
-  k_off     = k_tmp[0];
-  k_m2_off  = k_m2_tmp[0];
+  k_off     = k_in[0];
   k_off    += index()*step;
-  k_m2_off += index()*step;
 
-  if (k_count == 1) return;
+  if (k_count == 1) {
+    break;
+  }
 
   int width = 16/k_count;
   for (int i = 1; i < k_count; i++) {
     Int offset2 = index() - width*i;
 
     Where (offset2 >= 0)
-      k_off     = k_tmp[i*width];
+      k_off     = k_in[i*width];
       k_off    += offset2*step;
-      k_m2_off  = k_m2_tmp[i*width];
-      k_m2_off += offset2*step;
     End
+  }
+
+    break;
   }
 }
 
 
-void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex const &w) {
+void fft_step(Complex::Ptr const &b_k, Complex::Ptr const &b_k_m2, Complex const &w) {
   Complex t;
   receive(t);
   t *= w;
@@ -623,6 +809,12 @@ void fft_step(Complex::Ptr &b_k, Complex::Ptr &b_k_m2, Complex const &w) {
 
   *b_k    = u + t;
   *b_k_m2 = u - t;
+}
+
+
+void fft_step(Complex::Ptr const &b_k, Complex const &w, int m2_offset) {
+  Complex::Ptr b_k_m2 = b_k + m2_offset;
+  fft_step(b_k, b_k_m2, w);
 }
 
 
@@ -694,13 +886,12 @@ void fft_loop_increment(Complex &w, Complex const &wm, int i) {
 }
 
 
-void fft_calc(Complex::Ptr const &b, Int const &k_off, Int const &k_m2_off, Complex &w_off) {
-  Complex::Ptr b_k_m2 = b + k_m2_off;
-  gather(b_k_m2);
+void fft_calc(Complex::Ptr const &b, Int const &k_off, Complex &w_off, int m2_offset) {
   Complex::Ptr b_k = b + k_off;
+  gather(b_k + m2_offset);
   gather(b_k);
 
-  fft_step(b_k, b_k_m2, w_off);
+  fft_step(b_k, w_off, m2_offset);
 }
 
 
@@ -728,13 +919,15 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
   int last_j        = -1;
   Complex w_off;
 
+  Int k_off     = 0;
+
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
 
     if (last_s != item.s) {
       w = Complex(1, 0);
       wm = Complex(-1.0f/((float) (1 << item.s)));
-      last_s = item.s; 
+      last_s = item.s;
     }
 
     assert(item.valid_index);
@@ -750,42 +943,64 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
       last_k_count = item.k_count;
     }
 
-    Int k_off     = 0;
-    Int k_m2_off  = 0;
-
     bool do_inline = !(fft_context.use_offsets && item.k_count >= fft_context.k_limit);
-
     if (do_inline) {
-      init_k(k_off, k_m2_off, item);
-      fft_calc(b, k_off, k_m2_off, w_off);
+      int index_offset = 0;
+
+      if (i > 0) {
+       index_offset = fft_context.vectors16[i].index_offset(fft_context.vectors16[i - 1]);
+      }
+
+      auto &item = fft_context.vectors16[i];
+      int same_count = fft_context.same_index_offsets(i);
+
+      if (index_offset == 0) {
+        init_k(k_off, fft_context.vectors16[i]);
+        fft_calc(b, k_off, w_off, m2_offset(item));
+      } else if (same_count == 1) {
+          k_off    += index_offset;
+          fft_calc(b, k_off, w_off, m2_offset(item));
+      } else {
+        assert(same_count % 2 == 1);
+
+          auto fetch = [&item] (Complex::Ptr const &b_k) {
+            gather(b_k + m2_offset(item));
+            gather(b_k);
+          };
+
+          Int k_off_out = k_off;
+
+           // k_off += index_offset;
+           // fetch(b + k_off);
+
+          For (Int j = 0, j < same_count, j++)
+            k_off += index_offset;
+            fetch(b + k_off);
+
+            k_off_out += index_offset;
+            fft_step(b + k_off_out, w_off, m2_offset(item));
+          End
+
+          //Complex dummy;
+          //receive(dummy);
+          //receive(dummy);
+
+          i += same_count - 1;
+      }
     } else {
       int same_count = fft_context.same_indexes(i);
-/*
-      if (same_count > 1) {  // True for log2n >= 6
-        std::cout << "same_count: " << same_count << std::endl;
-      }
-*/
-
       if (same_count == 1) {
         gather(offsets);
         offsets.inc();
-        gather(offsets);
-        offsets.inc();
-
         receive(k_off);
-        receive(k_m2_off);
-        fft_calc(b, k_off, k_m2_off, w_off);
+        fft_calc(b, k_off, w_off, m2_offset(item));
       } else {
         For (Int j = 0, j < same_count, j++)
           gather(offsets);
           offsets.inc();
-          gather(offsets);
-          offsets.inc();
-
           receive(k_off);
-          receive(k_m2_off);
 
-          fft_calc(b, k_off, k_m2_off, w_off);
+          fft_calc(b, k_off, w_off, m2_offset(item));
         End
         i += same_count - 1;
       }
@@ -1046,7 +1261,7 @@ std::vector<int> src_vec;
 
 void vecload_kernel(Int::Ptr dst) {
   Int tmp = 0;
-  load_16vec(src_vec, tmp);
+  load_16vec(tmp, src_vec);
   *dst = tmp;
 }
 

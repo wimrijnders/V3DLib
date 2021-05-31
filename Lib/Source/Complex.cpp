@@ -167,7 +167,7 @@ Complex::Ptr::Deref &Complex::Ptr::Deref::operator=(Complex const &rhs) {
 }
 
 
-Complex::Ptr::Deref Complex::Ptr::operator*() {
+Complex::Ptr::Deref Complex::Ptr::operator*() const {
   auto re_deref = mkDeref(m_re.expr());
   auto im_deref = mkDeref(m_im.expr());
 

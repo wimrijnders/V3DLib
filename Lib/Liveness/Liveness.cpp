@@ -344,11 +344,11 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
     //std::cout << live.dump() << std::endl;
   }
 
-  Timer t3("introduceAccum");
+  //Timer t3("introduceAccum");
   int prev_count_skips = count_skips(instrs);
   compile_data.num_accs_introduced = introduceAccum(live, instrs);
   assertq(prev_count_skips == count_skips(instrs), "SKIP count changed after introduceAccum()");
-	t3.end();
+	//t3.end();
 
   // Times for following (now) insignificant
 
