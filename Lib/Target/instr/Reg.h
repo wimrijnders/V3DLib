@@ -21,8 +21,6 @@ enum RegTag {
   , TMP_B           // Used in intermediate code
 };
 
-inline bool isRegAorB(RegTag rt)
-  { return rt == REG_A || rt == REG_B; }
 
 // Special registers
 enum Special {
@@ -80,6 +78,8 @@ struct Reg {
 
     return regId < rhs.regId;
   }
+
+  bool is_rf_reg() const { return tag == REG_A || tag == REG_B; }
 
   std::string dump() const;
 };

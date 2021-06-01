@@ -81,7 +81,10 @@ FloatExpr create_float_function_snippet(StackCallback f) {
   auto stmts = tempStmt(f);
 
   assert(!stmts.empty());
+
+  // Return only the assign part of the final statement and remove that statement
   auto stmt = stmts.back();
+  stmts.pop_back();
   stmtStack() << stmts;
   return stmt->assign_rhs();
 }
@@ -257,7 +260,6 @@ FloatExpr sin(FloatExpr x_in, bool extra_precision) {
  * Also works only in range -PI/2..PI/2.
  *
  * Incoming values are multiples of 2*PI.
- * Following preamble to actual sin() is to get int param within the allowed range.
  *
  * ============================================================================
  * NOTES
@@ -306,6 +308,8 @@ FloatExpr sin_v3d(FloatExpr x_in) {
     Float tmp = x_in;                    comment("Start source lang v3d sin");
 
     tmp += 0.25f;                        // Modulo to range -0.25...0.75
+    comment("v3d sin preamble to get param in the allowed range");
+
     tmp -= functions::ffloor(tmp);       // Get the fractional part
     tmp -= 0.25f;
 
@@ -314,6 +318,7 @@ FloatExpr sin_v3d(FloatExpr x_in) {
     End
 
     tmp *= 2;                            // Convert to multiple of PI
+    comment("End v3d sin preamble");
 
     Return(sin_op(tmp));
   });

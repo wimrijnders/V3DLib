@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Wed 26 May 2021 06:32:45 AM CEST
+# Generated on: Mon 31 May 2021 03:05:27 PM CEST
 #
 ###############################################################################
 
@@ -89,6 +89,7 @@ OBJ := \
   Target/instr/Reg.o  \
   Target/instr/Label.o  \
   Target/instr/Instr.o  \
+  Target/instr/RegOrImm.o  \
   Target/instr/ALUOp.o  \
   Target/Subst.o  \
   Target/EmuSupport.o  \

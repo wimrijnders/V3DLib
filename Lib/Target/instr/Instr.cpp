@@ -1,59 +1,12 @@
 #include "Instr.h"         // Location of definition struct Instr
 #include "Support/debug.h"
 #include "Target/Pretty.h"  // pretty_instr_tag()
-#include "Support/basics.h" // fatal()
+#include "Support/basics.h"
 #include "Support/Platform.h"
 #include "Source/BExpr.h"   // class CmpOp
-#include "Target/SmallLiteral.h"
+#include "LibSettings.h"
 
 namespace V3DLib {
-
-// ============================================================================
-// Class RegOrImm
-// ============================================================================
-
-Reg &RegOrImm::reg()           { assert(is_reg()); return m_reg; }
-Reg RegOrImm::reg() const      { assert(is_reg()); return m_reg; }
-SmallImm &RegOrImm::imm()      { assert(is_imm()); return m_smallImm; }
-SmallImm RegOrImm::imm() const { assert(is_imm()); return m_smallImm; }
-
-void RegOrImm::set_imm(int rhs) {
-  m_is_reg  = false;
-  m_smallImm.val = rhs;
-}
-
-
-void RegOrImm::set_reg(RegTag tag, RegId id) {
-  m_is_reg  = true;
-  m_reg.tag   = tag;
-  m_reg.regId = id;
-}
-
-
-void RegOrImm::set_reg(Reg const &rhs) {
-  m_is_reg  = true;
-  m_reg = rhs;
-}
-
-bool RegOrImm::operator==(RegOrImm const &rhs) const {
-  if (m_is_reg != rhs.m_is_reg) return false;
-
-  if (m_is_reg) {
-    return m_reg == rhs.m_reg;
-  } else {
-    return m_smallImm == rhs.m_smallImm;
-  }
-}
-
-
-std::string RegOrImm::disp() const {
-  if (m_is_reg) {
-    return m_reg.dump();
-  } else {
-    return printSmallLit(m_smallImm.val);
-  }
-}
-
 
 // ============================================================================
 // Class BranchTarget
@@ -401,18 +354,17 @@ bool Instr::isUniformPtrLoad() const {
 }
 
 
-bool Instr::isTMUAWrite(bool fetch_only) const {
-   if (tag != InstrTag::ALU) {
-    return false;
-  }
+bool Instr::isTMUAWrite() const {
+  if (tag != InstrTag::ALU) return false;
 
   Reg reg = ALU.dest;
-  if (reg.tag != SPECIAL) {
-    return false;
-  }
+  if (reg.tag != SPECIAL) return false;
 
-  return (!fetch_only && reg.regId == SPECIAL_DMA_ST_ADDR)
-      || (reg.regId == SPECIAL_TMU0_S);
+  if (Platform::compiling_for_vc4() && !LibSettings::use_tmu_for_load()) {
+    return (reg.regId == SPECIAL_DMA_ST_ADDR);
+  } else {
+    return (reg.regId == SPECIAL_TMU0_S);
+  }
 }
 
 

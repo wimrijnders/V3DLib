@@ -3,7 +3,7 @@
 #include <set>
 #include "Support/InstructionComment.h"
 #include "Common/Seq.h"
-#include "Reg.h"
+#include "RegOrImm.h"
 #include "Label.h"
 #include "Imm.h"
 #include "Conditions.h"
@@ -12,45 +12,15 @@
 
 namespace V3DLib {
 
+
+inline std::set<Reg> operator+(std::set<Reg> const &lhs, std::set<Reg> const &rhs) {
+  std::set<Reg> ret = lhs;
+  ret.insert(rhs.begin(), rhs.end());
+  return ret;
+}
+
+
 class CmpOp;
-
-// ============================================================================
-// Immediates
-// ============================================================================
-
-struct SmallImm {
-  int val;
-
-  bool operator==(SmallImm const &rhs) const { return val == rhs.val;  }
-  bool operator!=(SmallImm const &rhs) const { return !(*this == rhs); }
-};
-
-
-struct RegOrImm {
-
-  void set_imm(int rhs);
-  void set_reg(RegTag tag, RegId id);
-  void set_reg(Reg const &rhs);
-
-  bool operator==(RegOrImm const &rhs) const;
-  bool operator!=(RegOrImm const &rhs) const { return !(*this == rhs); }
-
-  bool is_reg() const { return m_is_reg;  }
-  bool is_imm() const { return !m_is_reg; }
-  std::string disp() const;
-
-  Reg &reg();
-  Reg reg() const;
-  SmallImm &imm();
-  SmallImm imm() const;
-
-private:
-  bool m_is_reg;        // if false, is an imm
-
-  Reg m_reg;            // A register
-  SmallImm m_smallImm;  // A small immediate
-};
-
 
 // ============================================================================
 // Class BranchTarget
@@ -222,7 +192,7 @@ struct Instr : public InstructionComment {
   bool hasImm() const { return ALU.srcA.is_imm() || ALU.srcB.is_imm(); }
   bool isUniformLoad() const;
   bool isUniformPtrLoad() const;
-  bool isTMUAWrite(bool fetch_only = false) const;
+  bool isTMUAWrite() const;
   bool isRot() const;
   bool isZero() const;
   bool isLast() const;

@@ -998,6 +998,160 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
 
 #endif  // DEBUG
 
+bool uses_mul_alu(V3DLib::Instr const &instr) {
+  if (instr.tag != ALU) return false;
+
+  switch (instr.ALU.op.value()) {
+    case ALUOp::M_FMUL:
+    case ALUOp::M_MUL24:
+    case ALUOp::M_ROTATE:
+      return true;
+
+    default: break;
+  }
+
+  return false;
+}
+
+
+bool uses_add_alu(V3DLib::Instr const &instr) {
+  if (instr.tag != ALU) return false;
+  return !uses_mul_alu(instr);
+}
+
+
+bool can_use_mul_alu(V3DLib::Instr const &instr) {
+  if (instr.tag != ALU) return false;
+  if (uses_mul_alu(instr)) return true;
+
+  switch (instr.ALU.op.value()) {
+    case ALUOp::A_ADD:
+    case ALUOp::A_SUB:
+    //case ALUOp::A_MOV:  // Doesn't exist, consider adding
+      return true;
+
+    default: break;
+  }
+
+  return false;
+}
+
+
+/**
+ * Check if two instructions can be combined
+ *
+ * Can combine if there are at most two different source values for both instructions.
+ * This applies to rf-registers only; the number of accumulators used is free.
+ *
+ * @return true if can combine, false otherwise
+ */
+bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
+  if (instr.tag != InstrTag::ALU) return false; 
+  if (next_instr.tag != InstrTag::ALU) return false; 
+
+
+  //
+  // Combination only possible if instructions not both add ALU or mul ALU
+  //
+  if (!(uses_add_alu(instr) && can_use_mul_alu(next_instr))) {
+    // NOTE: The converse would also be possible, not dealing with that yet
+    if (can_use_mul_alu(instr) && uses_add_alu(next_instr)) {
+      debug("handle_target_specials: converse detected");
+    }
+    return false;    
+  }
+
+  auto const &ALU = instr.ALU;
+  auto const &next_ALU = next_instr.ALU;
+
+  // Skip special instructions
+  switch(ALU.op.value()) {
+  case ALUOp::A_EIDX:
+  case ALUOp::A_FSIN:
+    return false;
+  default:
+    break;
+  }
+
+  switch(next_ALU.op.value()) {
+  case ALUOp::A_EIDX:
+  case ALUOp::A_FSIN:
+    return false;
+  default:
+    break;
+  }
+
+
+  int unique_src_count = 0;
+
+  // Not expecting following
+  assert(!ALU.srcA.is_transient());
+  assert(!ALU.srcB.is_transient());
+  assert(!next_ALU.srcA.is_transient());
+  assert(!next_ALU.srcB.is_transient());
+
+  //
+  // Two immediate values are only possible if both instructions have the same immediate
+  //
+  assert(!(ALU.srcA.is_imm() && ALU.srcB.is_imm() && ALU.srcA.imm() != ALU.srcB.imm()));
+  assert(!(next_ALU.srcA.is_imm() && next_ALU.srcB.is_imm() && next_ALU.srcA.imm() != next_ALU.srcB.imm()));
+
+  bool has_imm = (ALU.srcA.is_imm() || ALU.srcB.is_imm());
+  bool next_has_imm = (next_ALU.srcA.is_imm() || next_ALU.srcB.is_imm());
+
+  V3DLib::SmallImm imm;
+  if (has_imm) {
+    imm = ALU.srcA.is_imm()?ALU.srcA.imm():ALU.srcB.imm();
+  }
+
+  V3DLib::SmallImm next_imm;
+  if (next_has_imm) {
+    next_imm = next_ALU.srcA.is_imm()?next_ALU.srcA.imm():next_ALU.srcB.imm();
+  }
+
+  // Can have only one immediate per instruction
+  if (has_imm && next_has_imm) {
+    if (imm != next_imm) return false;
+  }
+
+  // An immediate counts as a source value
+  if (has_imm || next_has_imm) {
+    unique_src_count++;
+  }
+
+
+  // The number of used accumulators is free, only check RF registers
+  auto src_regs = instr.src_regs() + next_instr.src_regs();
+
+  // Specials can not be combined
+  for (auto const &reg : src_regs) {
+    if (reg.tag == RegTag::SPECIAL ) return false; 
+  }
+
+
+  // Count distinct number of rf-registers
+  for (auto const &reg : src_regs) {
+    if (reg.is_rf_reg()) ++unique_src_count;
+  }
+
+  if (unique_src_count > 2) { 
+    return false;
+  }
+
+  // dst of instr should not be used in next_instr
+  if ((instr.ALU.dest == next_instr.ALU.srcA)
+   || (instr.ALU.dest == next_instr.ALU.srcB)) { 
+    return false;
+  }
+
+  return true;
+/*
+  // instr and next_instr can not have same destination
+  // NOTE: Yes, they can! Output for first instr is ignored (dummy value)
+  return (instr.ALU.dest != next_instr.ALU.dest);
+*/
+}
+
 
 /**
  * Criteria are intentional extremely strict.
@@ -1006,47 +1160,27 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
  * Note that index can change!
  */
 bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs, int &index) {
-  if (index + 1 == instrs.size()) return false;
+  if (index + 1 >= instrs.size()) return false;
 
   auto const &instr = instrs[index];
   auto const &next_instr = instrs[index + 1];
+
   if (instr.isCondAssign()) return false;
   if (next_instr.isCondAssign()) return false;
+  if (!can_combine(instr, next_instr)) return false;
 
   //
   // If possible, combine a TMU gather with the next statement
   // Currently, only add as next statement allowed
   //
-  if (instr.isTMUAWrite(true)) {
+  if (instr.isTMUAWrite()) {
     bool simple_int_add = (next_instr.tag == ALU && next_instr.ALU.op == ALUOp::A_ADD);
-    if (!simple_int_add) return false; 
-
-    // Can combine if there are at most two different source values
-    int unique_src_count = 1;  // for instr src A
-
-    // Don't feel like making this pretty right now
-    if (instr.ALU.srcA != instr.ALU.srcB) ++unique_src_count;
-    if (instr.ALU.srcA != next_instr.ALU.srcA && instr.ALU.srcB != next_instr.ALU.srcA) ++unique_src_count;
-
-    if (instr.ALU.srcA      != next_instr.ALU.srcB
-     && instr.ALU.srcB      != next_instr.ALU.srcB
-     && next_instr.ALU.srcA != next_instr.ALU.srcB) ++unique_src_count;
-
-    if (unique_src_count > 2) {
-/*
-      std::string msg = "unique_src_count: ";
-      msg << unique_src_count                      << "\n"
-          << "  instr     : " << instr.dump()      << "\n"
-          << "  next_instr: " << next_instr.dump() << "\n";
-
-      assertq(false, msg); // Warn me if this happens, will need unit test
-*/
-      return false;
+    if (!simple_int_add) {
+      return false; 
     }
 
-    //
-    // Can combine!
-    //
+    debug("TMU write");
+
     //std::cout << "Target instr is TMU fetch: " << instr.dump() << std::endl;
     //std::cout << "Next target instr is add: " << next_instr.dump() << std::endl;
 
@@ -1069,6 +1203,12 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
     index++;
     ret << tmp;
     return true;
+  } else {
+    // Grumbl no hits AT ALL in unit tests
+    std::string msg = "Possible candidate for combine:\n";
+    msg << "  instr     : " << instr.dump()      << "\n"
+        << "  next_instr: " << next_instr.dump();
+    debug(msg);
   }
 
   return false;

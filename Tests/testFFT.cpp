@@ -1120,7 +1120,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 12;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
+    int log2n = 7;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
     int Dim = 1 << log2n;
     set_precision(log2n);
     REQUIRE(precision > 0.0f);
@@ -1168,6 +1168,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       Complex::Array2D result_dft;
       Timer timer1("DFT compile time");
       auto k = compile(kernels::dft_inline_decorator(a, result_dft), V3D);
+      //k.pretty(false, "obj/test/dft_compare_v3d.txt");
       timer1.end();
       std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
 
