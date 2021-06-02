@@ -6,9 +6,12 @@
 #include "Support/InstructionComment.h"
 #include "SmallImm.h"
 #include "Register.h"
-#include "RFAddress.h"
+#include "Encode.h"
 
 namespace V3DLib {
+
+class ALUInstruction;
+
 namespace v3d {
 namespace instr {
 
@@ -147,6 +150,8 @@ public:
   void alu_mul_set(Location const &dst, Location const &a, Location const &b); 
   void alu_mul_set(Location const &dst, Location const &a, SmallImm const &b); 
   void alu_mul_set(Location const &dst, SmallImm const &a, Location const &b); 
+
+  bool alu_mul_set(V3DLib::ALUInstruction const &alu, std::unique_ptr<Location> dst);
 
   // ==================================================
   // Private State 
@@ -304,7 +309,6 @@ namespace instr {
 Instructions fsin(Location const &dst, Location const &a);
 
 }  // instr
-
 }  // v3d
 }  // V3DLib
 

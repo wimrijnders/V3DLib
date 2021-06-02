@@ -3,15 +3,13 @@
 #include <set>
 #include "Support/InstructionComment.h"
 #include "Common/Seq.h"
-#include "RegOrImm.h"
 #include "Label.h"
 #include "Imm.h"
 #include "Conditions.h"
-#include "ALUOp.h"
+#include "ALUInstruction.h"
 #include "Support/RegIdSet.h"
 
 namespace V3DLib {
-
 
 inline std::set<Reg> operator+(std::set<Reg> const &lhs, std::set<Reg> const &rhs) {
   std::set<Reg> ret = lhs;
@@ -130,15 +128,7 @@ struct Instr : public InstructionComment {
       Imm        imm;
     } LI;
 
-    // ALU operation
-    struct {
-      SetCond    m_setCond;
-      AssignCond cond;
-      Reg        dest;
-      RegOrImm   srcA;
-      ALUOp      op;
-      RegOrImm   srcB;
-    } ALU;
+    ALUInstruction ALU;
 
     // Conditional branch (to target)
     struct {

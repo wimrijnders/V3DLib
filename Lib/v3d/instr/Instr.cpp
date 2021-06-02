@@ -9,6 +9,7 @@
 #include "../../Support/debug.h"
 #include "dump_instr.h"
 #include "Support/basics.h"
+#include "Target/instr/ALUInstruction.h"
 
 namespace {
 
@@ -771,6 +772,40 @@ void Instr::alu_mul_set(Location const &dst, SmallImm const &a, Location const &
 }
 
 
+/**
+ * @return true if mul instruction set, false otherwise
+ */
+bool Instr::alu_mul_set(V3DLib::ALUInstruction const &alu, std::unique_ptr<Location> dst) {
+  assert(dst);
+
+  bool ret = true;
+
+  switch(alu.op.value()) {
+  case ALUOp::A_ADD: {  // NOTE: there is a conversion here from add alu 'add' to mul alu 'add'
+      auto reg_a = alu.srcA;
+      auto reg_b = alu.srcB;
+      auto src_a = encodeSrcReg(reg_a.reg());
+      auto src_b = encodeSrcReg(reg_b.reg());
+      assert(src_a && src_b);
+
+      alu_mul_set(*dst, *src_a, *src_b);
+      this->alu.mul.op = V3D_QPU_M_ADD;
+    }
+    break;
+
+  default:
+    ret = false;
+    break;
+  }
+
+  if (ret) {
+    std::cout << "alu_mul_set(ALU) result: " << mnemonic(true) << std::endl;
+  }
+
+  return ret;
+}
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Label support
 //////////////////////////////////////////////////////////////////////////////
@@ -1393,4 +1428,6 @@ Instructions fsin(Location const &dst, Location const &a) {
 
 }  // instr
 }  // v3d
+
+
 }  // V3DLib
