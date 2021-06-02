@@ -130,6 +130,4 @@ uint32_t ALUOp::vc4_encodeMulOp() const {
   }
 }
 
-
-
 }  // namespace V3DLib

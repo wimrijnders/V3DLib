@@ -14,6 +14,7 @@ struct CompileData {
   std::string allocated_registers_dump;
   std::string reg_usage_dump;
   int num_accs_introduced = 0;
+  int num_instructions_combined = 0;
 
   std::string dump() const;
   void clear();

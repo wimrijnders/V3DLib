@@ -223,6 +223,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
   bool found_something = false;
 
+/*
   auto msg_stop_replace = [] (int k, Instr const &instr2, Instr const &instr3) {
     std::string msg;
     msg << "Stopping replacing same LIs: "
@@ -236,7 +237,6 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
     debug(msg);
   };
 
-/*
   auto msg_replace = [&live] (int k, Instr const &instr3, Reg current, Reg replace_with) {
      std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
                << current.dump() << " -> " << replace_with.dump()
@@ -279,6 +279,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
 
       if (instr2.is_dst_reg(instr.LI.dest)) {
+/*
         std::string msg;
         msg << "Stopping forward scan LIs: "
             << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
@@ -289,6 +290,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
           msg << " (Conditional assign!)";
         }
         debug(msg);
+*/
         break;
       }
 
@@ -326,7 +328,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
         if (!instr3.has_registers()) continue;
 
         if (instr3.is_dst_reg(current)) {
-          msg_stop_replace(k, instr2, instr3);
+          //msg_stop_replace(k, instr2, instr3);
           break;  // Stop if var to replace is rewritten
         }
 

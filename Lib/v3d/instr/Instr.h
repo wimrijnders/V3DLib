@@ -168,7 +168,8 @@ private:
   void set_uf(v3d_qpu_uf val);
   void set_pf(v3d_qpu_pf val);
 
-  bool raddr_a_is_safe(Location const &loc) const;
+  bool raddr_a_is_safe(Location const &loc, bool check_for_mul_b = false) const;
+  bool raddr_b_is_safe(Location const &loc, bool check_for_mul_b = false) const;
 
   std::string pretty_instr() const;
 };

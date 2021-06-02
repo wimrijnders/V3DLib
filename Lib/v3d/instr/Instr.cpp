@@ -695,13 +695,30 @@ void Instr::alu_mul_set_dst(Location const &dst) {
 }
 
 
-bool Instr::raddr_a_is_safe(Location const &loc) const {
+bool Instr::raddr_a_is_safe(Location const &loc, bool check_for_mul_b) const {
   // Is raddr_a in use by add alu?
   bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_A) || (alu.add.b == V3D_QPU_MUX_A);
 
-  // Is it by chance the same value?
   bool raddr_a_same = (raddr_a == loc.to_waddr());
 
+  if (!check_for_mul_b) return (!raddr_a_in_use || raddr_a_same);
+
+  // Is raddr_a in use by mul alu a?
+  raddr_a_in_use = (alu.mul.a == V3D_QPU_MUX_A);
+  return (!raddr_a_in_use || raddr_a_same);
+}
+
+
+bool Instr::raddr_b_is_safe(Location const &loc, bool check_for_mul_b) const {
+  // Is raddr_a in use by add alu?
+  bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_B) || (alu.add.b == V3D_QPU_MUX_B);
+
+  bool raddr_a_same = (raddr_a == loc.to_waddr());
+
+  if (!check_for_mul_b) return (!raddr_a_in_use || raddr_a_same);
+
+  // Is raddr_a in use by mul alu a?
+  raddr_a_in_use = (alu.mul.a == V3D_QPU_MUX_B);
   return (!raddr_a_in_use || raddr_a_same);
 }
 
@@ -721,7 +738,7 @@ void Instr::alu_mul_set_reg_a(Location const &loc) {
       assertq(!(alu.add.a == V3D_QPU_MUX_B) || (alu.add.b == V3D_QPU_MUX_B),
         "alu_mul_set_reg_a: both raddr a and b in use by add alu");
 
-      raddr_b    = loc.to_waddr();  // This could 
+      raddr_b    = loc.to_waddr();
       alu.mul.a  = V3D_QPU_MUX_B;
     }
   }
@@ -732,19 +749,16 @@ void Instr::alu_mul_set_reg_a(Location const &loc) {
 
 void Instr::alu_mul_set_reg_b(Location const &loc) {
   if (!loc.is_rf()) {
+    // loc is a register
     alu.mul.b = loc.to_mux();
+  } else if (raddr_a_is_safe(loc, true)) {
+    raddr_a          = loc.to_waddr(); 
+    alu.mul.b        = V3D_QPU_MUX_A;
+  } else if (raddr_b_is_safe(loc, true)) {
+    raddr_b   = loc.to_waddr(); 
+    alu.mul.b = V3D_QPU_MUX_B;
   } else {
-    if (alu.mul.a == V3D_QPU_MUX_B) {
-      if (raddr_a_is_safe(loc)) {
-        raddr_a          = loc.to_waddr(); 
-        alu.mul.b        = V3D_QPU_MUX_A;
-      } else {
-        debug_break("alu_mul_set_reg_b(): raddr_a in use by add alu and raddr_b in use for immediate");  
-      }
-    } else {
-      raddr_b   = loc.to_waddr(); 
-      alu.mul.b = V3D_QPU_MUX_B;
-    }
+    debug_break("alu_add_set_reg_b(): raddr_a and raddr_b both in use");
   }
 
   alu.mul.b_unpack = loc.input_unpack();
@@ -772,37 +786,65 @@ void Instr::alu_mul_set(Location const &dst, SmallImm const &a, Location const &
 }
 
 
+namespace {
+
+/**
+ * Get the v3d mul equivalent of a target lang add alu instruction.
+ *
+ * @param dst  output parameter, recieves equivalent insruction if found
+ *
+ * @return  true if equivalent found, false otherwise
+ */
+bool convert_to_mul_instruction(ALUOp::Enum add_op, v3d_qpu_mul_op &dst ) {
+  bool ret = true;
+
+  switch(add_op) {
+    case ALUOp::A_ADD:   dst = V3D_QPU_M_ADD;    break;
+    case ALUOp::M_FMUL:  dst = V3D_QPU_M_FMUL;   break;
+    case ALUOp::M_MUL24: dst = V3D_QPU_M_SMUL24; break;
+
+    default: ret = false; break;
+  }
+
+  return ret;
+}
+
+}  // anon namespace
+
 /**
  * @return true if mul instruction set, false otherwise
  */
 bool Instr::alu_mul_set(V3DLib::ALUInstruction const &alu, std::unique_ptr<Location> dst) {
   assert(dst);
 
-  bool ret = true;
-
-  switch(alu.op.value()) {
-  case ALUOp::A_ADD: {  // NOTE: there is a conversion here from add alu 'add' to mul alu 'add'
-      auto reg_a = alu.srcA;
-      auto reg_b = alu.srcB;
-      auto src_a = encodeSrcReg(reg_a.reg());
-      auto src_b = encodeSrcReg(reg_b.reg());
-      assert(src_a && src_b);
-
-      alu_mul_set(*dst, *src_a, *src_b);
-      this->alu.mul.op = V3D_QPU_M_ADD;
-    }
-    break;
-
-  default:
-    ret = false;
-    break;
+  v3d_qpu_mul_op mul_op;
+  if (!convert_to_mul_instruction(alu.op.value(), mul_op)) {
+    return false;
   }
 
-  if (ret) {
-    std::cout << "alu_mul_set(ALU) result: " << mnemonic(true) << std::endl;
+  auto reg_a = alu.srcA;
+  auto src_a = encodeSrcReg(reg_a.reg());
+  assert(src_a);
+
+  auto reg_b = alu.srcB;
+  std::unique_ptr<Location> src_b;
+  if (reg_b.is_reg()) {
+    src_b = encodeSrcReg(reg_b.reg());
   }
 
-  return ret;
+  if (src_a && src_b) {
+    alu_mul_set(*dst, *src_a, *src_b);
+  } else if (src_a && reg_b.is_imm()) {
+    SmallImm imm_b(reg_b.imm().val);
+    alu_mul_set(*dst, *src_a, imm_b);
+  } else {
+    assert(false);
+  }
+
+  this->alu.mul.op = mul_op;
+
+  //std::cout << "alu_mul_set(ALU) result: " << mnemonic(true) << std::endl;
+  return true;
 }
 
 

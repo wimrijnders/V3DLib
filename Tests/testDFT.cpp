@@ -367,9 +367,8 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
     k.pretty(true,  "obj/test/dft_inline_vc4.txt", false);
     k.dump_compile_data(true, "obj/test/dft_compile_data_vc4.txt");
     k.pretty(false, "obj/test/dft_inline_v3d.txt", false);
-*/
     std::cout << k.compile_info() << std::endl;
-
+*/
     k.load(&result, &input);
     k.call();
 

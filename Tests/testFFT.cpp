@@ -1171,6 +1171,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       //k.pretty(false, "obj/test/dft_compare_v3d.txt");
       timer1.end();
       std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
+      std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
 
       Timer timer2("DFT run time");
       k.load(&result_dft, &a);
@@ -1201,6 +1202,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       //k.dump_compile_data(false, "fft_inline_dump_v3d.txt");
       timer1.end();
       std::cout << "FFT inline kernel size: " << k.v3d_kernel_size() << std::endl;
+      std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
 
       Timer timer2("FFT inline run time");
       k.load(&result_inline, &devnull, &offsets);
@@ -1218,7 +1220,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       init_result(result_buf, a, Dim, log2n);
 
       fft_context.init(log2n, true);
-      std::cout << fft_context.dump() << std::endl;
+      //std::cout << fft_context.dump() << std::endl;
       fft_context.init_offsets_array(offsets);
 
       Timer timer1("FFT buffer compile time");
@@ -1226,6 +1228,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       k.dump_compile_data(false, "fft_buffer_data.txt");
       timer1.end();
       std::cout << "FFT buffer kernel size: " << k.v3d_kernel_size() << std::endl;
+      std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
 
       Timer timer2("FFT buffer run time");
       k.load(&result_buf, &devnull, &offsets);

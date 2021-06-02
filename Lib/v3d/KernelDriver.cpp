@@ -819,6 +819,27 @@ bool can_use_mul_alu(V3DLib::Instr const &instr) {
 
 
 /**
+ * Combination only possible if instructions not both add ALU or both mul ALU
+ */
+bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr, bool &do_converse) {
+  if (uses_add_alu(instr) && can_use_mul_alu(next_instr)) return true;
+
+  if (can_use_mul_alu(instr) && uses_add_alu(next_instr)) {
+    do_converse = true;
+    return true;
+  }
+
+  return false;
+}
+
+
+bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
+  bool do_converse;
+  return valid_combine_pair(instr, next_instr, do_converse);
+}
+
+
+/**
  * Check if two instructions can be combined
  *
  * Can combine if there are at most two different source values for both instructions.
@@ -829,20 +850,9 @@ bool can_use_mul_alu(V3DLib::Instr const &instr) {
 bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   if (instr.tag != InstrTag::ALU) return false; 
   if (next_instr.tag != InstrTag::ALU) return false; 
+  if (!valid_combine_pair(instr, next_instr)) return false;
 
-
-  //
-  // Combination only possible if instructions not both add ALU or mul ALU
-  //
-  if (!(uses_add_alu(instr) && can_use_mul_alu(next_instr))) {
-    // NOTE: The converse would also be possible, not dealing with that yet
-    if (can_use_mul_alu(instr) && uses_add_alu(next_instr)) {
-      debug("handle_target_specials: converse detected");
-    }
-    return false;    
-  }
-
-  auto const &ALU = instr.ALU;
+  auto const &ALU      = instr.ALU;
   auto const &next_ALU = next_instr.ALU;
 
   // Skip special instructions
@@ -863,8 +873,6 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   }
 
 
-  int unique_src_count = 0;
-
   // Not expecting following
   assert(!ALU.srcA.is_transient());
   assert(!ALU.srcB.is_transient());
@@ -875,16 +883,14 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   // Two immediate values are only possible if both instructions have the same immediate
   //
   assert(!(ALU.srcA.is_imm() && ALU.srcB.is_imm() && ALU.srcA.imm() != ALU.srcB.imm()));
-  assert(!(next_ALU.srcA.is_imm() && next_ALU.srcB.is_imm() && next_ALU.srcA.imm() != next_ALU.srcB.imm()));
-
   bool has_imm = (ALU.srcA.is_imm() || ALU.srcB.is_imm());
-  bool next_has_imm = (next_ALU.srcA.is_imm() || next_ALU.srcB.is_imm());
-
   V3DLib::SmallImm imm;
   if (has_imm) {
     imm = ALU.srcA.is_imm()?ALU.srcA.imm():ALU.srcB.imm();
   }
 
+  assert(!(next_ALU.srcA.is_imm() && next_ALU.srcB.is_imm() && next_ALU.srcA.imm() != next_ALU.srcB.imm()));
+  bool next_has_imm = (next_ALU.srcA.is_imm() || next_ALU.srcB.is_imm());
   V3DLib::SmallImm next_imm;
   if (next_has_imm) {
     next_imm = next_ALU.srcA.is_imm()?next_ALU.srcA.imm():next_ALU.srcB.imm();
@@ -894,6 +900,9 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   if (has_imm && next_has_imm) {
     if (imm != next_imm) return false;
   }
+
+
+  int unique_src_count = 0;
 
   // An immediate counts as a source value
   if (has_imm || next_has_imm) {
@@ -935,10 +944,14 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
 
 
 /**
+ * If possible, combine an add all instruction with a subsequent mul alu instruction
+ *
  * Criteria are intentional extremely strict.
  * These will be relaxed when further cases for optimization are encountered.
  *
  * Note that index can change!
+ *
+ * @return true if two consecutive instructions combined, false otherwise
  */
 bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs, int &index) {
   if (index + 1 >= instrs.size()) return false;
@@ -950,43 +963,62 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   if (next_instr.isCondAssign()) return false;
   if (!can_combine(instr, next_instr)) return false;
 
-  //
-  // If possible, combine a TMU gather with the next statement
-  // Currently, only add as next statement allowed
-  //
-  if (instr.isTMUAWrite()) {
-    bool simple_int_add = (next_instr.tag == ALU && next_instr.ALU.op == ALUOp::A_ADD);
-    if (!simple_int_add) {
-      return false; 
-    }
+  bool do_converse;
+  if (!valid_combine_pair(instr, next_instr, do_converse)) {
+    assert(false);
+  }
 
-    debug("TMUwrite");
+/*
+  if (do_converse) {
+    std::string msg("Converse detected\n");
+    msg << "  add alu instr: " << instr.dump() << "\n" 
+        << "  mul alu instr: " << next_instr.dump();
 
-    //std::cout << "Target instr is TMU fetch: " << instr.dump() << std::endl;
-    //std::cout << "Next target instr is add: " << next_instr.dump() << std::endl;
+    debug(msg);
+  }
+*/
 
-    Instructions tmp;
-    assertq(translateOpcode(instr, tmp), "translateOpcode() failed");
-    assert(tmp.size() == 1);
-    Instr &out_instr = tmp[0];
+  auto const &add_instr = do_converse?next_instr:instr;
+  auto const &mul_instr = do_converse?instr:next_instr;
 
-    bool result = out_instr.alu_mul_set(next_instr.ALU, encodeDestReg(next_instr));
-    assert(result);
+  Instructions tmp;
+  assertq(translateOpcode(add_instr, tmp), "translateOpcode() failed");
+  assert(tmp.size() == 1);
+  Instr &out_instr = tmp[0];
 
-    out_instr.comment(instr.comment());
-    out_instr.comment(next_instr.comment());
-
-    index++;
-    ret << tmp;
-    return true;
-  } else {
-    std::string msg = "Possible candidate for combine:\n";
-    msg << "  instr     : " << instr.dump()      << "\n"
+  if (!out_instr.alu_mul_set(mul_instr.ALU, encodeDestReg(mul_instr))) {
+    std::string msg;
+    msg << "Possible candidate for combine, do_converse = " << do_converse << ":\n"
+        << "  instr     : " << instr.dump()      << "\n"
         << "  next_instr: " << next_instr.dump();
+    debug(msg);
+    return false;
+  }
+
+  out_instr.comment(instr.comment());
+  out_instr.comment(next_instr.comment());
+
+  index++;
+  ret << tmp;
+  compile_data.num_instructions_combined++;
+/*
+  {
+    std::string msg;
+    msg << "handle_target_specials input, do_converse = " << do_converse << ":\n"
+      << "  instr     : " << instr.dump()      << "\n"
+      << "  next_instr: " << next_instr.dump();
     debug(msg);
   }
 
-  return false;
+  {
+    std::string msg;
+    msg << "handle_target_specials combine result:\n"
+      << "  " << out_instr.mnemonic(true);
+    debug(msg);
+  }
+*/
+
+  return true;
 }
 
 
@@ -1119,20 +1151,20 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 
 
 void KernelDriver::compile_intern() {
-  Timer t1("compile_intern", true);
+  //Timer t1("compile_intern", true);
 
   obtain_ast();
 
-  Timer t3("translate_stmt");
+  //Timer t3("translate_stmt");
   translate_stmt(m_targetCode, m_body);  // performance hog 2 12/45s
-  t3.end();
+  //t3.end();
 
   insertInitBlock(m_targetCode);
   add_init(m_targetCode);
 
-  Timer t5("compile_postprocess");
+  //Timer t5("compile_postprocess");
   compile_postprocess(m_targetCode);  // performance hog 1 31/45s
-  t5.end();
+  //t5.end();
 
   encode();
 }
