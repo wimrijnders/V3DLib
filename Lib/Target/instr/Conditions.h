@@ -82,9 +82,8 @@ struct AssignCond {
   bool is_never()  const { return tag == NEVER; }
   AssignCond negate() const;
 
-  bool operator==(AssignCond rhs) const {
-    return (tag == rhs.tag && flag == rhs.flag);
-  }
+  bool operator==(AssignCond rhs) const { return (tag == rhs.tag && flag == rhs.flag); }
+  bool operator!=(AssignCond rhs) const { return !(*this == rhs); }
 
   std::string to_string() const;
   BranchCond to_branch_cond(bool do_all) const;

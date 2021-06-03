@@ -697,13 +697,10 @@ void Instr::alu_mul_set_dst(Location const &dst) {
 bool Instr::raddr_a_is_safe(Location const &loc, bool check_for_mul_b) const {
   // Is raddr_a in use by add alu?
   bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_A) || (alu.add.b == V3D_QPU_MUX_A);
+  if (check_for_mul_b) raddr_a_in_use = raddr_a_in_use || (alu.mul.a == V3D_QPU_MUX_A);
 
   bool raddr_a_same = (raddr_a == loc.to_waddr());
 
-  if (!check_for_mul_b) return (!raddr_a_in_use || raddr_a_same);
-
-  // Is raddr_a in use by mul alu a?
-  raddr_a_in_use = (alu.mul.a == V3D_QPU_MUX_A);
   return (!raddr_a_in_use || raddr_a_same);
 }
 
@@ -711,35 +708,26 @@ bool Instr::raddr_a_is_safe(Location const &loc, bool check_for_mul_b) const {
 bool Instr::raddr_b_is_safe(Location const &loc, bool check_for_mul_b) const {
   // Is raddr_a in use by add alu?
   bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_B) || (alu.add.b == V3D_QPU_MUX_B);
+  if (check_for_mul_b) raddr_a_in_use = raddr_a_in_use || (alu.mul.a == V3D_QPU_MUX_B);
 
-  bool raddr_a_same = (raddr_a == loc.to_waddr());
+  bool raddr_b_same = (raddr_b == loc.to_waddr());
 
-  if (!check_for_mul_b) return (!raddr_a_in_use || raddr_a_same);
-
-  // Is raddr_a in use by mul alu a?
-  raddr_a_in_use = (alu.mul.a == V3D_QPU_MUX_B);
-  return (!raddr_a_in_use || raddr_a_same);
+  return (!raddr_a_in_use || raddr_b_same);
 }
 
 
 void Instr::alu_mul_set_reg_a(Location const &loc) {
   if (!loc.is_rf()) {
-    // src is a register
-    alu.mul.a     = loc.to_mux();
+    // loc is a register
+    alu.mul.a = loc.to_mux();
+  } else if (raddr_a_is_safe(loc, true)) {
+    raddr_a          = loc.to_waddr(); 
+    alu.mul.a        = V3D_QPU_MUX_A;
+  } else if (raddr_b_is_safe(loc, true)) {
+    raddr_b   = loc.to_waddr(); 
+    alu.mul.a = V3D_QPU_MUX_B;
   } else {
-    // src is a register file index
-
-    if (raddr_a_is_safe(loc)) {
-      raddr_a   = loc.to_waddr();  // This could overwrite with the same value
-      alu.mul.a = V3D_QPU_MUX_A;
-    } else {
-      // Use raddr_b instead
-      assertq(!(alu.add.a == V3D_QPU_MUX_B) || (alu.add.b == V3D_QPU_MUX_B),
-        "alu_mul_set_reg_a: both raddr a and b in use by add alu");
-
-      raddr_b    = loc.to_waddr();
-      alu.mul.a  = V3D_QPU_MUX_B;
-    }
+    debug_break("alu_add_set_reg_a(): raddr_a and raddr_b both in use");
   }
 
   alu.mul.a_unpack = loc.input_unpack();
@@ -802,11 +790,18 @@ bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &d
     case ALUOp::A_SUB:   dst = V3D_QPU_M_SUB;    break;
     case ALUOp::M_FMUL:  dst = V3D_QPU_M_FMUL;   break;
     case ALUOp::M_MUL24: dst = V3D_QPU_M_SMUL24; break;
+
 /*
+    // NOT WORKING - apparently, I don't properly understand what MOV/FMOV does.
+    //               compiles, but kernel output is wrong.
+    //
     // Special case: OR with same inputs can be considered a MOV
     case ALUOp::A_BOR:
-      if (add_alu.srcA == add_alu.srcB) {
-        dst = V3D_QPU_M_MOV;
+      if ((add_alu.srcA == add_alu.srcB)
+       && (add_alu.dest.tag <= ACC)
+       && (add_alu.srcA.is_reg() && add_alu.srcA.reg().tag <= ACC)) {
+        //breakpoint
+        dst = V3D_QPU_M_MOV;  // _FMOV
       } else {
         ret = false;
       }

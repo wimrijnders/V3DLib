@@ -11,6 +11,7 @@
 #include "SourceTranslate.h"
 #include "instr/Encode.h"
 #include "Support/basics.h"
+#include <bits/stdc++.h>  // set_intersection
 
 namespace V3DLib {
 
@@ -26,6 +27,16 @@ using namespace V3DLib::v3d::instr;
 using Instructions = V3DLib::v3d::Instructions;
 
 namespace {
+
+// Set intersection
+inline std::set<Reg> operator&(std::set<Reg> const &lhs, std::set<Reg> const &rhs) {
+  std::set<Reg> ret;
+
+  set_intersection(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
+                 std::inserter(ret, ret.begin()));
+
+  return ret;
+}
 
 std::vector<std::string> local_errors;
 
@@ -840,7 +851,6 @@ bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_in
  * @return true if can combine, false otherwise
  */
 bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
-  return false;
   if (instr.tag != InstrTag::ALU) return false; 
   if (next_instr.tag != InstrTag::ALU) return false; 
   if (!valid_combine_pair(instr, next_instr)) return false;
@@ -904,13 +914,42 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
 
 
   // The number of used accumulators is free, only check RF registers
-  auto src_regs = instr.src_regs() + next_instr.src_regs();
+  auto src_regs  = instr.src_regs() + next_instr.src_regs();
+
+/*
+  auto intersect = instr.src_regs() & next_instr.src_regs();
+
+  if (!intersect.empty()) {
+breakpoint
+    return false;
+  }
+*/
 
   // Specials can not be combined
   for (auto const &reg : src_regs) {
     if (reg.tag == RegTag::SPECIAL ) return false; 
   }
 
+/*
+  // Issue when or -> mov translation enabled, with tmua/tmud in same instruction, eg:
+  //   or  tmud, rf13, rf13 ; mov tmua, rf17, rf17  (perhaps other way around??)
+  //
+  // This causes output to be unstable; after this, any kernel you run may or may
+  // not output properly. You need to hard reboot and disable or -> mov to make it work again
+  //
+  // Using following code solves the instability, but or -> mov enabled still gives wrong output
+  
+
+  // Don't write to two specials in same instruction
+  auto dst = instr.dst_reg();
+  if (dst.tag == SPECIAL) {
+    return false;
+  }
+  auto next_dst = next_instr.dst_reg();
+  if (next_dst.tag == SPECIAL) {
+    return false;
+  }
+*/
 
   // Count distinct number of rf-registers
   for (auto const &reg : src_regs) {
@@ -952,8 +991,9 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   auto const &instr = instrs[index];
   auto const &next_instr = instrs[index + 1];
 
-  if (instr.isCondAssign()) return false;
-  if (next_instr.isCondAssign()) return false;
+  // Previous only 'always' allowed for both instructions; but following does not give anything extra
+  if (instr.assign_cond() != next_instr.assign_cond()) return false;
+
   if (!can_combine(instr, next_instr)) return false;
 
   bool do_converse;
@@ -973,7 +1013,12 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
 
   auto const &add_instr = do_converse?next_instr:instr;
   auto const &mul_instr = do_converse?instr:next_instr;
-
+/*
+  // WRI tryout: dest of mul can't be source of add:
+  if (mul_instr.ALU.dest == add_instr.ALU.srcA || mul_instr.ALU.dest == add_instr.ALU.srcB) {
+    return false;
+  }
+*/
   Instructions tmp;
   assertq(translateOpcode(add_instr, tmp), "translateOpcode() failed");
   assert(tmp.size() == 1);
