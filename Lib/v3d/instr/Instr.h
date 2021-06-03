@@ -7,6 +7,7 @@
 #include "SmallImm.h"
 #include "Register.h"
 #include "Encode.h"
+#include "Target/instr/ALUInstruction.h"
 
 namespace V3DLib {
 
@@ -308,6 +309,13 @@ namespace instr {
 ///////////////////////////////////////////////////////////////////////////////
 
 Instructions fsin(Location const &dst, Location const &a);
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Other calls
+///////////////////////////////////////////////////////////////////////////////
+
+bool can_convert_to_mul_instruction(ALUInstruction const &add_ialu);
 
 }  // instr
 }  // v3d

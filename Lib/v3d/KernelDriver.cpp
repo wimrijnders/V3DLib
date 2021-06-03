@@ -10,6 +10,7 @@
 #include "Support/Timer.h"
 #include "SourceTranslate.h"
 #include "instr/Encode.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
@@ -805,16 +806,7 @@ bool can_use_mul_alu(V3DLib::Instr const &instr) {
   if (instr.tag != ALU) return false;
   if (uses_mul_alu(instr)) return true;
 
-  switch (instr.ALU.op.value()) {
-    case ALUOp::A_ADD:
-    case ALUOp::A_SUB:
-    //case ALUOp::A_MOV:  // Doesn't exist, consider adding
-      return true;
-
-    default: break;
-  }
-
-  return false;
+  return can_convert_to_mul_instruction(instr.ALU);
 }
 
 
@@ -848,6 +840,7 @@ bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_in
  * @return true if can combine, false otherwise
  */
 bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
+  return false;
   if (instr.tag != InstrTag::ALU) return false; 
   if (next_instr.tag != InstrTag::ALU) return false; 
   if (!valid_combine_pair(instr, next_instr)) return false;

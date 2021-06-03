@@ -9,7 +9,6 @@
 #include "../../Support/debug.h"
 #include "dump_instr.h"
 #include "Support/basics.h"
-#include "Target/instr/ALUInstruction.h"
 
 namespace {
 
@@ -450,7 +449,7 @@ Instr &Instr::fmov(Location const &dst,  SmallImm const &imma) {
   alu_mul_set_dst(dst);
   alu_mul_set_imm_a(imma);
 
-  alu.mul.op    = V3D_QPU_M_FMOV;
+  alu.mul.op    = V3D_QPU_M_FMOV;  // TODO what's the difference with _MOV? Check
   alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
 
   return *this;
@@ -795,13 +794,24 @@ namespace {
  *
  * @return  true if equivalent found, false otherwise
  */
-bool convert_to_mul_instruction(ALUOp::Enum add_op, v3d_qpu_mul_op &dst ) {
+bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &dst ) {
   bool ret = true;
 
-  switch(add_op) {
+  switch(add_alu.op.value()) {
     case ALUOp::A_ADD:   dst = V3D_QPU_M_ADD;    break;
+    case ALUOp::A_SUB:   dst = V3D_QPU_M_SUB;    break;
     case ALUOp::M_FMUL:  dst = V3D_QPU_M_FMUL;   break;
     case ALUOp::M_MUL24: dst = V3D_QPU_M_SMUL24; break;
+/*
+    // Special case: OR with same inputs can be considered a MOV
+    case ALUOp::A_BOR:
+      if (add_alu.srcA == add_alu.srcB) {
+        dst = V3D_QPU_M_MOV;
+      } else {
+        ret = false;
+      }
+    break;
+*/
 
     default: ret = false; break;
   }
@@ -811,6 +821,13 @@ bool convert_to_mul_instruction(ALUOp::Enum add_op, v3d_qpu_mul_op &dst ) {
 
 }  // anon namespace
 
+
+bool can_convert_to_mul_instruction(ALUInstruction const &add_alu) {
+  v3d_qpu_mul_op dst;
+  return convert_to_mul_instruction(add_alu, dst);
+}
+
+
 /**
  * @return true if mul instruction set, false otherwise
  */
@@ -818,7 +835,7 @@ bool Instr::alu_mul_set(V3DLib::ALUInstruction const &alu, std::unique_ptr<Locat
   assert(dst);
 
   v3d_qpu_mul_op mul_op;
-  if (!convert_to_mul_instruction(alu.op.value(), mul_op)) {
+  if (!convert_to_mul_instruction(alu, mul_op)) {
     return false;
   }
 

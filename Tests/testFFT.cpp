@@ -1168,7 +1168,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       Complex::Array2D result_dft;
       Timer timer1("DFT compile time");
       auto k = compile(kernels::dft_inline_decorator(a, result_dft), V3D);
-      //k.pretty(false, "obj/test/dft_compare_v3d.txt");
+      k.pretty(false, "obj/test/dft_compare_v3d.txt");
       timer1.end();
       std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
       std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
@@ -1181,7 +1181,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
       //std::cout << "DFT result: " << result_dft.dump() << std::endl;
 
-      // Compare scalar result with kernel output
+      INFO("comparing DFT with scalar");
       check_result1(scalar_result, result_dft, Dim, precision);
     }
 
@@ -1210,6 +1210,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       timer2.end();
 
       //std::cout << "FFT result: " << result.dump() << std::endl;
+      INFO("comparing FFT inline with scalar");
       check_result2(scalar_result, result_inline, Dim, precision);
     }
 
@@ -1235,6 +1236,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       k.call();
       timer2.end();
 
+      INFO("comparing FFT buffer with scalar");
       check_result2(scalar_result, result_buf, Dim, precision);
     }
 
