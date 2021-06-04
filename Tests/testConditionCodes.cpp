@@ -568,6 +568,7 @@ TEST_CASE("Test multiple and/or [andor][cond]") {
 
     auto k = compile(andor_kernel);
     k.load(&result);
+    k.pretty(false, "andor_kernel_v3d.txt");
 
     reset(result);
     k.interpret();

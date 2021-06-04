@@ -126,37 +126,9 @@ bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
 }
 
 
-/**
- */
-void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
-  if (cond.is_always()) {
-    return;
-  }
-  assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
-  assertq(cond.tag == AssignCond::Tag::FLAG,  "const.tag can only be FLAG here");  // The only remaining option
-
-  // NOTE: condition tags are set for add alu only here
-  // TODO: Set for mul tag as well if required
-  //       Prob the easiest is to always set them for both for now
-
-  switch(cond.flag) {
-    case ZS:
-    case NS:
-      out_instr.ifa(); 
-      break;
-    case ZC:
-    case NC:
-      out_instr.ifna(); 
-      break;
-    default:  assert(false);
-  }
-
-}
-
-
-void setCondTag(AssignCond cond, Instructions &ret) {
+void set_cond_tag(AssignCond cond, Instructions &ret) {
   for (auto &instr : ret) {
-    setCondTag(cond, instr);
+    instr.set_cond_tag(cond);
   }
 }
 
@@ -174,26 +146,13 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
     // Set a condition flag with current instruction
     assertq(cond.is_always(), "Currently expecting only ALWAYS here", true);
 
-    // Note that the condition is only set for the last in the list.
+    // The condition is only set for the last in the list.
     // Any preceding instructions are assumed to be for calculating the condition
-    Instr &instr = ret.back();
-
-    assertq(setCond.tag() == SetCond::Z || setCond.tag() == SetCond::N,
-      "Unhandled setCond flag", true);
-
-    if (setCond.tag() == SetCond::Z) {
-      instr.pushz();
-    } else {
-      instr.pushn();
-    }
+    ret.back().set_push_tag(setCond);
 
   } else {
     // use flag as run condition for current instruction(s)
-    if (cond.is_always()) {
-      return; // ALWAYS executes always (duh, is default)
-    }
-
-    setCondTag(cond, ret);
+    set_cond_tag(cond, ret);
   }
 }
 
@@ -588,7 +547,7 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
     breakpoint;  // to check what flags need to be set - case not handled yet
   }
 
-  setCondTag(instr.cond, ret);
+  set_cond_tag(instr.cond, ret);
   return ret;
 }
 
@@ -860,7 +819,7 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
 
   // Skip special instructions
   switch(ALU.op.value()) {
-  case ALUOp::A_EIDX:
+  case ALUOp::A_EIDX:  // TODO remove, should work
   case ALUOp::A_FSIN:
     return false;
   default:
@@ -868,7 +827,7 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   }
 
   switch(next_ALU.op.value()) {
-  case ALUOp::A_EIDX:
+  case ALUOp::A_EIDX:  // TODO remove, should work
   case ALUOp::A_FSIN:
     return false;
   default:
@@ -878,9 +837,11 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
 
   // Not expecting following
   assert(!ALU.srcA.is_transient());
-  assert(!ALU.srcB.is_transient());
+  //works for now: assert(!ALU.srcB.is_transient());
+  //assert(!ALU.dest.is_transient());  TODO
   assert(!next_ALU.srcA.is_transient());
-  assert(!next_ALU.srcB.is_transient());
+  //works for now: assertq(!next_ALU.srcB.is_transient(), "oops", true);
+  //assert(!next_ALU.dest.is_transient()); TODO
 
   //
   // Two immediate values are only possible if both instructions have the same immediate
@@ -991,8 +952,10 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   auto const &instr = instrs[index];
   auto const &next_instr = instrs[index + 1];
 
-  // Previous only 'always' allowed for both instructions; but following does not give anything extra
+  // TODO: add and mul alus have separate condition fields, following too strict;
+  //       See set_cond_tag(
   if (instr.assign_cond() != next_instr.assign_cond()) return false;
+  if (instr.isCondAssign()) return false;
 
   if (!can_combine(instr, next_instr)) return false;
 
@@ -1013,12 +976,11 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
 
   auto const &add_instr = do_converse?next_instr:instr;
   auto const &mul_instr = do_converse?instr:next_instr;
-/*
-  // WRI tryout: dest of mul can't be source of add:
-  if (mul_instr.ALU.dest == add_instr.ALU.srcA || mul_instr.ALU.dest == add_instr.ALU.srcB) {
-    return false;
-  }
-*/
+
+  // Don't combine push tag; boolean logic relies on consecutive pushes
+  if (add_instr.setCond().tag() != SetCond::NO_COND) return false;
+  if (mul_instr.setCond().tag() != SetCond::NO_COND) return false;
+
   Instructions tmp;
   assertq(translateOpcode(add_instr, tmp), "translateOpcode() failed");
   assert(tmp.size() == 1);
@@ -1032,6 +994,9 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
     debug(msg);
     return false;
   }
+
+  out_instr.set_cond_tag(instr.assign_cond());
+  out_instr.set_push_tag(instr.setCond());
 
   out_instr.comment(instr.comment());
   out_instr.comment(next_instr.comment());

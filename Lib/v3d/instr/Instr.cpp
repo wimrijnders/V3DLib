@@ -70,6 +70,82 @@ Instr::Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &a, SmallImm
 }
 
 
+bool Instr::is_branch() const {
+  return (type == V3D_QPU_INSTR_TYPE_BRANCH);
+}
+
+
+/**
+ * Set the condition tags during translation.
+ *
+ * Note that both add and mul alu condition tags are set here.
+ * This is actually too strict, the tags are independent
+ */
+void Instr::set_cond_tag(AssignCond cond) {
+  assert(!is_branch());
+  if (cond.is_always()) return;
+
+  assertq(flags.ac == V3D_QPU_COND_NONE, "Not expecting add alu assign tag to be set");
+  assertq(flags.mc == V3D_QPU_COND_NONE, "Not expecting mul alu assign tag to be set");
+  assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
+  assertq(cond.tag == AssignCond::Tag::FLAG,  "const.tag can only be FLAG here");  // The only remaining option
+
+  // NOTE: condition tags are set for add alu only here
+  // TODO: Set for mul tag as well if required
+  //       Prob the easiest is to always set them for both for now
+
+  v3d_qpu_cond tag_value = V3D_QPU_COND_NONE;
+
+  switch(cond.flag) {
+    case ZS:
+    case NS:
+      // set ifa tag
+      tag_value = V3D_QPU_COND_IFA;
+      break;
+    case ZC:
+    case NC:
+      // set ifna tag
+      tag_value = V3D_QPU_COND_IFNA;
+      break;
+    default: break;
+  }
+
+  assert(tag_value != V3D_QPU_COND_NONE);
+
+  if (alu.add.op != V3D_QPU_A_NOP) {
+    flags.ac = tag_value;
+  }
+
+  if (alu.mul.op != V3D_QPU_M_NOP) {
+    flags.mc = tag_value;
+  }
+}
+
+
+void Instr::set_push_tag(SetCond set_cond) {
+  if (set_cond.tag() == SetCond::NO_COND) return;
+  assertq(flags.apf == V3D_QPU_PF_NONE, "Not expecting add alu push tag to be set");
+  assertq(flags.mpf == V3D_QPU_PF_NONE, "Not expecting mul alu push tag to be set");
+  assertq(set_cond.tag() == SetCond::Z || set_cond.tag() == SetCond::N, "Unhandled SetCond flag", true);
+
+  v3d_qpu_pf tag_value;
+
+  if (set_cond.tag() == SetCond::Z) {
+    tag_value = V3D_QPU_PF_PUSHZ;
+  } else {
+    tag_value = V3D_QPU_PF_PUSHN;
+  }
+
+  if (alu.add.op != V3D_QPU_A_NOP) {
+    flags.apf = tag_value;
+  }
+
+  if (alu.mul.op != V3D_QPU_M_NOP) {
+    flags.mpf = tag_value;
+  }
+}
+
+
 std::string Instr::dump() const {
   char buffer[10*1024];
   instr_dump(buffer, const_cast<Instr *>(this));
@@ -96,7 +172,7 @@ std::string Instr::pretty_instr() const {
 
   // Output rotate signal (not done in MESA)
   if (sig.rotate) {
-    if (type != V3D_QPU_INSTR_TYPE_BRANCH) {  // Assumption: rotate signal irrelevant for branch
+    if (!is_branch()) {  // Assumption: rotate signal irrelevant for branch
 
       // Only two possibilities here: r5 or small imm (sig for small imm not set!)
       if (alu.mul.b == V3D_QPU_MUX_R5) {
@@ -184,7 +260,7 @@ void Instr::init(uint64_t in_code) {
     return;
   }
 
-  if (type == V3D_QPU_INSTR_TYPE_BRANCH) {
+  if (is_branch()) {
     if (!branch.ub) {
       // take over the value anyway
       branch.bdu = (v3d_qpu_branch_dest) ((in_code >> 15) & 0b111);
@@ -387,7 +463,7 @@ Instr &Instr::ldunifrf(RFAddress const &loc) {
 ///////////////////////////////////////////////////////////////////////////////
 
 Instr &Instr::set_branch_condition(v3d_qpu_branch_cond cond) {
-  assert(type == V3D_QPU_INSTR_TYPE_BRANCH);  // Branch instruction-specific
+  assert(is_branch());  // Branch instruction-specific
   branch.cond = cond;
   return *this;
 }
@@ -423,6 +499,7 @@ Instr &Instr::sub(Location const &loc1, Location const &loc2, Location const &lo
   alu.mul.op    = V3D_QPU_M_SUB;
   return *this;
 }
+
 
 Instr &Instr::nop() {
   m_doing_add = false;
@@ -791,11 +868,12 @@ bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &d
     case ALUOp::M_FMUL:  dst = V3D_QPU_M_FMUL;   break;
     case ALUOp::M_MUL24: dst = V3D_QPU_M_SMUL24; break;
 
-/*
     // NOT WORKING - apparently, I don't properly understand what MOV/FMOV does.
     //               compiles, but kernel output is wrong.
     //
     // Special case: OR with same inputs can be considered a MOV
+    // Handles rf-registers and accumulators only, might be too strict
+    // (eg. case cobined tmua tmud, perhaps possible?)
     case ALUOp::A_BOR:
       if ((add_alu.srcA == add_alu.srcB)
        && (add_alu.dest.tag <= ACC)
@@ -806,7 +884,6 @@ bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &d
         ret = false;
       }
     break;
-*/
 
     default: ret = false; break;
   }

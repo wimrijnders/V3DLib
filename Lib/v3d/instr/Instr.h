@@ -20,6 +20,15 @@ using rf = RFAddress;
 using si = SmallImm;
 
 
+/**
+ * NOTE: branch condition is distinct from add/mul alu assign condition tags.
+ *       Would it then be possible to combine them?? E.g. something like:
+ * 
+ *           bb(L0).ifna().a0();
+ *           bb(L0).nop().ifna().a0();  // Would use mul alu flag
+ *       
+ *       TODO examine this, not expecting it to work but better to know for sure
+ */
 class Instr : public v3d_qpu_instr, public InstructionComment {
 
   // Label support
@@ -49,6 +58,10 @@ public:
   Instr &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
   Instr &comment(std::string msg)       { InstructionComment::comment(msg); return *this; }
 
+  bool is_branch() const;
+  void set_cond_tag(AssignCond cond);
+  void set_push_tag(SetCond set_cond);
+
   std::string dump() const; 
   std::string mnemonic(bool with_comments = false) const;
   uint64_t code() const;
@@ -76,7 +89,11 @@ public:
   Instr &ldtmu(Register const &reg);
   Instr &ldvpm();
 
+  //
   // Conditional execution of instructions
+  // NOTE: These are meant for mnemonics when generating v3d instructions directly.
+  //       It's really not a good idea to use them in the translation code (has bitten me).
+  // 
   Instr &ifa();
   Instr &ifna();
   Instr &ifb();
