@@ -78,8 +78,8 @@ bool Instr::is_branch() const {
 /**
  * Set the condition tags during translation.
  *
- * Note that both add and mul alu condition tags are set here.
- * This is actually too strict, the tags are independent
+ * Both add and mul alu condition tags are set here, depending
+ * on which alu is used (possibly both).
  */
 void Instr::set_cond_tag(AssignCond cond) {
   assert(!is_branch());

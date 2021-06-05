@@ -133,30 +133,6 @@ void set_cond_tag(AssignCond cond, Instructions &ret) {
 }
 
 
-void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
-  auto &cond = src_instr.ALU.cond;
-
-  // src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
-  assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
-  assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
-
-  auto const &setCond = src_instr.setCond();
-
-  if (setCond.flags_set()) {
-    // Set a condition flag with current instruction
-    assertq(cond.is_always(), "Currently expecting only ALWAYS here", true);
-
-    // The condition is only set for the last in the list.
-    // Any preceding instructions are assumed to be for calculating the condition
-    ret.back().set_push_tag(setCond);
-
-  } else {
-    // use flag as run condition for current instruction(s)
-    set_cond_tag(cond, ret);
-  }
-}
-
-
 bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
   bool did_something = true;
 
@@ -277,6 +253,74 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
   }
 
   return did_something;
+}
+
+
+void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
+  auto &cond = src_instr.ALU.cond;
+
+  // src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
+  assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
+  assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
+
+  auto const &setCond = src_instr.setCond();
+
+  if (!setCond.flags_set()) {
+    // use flag as run condition for current instruction(s)
+    set_cond_tag(cond, ret);
+    return;
+  }
+
+  //
+  // Set a condition flag with current instruction
+  //
+  // The condition is only set for the last in the list.
+  // Any preceding instructions are assumed to be for calculating the condition
+  //
+  assertq(cond.is_always(), "Currently expecting only ALWAYS here", true);
+
+  bool is_final_where_cond = src_instr.comment().find("where condition final") != src_instr.comment().npos;
+
+  if (!is_final_where_cond) {
+    ret.back().set_push_tag(setCond);
+    return;
+  }
+
+  //
+  // Process final where condition
+  // In this case, condition flag must be pushed for both add and mul alu.
+  //
+
+  {
+    std::string msg = "handle_condition_tags(): detected final where condition: '";
+    msg << src_instr.dump() << "'\n";
+    msg << "v3d: " << ret.back().mnemonic() << "'\n";
+    debug(msg);
+  }
+
+  ret.back().set_push_tag(setCond);
+
+  //
+  // Add and mul alus are set to have the same destination, normally this is risky!
+  // However, in this case the dst is a dummy (assumption? check), so if the hardware
+  // allows it, this is ok.
+  //
+  Instructions tmp;
+  assertq(translateOpcode(src_instr, tmp), "translateOpcode() failed");
+  assert(tmp.size() == 1);
+  Instr &tmp_instr = tmp[0];
+  if(!tmp_instr.alu_mul_set(src_instr.ALU, encodeDestReg(src_instr))) {
+    assert(false);
+  }
+
+  tmp_instr.set_push_tag(setCond);
+
+  {
+    std::string msg = "handle_condition_tags() ";
+    msg << "v3d final: " << ret.back().mnemonic() << "'\n";
+    msg << "v3d tmp: " << tmp_instr.mnemonic() << "'\n";
+    debug(msg);
+  }
 }
 
 
@@ -963,16 +1007,6 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   if (!valid_combine_pair(instr, next_instr, do_converse)) {
     assert(false);
   }
-
-/*
-  if (do_converse) {
-    std::string msg("Converse detected\n");
-    msg << "  add alu instr: " << instr.dump() << "\n" 
-        << "  mul alu instr: " << next_instr.dump();
-
-    debug(msg);
-  }
-*/
 
   auto const &add_instr = do_converse?next_instr:instr;
   auto const &mul_instr = do_converse?instr:next_instr;

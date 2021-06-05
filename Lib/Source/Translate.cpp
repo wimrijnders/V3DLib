@@ -3,8 +3,12 @@
 #include "SourceTranslate.h"
 #include "Target/SmallLiteral.h"
 #include "Target/instr/Instructions.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
+
 namespace {
 
 // ============================================================================
@@ -343,18 +347,32 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
     using Target::instr::mov;
     AssignCond andCond(CmpOp(CmpOp::NEQ, INT32));  // Wonky syntax to get the flags right
 
+    Var newCondVar   = VarGen::fresh();
+    AssignCond newCond;
+    {
+      // Compile new boolean expression
+      Instr::List seq;
+      newCond = boolExp(&seq, s->where_cond(), newCondVar);
+      assert(!seq.empty());
+
+      std::string cmt = "Start where (";
+      cmt << (cond.is_always()?"always":"nested") << ")";
+      seq.front().comment(cmt);
+
+      // This comment is used to signal downstream that this is the
+      // statement processing the final step for the where-condition.
+      // This statement pushes condition flags for the where-body.
+      //
+      // It's a dubious thing to use comments to signal this, but currently
+      // it's the most obvious thing to use.
+      // Used in v3d when combining add/mul alu instructions
+      seq.back().comment("where condition final");
+
+      ret << seq;
+    }
+
     if (cond.is_always()) {
       // Top-level handling of where-statements
-
-      Var newCondVar   = VarGen::fresh();
-      AssignCond newCond;
-      {
-        // Compile new boolean expression
-        Instr::List seq;
-        newCond = boolExp(&seq, s->where_cond(), newCondVar);
-        if (!seq.empty()) seq.front().comment("Start where (always)");
-        ret << seq;
-      }
 
       // Compile 'then' statement
       if (s->thenStmt().get() != nullptr) {
@@ -374,16 +392,6 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
       }
     } else {
       // Where-statements nested in other where-statements
-
-      Var newCondVar   = VarGen::fresh();
-      AssignCond newCond;
-      {
-        // Compile new boolean expression
-        Instr::List seq;
-        newCond = boolExp(&seq, s->where_cond(), newCondVar);
-        if (!seq.empty()) seq.front().comment("Start where (nested)");
-        ret << seq;
-      }
 
       if (s->thenStmt().get() != nullptr) {  // NOTE: syntax allows then-stmt to be empty and else not empty
         // AND new boolean expression with original condition
