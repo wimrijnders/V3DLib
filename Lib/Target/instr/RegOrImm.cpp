@@ -1,7 +1,9 @@
 #include "RegOrImm.h"
 #include "Support/basics.h"
+#include "Support/Platform.h"
 #include "Target/SmallLiteral.h"
 #include "Imm.h"
+#include "v3d/instr/SmallImm.h"
 
 namespace V3DLib {
 
@@ -11,8 +13,18 @@ SmallImm &RegOrImm::imm()      { assert(is_imm()); return m_smallImm; }
 SmallImm RegOrImm::imm() const { assert(is_imm()); return m_smallImm; }
 
 void RegOrImm::set_imm(int rhs) {
+  // input should be in the encode range for target platforms
+  assert((Platform::compiling_for_vc4()  && 0 <= rhs && rhs <= 47)
+      || (!Platform::compiling_for_vc4() && v3d::instr::SmallImm::is_legal_encoded_value(rhs))
+  );
+
   m_is_reg  = false;
   m_smallImm.val = rhs;
+}
+
+
+void RegOrImm::set_imm(Imm const &rhs) {
+  set_imm(rhs.encode_imm());
 }
 
 
@@ -57,7 +69,11 @@ std::string RegOrImm::disp() const {
   if (m_is_reg) {
     return m_reg.dump();
   } else {
-    return printSmallLit(m_smallImm.val);
+    if (Platform::compiling_for_vc4()) {
+      return printSmallLit(m_smallImm.val);
+    } else {
+      return v3d::instr::SmallImm::print_encoded_value(m_smallImm.val);
+    }
   }
 }
 

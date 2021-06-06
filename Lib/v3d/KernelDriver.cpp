@@ -47,9 +47,14 @@ std::vector<std::string> local_errors;
 SmallImm encodeSmallImm(RegOrImm const &src_reg) {
   assert(src_reg.is_imm());
 
+  // Value in RegOrImm.imm() is currently already encoded!
+  // This is wrong now.
+  // TODO fix
   Word w = decodeSmallLit(src_reg.imm().val);
   SmallImm ret(w.intVal);
   return ret;
+
+
 }
 
 

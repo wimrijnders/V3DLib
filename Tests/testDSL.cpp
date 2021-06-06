@@ -398,7 +398,7 @@ TEST_CASE("Test Conditionals [dsl][cond]") {
 
     auto k = compile(kernelIfWhen);
 /*
-    k.pretty(true, "obj/test/kernelIfWhen_vc4.txt", false);
+    k.pretty(true,  "obj/test/kernelIfWhen_vc4.txt", false);
     k.pretty(false, "obj/test/kernelIfWhen_v3d.txt");
     k.dump_compile_data(false, "obj/test/kernelIfWhen_v3d_data.txt");
 */
@@ -1022,7 +1022,8 @@ TEST_CASE("Test issues [dsl][issues]") {
     int const N = 6;
 
     auto k = compile(issues_kernel);
-    k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
+    //k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
+    //k.dump_compile_data(true, "obj/test/issues_kernel_vc4_dump.txt");
     //k.pretty(false, "obj/test/issues_kernel_v3d.txt");
 
     Int::Array input(16);

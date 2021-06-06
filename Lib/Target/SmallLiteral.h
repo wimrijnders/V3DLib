@@ -6,6 +6,8 @@ namespace V3DLib {
 
 class Expr;
 
+int encodeSmallInt(int val);
+int encodeSmallFloat(float val);
 int encodeSmallLit(Expr const &e);
 std::string printSmallLit(int x);
 Word decodeSmallLit(int x);

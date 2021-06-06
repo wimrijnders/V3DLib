@@ -30,30 +30,46 @@ const float smallFloats[NUM_SMALL_FLOATS] = {
   , 0.5
 };
 
-// Encode a small literal according to Table 5 of the VideoCore-IV
-// manual. Returns -1 if expression cannot be encoded as a small
-// literal.
 
+int encodeSmallInt(int val) {
+  if (val >= 0 && val <= 15)
+    return val;
+  else if (val >= -16 && val <= -1)
+    return 32 + val;
+
+  return -1;
+}
+
+
+int encodeSmallFloat(float val) {
+  if (val == 0.0)
+    return 0;
+  else {
+    int index = -1;
+    for (int i = 0; i < NUM_SMALL_FLOATS; i++)
+      if (smallFloats[i] == val) {
+        index = i;
+        break;
+      }
+
+    if (index != -1)
+      return 32 + index;
+  }
+
+  return -1;
+}
+
+
+/**
+ * Encode a small literal according to Table 5 of the VideoCore-IV manual.
+ * 
+ * @return encoded lit value, -1 if expression cannot be encoded
+ */
 int encodeSmallLit(Expr const &e) {
   if (e.tag() == Expr::INT_LIT) { 
-    if (e.intLit >= 0 && e.intLit <= 15)
-      return e.intLit;
-    else if (e.intLit >= -16 && e.intLit <= -1)
-      return 32 + e.intLit;
+    return encodeSmallInt(e.intLit);
   } else if (e.tag() == Expr::FLOAT_LIT) {
-    if (e.floatLit == 0.0)
-      return 0;
-    else {
-      int index = -1;
-      for (int i = 0; i < NUM_SMALL_FLOATS; i++)
-        if (smallFloats[i] == e.floatLit) {
-          index = i;
-          break;
-        }
-
-      if (index != -1)
-        return 32 + index;
-    }
+    return encodeSmallFloat(e.floatLit);
   }
 
   return -1;
@@ -64,7 +80,6 @@ int encodeSmallLit(Expr const &e) {
  * Decode a small literal.
  */
 Word decodeSmallLit(int x) {
-  assert(x >= 0);
   Word w;
 
   if (x >= 32) {
@@ -86,7 +101,7 @@ std::string printSmallLit(int x) {
     ret << smallFloats[x - 32];
   else if (x >= 16)
     ret << (x - 32);
-  else if (x >= 0)
+  else
     ret << x;
 
   return ret;

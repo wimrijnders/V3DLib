@@ -337,14 +337,13 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
         uint32_t addOp = (alu.op.isMul() ? 0 : alu.op.vc4_encodeAddOp()) << 24;
 
         uint32_t muxa, muxb;
-        uint32_t raddra, raddrb;
+        uint32_t raddra = 0, raddrb;
 
-        if (alu.srcA.is_imm() && alu.srcB.is_imm()) {
-          assertq(false, "srcA and srcB can not both be (small) immediates", true);
-        } else if (alu.srcA.is_reg() && alu.srcB.is_reg()) { // Both operands are registers
+        if (alu.srcA.is_reg() && alu.srcB.is_reg()) { // Both operands are registers
           RegTag aFile = regFileOf(alu.srcA.reg());
-          RegTag bFile = regFileOf(alu.srcB.reg());
           RegTag aTag  = alu.srcA.reg().tag;
+
+          RegTag bFile = regFileOf(alu.srcB.reg());
           RegTag bTag  = alu.srcB.reg().tag;
 
           // If operands are the same register
@@ -367,16 +366,31 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
               raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
             }
           }
-        } else if (alu.srcB.is_imm()) {
-          // Second operand is a small immediate
-          raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
-          raddrb = (uint32_t) alu.srcB.imm().val;
-          muxb   = 7;
-        } else if (alu.srcA.is_imm()) {
-          // First operand is a small immediate
-          raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
-          raddrb = (uint32_t) alu.srcA.imm().val;
-          muxa   = 7;
+        } else if (alu.srcA.is_imm() || alu.srcB.is_imm()) {
+          if (alu.srcA.is_imm() && alu.srcB.is_imm()) {
+            //assertq(false , "srcA and srcB can not both be immediates", true);
+
+          /* Not working */
+
+            assertq(alu.srcA.imm().val == alu.srcB.imm().val,
+                    "srcA and srcB can not both be immediates with different values", true);
+
+            raddrb = (uint32_t) alu.srcA.imm().val;  // srcB is the same
+            muxa   = 7;
+            muxb   = 7;
+          } else if (alu.srcB.is_imm()) {
+            // Second operand is a small immediate
+            raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
+            raddrb = (uint32_t) alu.srcB.imm().val;
+            muxb   = 7;
+          } else if (alu.srcA.is_imm()) {
+            // First operand is a small immediate
+            raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
+            raddrb = (uint32_t) alu.srcA.imm().val;
+            muxa   = 7;
+          } else {
+            assert(false);  // Not expecting this
+          }
         } else {
           assert(false);  // Not expecting this
         }

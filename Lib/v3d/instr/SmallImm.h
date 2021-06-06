@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_V3D_INSTR_SMALLIMM_H
 #define _V3DLIB_V3D_INSTR_SMALLIMM_H
 #include <stdint.h>
+#include <string>
 #include "broadcom/qpu/qpu_instr.h"
 #include "dump_instr.h"
 
@@ -23,6 +24,8 @@ public:
 
   static bool int_to_opcode_value(int value, int &rep_value);
   static bool float_to_opcode_value(float value, int &rep_value);
+  static bool is_legal_encoded_value(int value);
+  static std::string print_encoded_value(int value);
 
 private:
   int m_val = 0;

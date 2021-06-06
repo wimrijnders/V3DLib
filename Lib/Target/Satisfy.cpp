@@ -224,6 +224,8 @@ Instr::List removeVPMStall(Instr::List &instrs) {
  * Determine reg file of given register
  */
 RegTag regFileOf(Reg r) {
+  assert(r.tag <= SPECIAL);
+
   if (r.tag == REG_A) return REG_A;
   if (r.tag == REG_B) return REG_B;
 

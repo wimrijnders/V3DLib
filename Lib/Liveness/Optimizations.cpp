@@ -252,6 +252,9 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
     if (instr.tag != InstrTag::LI) continue;
 
     if (instr.LI.imm.is_basic()) {
+//      if (Platform::compiling_for_vc4()) continue;  // v3d only is a same.
+//                                                    // TODO solve this (see encodeInstr()) 
+
       auto const &reg_usage = live.reg_usage()[instr.LI.dest.regId];
 
       if (reg_usage.assigned_once()) {
@@ -278,8 +281,8 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
           if (can_use_imm) {
             // Perform the subst
-            if (instr2.ALU.srcA == instr.LI.dest) instr2.ALU.srcA.set_imm(instr.LI.imm.intVal());
-            if (instr2.ALU.srcB == instr.LI.dest) instr2.ALU.srcB.set_imm(instr.LI.imm.intVal());
+            if (instr2.ALU.srcA == instr.LI.dest) instr2.ALU.srcA.set_imm(instr.LI.imm);
+            if (instr2.ALU.srcB == instr.LI.dest) instr2.ALU.srcB.set_imm(instr.LI.imm);
             instr.tag = SKIP;
           } else {
             //output << "  " << can_use_imm << ": " << instr2.dump() << "\n";

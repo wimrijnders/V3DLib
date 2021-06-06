@@ -2,6 +2,7 @@
 #include "Support/basics.h"
 #include "Support/Platform.h"
 #include "v3d/instr/SmallImm.h"
+#include "Target/SmallLiteral.h"
 
 namespace V3DLib {
 
@@ -20,26 +21,35 @@ bool Imm::is_zero() const { return m_tag == IMM_INT32 && m_intVal == 0; }
  * need to be constructed inline.
  */
 bool Imm::is_basic() const {
-  if (Platform::compiling_for_vc4()) {
-    return true;  // All values are basic for vc4
-  }
+  return -17 != encode_imm();
+}
 
+
+int Imm::encode_imm() const {
   assert(m_tag != IMM_MASK);  // Not dealing with this here
-  int dummy;
+  int dummy = -17;  // Invalid value for both v3d and vc4
 
-  if (is_int()) {
-    if (v3d::instr::SmallImm::int_to_opcode_value(m_intVal, dummy)) {
-      return true;
+  if (Platform::compiling_for_vc4()) {
+    if (is_int()) {
+      dummy = encodeSmallInt(m_intVal);
+    } else if (is_float()) {
+      dummy = encodeSmallFloat(m_floatVal);
+    }
+
+    if (dummy == -1) dummy = -17;
+  } else {
+    if (is_int()) {
+      if (!v3d::instr::SmallImm::int_to_opcode_value(m_intVal, dummy)) {
+        dummy = -17;
+      }
+    } else if (is_float()) {
+      if (!v3d::instr::SmallImm::float_to_opcode_value(m_floatVal, dummy)) {
+        dummy = -17;
+      }
     }
   }
 
-  if (is_float()) {
-    if (v3d::instr::SmallImm::float_to_opcode_value(m_floatVal, dummy)) {
-      return true;
-    }
-  }
-
-  return false;
+  return dummy;
 }
 
 

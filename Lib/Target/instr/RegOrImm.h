@@ -17,6 +17,7 @@ struct SmallImm {
 struct RegOrImm {
 
   void set_imm(int rhs);
+  void set_imm(Imm const &rhs);
   void set_reg(RegTag tag, RegId id);
   void set_reg(Reg const &rhs);
 

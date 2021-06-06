@@ -23,6 +23,7 @@ struct Imm {
   int    mask() const;
   float  floatVal() const;
   uint32_t encode() const;
+  int encode_imm() const;
 
   bool is_zero() const;
   bool is_basic() const;

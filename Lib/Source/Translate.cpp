@@ -24,11 +24,17 @@ RegOrImm operand(Expr::Ptr e) {
   if (e->tag() == Expr::VAR) {
     x.set_reg(srcReg(e->var()));
     return x;
+  } else if (e->tag() == Expr::INT_LIT) { 
+    x.set_imm(Imm(e->intLit));
+  } else if (e->tag() == Expr::FLOAT_LIT) {
+    x.set_imm(Imm(e->floatLit));
+  } else {
+    assert(false);
   }
 
-  int enc = encodeSmallLit(*e);
-  assert(enc >= 0);
-  x.set_imm(enc);
+  //int enc = encodeSmallLit(*e);
+  //assert(enc >= 0);
+  //x.set_imm(enc);
   return x;
 }
 
