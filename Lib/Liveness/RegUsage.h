@@ -16,6 +16,7 @@ struct RegUsageItem {
   bool unused() const;
   bool only_assigned() const  { return !use_dst.empty() && src_range.count() == 0; }
   bool never_assigned() const { return !unused() && use_dst.empty(); }
+  bool assigned_once() const;
   std::string dump() const;
   int live_range() const;
   int use_range() const;

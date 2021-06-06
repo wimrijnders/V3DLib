@@ -250,7 +250,51 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
   for (int i = 0; i < (int) instrs.size(); i++) {
     Instr &instr = instrs[i];
     if (instr.tag != InstrTag::LI) continue;
-    if (instr.LI.imm.is_basic()) continue;
+
+    if (instr.LI.imm.is_basic()) {
+      auto const &reg_usage = live.reg_usage()[instr.LI.dest.regId];
+
+      if (reg_usage.assigned_once()) {
+        if (instr.LI.imm.is_float()) {
+          std::cout << "  TODO: handle LI with basic float, " << i << ": " << instr.dump() << "\n"; 
+          continue;
+        }
+
+        std::string output;
+
+        assert(reg_usage.first_usage() == reg_usage.first_dst());
+        for (int i = reg_usage.first_usage() + 1; i <= reg_usage.last_usage(); i++) {
+          auto &instr2 = instrs[i];
+          if (!instr2.is_src_reg(instr.LI.dest)) continue;
+
+         if (instr2.assign_cond() != instr.assign_cond()) {
+           output << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump() << "\n";
+           continue;
+         }
+
+          // Check if immediate could be used here
+          bool can_use_imm = (instr2.ALU.srcA.is_reg() || instr2.ALU.srcA == instr.LI.imm)
+                          && (instr2.ALU.srcB.is_reg() || instr2.ALU.srcB == instr.LI.imm);
+
+          if (can_use_imm) {
+            // Perform the subst
+            if (instr2.ALU.srcA == instr.LI.dest) instr2.ALU.srcA.set_imm(instr.LI.imm.intVal());
+            if (instr2.ALU.srcB == instr.LI.dest) instr2.ALU.srcB.set_imm(instr.LI.imm.intVal());
+            instr.tag = SKIP;
+          } else {
+            //output << "  " << can_use_imm << ": " << instr2.dump() << "\n";
+          }
+        }
+
+        if (!output.empty()) {
+          std::cout << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
+                    << "  dst usage: " << reg_usage.dump() << "\n"
+                    << output << std::endl;
+        }
+      }
+
+      continue;
+    }
 
    //std::cout << "  Scanning for LI: " << instr.dump() << std::endl; 
 

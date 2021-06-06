@@ -59,6 +59,12 @@ bool RegUsageItem::unused() const {
 }
 
 
+bool RegUsageItem::assigned_once() const {
+  assert(!unused());
+  return use_dst.size() == 1;
+}
+
+
 std::string RegUsageItem::dump() const {
   std::string ret;
 

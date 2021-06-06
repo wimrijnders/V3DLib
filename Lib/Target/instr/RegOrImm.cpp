@@ -1,6 +1,7 @@
 #include "RegOrImm.h"
 #include "Support/basics.h"
 #include "Target/SmallLiteral.h"
+#include "Imm.h"
 
 namespace V3DLib {
 
@@ -42,6 +43,13 @@ bool RegOrImm::operator==(RegOrImm const &rhs) const {
 bool RegOrImm::operator==(Reg const &rhs) const {
   if (!m_is_reg) return false;
   return m_reg == rhs;
+}
+
+
+bool RegOrImm::operator==(Imm const &rhs) const {
+  if (m_is_reg) return false;
+  if (rhs.is_float()) return false;
+  return m_smallImm.val == rhs.intVal();
 }
 
 

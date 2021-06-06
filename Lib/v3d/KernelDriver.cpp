@@ -242,6 +242,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 
     switch (src_instr.ALU.op.value()) {
       case ALUOp::A_BOR:   ret << bor(*dst_reg, imm_a, imm_b);          break;
+      case ALUOp::A_SHL:   ret << shl(*dst_reg, imm_a, imm_b);          break;
       default:
         assertq("unimplemented op, input imm, imm", true);
         did_something = false;
@@ -878,7 +879,6 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
 
   // Skip special instructions
   switch(ALU.op.value()) {
-  case ALUOp::A_EIDX:  // TODO remove, should work
   case ALUOp::A_FSIN:
     return false;
   default:
@@ -886,21 +886,11 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   }
 
   switch(next_ALU.op.value()) {
-  case ALUOp::A_EIDX:  // TODO remove, should work
   case ALUOp::A_FSIN:
     return false;
   default:
     break;
   }
-
-
-  // Not expecting following
-  assert(!ALU.srcA.is_transient());
-  //works for now: assert(!ALU.srcB.is_transient());
-  //assert(!ALU.dest.is_transient());  TODO
-  assert(!next_ALU.srcA.is_transient());
-  //works for now: assertq(!next_ALU.srcB.is_transient(), "oops", true);
-  //assert(!next_ALU.dest.is_transient()); TODO
 
   //
   // Two immediate values are only possible if both instructions have the same immediate
