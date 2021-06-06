@@ -1168,7 +1168,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       Complex::Array2D result_dft;
       Timer timer1("DFT compile time");
       auto k = compile(kernels::dft_inline_decorator(a, result_dft), V3D);
-      //k.pretty(false, "obj/test/dft_compare_v3d.txt");
+      k.pretty(false, "obj/test/dft_compare_v3d.txt");
       timer1.end();
       std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
       std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
@@ -1199,7 +1199,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       Timer timer1("FFT inline compile time");
       auto k = compile(fft_kernel, V3D);
       k.pretty(false, "./obj/test/fft_inline_v3d.txt", true);  // segfault for log2n == 9
-      //k.dump_compile_data(false, "fft_inline_dump_v3d.txt");
+      k.dump_compile_data(false, "fft_inline_dump_v3d.txt");
       timer1.end();
       std::cout << "FFT inline kernel size: " << k.v3d_kernel_size() << std::endl;
       std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;

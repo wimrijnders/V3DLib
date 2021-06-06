@@ -74,27 +74,14 @@ bool Instr::is_branch() const {
   return (type == V3D_QPU_INSTR_TYPE_BRANCH);
 }
 
+namespace {
 
-/**
- * Set the condition tags during translation.
- *
- * Both add and mul alu condition tags are set here, depending
- * on which alu is used (possibly both).
- */
-void Instr::set_cond_tag(AssignCond cond) {
-  assert(!is_branch());
-  if (cond.is_always()) return;
-
-  assertq(flags.ac == V3D_QPU_COND_NONE, "Not expecting add alu assign tag to be set");
-  assertq(flags.mc == V3D_QPU_COND_NONE, "Not expecting mul alu assign tag to be set");
+v3d_qpu_cond translate_assign_cond(AssignCond cond) {
   assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
-  assertq(cond.tag == AssignCond::Tag::FLAG,  "const.tag can only be FLAG here");  // The only remaining option
-
-  // NOTE: condition tags are set for add alu only here
-  // TODO: Set for mul tag as well if required
-  //       Prob the easiest is to always set them for both for now
 
   v3d_qpu_cond tag_value = V3D_QPU_COND_NONE;
+
+  if (cond.tag != AssignCond::Tag::FLAG) return tag_value;
 
   switch(cond.flag) {
     case ZS:
@@ -110,7 +97,31 @@ void Instr::set_cond_tag(AssignCond cond) {
     default: break;
   }
 
+  return tag_value;
+}
+
+} // anon namespace
+
+/**
+ * Set the condition tags during translation.
+ *
+ * Either add or mul alu condition tags are set here, both not allowed (intentionally too strict condition)
+ */
+void Instr::set_cond_tag(AssignCond cond) {
+  assert(!is_branch());
+  if (cond.is_always()) return;
+  if (alu.add.op == V3D_QPU_A_NOP && alu.mul.op == V3D_QPU_M_NOP) return;  // Don't bother with a full nop instruction
+
+  assertq(flags.ac == V3D_QPU_COND_NONE, "Not expecting add alu assign tag to be set");
+  assertq(flags.mc == V3D_QPU_COND_NONE, "Not expecting mul alu assign tag to be set");
+  assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
+  assertq(cond.tag == AssignCond::Tag::FLAG,  "const.tag can only be FLAG here");  // The only remaining option
+
+  v3d_qpu_cond tag_value = translate_assign_cond(cond);
   assert(tag_value != V3D_QPU_COND_NONE);
+
+  assertq(!(alu.add.op != V3D_QPU_A_NOP && alu.mul.op != V3D_QPU_M_NOP),
+    "Not expecting both add and mul alu to be used"); 
 
   if (alu.add.op != V3D_QPU_A_NOP) {
     flags.ac = tag_value;
@@ -135,6 +146,9 @@ void Instr::set_push_tag(SetCond set_cond) {
   } else {
     tag_value = V3D_QPU_PF_PUSHN;
   }
+
+  assertq(!(alu.add.op != V3D_QPU_A_NOP && alu.mul.op != V3D_QPU_M_NOP),
+    "Not expecting both add and mul alu to be pushed"); // Warn me if this happens, deal with it then
 
   if (alu.add.op != V3D_QPU_A_NOP) {
     flags.apf = tag_value;
@@ -485,10 +499,18 @@ Instr &Instr::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna(); }
 ///////////////////////////////////////////////////////////////////////////////
 
 
-Instr &Instr::add(Location const &loc1, Location const &loc2, Location const &loc3) {
+Instr &Instr::add(Location const &dst, Location const &srca, Location const &srcb) {
   m_doing_add = false;
-  alu_mul_set(loc1, loc2, loc3); 
+  alu_mul_set(dst, srca, srcb); 
   alu.mul.op    = V3D_QPU_M_ADD;
+  return *this;
+}
+
+
+Instr &Instr::sub(Location const &dst, Location const &srca, SmallImm const &immb) {
+  m_doing_add = false;
+  alu_mul_set(dst, srca, immb); 
+  alu.mul.op    = V3D_QPU_M_SUB;
   return *this;
 }
 
@@ -931,6 +953,11 @@ bool Instr::alu_mul_set(V3DLib::ALUInstruction const &alu, std::unique_ptr<Locat
   }
 
   this->alu.mul.op = mul_op;
+  flags.mc = translate_assign_cond(alu.cond);
+
+  // TODO shouldn't push tag be done as well? Check
+  // Normally set with set_push_tag()
+  //this->alu.mul.m_setCond = alu.m_setCond;
 
   //std::cout << "alu_mul_set(ALU) result: " << mnemonic(true) << std::endl;
   return true;

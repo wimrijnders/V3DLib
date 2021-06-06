@@ -291,7 +291,7 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
   // In this case, condition flag must be pushed for both add and mul alu.
   //
 
-  {
+  if (false) {
     std::string msg = "handle_condition_tags(): detected final where condition: '";
     msg << src_instr.dump() << "'\n";
     msg << "v3d: " << ret.back().mnemonic() << "'\n";
@@ -305,17 +305,32 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
   // However, in this case the dst is a dummy (assumption? check), so if the hardware
   // allows it, this is ok.
   //
+  // or.pushz  r0, r3, r3 ; mov.pushz  r0, r3
+  //
+/*
   Instructions tmp;
   assertq(translateOpcode(src_instr, tmp), "translateOpcode() failed");
   assert(tmp.size() == 1);
   Instr &tmp_instr = tmp[0];
+*/
+/*
+  Instr tmp_instr;
   if(!tmp_instr.alu_mul_set(src_instr.ALU, encodeDestReg(src_instr))) {
     assert(false);
   }
 
   tmp_instr.set_push_tag(setCond);
+*/
 
-  {
+
+  Instr tmp_instr;
+  auto reg = encodeDestReg(src_instr);
+  assert(reg);
+  tmp_instr = nop().sub(*reg, *reg, SmallImm(0)).pushz();
+
+  ret << tmp_instr;
+
+  if (false) {
     std::string msg = "handle_condition_tags() ";
     msg << "v3d final: " << ret.back().mnemonic() << "'\n";
     msg << "v3d tmp: " << tmp_instr.mnemonic() << "'\n";
@@ -996,11 +1011,6 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   auto const &instr = instrs[index];
   auto const &next_instr = instrs[index + 1];
 
-  // TODO: add and mul alus have separate condition fields, following too strict;
-  //       See set_cond_tag(
-  if (instr.assign_cond() != next_instr.assign_cond()) return false;
-  if (instr.isCondAssign()) return false;
-
   if (!can_combine(instr, next_instr)) return false;
 
   bool do_converse;
@@ -1011,6 +1021,8 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   auto const &add_instr = do_converse?next_instr:instr;
   auto const &mul_instr = do_converse?instr:next_instr;
 
+  if (mul_instr.isCondAssign()) return false;  // Not working yet
+
   // Don't combine push tag; boolean logic relies on consecutive pushes
   if (add_instr.setCond().tag() != SetCond::NO_COND) return false;
   if (mul_instr.setCond().tag() != SetCond::NO_COND) return false;
@@ -1020,6 +1032,11 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   assert(tmp.size() == 1);
   Instr &out_instr = tmp[0];
 
+  // Only add alu should be set here
+  assert(out_instr.alu.add.op != V3D_QPU_A_NOP && out_instr.alu.mul.op == V3D_QPU_M_NOP);
+  out_instr.set_cond_tag(instr.assign_cond());
+  out_instr.set_push_tag(instr.setCond());
+
   if (!out_instr.alu_mul_set(mul_instr.ALU, encodeDestReg(mul_instr))) {
     std::string msg;
     msg << "Possible candidate for combine, do_converse = " << do_converse << ":\n"
@@ -1028,9 +1045,6 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
     debug(msg);
     return false;
   }
-
-  out_instr.set_cond_tag(instr.assign_cond());
-  out_instr.set_push_tag(instr.setCond());
 
   out_instr.comment(instr.comment());
   out_instr.comment(next_instr.comment());

@@ -377,7 +377,8 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
       // Compile 'then' statement
       if (s->thenStmt().get() != nullptr) {
         auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, s->elseStmt().get() != nullptr);
-        if (!seq.empty()) seq.front().comment("then-branch of where (always)");
+        assert(!seq.empty());
+        seq.front().comment("then-branch of where (always)");
         ret << seq;
       }
 
@@ -387,7 +388,8 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
         ret << bxor(v2, newCondVar, 1).setCondFlag(Flag::ZC);
 
         auto seq = whereStmt(s->elseStmt(), v2, andCond, false);
-        if (!seq.empty()) seq.front().comment("else-branch of where (always)");
+        assert(!seq.empty());
+        seq.front().comment("else-branch of where (always)");
         ret << seq;
       }
     } else {
@@ -401,7 +403,8 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
         // Compile 'then' statement
         {
           auto seq = whereStmt(s->thenStmt(), dummy, andCond, false);
-          if (!seq.empty()) seq.front().comment("then-branch of where (nested)");
+          assert(!seq.empty());
+          seq.front().comment("then-branch of where (nested)");
           ret << seq;
         }
       }
@@ -416,7 +419,8 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
         // Compile 'else' statement
         {
           auto seq = whereStmt(s->elseStmt(), dummy, andCond, false);
-          if (!seq.empty()) seq.front().comment("else-branch of where (nested)");
+          assert(!seq.empty());
+          seq.front().comment("else-branch of where (nested)");
           ret << seq;
         }
       }

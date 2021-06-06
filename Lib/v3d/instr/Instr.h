@@ -130,6 +130,7 @@ public:
 
   Instr &add(Location const &dst, Location const &srca, Location const &srcb);
   Instr &sub(Location const &dst, Location const &srca, Location const &srcb);
+  Instr &sub(Location const &dst, Location const &srca, SmallImm const &immb);
 
   Instr &mov(Location const &dst, SmallImm const &imm);
   Instr &mov(uint8_t rf_addr, Register const &reg);
