@@ -10,7 +10,6 @@
 #include "Support/Timer.h"
 #include "SourceTranslate.h"
 #include "instr/Encode.h"
-#include "Support/basics.h"
 #include "instr/Mnemonics.h"
 
 namespace V3DLib {
@@ -892,14 +891,14 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   //
   assert(!(ALU.srcA.is_imm() && ALU.srcB.is_imm() && ALU.srcA.imm() != ALU.srcB.imm()));
   bool has_imm = (ALU.srcA.is_imm() || ALU.srcB.is_imm());
-  V3DLib::SmallImm imm;
+  V3DLib::EncodedSmallImm imm;
   if (has_imm) {
     imm = ALU.srcA.is_imm()?ALU.srcA.imm():ALU.srcB.imm();
   }
 
   assert(!(next_ALU.srcA.is_imm() && next_ALU.srcB.is_imm() && next_ALU.srcA.imm() != next_ALU.srcB.imm()));
   bool next_has_imm = (next_ALU.srcA.is_imm() || next_ALU.srcB.is_imm());
-  V3DLib::SmallImm next_imm;
+  V3DLib::EncodedSmallImm next_imm;
   if (next_has_imm) {
     next_imm = next_ALU.srcA.is_imm()?next_ALU.srcA.imm():next_ALU.srcB.imm();
   }

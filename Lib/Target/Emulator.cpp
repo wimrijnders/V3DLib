@@ -542,7 +542,7 @@ void writeReg(QPUState* s, State* g, bool setFlags, AssignCond cond, Reg dest, V
 // Interpret a small immediate operand
 // ============================================================================
 
-Vec evalSmallImm(QPUState* s, SmallImm imm) {
+Vec evalSmallImm(QPUState* s, EncodedSmallImm imm) {
   Vec v;
   Word w = decodeSmallLit(imm.val);
 

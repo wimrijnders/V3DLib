@@ -9,8 +9,8 @@ namespace V3DLib {
 
 Reg &RegOrImm::reg()           { assert(is_reg()); return m_reg; }
 Reg RegOrImm::reg() const      { assert(is_reg()); return m_reg; }
-SmallImm &RegOrImm::imm()      { assert(is_imm()); return m_smallImm; }
-SmallImm RegOrImm::imm() const { assert(is_imm()); return m_smallImm; }
+EncodedSmallImm &RegOrImm::imm()      { assert(is_imm()); return m_smallImm; }
+EncodedSmallImm RegOrImm::imm() const { assert(is_imm()); return m_smallImm; }
 
 void RegOrImm::set_imm(int rhs) {
   // input should be in the encode range for target platforms

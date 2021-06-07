@@ -6,11 +6,11 @@ namespace V3DLib {
 
 class Imm;
 
-struct SmallImm {
+struct EncodedSmallImm {
   int val;
 
-  bool operator==(SmallImm const &rhs) const { return val == rhs.val;  }
-  bool operator!=(SmallImm const &rhs) const { return !(*this == rhs); }
+  bool operator==(EncodedSmallImm const &rhs) const { return val == rhs.val;  }
+  bool operator!=(EncodedSmallImm const &rhs) const { return !(*this == rhs); }
 };
 
 
@@ -32,8 +32,8 @@ struct RegOrImm {
 
   Reg &reg();
   Reg reg() const;
-  SmallImm &imm();
-  SmallImm imm() const;
+  EncodedSmallImm &imm();
+  EncodedSmallImm imm() const;
 
   bool is_transient() const;
   bool uses_src() const;
@@ -42,7 +42,7 @@ private:
   bool m_is_reg;        // if false, is an imm
 
   Reg m_reg;            // A register
-  SmallImm m_smallImm;  // A small immediate
+  EncodedSmallImm m_smallImm;  // A small immediate
 };
 
 
