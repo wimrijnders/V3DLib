@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Mon 07 Jun 2021 03:25:07 AM CEST
+# Generated on: Mon 07 Jun 2021 03:50:38 AM CEST
 #
 ###############################################################################
 
@@ -86,10 +86,10 @@ OBJ := \
   Target/Emulator.o  \
   Target/Pretty.o  \
   Target/instr/Conditions.o  \
-  Target/instr/Instructions.o  \
   Target/instr/Imm.o  \
   Target/instr/Reg.o  \
   Target/instr/Label.o  \
+  Target/instr/Mnemonics.o  \
   Target/instr/Instr.o  \
   Target/instr/RegOrImm.o  \
   Target/instr/ALUOp.o  \

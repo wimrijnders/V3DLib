@@ -1,7 +1,7 @@
 #ifndef _V3DLIB_V3D_INSTR_SNIPPETS_H
 #define _V3DLIB_V3D_INSTR_SNIPPETS_H
 #include <vector>
-#include "Instr.h"
+#include "Mnemonics.h"
 
 namespace V3DLib {
 namespace v3d {

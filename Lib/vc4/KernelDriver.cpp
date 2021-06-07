@@ -8,7 +8,7 @@
 #include "Encode.h"
 #include "DMA/Operations.h"
 #include "dump_instr.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
 #include "SourceTranslate.h"  // add_uniform_pointer_offset()
 
 namespace V3DLib {

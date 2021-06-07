@@ -3,8 +3,8 @@
 #include <stdio.h>
 #include "Support/Platform.h"
 #include "Liveness/Liveness.h"
-#include "Target/instr/Instructions.h"
-#include "../Liveness/UseDef.h"
+#include "Target/instr/Mnemonics.h"
+#include "Liveness/UseDef.h"
 
 namespace V3DLib {
 namespace {

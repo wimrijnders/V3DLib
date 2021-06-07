@@ -7,7 +7,7 @@
 #include "Liveness/Liveness.h"
 #include "Target/Subst.h"
 #include "vc4/DMA/DMA.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
 #include "Common/CompileData.h"
 
 namespace V3DLib {

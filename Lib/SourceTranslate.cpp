@@ -4,7 +4,7 @@
 #include "Support/Platform.h"
 #include "vc4/SourceTranslate.h"
 #include "v3d/SourceTranslate.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
 
 namespace {
 

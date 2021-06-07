@@ -2,7 +2,7 @@
 #include "Support/Platform.h"
 #include "SourceTranslate.h"
 #include "Target/SmallLiteral.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
 #include "Support/basics.h"
 
 namespace V3DLib {

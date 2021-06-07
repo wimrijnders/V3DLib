@@ -1,5 +1,5 @@
-#ifndef _V3DLIB_TARGET_INSTR_INSTRUCTIONS_H_
-#define _V3DLIB_TARGET_INSTR_INSTRUCTIONS_H_
+#ifndef _V3DLIB_TARGET_INSTR_MNEMONICS_H_
+#define _V3DLIB_TARGET_INSTR_MNEMONICS_H_
 #include "Instr.h"
 
 namespace V3DLib {
@@ -74,4 +74,4 @@ Instr tmuwt();
 }  // namespace Target
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_TARGET_INSTR_INSTRUCTIONS_H_
+#endif  // _V3DLIB_TARGET_INSTR_MNEMONICS_H_

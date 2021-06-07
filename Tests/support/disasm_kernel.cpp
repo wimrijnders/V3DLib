@@ -1,6 +1,6 @@
 #include "disasm_kernel.h"
-#include "../../Lib/Support/basics.h"
-#include "v3d/instr/Instr.h"
+#include "Support/basics.h"
+#include "v3d/instr/Mnemonics.h"
 #include "qpu_disasm.h"
 
 namespace {
