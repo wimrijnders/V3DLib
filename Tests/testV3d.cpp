@@ -462,7 +462,7 @@ TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
       "and  r1, r0, 15      ; nop"
     };
 
-    std::vector<Instr> instrs; 
+    Instructions instrs; 
 
     instrs << band(rf(0), r0, 0b1111)
            << band(r1, r0, 0b1111);
@@ -496,7 +496,7 @@ TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
 
 
   SUBCASE("Opcodes not in qpu_disasm kernel assembled correctly") {
-    std::vector<Instr> ret;
+    Instructions ret;
 
     ret
       << nop().smul24(r1, SmallImm(2), rf(0))

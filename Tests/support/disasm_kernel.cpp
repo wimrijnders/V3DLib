@@ -42,7 +42,7 @@ std::vector<uint64_t> &qpu_disasm_bytecode() {
 std::vector<uint64_t> qpu_disasm_kernel() {
   using namespace V3DLib::v3d::instr;
 
-  std::vector<Instr> ret;
+  V3DLib::v3d::Instructions ret;
 
   ret
     << nop().ldvary()

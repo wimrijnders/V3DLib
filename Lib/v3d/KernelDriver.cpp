@@ -22,10 +22,13 @@ using ::operator<<; // C++ weirdness
 
 namespace v3d {
 
+
 using namespace V3DLib::v3d::instr;
 using Instructions = V3DLib::v3d::Instructions;
 
 namespace {
+
+using ::operator<<; // C++ weirdness
 
 std::vector<std::string> local_errors;
 
@@ -252,6 +255,8 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 
 
 void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
+  using ::operator<<; // C++ weirdness
+
   auto &cond = src_instr.ALU.cond;
 
   // src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
@@ -627,52 +632,6 @@ Instructions encodeALUOp(V3DLib::Instr instr) {
 
 
 /**
- * Convert conditions from Target source to v3d
- *
- * Incoming conditions are vc4 only, the conditions don't exist on v3d.
- * They therefore need to be translated.
- */
-void encodeBranchCondition(v3d::instr::Instr &dst_instr, V3DLib::BranchCond src_cond) {
-  // TODO How to deal with:
-  //
-  //      dst_instr.na0();
-  //      dst_instr.a0();
-
-  if (src_cond.tag == COND_ALWAYS) {
-    return;  // nothing to do
-  } else if (src_cond.tag == COND_ALL) {
-    switch (src_cond.flag) {
-      case ZC:
-      case NC:
-        dst_instr.allna();
-        break;
-      case ZS:
-      case NS:
-        dst_instr.alla();
-        break;
-      default:
-        debug_break("Unknown branch condition under COND_ALL");  // Warn me if this happens
-    }
-  } else if (src_cond.tag == COND_ANY) {
-    switch (src_cond.flag) {
-      case ZC:
-      case NC:
-        dst_instr.anyna();  // TODO: verify
-        break;
-      case ZS:
-      case NS:
-        dst_instr.anya();  // TODO: verify
-        break;
-      default:
-        debug_break("Unknown branch condition under COND_ANY");  // Warn me if this happens
-    }
-  } else {
-    debug_break("Branch condition not COND_ALL or COND_ANY");  // Warn me if this happens
-  }
-}
-
-
-/**
  * Create a branch instruction, including any branch conditions,
  * from Target source instruction.
  */
@@ -683,7 +642,7 @@ v3d::instr::Instr encodeBranchLabel(V3DLib::Instr src_instr) {
   // Prepare as branch without offset but with label
   auto dst_instr = branch(0, true);
   dst_instr.label(instr.label);
-  encodeBranchCondition(dst_instr, instr.cond);
+  dst_instr.set_branch_condition(instr.cond);
 
   return dst_instr;
 }

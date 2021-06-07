@@ -49,7 +49,7 @@ using Data         = V3DLib::Data;
 ByteCode qpu_cond_push_a() {
   Instructions ret;
 
-  auto set_cond_push = [] (Instr &instr, int index) {
+  auto set_cond_push = [] (Mnemonic &instr, int index) {
     // Set a-flag with given condition
     switch (index) {
       case 0: instr.pushz(); break;  // == 0
@@ -58,7 +58,7 @@ ByteCode qpu_cond_push_a() {
     }
   }
 ;
-  auto set_cond_if = [] (Instr &instr, int index) {
+  auto set_cond_if = [] (Mnemonic &instr, int index) {
     switch (index) {
       case 0: instr.ifa();  break;  // Test if set
       case 1: instr.ifna(); break;  // Test if not set
@@ -76,7 +76,7 @@ ByteCode qpu_cond_push_a() {
   for (int index = 0; index < 3; ++ index) {
     ret << eidx(r0);
 
-    Instr instr = sub(r0, r0, 10);  // r0 = index - 10
+    Mnemonic instr = sub(r0, r0, 10);  // r0 = index - 10
     set_cond_push(instr, index);
 
     ret << instr
