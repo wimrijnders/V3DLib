@@ -11,7 +11,7 @@
 #include "SourceTranslate.h"
 #include "instr/Encode.h"
 #include "Support/basics.h"
-#include <bits/stdc++.h>  // set_intersection
+#include "instr/Mnemonics.h"
 
 namespace V3DLib {
 
@@ -27,16 +27,6 @@ using namespace V3DLib::v3d::instr;
 using Instructions = V3DLib::v3d::Instructions;
 
 namespace {
-
-// Set intersection
-inline std::set<Reg> operator&(std::set<Reg> const &lhs, std::set<Reg> const &rhs) {
-  std::set<Reg> ret;
-
-  set_intersection(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(),
-                 std::inserter(ret, ret.begin()));
-
-  return ret;
-}
 
 std::vector<std::string> local_errors;
 
@@ -930,15 +920,6 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
 
   // The number of used accumulators is free, only check RF registers
   auto src_regs  = instr.src_regs() + next_instr.src_regs();
-
-/*
-  auto intersect = instr.src_regs() & next_instr.src_regs();
-
-  if (!intersect.empty()) {
-breakpoint
-    return false;
-  }
-*/
 
   // Specials can not be combined
   for (auto const &reg : src_regs) {

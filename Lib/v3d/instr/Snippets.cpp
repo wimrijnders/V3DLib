@@ -1,5 +1,6 @@
 #include "Snippets.h"
 #include "Support/basics.h"
+#include "Mnemonics.h"
 
 namespace V3DLib {
 namespace v3d {

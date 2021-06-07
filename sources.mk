@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Tue 01 Jun 2021 11:31:43 AM CEST
+# Generated on: Mon 07 Jun 2021 03:25:07 AM CEST
 #
 ###############################################################################
 
@@ -72,6 +72,7 @@ OBJ := \
   v3d/instr/Register.o  \
   v3d/instr/RFAddress.o  \
   v3d/instr/Snippets.o  \
+  v3d/instr/Mnemonics.o  \
   v3d/instr/Instr.o  \
   v3d/instr/Encode.o  \
   v3d/instr/SmallImm.o  \

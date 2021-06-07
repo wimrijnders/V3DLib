@@ -46,28 +46,6 @@ private:
   v3d_qpu_waddr m_dest;
 };
 
-
-extern Register const r0;
-extern Register const r1;
-extern Register const r2;
-extern Register const r3;
-extern Register const r4;
-extern Register const r5;
-extern Register const tmua;
-extern Register const tmud;
-extern Register const tlb;
-extern Register const recip;
-extern Register const rsqrt;
-extern Register const exp;
-extern Register const log;
-extern Register const sin;
-extern Register const rsqrt2;
-
-// For branch
-extern BranchDest const lri;
-extern Register const r_unif;
-extern Register const a_unif;
-
 }  // instr
 }  // v3d
 }  // V3DLib

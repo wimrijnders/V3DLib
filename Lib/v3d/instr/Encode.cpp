@@ -1,6 +1,6 @@
 #include "Encode.h"
 #include "Support/Exception.h"
-#include "Register.h"
+#include "Mnemonics.h"
 
 namespace V3DLib {
 namespace v3d {
