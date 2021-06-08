@@ -42,11 +42,10 @@ SmallImm encodeSmallImm(RegOrImm const &src_reg) {
   // Value in RegOrImm.imm() is currently already encoded!
   // This is wrong now.
   // TODO fix
-  Word w = decodeSmallLit(src_reg.imm().val);
-  SmallImm ret(w.intVal);
+  //Word w = decodeSmallLit(src_reg.imm().val);
+  //SmallImm ret(w.intVal);
+  SmallImm ret(src_reg.imm().val);
   return ret;
-
-
 }
 
 
@@ -120,13 +119,6 @@ bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
   bool b_is_special = (srcb.is_reg() && srcb.reg().tag == SPECIAL && srcb.reg().regId == index);
 
   return (a_is_special && b_is_special);
-}
-
-
-void set_cond_tag(AssignCond cond, Instructions &ret) {
-  for (auto &instr : ret) {
-    instr.set_cond_tag(cond);
-  }
 }
 
 
@@ -266,8 +258,7 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
   auto const &setCond = src_instr.setCond();
 
   if (!setCond.flags_set()) {
-    // use flag as run condition for current instruction(s)
-    set_cond_tag(cond, ret);
+    ret.set_cond_tag(cond);
     return;
   }
 
@@ -315,7 +306,7 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
 */
 /*
   Instr tmp_instr;
-  if(!tmp_instr.alu_mul_set(src_instr.ALU, encodeDestReg(src_instr))) {
+  if(!tmp_instr.alu_mul_set(src_instr)) {
     assert(false);
   }
 
@@ -606,7 +597,7 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
     breakpoint;  // to check what flags need to be set - case not handled yet
   }
 
-  set_cond_tag(instr.cond, ret);
+  ret.set_cond_tag(instr.cond);
   return ret;
 }
 
@@ -971,7 +962,7 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   out_instr.set_cond_tag(instr.assign_cond());
   out_instr.set_push_tag(instr.setCond());
 
-  if (!out_instr.alu_mul_set(mul_instr.ALU, encodeDestReg(mul_instr))) {
+  if (!out_instr.alu_mul_set(mul_instr)) {
     std::string msg;
     msg << "Possible candidate for combine, do_converse = " << do_converse << ":\n"
         << "  instr     : " << instr.dump()      << "\n"

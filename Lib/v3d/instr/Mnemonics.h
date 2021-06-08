@@ -110,17 +110,11 @@ private:
 
 using Mnemonics = Instructions;
 
-
 inline Instructions &operator<<(Instructions &lhs, instr::Mnemonic const &rhs) {
   lhs << (instr::Instr const &) rhs;
   return lhs;
 }
 
-
-inline Instructions &operator<<(Instructions &lhs, Mnemonics const &rhs) {
-  lhs << rhs;
-  return lhs;
-}
 
 namespace instr {
 

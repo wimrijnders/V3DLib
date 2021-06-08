@@ -658,10 +658,56 @@ bool can_convert_to_mul_instruction(ALUInstruction const &add_alu) {
 }
 
 
+bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
+  auto const &alu = src_instr.ALU;
+  auto dst = encodeDestReg(src_instr);
+  assert(dst);
+
+  assert(false); // TODO
+/*
+  v3d_qpu_mul_op mul_op;
+  if (!convert_to_mul_instruction(alu, mul_op)) {
+    return false;
+  }
+
+  auto reg_a = alu.srcA;
+  auto src_a = encodeSrcReg(reg_a.reg());
+  assert(src_a);
+
+  auto reg_b = alu.srcB;
+  std::unique_ptr<Location> src_b;
+  if (reg_b.is_reg()) {
+    src_b = encodeSrcReg(reg_b.reg());
+  }
+
+  if (src_a && src_b) {
+    alu_mul_set(*dst, *src_a, *src_b);
+  } else if (src_a && reg_b.is_imm()) {
+    SmallImm imm_b(reg_b.imm().val);
+    alu_mul_set(*dst, *src_a, imm_b);
+  } else {
+    assert(false);
+  }
+
+  this->alu.mul.op = mul_op;
+  flags.mc = translate_assign_cond(alu.cond);
+
+  // TODO shouldn't push tag be done as well? Check
+  // Normally set with set_push_tag()
+  //this->alu.mul.m_setCond = alu.m_setCond;
+
+  //std::cout << "alu_mul_set(ALU) result: " << mnemonic(true) << std::endl;
+*/
+  return true;
+}
+
+
 /**
  * @return true if mul instruction set, false otherwise
  */
-bool Instr::alu_mul_set(V3DLib::ALUInstruction const &alu, std::unique_ptr<Location> dst) {
+bool Instr::alu_mul_set(V3DLib::Instr const &src_instr) {
+  auto const &alu = src_instr.ALU;
+  auto dst = encodeDestReg(src_instr);
   assert(dst);
 
   v3d_qpu_mul_op mul_op;
@@ -734,6 +780,34 @@ void Instr::label_to_target(int offset) {
 }
 
 }  // instr
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Instructions
+//////////////////////////////////////////////////////////////////////////////
+
+Instructions &Instructions::comment(std::string msg, bool to_front) {
+  assert(!empty());
+
+  if (to_front) {
+    front().comment(msg);
+  } else {
+    back().comment(msg);
+  }
+
+  return *this;
+}
+
+
+/**
+ * Use param as run condition for current instruction(s)
+ */
+void Instructions::set_cond_tag(AssignCond cond) {
+  for (auto &instr : *this) {
+    instr.set_cond_tag(cond);
+  }
+}
+
 }  // v3d
 
 

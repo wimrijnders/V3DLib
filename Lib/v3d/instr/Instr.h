@@ -94,7 +94,8 @@ public:
   void alu_mul_set(Location const &dst, Location const &a, SmallImm const &b); 
   void alu_mul_set(Location const &dst, SmallImm const &a, Location const &b); 
 
-  bool alu_mul_set(V3DLib::ALUInstruction const &alu, std::unique_ptr<Location> dst);
+  bool alu_add_set(V3DLib::Instr const &src_instr);
+  bool alu_mul_set(V3DLib::Instr const &src_instr);
 
 protected:
   static uint64_t const NOP;
@@ -127,30 +128,30 @@ public:
   Instructions(Parent const &rhs) : Parent(rhs) {}
 
   Instructions &header(std::string const &msg) { front().header(msg);  return *this; }
-
-  Instructions &comment(std::string msg, bool to_front = true) {
-    assert(!empty());
-
-    if (to_front) {
-      front().comment(msg);
-    } else {
-      back().comment(msg);
-    }
-
-    return *this;
-  }
+  Instructions &comment(std::string msg, bool to_front = true);
+  void set_cond_tag(AssignCond cond);
 };
 
 
 /**
  * Why this has suddenly become necessary is beyond me.
  *
- * also, it looks recursive to me - just going with the flow, some C++ shit is arcane.
+ * Just going with the flow here, some C++ shit is arcane.
  */
 inline Instructions &operator<<(Instructions &lhs, instr::Instr const &rhs) {
-  lhs << rhs;
+  lhs.push_back(rhs);
   return lhs;
 }
+
+
+inline Instructions &operator<<(Instructions &lhs, Instructions const &rhs) {
+  for (auto const &item : rhs) {
+    lhs << item;
+  }
+
+  return lhs;
+}
+
 
 }  // v3d
 }  // V3DLib
