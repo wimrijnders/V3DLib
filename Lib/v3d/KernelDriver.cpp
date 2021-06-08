@@ -129,11 +129,9 @@ bool handle_special_index(V3DLib::Instr const &src_instr, Instructions &ret) {
 
 
 bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
-  if (handle_special_index(src_instr, ret)) {
-    return true;
-  }
+  if (handle_special_index(src_instr, ret)) return true;
 
-  bool did_something = true;
+  bool did_something = false;
 
   auto reg_a = src_instr.ALU.srcA;
   auto reg_b = src_instr.ALU.srcB;
@@ -141,8 +139,11 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
   auto dst_reg = encodeDestReg(src_instr);
   assert(dst_reg);
 
+
+  // Handle special cases
   if (reg_a.is_reg() && reg_b.is_reg()) {
     if (reg_a.reg().tag == NONE && reg_b.reg().tag == NONE) {
+      did_something = true;
       assert(src_instr.ALU.op.noOperands());
 
       switch (src_instr.ALU.op.value()) {
@@ -154,6 +155,8 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
         break;
       }
     } else if (reg_a.reg().tag != NONE && reg_b.reg().tag == NONE) {
+      did_something = true;
+
       // 1 input
       auto src_a = encodeSrcReg(reg_a.reg());
       assert(src_a);
@@ -166,94 +169,20 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
           did_something = false;
         break;
       }
-    } else {
-      auto src_a = encodeSrcReg(reg_a.reg());
-      auto src_b = encodeSrcReg(reg_b.reg());
-      assert(src_a && src_b);
-
-      switch (src_instr.ALU.op.value()) {
-/*
-        case ALUOp::A_ASR:   ret << asr(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_BAND:  ret << band(*dst_reg, *src_a, *src_b);         break;
-        case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
-        case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
-        case ALUOp::A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
-        case ALUOp::A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
-        case ALUOp::A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
-*/
-        default: {
-          Instr instr;
-          if (instr.alu_add_set(src_instr)) {
-            ret << instr;
-          } else {
-            assertq("unimplemented op, input reg, reg", true);
-            did_something = false;
-          }
-        }
-        break;
-      }
     }
-  } else if (reg_a.is_reg() && reg_b.is_imm()) {
-    auto src_a = encodeSrcReg(reg_a.reg());
-    assert(src_a);
-    SmallImm imm(reg_b.imm().val);
+  }
 
-    switch (src_instr.ALU.op.value()) {
-      case ALUOp::A_SHL:   ret << shl(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_SHR:   ret << shr(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_ASR:   ret << asr(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_BAND:  ret << band(*dst_reg, *src_a, imm);         break;
-      case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_FADD:  ret << fadd(*dst_reg, *src_a, imm);         break;
-      case ALUOp::A_FSUB:  ret << fsub(*dst_reg, *src_a, imm);         break;
-      case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, imm);   break;
-      case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;
-      case ALUOp::A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;
-      case ALUOp::A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
-      case ALUOp::A_BXOR:  ret << bxor(*dst_reg, *src_a, imm);         break;
-      default:
-        assertq("unimplemented op, input reg, imm", true);
-        did_something = false;
-      break;
-    }
-  } else if (reg_a.is_imm() && reg_b.is_reg()) {
-    SmallImm imm(reg_a.imm().val);
-    auto src_b   = encodeSrcReg(reg_b.reg());
-    assert(src_b);
 
-    switch (src_instr.ALU.op.value()) {
-      case ALUOp::A_SHL:   ret << shl(*dst_reg, imm, *src_b);          break;
-      case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
-      case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
-      case ALUOp::A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
-      case ALUOp::A_SUB:   ret << sub(*dst_reg, imm, *src_b);          break;
-      case ALUOp::A_ADD:   ret << add(*dst_reg, imm, *src_b);          break;
-      case ALUOp::A_FADD:  ret << fadd(*dst_reg, imm, *src_b);         break;
-      default:
-        assertq("unimplemented op, input imm, reg", true);
-        did_something = false;
-      break;
-    }
-  } else if (reg_a.is_imm() && reg_b.is_imm()) {
-    SmallImm imm_a(reg_a.imm().val);
-    SmallImm imm_b(reg_b.imm().val);
+  // Handle general case
+  Instr instr;
 
-    switch (src_instr.ALU.op.value()) {
-      case ALUOp::A_BOR:   ret << bor(*dst_reg, imm_a, imm_b);          break;
-      case ALUOp::A_SHL:   ret << shl(*dst_reg, imm_a, imm_b);          break;
-      default:
-        assertq("unimplemented op, input imm, imm", true);
-        did_something = false;
-      break;
-    }
-  } else {
+  if (!did_something && instr.alu_add_set(src_instr)) {
+    ret << instr;
+    did_something = true;
+  }
+
+  if(!did_something) {
     assertq("Unhandled combination of inputs/output", true);
-    did_something = false;
   }
 
   return did_something;

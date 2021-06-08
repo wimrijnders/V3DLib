@@ -108,6 +108,11 @@ private:
   bool raddr_a_is_safe(Location const &loc, bool check_for_mul_b = false) const;
   bool raddr_b_is_safe(Location const &loc, bool check_for_mul_b = false) const;
   std::string pretty_instr() const;
+
+  void alu_add_set_reg_a(RegOrImm const &reg);
+  void alu_mul_set_reg_a(RegOrImm const &reg);
+  void alu_add_set_reg_b(RegOrImm const &reg);
+  void alu_mul_set_reg_b(RegOrImm const &reg);
 };
 
 

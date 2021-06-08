@@ -179,7 +179,6 @@ Mnemonic &Mnemonic::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna()
 
 Mnemonic &Mnemonic::mov(Location const &dst, SmallImm const &imm) {
   m_doing_add = false;
-
   alu_mul_set_dst(dst);
   alu_mul_set_imm_a(imm);
 
@@ -260,6 +259,7 @@ Mnemonic &Mnemonic::fmul(Location const &loc1, Location const &loc2, Location co
 
 
 Mnemonic &Mnemonic::fmul(Location const &loc1, SmallImm imm2, Location const &loc3) {
+  m_doing_add = false;
   alu_mul_set(loc1, imm2,  loc3);
   alu.mul.op = V3D_QPU_M_FMUL;
   return *this;
@@ -267,6 +267,7 @@ Mnemonic &Mnemonic::fmul(Location const &loc1, SmallImm imm2, Location const &lo
 
 
 Mnemonic &Mnemonic::fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
+  m_doing_add = false;
   alu_mul_set(loc1, loc2,  imm3);
   alu.mul.op = V3D_QPU_M_FMUL;
   return *this;
@@ -329,7 +330,6 @@ Mnemonic &Mnemonic::rotate(Location const &dst, Location const &a, SmallImm cons
   assertq(-15 <= b.val() && b.val() < 16,  "rotate: smallimm must be in proper range");
 
   m_doing_add = false;
-
   alu_mul_set(r1, r0, b);
 
   if (b.val() != 0) {  // Don't bother rotating if there is no rotate
@@ -354,7 +354,6 @@ Mnemonic &Mnemonic::rotate(Location const &dst, Location const &a, Location cons
   // TODO: check value r5 within range -15,15 inclusive, possible?
 
   m_doing_add = false;
-
   alu_mul_set(r1, r0, r5);
   sig.rotate = true;
   alu.mul.op = V3D_QPU_M_MOV;
@@ -431,33 +430,11 @@ Mnemonic eidx(Location const &reg) {
 }
 
 
-Mnemonic itof(Location const &dst, Location const &a, SmallImm const &b) {
-  Mnemonic instr;
-  instr.alu_add_set(dst, a, b);        // TODO: why would a small imm be required here??
-  instr.alu.add.op = V3D_QPU_A_ITOF;
-  return instr;
-}
+Mnemonic itof(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_ITOF, dst, a, b); }
+Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_FTOIN, dst, a, b); }
 
 
-Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b) {
-  Mnemonic instr;
-  instr.alu_add_set(dst, a, b);        // TODO: why would a small imm be required here??
-  instr.alu.add.op = V3D_QPU_A_FTOIN;  // Also possible here: V3D_QPU_A_FTOIZ
-                                       // TODO: Examine how to handle this, which is best
-  return instr;
-}
-
-
-Mnemonic shr(Location const &dst, Location const &a, SmallImm const &b) {
-  Mnemonic instr;
-  instr.alu_add_set(dst, a, b);
-
-  instr.alu.add.op    = V3D_QPU_A_SHR;
-  instr.sig_magic     = true;    // TODO: need this? Also for shl?
-
-  return instr;
-}
-
+Mnemonic shr(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_SHR, dst, a, b); }
 
 
 Mnemonic mov(Location const &dst, SmallImm const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }

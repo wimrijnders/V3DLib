@@ -63,15 +63,21 @@ struct op_item {
 std::vector<op_item> op_items = {
   { ALUOp::A_FADD,  V3D_QPU_A_FADD },
   { ALUOp::A_FSUB,  V3D_QPU_A_FSUB },
+  { ALUOp::A_FtoI,  V3D_QPU_A_FTOIN },
+  { ALUOp::A_ItoF,  V3D_QPU_A_ITOF },
   { ALUOp::A_ADD,   V3D_QPU_A_ADD },
   { ALUOp::A_SUB,   V3D_QPU_A_SUB },
+  { ALUOp::A_SHR,   V3D_QPU_A_SHR },
   { ALUOp::A_ASR,   V3D_QPU_A_ASR },
+  { ALUOp::A_SHL,   V3D_QPU_A_SHL },
   { ALUOp::A_MIN,   V3D_QPU_A_MIN },
   { ALUOp::A_MAX,   V3D_QPU_A_MAX },
   { ALUOp::A_BAND,  V3D_QPU_A_AND },
   { ALUOp::A_BOR,   V3D_QPU_A_OR },
+  { ALUOp::A_BXOR,  V3D_QPU_A_XOR },
   { ALUOp::M_FMUL,  false,        V3D_QPU_M_FMUL },
   { ALUOp::M_MUL24, false,        V3D_QPU_M_SMUL24 }
+
 };
 
 
@@ -732,20 +738,75 @@ bool can_convert_to_mul_instruction(ALUInstruction const &add_alu) {
 }
 
 
+void Instr::alu_add_set_reg_a(RegOrImm const &reg) {
+  if (reg.is_reg()) {
+    assert(reg.reg().tag != NONE);
+    auto src_b = encodeSrcReg(reg.reg());
+    assert(src_b);
+    alu_add_set_reg_a(*src_b);
+  } else {
+    assert(reg.is_imm());
+    SmallImm imm(reg.imm().val);
+    alu_add_set_imm_a(imm);
+  }
+}
+
+
+void Instr::alu_mul_set_reg_a(RegOrImm const &reg) {
+  if (reg.is_reg()) {
+    assert(reg.reg().tag != NONE);
+    auto src_b = encodeSrcReg(reg.reg());
+    assert(src_b);
+    alu_mul_set_reg_a(*src_b);
+  } else {
+    assert(reg.is_imm());
+    SmallImm imm(reg.imm().val);
+    alu_mul_set_imm_a(imm);
+  }
+}
+
+
+void Instr::alu_add_set_reg_b(RegOrImm const &reg) {
+  if (reg.is_reg()) {
+    assert(reg.reg().tag != NONE);
+    auto src_b = encodeSrcReg(reg.reg());
+    assert(src_b);
+    alu_add_set_reg_b(*src_b);
+  } else {
+    assert(reg.is_imm());
+    SmallImm imm(reg.imm().val);
+    alu_add_set_imm_b(imm);
+  }
+}
+
+
+void Instr::alu_mul_set_reg_b(RegOrImm const &reg) {
+  if (reg.is_reg()) {
+    assert(reg.reg().tag != NONE);
+    auto src_b = encodeSrcReg(reg.reg());
+    assert(src_b);
+    alu_mul_set_reg_b(*src_b);
+  } else {
+    assert(reg.is_imm());
+    SmallImm imm(reg.imm().val);
+    alu_mul_set_imm_b(imm);
+  }
+}
+
+
 /**
  * TODO misnomer, can set mul alu as well. Rename
  */
 bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
+  assert(add_nop());
+  assert(mul_nop());
+
   auto op = src_instr.ALU.op.value();
   auto dst = encodeDestReg(src_instr);
   assert(dst);
 
   auto reg_a = src_instr.ALU.srcA;
   auto reg_b = src_instr.ALU.srcB;
-  assert(reg_a.reg().tag != NONE && reg_b.reg().tag != NONE);
-  auto src_a = encodeSrcReg(reg_a.reg());
-  auto src_b = encodeSrcReg(reg_b.reg());
-  assert(src_a && src_b);
 
   op_item const *item = op_items_find_by_op(op);
   if (item == nullptr) {
@@ -758,22 +819,26 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
 
   if (item->has_add_op) {
     alu.add.op = item->add_op;
-    alu_add_set_reg_a(*src_a);
-    alu_add_set_reg_b(*src_b);
+    alu_add_set_dst(*dst);
+    alu_add_set_reg_a(reg_a);
+    alu_add_set_reg_b(reg_b);
     return true;
   }
 
   if (item->has_mul_op) {
     alu.mul.op = item->mul_op;
-    alu_mul_set_reg_a(*src_a);
-    alu_mul_set_reg_b(*src_b);
+    alu_mul_set_dst(*dst);
+    alu_mul_set_reg_a(reg_a);
+    alu_mul_set_reg_b(reg_b);
     return true;
   }
+
 
   std::string msg = "Unknown conversion for src ";
   msg  << "op: " << src_instr.ALU.op.value()
        << ", instr: " << src_instr.dump();
-  assertq(false, msg);
+  assertq(false, msg, true);
+  //warning(msg);
 
   return false;
 }
@@ -783,6 +848,7 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
  * @return true if mul instruction set, false otherwise
  */
 bool Instr::alu_mul_set(V3DLib::Instr const &src_instr) {
+  assert(mul_nop());
   auto const &alu = src_instr.ALU;
   auto dst = encodeDestReg(src_instr);
   assert(dst);

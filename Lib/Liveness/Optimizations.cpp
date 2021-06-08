@@ -258,11 +258,6 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
       auto const &reg_usage = live.reg_usage()[instr.LI.dest.regId];
 
       if (reg_usage.assigned_once()) {
-        if (instr.LI.imm.is_float()) {
-          std::cout << "  TODO: handle LI with basic float, " << i << ": " << instr.dump() << "\n"; 
-          continue;
-        }
-
         std::string output;
 
         assert(reg_usage.first_usage() == reg_usage.first_dst());

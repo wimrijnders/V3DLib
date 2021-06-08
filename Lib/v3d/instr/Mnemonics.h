@@ -98,6 +98,12 @@ public:
   Mnemonic &rotate(Location const &dst, Location const &a, SmallImm const &b);
   Mnemonic &rotate(Location const &dst, Location const &a, Location const &b);
 
+  // TODO check if needed
+  void doing_mul() {
+    assert(m_doing_add);
+    m_doing_add = false;
+  }
+
 private:
   bool m_doing_add = true;
 
