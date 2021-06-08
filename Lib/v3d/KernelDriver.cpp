@@ -34,22 +34,6 @@ std::vector<std::string> local_errors;
 
 
 /**
- * Translate imm index value from vc4 to v3d
- */
-SmallImm encodeSmallImm(RegOrImm const &src_reg) {
-  assert(src_reg.is_imm());
-
-  // Value in RegOrImm.imm() is currently already encoded!
-  // This is wrong now.
-  // TODO fix
-  //Word w = decodeSmallLit(src_reg.imm().val);
-  //SmallImm ret(w.intVal);
-  SmallImm ret(src_reg.imm().val);
-  return ret;
-}
-
-
-/**
  * For v3d, the QPU and ELEM num are not special registers but instructions.
  *
  * In order to not disturb the code translation too much, they are derived from the target instructions:
@@ -122,21 +106,43 @@ bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
 }
 
 
+bool handle_special_index(V3DLib::Instr const &src_instr, Instructions &ret) {
+  auto dst_reg = encodeDestReg(src_instr);
+  assert(dst_reg);
+
+  auto reg_a = src_instr.ALU.srcA;
+  auto reg_b = src_instr.ALU.srcB;
+
+  if (reg_a.is_reg() && reg_b.is_reg()) {
+    checkSpecialIndex(src_instr);
+    if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
+      ret << tidx(*dst_reg);
+      return true;
+    } else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
+      ret << eidx(*dst_reg);
+      return true;
+    }
+  }
+
+  return false;
+}
+
+
 bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
+  if (handle_special_index(src_instr, ret)) {
+    return true;
+  }
+
   bool did_something = true;
 
   auto reg_a = src_instr.ALU.srcA;
   auto reg_b = src_instr.ALU.srcB;
 
   auto dst_reg = encodeDestReg(src_instr);
+  assert(dst_reg);
 
-  if (dst_reg && reg_a.is_reg() && reg_b.is_reg()) {
-    checkSpecialIndex(src_instr);
-    if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
-      ret << tidx(*dst_reg);
-    } else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
-      ret << eidx(*dst_reg);
-    } else if (reg_a.reg().tag == NONE && reg_b.reg().tag == NONE) {
+  if (reg_a.is_reg() && reg_b.is_reg()) {
+    if (reg_a.reg().tag == NONE && reg_b.reg().tag == NONE) {
       assert(src_instr.ALU.op.noOperands());
 
       switch (src_instr.ALU.op.value()) {
@@ -166,6 +172,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       assert(src_a && src_b);
 
       switch (src_instr.ALU.op.value()) {
+/*
         case ALUOp::A_ASR:   ret << asr(*dst_reg, *src_a, *src_b);          break;
         case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
         case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
@@ -177,16 +184,23 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
         case ALUOp::A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
         case ALUOp::A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
         case ALUOp::A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
-        default:
-          assertq("unimplemented op, input reg, reg", true);
-          did_something = false;
+*/
+        default: {
+          Instr instr;
+          if (instr.alu_add_set(src_instr)) {
+            ret << instr;
+          } else {
+            assertq("unimplemented op, input reg, reg", true);
+            did_something = false;
+          }
+        }
         break;
       }
     }
-  } else if (dst_reg && reg_a.is_reg() && reg_b.is_imm()) {
+  } else if (reg_a.is_reg() && reg_b.is_imm()) {
     auto src_a = encodeSrcReg(reg_a.reg());
     assert(src_a);
-    SmallImm imm = encodeSmallImm(reg_b);
+    SmallImm imm(reg_b.imm().val);
 
     switch (src_instr.ALU.op.value()) {
       case ALUOp::A_SHL:   ret << shl(*dst_reg, *src_a, imm);          break;
@@ -207,8 +221,8 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
         did_something = false;
       break;
     }
-  } else if (dst_reg && reg_a.is_imm() && reg_b.is_reg()) {
-    SmallImm imm = encodeSmallImm(reg_a);
+  } else if (reg_a.is_imm() && reg_b.is_reg()) {
+    SmallImm imm(reg_a.imm().val);
     auto src_b   = encodeSrcReg(reg_b.reg());
     assert(src_b);
 
@@ -225,9 +239,9 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
         did_something = false;
       break;
     }
-  } else if (dst_reg && reg_a.is_imm() && reg_b.is_imm()) {
-    SmallImm imm_a = encodeSmallImm(reg_a);
-    SmallImm imm_b = encodeSmallImm(reg_b);
+  } else if (reg_a.is_imm() && reg_b.is_imm()) {
+    SmallImm imm_a(reg_a.imm().val);
+    SmallImm imm_b(reg_b.imm().val);
 
     switch (src_instr.ALU.op.value()) {
       case ALUOp::A_BOR:   ret << bor(*dst_reg, imm_a, imm_b);          break;
@@ -365,7 +379,7 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
     ret << rotate(r1, r0, *src_b);
 
   } else {
-    SmallImm imm = encodeSmallImm(reg_b);  // Legal values small imm tested in rotate()
+    SmallImm imm(reg_b.imm().val); // Legal values small imm tested in rotate()
     ret << rotate(r1, r0, imm);
   }
 

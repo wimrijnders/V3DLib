@@ -37,6 +37,80 @@ bool Instr::is_branch() const {
 
 namespace {
 
+struct op_item {
+  op_item(ALUOp::Enum in_op, v3d_qpu_add_op in_add_op) :
+    op(in_op),
+    has_add_op(true),
+    add_op(in_add_op)
+  {}
+
+  op_item(ALUOp::Enum in_op, bool in_add_op, v3d_qpu_mul_op in_mul_op) :
+    op(in_op),
+    has_mul_op(true),
+    mul_op(in_mul_op)
+  {
+    assert(!in_add_op);
+  }
+
+  ALUOp::Enum op;
+  bool has_add_op       = false;
+  v3d_qpu_add_op add_op = V3D_QPU_A_NOP;
+  bool has_mul_op       = false;
+  v3d_qpu_mul_op mul_op = V3D_QPU_M_NOP;
+};
+
+
+std::vector<op_item> op_items = {
+  { ALUOp::A_FADD,  V3D_QPU_A_FADD },
+  { ALUOp::A_FSUB,  V3D_QPU_A_FSUB },
+  { ALUOp::A_ADD,   V3D_QPU_A_ADD },
+  { ALUOp::A_SUB,   V3D_QPU_A_SUB },
+  { ALUOp::A_ASR,   V3D_QPU_A_ASR },
+  { ALUOp::A_MIN,   V3D_QPU_A_MIN },
+  { ALUOp::A_MAX,   V3D_QPU_A_MAX },
+  { ALUOp::A_BAND,  V3D_QPU_A_AND },
+  { ALUOp::A_BOR,   V3D_QPU_A_OR },
+  { ALUOp::M_FMUL,  false,        V3D_QPU_M_FMUL },
+  { ALUOp::M_MUL24, false,        V3D_QPU_M_SMUL24 }
+};
+
+
+void op_items_check_sorted() {
+  static bool checked = false;
+
+  if (checked) return;
+
+  bool did_first = false;
+  ALUOp::Enum previous;
+
+  for (auto const &item : op_items) {
+    if (!did_first) {
+      previous = item.op;
+      did_first = true;
+      continue;
+    }
+
+    assertq(previous < item.op, "op_items not sorted on (target) op");
+    previous = item.op;
+  }
+
+  checked = true;
+}
+
+
+op_item const *op_items_find_by_op(ALUOp::Enum op) {
+  op_items_check_sorted();
+
+  for (auto const &item : op_items) {
+    if (item.op == op) {
+      return &item;
+    }
+  }
+
+  return nullptr;
+}
+
+
 v3d_qpu_cond translate_assign_cond(AssignCond cond) {
   assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
 
@@ -658,47 +732,50 @@ bool can_convert_to_mul_instruction(ALUInstruction const &add_alu) {
 }
 
 
+/**
+ * TODO misnomer, can set mul alu as well. Rename
+ */
 bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
-  auto const &alu = src_instr.ALU;
+  auto op = src_instr.ALU.op.value();
   auto dst = encodeDestReg(src_instr);
   assert(dst);
 
-  assert(false); // TODO
-/*
-  v3d_qpu_mul_op mul_op;
-  if (!convert_to_mul_instruction(alu, mul_op)) {
+  auto reg_a = src_instr.ALU.srcA;
+  auto reg_b = src_instr.ALU.srcB;
+  assert(reg_a.reg().tag != NONE && reg_b.reg().tag != NONE);
+  auto src_a = encodeSrcReg(reg_a.reg());
+  auto src_b = encodeSrcReg(reg_b.reg());
+  assert(src_a && src_b);
+
+  op_item const *item = op_items_find_by_op(op);
+  if (item == nullptr) {
+    std::string msg = "Could not find item for ";
+    msg  << "op: " << src_instr.ALU.op.value()
+         << ", instr: " << src_instr.dump();
+    assertq(false, msg);
     return false;
   }
 
-  auto reg_a = alu.srcA;
-  auto src_a = encodeSrcReg(reg_a.reg());
-  assert(src_a);
-
-  auto reg_b = alu.srcB;
-  std::unique_ptr<Location> src_b;
-  if (reg_b.is_reg()) {
-    src_b = encodeSrcReg(reg_b.reg());
+  if (item->has_add_op) {
+    alu.add.op = item->add_op;
+    alu_add_set_reg_a(*src_a);
+    alu_add_set_reg_b(*src_b);
+    return true;
   }
 
-  if (src_a && src_b) {
-    alu_mul_set(*dst, *src_a, *src_b);
-  } else if (src_a && reg_b.is_imm()) {
-    SmallImm imm_b(reg_b.imm().val);
-    alu_mul_set(*dst, *src_a, imm_b);
-  } else {
-    assert(false);
+  if (item->has_mul_op) {
+    alu.mul.op = item->mul_op;
+    alu_mul_set_reg_a(*src_a);
+    alu_mul_set_reg_b(*src_b);
+    return true;
   }
 
-  this->alu.mul.op = mul_op;
-  flags.mc = translate_assign_cond(alu.cond);
+  std::string msg = "Unknown conversion for src ";
+  msg  << "op: " << src_instr.ALU.op.value()
+       << ", instr: " << src_instr.dump();
+  assertq(false, msg);
 
-  // TODO shouldn't push tag be done as well? Check
-  // Normally set with set_push_tag()
-  //this->alu.mul.m_setCond = alu.m_setCond;
-
-  //std::cout << "alu_mul_set(ALU) result: " << mnemonic(true) << std::endl;
-*/
-  return true;
+  return false;
 }
 
 
