@@ -737,10 +737,13 @@ bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &d
     case ALUOp::M_MUL24: dst = V3D_QPU_M_SMUL24; break;
 
     // Special case: OR with same inputs can be considered a MOV
-    // Handles destination rf-registers and accumulators only, fails otherwise
-    // (eg. case cobined tmua tmud, perhaps possible?)
+    // Handles rf-registers and accumulators only, fails otherwise
+    // (ie. case combined tmua tmud won't work).
     case ALUOp::A_BOR:
-      if (add_alu.srcA == add_alu.srcB && add_alu.dest.tag <= ACC) {
+      if ((add_alu.dest.tag <= ACC)
+       && (add_alu.srcA == add_alu.srcB)
+       && (add_alu.srcA.is_imm() || add_alu.srcA.reg().tag <= ACC)  // Verified this check is required, won't work with special registers
+      ) {
         dst = V3D_QPU_M_MOV;  // _FMOV
       } else {
         ret = false;
