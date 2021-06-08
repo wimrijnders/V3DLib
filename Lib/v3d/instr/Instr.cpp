@@ -77,7 +77,6 @@ std::vector<op_item> op_items = {
   { ALUOp::A_BXOR,  V3D_QPU_A_XOR },
   { ALUOp::M_FMUL,  false,        V3D_QPU_M_FMUL },
   { ALUOp::M_MUL24, false,        V3D_QPU_M_SMUL24 }
-
 };
 
 
@@ -104,14 +103,45 @@ void op_items_check_sorted() {
 }
 
 
+/**
+ * Derived from (iterative version): https://iq.opengenus.org/binary-search-in-cpp/
+ */
+int op_items_binary_search(int left, int right, ALUOp::Enum needle) {
+  while (left <= right) { 
+    int middle = (left + right) / 2; 
+
+    if (op_items[middle].op == needle) 
+      return middle;  // found it
+
+    // If element is greater, ignore left half 
+    if (op_items[middle].op < needle) 
+      left = middle + 1; 
+
+    // If element is smaller, ignore right half 
+    else
+      right = middle - 1; 
+  } 
+
+  return -1; // element not found
+}
+
+
 op_item const *op_items_find_by_op(ALUOp::Enum op) {
   op_items_check_sorted();
 
+  int index = op_items_binary_search(0, (int) op_items.size() - 1, op);
+
+  if (index != -1) {
+    return &op_items[index];
+  }
+
+/*
   for (auto const &item : op_items) {
     if (item.op == op) {
       return &item;
     }
   }
+*/
 
   return nullptr;
 }
@@ -693,7 +723,7 @@ namespace {
 /**
  * Get the v3d mul equivalent of a target lang add alu instruction.
  *
- * @param dst  output parameter, recieves equivalent insruction if found
+ * @param dst  output parameter, recieves equivalent instruction if found
  *
  * @return  true if equivalent found, false otherwise
  */
@@ -706,17 +736,11 @@ bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &d
     case ALUOp::M_FMUL:  dst = V3D_QPU_M_FMUL;   break;
     case ALUOp::M_MUL24: dst = V3D_QPU_M_SMUL24; break;
 
-    // NOT WORKING - apparently, I don't properly understand what MOV/FMOV does.
-    //               compiles, but kernel output is wrong.
-    //
     // Special case: OR with same inputs can be considered a MOV
-    // Handles rf-registers and accumulators only, might be too strict
+    // Handles destination rf-registers and accumulators only, fails otherwise
     // (eg. case cobined tmua tmud, perhaps possible?)
     case ALUOp::A_BOR:
-      if ((add_alu.srcA == add_alu.srcB)
-       && (add_alu.dest.tag <= ACC)
-       && (add_alu.srcA.is_reg() && add_alu.srcA.reg().tag <= ACC)) {
-        //breakpoint
+      if (add_alu.srcA == add_alu.srcB && add_alu.dest.tag <= ACC) {
         dst = V3D_QPU_M_MOV;  // _FMOV
       } else {
         ret = false;
@@ -859,26 +883,14 @@ bool Instr::alu_mul_set(V3DLib::Instr const &src_instr) {
   }
 
   auto reg_a = alu.srcA;
-  auto src_a = encodeSrcReg(reg_a.reg());
-  assert(src_a);
-
   auto reg_b = alu.srcB;
-  std::unique_ptr<Location> src_b;
-  if (reg_b.is_reg()) {
-    src_b = encodeSrcReg(reg_b.reg());
-  }
-
-  if (src_a && src_b) {
-    alu_mul_set(*dst, *src_a, *src_b);
-  } else if (src_a && reg_b.is_imm()) {
-    SmallImm imm_b(reg_b.imm().val);
-    alu_mul_set(*dst, *src_a, imm_b);
-  } else {
-    assert(false);
-  }
 
   this->alu.mul.op = mul_op;
+  this->alu_mul_set_dst(*dst);
+  this->alu_mul_set_reg_a(reg_a);
+  this->alu_mul_set_reg_b(reg_b);
   flags.mc = translate_assign_cond(alu.cond);
+
 
   // TODO shouldn't push tag be done as well? Check
   // Normally set with set_push_tag()
