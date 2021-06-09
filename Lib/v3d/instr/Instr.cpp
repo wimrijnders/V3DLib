@@ -48,23 +48,26 @@ struct op_item {
 
 
 std::vector<op_item> op_items = {
-  { ALUOp::A_FADD,   V3D_QPU_A_FADD, V3D_QPU_M_ADD },
-  { ALUOp::A_FSUB,   V3D_QPU_A_FSUB, V3D_QPU_M_SUB },
-  { ALUOp::A_FtoI,   V3D_QPU_A_FTOIN },
-  { ALUOp::A_ItoF,   V3D_QPU_A_ITOF  },
-  { ALUOp::A_ADD,    V3D_QPU_A_ADD   },
-  { ALUOp::A_SUB,    V3D_QPU_A_SUB   },
-  { ALUOp::A_SHR,    V3D_QPU_A_SHR   },
-  { ALUOp::A_ASR,    V3D_QPU_A_ASR   },
-  { ALUOp::A_SHL,    V3D_QPU_A_SHL   },
-  { ALUOp::A_MIN,    V3D_QPU_A_MIN   },
-  { ALUOp::A_MAX,    V3D_QPU_A_MAX   },
-  { ALUOp::A_BAND,   V3D_QPU_A_AND   },
-  { ALUOp::A_BOR,    V3D_QPU_A_OR    },
-  { ALUOp::A_BXOR,   V3D_QPU_A_XOR   },
-  { ALUOp::M_FMUL,   false,          V3D_QPU_M_FMUL },
-  { ALUOp::M_MUL24,  false,          V3D_QPU_M_SMUL24 },
-  { ALUOp::M_ROTATE, false,          V3D_QPU_M_MOV }      // Special case: it's a mul alu mov with sig.rotate set
+  { ALUOp::A_FADD,   V3D_QPU_A_FADD,  V3D_QPU_M_ADD },
+  { ALUOp::A_FSUB,   V3D_QPU_A_FSUB,  V3D_QPU_M_SUB },
+  { ALUOp::A_FtoI,   V3D_QPU_A_FTOIN  },
+  { ALUOp::A_ItoF,   V3D_QPU_A_ITOF   },
+  { ALUOp::A_ADD,    V3D_QPU_A_ADD    },
+  { ALUOp::A_SUB,    V3D_QPU_A_SUB    },
+  { ALUOp::A_SHR,    V3D_QPU_A_SHR    },
+  { ALUOp::A_ASR,    V3D_QPU_A_ASR    },
+  { ALUOp::A_SHL,    V3D_QPU_A_SHL    },
+  { ALUOp::A_MIN,    V3D_QPU_A_MIN    },
+  { ALUOp::A_MAX,    V3D_QPU_A_MAX    },
+  { ALUOp::A_BAND,   V3D_QPU_A_AND    },
+  { ALUOp::A_BOR,    V3D_QPU_A_OR     },
+  { ALUOp::A_BXOR,   V3D_QPU_A_XOR    },
+  { ALUOp::M_FMUL,   false,           V3D_QPU_M_FMUL },
+  { ALUOp::M_MUL24,  false,           V3D_QPU_M_SMUL24 },
+  { ALUOp::M_ROTATE, false,           V3D_QPU_M_MOV },     // Special case: it's a mul alu mov with sig.rotate set
+  { ALUOp::A_TIDX,   V3D_QPU_A_TIDX   },
+  { ALUOp::A_EIDX,   V3D_QPU_A_EIDX   },
+  { ALUOp::A_FFLOOR, V3D_QPU_A_FFLOOR }
 };
 
 
