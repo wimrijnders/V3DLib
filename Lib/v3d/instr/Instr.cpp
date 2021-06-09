@@ -14,28 +14,7 @@ namespace {
 
 struct v3d_device_info devinfo;  // NOTE: uninitialized struct, field 'ver' must be set! For asm/disasm OK
 
-}  // anon namespace
-
-
-namespace V3DLib {
-namespace v3d {
-
-using ::operator<<;  // C++ weirdness; come on c++, get a grip.
-
-namespace instr {
-
-uint64_t const Instr::NOP = 0x3c003186bb800000;  // This is actually 'nop nop'
-
-
-Instr::Instr(uint64_t in_code) {
-  init(in_code);
-}
-
-bool Instr::is_branch() const {
-  return (type == V3D_QPU_INSTR_TYPE_BRANCH);
-}
-
-namespace {
+using V3DLib::ALUOp;
 
 struct op_item {
   op_item(ALUOp::Enum in_op, v3d_qpu_add_op in_add_op) :
@@ -52,6 +31,14 @@ struct op_item {
     assert(!in_add_op);
   }
 
+  op_item(ALUOp::Enum in_op, v3d_qpu_add_op in_add_op, v3d_qpu_mul_op in_mul_op) :
+    op(in_op),
+    has_add_op(true),
+    add_op(in_add_op),
+    has_mul_op(true),
+    mul_op(in_mul_op)
+  {}
+
   ALUOp::Enum op;
   bool has_add_op       = false;
   v3d_qpu_add_op add_op = V3D_QPU_A_NOP;
@@ -61,22 +48,23 @@ struct op_item {
 
 
 std::vector<op_item> op_items = {
-  { ALUOp::A_FADD,  V3D_QPU_A_FADD },
-  { ALUOp::A_FSUB,  V3D_QPU_A_FSUB },
-  { ALUOp::A_FtoI,  V3D_QPU_A_FTOIN },
-  { ALUOp::A_ItoF,  V3D_QPU_A_ITOF },
-  { ALUOp::A_ADD,   V3D_QPU_A_ADD },
-  { ALUOp::A_SUB,   V3D_QPU_A_SUB },
-  { ALUOp::A_SHR,   V3D_QPU_A_SHR },
-  { ALUOp::A_ASR,   V3D_QPU_A_ASR },
-  { ALUOp::A_SHL,   V3D_QPU_A_SHL },
-  { ALUOp::A_MIN,   V3D_QPU_A_MIN },
-  { ALUOp::A_MAX,   V3D_QPU_A_MAX },
-  { ALUOp::A_BAND,  V3D_QPU_A_AND },
-  { ALUOp::A_BOR,   V3D_QPU_A_OR },
-  { ALUOp::A_BXOR,  V3D_QPU_A_XOR },
-  { ALUOp::M_FMUL,  false,        V3D_QPU_M_FMUL },
-  { ALUOp::M_MUL24, false,        V3D_QPU_M_SMUL24 }
+  { ALUOp::A_FADD,   V3D_QPU_A_FADD, V3D_QPU_M_ADD },
+  { ALUOp::A_FSUB,   V3D_QPU_A_FSUB, V3D_QPU_M_SUB },
+  { ALUOp::A_FtoI,   V3D_QPU_A_FTOIN },
+  { ALUOp::A_ItoF,   V3D_QPU_A_ITOF  },
+  { ALUOp::A_ADD,    V3D_QPU_A_ADD   },
+  { ALUOp::A_SUB,    V3D_QPU_A_SUB   },
+  { ALUOp::A_SHR,    V3D_QPU_A_SHR   },
+  { ALUOp::A_ASR,    V3D_QPU_A_ASR   },
+  { ALUOp::A_SHL,    V3D_QPU_A_SHL   },
+  { ALUOp::A_MIN,    V3D_QPU_A_MIN   },
+  { ALUOp::A_MAX,    V3D_QPU_A_MAX   },
+  { ALUOp::A_BAND,   V3D_QPU_A_AND   },
+  { ALUOp::A_BOR,    V3D_QPU_A_OR    },
+  { ALUOp::A_BXOR,   V3D_QPU_A_XOR   },
+  { ALUOp::M_FMUL,   false,          V3D_QPU_M_FMUL },
+  { ALUOp::M_MUL24,  false,          V3D_QPU_M_SMUL24 },
+  { ALUOp::M_ROTATE, false,          V3D_QPU_M_MOV }      // Special case: it's a mul alu mov with sig.rotate set
 };
 
 
@@ -146,6 +134,29 @@ op_item const *op_items_find_by_op(ALUOp::Enum op) {
   return nullptr;
 }
 
+}  // anon namespace
+
+
+namespace V3DLib {
+namespace v3d {
+
+using ::operator<<;  // C++ weirdness; come on c++, get a grip.
+
+namespace instr {
+
+uint64_t const Instr::NOP = 0x3c003186bb800000;  // This is actually 'nop nop'
+
+
+Instr::Instr(uint64_t in_code) {
+  init(in_code);
+}
+
+bool Instr::is_branch() const {
+  return (type == V3D_QPU_INSTR_TYPE_BRANCH);
+}
+
+
+namespace {
 
 v3d_qpu_cond translate_assign_cond(AssignCond cond) {
   assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
@@ -728,41 +739,31 @@ namespace {
  * @return  true if equivalent found, false otherwise
  */
 bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &dst ) {
-  bool ret = true;
+  auto op = add_alu.op.value();
 
-  switch(add_alu.op.value()) {
-    case ALUOp::A_ADD:   dst = V3D_QPU_M_ADD;    break;
-    case ALUOp::A_SUB:   dst = V3D_QPU_M_SUB;    break;
-    case ALUOp::M_FMUL:  dst = V3D_QPU_M_FMUL;   break;
-    case ALUOp::M_MUL24: dst = V3D_QPU_M_SMUL24; break;
-
+  if (op == ALUOp::A_BOR) {
     // Special case: OR with same inputs can be considered a MOV
     // Handles rf-registers and accumulators only, fails otherwise
     // (ie. case combined tmua tmud won't work).
-    case ALUOp::A_BOR:
-      if ((add_alu.dest.tag <= ACC)
-       && (add_alu.srcA == add_alu.srcB)
-       && (add_alu.srcA.is_imm() || add_alu.srcA.reg().tag <= ACC)  // Verified this check is required, won't work with special registers
-      ) {
-        dst = V3D_QPU_M_MOV;  // _FMOV
-      } else {
-        ret = false;
-      }
-    break;
-
-    default: ret = false; break;
+    if ((add_alu.dest.tag <= ACC)
+     && (add_alu.srcA == add_alu.srcB)
+     && (add_alu.srcA.is_imm() || add_alu.srcA.reg().tag <= ACC)  // Verified this check is required, won't work with special registers
+    ) {
+      dst = V3D_QPU_M_MOV;  // _FMOV
+      return true;
+    }
   }
 
-  return ret;
+
+  // Handle general case
+  op_item const *item = op_items_find_by_op(op);
+  assert(item != nullptr);
+  if (!item->has_mul_op) return false;
+  dst = item->mul_op;
+  return true;
 }
 
 }  // anon namespace
-
-
-bool can_convert_to_mul_instruction(ALUInstruction const &add_alu) {
-  v3d_qpu_mul_op dst;
-  return convert_to_mul_instruction(add_alu, dst);
-}
 
 
 void Instr::alu_add_set_reg_a(RegOrImm const &reg) {
@@ -964,6 +965,74 @@ void Instructions::set_cond_tag(AssignCond cond) {
   for (auto &instr : *this) {
     instr.set_cond_tag(cond);
   }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class OpItems
+///////////////////////////////////////////////////////////////////////////////
+
+bool OpItems::uses_add_alu(V3DLib::Instr const &instr) {
+  if (instr.tag != ALU) return false;
+  auto op = instr.ALU.op.value();
+  op_item const *item = op_items_find_by_op(op);
+  assert(item != nullptr);
+
+  if (!item->has_add_op) return false;
+
+  if (item->has_mul_op) {
+    std::string msg;
+    msg << "uses_add_alu(): target lang alu op '" << op << "' also has mul translation.";
+    warning(msg);
+  }
+
+  return true;
+}
+
+
+bool OpItems::uses_mul_alu(V3DLib::Instr const &instr) {
+  if (instr.tag != ALU) return false;
+  auto op = instr.ALU.op.value();
+  op_item const *item = op_items_find_by_op(op);
+  assert(item != nullptr);
+
+  if (!item->has_mul_op) return false;
+
+  if (item->has_add_op) {
+    std::string msg;
+    msg << "uses_mul_alu(): target lang alu op '" << op << "' also has add translation.";
+    warning(msg);
+  }
+
+  return true;
+}
+
+
+bool OpItems::can_use_mul_alu(V3DLib::Instr const &instr) {
+  if (instr.tag != ALU) return false;
+  auto op = instr.ALU.op.value();
+  op_item const *item = op_items_find_by_op(op);
+  assert(item != nullptr);
+
+  return (item->has_mul_op);
+}
+
+
+/**
+ * Combination only possible if instructions not both add ALU or both mul ALU
+ */
+bool OpItems::valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr, bool &do_converse) {
+  if (uses_add_alu(instr) && can_use_mul_alu(next_instr)) {
+    do_converse = false;
+    return true;
+  }
+
+  if (can_use_mul_alu(instr) && uses_add_alu(next_instr)) {
+    do_converse = true;
+    return true;
+  }
+
+  return false;
 }
 
 }  // v3d

@@ -116,8 +116,6 @@ private:
 };
 
 
-bool can_convert_to_mul_instruction(ALUInstruction const &add_ialu);
-
 }  // instr
 
 //
@@ -156,6 +154,15 @@ inline Instructions &operator<<(Instructions &lhs, Instructions const &rhs) {
 
   return lhs;
 }
+
+
+class OpItems {
+public:
+  static bool uses_add_alu(V3DLib::Instr const &instr);
+  static bool uses_mul_alu(V3DLib::Instr const &instr);
+  static bool can_use_mul_alu(V3DLib::Instr const &instr);
+  static bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr, bool &do_converse);
+};
 
 
 }  // v3d

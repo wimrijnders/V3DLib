@@ -697,54 +697,10 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
 
 #endif  // DEBUG
 
-bool uses_mul_alu(V3DLib::Instr const &instr) {
-  if (instr.tag != ALU) return false;
-
-  switch (instr.ALU.op.value()) {
-    case ALUOp::M_FMUL:
-    case ALUOp::M_MUL24:
-    case ALUOp::M_ROTATE:
-      return true;
-
-    default: break;
-  }
-
-  return false;
-}
-
-
-bool uses_add_alu(V3DLib::Instr const &instr) {
-  if (instr.tag != ALU) return false;
-  return !uses_mul_alu(instr);
-}
-
-
-bool can_use_mul_alu(V3DLib::Instr const &instr) {
-  if (instr.tag != ALU) return false;
-  if (uses_mul_alu(instr)) return true;
-
-  return can_convert_to_mul_instruction(instr.ALU);
-}
-
-
-/**
- * Combination only possible if instructions not both add ALU or both mul ALU
- */
-bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr, bool &do_converse) {
-  if (uses_add_alu(instr) && can_use_mul_alu(next_instr)) return true;
-
-  if (can_use_mul_alu(instr) && uses_add_alu(next_instr)) {
-    do_converse = true;
-    return true;
-  }
-
-  return false;
-}
-
 
 bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   bool do_converse;
-  return valid_combine_pair(instr, next_instr, do_converse);
+  return OpItems::valid_combine_pair(instr, next_instr, do_converse);
 }
 
 
@@ -882,7 +838,7 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   if (!can_combine(instr, next_instr)) return false;
 
   bool do_converse;
-  if (!valid_combine_pair(instr, next_instr, do_converse)) {
+  if (!OpItems::valid_combine_pair(instr, next_instr, do_converse)) {
     assert(false);
   }
 
@@ -901,7 +857,12 @@ bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs
   Instr &out_instr = tmp[0];
 
   // Only add alu should be set here
-  assert(out_instr.alu.add.op != V3D_QPU_A_NOP && out_instr.alu.mul.op == V3D_QPU_M_NOP);
+  if (!(out_instr.alu.add.op != V3D_QPU_A_NOP && out_instr.alu.mul.op == V3D_QPU_M_NOP)) {
+    std::string msg = "handle_target_specials(): expecting add alu to be filled and mul alu to be empty in output instruction: ";
+    msg << out_instr.dump();
+    assertq(false, msg);
+  }
+
   out_instr.set_cond_tag(instr.assign_cond());
   out_instr.set_push_tag(instr.setCond());
 
