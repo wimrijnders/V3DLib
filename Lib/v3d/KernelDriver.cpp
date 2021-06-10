@@ -142,7 +142,16 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 
 
   // Handle special cases
-  if (reg_a.is_reg() && reg_b.is_reg()) {
+  if (src_instr.ALU.op.value() == ALUOp::A_FSIN) {
+    assert(reg_a.is_reg() && reg_a.reg().tag != NONE);
+    assert(reg_b.is_reg() && reg_b.reg().tag == NONE);
+
+    breakpoint;  // TODO check this
+
+    Source src(reg_a);
+    ret << fsin(*dst_reg, src);
+    did_something = true;
+  } else if (reg_a.is_reg() && reg_b.is_reg()) {
     if (reg_a.reg().tag == NONE && reg_b.reg().tag == NONE) {
       did_something = true;
       assert(src_instr.ALU.op.noOperands());
@@ -162,9 +171,11 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
       auto src_a = encodeSrcReg(reg_a.reg());
       assert(src_a);
 
+      //Source src(reg_a);
+
       switch (src_instr.ALU.op.value()) {
         case ALUOp::A_FFLOOR:  ret << ffloor(*dst_reg, *src_a); break;
-        case ALUOp::A_FSIN:    ret << fsin(*dst_reg, *src_a);    break;
+        //case ALUOp::A_FSIN:    ret << fsin(*dst_reg, src);    break;
         default:
           assertq("unimplemented op, input reg", true);
           did_something = false;
@@ -173,20 +184,28 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
     }
   }
 
+  assertq(src_instr.ALU.op.value() != ALUOp::A_FSIN || (reg_a.is_reg() && reg_b.is_reg()), "sin has smallims");
+
+  if (did_something) return true;
+
 
   // Handle general case
   Instr instr;
 
-  if (!did_something && instr.alu_add_set(src_instr)) {
+  if (instr.alu_add_set(src_instr) || instr.alu_mul_set(src_instr)) {
     ret << instr;
-    did_something = true;
+    return true;
   }
 
-  if(!did_something) {
-    assertq("Unhandled combination of inputs/output", true);
-  }
 
-  return did_something;
+  auto const &src_alu = src_instr.ALU;
+  std::string msg = "translateOpcode(): Unknown conversion for src ";
+  msg  << "op: " << src_alu.op.value()
+       << ", instr: " << src_instr.dump();
+  assertq(false, msg, true);
+  //warning(msg);
+
+  return false;
 }
 
 

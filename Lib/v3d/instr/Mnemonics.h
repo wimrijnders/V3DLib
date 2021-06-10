@@ -6,6 +6,21 @@ namespace V3DLib {
 namespace v3d {
 namespace instr {
 
+
+class Source {
+public:
+  Source(V3DLib::RegOrImm const &rhs);
+
+  bool is_location() const { return m_is_location; }
+  Location const &location() const;
+  SmallImm const &small_imm() const;
+
+private:
+  bool m_is_location = false;
+  std::unique_ptr<Location> m_location;
+  SmallImm m_small_imm;
+};
+
 ///////////////////////////////////////////////////////////////////////////////
 // Class Mnemonic 
 ///////////////////////////////////////////////////////////////////////////////
@@ -15,6 +30,7 @@ class Mnemonic : public Instr {
 
 public:
   Mnemonic() : Parent() {}
+  Mnemonic(v3d_qpu_add_op op, Location const &dst, Source const &a, Source const &b);
   Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &srca, Location const &srcb);
   Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
   Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, Location const &srcb);
@@ -165,6 +181,7 @@ Mnemonic eidx(Location const &reg);
 Mnemonic itof(Location const &dst, Location const &a, SmallImm const &b);
 Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b);
 
+Mnemonic mov(Location const &dst, Source const &a);
 Mnemonic mov(Location const &dst, SmallImm const &a);
 Mnemonic mov(Location const &dst, Location const &a);
 
@@ -257,7 +274,9 @@ Mnemonic blog(Location const &dst, Location const &a);
 // Aggregated Instructions
 ///////////////////////////////////////////////////////////////////////////////
 
-Mnemonics fsin(Location const &dst, Location const &a);
+
+//Mnemonics fsin(Location const &dst, Location const &a);
+Mnemonics fsin(Location const &dst, Source const &a);
 
 
 }  // instr

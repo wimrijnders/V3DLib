@@ -709,7 +709,7 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
   auto reg_b = src_alu.srcB;
 
   v3d_qpu_add_op add_op;
-  if (OpItems::get_add_op(src_alu, add_op)) {
+  if (OpItems::get_add_op(src_alu, add_op, false)) {
     alu.add.op = add_op;
     alu_add_set_dst(*dst);
     alu_add_set_reg_a(reg_a);
@@ -725,12 +725,6 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
     return true;
   }
 */
-
-  std::string msg = "Unknown conversion for src ";
-  msg  << "op: " << src_alu.op.value()
-       << ", instr: " << src_instr.dump();
-  assertq(false, msg, true);
-  //warning(msg);
 
   return false;
 }

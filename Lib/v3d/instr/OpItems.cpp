@@ -57,7 +57,8 @@ std::vector<op_item> op_items = {
   { ALUOp::M_ROTATE, false,           V3D_QPU_M_MOV },     // Special case: it's a mul alu mov with sig.rotate set
   { ALUOp::A_TIDX,   V3D_QPU_A_TIDX   },
   { ALUOp::A_EIDX,   V3D_QPU_A_EIDX   },
-  { ALUOp::A_FFLOOR, V3D_QPU_A_FFLOOR }
+  { ALUOp::A_FFLOOR, V3D_QPU_A_FFLOOR },
+  { ALUOp::A_FSIN,   V3D_QPU_A_SIN    }                    // NOTE: Extra NOP's and read in generation
 };
 
 
@@ -107,15 +108,17 @@ int op_items_binary_search(int left, int right, ALUOp::Enum needle) {
 }
 
 
-op_item const *op_items_find_by_op(ALUOp::Enum op) {
+op_item const *op_items_find_by_op(ALUOp::Enum op, bool strict = true) {
   op_items_check_sorted();
 
   int index = op_items_binary_search(0, (int) op_items.size() - 1, op);
 
-  if (index != -1) {
-    std::string msg = "Could not find item for ";
-    msg  << "op: " << op;
-    assertq(false, msg, true);
+  if (index == -1) {
+    if (strict) {
+      std::string msg = "Could not find item for ";
+      msg  << "op: " << op;
+      assertq(false, msg, true);
+    }
     return nullptr;
   }
 
@@ -168,9 +171,9 @@ bool OpItems::uses_mul_alu(V3DLib::Instr const &instr) {
 }
 
 
-bool OpItems::get_add_op(ALUInstruction const &add_alu, v3d_qpu_add_op &dst ) {
+bool OpItems::get_add_op(ALUInstruction const &add_alu, v3d_qpu_add_op &dst, bool strict) {
   auto op = add_alu.op.value();
-  op_item const *item = op_items_find_by_op(op);
+  op_item const *item = op_items_find_by_op(op, strict);
   assert(item != nullptr);
 
   if (!item->has_add_op) return false;

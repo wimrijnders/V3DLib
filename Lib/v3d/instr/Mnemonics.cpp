@@ -9,6 +9,23 @@ namespace instr {
 // Class Mnemonic 
 ///////////////////////////////////////////////////////////////////////////////
 
+Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, Source const &a, Source const &b) {
+  init(NOP);
+
+  if (a.is_location() && b.is_location()) {
+    alu_add_set(dst, a.location(), b.location());
+  } else if (a.is_location() && !b.is_location()) { 
+    alu_add_set(dst, a.location(), b.small_imm());
+  } else if (!a.is_location() && b.is_location()) { 
+    alu_add_set(dst, a.small_imm(), b.location());
+  } else {
+    alu_add_set(dst, a.small_imm(), b.small_imm());
+  }
+
+  alu.add.op = op;
+}
+
+
 /**
  * Initialize the add alu
  */
@@ -437,6 +454,7 @@ Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b) { retur
 Mnemonic shr(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_SHR, dst, a, b); }
 
 
+Mnemonic mov(Location const &dst, Source const &a)   { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
 Mnemonic mov(Location const &dst, SmallImm const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
 Mnemonic mov(Location const &dst, Location const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
 
@@ -898,7 +916,7 @@ Mnemonic blog(Location const &dst, Location const &a) { return Mnemonic(V3D_QPU_
  * Returns values for -0.5 <= a <= 0.5
  * Anything above is always 1, anything below always -1.
  */
-Mnemonics fsin(Location const &dst, Location const &a) {
+Mnemonics fsin(Location const &dst, Source const &a) {
   Mnemonics ret;
 
   // bsin returns nothing, use the SFU reg instead
@@ -910,6 +928,27 @@ Mnemonics fsin(Location const &dst, Location const &a) {
   return ret;
 }
 
+
+Source::Source(V3DLib::RegOrImm const &rhs) :
+  m_is_location(rhs.is_reg()),
+  m_location(encodeSrcReg(rhs.reg())),
+  m_small_imm(rhs.is_reg()?0:rhs.imm().val)
+{
+  assert(!m_is_location || (m_location && rhs.reg().tag != NONE));
+}
+
+
+Location const &Source::location() const {
+  assert(m_is_location && m_location);
+  return *m_location;
+}
+
+
+SmallImm const &Source::small_imm() const {
+  breakpoint
+  assert(!m_is_location);
+  return m_small_imm;
+}
 
 }  // instr
 }  // v3d
