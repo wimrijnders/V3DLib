@@ -11,6 +11,7 @@
 #include "SourceTranslate.h"
 #include "instr/Encode.h"
 #include "instr/Mnemonics.h"
+#include "instr/OpItems.h"
 
 namespace V3DLib {
 

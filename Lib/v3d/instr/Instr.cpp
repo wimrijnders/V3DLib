@@ -6,136 +6,13 @@
 #include <cstdio>
 #include <cstdlib>        // abs()
 #include <bits/stdc++.h>  // swap()
-#include "dump_instr.h"
 #include "Support/basics.h"
 #include "Mnemonics.h"
+#include "OpItems.h"
 
 namespace {
 
 struct v3d_device_info devinfo;  // NOTE: uninitialized struct, field 'ver' must be set! For asm/disasm OK
-
-using V3DLib::ALUOp;
-
-struct op_item {
-  op_item(ALUOp::Enum in_op, v3d_qpu_add_op in_add_op) :
-    op(in_op),
-    has_add_op(true),
-    add_op(in_add_op)
-  {}
-
-  op_item(ALUOp::Enum in_op, bool in_add_op, v3d_qpu_mul_op in_mul_op) :
-    op(in_op),
-    has_mul_op(true),
-    mul_op(in_mul_op)
-  {
-    assert(!in_add_op);
-  }
-
-  op_item(ALUOp::Enum in_op, v3d_qpu_add_op in_add_op, v3d_qpu_mul_op in_mul_op) :
-    op(in_op),
-    has_add_op(true),
-    add_op(in_add_op),
-    has_mul_op(true),
-    mul_op(in_mul_op)
-  {}
-
-  ALUOp::Enum op;
-  bool has_add_op       = false;
-  v3d_qpu_add_op add_op = V3D_QPU_A_NOP;
-  bool has_mul_op       = false;
-  v3d_qpu_mul_op mul_op = V3D_QPU_M_NOP;
-};
-
-
-std::vector<op_item> op_items = {
-  { ALUOp::A_FADD,   V3D_QPU_A_FADD,  V3D_QPU_M_ADD },
-  { ALUOp::A_FSUB,   V3D_QPU_A_FSUB,  V3D_QPU_M_SUB },
-  { ALUOp::A_FtoI,   V3D_QPU_A_FTOIN  },
-  { ALUOp::A_ItoF,   V3D_QPU_A_ITOF   },
-  { ALUOp::A_ADD,    V3D_QPU_A_ADD    },
-  { ALUOp::A_SUB,    V3D_QPU_A_SUB    },
-  { ALUOp::A_SHR,    V3D_QPU_A_SHR    },
-  { ALUOp::A_ASR,    V3D_QPU_A_ASR    },
-  { ALUOp::A_SHL,    V3D_QPU_A_SHL    },
-  { ALUOp::A_MIN,    V3D_QPU_A_MIN    },
-  { ALUOp::A_MAX,    V3D_QPU_A_MAX    },
-  { ALUOp::A_BAND,   V3D_QPU_A_AND    },
-  { ALUOp::A_BOR,    V3D_QPU_A_OR     },
-  { ALUOp::A_BXOR,   V3D_QPU_A_XOR    },
-  { ALUOp::M_FMUL,   false,           V3D_QPU_M_FMUL },
-  { ALUOp::M_MUL24,  false,           V3D_QPU_M_SMUL24 },
-  { ALUOp::M_ROTATE, false,           V3D_QPU_M_MOV },     // Special case: it's a mul alu mov with sig.rotate set
-  { ALUOp::A_TIDX,   V3D_QPU_A_TIDX   },
-  { ALUOp::A_EIDX,   V3D_QPU_A_EIDX   },
-  { ALUOp::A_FFLOOR, V3D_QPU_A_FFLOOR }
-};
-
-
-void op_items_check_sorted() {
-  static bool checked = false;
-
-  if (checked) return;
-
-  bool did_first = false;
-  ALUOp::Enum previous;
-
-  for (auto const &item : op_items) {
-    if (!did_first) {
-      previous = item.op;
-      did_first = true;
-      continue;
-    }
-
-    assertq(previous < item.op, "op_items not sorted on (target) op");
-    previous = item.op;
-  }
-
-  checked = true;
-}
-
-
-/**
- * Derived from (iterative version): https://iq.opengenus.org/binary-search-in-cpp/
- */
-int op_items_binary_search(int left, int right, ALUOp::Enum needle) {
-  while (left <= right) { 
-    int middle = (left + right) / 2; 
-
-    if (op_items[middle].op == needle) 
-      return middle;  // found it
-
-    // If element is greater, ignore left half 
-    if (op_items[middle].op < needle) 
-      left = middle + 1; 
-
-    // If element is smaller, ignore right half 
-    else
-      right = middle - 1; 
-  } 
-
-  return -1; // element not found
-}
-
-
-op_item const *op_items_find_by_op(ALUOp::Enum op) {
-  op_items_check_sorted();
-
-  int index = op_items_binary_search(0, (int) op_items.size() - 1, op);
-
-  if (index != -1) {
-    return &op_items[index];
-  }
-
-/*
-  for (auto const &item : op_items) {
-    if (item.op == op) {
-      return &item;
-    }
-  }
-*/
-
-  return nullptr;
-}
 
 }  // anon namespace
 
@@ -144,6 +21,61 @@ namespace V3DLib {
 namespace v3d {
 
 using ::operator<<;  // C++ weirdness; come on c++, get a grip.
+
+namespace {
+
+/**
+ * Get the v3d mul equivalent of a target lang add alu instruction.
+ *
+ * @param dst  output parameter, recieves equivalent instruction if found
+ *
+ * @return  true if equivalent found, false otherwise
+ */
+bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &dst) {
+  auto op = add_alu.op.value();
+
+  if (op == ALUOp::A_BOR) {
+    // Special case: OR with same inputs can be considered a MOV
+    // Handles rf-registers and accumulators only, fails otherwise
+    // (ie. case combined tmua tmud won't work).
+    if ((add_alu.dest.tag <= ACC)
+     && (add_alu.srcA == add_alu.srcB)
+     && (add_alu.srcA.is_imm() || add_alu.srcA.reg().tag <= ACC)  // Verified this check is required, won't work with special registers
+    ) {
+      dst = V3D_QPU_M_MOV;  // _FMOV
+      return true;
+    }
+  }
+
+  // Handle general case
+  return V3DLib::v3d::instr::OpItems::get_mul_op(add_alu, dst);
+}
+
+
+#ifdef DEBUG
+std::string binaryValue(uint64_t num) {
+  const int size = sizeof(num)*8;
+  std::string result; 
+
+  for (int i = size -1; i >=0; i--) {
+    bool val = ((num >> i) & 1) == 1;
+
+    if (val) {
+      result += '1';
+    } else {
+      result += '0';
+    }
+
+    if (i % 10 == 0) {
+      result += '.';
+    }
+  }
+
+  return result;
+}
+#endif
+
+}  // anon namespace
 
 namespace instr {
 
@@ -418,34 +350,6 @@ void Instr::set_branch_condition(V3DLib::BranchCond src_cond) {
 ///////////////////////////////////////////////////////////////////////////////
 // End class Instr
 ///////////////////////////////////////////////////////////////////////////////
-
-namespace {
-
-#ifdef DEBUG
-std::string binaryValue(uint64_t num) {
-  const int size = sizeof(num)*8;
-  std::string result; 
-
-  for (int i = size -1; i >=0; i--) {
-    bool val = ((num >> i) & 1) == 1;
-
-    if (val) {
-      result += '1';
-    } else {
-      result += '0';
-    }
-
-    if (i % 10 == 0) {
-      result += '.';
-    }
-  }
-
-  return result;
-}
-#endif
-
-}  // anon namespace
-
 
 // from mesa/src/broadcom/qpu/qpu_pack.c
 #define QPU_MASK(high, low) ((((uint64_t)1<<((high)-(low)+1))-1)<<(low))
@@ -732,41 +636,6 @@ void Instr::alu_mul_set(Location const &dst, SmallImm const &a, Location const &
 }
 
 
-namespace {
-
-/**
- * Get the v3d mul equivalent of a target lang add alu instruction.
- *
- * @param dst  output parameter, recieves equivalent instruction if found
- *
- * @return  true if equivalent found, false otherwise
- */
-bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &dst ) {
-  auto op = add_alu.op.value();
-
-  if (op == ALUOp::A_BOR) {
-    // Special case: OR with same inputs can be considered a MOV
-    // Handles rf-registers and accumulators only, fails otherwise
-    // (ie. case combined tmua tmud won't work).
-    if ((add_alu.dest.tag <= ACC)
-     && (add_alu.srcA == add_alu.srcB)
-     && (add_alu.srcA.is_imm() || add_alu.srcA.reg().tag <= ACC)  // Verified this check is required, won't work with special registers
-    ) {
-      dst = V3D_QPU_M_MOV;  // _FMOV
-      return true;
-    }
-  }
-
-
-  // Handle general case
-  op_item const *item = op_items_find_by_op(op);
-  assert(item != nullptr);
-  if (!item->has_mul_op) return false;
-  dst = item->mul_op;
-  return true;
-}
-
-}  // anon namespace
 
 
 void Instr::alu_add_set_reg_a(RegOrImm const &reg) {
@@ -832,30 +701,22 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
   assert(add_nop());
   assert(mul_nop());
 
-  auto op = src_instr.ALU.op.value();
+  auto const &src_alu = src_instr.ALU;
   auto dst = encodeDestReg(src_instr);
   assert(dst);
 
-  auto reg_a = src_instr.ALU.srcA;
-  auto reg_b = src_instr.ALU.srcB;
+  auto reg_a = src_alu.srcA;
+  auto reg_b = src_alu.srcB;
 
-  op_item const *item = op_items_find_by_op(op);
-  if (item == nullptr) {
-    std::string msg = "Could not find item for ";
-    msg  << "op: " << src_instr.ALU.op.value()
-         << ", instr: " << src_instr.dump();
-    assertq(false, msg);
-    return false;
-  }
-
-  if (item->has_add_op) {
-    alu.add.op = item->add_op;
+  v3d_qpu_add_op add_op;
+  if (OpItems::get_add_op(src_alu, add_op)) {
+    alu.add.op = add_op;
     alu_add_set_dst(*dst);
     alu_add_set_reg_a(reg_a);
     alu_add_set_reg_b(reg_b);
     return true;
   }
-
+/*
   if (item->has_mul_op) {
     alu.mul.op = item->mul_op;
     alu_mul_set_dst(*dst);
@@ -863,10 +724,10 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
     alu_mul_set_reg_b(reg_b);
     return true;
   }
-
+*/
 
   std::string msg = "Unknown conversion for src ";
-  msg  << "op: " << src_instr.ALU.op.value()
+  msg  << "op: " << src_alu.op.value()
        << ", instr: " << src_instr.dump();
   assertq(false, msg, true);
   //warning(msg);
@@ -971,74 +832,6 @@ void Instructions::set_cond_tag(AssignCond cond) {
 }
 
 
-///////////////////////////////////////////////////////////////////////////////
-// Class OpItems
-///////////////////////////////////////////////////////////////////////////////
-
-bool OpItems::uses_add_alu(V3DLib::Instr const &instr) {
-  if (instr.tag != ALU) return false;
-  auto op = instr.ALU.op.value();
-  op_item const *item = op_items_find_by_op(op);
-  assert(item != nullptr);
-
-  if (!item->has_add_op) return false;
-
-  if (item->has_mul_op) {
-    std::string msg;
-    msg << "uses_add_alu(): target lang alu op '" << op << "' also has mul translation.";
-    warning(msg);
-  }
-
-  return true;
-}
-
-
-bool OpItems::uses_mul_alu(V3DLib::Instr const &instr) {
-  if (instr.tag != ALU) return false;
-  auto op = instr.ALU.op.value();
-  op_item const *item = op_items_find_by_op(op);
-  assert(item != nullptr);
-
-  if (!item->has_mul_op) return false;
-
-  if (item->has_add_op) {
-    std::string msg;
-    msg << "uses_mul_alu(): target lang alu op '" << op << "' also has add translation.";
-    warning(msg);
-  }
-
-  return true;
-}
-
-
-bool OpItems::can_use_mul_alu(V3DLib::Instr const &instr) {
-  if (instr.tag != ALU) return false;
-  auto op = instr.ALU.op.value();
-  op_item const *item = op_items_find_by_op(op);
-  assert(item != nullptr);
-
-  return (item->has_mul_op);
-}
-
-
-/**
- * Combination only possible if instructions not both add ALU or both mul ALU
- */
-bool OpItems::valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr, bool &do_converse) {
-  if (uses_add_alu(instr) && can_use_mul_alu(next_instr)) {
-    do_converse = false;
-    return true;
-  }
-
-  if (can_use_mul_alu(instr) && uses_add_alu(next_instr)) {
-    do_converse = true;
-    return true;
-  }
-
-  return false;
-}
 
 }  // v3d
-
-
 }  // V3DLib
