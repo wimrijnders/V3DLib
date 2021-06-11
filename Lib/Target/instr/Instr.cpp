@@ -665,11 +665,7 @@ int Instr::List::get_free_acc(int first, int last) const {
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4) {
   char const *platform = nullptr;
 
-  if (for_vc4) {
-    if (tag >= V3D_ONLY && tag < END_V3D_ONLY) {
-      platform = "vc4";
-    } 
-  } else {  // v3d
+  if (!for_vc4) {
     if (tag >= VC4_ONLY && tag < END_VC4_ONLY) {
       platform = "v3d";
     }

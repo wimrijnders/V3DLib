@@ -60,7 +60,8 @@ public:
     A_TIDX,
     A_EIDX,
     A_FFLOOR,
-    A_FSIN
+    A_FSIN,
+    A_TMUWT,
 /*
     // Example of use 'FLOAT'
     NUM_OPS,

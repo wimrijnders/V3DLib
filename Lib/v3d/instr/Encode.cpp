@@ -145,7 +145,12 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
 
   Reg reg;
   if (src_instr.tag == ALU) {
-    reg = src_instr.ALU.dest;
+    if (src_instr.ALU.op == ALUOp::A_TMUWT) {
+      // This operation uses no registers at all
+      return nullptr;
+    } else {
+      reg = src_instr.ALU.dest;
+    }
   } else {
     assert(src_instr.tag == LI);
     reg = src_instr.LI.dest;

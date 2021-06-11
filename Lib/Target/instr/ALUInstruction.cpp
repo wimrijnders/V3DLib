@@ -8,7 +8,7 @@ bool ALUInstruction::noOperands() const {
   if (srcA.reg().tag != NONE || srcB.reg().tag != NONE) return false;
 
   // Pedantry: these should be the only operations with no operands
-  assert(op.value() == ALUOp::A_TIDX || op.value() == ALUOp::A_EIDX);
+  assert(op.value() == ALUOp::A_TMUWT || op.value() == ALUOp::A_TIDX || op.value() == ALUOp::A_EIDX);
   return true;
 }
 

@@ -58,7 +58,8 @@ std::vector<op_item> op_items = {
   { ALUOp::A_TIDX,   V3D_QPU_A_TIDX   },
   { ALUOp::A_EIDX,   V3D_QPU_A_EIDX   },
   { ALUOp::A_FFLOOR, V3D_QPU_A_FFLOOR },
-  { ALUOp::A_FSIN,   V3D_QPU_A_SIN    }                    // NOTE: Extra NOP's and read in generation
+  { ALUOp::A_FSIN,   V3D_QPU_A_SIN    },                   // NOTE: Extra NOP's and read in generation
+  { ALUOp::A_TMUWT,  V3D_QPU_A_TMUWT  }                    // NOTE: Extra NOP's and read in generation
 };
 
 

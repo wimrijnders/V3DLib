@@ -79,16 +79,7 @@ enum InstrTag {
 
   // Init program block (Currently filled only for v3d)
   INIT_BEGIN,      // Marker for start of init block
-  INIT_END,        // Marker for end of init block
-
-  // ==================================================
-  // v3d-only instructions
-  // ==================================================
-  V3D_ONLY,        // Marker in this enum, not an op!
-
-  TMUWT = V3D_ONLY,
-
-  END_V3D_ONLY     // Marker in this enum, not an op!
+  INIT_END         // Marker for end of init block
 };
 
 

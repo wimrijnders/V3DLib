@@ -108,6 +108,11 @@ bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
 
 
 bool handle_special_index(V3DLib::Instr const &src_instr, Instructions &ret) {
+  if (src_instr.tag == ALU && src_instr.ALU.op == ALUOp::A_TMUWT) {
+    ret << tmuwt();
+    return true;
+  }
+
   auto dst_reg = encodeDestReg(src_instr);
   assert(dst_reg);
 
@@ -151,8 +156,12 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
     assert(src_instr.ALU.oneOperand());
     ret << ffloor(*dst_reg, reg_a);
     break;
+  case ALUOp::A_TMUWT:
+    assert(src_instr.ALU.noOperands());
+    ret << tmuwt();
+    break;
   case ALUOp::A_TIDX:
-    breakpoint
+    breakpoint  // Apparently never called?
     assert(src_instr.ALU.noOperands());
     ret << tidx(*dst_reg);
     break;
@@ -312,7 +321,7 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
   ret << nop().comment("NOP required for rotate");
 
   if (reg_b.is_reg()) {
-    breakpoint
+    breakpoint  // Not called yet
 
     assert(instr.ALU.srcB.reg().tag == ACC && instr.ALU.srcB.reg().regId == 5);  // reg b must be r5
     auto src_b = encodeSrcReg(reg_b.reg());
@@ -643,7 +652,6 @@ Instructions encodeInstr(V3DLib::Instr instr) {
     case ALU:          ret << encodeALUOp(instr);         break;
     case TMU0_TO_ACC4: ret << nop().ldtmu(r4);            break;
     case NO_OP:        ret << nop();                      break;
-    case TMUWT:        ret << tmuwt();                    break;
 
     default:
       fatal("v3d: missing case in encodeInstr");
@@ -710,12 +718,6 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
 #endif  // DEBUG
 
 
-bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
-  bool do_converse;
-  return OpItems::valid_combine_pair(instr, next_instr, do_converse);
-}
-
-
 /**
  * Check if two instructions can be combined
  *
@@ -725,9 +727,15 @@ bool valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_in
  * @return true if can combine, false otherwise
  */
 bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
-  if (instr.tag != InstrTag::ALU) return false; 
-  if (next_instr.tag != InstrTag::ALU) return false; 
-  if (!valid_combine_pair(instr, next_instr)) return false;
+  if (instr.tag != InstrTag::ALU) return false;  
+  if (next_instr.tag != InstrTag::ALU) return false;  
+
+  bool dummy;
+  if (!OpItems::valid_combine_pair(instr, next_instr, dummy)) return false;
+
+  if (instr.ALU.op == ALUOp::A_TMUWT || next_instr.ALU.op == ALUOp::A_TMUWT) {
+    breakpoint   // TODO
+  }
 
   auto const &ALU      = instr.ALU;
   auto const &next_ALU = next_instr.ALU;

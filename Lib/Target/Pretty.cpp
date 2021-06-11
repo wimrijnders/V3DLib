@@ -51,7 +51,6 @@ std::string pretty_instr(Instr const &instr) {
     case SKIP:
     case IRQ:
     case VPM_STALL:
-    case TMUWT:
       buf << V3DLib::pretty_instr_tag(instr.tag);
       break;
 
@@ -81,7 +80,6 @@ const char *pretty_instr_tag(InstrTag tag) {
     case TMU0_TO_ACC4: return "TMU0_TO_ACC4";
     case INIT_BEGIN:   return "INIT_BEGIN";
     case INIT_END:     return "INIT_END";
-    case TMUWT:        return "TMUWT";
 
     default:
       assert(false);  // Add other tags here as required

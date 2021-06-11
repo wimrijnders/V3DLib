@@ -47,6 +47,7 @@ char const *pretty_op(ALUOp::Enum value) {
     case Enum::A_EIDX:    return "eidx";
     case Enum::A_FFLOOR:  return "ffloor";
     case Enum::A_FSIN:    return "sin";
+    case Enum::A_TMUWT:   return "tmuwt";
     default:
       assertq(false, "pretty_op(): Unknown alu opcode", true);
       return "";

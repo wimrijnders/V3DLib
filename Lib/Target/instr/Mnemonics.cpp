@@ -237,9 +237,7 @@ Instr branch(BranchCond cond, Label label) {
  * v3d only
  */
 Instr tmuwt() {
-  Instr instr;
-  instr.tag = TMUWT;
-  return instr;
+  return genInstr(ALUOp::A_TMUWT, None, None, None);
 }
 
 }  // namespace instr
