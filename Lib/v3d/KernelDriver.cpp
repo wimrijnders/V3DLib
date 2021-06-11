@@ -271,11 +271,27 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
 
 /**
  * @return true if rotate handled, false otherwise
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * From vc4 reg doc (assuming also applies to v3d):
+ *   - An instruction that does a vector rotate by r5 must not immediately follow an instruction that writes to r5.
+ *   - An instruction that does a vector rotate must not immediately follow an instruction that writes
+ *      to the accumulator that is being rotated.
+ *
+ *   This implies that the srcA is always an accumulator, srcB either smallimm or r5.
+ *   Adding preceding NOP is too strict now, assuming r0 always, and in fact 2 NOPs are added.
+ *   TODO make better.
+ *
+ * * A rotate is actually a mov() with the rotate signal set.
+ *   This confuses the regular target -> v3d tranlation, which does not copy signals.
+ *   For this reason, rotate is disabled in can_combine().
+ *   TODO examine if this can be fixed
  */
 bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
-  if (!instr.ALU.op.isRot()) {
-    return false;
-  }
+  if (!instr.ALU.op.isRot()) return false;
 
   // dest is location where r1 (result of rotate) must be stored 
   auto dst_reg = encodeDestReg(instr);

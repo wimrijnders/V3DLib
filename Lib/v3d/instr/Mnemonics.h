@@ -235,7 +235,6 @@ Mnemonic barrierid(v3d_qpu_waddr waddr);
 Mnemonic vpmsetup(Register const &reg2);
 
 Mnemonic ffloor(Location const &dst, Source const &srca);
-//Mnemonic ffloor(Location const &dst, Location const &srca);
 Mnemonic flpop(RFAddress rf_addr1, RFAddress rf_addr2);
 
 Mnemonic fdx(Location const &dst, Location const &srca);
