@@ -26,8 +26,10 @@ std::string pretty_instr(Instr const &instr) {
           << " <-" << instr.setCond().pretty() << " "
           << instr.ALU.op.pretty();
 
-      if (instr.ALU.op.noOperands()) {
+      if (instr.ALU.noOperands()) {
         buf << "()";
+      } else if (instr.ALU.oneOperand()) {
+        buf << "(" << instr.ALU.srcA.disp() << ")";
       } else {
         buf << "(" << instr.ALU.srcA.disp() << ", " << instr.ALU.srcB.disp() << ")";
       }

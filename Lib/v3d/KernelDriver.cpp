@@ -132,70 +132,47 @@ bool handle_special_index(V3DLib::Instr const &src_instr, Instructions &ret) {
 bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
   if (handle_special_index(src_instr, ret)) return true;
 
-  bool did_something = false;
+  bool did_something = true;
 
   auto reg_a = src_instr.ALU.srcA;
   auto reg_b = src_instr.ALU.srcB;
 
+  assertq(src_instr.ALU.op.value() != ALUOp::A_FSIN || (reg_a.is_reg() && reg_b.is_reg()), "sin has smallims");
+
   auto dst_reg = encodeDestReg(src_instr);
   assert(dst_reg);
 
+  switch (src_instr.ALU.op.value()) {
+  case ALUOp::A_FSIN:
+    assert(src_instr.ALU.oneOperand());
+    ret << fsin(*dst_reg, reg_a);
+    break;
+  case ALUOp::A_FFLOOR:
+    assert(src_instr.ALU.oneOperand());
+    ret << ffloor(*dst_reg, reg_a);
+    break;
+  case ALUOp::A_TIDX:
+    breakpoint
+    assert(src_instr.ALU.noOperands());
+    ret << tidx(*dst_reg);
+    break;
+  case ALUOp::A_EIDX:
+    assert(src_instr.ALU.noOperands());
+    ret << eidx(*dst_reg);
+    break;
+  default: {
+    // Handle general case
+    Instr instr;
 
-  // Handle special cases
-  if (src_instr.ALU.op.value() == ALUOp::A_FSIN) {
-    assert(reg_a.is_reg() && reg_a.reg().tag != NONE);
-    assert(reg_b.is_reg() && reg_b.reg().tag == NONE);
-
-    Source src(reg_a);
-    ret << fsin(*dst_reg, src);
-    did_something = true;
-  } else if (reg_a.is_reg() && reg_b.is_reg()) {
-    if (reg_a.reg().tag == NONE && reg_b.reg().tag == NONE) {
-      did_something = true;
-      assert(src_instr.ALU.op.noOperands());
-
-      switch (src_instr.ALU.op.value()) {
-        case ALUOp::A_TIDX:  ret << tidx(*dst_reg); break;
-        case ALUOp::A_EIDX:  ret << eidx(*dst_reg); break;
-        default:
-          assertq("unimplemented op, input none", true);
-          did_something = false;
-        break;
-      }
-    } else if (reg_a.reg().tag != NONE && reg_b.reg().tag == NONE) {
-      did_something = true;
-
-      // 1 input
-      auto src_a = encodeSrcReg(reg_a.reg());
-      assert(src_a);
-
-      //Source src(reg_a);
-
-      switch (src_instr.ALU.op.value()) {
-        case ALUOp::A_FFLOOR:  ret << ffloor(*dst_reg, *src_a); break;
-//        case ALUOp::A_FSIN:  ret << fsin(*dst_reg, *src_a); break;
-        //case ALUOp::A_FSIN:    ret << fsin(*dst_reg, src);    break;
-        default:
-          assertq("unimplemented op, input reg", true);
-          did_something = false;
-        break;
-      }
+    if (instr.alu_add_set(src_instr) || instr.alu_mul_set(src_instr)) {
+      ret << instr;
+    } else {
+      did_something = false;
     }
   }
-
-  assertq(src_instr.ALU.op.value() != ALUOp::A_FSIN || (reg_a.is_reg() && reg_b.is_reg()), "sin has smallims");
-
-  if (did_something) return true;
-
-
-  // Handle general case
-  Instr instr;
-
-  if (instr.alu_add_set(src_instr) || instr.alu_mul_set(src_instr)) {
-    ret << instr;
-    return true;
   }
 
+  if (did_something) return true;
 
   auto const &src_alu = src_instr.ALU;
   std::string msg = "translateOpcode(): Unknown conversion for src ";

@@ -9,6 +9,7 @@ namespace instr {
 
 class Register : public Location {
 public: 
+  Register(Register const &rhs) = default;
   Register(const char *name, v3d_qpu_waddr waddr_val);
   Register(const char *name, v3d_qpu_waddr waddr_val, v3d_qpu_mux mux_val, bool is_dest_acc = false);
 

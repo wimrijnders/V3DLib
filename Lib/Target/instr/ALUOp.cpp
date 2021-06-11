@@ -75,7 +75,6 @@ bool ALUOp::isMul() const {
   return ret;
 }
 
-
 std::string ALUOp::pretty() const { return pretty_op(m_value); }
 
 

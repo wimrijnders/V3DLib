@@ -77,7 +77,6 @@ public:
   bool isNOP() const { return m_value == NOP; }
   bool isRot() const { return m_value == M_ROTATE; }
   bool isMul() const;
-  bool noOperands() const { return (m_value == A_TIDX || m_value == A_EIDX); }
   std::string pretty() const;
 
   uint32_t vc4_encodeAddOp() const;

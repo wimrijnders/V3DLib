@@ -695,7 +695,7 @@ void Instr::alu_mul_set_reg_b(RegOrImm const &reg) {
 
 
 /**
- * TODO misnomer, can set mul alu as well. Rename
+ * 
  */
 bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
   assert(add_nop());
@@ -716,15 +716,6 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
     alu_add_set_reg_b(reg_b);
     return true;
   }
-/*
-  if (item->has_mul_op) {
-    alu.mul.op = item->mul_op;
-    alu_mul_set_dst(*dst);
-    alu_mul_set_reg_a(reg_a);
-    alu_mul_set_reg_b(reg_b);
-    return true;
-  }
-*/
 
   return false;
 }

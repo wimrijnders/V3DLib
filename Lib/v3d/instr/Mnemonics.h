@@ -6,10 +6,14 @@ namespace V3DLib {
 namespace v3d {
 namespace instr {
 
+///////////////////////////////////////////////////////////////////////////////
+// Class Source
+///////////////////////////////////////////////////////////////////////////////
 
 class Source {
 public:
   Source(V3DLib::RegOrImm const &rhs);
+  Source(V3DLib::v3d::instr::Register const &rhs);
 
   bool is_location() const { return m_is_location; }
   Location const &location() const;
@@ -18,7 +22,7 @@ public:
 private:
   bool m_is_location = false;
   std::unique_ptr<Location> m_location;
-  SmallImm m_small_imm;
+  SmallImm m_small_imm = 0;
 };
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -230,7 +234,8 @@ Mnemonic barrierid(v3d_qpu_waddr waddr);
 
 Mnemonic vpmsetup(Register const &reg2);
 
-Mnemonic ffloor(Location const &dst, Location const &srca);
+Mnemonic ffloor(Location const &dst, Source const &srca);
+//Mnemonic ffloor(Location const &dst, Location const &srca);
 Mnemonic flpop(RFAddress rf_addr1, RFAddress rf_addr2);
 
 Mnemonic fdx(Location const &dst, Location const &srca);

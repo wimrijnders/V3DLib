@@ -13,6 +13,9 @@ struct ALUInstruction {
   RegOrImm   srcA;
   ALUOp      op;
   RegOrImm   srcB;
+
+  bool noOperands() const;
+  bool oneOperand() const;
 };
 
 }  // namespace V3DLib
