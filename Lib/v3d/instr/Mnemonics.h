@@ -274,10 +274,7 @@ Mnemonic blog(Location const &dst, Location const &a);
 // Aggregated Instructions
 ///////////////////////////////////////////////////////////////////////////////
 
-
-//Mnemonics fsin(Location const &dst, Location const &a);
 Mnemonics fsin(Location const &dst, Source const &a);
-
 
 }  // instr
 }  // v3d

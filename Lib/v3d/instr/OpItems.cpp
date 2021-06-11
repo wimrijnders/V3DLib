@@ -38,12 +38,12 @@ struct op_item {
 
 
 std::vector<op_item> op_items = {
-  { ALUOp::A_FADD,   V3D_QPU_A_FADD,  V3D_QPU_M_ADD },
-  { ALUOp::A_FSUB,   V3D_QPU_A_FSUB,  V3D_QPU_M_SUB },
+  { ALUOp::A_FADD,   V3D_QPU_A_FADD },  // NOTE: ADD on mul alu is int only
+  { ALUOp::A_FSUB,   V3D_QPU_A_FSUB },  //       SUB on mul alu is int only
   { ALUOp::A_FtoI,   V3D_QPU_A_FTOIN  },
   { ALUOp::A_ItoF,   V3D_QPU_A_ITOF   },
-  { ALUOp::A_ADD,    V3D_QPU_A_ADD    },
-  { ALUOp::A_SUB,    V3D_QPU_A_SUB    },
+  { ALUOp::A_ADD,    V3D_QPU_A_ADD,   V3D_QPU_M_ADD },
+  { ALUOp::A_SUB,    V3D_QPU_A_SUB,   V3D_QPU_M_SUB },
   { ALUOp::A_SHR,    V3D_QPU_A_SHR    },
   { ALUOp::A_ASR,    V3D_QPU_A_ASR    },
   { ALUOp::A_SHL,    V3D_QPU_A_SHL    },

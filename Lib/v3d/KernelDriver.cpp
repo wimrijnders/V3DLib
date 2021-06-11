@@ -173,6 +173,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 
       switch (src_instr.ALU.op.value()) {
         case ALUOp::A_FFLOOR:  ret << ffloor(*dst_reg, *src_a); break;
+//        case ALUOp::A_FSIN:  ret << fsin(*dst_reg, *src_a); break;
         //case ALUOp::A_FSIN:    ret << fsin(*dst_reg, src);    break;
         default:
           assertq("unimplemented op, input reg", true);
@@ -741,6 +742,7 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   // Skip special instructions
   switch(ALU.op.value()) {
   case ALUOp::A_FSIN:
+  case ALUOp::M_ROTATE:
     return false;
   default:
     break;
@@ -748,6 +750,7 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
 
   switch(next_ALU.op.value()) {
   case ALUOp::A_FSIN:
+  case ALUOp::M_ROTATE:
     return false;
   default:
     break;
