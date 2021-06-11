@@ -110,12 +110,13 @@ Instr::List  remove_replaced_instructions(Instr::List &instrs) {
     cur++;
   }
 
+/*
   if (count > 0) {
     std::string msg;
     msg << "remove_replaced_instructions() removed " << count << " SKIPs";
     debug(msg);
   }
-
+*/
 
   return ret;
 }

@@ -146,8 +146,6 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
     assert(reg_a.is_reg() && reg_a.reg().tag != NONE);
     assert(reg_b.is_reg() && reg_b.reg().tag == NONE);
 
-    breakpoint;  // TODO check this
-
     Source src(reg_a);
     ret << fsin(*dst_reg, src);
     did_something = true;
