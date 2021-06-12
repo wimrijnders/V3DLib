@@ -12,7 +12,7 @@ namespace instr {
 
 class SmallImm {
 public:
-  SmallImm(int val) : m_val(val) { pack(); }
+  SmallImm(int val, bool do_pack = true) : m_val(val) { if (do_pack) pack(); }
 
   uint8_t to_raddr() const;
   v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }

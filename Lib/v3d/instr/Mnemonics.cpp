@@ -11,17 +11,7 @@ namespace instr {
 
 Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, Source const &a, Source const &b) {
   init(NOP);
-
-  if (a.is_location() && b.is_location()) {
-    alu_add_set(dst, a.location(), b.location());
-  } else if (a.is_location() && !b.is_location()) { 
-    alu_add_set(dst, a.location(), b.small_imm());
-  } else if (!a.is_location() && b.is_location()) { 
-    alu_add_set(dst, a.small_imm(), b.location());
-  } else {
-    alu_add_set(dst, a.small_imm(), b.small_imm());
-  }
-
+  alu_add_set(dst, a, b);
   alu.add.op = op;
 }
 
@@ -62,36 +52,8 @@ Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &a, Lo
  */
 Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &a, SmallImm const &b) {
   init(NOP);
-  alu_add_set(dst, a, b);
+  if (!alu_add_set(dst, a, b)) assert(false);
   alu.add.op = op;
-}
-
-
-void Mnemonic::alu_add_set(Location const &dst, Location const &srca, Location const &srcb) {
-  alu_add_set_dst(dst);
-  alu_add_set_reg_a(srca);
-  alu_add_set_reg_b(srcb);
-}
-
-
-void Mnemonic::alu_add_set(Location const &dst, SmallImm const &imma, Location const &srcb) {
-  alu_add_set_dst(dst);
-  alu_add_set_imm_a(imma);
-  alu_add_set_reg_b(srcb);
-}
-
-
-void Mnemonic::alu_add_set(Location const &dst, Location const &srca, SmallImm const &immb) {
-  alu_add_set_dst(dst);
-  alu_add_set_reg_a(srca);
-  alu_add_set_imm_b(immb);
-}
-
-
-void Mnemonic::alu_add_set(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
-  alu_add_set_dst(dst);
-  alu_add_set_imm_a(imma);
-  alu_add_set_imm_b(immb);
 }
 
 
@@ -197,7 +159,7 @@ Mnemonic &Mnemonic::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna()
 Mnemonic &Mnemonic::mov(Location const &dst, SmallImm const &imm) {
   m_doing_add = false;
   alu_mul_set_dst(dst);
-  alu_mul_set_imm_a(imm);
+  if (!alu_mul_set_imm_a(imm)) assert(false);
 
   alu.mul.op    = V3D_QPU_M_MOV;
   alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
@@ -223,7 +185,7 @@ Mnemonic &Mnemonic::mov(uint8_t rf_addr, Register const &reg) {
 
 Mnemonic &Mnemonic::mov(Location const &loc1, Location const &loc2) {
   m_doing_add = false;
-  alu_mul_set(loc1, loc2, loc2); 
+  if (!alu_mul_set(loc1, loc2, loc2)) assert(false); 
 
   alu.mul.op    = V3D_QPU_M_MOV;
   return *this;
@@ -233,7 +195,7 @@ Mnemonic &Mnemonic::mov(Location const &loc1, Location const &loc2) {
 Mnemonic &Mnemonic::fmov(Location const &dst,  SmallImm const &imma) {
   m_doing_add = false;
   alu_mul_set_dst(dst);
-  alu_mul_set_imm_a(imma);
+  if (!alu_mul_set_imm_a(imma)) assert(false);
 
   alu.mul.op    = V3D_QPU_M_FMOV;  // TODO what's the difference with _MOV? Check
   alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
@@ -244,7 +206,7 @@ Mnemonic &Mnemonic::fmov(Location const &dst,  SmallImm const &imma) {
 
 Mnemonic &Mnemonic::add(Location const &dst, Location const &srca, Location const &srcb) {
   m_doing_add = false;
-  alu_mul_set(dst, srca, srcb); 
+  if (!alu_mul_set(dst, srca, srcb)) assert(false);
   alu.mul.op    = V3D_QPU_M_ADD;
   return *this;
 }
@@ -252,7 +214,7 @@ Mnemonic &Mnemonic::add(Location const &dst, Location const &srca, Location cons
 
 Mnemonic &Mnemonic::sub(Location const &dst, Location const &srca, SmallImm const &immb) {
   m_doing_add = false;
-  alu_mul_set(dst, srca, immb); 
+  if (!alu_mul_set(dst, srca, immb)) assert(false);
   alu.mul.op    = V3D_QPU_M_SUB;
   return *this;
 }
@@ -260,7 +222,7 @@ Mnemonic &Mnemonic::sub(Location const &dst, Location const &srca, SmallImm cons
 
 Mnemonic &Mnemonic::sub(Location const &loc1, Location const &loc2, Location const &loc3) {
   m_doing_add = false;
-  alu_mul_set(loc1, loc2, loc3); 
+  if (!alu_mul_set(loc1, loc2, loc3)) assert(false);
   alu.mul.op    = V3D_QPU_M_SUB;
   return *this;
 }
@@ -268,7 +230,7 @@ Mnemonic &Mnemonic::sub(Location const &loc1, Location const &loc2, Location con
 
 Mnemonic &Mnemonic::fmul(Location const &loc1, Location const &loc2, Location const &loc3) {
   m_doing_add = false;
-  alu_mul_set(loc1, loc2, loc3);
+  if (!alu_mul_set(loc1, loc2, loc3)) assert(false);
 
   alu.mul.op    = V3D_QPU_M_FMUL;
   return *this;
@@ -285,7 +247,7 @@ Mnemonic &Mnemonic::fmul(Location const &loc1, SmallImm imm2, Location const &lo
 
 Mnemonic &Mnemonic::fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
   m_doing_add = false;
-  alu_mul_set(loc1, loc2,  imm3);
+  if (!alu_mul_set(loc1, loc2,  imm3)) assert(false);
   alu.mul.op = V3D_QPU_M_FMUL;
   return *this;
 }
@@ -293,7 +255,7 @@ Mnemonic &Mnemonic::fmul(Location const &loc1, Location const &loc2, SmallImm co
 
 Mnemonic &Mnemonic::smul24(Location const &dst, Location const &loca, Location const &locb) {
   m_doing_add = false;
-  alu_mul_set(dst, loca, locb);
+  if (!alu_mul_set(dst, loca, locb)) assert(false);
 
   alu.mul.op    = V3D_QPU_M_SMUL24;
   return *this;
@@ -318,7 +280,7 @@ Mnemonic &Mnemonic::smul24(Location const &dst, SmallImm const &imma, Location c
  */
 Mnemonic &Mnemonic::smul24(Location const &dst, Location const &loca, SmallImm const &immb) {
   m_doing_add = false;
-  alu_mul_set(dst, loca, immb);
+  if (!alu_mul_set(dst, loca, immb)) assert(false);
 
   alu.mul.op    = V3D_QPU_M_SMUL24;
   return *this;
@@ -347,7 +309,7 @@ Mnemonic &Mnemonic::rotate(Location const &dst, Location const &a, SmallImm cons
   assertq(-15 <= b.val() && b.val() < 16,  "rotate: smallimm must be in proper range");
 
   m_doing_add = false;
-  alu_mul_set(r1, r0, b);
+  if (!alu_mul_set(r1, r0, b)) assert(false);
 
   if (b.val() != 0) {  // Don't bother rotating if there is no rotate
     sig.rotate = true;
@@ -371,7 +333,7 @@ Mnemonic &Mnemonic::rotate(Location const &dst, Location const &a, Location cons
   // TODO: check value r5 within range -15,15 inclusive, possible?
 
   m_doing_add = false;
-  alu_mul_set(r1, r0, r5);
+  if (!alu_mul_set(r1, r0, r5)) assert(false);
   sig.rotate = true;
   alu.mul.op = V3D_QPU_M_MOV;
 
@@ -921,38 +883,6 @@ Mnemonics fsin(Location const &dst, Source const &a) {
       << mov(dst, r4);
 
   return ret;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Class Source
-///////////////////////////////////////////////////////////////////////////////
-
-Source::Source(V3DLib::RegOrImm const &rhs) :
-  m_is_location(rhs.is_reg()),
-  m_location(encodeSrcReg(rhs.reg())),
-  m_small_imm(rhs.is_reg()?0:rhs.imm().val)
-{
-  assert(!m_is_location || (m_location && rhs.reg().tag != NONE));
-}
-
-
-Source:: Source(V3DLib::v3d::instr::Register const &rhs) :
-  m_is_location(true),
-  m_location(new Register(rhs))
-{}
-
-
-Location const &Source::location() const {
-  assert(m_is_location && m_location);
-  return *m_location;
-}
-
-
-SmallImm const &Source::small_imm() const {
-  breakpoint
-  assert(!m_is_location);
-  return m_small_imm;
 }
 
 }  // instr

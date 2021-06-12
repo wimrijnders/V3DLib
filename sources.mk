@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Fri 11 Jun 2021 07:22:17 AM CEST
+# Generated on: Sat 12 Jun 2021 06:32:10 AM CEST
 #
 ###############################################################################
 
@@ -71,6 +71,7 @@ OBJ := \
   v3d/KernelDriver.o  \
   v3d/instr/Register.o  \
   v3d/instr/RFAddress.o  \
+  v3d/instr/Source.o  \
   v3d/instr/Snippets.o  \
   v3d/instr/OpItems.o  \
   v3d/instr/Mnemonics.o  \

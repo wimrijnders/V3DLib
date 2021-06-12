@@ -969,6 +969,157 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
 }
 
 
+bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const instr2, bool &do_converse) {
+
+  auto has_signal = [] (v3d::instr::Instr const &instr) -> bool {
+    return (instr.sig.ldunif || instr.sig.ldunifa || instr.sig.ldunifrf || instr.sig.ldunifarf
+         || instr.sig.ldtmu  || instr.sig.ldvary  || instr.sig.ldvpm    || instr.sig.ldtlb
+         || instr.sig.ldtlbu);
+  };
+
+
+  // Skip branches
+  if (instr1.type == V3D_QPU_INSTR_TYPE_BRANCH || instr2.type == V3D_QPU_INSTR_TYPE_BRANCH) return false;
+
+  // Skip special signals for now - there might be something to be won with the ld's
+  if (has_signal(instr1) || has_signal(instr2)) return false;
+
+  // Skip full NOPs, they are there for a reason
+  if (instr1.add_nop() && instr1.mul_nop()) return false;
+  if (instr2.add_nop() && instr2.mul_nop()) return false;
+
+  // TODO skip fully filled instructions
+  //if (!instr1.add_nop() && !instr1.mul_nop()) return false;
+  //if (!instr2.add_nop() && !instr2.mul_nop()) return false;
+
+  // TODO mul/alu splits can always be combined
+  //if (!instr1.add_nop() && !instr2.mul_nop()) return true;
+  //if (!instr1.mul_nop() && !instr2.add_nop()) return true;
+
+  // TODO skip both mul for now, needs extra logic and is probably scarce
+  //if (!instr1.mul_nop() && !instr2.mul_nop()) return false;
+
+  // This leaves both instructions having add alu
+
+  auto const &add_alu1 = instr1.alu.add;
+  auto const &add_alu2 = instr2.alu.add;
+
+  // Disallow same dest reg
+  if (add_alu1.waddr == add_alu2.waddr && add_alu1.magic_write == add_alu2.magic_write) return false;
+
+  // Don't combine set conditional with use conditional
+  if (instr1.flags.apf && instr2.flags.ac) return false;
+
+  // Output instr1 should not be used as input instr2
+  bool is_rf1 = !add_alu1.magic_write;
+  if (is_rf1) {
+    if (add_alu2.a == V3D_QPU_MUX_A && instr2.raddr_a == add_alu1.waddr) return false;
+    if (add_alu2.b == V3D_QPU_MUX_A && instr2.raddr_a == add_alu1.waddr) return false;
+
+    if (add_alu2.a == V3D_QPU_MUX_B && !instr2.sig.small_imm && instr2.raddr_b == add_alu1.waddr) return false;
+    if (add_alu2.b == V3D_QPU_MUX_B && !instr2.sig.small_imm && instr2.raddr_b == add_alu1.waddr) return false;
+  } else {
+    if (add_alu2.a < V3D_QPU_MUX_A && add_alu2.a == add_alu1.waddr) return false;
+    if (add_alu2.b < V3D_QPU_MUX_A && add_alu2.b == add_alu1.waddr) return false;
+  }
+
+  //
+  // Determine add alu instructions with mul alu equivalents
+  //
+  if ((add_alu2.op == V3D_QPU_A_OR && add_alu2.a == add_alu2.b)  // ORs with 1 source can be translated to mul alu MOV
+    || add_alu2.op == V3D_QPU_A_ADD
+    || add_alu2.op == V3D_QPU_A_SUB
+  ) {
+    do_converse = false;
+    return true;
+  }
+
+  if ((add_alu1.op == V3D_QPU_A_OR && add_alu1.a == add_alu1.b)  // ORs with 1 source can be translated to mul alu MOV
+    || add_alu1.op == V3D_QPU_A_ADD
+    || add_alu1.op == V3D_QPU_A_SUB
+  ) {
+    do_converse = true;
+    return true;
+  }
+
+
+  return false;
+}
+
+
+bool convert_alu_op_to_mul_op(v3d_qpu_mul_op &mul_op, v3d::instr::Instr const &add_instr) {
+  switch (add_instr.alu.add.op) {
+    case V3D_QPU_A_OR:
+      if (add_instr.alu.add.a == add_instr.alu.add.b) {
+        mul_op = V3D_QPU_M_MOV;
+        return true;
+      }
+
+    default: break;
+  }
+
+  return false;
+}
+
+
+void combine(Instructions &instructions) {
+  for (int i = 1; i < (int) instructions.size(); i++) {
+    auto const &instr1 = instructions[i - 1];
+    auto const &instr2 = instructions[i];
+
+    bool do_converse;
+    if (!can_combine(instr1, instr2, do_converse)) continue;
+
+    std::string msg = "combine() considering ";
+    msg << "line " << i << ":\n"
+        << "  " << instr1.mnemonic(false) << "\n"
+        << "  " << instr2.mnemonic(false);
+    debug(msg);
+
+    // attempt the conversion
+    {
+      auto const &add_instr = do_converse?instr2:instr1;
+      auto const &mul_instr = do_converse?instr1:instr2;
+
+      v3d::instr::Instr dst = add_instr;
+
+      v3d_qpu_mul_op mul_op;
+      if (!convert_alu_op_to_mul_op(mul_op, add_instr)) {
+        continue;
+      }
+      dst.alu.mul.op = mul_op;
+
+      // Get used dst and src
+      // NOTE: currently OR -> MOV only
+      auto dst_loc = mul_instr.add_alu_dst();
+      assert(dst_loc.get() != nullptr);
+
+      auto src_loc = mul_instr.add_alu_a();
+      assert(src_loc.get() != nullptr);
+
+      if (dst.alu_mul_set(*dst_loc, *src_loc, *src_loc)) {
+        dst.alu.mul.output_pack = mul_instr.alu.add.output_pack;
+        dst.alu.mul.a_unpack    = mul_instr.alu.add.a_unpack;
+        dst.alu.mul.b_unpack    = mul_instr.alu.add.b_unpack;
+
+        dst.flags.mc  = mul_instr.flags.ac;
+        dst.flags.mpf = mul_instr.flags.apf;
+        dst.flags.muf = mul_instr.flags.auf;
+
+        std::string msg = "Possible conversion: ";
+        msg << "  " << dst.mnemonic(false);
+        debug(msg);
+
+        i++;
+        continue;
+      }
+    }
+
+    break;
+  }
+}
+
+
 using Code       = SharedArray<uint64_t>;
 using UniformArr = SharedArray<uint32_t>;
 
@@ -1023,6 +1174,7 @@ void KernelDriver::encode() {
 
   // Encode target instructions
   _encode(m_targetCode, instructions);
+  combine(instructions);
   removeLabels(instructions);
 
   if (!local_errors.empty()) {

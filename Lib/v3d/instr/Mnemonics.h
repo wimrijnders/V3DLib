@@ -6,29 +6,6 @@ namespace V3DLib {
 namespace v3d {
 namespace instr {
 
-///////////////////////////////////////////////////////////////////////////////
-// Class Source
-///////////////////////////////////////////////////////////////////////////////
-
-class Source {
-public:
-  Source(V3DLib::RegOrImm const &rhs);
-  Source(V3DLib::v3d::instr::Register const &rhs);
-
-  bool is_location() const { return m_is_location; }
-  Location const &location() const;
-  SmallImm const &small_imm() const;
-
-private:
-  bool m_is_location = false;
-  std::unique_ptr<Location> m_location;
-  SmallImm m_small_imm = 0;
-};
-
-///////////////////////////////////////////////////////////////////////////////
-// Class Mnemonic 
-///////////////////////////////////////////////////////////////////////////////
-
 class Mnemonic : public Instr {
   using Parent = Instr;
 
@@ -39,11 +16,6 @@ public:
   Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
   Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, Location const &srcb);
   Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, SmallImm const &immb);
-
-  void alu_add_set(Location const &dst, Location const &a, Location const &b); 
-  void alu_add_set(Location const &dst, SmallImm const &a, Location const &b);
-  void alu_add_set(Location const &dst, Location const &a, SmallImm const &b);
-  void alu_add_set(Location const &dst, SmallImm const &a, SmallImm const &b);
 
   Mnemonic &pushz();
   Mnemonic &pushc();

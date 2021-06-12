@@ -4,8 +4,7 @@
 #include <string>
 #include <vector>
 #include "Support/InstructionComment.h"
-#include "SmallImm.h"
-#include "Register.h"
+#include "Source.h"
 #include "Encode.h"
 #include "Target/instr/ALUInstruction.h"
 
@@ -77,25 +76,37 @@ public:
 
   static bool compare_codes(uint64_t code1, uint64_t code2);
 
-  // TODO: figure out how to move these to Mnemonics
+  // TODO: move as much as possible to private, or just get plain rid of them
+
   void alu_add_set_dst(Location const &dst); 
   void alu_mul_set_dst(Location const &dst); 
   void alu_add_set_reg_a(Location const &loc);
   void alu_add_set_reg_b(Location const &loc);
-  void alu_mul_set_reg_a(Location const &loc);
-  void alu_mul_set_reg_b(Location const &loc);
-  void alu_set_imm(SmallImm const &imm);
-  void alu_add_set_imm_a(SmallImm const &imm);
-  void alu_add_set_imm_b(SmallImm const &imm);
-  void alu_mul_set_imm_a(SmallImm const &imm);
-  void alu_mul_set_imm_b(SmallImm const &imm);
+  bool alu_mul_set_reg_a(Location const &loc);
+  bool alu_mul_set_reg_b(Location const &loc);
+  bool alu_set_imm(SmallImm const &imm);
+  bool alu_add_set_imm_a(SmallImm const &imm);
+  bool alu_add_set_imm_b(SmallImm const &imm);
+  bool alu_mul_set_imm_a(SmallImm const &imm);
+  bool alu_mul_set_imm_b(SmallImm const &imm);
 
-  void alu_mul_set(Location const &dst, Location const &a, Location const &b); 
-  void alu_mul_set(Location const &dst, Location const &a, SmallImm const &b); 
-  void alu_mul_set(Location const &dst, SmallImm const &a, Location const &b); 
+  void alu_add_set(Location const &dst, Location const &a, Location const &b); 
+  void alu_add_set(Location const &dst, SmallImm const &a, Location const &b);
+  void alu_add_set(Location const &dst, Location const &a, SmallImm const &b);
+  bool alu_add_set(Location const &dst, SmallImm const &a, SmallImm const &b);
+
+  bool alu_mul_set(Location const &dst, Location const &a, Location const &b); 
+  bool alu_mul_set(Location const &dst, Location const &a, SmallImm const &b); 
+  bool alu_mul_set(Location const &dst, SmallImm const &a, Location const &b); 
+
+  void alu_add_set(Location const &dst, Source const &a, Source const &b);
+  bool alu_mul_set(Location const &dst, Source const &a, Source const &b);
 
   bool alu_add_set(V3DLib::Instr const &src_instr);
   bool alu_mul_set(V3DLib::Instr const &src_instr);
+
+  std::unique_ptr<Location> add_alu_dst() const;
+  std::unique_ptr<Source> add_alu_a() const;
 
 protected:
   static uint64_t const NOP;
@@ -110,9 +121,9 @@ private:
   std::string pretty_instr() const;
 
   void alu_add_set_reg_a(RegOrImm const &reg);
-  void alu_mul_set_reg_a(RegOrImm const &reg);
+  bool alu_mul_set_reg_a(RegOrImm const &reg);
   void alu_add_set_reg_b(RegOrImm const &reg);
-  void alu_mul_set_reg_b(RegOrImm const &reg);
+  bool alu_mul_set_reg_b(RegOrImm const &reg);
 };
 
 }  // instr
