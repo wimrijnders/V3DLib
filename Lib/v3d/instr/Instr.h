@@ -46,7 +46,6 @@ public:
   void label_to_target(int offset);
   // End Label support
 
-
 public:
   Instr(uint64_t in_code = NOP);
 
@@ -59,7 +58,9 @@ public:
   std::string const &header() const     { return InstructionComment::header();}
   std::string const &comment() const    { return InstructionComment::comment();}
 
-  bool is_branch() const;
+  bool is_branch()  const;
+  bool has_signal(bool all_signals = false) const;
+  bool flag_set() const;
   void set_cond_tag(AssignCond cond);
   void set_push_tag(SetCond set_cond);
 

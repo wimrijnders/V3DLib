@@ -971,18 +971,11 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
 
 bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const instr2, bool &do_converse) {
 
-  auto has_signal = [] (v3d::instr::Instr const &instr) -> bool {
-    return (instr.sig.ldunif || instr.sig.ldunifa || instr.sig.ldunifrf || instr.sig.ldunifarf
-         || instr.sig.ldtmu  || instr.sig.ldvary  || instr.sig.ldvpm    || instr.sig.ldtlb
-         || instr.sig.ldtlbu);
-  };
-
-
   // Skip branches
   if (instr1.type == V3D_QPU_INSTR_TYPE_BRANCH || instr2.type == V3D_QPU_INSTR_TYPE_BRANCH) return false;
 
   // Skip special signals for now - there might be something to be won with the ld's
-  if (has_signal(instr1) || has_signal(instr2)) return false;
+  if (instr1.has_signal() || instr2.has_signal()) return false;
 
   // Skip full NOPs, they are there for a reason
   if (instr1.add_nop() && instr1.mul_nop()) return false;
@@ -1059,6 +1052,14 @@ bool convert_alu_op_to_mul_op(v3d_qpu_mul_op &mul_op, v3d::instr::Instr const &a
         return true;
       }
 
+    case V3D_QPU_A_ADD:
+      mul_op = V3D_QPU_M_ADD;
+      return true;
+
+    case V3D_QPU_A_SUB:
+      mul_op = V3D_QPU_M_SUB;
+      return true;
+
     default: break;
   }
 
@@ -1071,26 +1072,35 @@ void combine(Instructions &instructions) {
   //
   // Detect useless copies, eg: or  rf2, rf2, rf2    ; nop
   //
-  auto check_assign_to_self = [] (Instr const &instr, int i) {
-    if (!instr.is_branch() && !instr.add_nop() && instr.mul_nop()) {
-      //debug(instr.mnemonic(false));
-      //breakpoint
-
+  auto check_assign_to_self = [] (Instr const &instr, int i) -> bool {
+    if (!instr.is_branch() && !instr.add_nop() && instr.mul_nop() && instr.alu.add.op == V3D_QPU_A_OR) {
       auto dst = instr.add_alu_dst();
       assert(dst);
       auto a = instr.add_alu_a();
       assert(a);
       auto b = instr.add_alu_b();
       assert(b);
+
       if (*a == *b && *dst == *a) {
+        if (instr.has_signal(true)) {
+          breakpoint // Deal with this when it happens
+        }
+
+        if (instr.flag_set()) {
+          breakpoint // Deal with this when it happens
+        }
+
         std::string msg = "Useless copy at ";
         msg << i << ": " << instr.mnemonic(false);
         warning(msg);
+        return true;
       }
     }
+
+    return false;
   };
 
-  check_assign_to_self(instructions[0], 0);
+  assertq(!check_assign_to_self(instructions[0], 0), "First instruction is useless copy");
 
   int combine_count = 0;
 
@@ -1098,8 +1108,13 @@ void combine(Instructions &instructions) {
     auto &instr1 = instructions[i - 1];
     auto &instr2 = instructions[i];
 
-    assertq(!instr1.skip() && !instr2.skip(), "Deal with skips when then happen");
-    check_assign_to_self(instr2, i);
+    assertq(!(instr1.skip() && instr2.skip()), "Deal with skips when they happen");
+    if (instr1.skip()) continue;
+
+    if (check_assign_to_self(instr2, i)) {
+      instr2.skip(true);
+      continue;
+    }
 
     bool do_converse;
     if (!can_combine(instr1, instr2, do_converse)) continue;
@@ -1115,6 +1130,10 @@ void combine(Instructions &instructions) {
       auto const &add_instr = do_converse?instr2:instr1;
       auto const &mul_instr = do_converse?instr1:instr2;
 
+      if (!add_instr.mul_nop()) {
+        breakpoint;
+      }
+
       if (!mul_instr.mul_nop()) {
         breakpoint;
       }
@@ -1122,7 +1141,7 @@ void combine(Instructions &instructions) {
       v3d::instr::Instr dst = add_instr;
 
       v3d_qpu_mul_op mul_op;
-      success = convert_alu_op_to_mul_op(mul_op, add_instr);
+      success = convert_alu_op_to_mul_op(mul_op, mul_instr);
       if (success) {
         dst.alu.mul.op = mul_op;
 
@@ -1134,11 +1153,13 @@ void combine(Instructions &instructions) {
         auto dst_loc = mul_instr.add_alu_dst();
         assert(dst_loc.get() != nullptr);
 
-        auto src_loc = mul_instr.add_alu_a();
-        assert(src_loc.get() != nullptr);
+        auto src_a = mul_instr.add_alu_a();
+        assert(src_a.get() != nullptr);
 
+        auto src_b = mul_instr.add_alu_b();
+        assert(src_b.get() != nullptr);
 
-        success = dst.alu_mul_set(*dst_loc, *src_loc, *src_loc);
+        success = dst.alu_mul_set(*dst_loc, *src_a, *src_b);
         if (success) {
           dst.alu.mul.output_pack = mul_instr.alu.add.output_pack;
           dst.alu.mul.a_unpack    = mul_instr.alu.add.a_unpack;

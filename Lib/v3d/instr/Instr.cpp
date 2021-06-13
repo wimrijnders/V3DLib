@@ -86,8 +86,30 @@ Instr::Instr(uint64_t in_code) {
   init(in_code);
 }
 
+
 bool Instr::is_branch() const {
   return (type == V3D_QPU_INSTR_TYPE_BRANCH);
+}
+
+
+/**
+ * Determine if there are any specials signals used in this instruction
+ *
+ * @param all_signals  if true, also flag small_imm and rotate; these have a place in the instructions
+ */
+bool Instr::has_signal(bool all_signals) const {
+  if (all_signals && (sig.small_imm || sig.rotate)) {
+    return true;
+  }
+
+  return (sig.thrsw || sig.ldunif || sig.ldunifa || sig.ldunifrf || sig.ldunifarf
+    || sig.ldtmu  || sig.ldvary  || sig.ldvpm    || sig.ldtlb
+    || sig.ldtlbu || sig.ucb || sig.wrtmuc);
+}
+
+
+bool Instr::flag_set() const {
+  return (flags.ac || flags.mc || flags.apf || flags.mpf || flags.auf || flags.muf);
 }
 
 
@@ -600,7 +622,7 @@ bool Instr::alu_mul_set_reg_a(Location const &loc) {
     raddr_b   = loc.to_waddr(); 
     alu.mul.a = V3D_QPU_MUX_B;
   } else {
-    warning("alu_add_set_reg_a(): raddr_a and raddr_b both in use");
+    // raddr_a and raddr_b both in use
     ret = false;
   }
 
@@ -620,7 +642,7 @@ bool Instr::alu_mul_set_reg_b(Location const &loc) {
     raddr_b   = loc.to_waddr(); 
     alu.mul.b = V3D_QPU_MUX_B;
   } else {
-    warning("alu_add_set_reg_b(): raddr_a and raddr_b both in use");
+    // raddr_a and raddr_b both in use
     return false;
   }
 
@@ -913,14 +935,12 @@ std::unique_ptr<Source> Instr::add_alu_src(v3d_qpu_mux src) const {
   } else if (src == V3D_QPU_MUX_A) {
     // address a, rf-reg
     res.reset(new Source(RFAddress(raddr_a)));
-    //res.reset(new Source(Register("", (v3d_qpu_waddr) raddr_a, src, false)));
   } else if (sig.small_imm) {
     // address b, small imm
     res.reset(new Source(SmallImm((int) raddr_b, false)));
   } else {
     // address b, rf-reg
     res.reset(new Source(RFAddress(raddr_b)));
-    //res.reset(new Source(Register("", (v3d_qpu_waddr) raddr_b, src, false)));
   }
 
   assert(res);
