@@ -15,8 +15,10 @@ public:
   v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
   bool is_rf() const { return m_is_rf; }
 
+  virtual bool operator==(Location const &rhs) const = 0;
+
 protected:
-  v3d_qpu_output_pack m_output_pack = V3D_QPU_PACK_NONE;
+  v3d_qpu_output_pack m_output_pack   = V3D_QPU_PACK_NONE;
   v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
   bool m_is_rf = false;
 };

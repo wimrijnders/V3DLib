@@ -1,5 +1,6 @@
 #include "Register.h"
 #include "Support/basics.h"  // Exception
+#include "RFAddress.h"
 
 
 namespace V3DLib {
@@ -84,6 +85,45 @@ v3d_qpu_mux BranchDest::to_mux() const {
   throw Exception(buf);
 
   return (v3d_qpu_mux) 0;
+}
+
+
+bool BranchDest::operator==(Location const &rhs) const {
+  BranchDest const *rhs_dst = dynamic_cast<BranchDest const *>(&rhs);
+  if (rhs_dst == nullptr) return false;
+
+  return (m_dest == rhs_dst->m_dest);
+}
+
+
+bool Register::operator==(Location const &rhs) const {
+  RFAddress const *rhs_rf = dynamic_cast<RFAddress const *>(&rhs);
+  if (rhs_rf != nullptr) {
+    if (m_mux_is_set) {
+      return (m_mux_val == V3D_QPU_MUX_A || m_mux_val == V3D_QPU_MUX_B) && m_waddr_val == rhs_rf->to_waddr();
+    } else {
+      return m_waddr_val == rhs_rf->to_waddr();
+    }
+  }
+
+
+  Register const *rhs_reg = dynamic_cast<Register const *>(&rhs);
+  if (rhs_reg == nullptr) return false;
+
+  assert(!m_is_rf);
+  assert(m_is_rf == rhs_reg->m_is_rf);
+
+  if (m_output_pack != rhs_reg->m_output_pack || m_input_unpack != rhs_reg->m_input_unpack) {
+    warning("Register::==(): packing differs");
+  }
+
+  if (m_mux_is_set != rhs_reg->m_mux_is_set) return false;
+
+  if (m_mux_is_set) {
+    return m_waddr_val == rhs_reg->m_waddr_val && m_mux_val == rhs_reg->m_mux_val;
+  } else {
+    return m_waddr_val == rhs_reg->m_waddr_val;
+  }
 }
 
 }  // instr

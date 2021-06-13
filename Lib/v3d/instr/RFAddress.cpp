@@ -38,6 +38,21 @@ RFAddress RFAddress::abs() const {
   return ret;
 }
 
+
+bool RFAddress::operator==(Location const &rhs) const {
+  RFAddress const *rhs_rf = dynamic_cast<RFAddress const *>(&rhs);
+  if (rhs_rf == nullptr) return false;
+
+  assert(m_is_rf);
+  assert(m_is_rf == rhs_rf->m_is_rf);
+
+  if (m_output_pack != rhs_rf->m_output_pack || m_input_unpack != rhs_rf->m_input_unpack) {
+    warning("RFAddress::==(): packing differs");
+  }
+
+  return m_val == rhs_rf->m_val;
+}
+
 }  // instr
 }  // v3d
 }  // V3DLib

@@ -26,6 +26,8 @@ public:
   bool is_dest_acc() const { return m_is_dest_acc; }
   std::string const &name() const { return m_name; }
 
+  bool operator==(Location const &rhs) const override;
+
 private:
   std::string   m_name;
   v3d_qpu_waddr m_waddr_val;
@@ -41,6 +43,8 @@ public:
 
   v3d_qpu_waddr to_waddr() const override { return m_dest; }
   v3d_qpu_mux to_mux() const override;
+
+  bool operator==(Location const &rhs) const override;
 
 private:
   std::string   m_name;

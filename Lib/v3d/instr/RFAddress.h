@@ -17,6 +17,8 @@ public:
   RFAddress h() const;
   RFAddress abs() const;
 
+  bool operator==(Location const &rhs) const override;
+
 private:
   uint8_t m_val;
 };

@@ -39,6 +39,28 @@ SmallImm const &Source::small_imm() const {
 }
 
 
+bool Source::operator==(Source const &rhs) const {
+  if (m_is_location != rhs.m_is_location) return false;
+
+  if (m_is_location) {
+    assert(m_location);
+    assert(rhs.m_location);
+    return *m_location == *rhs.m_location;
+  }
+
+  // Must be smallimm
+  return m_small_imm == rhs.m_small_imm;
+}
+
+
+bool Source::operator==(Location const &rhs) const {
+  if (!m_is_location) return false;
+
+  assert(m_location);
+  return *m_location == rhs;
+}
+
+
 
 }  // namespace instr
 }  // namespace v3d
