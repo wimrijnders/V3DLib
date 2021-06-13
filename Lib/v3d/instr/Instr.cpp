@@ -895,23 +895,32 @@ std::unique_ptr<Location> Instr::add_alu_dst() const {
 
 
 std::unique_ptr<Source> Instr::add_alu_a() const {
+  return add_alu_src(alu.add.a);
+}
+
+
+std::unique_ptr<Source> Instr::add_alu_b() const {
+  return add_alu_src(alu.add.b);
+}
+
+
+std::unique_ptr<Source> Instr::add_alu_src(v3d_qpu_mux src) const {
   std::unique_ptr<Source> res;
 
-  if (alu.add.a < V3D_QPU_MUX_A) {
-  breakpoint
+  if (src < V3D_QPU_MUX_A) {
     // Accumulator
-    res.reset(new Source(Register("", (v3d_qpu_waddr) alu.add.a)));
-  } else if (alu.add.a == V3D_QPU_MUX_A) {
-  breakpoint
+    res.reset(new Source(Register("", (v3d_qpu_waddr) src)));
+  } else if (src == V3D_QPU_MUX_A) {
     // address a, rf-reg
-    res.reset(new Source(Register("", (v3d_qpu_waddr) raddr_a, alu.add.a, false)));
+    res.reset(new Source(RFAddress(raddr_a)));
+    //res.reset(new Source(Register("", (v3d_qpu_waddr) raddr_a, src, false)));
   } else if (sig.small_imm) {
     // address b, small imm
     res.reset(new Source(SmallImm((int) raddr_b, false)));
   } else {
-  breakpoint
     // address b, rf-reg
-    res.reset(new Source(Register("", (v3d_qpu_waddr) raddr_b, alu.add.b, false)));
+    res.reset(new Source(RFAddress(raddr_b)));
+    //res.reset(new Source(Register("", (v3d_qpu_waddr) raddr_b, src, false)));
   }
 
   assert(res);

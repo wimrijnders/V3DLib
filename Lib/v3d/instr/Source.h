@@ -3,6 +3,7 @@
 #include <memory>
 #include "Register.h"
 #include "SmallImm.h"
+#include "RFAddress.h"
 #include "Target/instr/RegOrImm.h"
 
 namespace V3DLib {
@@ -13,6 +14,7 @@ class Source {
 public:
   Source(V3DLib::RegOrImm const &rhs);
   Source(Register const &rhs);
+  Source(RFAddress const &rhs);
   Source(SmallImm const &rhs);
 
   bool is_location() const { return m_is_location; }

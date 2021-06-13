@@ -50,8 +50,14 @@ public:
 public:
   Instr(uint64_t in_code = NOP);
 
+  bool skip() const { return m_skip; }
+  void skip(bool val) { m_skip = val; }
+
+  // Grumbl
   Instr &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
   Instr &comment(std::string msg)       { InstructionComment::comment(msg); return *this; }
+  std::string const &header() const     { return InstructionComment::header();}
+  std::string const &comment() const    { return InstructionComment::comment();}
 
   bool is_branch() const;
   void set_cond_tag(AssignCond cond);
@@ -105,8 +111,13 @@ public:
   bool alu_add_set(V3DLib::Instr const &src_instr);
   bool alu_mul_set(V3DLib::Instr const &src_instr);
 
+private:
+  std::unique_ptr<Source> add_alu_src(v3d_qpu_mux src) const;
+
+public:
   std::unique_ptr<Location> add_alu_dst() const;
   std::unique_ptr<Source> add_alu_a() const;
+  std::unique_ptr<Source> add_alu_b() const;
 
 protected:
   static uint64_t const NOP;
@@ -115,6 +126,8 @@ protected:
   void set_branch_condition(v3d_qpu_branch_cond cond);
 
 private:
+  bool m_skip = false;
+
   void init_ver() const;
   bool raddr_a_is_safe(Location const &loc, bool check_for_mul_b = false) const;
   bool raddr_b_is_safe(Location const &loc, bool check_for_mul_b = false) const;

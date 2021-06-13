@@ -15,9 +15,15 @@ Source::Source(V3DLib::RegOrImm const &rhs) :
 }
 
 
-Source:: Source(V3DLib::v3d::instr::Register const &rhs) :
+Source::Source(Register const &rhs) :
   m_is_location(true),
   m_location(new Register(rhs))
+{}
+
+
+Source::Source(RFAddress const &rhs) :
+  m_is_location(true),
+  m_location(new RFAddress(rhs))
 {}
 
 

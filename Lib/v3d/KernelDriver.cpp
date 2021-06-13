@@ -1004,6 +1004,10 @@ bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const instr2
   auto const &add_alu1 = instr1.alu.add;
   auto const &add_alu2 = instr2.alu.add;
 
+  // Skip special waddresses for now - this might be possible, investigate later
+  if (add_alu1.magic_write && add_alu1.waddr >= V3D_QPU_WADDR_NOP) return false;
+  if (add_alu2.magic_write && add_alu2.waddr >= V3D_QPU_WADDR_NOP) return false;
+
   // Disallow same dest reg
   if (add_alu1.waddr == add_alu2.waddr && add_alu1.magic_write == add_alu2.magic_write) return false;
 
@@ -1063,9 +1067,39 @@ bool convert_alu_op_to_mul_op(v3d_qpu_mul_op &mul_op, v3d::instr::Instr const &a
 
 
 void combine(Instructions &instructions) {
+
+  //
+  // Detect useless copies, eg: or  rf2, rf2, rf2    ; nop
+  //
+  auto check_assign_to_self = [] (Instr const &instr, int i) {
+    if (!instr.is_branch() && !instr.add_nop() && instr.mul_nop()) {
+      //debug(instr.mnemonic(false));
+      //breakpoint
+
+      auto dst = instr.add_alu_dst();
+      assert(dst);
+      auto a = instr.add_alu_a();
+      assert(a);
+      auto b = instr.add_alu_b();
+      assert(b);
+      if (*a == *b && *dst == *a) {
+        std::string msg = "Useless copy at ";
+        msg << i << ": " << instr.mnemonic(false);
+        warning(msg);
+      }
+    }
+  };
+
+  check_assign_to_self(instructions[0], 0);
+
+  int combine_count = 0;
+
   for (int i = 1; i < (int) instructions.size(); i++) {
-    auto const &instr1 = instructions[i - 1];
-    auto const &instr2 = instructions[i];
+    auto &instr1 = instructions[i - 1];
+    auto &instr2 = instructions[i];
+
+    assertq(!instr1.skip() && !instr2.skip(), "Deal with skips when then happen");
+    check_assign_to_self(instr2, i);
 
     bool do_converse;
     if (!can_combine(instr1, instr2, do_converse)) continue;
@@ -1074,48 +1108,92 @@ void combine(Instructions &instructions) {
     msg << "line " << i << ":\n"
         << "  " << instr1.mnemonic(false) << "\n"
         << "  " << instr2.mnemonic(false);
-    debug(msg);
 
     // attempt the conversion
+    bool success = false;
     {
       auto const &add_instr = do_converse?instr2:instr1;
       auto const &mul_instr = do_converse?instr1:instr2;
 
+      if (!mul_instr.mul_nop()) {
+        breakpoint;
+      }
+
       v3d::instr::Instr dst = add_instr;
 
       v3d_qpu_mul_op mul_op;
-      if (!convert_alu_op_to_mul_op(mul_op, add_instr)) {
-        continue;
+      success = convert_alu_op_to_mul_op(mul_op, add_instr);
+      if (success) {
+        dst.alu.mul.op = mul_op;
+
+        //debug(instr2.mnemonic(false));
+        //breakpoint
+
+        // Get used dst and src
+        // NOTE: currently OR -> MOV only
+        auto dst_loc = mul_instr.add_alu_dst();
+        assert(dst_loc.get() != nullptr);
+
+        auto src_loc = mul_instr.add_alu_a();
+        assert(src_loc.get() != nullptr);
+
+
+        success = dst.alu_mul_set(*dst_loc, *src_loc, *src_loc);
+        if (success) {
+          dst.alu.mul.output_pack = mul_instr.alu.add.output_pack;
+          dst.alu.mul.a_unpack    = mul_instr.alu.add.a_unpack;
+          dst.alu.mul.b_unpack    = mul_instr.alu.add.b_unpack;
+
+          dst.flags.mc  = mul_instr.flags.ac;
+          dst.flags.mpf = mul_instr.flags.apf;
+          dst.flags.muf = mul_instr.flags.auf;
+
+          dst.header(mul_instr.header());
+          dst.comment(mul_instr.comment());
+
+          msg << "\nPossible conversion: " << dst.mnemonic(false);
+          debug(msg);
+
+          instr1.skip(true);
+          instr2 = dst;
+
+          combine_count++;
+          i++;
+        }
       }
-      dst.alu.mul.op = mul_op;
-
-      // Get used dst and src
-      // NOTE: currently OR -> MOV only
-      auto dst_loc = mul_instr.add_alu_dst();
-      assert(dst_loc.get() != nullptr);
-
-      auto src_loc = mul_instr.add_alu_a();
-      assert(src_loc.get() != nullptr);
-
-      if (dst.alu_mul_set(*dst_loc, *src_loc, *src_loc)) {
-        dst.alu.mul.output_pack = mul_instr.alu.add.output_pack;
-        dst.alu.mul.a_unpack    = mul_instr.alu.add.a_unpack;
-        dst.alu.mul.b_unpack    = mul_instr.alu.add.b_unpack;
-
-        dst.flags.mc  = mul_instr.flags.ac;
-        dst.flags.mpf = mul_instr.flags.apf;
-        dst.flags.muf = mul_instr.flags.auf;
-
-        std::string msg = "Possible conversion: ";
-        msg << "  " << dst.mnemonic(false);
-        debug(msg);
-
-        i++;
-        continue;
-      }
+      continue;
     }
 
+    debug(msg);
     break;
+  }
+
+  if (combine_count > 0) {
+    std::string msg;
+    msg << "Combined " << combine_count << " v3d instructions";
+    debug(msg);
+  }
+
+  //
+  // Combine skips
+  //
+  Instructions ret;
+  int skip_count = 0;
+  for (int i = 0; i < (int) instructions.size(); i++) {
+    auto const &instr = instructions[i];
+    if (instr.skip()) {
+      skip_count++;
+    } else {
+      ret << instr;
+    }
+  }
+
+  if (skip_count > 0) {
+    std::string msg;
+    msg << "Skipped " << skip_count << " instructions";
+    debug(msg);
+
+    instructions = ret;
   }
 }
 
