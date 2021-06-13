@@ -1067,6 +1067,48 @@ bool convert_alu_op_to_mul_op(v3d_qpu_mul_op &mul_op, v3d::instr::Instr const &a
 }
 
 
+/**
+ * Set the mul alu with the add alu part of in_instr
+ */
+bool add_alu_to_mul_alu(Instr const &in_instr, Instr &dst) {
+  assert(!in_instr.add_nop()); 
+  assert(dst.mul_nop()); 
+
+  v3d_qpu_mul_op mul_op;
+  if (!convert_alu_op_to_mul_op(mul_op, in_instr)) return false;
+
+  dst.alu.mul.op = mul_op;
+
+  //
+  // Get used dst and src
+  //
+  breakpoint
+
+  auto dst_loc = in_instr.add_alu_dst();
+  assert(dst_loc.get() != nullptr);
+
+  auto src_a = in_instr.add_alu_a();
+  assert(src_a.get() != nullptr);
+
+  auto src_b = in_instr.add_alu_b();
+  assert(src_b.get() != nullptr);
+
+  if (!dst.alu_mul_set(*dst_loc, *src_a, *src_b)) return false;
+
+  dst.alu.mul.output_pack = in_instr.alu.add.output_pack;
+  dst.alu.mul.a_unpack    = in_instr.alu.add.a_unpack;
+  dst.alu.mul.b_unpack    = in_instr.alu.add.b_unpack;
+
+  dst.flags.mc  = in_instr.flags.ac;
+  dst.flags.mpf = in_instr.flags.apf;
+  dst.flags.muf = in_instr.flags.auf;
+
+  dst.header(in_instr.header());
+  dst.comment(in_instr.comment());
+
+  return true;
+}
+
 void combine(Instructions &instructions) {
 
   //
@@ -1111,6 +1153,10 @@ void combine(Instructions &instructions) {
     assertq(!(instr1.skip() && instr2.skip()), "Deal with skips when they happen");
     if (instr1.skip()) continue;
 
+    // Skip instructions that have both add and mul alu
+    if (!instr1.add_nop() && !instr1.mul_nop()) continue;
+    if (!instr2.add_nop() && !instr2.mul_nop()) continue;
+
     if (check_assign_to_self(instr2, i)) {
       instr2.skip(true);
       continue;
@@ -1140,47 +1186,20 @@ void combine(Instructions &instructions) {
 
       v3d::instr::Instr dst = add_instr;
 
-      v3d_qpu_mul_op mul_op;
-      success = convert_alu_op_to_mul_op(mul_op, mul_instr);
+      // First test: Don't deal with conditions yet in the mul alu
+      // These need a bit of extra logic to set them for mul
+      // TODO examine this
+      success = !mul_instr.flag_set() && add_alu_to_mul_alu(mul_instr, dst);
+
       if (success) {
-        dst.alu.mul.op = mul_op;
+        msg << "\n  Possible conversion: " << dst.mnemonic(false);
+        debug(msg);
 
-        //debug(instr2.mnemonic(false));
-        //breakpoint
+        instr1.skip(true);
+        instr2 = dst;
 
-        // Get used dst and src
-        // NOTE: currently OR -> MOV only
-        auto dst_loc = mul_instr.add_alu_dst();
-        assert(dst_loc.get() != nullptr);
-
-        auto src_a = mul_instr.add_alu_a();
-        assert(src_a.get() != nullptr);
-
-        auto src_b = mul_instr.add_alu_b();
-        assert(src_b.get() != nullptr);
-
-        success = dst.alu_mul_set(*dst_loc, *src_a, *src_b);
-        if (success) {
-          dst.alu.mul.output_pack = mul_instr.alu.add.output_pack;
-          dst.alu.mul.a_unpack    = mul_instr.alu.add.a_unpack;
-          dst.alu.mul.b_unpack    = mul_instr.alu.add.b_unpack;
-
-          dst.flags.mc  = mul_instr.flags.ac;
-          dst.flags.mpf = mul_instr.flags.apf;
-          dst.flags.muf = mul_instr.flags.auf;
-
-          dst.header(mul_instr.header());
-          dst.comment(mul_instr.comment());
-
-          msg << "\nPossible conversion: " << dst.mnemonic(false);
-          debug(msg);
-
-          instr1.skip(true);
-          instr2 = dst;
-
-          combine_count++;
-          i++;
-        }
+        combine_count++;
+        i++;
       }
       continue;
     }

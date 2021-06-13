@@ -523,7 +523,7 @@ void Instr::alu_add_set_reg_b(Location const &loc) {
  * Multiple immediate operands are allowed in an instruction only if they are the same value
  */
 bool Instr::alu_set_imm(SmallImm const &imm) {
-  if (sig.small_imm == true) {
+  if (sig.small_imm) {
     if (raddr_b != imm.to_raddr()) {
       warning("Multiple immediate values in an operation only allowed if they are the same value");
       return false;
@@ -554,11 +554,11 @@ bool Instr::alu_add_set_imm_b(SmallImm const &imm) {
 }
 
 
-/**
- * Copied from alu_add_set_imm_a(), not sure about this
- * TODO verify in some way
- */
 bool Instr::alu_mul_set_imm_a(SmallImm const &imm) {
+  if (alu.add.a == V3D_QPU_MUX_B || alu.add.b == V3D_QPU_MUX_B) {
+    if (!sig.small_imm) return false;
+  }
+
   if (!alu_set_imm(imm)) return false;
 
   alu.mul.a        = V3D_QPU_MUX_B;
@@ -568,7 +568,17 @@ bool Instr::alu_mul_set_imm_a(SmallImm const &imm) {
 
 
 bool Instr::alu_mul_set_imm_b(SmallImm const &imm) {
+  if (alu.add.a == V3D_QPU_MUX_B || alu.add.b == V3D_QPU_MUX_B) {
+    if (!sig.small_imm) return false;
+  }
+
+  if (alu.mul.a == V3D_QPU_MUX_B) {
+breakpoint
+    if (!sig.small_imm) return false;
+  }
+
   if (!alu_set_imm(imm)) return false;
+
   alu.mul.b     = V3D_QPU_MUX_B;
   alu.mul.b_unpack = imm.input_unpack();
   return true;
