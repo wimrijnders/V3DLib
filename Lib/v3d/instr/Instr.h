@@ -69,7 +69,7 @@ public:
   uint64_t code() const;
   static std::string dump(uint64_t in_code);
   static std::string mnemonic(uint64_t in_code);
-  static std::string mnemonics(std::vector<uint64_t> in_code);
+  static std::string mnemonics(std::vector<uint64_t> const &in_code);
 
   operator uint64_t() const { return code(); }
 

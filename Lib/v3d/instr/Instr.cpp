@@ -193,9 +193,6 @@ void Instr::set_push_tag(SetCond set_cond) {
     tag_value = V3D_QPU_PF_PUSHN;
   }
 
-  assertq(!(alu.add.op != V3D_QPU_A_NOP && alu.mul.op != V3D_QPU_M_NOP),
-    "Not expecting both add and mul alu to be pushed"); // Warn me if this happens, deal with it then
-
   if (alu.add.op != V3D_QPU_A_NOP) {
     flags.apf = tag_value;
   }
@@ -290,7 +287,7 @@ std::string Instr::mnemonic(uint64_t in_code) {
 }
 
 
-std::string Instr::mnemonics(std::vector<uint64_t> in_code) {
+std::string Instr::mnemonics(std::vector<uint64_t> const &in_code) {
   std::string ret;
 
   for (int i = 0; i < (int) in_code.size(); i++) {

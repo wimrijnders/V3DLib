@@ -1108,6 +1108,7 @@ bool add_alu_to_mul_alu(Instr const &in_instr, Instr &dst) {
   return true;
 }
 
+
 void combine(Instructions &instructions) {
 
   //
@@ -1148,6 +1149,9 @@ void combine(Instructions &instructions) {
   for (int i = 1; i < (int) instructions.size(); i++) {
     auto &instr1 = instructions[i - 1];
     auto &instr2 = instructions[i];
+
+    assertq(!instr1.mnemonic(false).empty(), "WTF 1", true);
+    assertq(!instr2.mnemonic(false).empty(), "WTF 2", true);
 
     assertq(!(instr1.skip() && instr2.skip()), "Deal with skips when they happen");
     if (instr1.skip()) continue;

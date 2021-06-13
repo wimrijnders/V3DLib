@@ -71,6 +71,12 @@ bool SmallImm::float_to_opcode_value(float value, int &rep_value) {
 }
 
 
+SmallImm::SmallImm(int val, bool is_val) : m_val(val), m_val_is_set(is_val) {
+  if (is_val) pack();
+  else m_index = (uint8_t) val;
+}
+
+
 bool SmallImm::is_legal_encoded_value(int value) {
   // Int range
   if (-16 <= value && value <= 15) return true;
@@ -107,12 +113,26 @@ std::string SmallImm::print_encoded_value(int value) {
 
 
 uint8_t SmallImm::to_raddr() const {
-  assert(m_index != 0xff);
+  assertq(m_index != 0xff, "Incorrect index value", true);
   return m_index;
 }
 
 
+int SmallImm::val() const {
+  assertq(m_val_is_set, "SmallImm::val(): val not set");
+  return m_val;
+}
+
+
+bool SmallImm::operator==(SmallImm const &rhs) const {
+  assertq(m_index != 0xff, "Incorrect index value", true);
+  assertq(rhs.m_index != 0xff, "Incorrect index value rhs", true);
+  return m_index == rhs.m_index;
+}
+
+
 void SmallImm::pack() {
+  assert(m_val_is_set);
   uint32_t packed_small_immediate;
 
   if (small_imm_pack(m_val, &packed_small_immediate)) {

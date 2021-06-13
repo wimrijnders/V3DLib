@@ -12,12 +12,12 @@ namespace instr {
 
 class SmallImm {
 public:
-  SmallImm(int val, bool do_pack = true) : m_val(val) { if (do_pack) pack(); }
+  SmallImm(int val, bool is_val = true);
 
   uint8_t to_raddr() const;
   v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
-  int val() const { return m_val; }  // for assertions
-  bool operator==(SmallImm const &rhs) const { return m_val == rhs.m_val; }
+  int val() const;  // for assertions
+  bool operator==(SmallImm const &rhs) const;
 
   SmallImm l() const;
   SmallImm ff() const;
@@ -29,6 +29,7 @@ public:
 
 private:
   int m_val = 0;
+  bool m_val_is_set = false;
   uint8_t m_index = 0xff;  // init to illegal value
   v3d_qpu_input_unpack m_input_unpack = V3D_QPU_UNPACK_NONE;
 

@@ -128,6 +128,8 @@ TEST_CASE("Check v3d condition codes [v3d][cond]") {
     const int DATA_SIZE = 16;
 
     ByteCode bytecode = qpu_cond_push_a();
+    //std::cout << Instr::mnemonics(bytecode) << std::endl;
+
     BufferObject heap;
     heap.alloc(10*1024);  // arbitrary size, large enough
 

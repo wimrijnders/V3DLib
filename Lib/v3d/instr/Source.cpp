@@ -29,7 +29,7 @@ Source::Source(RFAddress const &rhs) :
 
 Source::Source(SmallImm const &rhs) :
   m_is_location(false),
-  m_small_imm(rhs.val())
+  m_small_imm(rhs)
 {}
 
 

@@ -52,7 +52,7 @@ Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &a, Lo
  */
 Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &a, SmallImm const &b) {
   init(NOP);
-  if (!alu_add_set(dst, a, b)) assert(false);
+  if (!alu_add_set(dst, a, b)) throw Exception("Can not use two different small immediates in an instruction");
   alu.add.op = op;
 }
 
