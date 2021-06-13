@@ -145,29 +145,36 @@ v3d_qpu_cond translate_assign_cond(AssignCond cond) {
  * Set the condition tags during translation.
  *
  * Either add or mul alu condition tags are set here, both not allowed (intentionally too strict condition)
+ *
+ * Note that mul alu condition tags may be set beforehand, this is accounted for in logic.
  */
 void Instr::set_cond_tag(AssignCond cond) {
   assert(!is_branch());
   if (cond.is_always()) return;
-  if (alu.add.op == V3D_QPU_A_NOP && alu.mul.op == V3D_QPU_M_NOP) return;  // Don't bother with a full nop instruction
+  if (add_nop() && mul_nop()) return;  // Don't bother with a full nop instruction
 
-  assertq(flags.ac == V3D_QPU_COND_NONE, "Not expecting add alu assign tag to be set");
-  assertq(flags.mc == V3D_QPU_COND_NONE, "Not expecting mul alu assign tag to be set");
   assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
   assertq(cond.tag == AssignCond::Tag::FLAG,  "const.tag can only be FLAG here");  // The only remaining option
 
   v3d_qpu_cond tag_value = translate_assign_cond(cond);
   assert(tag_value != V3D_QPU_COND_NONE);
 
-  assertq(!(alu.add.op != V3D_QPU_A_NOP && alu.mul.op != V3D_QPU_M_NOP),
-    "Not expecting both add and mul alu to be used"); 
+  assertq(add_nop() || mul_nop(), "Not expecting both add and mul alu to be used", true); 
 
   if (alu.add.op != V3D_QPU_A_NOP) {
-    flags.ac = tag_value;
+    if (flags.ac == V3D_QPU_COND_NONE) {
+      flags.ac = tag_value;
+    } else {
+      assertq(flags.ac == tag_value, "add alu assign tag already set to different value", true);
+    }
   }
 
   if (alu.mul.op != V3D_QPU_M_NOP) {
-    flags.mc = tag_value;
+    if (flags.mc == V3D_QPU_COND_NONE) {
+      flags.mc = tag_value;
+    } else {
+      assertq(flags.mc == tag_value, "mul alu assign tag already set to different value", true);
+    }
   }
 }
 
@@ -525,15 +532,14 @@ void Instr::alu_add_set_reg_b(Location const &loc) {
 bool Instr::alu_set_imm(SmallImm const &imm) {
   if (sig.small_imm) {
     if (raddr_b != imm.to_raddr()) {
-      warning("Multiple immediate values in an operation only allowed if they are the same value");
+      // Multiple immediate values in an operation only allowed if they are the same value
       return false;
     }
-  } else {
-    // All is well
-    sig.small_imm = true; 
-    raddr_b       = imm.to_raddr(); 
   }
 
+  // All is well
+  sig.small_imm = true; 
+  raddr_b       = imm.to_raddr(); 
   return true;
 }
 
@@ -573,7 +579,6 @@ bool Instr::alu_mul_set_imm_b(SmallImm const &imm) {
   }
 
   if (alu.mul.a == V3D_QPU_MUX_B) {
-breakpoint
     if (!sig.small_imm) return false;
   }
 
@@ -915,7 +920,7 @@ std::unique_ptr<Location> Instr::add_alu_dst() const {
 
   if (alu.add.magic_write) {
     // accumulator
-    res.reset(new Register("", (v3d_qpu_waddr) alu.add.waddr));
+    res.reset(new Register("", (v3d_qpu_waddr) alu.add.waddr, (v3d_qpu_mux) alu.add.waddr, true));
   } else {
     // rf-register
     res.reset(new RFAddress(alu.add.waddr));
@@ -941,7 +946,7 @@ std::unique_ptr<Source> Instr::add_alu_src(v3d_qpu_mux src) const {
 
   if (src < V3D_QPU_MUX_A) {
     // Accumulator
-    res.reset(new Source(Register("", (v3d_qpu_waddr) src)));
+    res.reset(new Source(Register("", (v3d_qpu_waddr) src, src)));
   } else if (src == V3D_QPU_MUX_A) {
     // address a, rf-reg
     res.reset(new Source(RFAddress(raddr_a)));

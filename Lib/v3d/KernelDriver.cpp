@@ -734,7 +734,8 @@ bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
   if (!OpItems::valid_combine_pair(instr, next_instr, dummy)) return false;
 
   if (instr.ALU.op == ALUOp::A_TMUWT || next_instr.ALU.op == ALUOp::A_TMUWT) {
-    breakpoint   // TODO
+    // This could actually be done, but i'm beyond caring right now
+    return false;
   }
 
   auto const &ALU      = instr.ALU;
@@ -1082,8 +1083,6 @@ bool add_alu_to_mul_alu(Instr const &in_instr, Instr &dst) {
   //
   // Get used dst and src
   //
-  breakpoint
-
   auto dst_loc = in_instr.add_alu_dst();
   assert(dst_loc.get() != nullptr);
 
