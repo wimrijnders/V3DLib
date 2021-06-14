@@ -945,9 +945,9 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
     } else {
       Instructions ret;
 
-      if (!handle_target_specials(ret, instrs, i)) {
+//      if (!handle_target_specials(ret, instrs, i)) {
         ret = v3d::encodeInstr(instr);
-      }
+//      }
 
       if (prev_was_init_begin) {
         ret.front().header("Init block");
@@ -979,7 +979,6 @@ bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr
   if (instr1.has_signal() || instr2.has_signal()) return false;
 
   // Skip full NOPs, they are there for a reason
-  // TODO tmuwt
   if (instr1.add_nop() && instr1.mul_nop()) return false;
   if (instr2.add_nop() && instr2.mul_nop()) return false;
 
@@ -994,9 +993,9 @@ bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr
   auto magic_write2 = instr2.mul_nop()?instr2.alu.add.magic_write:instr2.alu.mul.magic_write;
   auto waddr2       = instr2.mul_nop()?instr2.alu.add.waddr:instr2.alu.mul.waddr;
 
-  // Skip special waddresses for now - this might be possible, investigate later
-  if (magic_write1 && waddr1 >= V3D_QPU_WADDR_NOP) return false;
-  if (magic_write2 && waddr2 >= V3D_QPU_WADDR_NOP) return false;
+  // Skip combined special waddresses - important for tmu operations
+  if ((magic_write1 && waddr1 >= V3D_QPU_WADDR_NOP)
+   && (magic_write2 && waddr2 >= V3D_QPU_WADDR_NOP)) return false;
 
   // Disallow same dest reg
   if (waddr1 == waddr2 && magic_write1 == magic_write2) return false;
