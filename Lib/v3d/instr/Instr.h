@@ -113,12 +113,15 @@ public:
   bool alu_mul_set(V3DLib::Instr const &src_instr);
 
 private:
-  std::unique_ptr<Source> add_alu_src(v3d_qpu_mux src) const;
+  std::unique_ptr<Source> alu_src(v3d_qpu_mux src) const;
 
 public:
   std::unique_ptr<Location> add_alu_dst() const;
+  std::unique_ptr<Location> mul_alu_dst() const;
   std::unique_ptr<Source> add_alu_a() const;
   std::unique_ptr<Source> add_alu_b() const;
+  std::unique_ptr<Source> mul_alu_a() const;
+  std::unique_ptr<Source> mul_alu_b() const;
 
 protected:
   static uint64_t const NOP;

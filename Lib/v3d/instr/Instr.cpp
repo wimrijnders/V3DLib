@@ -928,17 +928,29 @@ std::unique_ptr<Location> Instr::add_alu_dst() const {
 }
 
 
-std::unique_ptr<Source> Instr::add_alu_a() const {
-  return add_alu_src(alu.add.a);
+std::unique_ptr<Location> Instr::mul_alu_dst() const {
+  std::unique_ptr<Location> res;
+
+  if (alu.mul.magic_write) {
+    // accumulator
+    res.reset(new Register("", (v3d_qpu_waddr) alu.mul.waddr, (v3d_qpu_mux) alu.mul.waddr, true));
+  } else {
+    // rf-register
+    res.reset(new RFAddress(alu.mul.waddr));
+  }
+
+  assert(res);
+  return res;
 }
 
 
-std::unique_ptr<Source> Instr::add_alu_b() const {
-  return add_alu_src(alu.add.b);
-}
+std::unique_ptr<Source> Instr::add_alu_a() const { return alu_src(alu.add.a); }
+std::unique_ptr<Source> Instr::add_alu_b() const { return alu_src(alu.add.b); }
+std::unique_ptr<Source> Instr::mul_alu_a() const { return alu_src(alu.mul.a); }
+std::unique_ptr<Source> Instr::mul_alu_b() const { return alu_src(alu.mul.b); }
 
 
-std::unique_ptr<Source> Instr::add_alu_src(v3d_qpu_mux src) const {
+std::unique_ptr<Source> Instr::alu_src(v3d_qpu_mux src) const {
   std::unique_ptr<Source> res;
 
   if (src < V3D_QPU_MUX_A) {

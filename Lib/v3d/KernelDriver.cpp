@@ -419,8 +419,6 @@ bool encode_int_immediate(Instructions &output, int in_value) {
       if (i > 0) {
         if (convert_int_powers(ret, 4*i)) {
           // r0 now contains value for left shift
-          //ret << mov(r2, imm);
-          //ret << shl(r0, r2, r0);
           ret << shl(r0, imm, r0);
         } else {
           ret << mov(r0, imm);
@@ -970,7 +968,9 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
 }
 
 
-bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const instr2, bool &do_converse) {
+bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr2, bool &do_converse) {
+  assert(instr1.add_nop() || instr1.mul_nop());  // Not expecting fully filled instructions
+  assert(instr2.add_nop() || instr2.mul_nop());  // idem
 
   // Skip branches
   if (instr1.type == V3D_QPU_INSTR_TYPE_BRANCH || instr2.type == V3D_QPU_INSTR_TYPE_BRANCH) return false;
@@ -979,47 +979,63 @@ bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const instr2
   if (instr1.has_signal() || instr2.has_signal()) return false;
 
   // Skip full NOPs, they are there for a reason
+  // TODO tmuwt
   if (instr1.add_nop() && instr1.mul_nop()) return false;
   if (instr2.add_nop() && instr2.mul_nop()) return false;
 
-  // TODO skip fully filled instructions
-  //if (!instr1.add_nop() && !instr1.mul_nop()) return false;
-  //if (!instr2.add_nop() && !instr2.mul_nop()) return false;
+  // skip both mul for now, needs extra logic and is probably scarce
+  if (!instr1.mul_nop() && !instr2.mul_nop())  {
+    return false;
+  }
 
-  // TODO mul/alu splits can always be combined
-  //if (!instr1.add_nop() && !instr2.mul_nop()) return true;
-  //if (!instr1.mul_nop() && !instr2.add_nop()) return true;
 
-  // TODO skip both mul for now, needs extra logic and is probably scarce
-  //if (!instr1.mul_nop() && !instr2.mul_nop()) return false;
-
-  // This leaves both instructions having add alu
-
-  auto const &add_alu1 = instr1.alu.add;
-  auto const &add_alu2 = instr2.alu.add;
+  auto magic_write1 = instr1.mul_nop()?instr1.alu.add.magic_write:instr1.alu.mul.magic_write;
+  auto waddr1       = instr1.mul_nop()?instr1.alu.add.waddr:instr1.alu.mul.waddr;
+  auto magic_write2 = instr2.mul_nop()?instr2.alu.add.magic_write:instr2.alu.mul.magic_write;
+  auto waddr2       = instr2.mul_nop()?instr2.alu.add.waddr:instr2.alu.mul.waddr;
 
   // Skip special waddresses for now - this might be possible, investigate later
-  if (add_alu1.magic_write && add_alu1.waddr >= V3D_QPU_WADDR_NOP) return false;
-  if (add_alu2.magic_write && add_alu2.waddr >= V3D_QPU_WADDR_NOP) return false;
+  if (magic_write1 && waddr1 >= V3D_QPU_WADDR_NOP) return false;
+  if (magic_write2 && waddr2 >= V3D_QPU_WADDR_NOP) return false;
 
   // Disallow same dest reg
-  if (add_alu1.waddr == add_alu2.waddr && add_alu1.magic_write == add_alu2.magic_write) return false;
+  if (waddr1 == waddr2 && magic_write1 == magic_write2) return false;
+
 
   // Don't combine set conditional with use conditional
   if (instr1.flags.apf && instr2.flags.ac) return false;
 
-  // Output instr1 should not be used as input instr2
-  bool is_rf1 = !add_alu1.magic_write;
-  if (is_rf1) {
-    if (add_alu2.a == V3D_QPU_MUX_A && instr2.raddr_a == add_alu1.waddr) return false;
-    if (add_alu2.b == V3D_QPU_MUX_A && instr2.raddr_a == add_alu1.waddr) return false;
 
-    if (add_alu2.a == V3D_QPU_MUX_B && !instr2.sig.small_imm && instr2.raddr_b == add_alu1.waddr) return false;
-    if (add_alu2.b == V3D_QPU_MUX_B && !instr2.sig.small_imm && instr2.raddr_b == add_alu1.waddr) return false;
+
+  // Output instr1 should not be used as input instr2
+  auto a2 = instr2.mul_nop()?instr2.alu.add.a:instr2.alu.mul.a;
+  auto b2 = instr2.mul_nop()?instr2.alu.add.b:instr2.alu.mul.b;
+
+  bool is_rf1 = !magic_write1;
+  if (is_rf1) {
+    if (a2 == V3D_QPU_MUX_A && instr2.raddr_a == waddr1) return false;
+    if (b2 == V3D_QPU_MUX_A && instr2.raddr_a == waddr1) return false;
+
+    if (a2 == V3D_QPU_MUX_B && !instr2.sig.small_imm && instr2.raddr_b == waddr1) return false;
+    if (b2 == V3D_QPU_MUX_B && !instr2.sig.small_imm && instr2.raddr_b == waddr1) return false;
   } else {
-    if (add_alu2.a < V3D_QPU_MUX_A && add_alu2.a == add_alu1.waddr) return false;
-    if (add_alu2.b < V3D_QPU_MUX_A && add_alu2.b == add_alu1.waddr) return false;
+    if (a2 < V3D_QPU_MUX_A && a2 == waddr1) return false;
+    if (b2 < V3D_QPU_MUX_A && b2 == waddr1) return false;
   }
+
+  // mul/alu splits can always be combined
+  if (instr1.mul_nop() && !instr2.mul_nop()) {
+    do_converse = false;
+    return true;
+  }
+
+  if (!instr1.mul_nop() && instr2.mul_nop()) {
+    do_converse = true;
+    return true;
+  }
+
+  auto const &add_alu1 = instr1.alu.add;
+  auto const &add_alu2 = instr2.alu.add;
 
   //
   // Determine add alu instructions with mul alu equivalents
@@ -1072,35 +1088,67 @@ bool convert_alu_op_to_mul_op(v3d_qpu_mul_op &mul_op, v3d::instr::Instr const &a
  * Set the mul alu with the add alu part of in_instr
  */
 bool add_alu_to_mul_alu(Instr const &in_instr, Instr &dst) {
-  assert(!in_instr.add_nop()); 
+  assert((!in_instr.add_nop() &&  in_instr.mul_nop()) 
+      || ( in_instr.add_nop() && !in_instr.mul_nop())); 
+
   assert(dst.mul_nop()); 
+/*
+  auto dst_dst = dst.add_alu_dst();
+  auto dst_a   = dst.add_alu_a();
+  auto dst_b   = dst.add_alu_b();
+  assert(dst_dst.get() != nullptr);
+  assert(dst_a.get()   != nullptr);
+  assert(dst_b.get()   != nullptr);
+*/
 
-  v3d_qpu_mul_op mul_op;
-  if (!convert_alu_op_to_mul_op(mul_op, in_instr)) return false;
-
-  dst.alu.mul.op = mul_op;
 
   //
   // Get used dst and src
   //
-  auto dst_loc = in_instr.add_alu_dst();
+  std::unique_ptr<Location> dst_loc;
+  std::unique_ptr<Source> src_a;
+  std::unique_ptr<Source> src_b;
+
+  if (in_instr.mul_nop()) {
+    v3d_qpu_mul_op mul_op;
+    if (!convert_alu_op_to_mul_op(mul_op, in_instr)) return false;
+    dst.alu.mul.op = mul_op;
+
+    // Take values from add alu 
+    dst_loc = in_instr.add_alu_dst();
+    src_a   = in_instr.add_alu_a();
+    src_b   = in_instr.add_alu_b();
+  } else {
+    dst.alu.mul.op = in_instr.alu.mul.op;
+
+    // Take values from mul alu 
+    dst_loc = in_instr.mul_alu_dst();
+    src_a   = in_instr.mul_alu_a();
+    src_b   = in_instr.mul_alu_b();
+  }
   assert(dst_loc.get() != nullptr);
-
-  auto src_a = in_instr.add_alu_a();
-  assert(src_a.get() != nullptr);
-
-  auto src_b = in_instr.add_alu_b();
-  assert(src_b.get() != nullptr);
+  assert(src_a.get()   != nullptr);
+  assert(src_b.get()   != nullptr);
 
   if (!dst.alu_mul_set(*dst_loc, *src_a, *src_b)) return false;
 
-  dst.alu.mul.output_pack = in_instr.alu.add.output_pack;
-  dst.alu.mul.a_unpack    = in_instr.alu.add.a_unpack;
-  dst.alu.mul.b_unpack    = in_instr.alu.add.b_unpack;
+  if (in_instr.mul_nop()) {
+    dst.alu.mul.output_pack = in_instr.alu.add.output_pack;
+    dst.alu.mul.a_unpack    = in_instr.alu.add.a_unpack;
+    dst.alu.mul.b_unpack    = in_instr.alu.add.b_unpack;
 
-  dst.flags.mc  = in_instr.flags.ac;
-  dst.flags.mpf = in_instr.flags.apf;
-  dst.flags.muf = in_instr.flags.auf;
+    dst.flags.mc  = in_instr.flags.ac;
+    dst.flags.mpf = in_instr.flags.apf;
+    dst.flags.muf = in_instr.flags.auf;
+  } else {
+    dst.alu.mul.output_pack = in_instr.alu.mul.output_pack;
+    dst.alu.mul.a_unpack    = in_instr.alu.mul.a_unpack;
+    dst.alu.mul.b_unpack    = in_instr.alu.mul.b_unpack;
+
+    dst.flags.mc  = in_instr.flags.mc;
+    dst.flags.mpf = in_instr.flags.mpf;
+    dst.flags.muf = in_instr.flags.muf;
+  }
 
   dst.header(in_instr.header());
   dst.comment(in_instr.comment());
@@ -1179,13 +1227,12 @@ void combine(Instructions &instructions) {
       auto const &add_instr = do_converse?instr2:instr1;
       auto const &mul_instr = do_converse?instr1:instr2;
 
-      if (!add_instr.mul_nop()) {
-        breakpoint;
-      }
-
+      assert(add_instr.mul_nop());
+/*
       if (!mul_instr.mul_nop()) {
         breakpoint;
       }
+*/
 
       v3d::instr::Instr dst = add_instr;
 
@@ -1196,7 +1243,7 @@ void combine(Instructions &instructions) {
 
       if (success) {
         msg << "\n  Possible conversion: " << dst.mnemonic(false);
-        debug(msg);
+        //debug(msg);
 
         instr1.skip(true);
         instr2 = dst;
@@ -1211,11 +1258,14 @@ void combine(Instructions &instructions) {
     break;
   }
 
+  compile_data.num_instructions_combined += combine_count;
+/*
   if (combine_count > 0) {
     std::string msg;
     msg << "Combined " << combine_count << " v3d instructions";
     debug(msg);
   }
+*/
 
   //
   // Combine skips
@@ -1232,10 +1282,11 @@ void combine(Instructions &instructions) {
   }
 
   if (skip_count > 0) {
+/*
     std::string msg;
     msg << "Skipped " << skip_count << " instructions";
     debug(msg);
-
+*/
     instructions = ret;
   }
 }
