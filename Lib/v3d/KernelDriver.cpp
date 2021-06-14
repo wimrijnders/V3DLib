@@ -945,9 +945,9 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
     } else {
       Instructions ret;
 
-//      if (!handle_target_specials(ret, instrs, i)) {
+      if (!handle_target_specials(ret, instrs, i)) {
         ret = v3d::encodeInstr(instr);
-//      }
+      }
 
       if (prev_was_init_begin) {
         ret.front().header("Init block");
@@ -967,6 +967,15 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
                << end_program();
 }
 
+
+template<typename AddAlu>
+bool can_be_mul_alu(AddAlu const &add_alu) {
+  return ((add_alu.op == V3D_QPU_A_OR && add_alu.a == add_alu.b)       // ORs with 1 source can be translated to mul alu MOV
+        || add_alu.op == V3D_QPU_A_ADD
+        || add_alu.op == V3D_QPU_A_SUB)
+       && (!add_alu.magic_write || add_alu.waddr < V3D_QPU_WADDR_NOP)  // Don't write to special registers in the mul alu
+  ;
+}
 
 bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr2, bool &do_converse) {
   assert(instr1.add_nop() || instr1.mul_nop());  // Not expecting fully filled instructions
@@ -1005,7 +1014,6 @@ bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr
   if (instr1.flags.apf && instr2.flags.ac) return false;
 
 
-
   // Output instr1 should not be used as input instr2
   auto a2 = instr2.mul_nop()?instr2.alu.add.a:instr2.alu.mul.a;
   auto b2 = instr2.mul_nop()?instr2.alu.add.b:instr2.alu.mul.b;
@@ -1033,28 +1041,19 @@ bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr
     return true;
   }
 
-  auto const &add_alu1 = instr1.alu.add;
-  auto const &add_alu2 = instr2.alu.add;
 
   //
   // Determine add alu instructions with mul alu equivalents
   //
-  if ((add_alu2.op == V3D_QPU_A_OR && add_alu2.a == add_alu2.b)  // ORs with 1 source can be translated to mul alu MOV
-    || add_alu2.op == V3D_QPU_A_ADD
-    || add_alu2.op == V3D_QPU_A_SUB
-  ) {
+  if (can_be_mul_alu(instr2.alu.add)) {
     do_converse = false;
     return true;
   }
 
-  if ((add_alu1.op == V3D_QPU_A_OR && add_alu1.a == add_alu1.b)  // ORs with 1 source can be translated to mul alu MOV
-    || add_alu1.op == V3D_QPU_A_ADD
-    || add_alu1.op == V3D_QPU_A_SUB
-  ) {
+  if (can_be_mul_alu(instr1.alu.add)) {
     do_converse = true;
     return true;
   }
-
 
   return false;
 }
