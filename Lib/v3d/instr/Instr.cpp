@@ -722,7 +722,9 @@ void Instr::alu_add_set(Location const &dst, Source const &a, Source const &b) {
   } else if (!a.is_location() && b.is_location()) { 
     alu_add_set(dst, a.small_imm(), b.location());
   } else {
-    if (!alu_add_set(dst, a.small_imm(), b.small_imm())) assert(false);
+    if (!alu_add_set(dst, a.small_imm(), b.small_imm())) {
+      throw Exception("Can not combine two different immediates in a single instruction"); 
+    }
   }
 }
 

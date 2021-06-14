@@ -15,6 +15,7 @@ public:
 
   v3d_qpu_waddr to_waddr() const override { return m_waddr_val; }
   v3d_qpu_mux to_mux() const override;
+  Location *clone() const override { return new Register(*this); }
 
   Register l() const;
   Register ll() const;
@@ -40,6 +41,7 @@ private:
 class BranchDest : public Location {
 public: 
   BranchDest(const char *name, v3d_qpu_waddr dest) : m_name(name), m_dest(dest) {}
+  Location *clone() const override { return new BranchDest(*this); }
 
   v3d_qpu_waddr to_waddr() const override { return m_dest; }
   v3d_qpu_mux to_mux() const override;

@@ -14,23 +14,11 @@ Source::Source(V3DLib::RegOrImm const &rhs) :
   assert(!m_is_location || (m_location && rhs.reg().tag != NONE));
 }
 
-
-Source::Source(Register const &rhs) :
-  m_is_location(true),
-  m_location(new Register(rhs))
-{}
-
-
-Source::Source(RFAddress const &rhs) :
-  m_is_location(true),
-  m_location(new RFAddress(rhs))
-{}
-
-
-Source::Source(SmallImm const &rhs) :
-  m_is_location(false),
-  m_small_imm(rhs)
-{}
+Source::Source(Register const &rhs)  : m_is_location(true), m_location(new Register(rhs)) {}
+Source::Source(Location const &rhs)  : m_is_location(true), m_location(rhs.clone()) {}
+Source::Source(RFAddress const &rhs) : m_is_location(true), m_location(new RFAddress(rhs)) {}
+Source::Source(int rhs)              : m_is_location(false), m_small_imm(rhs) {}
+Source::Source(SmallImm const &rhs)  : m_is_location(false), m_small_imm(rhs) {}
 
 
 Location const &Source::location() const {

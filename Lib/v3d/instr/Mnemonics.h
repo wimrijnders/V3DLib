@@ -158,37 +158,41 @@ Mnemonic itof(Location const &dst, Location const &a, SmallImm const &b);
 Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b);
 
 Mnemonic mov(Location const &dst, Source const &a);
-Mnemonic mov(Location const &dst, SmallImm const &a);
-Mnemonic mov(Location const &dst, Location const &a);
 
-Mnemonic shr(Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic shl(Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic shl(Location const &dst, SmallImm const &a, SmallImm const &b);
-Mnemonic shl(Location const &dst, Location const &a, Location const &b);
-Mnemonic shl(Location const &dst, SmallImm const &a, Location const &b);
-Mnemonic shl(Location const &dst, Location const &a, Location const &b);
-Mnemonic asr(Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic asr(Location const &dst, Location const &a, Location const &b);
-Mnemonic add(Location const &dst, Location const &a, Location const &b);
-Mnemonic add(Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic add(Location const &dst, SmallImm const &a, Location const &b);
-Mnemonic sub(Location const &dst, Location const &a, Location const &b);
-Mnemonic sub(Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic sub(Location const &dst, SmallImm const &a, Location const &b);
-Mnemonic fsub(Location const &dst, Location const &a, Location const &b);
-Mnemonic fsub(Location const &dst, SmallImm const &a, Location const &b);
-Mnemonic fsub(Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic fadd(Location const &dst, Location const &a, Location const &b);
-Mnemonic fadd(Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic fadd(Location const &dst, SmallImm const &a, Location const &b);
+///////////////////////////////////////////////////////////////////////////////
+// Regular Mnemonics
+//
+// These all follow exactly the same form:
+//  - 1 destination register
+//  - 2 source registers which can be any legal type
+//
+// Notes:
+// - Bitwise operations have prefix 'b' because the expected names are c++ keywords.
+///////////////////////////////////////////////////////////////////////////////
+
+#define REGULAR_INSTR(mnemonic, op) \
+inline Mnemonic mnemonic(Location const &dst, Source const &a, Source const &b) { return Mnemonic(op, dst, a, b); }
+
+
+REGULAR_INSTR(shl,  V3D_QPU_A_SHL)
+REGULAR_INSTR(shr,  V3D_QPU_A_SHR)
+REGULAR_INSTR(asr,  V3D_QPU_A_ASR)
+REGULAR_INSTR(add,  V3D_QPU_A_ADD)
+REGULAR_INSTR(sub,  V3D_QPU_A_SUB)
+REGULAR_INSTR(fsub, V3D_QPU_A_FSUB)
+REGULAR_INSTR(fadd, V3D_QPU_A_FADD)
+REGULAR_INSTR(bor,  V3D_QPU_A_OR)
+REGULAR_INSTR(band, V3D_QPU_A_AND)
+
+#undef REGULAR_INSTR
+
+///////////////////////////////////////////////////////////////////////////////
+// End Regular Mnemonics
+///////////////////////////////////////////////////////////////////////////////
+
+
 Mnemonic faddnf(Location const &dst, Location const &a, Location const &b);
 Mnemonic faddnf(Location const &dst, SmallImm const &a, Location const &b);
-
-Mnemonic bor( Location const &dst, Location const &a, Location const &b);
-Mnemonic bor( Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic bor( Location const &dst, SmallImm const &a, SmallImm const &b);
-Mnemonic band(Location const &dst, Location const &a, Location const &b);
-Mnemonic band(Location const &dst, Location const &a, SmallImm const &b);
 Mnemonic bxor(Location const &dst, Location const &a, SmallImm const &b);
 Mnemonic bxor(Location const &dst, SmallImm const &a, SmallImm const &b);
 

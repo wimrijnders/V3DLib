@@ -413,31 +413,7 @@ Mnemonic itof(Location const &dst, Location const &a, SmallImm const &b) { retur
 Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_FTOIN, dst, a, b); }
 
 
-Mnemonic shr(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_SHR, dst, a, b); }
-
-
-Mnemonic mov(Location const &dst, Source const &a)   { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
-Mnemonic mov(Location const &dst, SmallImm const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
-Mnemonic mov(Location const &dst, Location const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
-
-Mnemonic shl(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_SHL, dst, a, b); }
-Mnemonic shl(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_SHL, dst, a, b); }
-Mnemonic shl(Location const &dst, SmallImm const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_SHL, dst, a, b); }
-Mnemonic shl(Location const &dst, SmallImm const &a, Location const &b) { return Mnemonic(V3D_QPU_A_SHL, dst, a, b); }
-Mnemonic asr(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_ASR, dst, a, b); }
-Mnemonic asr(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_ASR, dst, a, b); }
-Mnemonic add(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_ADD, dst, a, b); }
-Mnemonic add(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_ADD, dst, a, b); }
-Mnemonic add(Location const &dst, SmallImm const &a, Location const &b) { return Mnemonic(V3D_QPU_A_ADD, dst, a, b); }
-Mnemonic sub(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_SUB, dst, a, b); }
-Mnemonic sub(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_SUB, dst, a, b); }
-Mnemonic sub(Location const &dst, SmallImm const &a, Location const &b) { return Mnemonic(V3D_QPU_A_SUB, dst, a, b); }
-Mnemonic fsub(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FSUB, dst, a, b); }
-Mnemonic fsub(Location const &dst, SmallImm const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FSUB, dst, a, b); }
-Mnemonic fsub(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_FSUB, dst, a, b); }
-Mnemonic fadd(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FADD, dst, a, b); }
-Mnemonic fadd(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_FADD, dst, a, b); }
-Mnemonic fadd(Location const &dst, SmallImm const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FADD, dst, a, b); }
+Mnemonic mov(Location const &dst, Source const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
 
 
 /**
@@ -451,19 +427,6 @@ Mnemonic faddnf(Location const &dst, Location const &a, Location const &b) { ret
 Mnemonic faddnf(Location const &dst, SmallImm const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FADDNF, dst, a, b); }
 
 
-
-///////////////////////////////////////////////////////////////////////////////
-// Bitwise Operations
-//
-// These have prefix 'b' because the expected names are c++ keywords.
-//
-///////////////////////////////////////////////////////////////////////////////
-
-Mnemonic bor( Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_OR, dst, a, b); }
-Mnemonic bor( Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_OR, dst, a, b); }
-Mnemonic bor( Location const &dst, SmallImm const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_OR, dst, a, b); }
-Mnemonic band(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_AND, dst, a, b); }
-Mnemonic band(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_AND, dst, a, b); }
 Mnemonic bxor(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_XOR, dst, a, b); }
 Mnemonic bxor(Location const &dst, SmallImm const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_XOR, dst, a, b); }
 

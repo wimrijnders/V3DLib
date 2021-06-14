@@ -14,8 +14,10 @@ class Source {
 public:
   Source(V3DLib::RegOrImm const &rhs);
   Source(Register const &rhs);
+  Source(Location const &rhs);
   Source(RFAddress const &rhs);
   Source(SmallImm const &rhs);
+  Source(int rhs);
 
   bool is_location() const { return m_is_location; }
   Location const &location() const;
