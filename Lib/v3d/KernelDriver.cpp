@@ -295,9 +295,6 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
  *   TODO make better.
  *
  * * A rotate is actually a mov() with the rotate signal set.
- *   This confuses the regular target -> v3d tranlation, which does not copy signals.
- *   For this reason, rotate is disabled in can_combine().
- *   TODO examine if this can be fixed
  */
 bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
   if (!instr.ALU.op.isRot()) return false;
@@ -717,213 +714,6 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
 
 
 /**
- * Check if two instructions can be combined
- *
- * Can combine if there are at most two different source values for both instructions.
- * This applies to rf-registers only; the number of accumulators used is free.
- *
- * @return true if can combine, false otherwise
- */
-bool can_combine(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr) {
-  if (instr.tag != InstrTag::ALU) return false;  
-  if (next_instr.tag != InstrTag::ALU) return false;  
-
-  bool dummy;
-  if (!OpItems::valid_combine_pair(instr, next_instr, dummy)) return false;
-
-  if (instr.ALU.op == ALUOp::A_TMUWT || next_instr.ALU.op == ALUOp::A_TMUWT) {
-    // This could actually be done, but i'm beyond caring right now
-    return false;
-  }
-
-  auto const &ALU      = instr.ALU;
-  auto const &next_ALU = next_instr.ALU;
-
-  // Skip special instructions
-  switch(ALU.op.value()) {
-  case ALUOp::A_FSIN:
-  case ALUOp::M_ROTATE:
-    return false;
-  default:
-    break;
-  }
-
-  switch(next_ALU.op.value()) {
-  case ALUOp::A_FSIN:
-  case ALUOp::M_ROTATE:
-    return false;
-  default:
-    break;
-  }
-
-  //
-  // Two immediate values are only possible if both instructions have the same immediate
-  //
-  assert(!(ALU.srcA.is_imm() && ALU.srcB.is_imm() && ALU.srcA.imm() != ALU.srcB.imm()));
-  bool has_imm = (ALU.srcA.is_imm() || ALU.srcB.is_imm());
-  V3DLib::EncodedSmallImm imm;
-  if (has_imm) {
-    imm = ALU.srcA.is_imm()?ALU.srcA.imm():ALU.srcB.imm();
-  }
-
-  assert(!(next_ALU.srcA.is_imm() && next_ALU.srcB.is_imm() && next_ALU.srcA.imm() != next_ALU.srcB.imm()));
-  bool next_has_imm = (next_ALU.srcA.is_imm() || next_ALU.srcB.is_imm());
-  V3DLib::EncodedSmallImm next_imm;
-  if (next_has_imm) {
-    next_imm = next_ALU.srcA.is_imm()?next_ALU.srcA.imm():next_ALU.srcB.imm();
-  }
-
-  // Can have only one immediate per instruction
-  if (has_imm && next_has_imm) {
-    if (imm != next_imm) return false;
-  }
-
-
-  int unique_src_count = 0;
-
-  // An immediate counts as a source value
-  if (has_imm || next_has_imm) {
-    unique_src_count++;
-  }
-
-
-  // The number of used accumulators is free, only check RF registers
-  auto src_regs  = instr.src_regs() + next_instr.src_regs();
-
-  // Specials can not be combined
-  for (auto const &reg : src_regs) {
-    if (reg.tag == RegTag::SPECIAL ) return false; 
-  }
-
-/*
-  // Issue when or -> mov translation enabled, with tmua/tmud in same instruction, eg:
-  //   or  tmud, rf13, rf13 ; mov tmua, rf17, rf17  (perhaps other way around??)
-  //
-  // This causes output to be unstable; after this, any kernel you run may or may
-  // not output properly. You need to hard reboot and disable or -> mov to make it work again
-  //
-  // Using following code solves the instability, but or -> mov enabled still gives wrong output
-  
-
-  // Don't write to two specials in same instruction
-  auto dst = instr.dst_reg();
-  if (dst.tag == SPECIAL) {
-    return false;
-  }
-  auto next_dst = next_instr.dst_reg();
-  if (next_dst.tag == SPECIAL) {
-    return false;
-  }
-*/
-
-  // Count distinct number of rf-registers
-  for (auto const &reg : src_regs) {
-    if (reg.is_rf_reg()) ++unique_src_count;
-  }
-
-  if (unique_src_count > 2) { 
-    return false;
-  }
-
-  // dst of instr should not be used in next_instr
-  if ((instr.ALU.dest == next_instr.ALU.srcA)
-   || (instr.ALU.dest == next_instr.ALU.srcB)) { 
-    return false;
-  }
-
-  return true;
-/*
-  // instr and next_instr can not have same destination
-  // NOTE: Yes, they can! Output for first instr is ignored (dummy value)
-  return (instr.ALU.dest != next_instr.ALU.dest);
-*/
-}
-
-
-/**
- * If possible, combine an add all instruction with a subsequent mul alu instruction
- *
- * Criteria are intentional extremely strict.
- * These will be relaxed when further cases for optimization are encountered.
- *
- * Note that index can change!
- *
- * @return true if two consecutive instructions combined, false otherwise
- */
-bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs, int &index) {
-  if (index + 1 >= instrs.size()) return false;
-
-  auto const &instr = instrs[index];
-  auto const &next_instr = instrs[index + 1];
-
-  if (!can_combine(instr, next_instr)) return false;
-
-  bool do_converse;
-  if (!OpItems::valid_combine_pair(instr, next_instr, do_converse)) {
-    assert(false);
-  }
-
-  auto const &add_instr = do_converse?next_instr:instr;
-  auto const &mul_instr = do_converse?instr:next_instr;
-
-  if (mul_instr.isCondAssign()) return false;  // Not working yet
-
-  // Don't combine push tag; boolean logic relies on consecutive pushes
-  if (add_instr.setCond().tag() != SetCond::NO_COND) return false;
-  if (mul_instr.setCond().tag() != SetCond::NO_COND) return false;
-
-  Instructions tmp;
-  assertq(translateOpcode(add_instr, tmp), "translateOpcode() failed");
-  assert(tmp.size() == 1);
-  Instr &out_instr = tmp[0];
-
-  // Only add alu should be set here
-  if (!(out_instr.alu.add.op != V3D_QPU_A_NOP && out_instr.alu.mul.op == V3D_QPU_M_NOP)) {
-    std::string msg = "handle_target_specials(): expecting add alu to be filled and mul alu to be empty in output instruction: ";
-    msg << out_instr.dump();
-    assertq(false, msg);
-  }
-
-  out_instr.set_cond_tag(instr.assign_cond());
-  out_instr.set_push_tag(instr.setCond());
-
-  if (!out_instr.alu_mul_set(mul_instr)) {
-    std::string msg;
-    msg << "Possible candidate for combine, do_converse = " << do_converse << ":\n"
-        << "  instr     : " << instr.dump()      << "\n"
-        << "  next_instr: " << next_instr.dump();
-    debug(msg);
-    return false;
-  }
-
-  out_instr.comment(instr.comment());
-  out_instr.comment(next_instr.comment());
-
-  index++;
-  ret << tmp;
-  compile_data.num_instructions_combined++;
-/*
-  {
-    std::string msg;
-    msg << "handle_target_specials input, do_converse = " << do_converse << ":\n"
-      << "  instr     : " << instr.dump()      << "\n"
-      << "  next_instr: " << next_instr.dump();
-    debug(msg);
-  }
-
-  {
-    std::string msg;
-    msg << "handle_target_specials combine result:\n"
-      << "  " << out_instr.mnemonic(true);
-    debug(msg);
-  }
-*/
-
-  return true;
-}
-
-
-/**
  * Translate instructions from target to v3d
  */
 void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
@@ -943,11 +733,7 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
       instructions << encode_init();
       prev_was_init_end = true;
     } else {
-      Instructions ret;
-
-      if (!handle_target_specials(ret, instrs, i)) {
-        ret = v3d::encodeInstr(instr);
-      }
+      Instructions ret = v3d::encodeInstr(instr);
 
       if (prev_was_init_begin) {
         ret.front().header("Init block");
@@ -976,6 +762,7 @@ bool can_be_mul_alu(AddAlu const &add_alu) {
        && (!add_alu.magic_write || add_alu.waddr < V3D_QPU_WADDR_NOP)  // Don't write to special registers in the mul alu
   ;
 }
+
 
 bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr2, bool &do_converse) {
   assert(instr1.add_nop() || instr1.mul_nop());  // Not expecting fully filled instructions

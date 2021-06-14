@@ -196,6 +196,8 @@ bool OpItems::get_mul_op(ALUInstruction const &add_alu, v3d_qpu_mul_op &dst ) {
 
 /**
  * Combination only possible if instructions not both add ALU or both mul ALU
+ *
+ * TODO Not used any more (20210614), check if should be removed
  */
 bool OpItems::valid_combine_pair(V3DLib::Instr const &instr, V3DLib::Instr const &next_instr, bool &do_converse) {
   if (uses_add_alu(instr) && uses_mul_alu(next_instr)) {
