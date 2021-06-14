@@ -46,17 +46,6 @@ Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &a, Lo
 }
 
 
-/**
- * This only works if imma == immb (test here internally)
- * The syntax, however, allows this.
- */
-Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &a, SmallImm const &b) {
-  init(NOP);
-  if (!alu_add_set(dst, a, b)) throw Exception("Can not use two different small immediates in an instruction");
-  alu.add.op = op;
-}
-
-
 Mnemonic &Mnemonic::nop() {
   m_doing_add = false;
   // With normal usage, the mul-part is already nop
@@ -416,25 +405,9 @@ Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b) { retur
 Mnemonic mov(Location const &dst, Source const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
 
 
-/**
- * Same as faddf() with mux a and b reversed.
- * The op values are different to distinguish them; in the actual instruction,
- * the operation is actually the same.
- *
- * fmin/fmax have the same relation.
- */
-Mnemonic faddnf(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FADDNF, dst, a, b); }
-Mnemonic faddnf(Location const &dst, SmallImm const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FADDNF, dst, a, b); }
-
-
-Mnemonic bxor(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_XOR, dst, a, b); }
-Mnemonic bxor(Location const &dst, SmallImm const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_XOR, dst, a, b); }
-
 Mnemonic fmax(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FMAX, dst, a, b); }
 Mnemonic fcmp(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FCMP, dst, a, b); }
 Mnemonic vfpack(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_VFPACK, dst, a, b); }
-Mnemonic vfmin(Location const &dst, SmallImm const &a, Location const &b) { return Mnemonic(V3D_QPU_A_VFMIN, dst, a, b); }
-Mnemonic vfmin(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_VFMIN, dst, a, b); }
 Mnemonic min(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_MIN, dst, a, b); }
 Mnemonic max(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_MAX, dst, a, b); }
 

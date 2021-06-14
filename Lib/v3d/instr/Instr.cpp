@@ -685,6 +685,7 @@ bool Instr::alu_mul_set(Location const &dst, SmallImm const &a, Location const &
 
 
 void Instr::alu_add_set(Location const &dst, Location const &srca, Location const &srcb) {
+  //debug("alu_add_set Loc Loc");
   alu_add_set_dst(dst);
   alu_add_set_reg_a(srca);
   alu_add_set_reg_b(srcb);
@@ -692,6 +693,7 @@ void Instr::alu_add_set(Location const &dst, Location const &srca, Location cons
 
 
 void Instr::alu_add_set(Location const &dst, SmallImm const &imma, Location const &srcb) {
+  //debug("alu_add_set Imm Loc");
   alu_add_set_dst(dst);
   if (!alu_add_set_imm_a(imma)) assert(false);
   alu_add_set_reg_b(srcb);
@@ -699,32 +701,32 @@ void Instr::alu_add_set(Location const &dst, SmallImm const &imma, Location cons
 
 
 void Instr::alu_add_set(Location const &dst, Location const &srca, SmallImm const &immb) {
+  //debug("alu_add_set Loc Imm");
   alu_add_set_dst(dst);
   alu_add_set_reg_a(srca);
   if (!alu_add_set_imm_b(immb)) assert(false);
 }
 
 
-bool Instr::alu_add_set(Location const &dst, SmallImm const &imma, SmallImm const &immb) {
-  alu_add_set_dst(dst);
-  return alu_add_set_imm_a(imma)
-      && alu_add_set_imm_b(immb);
-}
-
-
-
-
 void Instr::alu_add_set(Location const &dst, Source const &a, Source const &b) {
-  if (a.is_location() && b.is_location()) {
-    alu_add_set(dst, a.location(), b.location());
-  } else if (a.is_location() && !b.is_location()) { 
-    alu_add_set(dst, a.location(), b.small_imm());
-  } else if (!a.is_location() && b.is_location()) { 
-    alu_add_set(dst, a.small_imm(), b.location());
+  bool ret = true;
+
+  alu_add_set_dst(dst);
+
+  if (a.is_location()) {
+    alu_add_set_reg_a(a.location());
   } else {
-    if (!alu_add_set(dst, a.small_imm(), b.small_imm())) {
-      throw Exception("Can not combine two different immediates in a single instruction"); 
-    }
+    ret = alu_add_set_imm_a(a.small_imm());
+  }
+
+  if (b.is_location()) {
+    alu_add_set_reg_b(b.location());
+  } else {
+    ret = ret && alu_add_set_imm_b(b.small_imm());
+  }
+
+  if (!ret) {
+    throw Exception("alu_add_set failed");
   }
 }
 

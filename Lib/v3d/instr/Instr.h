@@ -100,7 +100,6 @@ public:
   void alu_add_set(Location const &dst, Location const &a, Location const &b); 
   void alu_add_set(Location const &dst, SmallImm const &a, Location const &b);
   void alu_add_set(Location const &dst, Location const &a, SmallImm const &b);
-  bool alu_add_set(Location const &dst, SmallImm const &a, SmallImm const &b);
 
   bool alu_mul_set(Location const &dst, Location const &a, Location const &b); 
   bool alu_mul_set(Location const &dst, Location const &a, SmallImm const &b); 

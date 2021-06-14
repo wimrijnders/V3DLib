@@ -15,7 +15,6 @@ public:
   Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &srca, Location const &srcb);
   Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
   Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, Location const &srcb);
-  Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, SmallImm const &immb);
 
   Mnemonic &pushz();
   Mnemonic &pushc();
@@ -146,8 +145,41 @@ const uint8_t  vpm       = 14;
 const uint32_t zero_addr = 0;
 
 
+
 ///////////////////////////////////////////////////////////////////////////////
-// Instructions
+// Regular Mnemonics
+//
+// These all follow exactly the same form:
+//  - 1 destination register
+//  - 2 source registers which can be any legal type
+//
+// Notes:
+// - Bitwise operations have prefix 'b' because the expected names are c++ keywords.
+// - faddnf() Logically the same as faddf() with mux a and b reversed.
+//   fmin/fmax have the same relation.
+///////////////////////////////////////////////////////////////////////////////
+
+#define REGULAR_INSTR(mnemonic, op) \
+inline Mnemonic mnemonic(Location const &dst, Source const &a, Source const &b) { return Mnemonic(op, dst, a, b); }
+
+
+REGULAR_INSTR(shl,    V3D_QPU_A_SHL)
+REGULAR_INSTR(shr,    V3D_QPU_A_SHR)
+REGULAR_INSTR(asr,    V3D_QPU_A_ASR)
+REGULAR_INSTR(add,    V3D_QPU_A_ADD)
+REGULAR_INSTR(sub,    V3D_QPU_A_SUB)
+REGULAR_INSTR(fsub,   V3D_QPU_A_FSUB)
+REGULAR_INSTR(fadd,   V3D_QPU_A_FADD)
+REGULAR_INSTR(faddnf, V3D_QPU_A_FADDNF)  // See note in header
+REGULAR_INSTR(vfmin,  V3D_QPU_A_VFMIN)
+REGULAR_INSTR(bor,    V3D_QPU_A_OR)
+REGULAR_INSTR(bxor,   V3D_QPU_A_XOR)
+REGULAR_INSTR(band,   V3D_QPU_A_AND)
+
+#undef REGULAR_INSTR
+
+///////////////////////////////////////////////////////////////////////////////
+// Other Mnemonics
 ///////////////////////////////////////////////////////////////////////////////
 
 Mnemonic nop();
@@ -159,48 +191,9 @@ Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b);
 
 Mnemonic mov(Location const &dst, Source const &a);
 
-///////////////////////////////////////////////////////////////////////////////
-// Regular Mnemonics
-//
-// These all follow exactly the same form:
-//  - 1 destination register
-//  - 2 source registers which can be any legal type
-//
-// Notes:
-// - Bitwise operations have prefix 'b' because the expected names are c++ keywords.
-///////////////////////////////////////////////////////////////////////////////
-
-#define REGULAR_INSTR(mnemonic, op) \
-inline Mnemonic mnemonic(Location const &dst, Source const &a, Source const &b) { return Mnemonic(op, dst, a, b); }
-
-
-REGULAR_INSTR(shl,  V3D_QPU_A_SHL)
-REGULAR_INSTR(shr,  V3D_QPU_A_SHR)
-REGULAR_INSTR(asr,  V3D_QPU_A_ASR)
-REGULAR_INSTR(add,  V3D_QPU_A_ADD)
-REGULAR_INSTR(sub,  V3D_QPU_A_SUB)
-REGULAR_INSTR(fsub, V3D_QPU_A_FSUB)
-REGULAR_INSTR(fadd, V3D_QPU_A_FADD)
-REGULAR_INSTR(bor,  V3D_QPU_A_OR)
-REGULAR_INSTR(band, V3D_QPU_A_AND)
-
-#undef REGULAR_INSTR
-
-///////////////////////////////////////////////////////////////////////////////
-// End Regular Mnemonics
-///////////////////////////////////////////////////////////////////////////////
-
-
-Mnemonic faddnf(Location const &dst, Location const &a, Location const &b);
-Mnemonic faddnf(Location const &dst, SmallImm const &a, Location const &b);
-Mnemonic bxor(Location const &dst, Location const &a, SmallImm const &b);
-Mnemonic bxor(Location const &dst, SmallImm const &a, SmallImm const &b);
-
 Mnemonic fmax(Location const &dst, Location const &a, Location const &b);
 Mnemonic fcmp(Location const &loc1, Location const &a, Location const &b);
 Mnemonic vfpack(Location const &dst, Location const &a, Location const &b);
-Mnemonic vfmin(Location const &dst, SmallImm const &a, Location const &b);
-Mnemonic vfmin(Location const &dst, Location const &a, Location const &b);
 Mnemonic min(Location const &dst, Location const &a, Location const &b);
 Mnemonic max(Location const &dst, Location const &a, Location const &b);
 
