@@ -12,7 +12,7 @@ class RegIdSet : public std::set<int> {
 public:
   void add(RegIdSet const &rhs);
   void remove(RegIdSet const &rhs);
-  void remove(int rhs);
+  void remove(int rhs) { erase(rhs); }
   bool member(int rhs) const { return (find(rhs) != cend()); }
   int first() const;
   std::string dump() const;

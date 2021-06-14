@@ -4,18 +4,17 @@
 
 namespace V3DLib {
 
+/**
+  * Using the following idiom was more than 2x slower than insert:
+  *
+  *    RegIdSet m;
+	*    std::merge(begin(), end(), rhs.begin(), rhs.end(), inserter(m, m.end()));
+  *    (*this) = m;
+  */
 void RegIdSet::add(RegIdSet const &rhs) {
+  insert(rhs.begin(), rhs.end());  // A tiny bit faster
 /*
-  // more than 2x slower than insert
-  RegIdSet m;
-	std::merge(begin(), end(), rhs.begin(), rhs.end(), inserter(m, m.end()));
-   (*this) = m;
-*/
-
-  insert(rhs.begin(), rhs.end());  // Doesn't make much of a difference in speed
-
-/*
-  for (auto r : rhs) {
+  for (auto const &r : rhs) {
     insert(r);
   }
 */
@@ -23,21 +22,13 @@ void RegIdSet::add(RegIdSet const &rhs) {
 
 
 void RegIdSet::remove(RegIdSet const &rhs) {
-  // This didn't work previously, probably due to Seq::clear() not cleaning items up
-  // See Liveness::clear().
-  // Doesn't help much with speed
-  erase(rhs.begin(), rhs.end());
+  erase(rhs.begin(), rhs.end());  // Doesn't help much with speed
 
 /*
   for (auto r : rhs) {
     erase(r);
   }
 */
-}
-
-
-void RegIdSet::remove(int rhs) {
-  erase(rhs);
 }
 
 

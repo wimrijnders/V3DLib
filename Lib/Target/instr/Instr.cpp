@@ -89,10 +89,7 @@ Reg Instr::dst_reg() const {
 Reg Instr::dst_a_reg() const {
   Reg ret = dst_reg();
 
-  if (ret.tag != NONE) {
-    if (ret.tag != REG_A) ret.tag = NONE;
-  }
-
+  if (ret.tag != REG_A) ret.tag = NONE;
   return ret;
 }
 
@@ -165,26 +162,17 @@ std::set<Reg> Instr::src_regs(bool set_use_where) const {
 
   std::set<Reg> ret;
 
-  switch (tag) {
-    case InstrTag::LI:
-      if (set_use_where) {
-        if (LI.cond.tag != ALWAYS)         // Add destination reg to 'use' set if conditional assigment
-          ret.insert(LI.dest);
-      }
-      break;
+  if (set_use_where) {  // Add destination reg to 'use' set if conditional assigment
+    if (tag == InstrTag::LI && LI.cond.tag != ALWAYS) {
+      ret.insert(LI.dest);
+    } else if (tag == InstrTag::ALU && ALU.cond.tag != ALWAYS) {
+      ret.insert(ALU.dest);
+    }
+  }
 
-    case InstrTag::ALU:
-      if (set_use_where) {
-        if (ALU.cond.tag != ALWAYS)        // Add destination reg to 'use' set if conditional assigment
-          ret.insert(ALU.dest);
-      }
-
-      if (ALU.srcA.is_reg()) ret.insert(ALU.srcA.reg());
-      if (ALU.srcB.is_reg()) ret.insert(ALU.srcB.reg());
-      break;
-
-    default:
-      break;
+  if (tag == InstrTag::ALU) {
+    if (ALU.srcA.is_reg()) ret.insert(ALU.srcA.reg());
+    if (ALU.srcB.is_reg()) ret.insert(ALU.srcB.reg());
   }  
 
   return ret;

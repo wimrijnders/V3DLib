@@ -264,9 +264,8 @@ void Liveness::compute(Instr::List &instrs) {
 void Liveness::computeLiveOut(InstrId i, RegIdSet &liveOut) {
   liveOut.clear();
 
-  for (auto val : m_cfg[i]) {
-    RegIdSet &set = get(val);
-    liveOut.add(set);
+  for (auto const &val : m_cfg[i]) {
+    liveOut.add(get(val));
   }
 }
 

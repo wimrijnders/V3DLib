@@ -15,8 +15,6 @@ struct UseDefReg {
   std::string dump() const;
 };   
 
-
-
      
 /**
  * Get variables used in instruction
