@@ -478,10 +478,10 @@ void Instr::alu_add_set_dst(Location const &dst) {
 bool Instr::alu_set_src(Location const &loc, v3d_qpu_mux &src, CheckSrc check_src) {
     if (loc.is_acc()) {
       src = loc.to_mux();
-    } else if (raddr_a_is_safe(loc, CHECK_MUL_A)) {
+    } else if (raddr_a_is_safe(loc, check_src)) {
       raddr_a          = loc.to_waddr(); 
       src        = V3D_QPU_MUX_A;
-    } else if (raddr_b_is_safe(loc, CHECK_MUL_A)) {
+    } else if (raddr_b_is_safe(loc, check_src)) {
       raddr_b   = loc.to_waddr(); 
       src = V3D_QPU_MUX_B;
     } else {
@@ -588,63 +588,30 @@ bool Instr::alu_add_set_b(Source const &src) {
 
 
 bool Instr::alu_mul_set_a(Source const &src) {
-  if (src.is_location()) {
-    Location const &loc = src.location();
-
-    if (!alu_set_src(src.location(), alu.mul.a, CHECK_MUL_A)) return false;
-
-    alu.mul.a_unpack = loc.input_unpack();
-  } else {
-    SmallImm const &imm = src.small_imm();
-
-    if (!alu_set_imm(imm, CHECK_MUL_A)) return false;
-
-    alu.mul.a        = V3D_QPU_MUX_B;
-    alu.mul.a_unpack = imm.input_unpack();
-  }
-
+  if (!alu_set_src1(src, alu.mul.a, CHECK_MUL_A)) return false;
+  alu.mul.a_unpack = src.input_unpack();
   return true;
 }
 
 
 bool Instr::alu_mul_set_b(Source const &src) {
-  if (src.is_location()) {
-    Location const &loc = src.location();
-
-    if (loc.is_acc()) {
-      alu.mul.b = loc.to_mux();
-    } else if (raddr_a_is_safe(loc, CHECK_MUL_B)) {
-      raddr_a   = loc.to_waddr(); 
-      alu.mul.b = V3D_QPU_MUX_A;
-    } else if (raddr_b_is_safe(loc, CHECK_MUL_B)) {
-      raddr_b   = loc.to_waddr(); 
-      alu.mul.b = V3D_QPU_MUX_B;
-    } else {
-      // raddr_a and raddr_b both in use
-      return false;
-    }
-
-    alu.mul.b_unpack = loc.input_unpack();
-  } else {
-    SmallImm const &imm = src.small_imm();
-
-    if (!alu_set_imm(imm, CHECK_MUL_B)) return false;
-
-    alu.mul.b     = V3D_QPU_MUX_B;
-    alu.mul.b_unpack = imm.input_unpack();
-  }
-
+  if (!alu_set_src1(src, alu.mul.b, CHECK_MUL_B)) return false;
+  alu.mul.b_unpack = src.input_unpack();
   return true;
 }
 
 
-void Instr::alu_add_set(Location const &dst, Source const &a, Source const &b) {
+bool Instr::alu_add_set(Location const &dst, Source const &a, Source const &b) {
   alu_add_set_dst(dst);
 
-  bool ret = alu_add_set_a(a) && alu_add_set_b(b);
+  if (!alu_add_set_a(a)) return false;
+
+  bool ret = alu_add_set_b(b);
   if (!ret) {
     throw Exception("alu_add_set failed");
   }
+
+  return ret;
 }
 
 
@@ -671,8 +638,7 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
   v3d_qpu_add_op add_op;
   if (OpItems::get_add_op(src_alu, add_op, false)) {
     alu.add.op = add_op;
-    alu_add_set_dst(*dst);
-    return alu_add_set_a(reg_a) && alu_add_set_b(reg_b);
+    return alu_add_set(*dst, reg_a, reg_b);
   }
 
   return false;
@@ -697,9 +663,8 @@ bool Instr::alu_mul_set(V3DLib::Instr const &src_instr) {
   auto reg_b = alu.srcB;
 
   this->alu.mul.op = mul_op;
-  alu_mul_set_dst(*dst);
 
-  if (alu_mul_set_a(reg_a) && alu_mul_set_b(reg_b)) {
+  if (alu_mul_set(*dst, reg_a, reg_b)) {
     flags.mc = translate_assign_cond(alu.cond);
 
 

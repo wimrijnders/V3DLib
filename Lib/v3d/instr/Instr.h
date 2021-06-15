@@ -94,7 +94,7 @@ public:
   bool alu_mul_set_b(Source const &src);
 
 public:
-  void alu_add_set(Location const &dst, Source const &a, Source const &b);
+  bool alu_add_set(Location const &dst, Source const &a, Source const &b);
   bool alu_mul_set(Location const &dst, Source const &a, Source const &b);
 
   bool alu_add_set(V3DLib::Instr const &src_instr);
