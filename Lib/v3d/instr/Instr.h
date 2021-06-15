@@ -133,9 +133,12 @@ private:
     CHECK_MUL_B,
   };
 
+  bool raddr_in_use(CheckSrc check_src, v3d_qpu_mux mux) const;
   bool raddr_a_is_safe(Location const &loc, CheckSrc check_src) const;
   bool raddr_b_is_safe(Location const &loc, CheckSrc check_src) const;
 
+  bool alu_add_set_a(Source const &src);
+  bool alu_add_set_b(Source const &src);
   void alu_add_set_reg_a(RegOrImm const &reg);
   bool alu_mul_set_reg_a(RegOrImm const &reg);
   bool alu_add_set_reg_b(RegOrImm const &reg);
