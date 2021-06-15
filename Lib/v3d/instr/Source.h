@@ -26,6 +26,14 @@ public:
   bool operator==(Source const &rhs) const;
   bool operator==(Location const &rhs) const;
 
+  v3d_qpu_input_unpack input_unpack() const {
+    if (is_location()) {
+      return location().input_unpack();
+    } else {
+      return small_imm().input_unpack();
+    }
+  }
+
 private:
   bool m_is_location = false;
   std::unique_ptr<Location> m_location;

@@ -475,6 +475,24 @@ void Instr::alu_add_set_dst(Location const &dst) {
 }
 
 
+bool Instr::alu_set_src(Location const &loc, v3d_qpu_mux &src, CheckSrc check_src) {
+    if (loc.is_acc()) {
+      src = loc.to_mux();
+    } else if (raddr_a_is_safe(loc, CHECK_MUL_A)) {
+      raddr_a          = loc.to_waddr(); 
+      src        = V3D_QPU_MUX_A;
+    } else if (raddr_b_is_safe(loc, CHECK_MUL_A)) {
+      raddr_b   = loc.to_waddr(); 
+      src = V3D_QPU_MUX_B;
+    } else {
+      // raddr_a and raddr_b both in use
+      return false;
+    }
+
+  return true;
+}
+
+
 /**
  * Set the immediate value for an operation
  *
@@ -490,24 +508,6 @@ bool Instr::alu_set_imm(SmallImm const &imm, CheckSrc check_src) {
   // All is well
   sig.small_imm = true; 
   raddr_b       = imm.to_raddr(); 
-  return true;
-}
-
-
-bool Instr::alu_mul_set_imm_a(SmallImm const &imm) {
-  if (!alu_set_imm(imm, CHECK_MUL_A)) return false;
-
-  alu.mul.a        = V3D_QPU_MUX_B;
-  alu.mul.a_unpack = imm.input_unpack();
-  return true;
-}
-
-
-bool Instr::alu_mul_set_imm_b(SmallImm const &imm) {
-  if (!alu_set_imm(imm, CHECK_MUL_B)) return false;
-
-  alu.mul.b     = V3D_QPU_MUX_B;
-  alu.mul.b_unpack = imm.input_unpack();
   return true;
 }
 
@@ -557,121 +557,84 @@ bool Instr::raddr_b_is_safe(Location const &loc, CheckSrc check_src) const {
 }
 
 
-bool Instr::alu_mul_set_reg_a(Location const &loc) {
-  if (loc.is_acc()) {
-    alu.mul.a = loc.to_mux();
-  } else if (raddr_a_is_safe(loc, CHECK_MUL_A)) {
-    raddr_a          = loc.to_waddr(); 
-    alu.mul.a        = V3D_QPU_MUX_A;
-  } else if (raddr_b_is_safe(loc, CHECK_MUL_A)) {
-    raddr_b   = loc.to_waddr(); 
-    alu.mul.a = V3D_QPU_MUX_B;
+bool Instr::alu_set_src1(Source const &src, v3d_qpu_mux &mux, CheckSrc check_src) {
+  if (src.is_location()) {
+    Location const &loc = src.location();
+
+    if (!alu_set_src(loc, mux, check_src)) return false;
   } else {
-    // raddr_a and raddr_b both in use
-    return false;
+    // Handle small imm
+    if (!alu_set_imm(src.small_imm(), check_src)) return false;
+
+    mux        = V3D_QPU_MUX_B;
   }
 
-  alu.mul.a_unpack = loc.input_unpack();
-  return true;
-}
-
-
-bool Instr::alu_mul_set_reg_b(Location const &loc) {
-  if (loc.is_acc()) {
-    alu.mul.b = loc.to_mux();
-  } else if (raddr_a_is_safe(loc, CHECK_MUL_B)) {
-    raddr_a   = loc.to_waddr(); 
-    alu.mul.b = V3D_QPU_MUX_A;
-  } else if (raddr_b_is_safe(loc, CHECK_MUL_B)) {
-    raddr_b   = loc.to_waddr(); 
-    alu.mul.b = V3D_QPU_MUX_B;
-  } else {
-    // raddr_a and raddr_b both in use
-    return false;
-  }
-
-  alu.mul.b_unpack = loc.input_unpack();
   return true;
 }
 
 
 bool Instr::alu_add_set_a(Source const &src) {
-  if (src.is_location()) {
-    Location const &loc = src.location();
-
-    if (loc.is_acc()) {
-      alu.add.a = loc.to_mux();
-    } else {
-      raddr_a = loc.to_waddr();
-      alu.add.a = V3D_QPU_MUX_A;
-    }
-
-    alu.add.a_unpack = loc.input_unpack();
-  } else {
-    // Handle small imm
-    if (!alu_set_imm(src.small_imm(), CHECK_ADD_A)) return false;
-
-    alu.add.a        = V3D_QPU_MUX_B;
-    alu.add.a_unpack = src.small_imm().input_unpack();
-  }
-
+  if (!alu_set_src1(src, alu.add.a, CHECK_ADD_A)) return false;
+  alu.add.a_unpack = src.input_unpack();
   return true;
 }
 
 
 bool Instr::alu_add_set_b(Source const &src) {
+  if (!alu_set_src1(src, alu.add.b, CHECK_ADD_B)) return false;
+  alu.add.b_unpack = src.input_unpack();
+  return true;
+}
+
+
+bool Instr::alu_mul_set_a(Source const &src) {
   if (src.is_location()) {
     Location const &loc = src.location();
 
-    if (loc.is_acc()) {
-      alu.add.b = loc.to_mux();
-    } else if (raddr_a_is_safe(loc, CHECK_ADD_B)) {
-      raddr_a   = loc.to_waddr();
-      alu.add.b = V3D_QPU_MUX_A;
-    } else if (raddr_b_is_safe(loc, CHECK_ADD_B)) {  // raddr_a is taken, try raddr_b
-      raddr_b   = loc.to_waddr();
-      alu.add.b = V3D_QPU_MUX_B;
-    } else {
-      return false;
-    }
+    if (!alu_set_src(src.location(), alu.mul.a, CHECK_MUL_A)) return false;
 
-    alu.add.b_unpack = loc.input_unpack();
+    alu.mul.a_unpack = loc.input_unpack();
   } else {
     SmallImm const &imm = src.small_imm();
 
-    if (!alu_set_imm(imm, CHECK_ADD_B)) return false;
+    if (!alu_set_imm(imm, CHECK_MUL_A)) return false;
 
-    alu.add.b        = V3D_QPU_MUX_B;
-    alu.add.b_unpack = imm.input_unpack();
+    alu.mul.a        = V3D_QPU_MUX_B;
+    alu.mul.a_unpack = imm.input_unpack();
   }
 
   return true;
 }
 
 
-bool Instr::alu_mul_set_a(Source const &src) {
-  bool ret = true;
-
-  if (src.is_location()) {
-    alu_mul_set_reg_a(src.location());
-  } else {
-    ret = alu_mul_set_imm_a(src.small_imm());
-  }
-
-  return ret;
-}
-
-
 bool Instr::alu_mul_set_b(Source const &src) {
-  bool ret = true;
-
   if (src.is_location()) {
-    ret = alu_mul_set_reg_b(src.location());
+    Location const &loc = src.location();
+
+    if (loc.is_acc()) {
+      alu.mul.b = loc.to_mux();
+    } else if (raddr_a_is_safe(loc, CHECK_MUL_B)) {
+      raddr_a   = loc.to_waddr(); 
+      alu.mul.b = V3D_QPU_MUX_A;
+    } else if (raddr_b_is_safe(loc, CHECK_MUL_B)) {
+      raddr_b   = loc.to_waddr(); 
+      alu.mul.b = V3D_QPU_MUX_B;
+    } else {
+      // raddr_a and raddr_b both in use
+      return false;
+    }
+
+    alu.mul.b_unpack = loc.input_unpack();
   } else {
-    ret = alu_mul_set_imm_b(src.small_imm());
+    SmallImm const &imm = src.small_imm();
+
+    if (!alu_set_imm(imm, CHECK_MUL_B)) return false;
+
+    alu.mul.b     = V3D_QPU_MUX_B;
+    alu.mul.b_unpack = imm.input_unpack();
   }
 
-  return ret;
+  return true;
 }
 
 
@@ -686,23 +649,8 @@ void Instr::alu_add_set(Location const &dst, Source const &a, Source const &b) {
 
 
 bool Instr::alu_mul_set(Location const &dst, Source const &a, Source const &b) {
-  bool ret = true;
-
   alu_mul_set_dst(dst);
-
-  if (a.is_location()) {
-    ret = alu_mul_set_reg_a(a.location());
-  } else {
-    ret = alu_mul_set_imm_a(a.small_imm());
-  }
-
-  if (b.is_location()) {
-    ret = ret && alu_mul_set_reg_b(b.location());
-  } else {
-    ret = ret && alu_mul_set_imm_b(b.small_imm());
-  }
-
-  return ret;
+  return alu_mul_set_a(a) && alu_mul_set_b(b);
 }
 
 
