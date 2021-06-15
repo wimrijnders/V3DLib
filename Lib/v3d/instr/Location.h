@@ -10,7 +10,8 @@ class Location {
 public:
   v3d_qpu_output_pack output_pack() const { return m_output_pack; }
   v3d_qpu_input_unpack input_unpack() const { return m_input_unpack; }
-  bool is_rf() const { return m_is_rf; }
+  bool is_rf() const  { return m_is_rf; }
+  bool is_acc() const { return !m_is_rf; }
 
   virtual Location *clone() const = 0;
   virtual v3d_qpu_waddr to_waddr() const = 0;

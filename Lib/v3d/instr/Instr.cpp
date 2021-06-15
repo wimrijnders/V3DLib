@@ -476,47 +476,33 @@ void Instr::alu_add_set_dst(Location const &dst) {
 
 
 void Instr::alu_add_set_reg_a(Location const &loc) {
-  if (loc.is_rf()) {
+  if (loc.is_acc()) {
+    alu.add.a = loc.to_mux();
+  } else {
     raddr_a = loc.to_waddr();
     alu.add.a = V3D_QPU_MUX_A;
-  } else {
-    alu.add.a = loc.to_mux();
   }
 
   alu.add.a_unpack = loc.input_unpack();
 }
 
 
-void Instr::alu_add_set_reg_b(Location const &loc) {
-  if (loc.is_rf()) {
-    if (!sig.small_imm) {
-      if (alu.add.a == V3D_QPU_MUX_A) {
-        // raddr_a already taken
-
-        if (raddr_a == loc.to_waddr()) {
-          // If it's the same, reuse
-          alu.add.b        = V3D_QPU_MUX_A;
-        } else {
-          // use b instead
-          raddr_b          = loc.to_waddr(); 
-          alu.add.b        = V3D_QPU_MUX_B;
-        }
-      } else {
-        raddr_a          = loc.to_waddr(); 
-        alu.add.b        = V3D_QPU_MUX_A;
-      }
-    } else {
-      // raddr_b contains a small imm, do raddr_a instead
-      assert(alu.add.a == V3D_QPU_MUX_B);
-
-      raddr_a          = loc.to_waddr(); 
-      alu.add.b        = V3D_QPU_MUX_A;
-    }
+bool Instr::alu_add_set_reg_b(Location const &loc) {
+  if (loc.is_acc()) {
+    alu.add.b = loc.to_mux();
+  } if (raddr_a_is_safe(loc, CHECK_ADD_B)) {
+    raddr_a   = loc.to_waddr();
+    alu.add.b = V3D_QPU_MUX_A;
+  } else if (raddr_b_is_safe(loc, CHECK_ADD_B)) {  // raddr_a is taken, try raddr_b
+    raddr_b   = loc.to_waddr();
+    alu.add.b = V3D_QPU_MUX_B;
   } else {
-    alu.add.b        = loc.to_mux();
+breakpoint
+    return false;
   }
 
   alu.add.b_unpack = loc.input_unpack();
+  return true;
 }
 
 
@@ -599,25 +585,47 @@ void Instr::alu_mul_set_dst(Location const &dst) {
 }
 
 
-bool Instr::raddr_a_is_safe(Location const &loc, bool check_for_mul_b) const {
-  // Is raddr_a in use by add alu?
-  bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_A) || (alu.add.b == V3D_QPU_MUX_A);
-  if (check_for_mul_b) raddr_a_in_use = raddr_a_in_use || (alu.mul.a == V3D_QPU_MUX_A);
+bool Instr::raddr_a_is_safe(Location const &loc, CheckSrc check_src) const {
+  assert(loc.is_rf());
 
-  bool raddr_a_same = (raddr_a == loc.to_waddr());
+  bool raddr_a_in_use = false;
 
-  return (!raddr_a_in_use || raddr_a_same);
+  switch (check_src) {  // Note reverse order, fall-thru intentional
+    case CHECK_MUL_B:
+      raddr_a_in_use = raddr_a_in_use || (alu.mul.a == V3D_QPU_MUX_A);
+    case CHECK_MUL_A:
+      raddr_a_in_use = raddr_a_in_use || (alu.add.b == V3D_QPU_MUX_A);
+    case CHECK_ADD_B:
+      raddr_a_in_use = raddr_a_in_use || (alu.add.a == V3D_QPU_MUX_A);
+    case CHECK_ADD_A:
+      break;
+  }
+
+  if (!raddr_a_in_use) return true;
+  return (raddr_a == loc.to_waddr());
 }
 
 
-bool Instr::raddr_b_is_safe(Location const &loc, bool check_for_mul_b) const {
-  // Is raddr_a in use by add alu?
-  bool raddr_a_in_use = (alu.add.a == V3D_QPU_MUX_B) || (alu.add.b == V3D_QPU_MUX_B);
-  if (check_for_mul_b) raddr_a_in_use = raddr_a_in_use || (alu.mul.a == V3D_QPU_MUX_B);
+bool Instr::raddr_b_is_safe(Location const &loc, CheckSrc check_src) const {
+  assert(loc.is_rf());
 
-  bool raddr_b_same = (raddr_b == loc.to_waddr());
+  bool raddr_b_in_use = false;
 
-  return (!raddr_a_in_use || raddr_b_same);
+  switch (check_src) {  // Note reverse order, fall-thru intentional
+    case CHECK_MUL_B:
+      raddr_b_in_use = raddr_b_in_use || (alu.mul.a == V3D_QPU_MUX_B);
+    case CHECK_MUL_A:
+      raddr_b_in_use = raddr_b_in_use || (alu.add.b == V3D_QPU_MUX_B);
+    case CHECK_ADD_B:
+      raddr_b_in_use = raddr_b_in_use || (alu.add.a == V3D_QPU_MUX_B);
+    case CHECK_ADD_A:
+      break;
+  }
+
+  if (!raddr_b_in_use) return true;
+  if (sig.small_imm) return false; 
+
+  return (raddr_b == loc.to_waddr());
 }
 
 
@@ -627,10 +635,10 @@ bool Instr::alu_mul_set_reg_a(Location const &loc) {
   if (!loc.is_rf()) {
     // loc is a register
     alu.mul.a = loc.to_mux();
-  } else if (raddr_a_is_safe(loc, true)) {
+  } else if (raddr_a_is_safe(loc, CHECK_MUL_A)) {
     raddr_a          = loc.to_waddr(); 
     alu.mul.a        = V3D_QPU_MUX_A;
-  } else if (raddr_b_is_safe(loc, true)) {
+  } else if (raddr_b_is_safe(loc, CHECK_MUL_A)) {
     raddr_b   = loc.to_waddr(); 
     alu.mul.a = V3D_QPU_MUX_B;
   } else {
@@ -647,10 +655,10 @@ bool Instr::alu_mul_set_reg_b(Location const &loc) {
   if (!loc.is_rf()) {
     // loc is a register
     alu.mul.b = loc.to_mux();
-  } else if (raddr_a_is_safe(loc, true)) {
-    raddr_a          = loc.to_waddr(); 
-    alu.mul.b        = V3D_QPU_MUX_A;
-  } else if (raddr_b_is_safe(loc, true)) {
+  } else if (raddr_a_is_safe(loc, CHECK_MUL_B)) {
+    raddr_a   = loc.to_waddr(); 
+    alu.mul.b = V3D_QPU_MUX_A;
+  } else if (raddr_b_is_safe(loc, CHECK_MUL_B)) {
     raddr_b   = loc.to_waddr(); 
     alu.mul.b = V3D_QPU_MUX_B;
   } else {
@@ -660,51 +668,6 @@ bool Instr::alu_mul_set_reg_b(Location const &loc) {
 
   alu.mul.b_unpack = loc.input_unpack();
   return true;
-}
-
-
-bool Instr::alu_mul_set(Location const &dst, Location const &a, Location const &b) {
-  alu_mul_set_dst(dst);
-  return alu_mul_set_reg_a(a)
-      && alu_mul_set_reg_b(b);
-}
-
-
-bool Instr::alu_mul_set(Location const &dst, Location const &a, SmallImm const &b) {
-  alu_mul_set_dst(dst);
-  return alu_mul_set_reg_a(a)
-      && alu_mul_set_imm_b(b);
-}
-
-
-bool Instr::alu_mul_set(Location const &dst, SmallImm const &a, Location const &b) {
-  alu_mul_set_dst(dst);
-  return alu_mul_set_imm_a(a)
-     && alu_mul_set_reg_b(b);
-}
-
-
-void Instr::alu_add_set(Location const &dst, Location const &srca, Location const &srcb) {
-  //debug("alu_add_set Loc Loc");
-  alu_add_set_dst(dst);
-  alu_add_set_reg_a(srca);
-  alu_add_set_reg_b(srcb);
-}
-
-
-void Instr::alu_add_set(Location const &dst, SmallImm const &imma, Location const &srcb) {
-  //debug("alu_add_set Imm Loc");
-  alu_add_set_dst(dst);
-  if (!alu_add_set_imm_a(imma)) assert(false);
-  alu_add_set_reg_b(srcb);
-}
-
-
-void Instr::alu_add_set(Location const &dst, Location const &srca, SmallImm const &immb) {
-  //debug("alu_add_set Loc Imm");
-  alu_add_set_dst(dst);
-  alu_add_set_reg_a(srca);
-  if (!alu_add_set_imm_b(immb)) assert(false);
 }
 
 
@@ -720,7 +683,7 @@ void Instr::alu_add_set(Location const &dst, Source const &a, Source const &b) {
   }
 
   if (b.is_location()) {
-    alu_add_set_reg_b(b.location());
+    ret = ret && alu_add_set_reg_b(b.location());
   } else {
     ret = ret && alu_add_set_imm_b(b.small_imm());
   }
@@ -784,17 +747,21 @@ bool Instr::alu_mul_set_reg_a(RegOrImm const &reg) {
 }
 
 
-void Instr::alu_add_set_reg_b(RegOrImm const &reg) {
+bool Instr::alu_add_set_reg_b(RegOrImm const &reg) {
+  bool success = true;
+
   if (reg.is_reg()) {
     assert(reg.reg().tag != NONE);
     auto src_b = encodeSrcReg(reg.reg());
     assert(src_b);
-    alu_add_set_reg_b(*src_b);
+    success = alu_add_set_reg_b(*src_b);
   } else {
     assert(reg.is_imm());
     SmallImm imm(reg.imm().val);
-    if( !alu_add_set_imm_b(imm)) assert(false);
+    success = alu_add_set_imm_b(imm);
   }
+
+  return success;
 }
 
 
@@ -835,8 +802,7 @@ bool Instr::alu_add_set(V3DLib::Instr const &src_instr) {
     alu.add.op = add_op;
     alu_add_set_dst(*dst);
     alu_add_set_reg_a(reg_a);
-    alu_add_set_reg_b(reg_b);
-    return true;
+    return alu_add_set_reg_b(reg_b);
   }
 
   return false;
@@ -913,7 +879,7 @@ void Instr::label_to_target(int offset) {
 
 
 /*
- * Note that packing  are not set here.
+ * Note that packing fields are not set here.
  * If you require them, it must be done elsewhere
  */
 std::unique_ptr<Location> Instr::add_alu_dst() const {

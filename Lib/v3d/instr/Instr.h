@@ -88,7 +88,7 @@ public:
   void alu_add_set_dst(Location const &dst); 
   void alu_mul_set_dst(Location const &dst); 
   void alu_add_set_reg_a(Location const &loc);
-  void alu_add_set_reg_b(Location const &loc);
+  bool alu_add_set_reg_b(Location const &loc);
   bool alu_mul_set_reg_a(Location const &loc);
   bool alu_mul_set_reg_b(Location const &loc);
   bool alu_set_imm(SmallImm const &imm);
@@ -96,14 +96,6 @@ public:
   bool alu_add_set_imm_b(SmallImm const &imm);
   bool alu_mul_set_imm_a(SmallImm const &imm);
   bool alu_mul_set_imm_b(SmallImm const &imm);
-
-  void alu_add_set(Location const &dst, Location const &a, Location const &b); 
-  void alu_add_set(Location const &dst, SmallImm const &a, Location const &b);
-  void alu_add_set(Location const &dst, Location const &a, SmallImm const &b);
-
-  bool alu_mul_set(Location const &dst, Location const &a, Location const &b); 
-  bool alu_mul_set(Location const &dst, Location const &a, SmallImm const &b); 
-  bool alu_mul_set(Location const &dst, SmallImm const &a, Location const &b); 
 
   void alu_add_set(Location const &dst, Source const &a, Source const &b);
   bool alu_mul_set(Location const &dst, Source const &a, Source const &b);
@@ -132,13 +124,21 @@ private:
   bool m_skip = false;
 
   void init_ver() const;
-  bool raddr_a_is_safe(Location const &loc, bool check_for_mul_b = false) const;
-  bool raddr_b_is_safe(Location const &loc, bool check_for_mul_b = false) const;
   std::string pretty_instr() const;
+
+  enum CheckSrc {
+    CHECK_ADD_A,
+    CHECK_ADD_B,
+    CHECK_MUL_A,
+    CHECK_MUL_B,
+  };
+
+  bool raddr_a_is_safe(Location const &loc, CheckSrc check_src) const;
+  bool raddr_b_is_safe(Location const &loc, CheckSrc check_src) const;
 
   void alu_add_set_reg_a(RegOrImm const &reg);
   bool alu_mul_set_reg_a(RegOrImm const &reg);
-  void alu_add_set_reg_b(RegOrImm const &reg);
+  bool alu_add_set_reg_b(RegOrImm const &reg);
   bool alu_mul_set_reg_b(RegOrImm const &reg);
 };
 
