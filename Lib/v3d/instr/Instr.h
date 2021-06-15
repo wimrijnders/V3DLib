@@ -87,16 +87,13 @@ public:
 
   void alu_add_set_dst(Location const &dst); 
   void alu_mul_set_dst(Location const &dst); 
-  void alu_add_set_reg_a(Location const &loc);
-  bool alu_add_set_reg_b(Location const &loc);
-  bool alu_mul_set_reg_a(Location const &loc);
-  bool alu_mul_set_reg_b(Location const &loc);
-  bool alu_set_imm(SmallImm const &imm);
-  bool alu_add_set_imm_a(SmallImm const &imm);
-  bool alu_add_set_imm_b(SmallImm const &imm);
-  bool alu_mul_set_imm_a(SmallImm const &imm);
-  bool alu_mul_set_imm_b(SmallImm const &imm);
 
+  bool alu_add_set_a(Source const &src);
+  bool alu_add_set_b(Source const &src);
+  bool alu_mul_set_a(Source const &src);
+  bool alu_mul_set_b(Source const &src);
+
+public:
   void alu_add_set(Location const &dst, Source const &a, Source const &b);
   bool alu_mul_set(Location const &dst, Source const &a, Source const &b);
 
@@ -137,12 +134,12 @@ private:
   bool raddr_a_is_safe(Location const &loc, CheckSrc check_src) const;
   bool raddr_b_is_safe(Location const &loc, CheckSrc check_src) const;
 
-  bool alu_add_set_a(Source const &src);
-  bool alu_add_set_b(Source const &src);
-  void alu_add_set_reg_a(RegOrImm const &reg);
-  bool alu_mul_set_reg_a(RegOrImm const &reg);
-  bool alu_add_set_reg_b(RegOrImm const &reg);
-  bool alu_mul_set_reg_b(RegOrImm const &reg);
+  bool alu_set_imm(SmallImm const &imm, CheckSrc check_src);
+
+  bool alu_mul_set_imm_a(SmallImm const &imm);
+  bool alu_mul_set_imm_b(SmallImm const &imm);
+  bool alu_mul_set_reg_a(Location const &loc);
+  bool alu_mul_set_reg_b(Location const &loc);
 };
 
 }  // instr

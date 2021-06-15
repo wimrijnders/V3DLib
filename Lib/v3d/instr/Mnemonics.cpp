@@ -148,7 +148,7 @@ Mnemonic &Mnemonic::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna()
 Mnemonic &Mnemonic::mov(Location const &dst, SmallImm const &imm) {
   m_doing_add = false;
   alu_mul_set_dst(dst);
-  if (!alu_mul_set_imm_a(imm)) assert(false);
+  if (!alu_mul_set_a(imm)) assert(false);
 
   alu.mul.op    = V3D_QPU_M_MOV;
   alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
@@ -184,7 +184,7 @@ Mnemonic &Mnemonic::mov(Location const &loc1, Location const &loc2) {
 Mnemonic &Mnemonic::fmov(Location const &dst,  SmallImm const &imma) {
   m_doing_add = false;
   alu_mul_set_dst(dst);
-  if (!alu_mul_set_imm_a(imma)) assert(false);
+  if (!alu_mul_set_a(imma)) assert(false);
 
   alu.mul.op    = V3D_QPU_M_FMOV;  // TODO what's the difference with _MOV? Check
   alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
@@ -465,7 +465,7 @@ Mnemonic flpop(RFAddress rf_addr1, RFAddress rf_addr2) {
 Mnemonic fdx(Location const &dst, Location const &srca) {
   Mnemonic instr;
   instr.alu_add_set_dst(dst);
-  instr.alu_add_set_reg_a(srca);
+  instr.alu_add_set_a(srca);
 
   instr.alu.add.op = V3D_QPU_A_FDX;
   return instr;
