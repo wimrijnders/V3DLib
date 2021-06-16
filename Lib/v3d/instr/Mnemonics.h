@@ -186,7 +186,7 @@ Mnemonic nop();
 Mnemonic tidx(Location const &reg);
 Mnemonic eidx(Location const &reg);
 
-Mnemonic itof(Location const &dst, Location const &a, SmallImm const &b);
+Mnemonic itof(Location const &dst, Location const &a);
 Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b);
 
 Mnemonic mov(Location const &dst, Source const &a);

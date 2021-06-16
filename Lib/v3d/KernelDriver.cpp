@@ -432,11 +432,11 @@ bool encode_int_immediate(Instructions &output, int in_value) {
   if (ret.empty()) return false;  // Not expected, but you never know
 
   std::string cmt;
-  cmt << "Load immediate " << in_value;
+  cmt << "Full load imm " << in_value;
   ret.front().comment(cmt);
 
   std::string cmt2;
-  cmt2 << "End load immediate " << in_value;
+  cmt2 << "full load imm " << in_value;
   ret.back().comment(cmt2);
 
   output << ret;
@@ -467,26 +467,39 @@ bool encode_float(Instructions &ret, std::unique_ptr<Location> &dst, float value
   bool success = true;
   int rep_value;
 
+  auto load_float_as_int = [&ret, &dst] (float value) -> bool {
+    int int_value = (int) value;
+
+    if (encode_int(ret, dst, int_value)) {
+      std::string cmt;
+      cmt << "Load float imm " << value;
+
+      ret  << itof(*dst,*dst).comment(cmt);
+      return true;
+    } else {
+      assertq("Full-int float conversion failed", true);  // Actually has never failed
+      return false;
+    }
+  };
+
   if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
-    ret << nop().fmov(*dst, rep_value)
+    std::string cmt;
+    cmt << "Load neg float small imm " << value;
+
+    ret << nop().fmov(*dst, rep_value).comment(cmt)
         << fsub(*dst, 0, *dst);                   // Works because float zero is 0x0
   } else if (SmallImm::float_to_opcode_value(value, rep_value)) {
     ret << nop().fmov(*dst, rep_value);
   } else if ((value == (float) ((int) value))) {  // Special case: float is encoded int, no fraction
-    int int_value = (int) value;
-    SmallImm dummy(0);                            // TODO why need this???
-
-    if (encode_int(ret, dst, int_value)) {
-      ret  << itof(*dst, *dst, dummy);
-    } else {
-      assertq("Full-int float conversion failed", true);
-      success = false;
-    }
+    success = load_float_as_int(value);
   } else {
     // Do the full blunt int conversion
     int int_value = *((int *) &value);
     if (encode_int_immediate(ret, int_value)) {
-      ret << mov(*dst, r1);                       // Result is int but will be handled as float downstream
+      std::string cmt;
+      cmt << "Load full float imm " << value;
+
+      ret << mov(*dst, r1).comment(cmt);          // Result is int but will be handled as float downstream
     } else {
       success = false;
     }

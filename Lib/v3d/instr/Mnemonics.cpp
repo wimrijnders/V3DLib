@@ -9,6 +9,9 @@ namespace instr {
 // Class Mnemonic 
 ///////////////////////////////////////////////////////////////////////////////
 
+/**
+ * Initialize the add alu
+ */
 Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, Source const &a, Source const &b) {
   init(NOP);
   alu_add_set(dst, a, b);
@@ -398,8 +401,16 @@ Mnemonic eidx(Location const &reg) {
 }
 
 
-Mnemonic itof(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_ITOF, dst, a, b); }
-Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b) { return Mnemonic(V3D_QPU_A_FTOIN, dst, a, b); }
+Mnemonic itof(Location const &dst, Location const &a) {
+  SmallImm dummy(0);
+  return Mnemonic(V3D_QPU_A_ITOF, dst, a, dummy);
+}
+
+
+// TODO check if second param is dummy, as with itof
+Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b) {
+  return Mnemonic(V3D_QPU_A_FTOIN, dst, a, b);
+}
 
 
 Mnemonic mov(Location const &dst, Source const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
