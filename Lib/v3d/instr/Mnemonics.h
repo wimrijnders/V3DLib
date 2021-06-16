@@ -12,9 +12,6 @@ class Mnemonic : public Instr {
 public:
   Mnemonic() : Parent() {}
   Mnemonic(v3d_qpu_add_op op, Location const &dst, Source const &a, Source const &b);
-  Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &srca, Location const &srcb);
-  Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
-  Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, Location const &srcb);
 
   Mnemonic &pushz();
   Mnemonic &pushc();
@@ -24,11 +21,12 @@ public:
   Mnemonic &ldvary();
   Mnemonic &ldunif();
   Mnemonic &ldunifa();
-  Mnemonic &ldunifarf(Location const &loc);
-  Mnemonic &ldunifrf(RFAddress const &loc);
-
-  Mnemonic &ldtmu(Register const &reg);
   Mnemonic &ldvpm();
+
+  Mnemonic &ldunifarf(Location const &loc);
+  Mnemonic &ldunifrf(Location const &loc);
+  Mnemonic &ldtmu(Location const &loc);
+
 
   //
   // Conditional execution of instructions
@@ -64,43 +62,37 @@ public:
   Mnemonic &anynaq();
   Mnemonic &anynap();
 
-  //
-  // Calls to set the mul part of the instruction
-  //
+
+  // Regular mul mnemonics
+#define REGULAR_INSTR(mnemonic, op) \
+Mnemonic &mnemonic(Location const &dst, Source const &srca, Source const &srcb) \
+  { mul_alu_set(op, dst, srca, srcb); return *this; }
+
+  REGULAR_INSTR(add,    V3D_QPU_M_ADD)
+  REGULAR_INSTR(sub,    V3D_QPU_M_SUB)
+  REGULAR_INSTR(fmul,   V3D_QPU_M_FMUL)
+  REGULAR_INSTR(smul24, V3D_QPU_M_SMUL24)
+  REGULAR_INSTR(vfmul,  V3D_QPU_M_VFMUL)
+
+#undef REGULAR_INSTR
+
+  // Other mul mnemonics
   Mnemonic &nop();
-
-  Mnemonic &mov(Location const &dst, SmallImm const &imm);
+  Mnemonic &mov(Location const &dst, Source const &src);
   Mnemonic &mov(uint8_t rf_addr, Register const &reg);
-  Mnemonic &mov(Location const &loc1, Location const &loc2);
-  Mnemonic &fmov(Location const &dst, SmallImm const &imma);
-
-  Mnemonic &add(Location const &dst, Location const &srca, Location const &srcb);
-  Mnemonic &sub(Location const &dst, Location const &srca, Location const &srcb);
-  Mnemonic &sub(Location const &dst, Location const &srca, SmallImm const &immb);
-
-  Mnemonic &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
-  Mnemonic &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
-  Mnemonic &fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3);
-  Mnemonic &smul24(Location const &dst, Location const &loca, Location const &locb); 
-  Mnemonic &smul24(Location const &dst, SmallImm const &imma, Location const &locb); 
-  Mnemonic &smul24(Location const &dst, Location const &loca, SmallImm const &immb); 
-  Mnemonic &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
+  Mnemonic &fmov(Location const &dst, Source const &src);
 
   Mnemonic &rotate(Location const &dst, Location const &a, SmallImm const &b);
   Mnemonic &rotate(Location const &dst, Location const &a, Location const &b);
 
-  // TODO check if needed
-  void doing_mul() {
-    assert(m_doing_add);
-    m_doing_add = false;
-  }
-
 private:
   bool m_doing_add = true;
 
+  void mul_alu_set(v3d_qpu_mul_op op, Location const &dst, Source const &srca, Source const &srcb);
   void set_c(v3d_qpu_cond val);
   void set_uf(v3d_qpu_uf val);
   void set_pf(v3d_qpu_pf val);
+  void set_sig_addr(Location const &loc);
 };
 
 }  // namespace instr
@@ -175,6 +167,11 @@ REGULAR_INSTR(vfmin,  V3D_QPU_A_VFMIN)
 REGULAR_INSTR(bor,    V3D_QPU_A_OR)
 REGULAR_INSTR(bxor,   V3D_QPU_A_XOR)
 REGULAR_INSTR(band,   V3D_QPU_A_AND)
+REGULAR_INSTR(fmax,   V3D_QPU_A_FMAX)
+REGULAR_INSTR(fcmp,   V3D_QPU_A_FCMP)
+REGULAR_INSTR(vfpack, V3D_QPU_A_VFPACK)
+REGULAR_INSTR(min,    V3D_QPU_A_MIN)
+REGULAR_INSTR(max,    V3D_QPU_A_MAX)
 
 #undef REGULAR_INSTR
 
@@ -187,15 +184,9 @@ Mnemonic tidx(Location const &reg);
 Mnemonic eidx(Location const &reg);
 
 Mnemonic itof(Location const &dst, Location const &a);
-Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b);
+Mnemonic ftoi(Location const &dst, Location const &a);
 
 Mnemonic mov(Location const &dst, Source const &a);
-
-Mnemonic fmax(Location const &dst, Location const &a, Location const &b);
-Mnemonic fcmp(Location const &loc1, Location const &a, Location const &b);
-Mnemonic vfpack(Location const &dst, Location const &a, Location const &b);
-Mnemonic min(Location const &dst, Location const &a, Location const &b);
-Mnemonic max(Location const &dst, Location const &a, Location const &b);
 
 v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;  // Needed for barrierid()
 

@@ -19,36 +19,6 @@ Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, Source const &a, Sour
 }
 
 
-/**
- * Initialize the add alu
- */
-Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &a, Location const &b) {
-  init(NOP);
-  alu_add_set(dst, a, b);
-  alu.add.op = op;
-}
-
-
-/**
- * Initialize the add alu
- */
-Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, Location const &a, SmallImm const &b) {
-  init(NOP);
-  alu_add_set(dst, a, b);
-  alu.add.op = op;
-}
-
-
-/**
- * Initialize the add alu
- */
-Mnemonic::Mnemonic(v3d_qpu_add_op op, Location const &dst, SmallImm const &a, Location const &b) {
-  init(NOP);
-  alu_add_set(dst, a, b);
-  alu.add.op = op;
-}
-
-
 Mnemonic &Mnemonic::nop() {
   m_doing_add = false;
   // With normal usage, the mul-part is already nop
@@ -65,31 +35,16 @@ Mnemonic &Mnemonic::ldvary()  { sig.ldvary  = true; return *this; }
 Mnemonic &Mnemonic::ldunif()  { sig.ldunif  = true; return *this; }
 Mnemonic &Mnemonic::ldunifa() { sig.ldunifa = true; return *this; }
 
-Mnemonic &Mnemonic::ldunifarf(Location const &loc) {
-  sig.ldunifarf = true;
 
+void Mnemonic::set_sig_addr(Location const &loc) {
   sig_magic = !loc.is_rf();
   sig_addr = loc.to_waddr();
-  return *this;
 }
 
 
-Mnemonic &Mnemonic::ldunifrf(RFAddress const &loc) {
-  sig.ldunifrf = true;
-
-  sig_magic = !loc.is_rf();
-  sig_addr = loc.to_waddr();
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::ldtmu(Register const &reg) {
-  sig.ldtmu = true;
-  sig_addr  = reg.to_waddr(); 
-  sig_magic = true;
-
-  return *this;
-}
+Mnemonic &Mnemonic::ldunifarf(Location const &loc) { sig.ldunifarf = true; set_sig_addr(loc); return *this; }
+Mnemonic &Mnemonic::ldunifrf(Location const &loc)  { sig.ldunifrf = true;  set_sig_addr(loc); return *this; }
+Mnemonic &Mnemonic::ldtmu(Location const &loc)     { sig.ldtmu = true;     set_sig_addr(loc); return *this; }
 
 
 Mnemonic &Mnemonic::ldvpm()   { sig.ldvpm   = true; return *this; }
@@ -148,14 +103,15 @@ Mnemonic &Mnemonic::anynaq() { branch.msfign =  V3D_QPU_MSFIGN_Q; return anyna()
 Mnemonic &Mnemonic::anynap() { branch.msfign =  V3D_QPU_MSFIGN_P; return anyna(); }
 
 
-Mnemonic &Mnemonic::mov(Location const &dst, SmallImm const &imm) {
+void Mnemonic::mul_alu_set(v3d_qpu_mul_op op, Location const &dst, Source const &srca, Source const &srcb) {
   m_doing_add = false;
-  alu_mul_set_dst(dst);
-  if (!alu_mul_set_a(imm)) assert(false);
+  if (!alu_mul_set(dst, srca, srcb)) assert(false);
+  alu.mul.op = op;
+}
 
-  alu.mul.op    = V3D_QPU_M_MOV;
-  alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
 
+Mnemonic &Mnemonic::mov(Location const &dst, Source const &src) {
+  mul_alu_set(V3D_QPU_M_MOV, dst, src, src);
   return *this;
 }
 
@@ -175,115 +131,8 @@ Mnemonic &Mnemonic::mov(uint8_t rf_addr, Register const &reg) {
 }
 
 
-Mnemonic &Mnemonic::mov(Location const &loc1, Location const &loc2) {
-  m_doing_add = false;
-  if (!alu_mul_set(loc1, loc2, loc2)) assert(false); 
-
-  alu.mul.op    = V3D_QPU_M_MOV;
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::fmov(Location const &dst,  SmallImm const &imma) {
-  m_doing_add = false;
-  alu_mul_set_dst(dst);
-  if (!alu_mul_set_a(imma)) assert(false);
-
-  alu.mul.op    = V3D_QPU_M_FMOV;  // TODO what's the difference with _MOV? Check
-  alu.mul.b     = V3D_QPU_MUX_B;   // Apparently needs to be set also
-
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::add(Location const &dst, Location const &srca, Location const &srcb) {
-  m_doing_add = false;
-  if (!alu_mul_set(dst, srca, srcb)) assert(false);
-  alu.mul.op    = V3D_QPU_M_ADD;
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::sub(Location const &dst, Location const &srca, SmallImm const &immb) {
-  m_doing_add = false;
-  if (!alu_mul_set(dst, srca, immb)) assert(false);
-  alu.mul.op    = V3D_QPU_M_SUB;
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::sub(Location const &loc1, Location const &loc2, Location const &loc3) {
-  m_doing_add = false;
-  if (!alu_mul_set(loc1, loc2, loc3)) assert(false);
-  alu.mul.op    = V3D_QPU_M_SUB;
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::fmul(Location const &loc1, Location const &loc2, Location const &loc3) {
-  m_doing_add = false;
-  if (!alu_mul_set(loc1, loc2, loc3)) assert(false);
-
-  alu.mul.op    = V3D_QPU_M_FMUL;
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::fmul(Location const &loc1, SmallImm imm2, Location const &loc3) {
-  m_doing_add = false;
-  alu_mul_set(loc1, imm2,  loc3);
-  alu.mul.op = V3D_QPU_M_FMUL;
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3) {
-  m_doing_add = false;
-  if (!alu_mul_set(loc1, loc2,  imm3)) assert(false);
-  alu.mul.op = V3D_QPU_M_FMUL;
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::smul24(Location const &dst, Location const &loca, Location const &locb) {
-  m_doing_add = false;
-  if (!alu_mul_set(dst, loca, locb)) assert(false);
-
-  alu.mul.op    = V3D_QPU_M_SMUL24;
-  return *this;
-}
-
-
-/**
- * NOTE: Added this one myself, not sure if correct
- * TODO verify correctness
- */
-Mnemonic &Mnemonic::smul24(Location const &dst, SmallImm const &imma, Location const &locb) {
-  m_doing_add = false;
-  alu_mul_set(dst, imma, locb);
-
-  alu.mul.op    = V3D_QPU_M_SMUL24;
-  return *this;
-}
-
-
-/**
- * TODO verify correctness
- */
-Mnemonic &Mnemonic::smul24(Location const &dst, Location const &loca, SmallImm const &immb) {
-  m_doing_add = false;
-  if (!alu_mul_set(dst, loca, immb)) assert(false);
-
-  alu.mul.op    = V3D_QPU_M_SMUL24;
-  return *this;
-}
-
-
-Mnemonic &Mnemonic::vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3) {
-  m_doing_add = false;
-  alu_mul_set(rf_addr1, reg2, reg3);
-
-  alu.mul.op = V3D_QPU_M_VFMUL;
+Mnemonic &Mnemonic::fmov(Location const &dst, Source const &src) {
+  mul_alu_set(V3D_QPU_M_FMOV, dst, src, src);
   return *this;
 }
 
@@ -402,25 +251,19 @@ Mnemonic eidx(Location const &reg) {
 
 
 Mnemonic itof(Location const &dst, Location const &a) {
-  SmallImm dummy(0);
+  SmallImm dummy(0);  // TODO replace with NONE value
   return Mnemonic(V3D_QPU_A_ITOF, dst, a, dummy);
 }
 
 
 // TODO check if second param is dummy, as with itof
-Mnemonic ftoi(Location const &dst, Location const &a, SmallImm const &b) {
-  return Mnemonic(V3D_QPU_A_FTOIN, dst, a, b);
+Mnemonic ftoi(Location const &dst, Location const &a) {
+  SmallImm dummy(0);  // TODO replace with NONE value
+  return Mnemonic(V3D_QPU_A_FTOIN, dst, a, dummy);
 }
 
 
 Mnemonic mov(Location const &dst, Source const &a) { return Mnemonic(V3D_QPU_A_OR, dst, a, a); }
-
-
-Mnemonic fmax(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FMAX, dst, a, b); }
-Mnemonic fcmp(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_FCMP, dst, a, b); }
-Mnemonic vfpack(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_VFPACK, dst, a, b); }
-Mnemonic min(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_MIN, dst, a, b); }
-Mnemonic max(Location const &dst, Location const &a, Location const &b) { return Mnemonic(V3D_QPU_A_MAX, dst, a, b); }
 
 
 Mnemonic barrierid(v3d_qpu_waddr waddr) {
