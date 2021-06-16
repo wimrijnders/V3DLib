@@ -134,9 +134,7 @@ private:
   bool raddr_a_is_safe(Location const &loc, CheckSrc check_src) const;
   bool raddr_b_is_safe(Location const &loc, CheckSrc check_src) const;
 
-  bool alu_set_src(Location const &loc, v3d_qpu_mux &src, CheckSrc check_src);
-  bool alu_set_imm(SmallImm const &imm, CheckSrc check_src);
-  bool alu_set_src1(Source const &src, v3d_qpu_mux &mux, CheckSrc check_src);
+  bool alu_set_src(Source const &src, v3d_qpu_mux &mux, CheckSrc check_src);
 };
 
 }  // instr

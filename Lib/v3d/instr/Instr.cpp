@@ -475,43 +475,6 @@ void Instr::alu_add_set_dst(Location const &dst) {
 }
 
 
-bool Instr::alu_set_src(Location const &loc, v3d_qpu_mux &src, CheckSrc check_src) {
-    if (loc.is_acc()) {
-      src = loc.to_mux();
-    } else if (raddr_a_is_safe(loc, check_src)) {
-      raddr_a          = loc.to_waddr(); 
-      src        = V3D_QPU_MUX_A;
-    } else if (raddr_b_is_safe(loc, check_src)) {
-      raddr_b   = loc.to_waddr(); 
-      src = V3D_QPU_MUX_B;
-    } else {
-      // raddr_a and raddr_b both in use
-      return false;
-    }
-
-  return true;
-}
-
-
-/**
- * Set the immediate value for an operation
- *
- * The immediate value is always set in raddr_b.
- * Multiple immediate operands are allowed in an instruction only if they are the same value
- */
-bool Instr::alu_set_imm(SmallImm const &imm, CheckSrc check_src) {
-  if (raddr_in_use(check_src, V3D_QPU_MUX_B)) {
-    if (!sig.small_imm) return false;
-    return raddr_b == imm.to_raddr();  // If small imm is already set to wanted value, all is well
-  }
-
-  // All is well
-  sig.small_imm = true; 
-  raddr_b       = imm.to_raddr(); 
-  return true;
-}
-
-
 void Instr::alu_mul_set_dst(Location const &dst) {
   if (dst.is_rf()) {
     alu.mul.magic_write = false; // selects address in register file
@@ -557,16 +520,35 @@ bool Instr::raddr_b_is_safe(Location const &loc, CheckSrc check_src) const {
 }
 
 
-bool Instr::alu_set_src1(Source const &src, v3d_qpu_mux &mux, CheckSrc check_src) {
+bool Instr::alu_set_src(Source const &src, v3d_qpu_mux &mux, CheckSrc check_src) {
   if (src.is_location()) {
     Location const &loc = src.location();
 
-    if (!alu_set_src(loc, mux, check_src)) return false;
+    if (loc.is_acc()) {
+      mux = loc.to_mux();
+    } else if (raddr_a_is_safe(loc, check_src)) {
+      raddr_a = loc.to_waddr(); 
+      mux = V3D_QPU_MUX_A;
+    } else if (raddr_b_is_safe(loc, check_src)) {
+      raddr_b = loc.to_waddr(); 
+      mux = V3D_QPU_MUX_B;
+    } else {
+      return false;  // raddr_a and raddr_b both in use
+    }
+
   } else {
     // Handle small imm
-    if (!alu_set_imm(src.small_imm(), check_src)) return false;
+    auto imm = src.small_imm();
 
-    mux        = V3D_QPU_MUX_B;
+    if (raddr_in_use(check_src, V3D_QPU_MUX_B)) {
+      if (!sig.small_imm) return false;
+      if (raddr_b != imm.to_raddr()) return false;  // If small imm is already set to wanted value, all is well
+    }
+
+    // All is well
+    sig.small_imm = true; 
+    raddr_b       = imm.to_raddr(); 
+    mux           = V3D_QPU_MUX_B;
   }
 
   return true;
@@ -574,28 +556,28 @@ bool Instr::alu_set_src1(Source const &src, v3d_qpu_mux &mux, CheckSrc check_src
 
 
 bool Instr::alu_add_set_a(Source const &src) {
-  if (!alu_set_src1(src, alu.add.a, CHECK_ADD_A)) return false;
+  if (!alu_set_src(src, alu.add.a, CHECK_ADD_A)) return false;
   alu.add.a_unpack = src.input_unpack();
   return true;
 }
 
 
 bool Instr::alu_add_set_b(Source const &src) {
-  if (!alu_set_src1(src, alu.add.b, CHECK_ADD_B)) return false;
+  if (!alu_set_src(src, alu.add.b, CHECK_ADD_B)) return false;
   alu.add.b_unpack = src.input_unpack();
   return true;
 }
 
 
 bool Instr::alu_mul_set_a(Source const &src) {
-  if (!alu_set_src1(src, alu.mul.a, CHECK_MUL_A)) return false;
+  if (!alu_set_src(src, alu.mul.a, CHECK_MUL_A)) return false;
   alu.mul.a_unpack = src.input_unpack();
   return true;
 }
 
 
 bool Instr::alu_mul_set_b(Source const &src) {
-  if (!alu_set_src1(src, alu.mul.b, CHECK_MUL_B)) return false;
+  if (!alu_set_src(src, alu.mul.b, CHECK_MUL_B)) return false;
   alu.mul.b_unpack = src.input_unpack();
   return true;
 }
