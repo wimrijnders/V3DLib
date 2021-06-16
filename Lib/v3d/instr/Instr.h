@@ -83,15 +83,8 @@ public:
 
   static bool compare_codes(uint64_t code1, uint64_t code2);
 
-  // TODO: move as much as possible to private, or just get plain rid of them
-
-  void alu_add_set_dst(Location const &dst); 
-  void alu_mul_set_dst(Location const &dst); 
-
-  bool alu_add_set_a(Source const &src);
-  bool alu_add_set_b(Source const &src);
-  bool alu_mul_set_a(Source const &src);
-  bool alu_mul_set_b(Source const &src);
+  void alu_add_set_dst(Location const &dst); // Still needed in Mnemonics
+  bool alu_add_set_a(Source const &src);     // idem
 
 public:
   bool alu_add_set(Location const &dst, Source const &a, Source const &b);

@@ -475,18 +475,6 @@ void Instr::alu_add_set_dst(Location const &dst) {
 }
 
 
-void Instr::alu_mul_set_dst(Location const &dst) {
-  if (dst.is_rf()) {
-    alu.mul.magic_write = false; // selects address in register file
-  } else {
-    alu.mul.magic_write = true;  // selects register
-  }
-
-  alu.mul.waddr = dst.to_waddr();
-  alu.mul.output_pack = dst.output_pack();
-}
-
-
 bool Instr::raddr_a_is_safe(Location const &loc, CheckSrc check_src) const {
   assert(loc.is_rf());
   if (!raddr_in_use(check_src, V3D_QPU_MUX_A)) return true;
@@ -562,34 +550,15 @@ bool Instr::alu_add_set_a(Source const &src) {
 }
 
 
-bool Instr::alu_add_set_b(Source const &src) {
-  if (!alu_set_src(src, alu.add.b, CHECK_ADD_B)) return false;
-  alu.add.b_unpack = src.input_unpack();
-  return true;
-}
-
-
-bool Instr::alu_mul_set_a(Source const &src) {
-  if (!alu_set_src(src, alu.mul.a, CHECK_MUL_A)) return false;
-  alu.mul.a_unpack = src.input_unpack();
-  return true;
-}
-
-
-bool Instr::alu_mul_set_b(Source const &src) {
-  if (!alu_set_src(src, alu.mul.b, CHECK_MUL_B)) return false;
-  alu.mul.b_unpack = src.input_unpack();
-  return true;
-}
-
-
 bool Instr::alu_add_set(Location const &dst, Source const &a, Source const &b) {
   alu_add_set_dst(dst);
 
   if (!alu_add_set_a(a)) return false;
 
-  bool ret = alu_add_set_b(b);
-  if (!ret) {
+  bool ret = alu_set_src(b, alu.add.b, CHECK_ADD_B);
+  if (ret) {
+    alu.add.b_unpack = b.input_unpack();
+  } else {
     throw Exception("alu_add_set failed");
   }
 
@@ -598,8 +567,19 @@ bool Instr::alu_add_set(Location const &dst, Source const &a, Source const &b) {
 
 
 bool Instr::alu_mul_set(Location const &dst, Source const &a, Source const &b) {
-  alu_mul_set_dst(dst);
-  return alu_mul_set_a(a) && alu_mul_set_b(b);
+  if (dst.is_rf()) {
+    alu.mul.magic_write = false; // selects address in register file
+  } else {
+    alu.mul.magic_write = true;  // selects register
+  }
+
+  alu.mul.waddr = dst.to_waddr();
+  alu.mul.output_pack = dst.output_pack();
+
+  if (!(alu_set_src(a, alu.mul.a, CHECK_MUL_A) && alu_set_src(b, alu.mul.b, CHECK_MUL_B))) return false;
+  alu.mul.a_unpack = a.input_unpack();
+  alu.mul.b_unpack = b.input_unpack();
+  return true;
 }
 
 
