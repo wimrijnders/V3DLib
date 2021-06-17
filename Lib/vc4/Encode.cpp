@@ -351,6 +351,8 @@ uint32_t encodeSrcReg(Reg reg, RegTag file, uint32_t* mux) {
 // ===================
 
 void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
+  vc4_Instr vc4_instr;
+
   // Convert intermediate instruction into core instruction
   switch (instr.tag) {
     case IRQ:
@@ -575,6 +577,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
                      | (muxa << 3) | muxb;
       
         ///////////////////
+        debug("ALU!");
         vc4_instr.tag(vc4_Instr::ALU, instr.hasImm());
         vc4_instr.mulOp = (alu.op.isMul() ? alu.op.vc4_encodeMulOp() : 0);
         vc4_instr.addOp = (alu.op.isMul() ? 0 : alu.op.vc4_encodeAddOp());
@@ -591,64 +594,37 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 
     // Halt
     case END:
-    case TMU0_TO_ACC4: {
-      uint32_t waddr_add = 39 << 6;
-      uint32_t waddr_mul = 39;
-      uint32_t raddra = 39 << 18;
-      uint32_t raddrb = 39 << 12;
-      uint32_t sig = instr.tag == END ? 0x30000000 : 0xa0000000;
-      *high  = sig | waddr_add | waddr_mul;
-      *low   = raddra | raddrb;
+      vc4_instr.tag(vc4_Instr::END);
+      break;
 
-        ///////////////////
-        vc4_Instr vc4_instr;
-        vc4_instr.tag((instr.tag == END)?vc4_Instr::END:vc4_Instr::TMU0_TO_ACC4);
-        assertq(*high == vc4_instr.high(), "Difference high output, ALU");
-        assertq(*low == vc4_instr.low(), "Difference low output, ALU");
-        ///////////////////
-      return;
-    }
+    case TMU0_TO_ACC4:
+      vc4_instr.tag(vc4_Instr::TMU0_TO_ACC4);
+      break;
 
     // Semaphore increment/decrement
     case SINC:
-    case SDEC: {
-      uint32_t waddr_add = 39 << 6;
-      uint32_t waddr_mul = 39;
-      uint32_t sig = 0xe8000000;
-      uint32_t incOrDec = (instr.tag == SINC ? 0 : 1) << 4;
-      *high = sig | waddr_add | waddr_mul;
-      *low = incOrDec | instr.semaId;
+      vc4_instr.tag(vc4_Instr::SINC);
+      vc4_instr.sema_id = instr.semaId;
+      break;
 
-        ///////////////////
-        vc4_Instr vc4_instr;
-        vc4_instr.tag((instr.tag == SINC)?vc4_Instr::SINC:vc4_Instr::SDEC);
-        vc4_instr.sema_id = instr.semaId;
-        assertq(*high == vc4_instr.high(), "Difference high output, SINC SDEC", true);
-        assertq(*low == vc4_instr.low(), "Difference low output, SINC SDEC", true);
-        ///////////////////
-      return;
-    }
+    case SDEC:
+      vc4_instr.tag(vc4_Instr::SDEC);
+      vc4_instr.sema_id = instr.semaId;
+      break;
 
     // No-op & ignored instructions
     case NO_OP:
     case INIT_BEGIN:
-    case INIT_END: {
-      uint32_t waddr_add = 39 << 6;
-      uint32_t waddr_mul = 39;
-      *high  = 0xe0000000 | waddr_add | waddr_mul;
-      *low   = 0;
-      ///////////////////
-      vc4_Instr vc4_instr;
-      assertq(*high == vc4_instr.high(), "Difference high output, NO_OP");
-      assertq(*low == vc4_instr.low(), "Difference low output, NO_OP");
-      ///////////////////
-      return;
-    }
+    case INIT_END:
+      break; // Use default value for instr, which is a full NOP
 
     default:
       fatal("V3DLib: missing case in vc4 encodeInstr");
-      return;
+      break;
   }
+
+  *high = vc4_instr.high();
+  *low  = vc4_instr.low();
 }
 
 }  // anon namespace
