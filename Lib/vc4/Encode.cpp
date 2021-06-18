@@ -467,9 +467,7 @@ uint64_t encodeInstr(Instr instr) {
 
   // Encode core instruction
   switch (instr.tag) {
-    case NO_OP:       // No-op & ignored instructions
-    case INIT_BEGIN:  // TODO perhaps remove these two before encoding. This already happens in the full list encode
-    case INIT_END:
+    case NO_OP:
       break; // Use default value for instr, which is a full NOP
 
     case LI: {        // Load immediate
@@ -572,12 +570,9 @@ uint64_t encodeInstr(Instr instr) {
 // Top-level encoder
 // ============================================================================
 
-uint64_t encode(Instr instr) {
-  return encodeInstr(instr);
-}
+UIntList encode(Instr::List &instrs) {
+  UIntList code;
 
-
-void encode(Instr::List &instrs, UIntList &code) {
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs.get(i);
     check_instruction_tag_for_platform(instr.tag, true);
@@ -590,6 +585,8 @@ void encode(Instr::List &instrs, UIntList &code) {
     code << (uint32_t) (opcode & 0xffffffff);;
     code << (uint32_t) (opcode >> 32);
   }
+
+  return code;
 }
 
 }  // namespace vc4

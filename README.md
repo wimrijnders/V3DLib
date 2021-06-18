@@ -1,6 +1,6 @@
 # V3DLib
 
-**Version 0.6.7**
+**Version 0.6.8**
 
 `V3DLib` is a C++ library for creating programs to run on the VideoCore GPU's of all versions of the [Raspberry Pi](https://www.raspberrypi.org/).
 

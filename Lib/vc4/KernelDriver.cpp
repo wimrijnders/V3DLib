@@ -47,7 +47,7 @@ void KernelDriver::encode() {
   if (has_errors()) return;         // Don't do this if compile errors occured
   assert(!qpuCodeMem.allocated());
 
-  V3DLib::vc4::encode(m_targetCode, code);
+  code = V3DLib::vc4::encode(m_targetCode);
 }
 
 
@@ -59,15 +59,9 @@ void KernelDriver::emit_opcodes(FILE *f) {
   if (code.empty()) {
     fprintf(f, "<No opcodes to print>\n");
   } else {
-    // Note: this is the same as code, but code is uint64_t and this is uint64_t.
-    Seq<uint64_t> instructions;
-
-    for (int i = 0; i < m_targetCode.size(); ++i ) {
-      instructions << vc4::encode(m_targetCode[i]);
-    }
-
-    assert(instructions.size()*2 == code.size());
-    dump_instr(f, instructions.data(), instructions.size());
+    UIntList instructions = V3DLib::vc4::encode(m_targetCode);
+    assert(instructions.size() == code.size());
+    dump_instr(f, (uint64_t const *) instructions.data(), instructions.size()/2);
   }
 }
 
