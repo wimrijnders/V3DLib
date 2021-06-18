@@ -402,72 +402,37 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       uint32_t waddr_mul = 39;
       uint32_t ws   = (file == REG_A ? 0 : 1) << 12;
       uint32_t sf   = (li.m_setCond.flags_set()? 1 : 0) << 13;
-      *high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
-      *low          = li.imm.encode();
+      //*high         = 0xe0000000 | cond | ws | sf | waddr_add | waddr_mul;
+      //*low          = li.imm.encode();
 
       ///////////////////
-      vc4_Instr vc4_instr;
+      debug("LI!");
       vc4_instr.tag(vc4_Instr::LI);
       vc4_instr.cond_add = encodeAssignCond(li.cond);
       vc4_instr.waddr_add = encodeDestReg(li.dest, &file);
       vc4_instr.sf(li.m_setCond.flags_set());
       vc4_instr.ws(file != REG_A);
       vc4_instr.li_imm = li.imm.encode();
-      assertq(*high == vc4_instr.high(), "Difference high output, LI");
-      assertq(*low == vc4_instr.low(), "Difference low output, LI");
       ///////////////////
-      return;
     }
+    break;
 
-    // Branch
-    case BR: {
-      // Register offset not yet supported
-      assert(!instr.BR.target.useRegOffset);
+    case BR:  // Branch
+      assertq(!instr.BR.target.useRegOffset, "Register offset not yet supported");
 
-      uint32_t waddr_add = 39 << 6;
-      uint32_t waddr_mul = 39;
-      uint32_t cond = encodeBranchCond(instr.BR.cond) << 20;
-      uint32_t rel  = (instr.BR.target.relative ? 1 : 0) << 19;
-      *high = 0xf0000000 | cond | rel | waddr_add | waddr_mul;
-      *low  = (uint32_t) 8*instr.BR.target.immOffset;
-
-      ///////////////////
-      vc4_Instr vc4_instr;
       vc4_instr.tag(vc4_Instr::BR);
       vc4_instr.cond_add = encodeBranchCond(instr.BR.cond);
       vc4_instr.rel(instr.BR.target.relative);
       vc4_instr.li_imm = 8*instr.BR.target.immOffset;
-      assertq(*high == vc4_instr.high(), "Difference high output, BR");
-      assertq(*low == vc4_instr.low(), "Difference low output, BR");
-      ///////////////////
-      return;
-    }
+    break;
 
-    // ALU
     case ALU: {
       auto &alu = instr.ALU;
 
       RegTag file;
-      uint32_t sig   = ((instr.hasImm() || alu.op.isRot()) ? 13 : 1) << 28;
-      uint32_t cond  = encodeAssignCond(alu.cond) << (alu.op.isMul() ? 14 : 17);
       uint32_t dest  = encodeDestReg(alu.dest, &file);
-      uint32_t waddr_add, waddr_mul, ws;
-
-      if (alu.op.isMul()) {
-        waddr_add = 39 << 6;
-        waddr_mul = dest;
-        ws        = (file == REG_B ? 0 : 1) << 12;
-      } else {
-        waddr_add = dest << 6;
-        waddr_mul = 39;
-        ws        = (file == REG_A ? 0 : 1) << 12;
-      }
-
-      uint32_t sf    = (alu.m_setCond.flags_set()? 1 : 0) << 13;
-      *high          = sig | cond | ws | sf | waddr_add | waddr_mul;
 
       ///////////////////
-      vc4_Instr vc4_instr;
 
       if (alu.op.isMul()) {
         vc4_instr.cond_mul  = encodeAssignCond(alu.cond);
@@ -486,7 +451,6 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       if (alu.op.isRot()) {
         assert(alu.srcA.is_reg() && alu.srcA.reg().tag == ACC && alu.srcA.reg().regId == 0);
         assert(alu.srcB.is_reg()? alu.srcB.reg().tag == ACC && alu.srcB.reg().regId == 5 : true);
-        uint32_t mulOp = ALUOp(ALUOp::M_V8MIN).vc4_encodeMulOp() << 29;
         uint32_t raddrb;
 
         if (alu.srcB.is_reg()) {
@@ -498,21 +462,10 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
         }
 
 
-        uint32_t raddra = 39;
-        *low = mulOp | (raddrb << 12) | (raddra << 18);
-
-        ///////////////////
         vc4_instr.tag(vc4_Instr::ROT);
         vc4_instr.mulOp  = ALUOp(ALUOp::M_V8MIN).vc4_encodeMulOp();
         vc4_instr.raddrb = raddrb;
-        assertq(*high == vc4_instr.high(), "Difference high output, ROT");
-        assertq(*low == vc4_instr.low(), "Difference low output, ROT");
-        ///////////////////
-        return;
       } else {
-        uint32_t mulOp = (alu.op.isMul() ? alu.op.vc4_encodeMulOp() : 0) << 29;
-        uint32_t addOp = (alu.op.isMul() ? 0 : alu.op.vc4_encodeAddOp()) << 24;
-
         uint32_t muxa, muxb;
         uint32_t raddra = 0, raddrb;
 
@@ -572,12 +525,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
           assert(false);  // Not expecting this
         }
 
-        *low = mulOp | addOp | (raddra << 18) | (raddrb << 12)
-                     | (muxa << 9) | (muxb << 6)
-                     | (muxa << 3) | muxb;
       
-        ///////////////////
-        debug("ALU!");
         vc4_instr.tag(vc4_Instr::ALU, instr.hasImm());
         vc4_instr.mulOp = (alu.op.isMul() ? alu.op.vc4_encodeMulOp() : 0);
         vc4_instr.addOp = (alu.op.isMul() ? 0 : alu.op.vc4_encodeAddOp());
@@ -585,12 +533,9 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
         vc4_instr.raddrb  = raddrb;
         vc4_instr.muxa  = muxa;
         vc4_instr.muxb  = muxb;
-        assertq(*high == vc4_instr.high(), "Difference high output, ALU");
-        assertq(*low == vc4_instr.low(), "Difference low output, ALU");
-        ///////////////////
-        return;
       }
     }
+    break;
 
     // Halt
     case END:
