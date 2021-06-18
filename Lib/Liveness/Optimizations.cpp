@@ -252,9 +252,6 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
     if (instr.tag != InstrTag::LI) continue;
 
     if (instr.LI.imm.is_basic()) {
-//      if (Platform::compiling_for_vc4()) continue;  // v3d only is a shame.
-//                                                    // TODO solve this (see encodeInstr()) 
-
       auto const &reg_usage = live.reg_usage()[instr.LI.dest.regId];
 
       if (reg_usage.assigned_once()) {
