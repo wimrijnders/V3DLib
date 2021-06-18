@@ -82,6 +82,19 @@ public:
   void ws(bool val) { assert(m_tag != BR); m_ws = val; }
   void rel(bool val) { assert(m_tag == BR); m_rel = val; }
 
+  uint64_t encode() const {
+   return (((uint64_t) high()) << 32) + low();
+  }
+
+private:
+  Tag m_tag = NOP;
+  uint32_t m_sig = 14;        // 0xe0000000
+  uint32_t m_sem_flag = 0;    // TODO research what this is for, only used with SINC/SDEC
+
+  bool m_ws  = false;
+  bool m_sf  = false;
+  bool m_rel = false;
+
 
   uint32_t high() const {
     uint32_t ret = (m_sig << 28) | (m_sem_flag << 24) | (waddr_add << 6) | waddr_mul;
@@ -124,15 +137,6 @@ public:
     assert(false);
     return 0;
   }
-
-private:
-  Tag m_tag = NOP;
-  uint32_t m_sig = 14;        // 0xe0000000
-  uint32_t m_sem_flag = 0;    // TODO research what this is for, only used with SINC/SDEC
-
-  bool m_ws  = false;
-  bool m_sf  = false;
-  bool m_rel = false;
 };
 
 // ===============
@@ -386,82 +390,77 @@ void convertInstr(Instr &instr) {
  * This is fairly convoluted stuff; apparently there are rules with regfile A/B usage
  * which I am not aware of.
  */
-#if 0
-void encode_operands(RegOrImm const &srcA, RegOrImm const &srcB) {
-        uint32_t muxa, muxb;
-        uint32_t raddra = 0, raddrb;
+void encode_operands(vc4_Instr &vc4_instr, RegOrImm const &srcA, RegOrImm const &srcB) {
+  uint32_t muxa, muxb;
+  uint32_t raddra = 0, raddrb;
 
-        if (srcA.is_reg() && srcB.is_reg()) { // Both operands are registers
-          RegTag aFile = regFileOf(srcA.reg());
-          RegTag aTag  = srcA.reg().tag;
+  if (srcA.is_reg() && srcB.is_reg()) { // Both operands are registers
+    RegTag aFile = regFileOf(srcA.reg());
+    RegTag aTag  = srcA.reg().tag;
 
-          RegTag bFile = regFileOf(srcB.reg());
-          RegTag bTag  = srcB.reg().tag;
+    RegTag bFile = regFileOf(srcB.reg());
+    RegTag bTag  = srcB.reg().tag;
 
-          // If operands are the same register
-          if (aTag != NONE && aTag == bTag && srcA.reg().regId == srcB.reg().regId) {
-            if (aFile == REG_A) {
-              raddra = encodeSrcReg(srcA.reg(), REG_A, &muxa);
-              muxb = muxa;
-              raddrb = 39;
-            } else {
-              raddra = 39;
-              muxb = muxa;
-              raddrb = encodeSrcReg(srcA.reg(), REG_B, &muxa);
-            }
-          } else {
-            // Operands are different registers
-            assert(aFile == NONE || bFile == NONE || aFile != bFile);  // TODO examine why aFile == bFile is disallowed here
-            if (aFile == REG_A || bFile == REG_B) {
-              raddra = encodeSrcReg(srcA.reg(), REG_A, &muxa);
-              raddrb = encodeSrcReg(srcB.reg(), REG_B, &muxb);
-            } else {
-              raddra = encodeSrcReg(srcB.reg(), REG_A, &muxb);
-              raddrb = encodeSrcReg(srcA.reg(), REG_B, &muxa);
-            }
-          }
-        } else if (srcA.is_imm() || srcB.is_imm()) {
-          if (srcA.is_imm() && srcB.is_imm()) {
-            assertq(srcA.imm().val == srcB.imm().val,
-                    "srcA and srcB can not both be immediates with different values", true);
+    // If operands are the same register
+    if (aTag != NONE && aTag == bTag && srcA.reg().regId == srcB.reg().regId) {
+      if (aFile == REG_A) {
+        raddra = encodeSrcReg(srcA.reg(), REG_A, &muxa);
+        raddrb = 39;
+        muxb = muxa;
+      } else {
+        raddra = 39;
+        raddrb = encodeSrcReg(srcA.reg(), REG_B, &muxa);
+        muxb = muxa;
+      }
+    } else {
+      // Operands are different registers
+      assert(aFile == NONE || bFile == NONE || aFile != bFile);  // TODO examine why aFile == bFile is disallowed here
+      if (aFile == REG_A || bFile == REG_B) {
+        raddra = encodeSrcReg(srcA.reg(), REG_A, &muxa);
+        raddrb = encodeSrcReg(srcB.reg(), REG_B, &muxb);
+      } else {
+        raddra = encodeSrcReg(srcB.reg(), REG_A, &muxb);
+        raddrb = encodeSrcReg(srcA.reg(), REG_B, &muxa);
+      }
+    }
+  } else if (srcA.is_imm() || srcB.is_imm()) {
+    if (srcA.is_imm() && srcB.is_imm()) {
+      assertq(srcA.imm().val == srcB.imm().val,
+        "srcA and srcB can not both be immediates with different values", true);
 
-            raddrb = (uint32_t) srcA.imm().val;  // srcB is the same
-            muxa   = 7;
-            muxb   = 7;
-          } else if (srcB.is_imm()) {
-            // Second operand is a small immediate
-            raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
-            raddrb = (uint32_t) alu.srcB.imm().val;
-            muxb   = 7;
-          } else if (srcA.is_imm()) {
-            // First operand is a small immediate
-            raddra = encodeSrcReg(srcB.reg(), REG_A, &muxb);
-            raddrb = (uint32_t) srcA.imm().val;
-            muxa   = 7;
-          } else {
-            assert(false);  // Not expecting this
-          }
-        } else {
-          assert(false);  // Not expecting this
-        }
+      raddrb = (uint32_t) srcA.imm().val;  // srcB is the same
+      muxa   = 7;
+      muxb   = 7;
+    } else if (srcB.is_imm()) {
+      // Second operand is a small immediate
+      raddra = encodeSrcReg(srcA.reg(), REG_A, &muxa);
+      raddrb = (uint32_t) srcB.imm().val;
+      muxb   = 7;
+    } else if (srcA.is_imm()) {
+      // First operand is a small immediate
+      raddra = encodeSrcReg(srcB.reg(), REG_A, &muxb);
+      raddrb = (uint32_t) srcA.imm().val;
+      muxa   = 7;
+    } else {
+      assert(false);  // Not expecting this
+    }
+  } else {
+    assert(false);  // Not expecting this
+  }
 
       
-        vc4_instr.tag(vc4_Instr::ALU, instr.hasImm());
-        vc4_instr.mulOp = (alu.op.isMul() ? alu.op.vc4_encodeMulOp() : 0);
-        vc4_instr.addOp = (alu.op.isMul() ? 0 : alu.op.vc4_encodeAddOp());
-        vc4_instr.raddra  = raddra;
-        vc4_instr.raddrb  = raddrb;
-        vc4_instr.muxa  = muxa;
-        vc4_instr.muxb  = muxb;
+  vc4_instr.raddra  = raddra;
+  vc4_instr.raddrb  = raddrb;
+  vc4_instr.muxa  = muxa;
+  vc4_instr.muxb  = muxb;
 }
-#endif
 
 
 // ===================
 // Instruction encoder
 // ===================
 
-void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
+uint64_t encodeInstr(Instr instr) {
   convertInstr(instr);
 
   vc4_Instr vc4_instr;
@@ -469,7 +468,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
   // Encode core instruction
   switch (instr.tag) {
     case NO_OP:       // No-op & ignored instructions
-    case INIT_BEGIN:  // TODO perhaps remove these two before encoding
+    case INIT_BEGIN:  // TODO perhaps remove these two before encoding. This already happens in the full list encode
     case INIT_END:
       break; // Use default value for instr, which is a full NOP
 
@@ -530,72 +529,10 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
         vc4_instr.mulOp  = ALUOp(ALUOp::M_V8MIN).vc4_encodeMulOp();
         vc4_instr.raddrb = raddrb;
       } else {
-        uint32_t muxa, muxb;
-        uint32_t raddra = 0, raddrb;
-
-        if (alu.srcA.is_reg() && alu.srcB.is_reg()) { // Both operands are registers
-          RegTag aFile = regFileOf(alu.srcA.reg());
-          RegTag aTag  = alu.srcA.reg().tag;
-
-          RegTag bFile = regFileOf(alu.srcB.reg());
-          RegTag bTag  = alu.srcB.reg().tag;
-
-          // If operands are the same register
-          if (aTag != NONE && aTag == bTag && alu.srcA.reg().regId == alu.srcB.reg().regId) {
-            if (aFile == REG_A) {
-              raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
-              muxb = muxa;
-              raddrb = 39;
-            } else {
-              raddra = 39;
-              muxb = muxa;
-              raddrb = encodeSrcReg(alu.srcA.reg(), REG_B, &muxa);
-            }
-          } else {
-            // Operands are different registers
-            assert(aFile == NONE || bFile == NONE || aFile != bFile);  // TODO examine why aFile == bFile is disallowed here
-            if (aFile == REG_A || bFile == REG_B) {
-              raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
-              raddrb = encodeSrcReg(alu.srcB.reg(), REG_B, &muxb);
-            } else {
-              raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
-              raddrb = encodeSrcReg(alu.srcA.reg(), REG_B, &muxa);
-            }
-          }
-        } else if (alu.srcA.is_imm() || alu.srcB.is_imm()) {
-          if (alu.srcA.is_imm() && alu.srcB.is_imm()) {
-            assertq(alu.srcA.imm().val == alu.srcB.imm().val,
-                    "srcA and srcB can not both be immediates with different values", true);
-
-            raddrb = (uint32_t) alu.srcA.imm().val;  // srcB is the same
-            muxa   = 7;
-            muxb   = 7;
-          } else if (alu.srcB.is_imm()) {
-            // Second operand is a small immediate
-            raddra = encodeSrcReg(alu.srcA.reg(), REG_A, &muxa);
-            raddrb = (uint32_t) alu.srcB.imm().val;
-            muxb   = 7;
-          } else if (alu.srcA.is_imm()) {
-            // First operand is a small immediate
-            raddra = encodeSrcReg(alu.srcB.reg(), REG_A, &muxb);
-            raddrb = (uint32_t) alu.srcA.imm().val;
-            muxa   = 7;
-          } else {
-            assert(false);  // Not expecting this
-          }
-        } else {
-          assert(false);  // Not expecting this
-        }
-
-      
         vc4_instr.tag(vc4_Instr::ALU, instr.hasImm());
         vc4_instr.mulOp = (alu.op.isMul() ? alu.op.vc4_encodeMulOp() : 0);
         vc4_instr.addOp = (alu.op.isMul() ? 0 : alu.op.vc4_encodeAddOp());
-        vc4_instr.raddra  = raddra;
-        vc4_instr.raddrb  = raddrb;
-        vc4_instr.muxa  = muxa;
-        vc4_instr.muxb  = muxb;
-        //encode_operands(alu.srcA, alu.srcB);
+        encode_operands(vc4_instr, alu.srcA, alu.srcB);
       }
     }
     break;
@@ -625,8 +562,7 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
       break;
   }
 
-  *high = vc4_instr.high();
-  *low  = vc4_instr.low();
+  return vc4_instr.encode();
 }
 
 }  // anon namespace
@@ -637,19 +573,11 @@ void encodeInstr(Instr instr, uint32_t* high, uint32_t* low) {
 // ============================================================================
 
 uint64_t encode(Instr instr) {
-  uint32_t low;
-  uint32_t high;
-
-  encodeInstr(instr, &high, &low);
-
-  uint64_t ret = (((uint64_t) high) << 32) + low;
-  return ret;
+  return encodeInstr(instr);
 }
 
 
 void encode(Instr::List &instrs, UIntList &code) {
-  uint32_t high, low;
-
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs.get(i);
     check_instruction_tag_for_platform(instr.tag, true);
@@ -658,8 +586,9 @@ void encode(Instr::List &instrs, UIntList &code) {
       continue;  // Don't encode these block markers
     }
 
-    encodeInstr(instr, &high, &low);
-    code << low << high;
+    uint64_t opcode = encodeInstr(instr);
+    code << (uint32_t) (opcode & 0xffffffff);;
+    code << (uint32_t) (opcode >> 32);
   }
 }
 
