@@ -20,8 +20,7 @@ public:
     END,
     SINC,
     SDEC,
-
-    TMU0_TO_ACC4  // TODO RIP
+    LDTMU  // Always writes to ACC4
   };
 
   uint32_t cond_add = 0;    // reused for LI, BR
@@ -64,7 +63,7 @@ public:
         raddrb = 39;
         break;
 
-      case TMU0_TO_ACC4:
+      case LDTMU:
         m_sig = 10;
         raddrb = 39;
         break;
@@ -102,7 +101,7 @@ private:
     if (m_tag == BR) {
       ret |= (cond_add << 20)
           |  (m_rel?(1 << 19):0);
-    } else if (m_tag != END && m_tag != TMU0_TO_ACC4) {
+    } else if (m_tag != END && m_tag != LDTMU) {
       ret |= (cond_add << 17) | (cond_mul << 14) 
           |  (m_sf?(1 << 13):0)
           |  (m_ws?(1 << 12):0);
@@ -123,7 +122,7 @@ private:
                      | (muxa << 9) | (muxb << 6)
                      | (muxa << 3) | muxb;
       case END:
-      case TMU0_TO_ACC4:
+      case LDTMU:
         return (raddra << 18) | (raddrb << 12);
       case LI:
       case BR:
@@ -540,8 +539,9 @@ uint64_t encodeInstr(Instr instr) {
       vc4_instr.tag(vc4_Instr::END);
       break;
 
-    case TMU0_TO_ACC4:
-      vc4_instr.tag(vc4_Instr::TMU0_TO_ACC4);
+    case RECV:
+      assert(instr.RECV.dest.tag == ACC && instr.RECV.dest.regId == 4);  // ACC4 is the only value allowed as dest
+      vc4_instr.tag(vc4_Instr::LDTMU);
       break;
 
     // Semaphore increment/decrement

@@ -42,9 +42,9 @@ void Mnemonic::set_sig_addr(Location const &loc) {
 }
 
 
-Mnemonic &Mnemonic::ldunifarf(Location const &loc) { sig.ldunifarf = true; set_sig_addr(loc); return *this; }
-Mnemonic &Mnemonic::ldunifrf(Location const &loc)  { sig.ldunifrf = true;  set_sig_addr(loc); return *this; }
-Mnemonic &Mnemonic::ldtmu(Location const &loc)     { sig.ldtmu = true;     set_sig_addr(loc); return *this; }
+Mnemonic &Mnemonic::ldunifarf(Location const &dst) { sig.ldunifarf = true; set_sig_addr(dst); return *this; }
+Mnemonic &Mnemonic::ldunifrf(Location const &dst)  { sig.ldunifrf = true;  set_sig_addr(dst); return *this; }
+Mnemonic &Mnemonic::ldtmu(Location const &dst)     { sig.ldtmu = true;     set_sig_addr(dst); return *this; }
 
 
 Mnemonic &Mnemonic::ldvpm()   { sig.ldvpm   = true; return *this; }

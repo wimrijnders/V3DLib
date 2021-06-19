@@ -40,7 +40,7 @@ Instr genInstr(ALUOp::Enum op, Reg dst, int n, int m) {
 
 
 /**
- * This uses acc4 as interim storage.
+ * SFU functions always write to ACC4
  * Also 2 NOP's required; TODO see this can be optimized
  */
 Instr::List sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *label) {
@@ -103,8 +103,6 @@ Instr mov(Reg dst, Reg src) { return bor(dst, src, src); }
 
 Instr mov(Reg dst, int n)   {
   if (Platform::compiling_for_vc4()) {
-    // Hereby assuming that two imm's for vc4 are not allowed
-    // (assert in encode)
     return li(dst, n);
   } else {
     return genInstr(ALUOp::A_BOR, dst, n, n);
@@ -229,6 +227,17 @@ Instr branch(BranchCond cond, Label label) {
   instr.BRL.cond  = cond; 
   instr.BRL.label = label;
 
+  return instr;
+}
+
+
+/**
+ * Load next value from TMU
+ */
+Instr recv(Reg dst) {
+  Instr instr(RECV);
+  instr.RECV.dest = dst;
+ 
   return instr;
 }
 

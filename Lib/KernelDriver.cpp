@@ -86,7 +86,9 @@ void print_target_code(FILE *f, Instr::List const &code) {
 void compile_postprocess(Instr::List &targetCode) {
   assertq(!targetCode.empty(), "compile_postprocess(): passed target code is empty");
 
-  loadStorePass(targetCode);
+  if (Platform::compiling_for_vc4()) {
+    loadStorePass(targetCode);
+  }
 
   //compile_data.target_code_before_regalloc = targetCode.dump();
 

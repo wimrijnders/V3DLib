@@ -701,17 +701,6 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
             writeReg(s, &state, false, always, instr.RECV.dest, val);
             break;
           }
-          case TMU0_TO_ACC4: {                     // Read from TMU0 into accumulator 4
-            assert(s->loadBuffer.size() > 0);
-            Vec val = s->loadBuffer.remove(0);
-            AssignCond always;
-            always.tag = ALWAYS;
-            Reg dest;
-            dest.tag = ACC;
-            dest.regId = 4;
-            writeReg(s, &state, false, always, dest, val);
-            break;
-          }
           case IRQ:                                 // Host IRQ
             break;
           case SINC: {                              // Semaphore increment

@@ -64,6 +64,8 @@ public:
   void set_cond_tag(AssignCond cond);
   void set_push_tag(SetCond set_cond);
 
+  bool check_dst() const;
+
   std::string dump() const; 
   std::string mnemonic(bool with_comments = false) const;
   uint64_t code() const;
@@ -147,6 +149,7 @@ public:
   Instructions &header(std::string const &msg) { front().header(msg);  return *this; }
   Instructions &comment(std::string msg, bool to_front = true);
   void set_cond_tag(AssignCond cond);
+  bool check_consistent() const;
 };
 
 

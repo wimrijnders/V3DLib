@@ -23,9 +23,9 @@ public:
   Mnemonic &ldunifa();
   Mnemonic &ldvpm();
 
-  Mnemonic &ldunifarf(Location const &loc);
-  Mnemonic &ldunifrf(Location const &loc);
-  Mnemonic &ldtmu(Location const &loc);
+  Mnemonic &ldunifarf(Location const &dst);
+  Mnemonic &ldunifrf(Location const &dst);
+  Mnemonic &ldtmu(Location const &dst);
 
 
   //

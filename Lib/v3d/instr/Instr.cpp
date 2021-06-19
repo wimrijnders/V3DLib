@@ -203,6 +203,57 @@ void Instr::set_push_tag(SetCond set_cond) {
 }
 
 
+/**
+ * Check if there are same target dst registers
+ *
+ * Also checks signal dst if present.
+ *
+ * NOTE: There is no check here is add/mul dst are actually used.
+ */
+bool Instr::check_dst() const {
+  int ld_count = 0;
+  if (sig.ldunifarf) ld_count++;
+  if (sig.ldunifrf) ld_count++;
+  if (sig.ldtmu) ld_count++;
+
+  if (ld_count > 1) {
+    error("More than one ld-signal with dst register set");
+    return false;
+  }
+
+  bool ret = true;
+
+  if (ld_count == 1) {
+    // signal has a dst, compare with ALU destinations
+    if (alu.add.op != V3D_QPU_A_NOP && sig_addr == alu.add.waddr && sig_magic == alu.add.magic_write) {
+      breakpoint
+
+      error("signal dst register same as add alu dst register");
+      ret = false;
+    }
+
+    if (alu.mul.op != V3D_QPU_M_NOP && sig_addr == alu.mul.waddr && sig_magic == alu.mul.magic_write) {
+      breakpoint
+
+      error("signal dst register same as mul alu dst register");
+      ret = false;
+    }
+  }
+
+  if (alu.add.op != V3D_QPU_A_NOP && alu.mul.op != V3D_QPU_M_NOP
+   && alu.add.waddr == alu.mul.waddr && alu.add.magic_write == alu.mul.magic_write) {
+    breakpoint
+
+    error("add alu dst register same as mul alu dst register");
+    ret = false;
+  }
+
+
+
+  return ret;
+}
+
+
 std::string Instr::dump() const {
   char buffer[10*1024];
   instr_dump(buffer, const_cast<Instr *>(this));
@@ -765,6 +816,21 @@ void Instructions::set_cond_tag(AssignCond cond) {
   for (auto &instr : *this) {
     instr.set_cond_tag(cond);
   }
+}
+
+
+bool Instructions::check_consistent() const {
+  bool ret = true;
+
+  for (auto &instr : *this) {
+    if (!instr.check_dst()) {
+      std::string err;
+      err << "Overlapping dst registers in instruction:" << instr.mnemonic();  // TODO: output index if required
+      ret = false;
+    }
+  }
+
+  return ret;
 }
 
 }  // namespace v3d

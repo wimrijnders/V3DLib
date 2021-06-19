@@ -46,7 +46,6 @@ std::string pretty_instr(Instr const &instr) {
     case INIT_BEGIN:
     case INIT_END:
     case END:         // vc4
-    case TMU0_TO_ACC4:
     case NO_OP:
     case SKIP:
     case IRQ:
@@ -77,7 +76,6 @@ const char *pretty_instr_tag(InstrTag tag) {
     case RECV:         return "RECV";
     case IRQ:          return "IRQ";
     case VPM_STALL:    return "VPM_STALL";
-    case TMU0_TO_ACC4: return "TMU0_TO_ACC4";
     case INIT_BEGIN:   return "INIT_BEGIN";
     case INIT_END:     return "INIT_END";
 

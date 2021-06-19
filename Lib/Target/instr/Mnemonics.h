@@ -67,6 +67,8 @@ Instr::List recipsqrt(Var dst, Var srcA);
 Instr::List bexp(Var dst, Var srcA);
 Instr::List blog(Var dst, Var srcA);
 
+Instr recv(Reg dst);
+
 // v3d only
 Instr tmuwt();
 

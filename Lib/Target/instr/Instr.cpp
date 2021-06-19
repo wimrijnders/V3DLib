@@ -49,7 +49,6 @@ Instr::Instr(InstrTag in_tag) {
   case InstrTag::INIT_END:
   case InstrTag::RECV:
   case InstrTag::END:
-  case InstrTag::TMU0_TO_ACC4:
     tag = in_tag;
     break;
   default:
@@ -394,39 +393,38 @@ std::string Instr::dump() const {
 /**
  * Determine the accumulators used in this instruction
  *
+ * There is no distinguishing dst and src here.
+ *
  * @return bitfield with the bits set for used accumulators,
  *         bit 0 == ACC0, bit 1 == ACC1 etc.
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ *
+ * 1. Somewhat of a hack: LI for v3d can potentially use r0 and r1, flag as used here.
+ *    See encode_int_immediate() and convert_int_powers() in v3d KernelDriver. 
+ *    This could be further specified.
+ *
+ *    Better would be to:
+ *     - Flag usage accs in v3d instruction generation
+ *     - Allow more flexibility in v3d instruction generation to select accs
+ *     - Don't use accs at all there, but that needs a way to select rf-regs during v3d generation
+ *
+ *    A bit unhappy about this, but it's necessary to prevent.
+ *    Another brilliant idea (ie use accs in v3d instructions) which is turning out to be a brain fart.
  */
 uint32_t Instr::get_acc_usage() const {
-  // No distinguishing dst and src here
   uint32_t ret = 0;
 
   switch (tag) {
-    case InstrTag::TMU0_TO_ACC4:  // Load immediate
-      ret |=  (1 << 4);
-      break;
-
     case InstrTag::LI:  // Load immediate
       if (LI.dest.tag == ACC) {
         ret |=  (1 << LI.dest.regId);
       }
 
-      //
-      // Somewhat of a hack.
-      //
-      // LI for v3d can potentially use r0 and r1, flag as used here.
-      // See encode_int_immediate() and convert_int_powers() in v3d KernelDriver. 
-      // This could be further specified.
-      //
-      // Better would be to:
-      //  - Flag usage accs in v3d instruction generation
-      //  - Allow more flexibility in v3d instruction generation to select accs
-      //  - Don't use accs at all there, but that needs a way to select rf-regs during v3d generation
-      //
-      // A bit unhappy about this, but it's necessary to prevent.
-      // Another brilliant idea (ie use accs in v3d instructions) which is turning out to be a brain fart.
-      //
-      if (!Platform::compiling_for_vc4()) {
+      if (!Platform::compiling_for_vc4()) {  // See Note 1.
         ret |= 3;  //debug("LI block acc0 and acc1");
       }
 

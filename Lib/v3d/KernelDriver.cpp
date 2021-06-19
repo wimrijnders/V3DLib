@@ -653,13 +653,16 @@ Instructions encodeInstr(V3DLib::Instr instr) {
     }
     break;
 
-    //
-    // Handled tags
-    //
-    case LI:           ret << encodeLoadImmediate(instr); break;
-    case ALU:          ret << encodeALUOp(instr);         break;
-    case TMU0_TO_ACC4: ret << nop().ldtmu(r4);            break;
-    case NO_OP:        ret << nop();                      break;
+    case RECV: {
+      auto dst_reg = encodeDestReg(instr);
+      assert(dst_reg);
+      ret << nop().ldtmu(*dst_reg);
+    }
+    break;
+
+    case LI:           ret << encodeLoadImmediate(instr);   break;
+    case ALU:          ret << encodeALUOp(instr);           break;
+    case NO_OP:        ret << nop();                        break;
 
     default:
       fatal("v3d: missing case in encodeInstr");
@@ -1146,6 +1149,12 @@ void KernelDriver::encode() {
   _encode(m_targetCode, instructions);
   combine(instructions);
   removeLabels(instructions);
+
+  if (!instructions.check_consistent()) {
+    std::string err;
+    err << "Overlapping dst registers present";
+    local_errors << err;
+  }
 
   if (!local_errors.empty()) {
     breakpoint
