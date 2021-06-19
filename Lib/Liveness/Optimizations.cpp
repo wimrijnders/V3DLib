@@ -255,6 +255,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
       if (reg_usage.assigned_once()) {
         assert(reg_usage.first_usage() == reg_usage.first_dst());
+        bool changed = false;
         for (int i = reg_usage.first_usage() + 1; i <= reg_usage.last_usage(); i++) {
           auto &instr2 = instrs[i];
           if (!instr2.is_src_reg(instr.dest())) continue;
@@ -273,13 +274,21 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
           if (can_use_imm) {
             // Perform the subst
-            if (instr2.ALU.srcA == instr.dest()) instr2.ALU.srcA.set_imm(instr.LI.imm);
-            if (instr2.ALU.srcB == instr.dest()) instr2.ALU.srcB.set_imm(instr.LI.imm);
+            if (instr2.ALU.srcA == instr.dest()) {
+              instr2.ALU.srcA.set_imm(instr.LI.imm);
+              changed = true;
+            }
+
+            if (instr2.ALU.srcB == instr.dest()) {
+              instr2.ALU.srcB.set_imm(instr.LI.imm);
+              changed = true;
+            }
           }
         }
 
-        instr.tag = SKIP;
-        break;
+        if (changed) {
+          instr.tag = SKIP;
+        }
       }
 
       continue;

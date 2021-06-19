@@ -42,8 +42,9 @@ TEST_CASE("Test loading of immediates [dsl][imm]") {
   float_result.fill(0.0f);
 
   auto k = compile(immediate_kernel);
+  //k.dump_compile_data(true, "./obj/test/test_imm_vc4_data.txt");
+  //k.pretty(true, "./obj/test/test_imm_vc4.txt");
   REQUIRE(!k.has_errors());
-  //k.pretty(true);
   k.load(&int_result, &float_result);
   k.call();
 
