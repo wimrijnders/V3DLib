@@ -56,12 +56,12 @@ void KernelDriver::emit_opcodes(FILE *f) {
   fprintf(f, "===============\n\n");
   fflush(f);
 
+  encode();
+
   if (code.empty()) {
     fprintf(f, "<No opcodes to print>\n");
   } else {
-    UIntList instructions = V3DLib::vc4::encode(m_targetCode);
-    assert(instructions.size() == code.size());
-    dump_instr(f, (uint64_t const *) instructions.data(), instructions.size()/2);
+    dump_instr(f, (uint64_t const *) code.data(), code.size()/2);
   }
 }
 
