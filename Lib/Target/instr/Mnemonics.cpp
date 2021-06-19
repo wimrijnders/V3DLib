@@ -8,10 +8,10 @@ namespace {
 Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, Reg srcB) {
   Instr instr(ALU);
   instr.ALU.cond      = always;
-  instr.ALU.dest      = dst;
-  instr.ALU.srcA.set_reg(srcA);
   instr.ALU.op        = ALUOp(op);
+  instr.ALU.srcA.set_reg(srcA);
   instr.ALU.srcB.set_reg(srcB);
+  instr.dest(dst);
 
   return instr;
 }
@@ -19,10 +19,10 @@ Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, Reg srcB) {
 
 Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, int n) {
   Instr instr(ALU);
-  instr.ALU.dest              = dst;
-  instr.ALU.srcA.set_reg(srcA);
   instr.ALU.op                = ALUOp(op);
+  instr.ALU.srcA.set_reg(srcA);
   instr.ALU.srcB.set_imm(n);
+  instr.dest(dst);
 
   return instr;
 }
@@ -30,10 +30,10 @@ Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, int n) {
 
 Instr genInstr(ALUOp::Enum op, Reg dst, int n, int m) {
   Instr instr(ALU);
-  instr.ALU.dest              = dst;
-  instr.ALU.srcA.set_imm(n);
   instr.ALU.op                = ALUOp(op);
+  instr.ALU.srcA.set_imm(n);
   instr.ALU.srcB.set_imm(m);
+  instr.dest(dst);
 
   return instr;
 }
@@ -161,8 +161,8 @@ Instr sub(Reg dst, Reg srcA, int n) {
 Instr li(Reg dst, int i) {
   Instr instr(LI);
   instr.LI.cond = always;
-  instr.LI.dest = dst;
   instr.LI.imm  = Imm(i);
+  instr.dest(dst);
  
   return instr;
 }
@@ -176,8 +176,8 @@ Instr li(Var v, int i) {
 Instr li(Var v, float f) {
   Instr instr(LI);
   instr.LI.cond = always;
-  instr.LI.dest = dstReg(v);
   instr.LI.imm  = Imm(f);
+  instr.dest(dstReg(v));
  
   return instr;
 }
@@ -236,8 +236,7 @@ Instr branch(BranchCond cond, Label label) {
  */
 Instr recv(Reg dst) {
   Instr instr(RECV);
-  instr.RECV.dest = dst;
- 
+  instr.dest(dst);
   return instr;
 }
 

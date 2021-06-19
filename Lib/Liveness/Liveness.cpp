@@ -68,7 +68,7 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
 
     if (check_regfile_register(replace_with, r)) {
       replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
-      renameDest(instr, Reg(REG_A, r), replace_with);
+      instr.rename_dest(Reg(REG_A, r), replace_with);
     }
   }
 

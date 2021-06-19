@@ -143,16 +143,7 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
   bool is_none = false;
   std::unique_ptr<Location> ret;
 
-  Reg reg;
-  if (src_instr.tag == ALU) {
-    reg = src_instr.ALU.dest;
-  } else if (src_instr.tag == RECV) {
-    reg = src_instr.RECV.dest;
-  } else {
-    assert(src_instr.tag == LI);
-    reg = src_instr.LI.dest;
-  }
-
+  Reg reg = src_instr.dest();
   check_unhandled_registers(reg, false);
 
   switch (reg.tag) {

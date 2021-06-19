@@ -578,8 +578,7 @@ Instructions encodeALUOp(V3DLib::Instr instr) {
   Instructions ret;
 
   if (instr.isUniformLoad()) {
-    Reg dst_reg = instr.ALU.dest;
-    uint8_t rf_addr = to_waddr(dst_reg);
+    uint8_t rf_addr = to_waddr(instr.dest());
     ret << nop().ldunifrf(rf(rf_addr));
    } else if (translateRotate(instr, ret)) {
     handle_condition_tags(instr, ret);

@@ -357,9 +357,9 @@ void convertInstr(Instr &instr) {
       instr.tag           = LI;
       instr.LI.m_setCond.clear();
       instr.LI.cond.tag   = AssignCond::Tag::ALWAYS;
-      instr.LI.dest.tag   = SPECIAL;
-      instr.LI.dest.regId = SPECIAL_HOST_INT;
       instr.LI.imm        = Imm(1);
+
+      instr.dest(Reg(SPECIAL, SPECIAL_HOST_INT));
       break;
 
     case DMA_LOAD_WAIT:
@@ -370,10 +370,10 @@ void convertInstr(Instr &instr) {
       instr.ALU.m_setCond.clear();
       instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
       instr.ALU.op                = ALUOp(ALUOp::A_BOR);
-      instr.ALU.dest.tag          = NONE;
 
       instr.ALU.srcA.set_reg(SPECIAL, src);  // srcA is same as srcB
       instr.ALU.srcB.set_reg(SPECIAL, src);
+      instr.dest(Reg(NONE, 0));
       break;
     }
 
@@ -474,8 +474,8 @@ uint64_t encodeInstr(Instr instr) {
       RegTag file;
 
       vc4_instr.tag(vc4_Instr::LI);
-      vc4_instr.cond_add = encodeAssignCond(li.cond);
-      vc4_instr.waddr_add = encodeDestReg(li.dest, &file);
+      vc4_instr.cond_add  = encodeAssignCond(li.cond);
+      vc4_instr.waddr_add = encodeDestReg(instr.dest(), &file);
       vc4_instr.sf(li.m_setCond.flags_set());
       vc4_instr.ws(file != REG_A);
       vc4_instr.li_imm = li.imm.encode();
@@ -495,7 +495,7 @@ uint64_t encodeInstr(Instr instr) {
       auto &alu = instr.ALU;
 
       RegTag file;
-      uint32_t dest  = encodeDestReg(alu.dest, &file);
+      uint32_t dest  = encodeDestReg(instr.dest(), &file);
 
       if (alu.op.isMul()) {
         vc4_instr.cond_mul  = encodeAssignCond(alu.cond);
@@ -539,10 +539,11 @@ uint64_t encodeInstr(Instr instr) {
       vc4_instr.tag(vc4_Instr::END);
       break;
 
-    case RECV:
-      assert(instr.RECV.dest.tag == ACC && instr.RECV.dest.regId == 4);  // ACC4 is the only value allowed as dest
+    case RECV: {
+      assert(instr.dest() == Reg(ACC,4));  // ACC4 is the only value allowed as dest
       vc4_instr.tag(vc4_Instr::LDTMU);
-      break;
+    }
+    break;
 
     // Semaphore increment/decrement
     case SINC:

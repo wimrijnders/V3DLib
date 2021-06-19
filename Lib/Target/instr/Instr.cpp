@@ -35,12 +35,12 @@ std::string BranchTarget::to_string() const {
 Instr::Instr(InstrTag in_tag) {
   switch (in_tag) {
   case InstrTag::ALU:
-    tag          = InstrTag::ALU;
+    tag          = in_tag;
     ALU.m_setCond.clear();
     ALU.cond     = always;
     break;
   case InstrTag::LI:
-    tag          = InstrTag::LI;
+    tag          = in_tag;
     LI.m_setCond.clear();
     LI.cond      = always;
     break;
@@ -58,6 +58,18 @@ Instr::Instr(InstrTag in_tag) {
 }
 
 
+Reg Instr::dest() const {
+  assertq(has_dest(), "oops", true);
+  return m_dest;
+}
+
+
+void Instr::dest(Reg const &rhs) {
+  assertq(has_dest(), "oops", true);
+  m_dest = rhs;
+}
+
+
 Instr Instr::nop() {
   Instr instr;
   instr.tag = NO_OP;
@@ -71,23 +83,15 @@ Instr Instr::nop() {
  * Absence of it is indicated by tag NONE in the return value
  */
 Reg Instr::dst_reg() const {
-  Reg ret;
-  ret.tag = NONE;
-
-  switch (tag) {
-    case InstrTag::LI:   ret = LI.dest;   break;
-    case InstrTag::ALU:  ret = ALU.dest;  break;
-    case InstrTag::RECV: ret = RECV.dest; break;
-    default: break;
-  }  
-
-  return ret;
+  if (has_dest()) return dest();
+  return Reg(NONE, 0);
 }
 
 
 Reg Instr::dst_a_reg() const {
-  Reg ret = dst_reg();
+  if (!has_dest()) return Reg(NONE, 0);
 
+  Reg ret = dest();
   if (ret.tag != REG_A) ret.tag = NONE;
   return ret;
 }
@@ -163,9 +167,9 @@ std::set<Reg> Instr::src_regs(bool set_use_where) const {
 
   if (set_use_where) {  // Add destination reg to 'use' set if conditional assigment
     if (tag == InstrTag::LI && LI.cond.tag != ALWAYS) {
-      ret.insert(LI.dest);
+      ret.insert(dest());
     } else if (tag == InstrTag::ALU && ALU.cond.tag != ALWAYS) {
-      ret.insert(ALU.dest);
+      ret.insert(dest());
     }
   }
 
@@ -183,6 +187,24 @@ bool Instr::is_src_reg(Reg const &rhs) const {
 
   if (ALU.srcA.is_reg() && ALU.srcA.reg() == rhs) return true;
   if (ALU.srcB.is_reg() && ALU.srcB.reg() == rhs) return true;
+
+  return false;
+}
+
+
+/**
+ * Rename a destination register in an instruction
+ *
+ * @return true if anything replaced, false otherwise
+ */
+bool Instr::rename_dest(Reg const &current, Reg const &replace_with) {
+  assert(current != replace_with);  // Otherwise subst is senseless
+  if (!has_dest()) return false;
+
+  if (dest() == current) {
+    dest(replace_with);
+    return true;
+  }
 
   return false;
 }
@@ -341,20 +363,6 @@ bool Instr::isUniformPtrLoad() const {
 }
 
 
-bool Instr::isTMUAWrite() const {
-  if (tag != InstrTag::ALU) return false;
-
-  Reg reg = ALU.dest;
-  if (reg.tag != SPECIAL) return false;
-
-  if (Platform::compiling_for_vc4() && !LibSettings::use_tmu_for_load()) {
-    return (reg.regId == SPECIAL_DMA_ST_ADDR);
-  } else {
-    return (reg.regId == SPECIAL_TMU0_S);
-  }
-}
-
-
 bool Instr::isRot() const {
   if (tag != InstrTag::ALU) {
     return false;
@@ -374,10 +382,8 @@ bool Instr::isZero() const {
       && !LI.m_setCond.flags_set()
       && LI.cond.tag      == AssignCond::NEVER
       && LI.cond.flag     == ZS
-      && LI.dest.tag      == REG_A
-      && LI.dest.regId    == 0
-      && LI.dest.isUniformPtr == false 
       && LI.imm.is_zero()
+      && dest() == Reg(REG_A, 0) 
   ;
 }
 
@@ -420,8 +426,8 @@ uint32_t Instr::get_acc_usage() const {
 
   switch (tag) {
     case InstrTag::LI:  // Load immediate
-      if (LI.dest.tag == ACC) {
-        ret |=  (1 << LI.dest.regId);
+      if (dest().tag == ACC) {
+        ret |=  (1 << dest().regId);
       }
 
       if (!Platform::compiling_for_vc4()) {  // See Note 1.
@@ -431,8 +437,8 @@ uint32_t Instr::get_acc_usage() const {
       break;
 
     case InstrTag::ALU:  // ALU operation
-      if (ALU.dest.tag == ACC) {
-        ret |=  (1 << ALU.dest.regId);
+      if (dest().tag == ACC) {
+        ret |=  (1 << dest().regId);
       }
 
       // NOTE: dst/srcA/srcB can be same acc
@@ -454,9 +460,9 @@ uint32_t Instr::get_acc_usage() const {
       }
       break;
 
-    case InstrTag::RECV:  // RECV instruction
-      if (RECV.dest.tag == ACC) {
-        ret |=  (1 << RECV.dest.regId);
+    case InstrTag::RECV:
+      if (dest().tag == ACC) {
+        ret |=  (1 << dest().regId);
       }
       break;
 

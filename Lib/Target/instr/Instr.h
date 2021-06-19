@@ -112,7 +112,6 @@ struct Instr : public InstructionComment {
     struct {
       SetCond    m_setCond;
       AssignCond cond;
-      Reg        dest;
       Imm        imm;
     } LI;
 
@@ -140,9 +139,6 @@ struct Instr : public InstructionComment {
 
     // Semaphores
     int semaId;                 // Semaphore id (range 0..15)
-
-    // Load receive via TMU
-    struct { Reg dest; } RECV;  // Destination register for load receive
   };
 
 
@@ -170,18 +166,22 @@ struct Instr : public InstructionComment {
   bool hasImm() const { return ALU.srcA.is_imm() || ALU.srcB.is_imm(); }
   bool isUniformLoad() const;
   bool isUniformPtrLoad() const;
-  bool isTMUAWrite() const;
   bool isRot() const;
   bool isZero() const;
   bool isLast() const;
   bool has_registers() const { return tag == InstrTag::LI || tag == InstrTag::ALU || tag == InstrTag::RECV; }
 
+
+  Reg dest() const;
+  void dest(Reg const &rhs);
   Reg dst_reg() const;
   std::set<Reg> src_regs(bool set_use_where = false) const;
   Reg dst_a_reg() const;
   RegIdSet src_a_regs(bool set_use_where = false) const;
   bool is_dst_reg(Reg const &rhs) const;
   bool is_src_reg(Reg const &rhs) const;
+  bool has_dest() const { return (tag == InstrTag::LI || tag == InstrTag::ALU || tag == InstrTag::RECV); }
+  bool rename_dest(Reg const &current, Reg const &replace_with);
 
   SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;
@@ -236,9 +236,10 @@ struct Instr : public InstructionComment {
   }
 
 private:
-  SetCond &setCond();
-
   bool m_break_point = false;
+  Reg  m_dest;
+
+  SetCond &setCond();
 };
 
 

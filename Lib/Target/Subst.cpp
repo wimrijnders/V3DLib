@@ -2,42 +2,6 @@
 
 namespace V3DLib {
 
-/**
- * Rename a destination register in an instruction
- *
- * @return true if anything replaced, false otherwise
- */
-bool renameDest(Instr &instr, Reg const &current, Reg const &replace_with) {
-  bool replaced = false;
-
-  switch (instr.tag) {
-    case LI:  // Load immediate
-      if (instr.LI.dest == current) {
-        instr.LI.dest = replace_with;
-        replaced = true;;
-      }
-      break;
-
-    case ALU:  // ALU operation
-      if (instr.ALU.dest == current) {
-        instr.ALU.dest = replace_with;
-        replaced = true;;
-      }
-      break;
-
-    case RECV:  // RECV instruction
-      if (instr.RECV.dest == current) {
-        instr.RECV.dest = replace_with;
-        replaced = true;;
-      }
-      break;
-
-    default:
-      break;
-  }
-
-  return replaced;
-}
 
 
 /**
@@ -46,6 +10,8 @@ bool renameDest(Instr &instr, Reg const &current, Reg const &replace_with) {
  * @return true if anything replaced, false otherwise
  */
 bool renameUses(Instr &instr, Reg const &current, Reg const &replace_with) {
+  assert(current != replace_with);  // otherwise rename is senseless
+
   if  (instr.tag != ALU) return false;
   bool replaced = false;
 
@@ -67,27 +33,22 @@ bool renameUses(Instr &instr, Reg const &current, Reg const &replace_with) {
  * Globally change register tag vt to wt in given instruction
  */
 void substRegTag(Instr* instr, RegTag vt, RegTag wt) {
-  switch (instr->tag) {
-    case LI:  // Load immediate
-      if (instr->LI.dest.tag == vt)
-        instr->LI.dest.tag = wt;
-      return;
+  assert(vt != wt);  // otherwise subst is senseless
 
-    case ALU:
-      if (instr->ALU.dest.tag == vt)
-        instr->ALU.dest.tag = wt;
+  if (instr->has_dest()) {
+    Reg tmp = instr->dest();
+    if (tmp.tag == vt) {
+      tmp.tag = wt;
+      instr->dest(tmp);
+    }
+  }
+
+  if (instr->tag == ALU) {
       if (instr->ALU.srcA.is_reg() && instr->ALU.srcA.reg().tag == vt)
         instr->ALU.srcA.reg().tag = wt;
+
       if (instr->ALU.srcB.is_reg() && instr->ALU.srcB.reg().tag == vt)
         instr->ALU.srcB.reg().tag = wt;
-      return;
-
-    case RECV:
-      if (instr->RECV.dest.tag == vt)
-        instr->RECV.dest.tag = wt;
-      return;
-    default:
-      return;
   }
 }
 

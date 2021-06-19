@@ -24,34 +24,6 @@ using ::operator<<;  // C++ weirdness; come on c++, get a grip.
 
 namespace {
 
-/**
- * Get the v3d mul equivalent of a target lang add alu instruction.
- *
- * @param dst  output parameter, recieves equivalent instruction if found
- *
- * @return  true if equivalent found, false otherwise
- */
-bool convert_to_mul_instruction(ALUInstruction const &add_alu, v3d_qpu_mul_op &dst) {
-  auto op = add_alu.op.value();
-
-  if (op == ALUOp::A_BOR) {
-    // Special case: OR with same inputs can be considered a MOV
-    // Handles rf-registers and accumulators only, fails otherwise
-    // (ie. case combined tmua tmud won't work).
-    if ((add_alu.dest.tag <= ACC)
-     && (add_alu.srcA == add_alu.srcB)
-     && (add_alu.srcA.is_imm() || add_alu.srcA.reg().tag <= ACC)  // Verified this check is required, won't work with special registers
-    ) {
-      dst = V3D_QPU_M_MOV;  // _FMOV
-      return true;
-    }
-  }
-
-  // Handle general case
-  return V3DLib::v3d::instr::OpItems::get_mul_op(add_alu, dst);
-}
-
-
 #ifdef DEBUG
 std::string binaryValue(uint64_t num) {
   const int size = sizeof(num)*8;
@@ -60,11 +32,7 @@ std::string binaryValue(uint64_t num) {
   for (int i = size -1; i >=0; i--) {
     bool val = ((num >> i) & 1) == 1;
 
-    if (val) {
-      result += '1';
-    } else {
-      result += '0';
-    }
+    result += val?'1':'0';
 
     if (i % 10 == 0) {
       result += '.';
@@ -668,9 +636,30 @@ bool Instr::alu_mul_set(V3DLib::Instr const &src_instr) {
   assert(dst);
 
   v3d_qpu_mul_op mul_op;
-  if (!convert_to_mul_instruction(alu, mul_op)) {
-    return false;
+
+  //
+  // Get the v3d mul equivalent of a target lang add alu instruction.
+  //
+
+  // Special case: OR with same inputs can be considered a MOV
+  // Handles rf-registers and accumulators only, fails otherwise
+  // (ie. case combined tmua tmud won't work).
+  if (alu.op == ALUOp::A_BOR) {
+    bool same_sources = (src_instr.dest().tag <= ACC)
+                     && (alu.srcA == alu.srcB)
+                     && (alu.srcA.is_imm() || alu.srcA.reg().tag <= ACC);  // Verified: this check is required, won't work with special registers
+
+    if (same_sources) {
+      mul_op = V3D_QPU_M_MOV;  // TODO consider _FMOV as well
+    } else {
+      return false;  // Can't convert
+    }
   }
+
+  if (!V3DLib::v3d::instr::OpItems::get_mul_op(alu, mul_op)) {
+    return false;  // Can't convert
+  }
+
 
   auto reg_a = alu.srcA;
   auto reg_b = alu.srcB;

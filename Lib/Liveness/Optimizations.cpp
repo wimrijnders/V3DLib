@@ -15,10 +15,9 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
 
   for (int i = item.first_usage(); i <= item.last_usage(); i++) {
     auto &instr = instrs[i];
-    if (!instr.has_registers()) continue;  // Doesn't  help much
+    if (!instr.has_registers()) continue;  // Doesn't help much
 
-    // Both replace 'current' register only if present
-    renameDest(instr, current, replace_with);
+    instr.rename_dest(current, replace_with);
     renameUses(instr, current, replace_with);
   }
 
@@ -156,7 +155,7 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     Reg replace_with(ACC, instrs.get_free_acc(i - 1, i));
     assert(replace_with.regId != -1);
 
-    renameDest( prev, current, replace_with);
+    prev.rename_dest(current, replace_with);
     renameUses(instr, current, replace_with);
     instrs[i-1] = prev;
     instrs[i]   = instr;
@@ -198,8 +197,8 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     Reg replace_with(ACC, instrs.get_free_acc(i, i));
     assert(replace_with.regId != -1);
 
-    renameDest(instr, current, replace_with);
-    instrs[i]   = instr;
+    instr.rename_dest(current, replace_with);
+    instrs[i] = instr;
 
     // DANGEROUS! Do not use this value downstream (remember why, old fart?).   
     // Currently stored for debug display purposes only! 
@@ -252,7 +251,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
     if (instr.tag != InstrTag::LI) continue;
 
     if (instr.LI.imm.is_basic()) {
-      auto const &reg_usage = live.reg_usage()[instr.LI.dest.regId];
+      auto const &reg_usage = live.reg_usage()[instr.dest().regId];
 
       if (reg_usage.assigned_once()) {
         std::string output;
@@ -260,7 +259,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
         assert(reg_usage.first_usage() == reg_usage.first_dst());
         for (int i = reg_usage.first_usage() + 1; i <= reg_usage.last_usage(); i++) {
           auto &instr2 = instrs[i];
-          if (!instr2.is_src_reg(instr.LI.dest)) continue;
+          if (!instr2.is_src_reg(instr.dest())) continue;
 
          if (instr2.assign_cond() != instr.assign_cond()) {
            output << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump() << "\n";
@@ -273,8 +272,8 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
           if (can_use_imm) {
             // Perform the subst
-            if (instr2.ALU.srcA == instr.LI.dest) instr2.ALU.srcA.set_imm(instr.LI.imm);
-            if (instr2.ALU.srcB == instr.LI.dest) instr2.ALU.srcB.set_imm(instr.LI.imm);
+            if (instr2.ALU.srcA == instr.dest()) instr2.ALU.srcA.set_imm(instr.LI.imm);
+            if (instr2.ALU.srcB == instr.dest()) instr2.ALU.srcB.set_imm(instr.LI.imm);
             instr.tag = SKIP;
           } else {
             //output << "  " << can_use_imm << ": " << instr2.dump() << "\n";
@@ -317,7 +316,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
 
 
-      if (instr2.is_dst_reg(instr.LI.dest)) {
+      if (instr2.is_dst_reg(instr.dest())) {
 /*
         std::string msg;
         msg << "Stopping forward scan LIs: "
@@ -345,8 +344,8 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
       // Find and replace all occurences of the second LI with the first LI instruction
       //
       int num_subsitutions = 0;
-      Reg current      = instr2.LI.dest;
-      Reg replace_with = instr.LI.dest;
+      Reg current      = instr2.dest();
+      Reg replace_with = instr.dest();
 
       // The bulk of the time (99%) in this function goes into the following part, 
       // last init + loop.

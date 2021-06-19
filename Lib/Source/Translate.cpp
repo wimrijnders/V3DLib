@@ -213,10 +213,10 @@ void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
 
   Instr instr(ALU);
   instr.setCondOp(b.cmp);
-  instr.ALU.dest     = dstReg(dummy);
-  instr.ALU.srcA     = operand(b.cmp_lhs());
   instr.ALU.op       = ALUOp(op);
+  instr.ALU.srcA     = operand(b.cmp_lhs());
   instr.ALU.srcB     = operand(b.cmp_rhs());
+  instr.dest(dstReg(dummy));
 
   *seq << li(v, 0).comment("Store condition as Bool var")
        << instr
@@ -440,15 +440,6 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 }
 
 
-Instr loadReceive(Expr::Ptr dest) {
-  assert(dest->tag() == Expr::VAR);
-
-  Instr instr(RECV);
-  instr.RECV.dest = dstReg(dest->var());
-  return instr;
-}
-
-
 void stmt(Instr::List *seq, Stmt::Ptr s);  // Forward declaration
 
 
@@ -530,7 +521,10 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
       }
       break;
     case Stmt::LOAD_RECEIVE:             // 'receive(e)', where e is an expr
-      *seq << loadReceive(s->address());
+      using Target::instr::recv;
+
+      assert(s->address()->tag() == Expr::VAR);
+      *seq << recv(dstReg(s->address()->var()));
       break;
     default:
       if (!getSourceTranslate().stmt(*seq, s)) {
@@ -616,10 +610,10 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
         // Everything else is considered to be a single binary operation
         Instr instr(ALU);
         instr.ALU.cond       = cond;
-        instr.ALU.dest       = dstReg(v);
-        instr.ALU.srcA       = operand(e.lhs());
         instr.ALU.op         = ALUOp(e.apply_op());
+        instr.ALU.srcA       = operand(e.lhs());
         instr.ALU.srcB       = operand(e.rhs());
+        instr.dest(dstReg(v));
 
         ret << instr;
         break;
@@ -699,7 +693,7 @@ void loadStorePass(Instr::List &instrs) {
     switch (instr.tag) {
       case RECV: {
         newInstrs << recv(ACC4)
-                  << mov(instr.RECV.dest, ACC4);
+                  << mov(instr.dest(), ACC4);
         newInstrs.front().transfer_comments(instr);
         break;
       }
