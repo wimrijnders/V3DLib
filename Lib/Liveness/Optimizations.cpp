@@ -254,15 +254,16 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
       auto const &reg_usage = live.reg_usage()[instr.dest().regId];
 
       if (reg_usage.assigned_once()) {
-        std::string output;
-
         assert(reg_usage.first_usage() == reg_usage.first_dst());
         for (int i = reg_usage.first_usage() + 1; i <= reg_usage.last_usage(); i++) {
           auto &instr2 = instrs[i];
           if (!instr2.is_src_reg(instr.dest())) continue;
 
          if (instr2.assign_cond() != instr.assign_cond()) {
-           output << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump() << "\n";
+          std::cout << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
+                    << "  dst usage: " << reg_usage.dump() << "\n"
+                    << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump()
+                    << std::endl;
            continue;
          }
 
@@ -274,17 +275,11 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
             // Perform the subst
             if (instr2.ALU.srcA == instr.dest()) instr2.ALU.srcA.set_imm(instr.LI.imm);
             if (instr2.ALU.srcB == instr.dest()) instr2.ALU.srcB.set_imm(instr.LI.imm);
-            instr.tag = SKIP;
-          } else {
-            //output << "  " << can_use_imm << ": " << instr2.dump() << "\n";
           }
         }
 
-        if (!output.empty()) {
-          std::cout << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
-                    << "  dst usage: " << reg_usage.dump() << "\n"
-                    << output << std::endl;
-        }
+        instr.tag = SKIP;
+        break;
       }
 
       continue;

@@ -288,24 +288,12 @@ void RegUsage::set_live(Liveness &live) {
 void RegUsage::check() const {
   std::string ret;
 
-  //
-  // Following is pretty common and not much of an issue (any more).
+  // Case 'instruction variables which are assigned but never used'
+  // is pretty common and not much of an issue (any more).
   // E.g. It occurs if condition flags need to be set and the result of the 
   // operation is discarded.
   //
-  // Might need to further specify this, i.e. by removing var's which are known
-  // and intended to be used as dummy's (TODO?)
-  //
-/*
-  std::string tmp;
-  tmp = get_assigned_only_list(*this);
-  if (!tmp.empty()) {
-    std::string msg = prefix;
-    msg << "There are internal instruction variables which are assigned but never used.\n"
-        << "Variables: " << tmp << "\n";
-    warning(msg);
-  }
-*/
+  // Does not need to be tested.
 
   {
     std::string tmp = get_never_assigned_list(*this);
@@ -323,7 +311,8 @@ void RegUsage::check() const {
 
     for (int i = 0; i < (int) size(); i++) {
       auto const &item = (*this)[i];
-      if (!item.regular_use()) continue;
+      if (!item.regular_use())   continue;
+      if (item.never_assigned()) continue;  // Tested in previous block
 
       if (item.first_live() <= item.first_dst()) {
         tmp << "  Variable " << i << " is live before first assignment" << "\n";

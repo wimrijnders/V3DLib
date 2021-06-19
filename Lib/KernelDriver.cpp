@@ -9,6 +9,7 @@
 #include "Target/Satisfy.h"
 #include "SourceTranslate.h"
 #include "Support/Timer.h"
+#include "Target/instr/Mnemonics.h"
 
 namespace V3DLib {
 
@@ -71,6 +72,35 @@ void print_target_code(FILE *f, Instr::List const &code) {
   }
   fprintf(f, "\n");
   fflush(f);
+}
+
+
+/**
+ * vc4 LDTMU implicitly writes to ACC4, take this into account
+ */
+void loadStorePass(Instr::List &instrs) {
+  assert(Platform::compiling_for_vc4());
+  using namespace V3DLib::Target::instr;
+
+  Instr::List newInstrs(instrs.size()*2);
+
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
+
+    if (instr.tag == RECV && instr.dest() != ACC4) {
+      newInstrs << recv(ACC4)
+                << mov(instr.dest(), ACC4);
+      newInstrs.front().transfer_comments(instr);
+      continue;
+    }
+
+    newInstrs << instr;
+  }
+
+
+  // Update original instruction sequence
+  instrs.clear();
+  instrs << newInstrs;
 }
 
 }  // anon namespace
