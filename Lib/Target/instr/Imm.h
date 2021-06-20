@@ -14,6 +14,7 @@ struct Imm {
   };
 
   Imm(int i);
+  Imm(unsigned i);
   Imm(float f);
 
   ImmTag tag() const { return m_tag; }

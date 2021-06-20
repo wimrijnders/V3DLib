@@ -15,11 +15,15 @@ struct EncodedSmallImm {
 
 
 struct RegOrImm {
+  RegOrImm() = default;
+  RegOrImm(RegOrImm const &rhs) = default;
+  RegOrImm(int rhs) { set_imm(rhs); }
+  RegOrImm(Imm const &rhs);
+  RegOrImm(Reg const &rhs) { set_reg(rhs); }
 
-  void set_imm(int rhs);
-  void set_imm(Imm const &rhs);
-  void set_reg(RegTag tag, RegId id);
-  void set_reg(Reg const &rhs);
+  RegOrImm &operator=(int rhs);
+  RegOrImm &operator=(Imm const &rhs);
+  RegOrImm &operator=(Reg const &rhs);
 
   bool operator==(RegOrImm const &rhs) const;
   bool operator!=(RegOrImm const &rhs) const { return !(*this == rhs); }
@@ -43,6 +47,9 @@ private:
 
   Reg m_reg;            // A register
   EncodedSmallImm m_smallImm;  // A small immediate
+
+  void set_imm(int rhs);
+  void set_reg(Reg const &rhs);
 };
 
 

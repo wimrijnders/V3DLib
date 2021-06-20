@@ -275,12 +275,12 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
           if (can_use_imm) {
             // Perform the subst
             if (instr2.ALU.srcA == instr.dest()) {
-              instr2.ALU.srcA.set_imm(instr.LI.imm);
+              instr2.ALU.srcA = instr.LI.imm;
               changed = true;
             }
 
             if (instr2.ALU.srcB == instr.dest()) {
-              instr2.ALU.srcB.set_imm(instr.LI.imm);
+              instr2.ALU.srcB = instr.LI.imm;
               changed = true;
             }
           }

@@ -1,13 +1,13 @@
 #include "Reg.h"
 #include "Support/basics.h"
+#include "Support/Platform.h"
 #include "Mnemonics.h"
 
 namespace V3DLib {
 namespace {
 
-const char* specialStr(RegId rid) {
-  Special s = (Special) rid;
-  switch (s) {
+char const *specialStr(RegId rid) {
+  switch ((Special) rid) {
     case SPECIAL_UNIFORM:       return "UNIFORM";
     case SPECIAL_ELEM_NUM:      return "ELEM_NUM";
     case SPECIAL_QPU_NUM:       return "QPU_NUM";
@@ -32,6 +32,49 @@ const char* specialStr(RegId rid) {
   return "";
 }
 }  //  anon namespace
+
+
+bool Reg::operator<(Reg const &rhs) const {
+  if (tag != rhs.tag) {
+    return tag < rhs.tag;
+  }    
+
+  return regId < rhs.regId;
+}
+
+
+/**
+ * Determine reg file of current register
+ */
+RegTag Reg::regfile() const {
+  if (!Platform::compiling_for_vc4()) return REG_A;  // There is no REG_B for v3d, only REG_A
+
+  assert(tag <= SPECIAL);
+
+  if (tag == REG_A) return REG_A;
+  if (tag == REG_B) return REG_B;
+
+  if (tag == SPECIAL) {
+    switch(regId) {
+    case SPECIAL_ELEM_NUM:
+    case SPECIAL_RD_SETUP:
+    case SPECIAL_DMA_LD_WAIT:
+    case SPECIAL_DMA_LD_ADDR:
+      return REG_A;
+
+    case SPECIAL_QPU_NUM:
+    case SPECIAL_WR_SETUP:
+    case SPECIAL_DMA_ST_WAIT:
+    case SPECIAL_DMA_ST_ADDR:
+      return REG_B;
+
+    default:
+      break;
+    }
+  }
+
+  return NONE;
+}
 
 
 /**

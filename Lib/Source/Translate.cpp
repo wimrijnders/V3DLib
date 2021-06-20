@@ -22,12 +22,12 @@ RegOrImm operand(Expr::Ptr e) {
   RegOrImm x;
 
   if (e->tag() == Expr::VAR) {
-    x.set_reg(srcReg(e->var()));
+    x = srcReg(e->var());
     return x;
   } else if (e->tag() == Expr::INT_LIT) { 
-    x.set_imm(Imm(e->intLit));
+    x = Imm(e->intLit);
   } else if (e->tag() == Expr::FLOAT_LIT) {
-    x.set_imm(Imm(e->floatLit));
+    x = Imm(e->floatLit);
   } else {
     assert(false);
   }

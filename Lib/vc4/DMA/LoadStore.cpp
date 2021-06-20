@@ -55,34 +55,26 @@ static int vpmSetupWriteCode(int hor, int stride) {
   return code;
 }
 
-// Generate instructions to setup VPM load.
 
-Instr::List genSetupVPMLoad(int n, int addr, int hor, int stride) {
-  Instr::List ret;
+Instr::List genSetupVPMLoad(int addr, int setup) {
   assert(addr < 256);
+  setup |= (addr & 0xff);
 
-  int setup = vpmSetupReadCode(n, hor, stride) | (addr & 0xff);
-  Instr instr;
-  instr.tag = VPM_STALL;
-
+  Instr::List ret;
   ret << li(RD_SETUP, setup)
-      << instr;
+      << Instr(VPM_STALL);
 
   return ret;
 }
 
 
-Instr::List genSetupVPMLoad(int n, Reg addr, int hor, int stride) {
-  Instr::List ret;
+Instr::List genSetupVPMLoad(Reg addr, int setup) {
   Reg tmp = freshReg();
-  int setup = vpmSetupReadCode(n, hor, stride);
 
-  Instr instr;
-  instr.tag = VPM_STALL;
-
+  Instr::List ret;
   ret << li(tmp, setup)
       << bor(RD_SETUP, addr, tmp)
-      << instr;
+      << Instr(VPM_STALL);
 
   return ret;
 }
@@ -98,12 +90,13 @@ Instr genSetupVPMStore(int addr, int hor, int stride) {
 
 
 Instr::List genSetupVPMStore(Reg addr, int hor, int stride) {
-  Instr::List ret;
   Reg tmp = freshReg();
   int setup = vpmSetupWriteCode(hor, stride);
 
+  Instr::List ret;
   ret << li(tmp, setup)
       << bor(WR_SETUP, addr, tmp);
+
   return ret;
 }
 
@@ -364,15 +357,16 @@ Instr::List Stmt::setupVPMRead() {
   Expr::Ptr e = address_internal();
   int hor     = m_setupVPMRead.hor;
   int stride  = m_setupVPMRead.stride;
+  int setup   = vpmSetupReadCode(n, hor, stride);
 
   if (e->tag() == Expr::INT_LIT)
-    ret << genSetupVPMLoad(n, e->intLit, hor, stride);
+    ret << genSetupVPMLoad(e->intLit, setup);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMLoad(n, srcReg(e->var()), hor, stride);
+    ret << genSetupVPMLoad(srcReg(e->var()), setup);
   else {
     Var v = VarGen::fresh();
     ret << varAssign(v, e)
-        << genSetupVPMLoad(n, srcReg(v), hor, stride);
+        << genSetupVPMLoad(srcReg(v), setup);
   }
 
   return ret;
@@ -457,14 +451,15 @@ Instr::List Stmt::setupVPMWrite() {
 Instr::List loadRequest(Var &dst, Expr &e) {
   using namespace V3DLib::Target::instr;
 
-  Reg reg = srcReg(e.deref_ptr()->var());
+  Reg reg   = srcReg(e.deref_ptr()->var());
+  int setup = vpmSetupReadCode(1, 0, 1);
+
   Instr::List ret;
-  
   ret << genSetReadPitch(4).comment("Start DMA load var")                          // Setup DMA
       << genSetupDMALoad(16, 1, 1, 1, QPU_ID)
       << genStartDMALoad(reg)                                                      // Start DMA load
       << genWaitDMALoad(false)                                                     // Wait for DMA
-      << genSetupVPMLoad(1, QPU_ID, 0, 1)                                          // Setup VPM
+      << genSetupVPMLoad(QPU_ID, setup)                                            // Setup VPM
       << shl(dstReg(dst), Target::instr::VPM_READ, 0).comment("End DMA load var"); // Get from VPM
 
   return ret;

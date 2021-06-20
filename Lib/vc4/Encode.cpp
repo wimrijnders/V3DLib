@@ -371,8 +371,8 @@ void convertInstr(Instr &instr) {
       instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
       instr.ALU.op                = ALUOp(ALUOp::A_BOR);
 
-      instr.ALU.srcA.set_reg(SPECIAL, src);  // srcA is same as srcB
-      instr.ALU.srcB.set_reg(SPECIAL, src);
+      instr.ALU.srcA = Reg(SPECIAL, src);  // srcA is same as srcB
+      instr.ALU.srcB = Reg(SPECIAL, src);
       instr.dest(Reg(NONE, 0));
       break;
     }
@@ -394,14 +394,13 @@ void encode_operands(vc4_Instr &vc4_instr, RegOrImm const &srcA, RegOrImm const 
   uint32_t raddra = 0, raddrb;
 
   if (srcA.is_reg() && srcB.is_reg()) { // Both operands are registers
-    RegTag aFile = regFileOf(srcA.reg());
+    RegTag aFile = srcA.reg().regfile();
     RegTag aTag  = srcA.reg().tag;
 
-    RegTag bFile = regFileOf(srcB.reg());
-    RegTag bTag  = srcB.reg().tag;
+    RegTag bFile = srcB.reg().regfile();
 
     // If operands are the same register
-    if (aTag != NONE && aTag == bTag && srcA.reg().regId == srcB.reg().regId) {
+    if (aTag != NONE && srcA == srcB) {
       if (aFile == REG_A) {
         raddra = encodeSrcReg(srcA.reg(), REG_A, &muxa);
         raddrb = 39;
@@ -447,7 +446,6 @@ void encode_operands(vc4_Instr &vc4_instr, RegOrImm const &srcA, RegOrImm const 
     assert(false);  // Not expecting this
   }
 
-      
   vc4_instr.raddra  = raddra;
   vc4_instr.raddrb  = raddrb;
   vc4_instr.muxa  = muxa;

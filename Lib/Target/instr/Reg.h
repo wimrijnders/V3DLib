@@ -63,23 +63,12 @@ struct Reg {
   Reg() = default;
   Reg(RegTag in_tag, RegId in_regId) : tag(in_tag), regId(in_regId) {}
 
-  bool operator==(Reg const &rhs) const {
-    return tag == rhs.tag && regId == rhs.regId;
-  }
-
-  bool operator!=(Reg const &rhs) const {
-    return !(*this == rhs);
-  }
-
-  bool operator<(Reg const &rhs) const {
-    if (tag != rhs.tag) {
-      return tag < rhs.tag;
-    }    
-
-    return regId < rhs.regId;
-  }
-
+  bool operator==(Reg const &rhs) const { return tag == rhs.tag && regId == rhs.regId; }
+  bool operator!=(Reg const &rhs) const { return !(*this == rhs); }
+  bool operator<(Reg const &rhs) const;
   bool is_rf_reg() const { return tag == REG_A || tag == REG_B; }
+
+  RegTag regfile() const; 
 
   std::string dump() const;
 };

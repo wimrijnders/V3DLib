@@ -6,8 +6,9 @@
 
 namespace V3DLib {
 
-Imm::Imm(int i)   : m_tag(IMM_INT32),   m_intVal(i) {}
-Imm::Imm(float f) : m_tag(IMM_FLOAT32), m_floatVal(f) {}
+Imm::Imm(int i)      : m_tag(IMM_INT32),   m_intVal(i) {}
+Imm::Imm(unsigned i) : m_tag(IMM_INT32),   m_intVal((int) i) {}
+Imm::Imm(float f)    : m_tag(IMM_FLOAT32), m_floatVal(f) {}
 
 int   Imm::intVal()   const { assert(m_tag == IMM_INT32);   return m_intVal; }
 int   Imm::mask()     const { assert(m_tag == IMM_MASK);    return m_intVal; }

@@ -5,34 +5,12 @@
 namespace V3DLib {
 namespace {
 
-Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, Reg srcB) {
+Instr genInstr(ALUOp::Enum op, Reg dst, RegOrImm const &srcA, RegOrImm const &srcB) {
   Instr instr(ALU);
-  instr.ALU.cond      = always;
-  instr.ALU.op        = ALUOp(op);
-  instr.ALU.srcA.set_reg(srcA);
-  instr.ALU.srcB.set_reg(srcB);
-  instr.dest(dst);
-
-  return instr;
-}
-
-
-Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, int n) {
-  Instr instr(ALU);
-  instr.ALU.op                = ALUOp(op);
-  instr.ALU.srcA.set_reg(srcA);
-  instr.ALU.srcB.set_imm(n);
-  instr.dest(dst);
-
-  return instr;
-}
-
-
-Instr genInstr(ALUOp::Enum op, Reg dst, int n, int m) {
-  Instr instr(ALU);
-  instr.ALU.op                = ALUOp(op);
-  instr.ALU.srcA.set_imm(n);
-  instr.ALU.srcB.set_imm(m);
+  instr.ALU.cond = always;
+  instr.ALU.op   = ALUOp(op);
+  instr.ALU.srcA = srcA;
+  instr.ALU.srcB = srcB;
   instr.dest(dst);
 
   return instr;
@@ -46,12 +24,12 @@ Instr genInstr(ALUOp::Enum op, Reg dst, int n, int m) {
 Instr::List sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *label) {
   using namespace V3DLib::Target::instr;
 
-  Instr nop;
-  Instr::List ret;
-
   std::string cmt = "SFU function ";
   cmt << label;
 
+  Instr nop;
+
+  Instr::List ret;
   ret << mov(sfu_reg, srcA).comment(cmt)
       << nop
       << nop
@@ -97,23 +75,21 @@ Reg rf(uint8_t index) {
 
 
 Instr mov(Var dst, Var src) { return mov(dstReg(dst), srcReg(src)); }
-Instr mov(Var dst, Reg src) { return mov(dstReg(dst), src); }
+Instr mov(Var dst, RegOrImm const &src) { return mov(dstReg(dst), src); }
 Instr mov(Reg dst, Var src) { return mov(dst, srcReg(src)); }
-Instr mov(Reg dst, Reg src) { return bor(dst, src, src); }
 
-Instr mov(Reg dst, int n)   {
-  if (Platform::compiling_for_vc4()) {
-    return li(dst, n);
+Instr mov(Reg dst, RegOrImm const &src) {
+  if (Platform::compiling_for_vc4() && src.is_imm()) {
+    return li(dst, src.imm().val);
   } else {
-    return genInstr(ALUOp::A_BOR, dst, n, n);
+    return bor(dst, src, src);
   }
 }
 
-Instr mov(Var dst, int n)   { return mov(dstReg(dst), n); }
 
 
 // Generation of bitwise instructions
-Instr bor(Reg dst, Reg srcA, Reg srcB)  { return genInstr(ALUOp::A_BOR, dst, srcA, srcB); }
+Instr bor(Reg dst, RegOrImm const &srcA, RegOrImm const &srcB)  { return genInstr(ALUOp::A_BOR, dst, srcA, srcB); }
 Instr band(Reg dst, Reg srcA, Reg srcB) { return genInstr(ALUOp::A_BAND, dst, srcA, srcB); }
 Instr band(Var dst, Var srcA, Var srcB) { return genInstr(ALUOp::A_BAND, dstReg(dst), srcReg(srcA), srcReg(srcB)); }
 Instr band(Reg dst, Reg srcA, int n)    { return genInstr(ALUOp::A_BAND, dst, srcA, n); }
@@ -158,28 +134,18 @@ Instr sub(Reg dst, Reg srcA, int n) {
 /**
  * Generate load-immediate instruction.
  */
-Instr li(Reg dst, int i) {
+Instr li(Reg dst, Imm const &src) {
   Instr instr(LI);
   instr.LI.cond = always;
-  instr.LI.imm  = Imm(i);
   instr.dest(dst);
+  instr.LI.imm  = src;
  
   return instr;
 }
 
 
-Instr li(Var v, int i) {
-  return li(dstReg(v), i).comment("li(Var, int)");
-}
-
-
-Instr li(Var v, float f) {
-  Instr instr(LI);
-  instr.LI.cond = always;
-  instr.LI.imm  = Imm(f);
-  instr.dest(dstReg(v));
- 
-  return instr;
+Instr li(Var v, Imm const &src) {
+  return li(dstReg(v), src).comment("li(Var, int)");
 }
 
 

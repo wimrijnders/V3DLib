@@ -7,6 +7,8 @@
 
 namespace V3DLib {
 
+RegOrImm::RegOrImm(Imm const &rhs) { set_imm(rhs.encode_imm()); }
+
 Reg &RegOrImm::reg()                  { assert(is_reg()); return m_reg; }
 Reg RegOrImm::reg() const             { assert(is_reg()); return m_reg; }
 EncodedSmallImm &RegOrImm::imm()      { assert(is_imm()); return m_smallImm; }
@@ -23,22 +25,15 @@ void RegOrImm::set_imm(int rhs) {
 }
 
 
-void RegOrImm::set_imm(Imm const &rhs) {
-  set_imm(rhs.encode_imm());
-}
-
-
-void RegOrImm::set_reg(RegTag tag, RegId id) {
-  m_is_reg  = true;
-  m_reg.tag   = tag;
-  m_reg.regId = id;
-}
-
-
 void RegOrImm::set_reg(Reg const &rhs) {
   m_is_reg  = true;
   m_reg = rhs;
 }
+
+
+RegOrImm &RegOrImm::operator=(int rhs)        { set_imm(rhs); return *this; }
+RegOrImm &RegOrImm::operator=(Imm const &rhs) { set_imm(rhs.encode_imm()); return *this; }
+RegOrImm &RegOrImm::operator=(Reg const &rhs) { set_reg(rhs); return *this; }
 
 
 bool RegOrImm::operator==(RegOrImm const &rhs) const {

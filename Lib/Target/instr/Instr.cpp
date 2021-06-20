@@ -39,6 +39,7 @@ Instr::Instr(InstrTag in_tag) {
     ALU.m_setCond.clear();
     ALU.cond     = always;
     break;
+
   case InstrTag::LI:
     tag          = in_tag;
     LI.m_setCond.clear();
@@ -49,8 +50,10 @@ Instr::Instr(InstrTag in_tag) {
   case InstrTag::INIT_END:
   case InstrTag::RECV:
   case InstrTag::END:
+  case InstrTag::VPM_STALL:
     tag = in_tag;
     break;
+
   default:
     assert(false);
     break;
@@ -364,11 +367,7 @@ bool Instr::isUniformPtrLoad() const {
 
 
 bool Instr::isRot() const {
-  if (tag != InstrTag::ALU) {
-    return false;
-  }
-
-  return ALU.op.isRot();
+  return (tag == InstrTag::ALU) && ALU.op.isRot();
 }
 
 

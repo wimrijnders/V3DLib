@@ -145,6 +145,8 @@ struct Instr : public InstructionComment {
   Instr() : tag(NO_OP) {} 
   Instr(InstrTag in_tag);
 
+  Instr clone() const { return Instr(*this); }
+
   std::string header()  const  { return InstructionComment::header();  }  // grumbl hating that this is needed
   std::string comment() const  { return InstructionComment::comment(); }  // idem
   Instr &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
@@ -182,6 +184,9 @@ struct Instr : public InstructionComment {
   bool is_src_reg(Reg const &rhs) const;
   bool has_dest() const { return (tag == InstrTag::LI || tag == InstrTag::ALU || tag == InstrTag::RECV); }
   bool rename_dest(Reg const &current, Reg const &replace_with);
+
+  Instr &src_a(RegOrImm const &rhs) { assert(tag == InstrTag::ALU); ALU.srcA = rhs;  return *this; }
+  Instr &src_b(RegOrImm const &rhs) { assert(tag == InstrTag::ALU); ALU.srcB = rhs;  return *this; }
 
   SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;
