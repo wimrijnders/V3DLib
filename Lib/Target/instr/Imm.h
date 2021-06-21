@@ -13,6 +13,7 @@ struct Imm {
     IMM_MASK     // 1 bit per vector element (0 to 0xffff)
   };
 
+  Imm() = default;
   Imm(int i);
   Imm(unsigned i);
   Imm(float f);

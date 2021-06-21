@@ -71,6 +71,7 @@ public:
 */
   };
 
+  ALUOp() = default;
   explicit ALUOp(Enum val) : m_value(val) {}
   explicit ALUOp(Op const &op);
 

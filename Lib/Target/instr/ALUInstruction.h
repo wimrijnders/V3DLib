@@ -8,10 +8,11 @@ namespace V3DLib {
 
 struct ALUInstruction {
   SetCond    m_setCond;
-  AssignCond cond;
   RegOrImm   srcA;
   ALUOp      op;
   RegOrImm   srcB;
+
+  ALUInstruction() = default;
 
   bool noOperands() const;
   bool oneOperand() const;

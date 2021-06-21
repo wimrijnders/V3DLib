@@ -13,7 +13,7 @@ std::string pretty_instr(Instr const &instr) {
 
   switch (instr.tag) {
     case LI: {
-      buf << instr.LI.cond.to_string()
+      buf << instr.assign_cond().to_string()
           << "LI " << instr.dest().dump()
           << " <-" << instr.setCond().pretty() << " "
           << instr.LI.imm.pretty();
@@ -21,7 +21,7 @@ std::string pretty_instr(Instr const &instr) {
     break;
 
     case ALU: {
-      buf << instr.ALU.cond.to_string()
+      buf << instr.assign_cond().to_string()
           << instr.dest().dump()
           << " <-" << instr.setCond().pretty() << " "
           << instr.ALU.op.pretty();
@@ -36,8 +36,8 @@ std::string pretty_instr(Instr const &instr) {
     }
     break;
 
-    case BR:   buf << "if " << instr.BR.cond.to_string() << " goto " << instr.BR.target.to_string(); break;
-    case BRL:  buf << "if " << instr.BRL.cond.to_string() << " goto L" << instr.BRL.label;           break;
+    case BR:   buf << "if " << instr.branch_cond().to_string() << " goto " << instr.BR.target.to_string(); break;
+    case BRL:  buf << "if " << instr.branch_cond().to_string() << " goto L" << instr.BRL.label;            break;
     case LAB:  buf << "L" << instr.label();                                                          break;
     case RECV: buf << "RECV(" <<  instr.dest().dump() << ")";                                        break;
     case SINC: buf << "SINC " << instr.semaId;                                                       break;

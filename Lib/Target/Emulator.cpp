@@ -659,14 +659,14 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
           // Load immediate
           case LI: {
             Vec imm(instr.LI.imm);
-            writeReg(s, &state, instr.setCond().flags_set(), instr.LI.cond, instr.dest(), imm);
+            writeReg(s, &state, instr.setCond().flags_set(), instr.assign_cond(), instr.dest(), imm);
             break;
           }
           // ALU operation
           case ALU: {
             Vec result = alu(s, &state, instr.ALU.srcA, instr.ALU.op, instr.ALU.srcB);
             if (!instr.ALU.op.isNOP())
-              writeReg(s, &state, instr.setCond().flags_set(), instr.ALU.cond, instr.dest(), result);
+              writeReg(s, &state, instr.setCond().flags_set(), instr.assign_cond(), instr.dest(), result);
             break;
           }
           // End program (halt)
@@ -676,7 +676,7 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
           }
           // Branch to target
           case BR: {
-            if (checkBranchCond(s, instr.BR.cond)) {
+            if (checkBranchCond(s, instr.branch_cond())) {
               BranchTarget t = instr.BR.target;
               if (t.relative && !t.useRegOffset) {
                 s->pc += 3+t.immOffset;

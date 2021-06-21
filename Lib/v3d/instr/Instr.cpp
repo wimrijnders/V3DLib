@@ -660,14 +660,13 @@ bool Instr::alu_mul_set(V3DLib::Instr const &src_instr) {
     return false;  // Can't convert
   }
 
-
   auto reg_a = alu.srcA;
   auto reg_b = alu.srcB;
 
   this->alu.mul.op = mul_op;
 
   if (alu_mul_set(*dst, reg_a, reg_b)) {
-    flags.mc = translate_assign_cond(alu.cond);
+    flags.mc = translate_assign_cond(src_instr.assign_cond());
 
 
     // TODO shouldn't push tag be done as well? Check

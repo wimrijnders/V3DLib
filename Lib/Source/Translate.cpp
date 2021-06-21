@@ -609,10 +609,10 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       default:
         // Everything else is considered to be a single binary operation
         Instr instr(ALU);
-        instr.ALU.cond       = cond;
-        instr.ALU.op         = ALUOp(e.apply_op());
-        instr.ALU.srcA       = operand(e.lhs());
-        instr.ALU.srcB       = operand(e.rhs());
+        instr.ALU.op    = ALUOp(e.apply_op());
+        instr.ALU.srcA  = operand(e.lhs());
+        instr.ALU.srcB  = operand(e.rhs());
+        instr.assign_cond(cond);
         instr.dest(dstReg(v));
 
         ret << instr;

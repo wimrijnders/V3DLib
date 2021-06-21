@@ -8,6 +8,8 @@
 namespace V3DLib {
 
 RegOrImm::RegOrImm(Imm const &rhs) { set_imm(rhs.encode_imm()); }
+RegOrImm::RegOrImm(Var const &rhs) { set_reg(srcReg(rhs)); }
+RegOrImm::RegOrImm(Reg const &rhs) { set_reg(rhs); }
 
 Reg &RegOrImm::reg()                  { assert(is_reg()); return m_reg; }
 Reg RegOrImm::reg() const             { assert(is_reg()); return m_reg; }
@@ -28,6 +30,7 @@ void RegOrImm::set_imm(int rhs) {
 void RegOrImm::set_reg(Reg const &rhs) {
   m_is_reg  = true;
   m_reg = rhs;
+  m_reg.can_read(true);
 }
 
 

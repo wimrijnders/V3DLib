@@ -37,13 +37,13 @@ Instr::Instr(InstrTag in_tag) {
   case InstrTag::ALU:
     tag          = in_tag;
     ALU.m_setCond.clear();
-    ALU.cond     = always;
+    m_assign_cond = always;
     break;
 
   case InstrTag::LI:
-    tag          = in_tag;
+    tag           = in_tag;
     LI.m_setCond.clear();
-    LI.cond      = always;
+    m_assign_cond = always;
     break;
 
   case InstrTag::INIT_BEGIN:
@@ -169,10 +169,10 @@ std::set<Reg> Instr::src_regs(bool set_use_where) const {
   std::set<Reg> ret;
 
   if (set_use_where) {  // Add destination reg to 'use' set if conditional assigment
-    if (tag == InstrTag::LI && LI.cond.tag != ALWAYS) {
-      ret.insert(dest());
-    } else if (tag == InstrTag::ALU && ALU.cond.tag != ALWAYS) {
-      ret.insert(dest());
+    if (tag == InstrTag::LI || tag == InstrTag::ALU) {
+      if (m_assign_cond.tag != ALWAYS) {
+        ret.insert(dest());
+      }
     }
   }
 
@@ -226,7 +226,7 @@ Instr &Instr::setCondOp(CmpOp const &cmp_op) {
 
 
 Instr &Instr::cond(AssignCond in_cond) {
-  ALU.cond = in_cond;
+  assign_cond(in_cond);
   return *this;
 }
 
@@ -235,24 +235,35 @@ Instr &Instr::cond(AssignCond in_cond) {
  * Determine if instruction is a conditional assignment
  */
 bool Instr::isCondAssign() const {
-  if (tag == InstrTag::LI && !LI.cond.is_always())
-    return true;
-
-  if (tag == InstrTag::ALU && !ALU.cond.is_always())
-    return true;
+  if (tag == InstrTag::LI || tag == InstrTag::ALU) {
+   return !m_assign_cond.is_always();
+  }
 
   return false;
 }
 
 
+void Instr::assign_cond(AssignCond rhs) {
+  assert (tag == InstrTag::LI || tag == InstrTag::ALU);
+  m_assign_cond = rhs;
+}
+
+
 AssignCond Instr::assign_cond() const {
-  if (tag == InstrTag::LI)
-    return LI.cond;
+  assert (tag == InstrTag::LI || tag == InstrTag::ALU);
+  return m_assign_cond;
+}
 
-  if (tag == InstrTag::ALU)
-    return ALU.cond;
 
-  return always;
+void Instr::branch_cond(BranchCond rhs) {
+  assert(tag == V3DLib::BR || tag == V3DLib::BRL);
+  m_branch_cond = rhs;
+}
+
+
+BranchCond Instr::branch_cond() const {
+  assert(tag == V3DLib::BR || tag == V3DLib::BRL);
+  return m_branch_cond;
 }
 
 
@@ -262,10 +273,11 @@ AssignCond Instr::assign_cond() const {
  * TODO check if this is the exact complement of isCondAssign()
  */
 bool Instr::is_always() const {
-  bool always = (tag == InstrTag::LI && LI.cond.is_always())
-             || (tag == InstrTag::ALU && ALU.cond.is_always());
+  if (tag == InstrTag::LI || tag == InstrTag::ALU) {
+    return m_assign_cond.is_always();
+  }
 
-  return always;
+  return true;  // TODO returned false previously, check correct working
 }
 
 
@@ -314,25 +326,31 @@ Instr &Instr::pushz() {
   return *this;
 }
 
+Instr &Instr::allzc() {
+  assert(tag == InstrTag::BRL);
+  m_branch_cond.tag  = COND_ALL;
+  m_branch_cond.flag = Flag::ZC;
+  return *this;
+}
+
 
 /**
  * Convert branch label to branch target
+ * 
+ * Convert branch label (BRL) instruction to branch instruction with offset (BR).
  * 
  * @param offset  offset to the label from current instruction
  */
 void Instr::label_to_target(int offset) {
   assert(tag == InstrTag::BRL);
 
-  // Convert branch label (BRL) instruction to branch instruction with offset (BR)
-  // Following assumes that BranchCond field 'cond' survives the transition to another union member
-
   BranchTarget t;
   t.relative       = true;
   t.useRegOffset   = false;
   t.immOffset      = offset - 4;  // Compensate for the 4-op delay for executing a branch
 
-  tag        = InstrTag::BR;
-  BR.target  = t;
+  tag       = InstrTag::BR;
+  BR.target = t;
 }
 
 
@@ -379,8 +397,7 @@ bool Instr::isRot() const {
 bool Instr::isZero() const {
   return tag == InstrTag::LI
       && !LI.m_setCond.flags_set()
-      && LI.cond.tag      == AssignCond::NEVER
-      && LI.cond.flag     == ZS
+      && m_assign_cond == AssignCond(AssignCond::NEVER, ZS)
       && LI.imm.is_zero()
       && dest() == Reg(REG_A, 0) 
   ;

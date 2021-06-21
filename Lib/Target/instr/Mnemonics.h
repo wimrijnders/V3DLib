@@ -12,6 +12,7 @@ extern Reg const ACC1;
 extern Reg const ACC2;
 extern Reg const ACC3;
 extern Reg const ACC4;
+extern Reg const ACC5;
 extern Reg const QPU_ID;
 extern Reg const ELEM_ID;
 extern Reg const TMU0_S;
@@ -36,15 +37,22 @@ extern Reg const TMUA;
 
 Reg rf(uint8_t index);
 
+class Dst : public Reg {
+public:
+ Dst(Reg rhs);
+ Dst(Var rhs);
+};
+
+
 Instr bor(Reg dst, RegOrImm const &srcA, RegOrImm const &srcB);
 Instr band(Reg dst, Reg srcA, Reg srcB);
 Instr band(Var dst, Var srcA, Var srcB);
 Instr band(Reg dst, Reg srcA, int n);
 Instr bxor(Var dst, Var srcA, int n);
-Instr mov(Var dst, Var src);
-Instr mov(Var dst, RegOrImm const &src);
-Instr mov(Reg dst, Var src);
-Instr mov(Reg dst, RegOrImm const &src);
+//Instr mov(Var dst, Var src);
+//Instr mov(Var dst, RegOrImm const &src);
+//Instr mov(Dst dst, Var src);
+Instr mov(Dst dst, RegOrImm const &src);
 Instr shl(Reg dst, Reg srcA, int val);
 Instr add(Reg dst, Reg srcA, Reg srcB);
 Instr add(Reg dst, Reg srcA, int n);

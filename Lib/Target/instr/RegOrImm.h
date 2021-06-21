@@ -19,7 +19,8 @@ struct RegOrImm {
   RegOrImm(RegOrImm const &rhs) = default;
   RegOrImm(int rhs) { set_imm(rhs); }
   RegOrImm(Imm const &rhs);
-  RegOrImm(Reg const &rhs) { set_reg(rhs); }
+  RegOrImm(Reg const &rhs);
+  RegOrImm(Var const &rhs);
 
   RegOrImm &operator=(int rhs);
   RegOrImm &operator=(Imm const &rhs);

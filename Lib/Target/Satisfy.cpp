@@ -9,45 +9,13 @@
 namespace V3DLib {
 namespace {
 
-/**
- * Remap register A to accumulator
- *
- * Return an instruction to move the contents of a register to an
- * accumulator, and change the use of that register in the given
- * instruction to the given accumulator.
- */
-Instr remapAToAccum(Instr &instr, RegId acc_id) {
-  assert(instr.ALU.srcA.is_reg());
-
-  Reg acc(ACC, acc_id);
-  Reg src = instr.ALU.srcA.reg();
-  instr.ALU.srcA = acc;
-
-  return Target::instr::mov(acc, src);
-}
-
-
-/**
- * Remap register B to accumulator
- */
-Instr remapBToAccum(Instr &instr, RegId acc_id) {
-  assert(instr.ALU.srcB.is_reg());
-
-  Reg acc(ACC, acc_id);
-  Reg src = instr.ALU.srcB.reg();
-  instr.ALU.srcB = acc;
-
-  return Target::instr::mov(acc, src);
-}
-
-
 bool hasRegFileConflict(Instr const &instr) {
   if (instr.tag == ALU && instr.ALU.srcA.is_reg() && instr.ALU.srcB.is_reg()) {
     int rfa = instr.ALU.srcA.reg().regfile();
     int rfb = instr.ALU.srcB.reg().regfile();
 
     if (rfa != NONE && rfb != NONE) {
-      return (rfa == rfb) && !(instr.ALU.srcA.reg() == instr.ALU.srcB.reg());
+      return (rfa == rfb) && !(instr.ALU.srcA == instr.ALU.srcB);
     }
   }
 
@@ -75,7 +43,6 @@ Instr::List insertMoves_vc4(Instr::List &instrs) {
                 << instr.clone().src_b(ACC0);
     } else if (instr.tag == ALU && instr.ALU.srcB.is_imm() &&
                instr.ALU.srcA.is_reg() && instr.ALU.srcA.reg().regfile() == REG_B) {
-      debug("here 1!");
       // Insert moves for an operation with a small immediate whose
       // register operand must reside in reg file B.
       newInstrs << mov(ACC0, instr.ALU.srcA)
@@ -85,7 +52,6 @@ Instr::List insertMoves_vc4(Instr::List &instrs) {
       //
       // When an instruction uses two (different) registers that are mapped
       // to the same register file, then remap one of them to an accumulator.
-      debug("here 2!");
       newInstrs << mov(ACC0, instr.ALU.srcA)
                 << instr.clone().src_a(ACC0);
     } else {
@@ -106,13 +72,19 @@ Instr::List insertMoves(Instr::List &instrs) {
 
     if (instr.isRot()) {
       // Insert moves for horizontal rotate operations
-      newInstrs << remapAToAccum(instr, 0);
+      using namespace Target::instr;
 
-      if (instr.ALU.srcB.is_reg())
-        newInstrs << remapBToAccum(instr, 5);
+      newInstrs << mov(ACC0, instr.ALU.srcA);
+
+      auto instr2 = instr.clone().src_a(ACC0);
+
+      if (instr.ALU.srcB.is_reg()) {
+        newInstrs << mov(ACC5, instr.ALU.srcB);
+        instr2.src_b(ACC5);
+      }
 
       newInstrs << Instr::nop()
-                << instr;
+                << instr2;
     } else {
       newInstrs << instr;
     }

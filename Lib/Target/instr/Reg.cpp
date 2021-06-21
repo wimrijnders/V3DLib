@@ -77,6 +77,45 @@ RegTag Reg::regfile() const {
 }
 
 
+bool Reg::can_read(bool check) const {
+  bool ret = true;
+
+  if (tag == SPECIAL) {
+    if (regId == SPECIAL_VPM_WRITE || regId == SPECIAL_TMU0_S) {
+      ret = false;
+    }
+  }
+
+  if (!ret && check) {
+    std::string msg = "Can not read from register ";
+    msg << dump();
+    assertq(false, msg);
+  }
+
+  return ret;
+}
+
+
+bool Reg::can_write(bool check) const {
+  bool ret = true;
+
+  if (tag == SPECIAL) {
+    if (regId == SPECIAL_UNIFORM || regId == SPECIAL_QPU_NUM
+     || regId == SPECIAL_ELEM_NUM || regId == SPECIAL_VPM_READ) {
+      ret = false;
+    }
+  }
+
+  if (!ret && check) {
+    std::string msg = "Can not write to register ";
+    msg << dump();
+    assertq(false, msg);
+  }
+
+  return ret;
+}
+
+
 /**
  * Translate variable to source register.
  */
@@ -107,15 +146,14 @@ Reg srcReg(Var v) {
       break;
     case VPM_WRITE:
     case TMU0_ADDR:
-      printf("V3DLib: Reading from write-only special register is forbidden\n");
-      assert(false);
+      assertq(false, "srcReg(): Reading from write-only special register is forbidden");
       break;
     case DUMMY:
       r.tag   = NONE;
       r.regId = v.id();
       break;
     default:
-      assert(false);
+      assertq(false, "srcReg(): Unhandled Var-tag");
       break;
   }
 
@@ -134,7 +172,7 @@ Reg dstReg(Var v) {
     case QPU_NUM:
     case ELEM_NUM:
     case VarTag::VPM_READ:
-      fatal("V3DLib: writing to read-only special register is forbidden");
+      assertq(false, "dstReg(): writing to read-only special register is forbidden");
       return Reg();  // Return anything
 
     case STANDARD:          return Reg(REG_A, v.id());
@@ -142,7 +180,7 @@ Reg dstReg(Var v) {
     case TMU0_ADDR:         return TMU0_S;
 
     default:
-      fatal("Unhandled case in dstReg()");
+      assertq(false, "dstReg(): Unhandled Var-tag");
       return Reg();  // Return anything
   }
 }

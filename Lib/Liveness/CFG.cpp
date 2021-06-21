@@ -255,7 +255,7 @@ void CFG::build(Instr::List &instrs) {
     Instr instr = instrs[i];
 
     // Is it an unconditional jump?
-    bool uncond = instr.tag == BRL && instr.BRL.cond.tag == COND_ALWAYS;
+    bool uncond = instr.tag == BRL && instr.branch_cond().tag == COND_ALWAYS;
 
     // Is it a final instruction?
     bool end = instr.tag == END || i+1 == instrs.size();

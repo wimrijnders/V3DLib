@@ -188,6 +188,7 @@ uint32_t encodeBranchCond(BranchCond cond) {
       }
 
     default:
+      breakpoint
       fatal("V3DLib: missing case in encodeBranchCond");
       return 0;
   }
@@ -355,10 +356,9 @@ void convertInstr(Instr &instr) {
   switch (instr.tag) {
     case IRQ:
       instr.tag           = LI;
-      instr.LI.m_setCond.clear();
-      instr.LI.cond.tag   = AssignCond::Tag::ALWAYS;
       instr.LI.imm        = Imm(1);
-
+      instr.LI.m_setCond.clear();
+      instr.assign_cond(AssignCond(AssignCond::Tag::ALWAYS));
       instr.dest(Reg(SPECIAL, SPECIAL_HOST_INT));
       break;
 
@@ -366,10 +366,10 @@ void convertInstr(Instr &instr) {
     case DMA_STORE_WAIT: {
       RegId src = instr.tag == DMA_LOAD_WAIT ? SPECIAL_DMA_LD_WAIT : SPECIAL_DMA_ST_WAIT;
 
-      instr.tag                   = ALU;
+      instr.tag     = ALU;
+      instr.ALU.op  = ALUOp(ALUOp::A_BOR);
       instr.ALU.m_setCond.clear();
-      instr.ALU.cond.tag          = AssignCond::Tag::NEVER;
-      instr.ALU.op                = ALUOp(ALUOp::A_BOR);
+      instr.assign_cond(AssignCond(AssignCond::Tag::NEVER));
 
       instr.ALU.srcA = Reg(SPECIAL, src);  // srcA is same as srcB
       instr.ALU.srcB = Reg(SPECIAL, src);
@@ -472,7 +472,7 @@ uint64_t encodeInstr(Instr instr) {
       RegTag file;
 
       vc4_instr.tag(vc4_Instr::LI);
-      vc4_instr.cond_add  = encodeAssignCond(li.cond);
+      vc4_instr.cond_add  = encodeAssignCond(instr.assign_cond());
       vc4_instr.waddr_add = encodeDestReg(instr.dest(), &file);
       vc4_instr.sf(li.m_setCond.flags_set());
       vc4_instr.ws(file != REG_A);
@@ -484,7 +484,7 @@ uint64_t encodeInstr(Instr instr) {
       assertq(!instr.BR.target.useRegOffset, "Register offset not yet supported");
 
       vc4_instr.tag(vc4_Instr::BR);
-      vc4_instr.cond_add = encodeBranchCond(instr.BR.cond);
+      vc4_instr.cond_add = encodeBranchCond(instr.branch_cond());
       vc4_instr.rel(instr.BR.target.relative);
       vc4_instr.li_imm = 8*instr.BR.target.immOffset;
     break;
@@ -496,11 +496,11 @@ uint64_t encodeInstr(Instr instr) {
       uint32_t dest  = encodeDestReg(instr.dest(), &file);
 
       if (alu.op.isMul()) {
-        vc4_instr.cond_mul  = encodeAssignCond(alu.cond);
+        vc4_instr.cond_mul  = encodeAssignCond(instr.assign_cond());
         vc4_instr.waddr_mul = dest;
         vc4_instr.ws(file != REG_B);
       } else {
-        vc4_instr.cond_add  = encodeAssignCond(alu.cond);
+        vc4_instr.cond_add  = encodeAssignCond(instr.assign_cond());
         vc4_instr.waddr_add = dest;
         vc4_instr.ws(file != REG_A);
       }

@@ -7,7 +7,6 @@ namespace {
 
 Instr genInstr(ALUOp::Enum op, Reg dst, RegOrImm const &srcA, RegOrImm const &srcB) {
   Instr instr(ALU);
-  instr.ALU.cond = always;
   instr.ALU.op   = ALUOp(op);
   instr.ALU.srcA = srcA;
   instr.ALU.srcB = srcB;
@@ -49,6 +48,7 @@ Reg const ACC1(ACC, 1);
 Reg const ACC2(ACC, 2);
 Reg const ACC3(ACC, 3);
 Reg const ACC4(ACC, 4);
+Reg const ACC5(ACC, 5);
 Reg const QPU_ID(       SPECIAL, SPECIAL_QPU_NUM);
 Reg const ELEM_ID(      SPECIAL, SPECIAL_ELEM_NUM);
 Reg const TMU0_S(       SPECIAL, SPECIAL_TMU0_S);
@@ -74,11 +74,14 @@ Reg rf(uint8_t index) {
 }
 
 
-Instr mov(Var dst, Var src) { return mov(dstReg(dst), srcReg(src)); }
-Instr mov(Var dst, RegOrImm const &src) { return mov(dstReg(dst), src); }
-Instr mov(Reg dst, Var src) { return mov(dst, srcReg(src)); }
+Dst::Dst(Var rhs) : Reg(dstReg(rhs)) { can_write(true); }
+Dst::Dst(Reg rhs) : Reg(rhs) { can_write(true); }
 
-Instr mov(Reg dst, RegOrImm const &src) {
+//Instr mov(Var dst, Var src) { return mov(dstReg(dst), srcReg(src)); }
+//Instr mov(Var dst, RegOrImm const &src) { return mov(dstReg(dst), src); }
+//Instr mov(Dst dst, Var src) { return mov(dst, srcReg(src)); }
+
+Instr mov(Dst dst, RegOrImm const &src) {
   if (Platform::compiling_for_vc4() && src.is_imm()) {
     return li(dst, src.imm().val);
   } else {
@@ -136,9 +139,8 @@ Instr sub(Reg dst, Reg srcA, int n) {
  */
 Instr li(Reg dst, Imm const &src) {
   Instr instr(LI);
-  instr.LI.cond = always;
-  instr.dest(dst);
   instr.LI.imm  = src;
+  instr.dest(dst);
  
   return instr;
 }
@@ -155,10 +157,13 @@ Instr li(Var v, Imm const &src) {
  * Conditions can still be specified with helper methods (e.g. see `allzc()`)
  */
 Instr branch(Label label) {
+  BranchCond cond;
+  cond.tag = COND_ALWAYS;
+
   Instr instr;
-  instr.tag          = BRL;
-  instr.BRL.cond.tag = COND_ALWAYS;    // Can still be changed
-  instr.BRL.label    = label;
+  instr.tag       = BRL;
+  instr.BRL.label = label;
+  instr.branch_cond(cond);  // Default value, can still be changed downstream
 
   return instr;
 }
@@ -190,8 +195,8 @@ Instr label(Label in_label) {
 Instr branch(BranchCond cond, Label label) {
   Instr instr;
   instr.tag       = BRL;
-  instr.BRL.cond  = cond; 
   instr.BRL.label = label;
+  instr.branch_cond(cond);
 
   return instr;
 }

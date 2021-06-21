@@ -107,39 +107,32 @@ struct Instr : public InstructionComment {
 
   InstrTag tag;
 
-  union {
-    // Load immediate
-    struct {
-      SetCond    m_setCond;
-      AssignCond cond;
-      Imm        imm;
-    } LI;
+  // Load immediate
+  struct {
+    SetCond    m_setCond;
+    Imm        imm;
+  } LI;
 
-    ALUInstruction ALU;
+  ALUInstruction ALU;
 
-    // Conditional branch (to target)
-    struct {
-      BranchCond cond;
-      BranchTarget target;
-    } BR;
+  // Conditional branch (to target)
+  struct {
+    BranchTarget target;
+  } BR;
 
-    // ==================================================
-    // Intermediate-language constructs
-    // ==================================================
+  // ==================================================
+  // Intermediate-language constructs
+  // ==================================================
 
-    // Conditional branch (to label)
-    struct {
-      BranchCond cond;
-      Label label;
-    } BRL;
+  // Conditional branch (to label)
+  struct {
+    Label label;
+  } BRL;
 
-    // Labels, denoting branch targets
-    Label m_label;  // Renamed during debugging
-                    // TODO perhaps revert
+  Label m_label;              // Label denoting branch target
 
-    // Semaphores
-    int semaId;                 // Semaphore id (range 0..15)
-  };
+  // Semaphores
+  int semaId;                 // Semaphore id (range 0..15)
 
 
   Instr() : tag(NO_OP) {} 
@@ -164,7 +157,10 @@ struct Instr : public InstructionComment {
   bool is_branch() const { return tag == InstrTag::BR || tag == InstrTag::BRL; }
   bool isCondAssign() const;
   bool is_always() const;
+  void assign_cond(AssignCond rhs);
   AssignCond assign_cond() const;
+  void branch_cond(BranchCond rhs);
+  BranchCond branch_cond() const;
   bool hasImm() const { return ALU.srcA.is_imm() || ALU.srcB.is_imm(); }
   bool isUniformLoad() const;
   bool isUniformPtrLoad() const;
@@ -232,16 +228,12 @@ struct Instr : public InstructionComment {
   // v3d-specific  methods
   // ==================================================
   Instr &pushz();
-
-  Instr &allzc() {
-    assert(tag == InstrTag::BRL);
-    BRL.cond.tag  = COND_ALL;
-    BRL.cond.flag = Flag::ZC;
-    return *this;
-  }
+  Instr &allzc();
 
 private:
   bool m_break_point = false;
+  AssignCond m_assign_cond;
+  BranchCond m_branch_cond;
   Reg  m_dest;
 
   SetCond &setCond();

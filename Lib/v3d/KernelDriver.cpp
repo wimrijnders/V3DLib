@@ -197,7 +197,7 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
 void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
   using ::operator<<; // C++ weirdness
 
-  auto &cond = src_instr.ALU.cond;
+  auto cond = src_instr.assign_cond();
 
   // src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
   assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
@@ -569,7 +569,7 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
     breakpoint;  // to check what flags need to be set - case not handled yet
   }
 
-  ret.set_cond_tag(instr.cond);
+  ret.set_cond_tag(full_instr.assign_cond());
   return ret;
 }
 
@@ -599,12 +599,11 @@ Instructions encodeALUOp(V3DLib::Instr instr) {
  */
 v3d::instr::Instr encodeBranchLabel(V3DLib::Instr src_instr) {
   assert(src_instr.tag == BRL);
-  auto &instr = src_instr.BRL;
 
   // Prepare as branch without offset but with label
   auto dst_instr = branch(0, true);
-  dst_instr.label(instr.label);
-  dst_instr.set_branch_condition(instr.cond);
+  dst_instr.label(src_instr.BRL.label);
+  dst_instr.set_branch_condition(src_instr.branch_cond());
 
   return dst_instr;
 }
