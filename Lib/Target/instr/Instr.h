@@ -106,32 +106,13 @@ struct Instr : public InstructionComment {
   };
 
   InstrTag tag;
+  ALUInstruction ALU;
+  int semaId;                 // Semaphore id (range 0..15)
 
   // Load immediate
   struct {
     Imm        imm;
   } LI;
-
-  ALUInstruction ALU;
-
-  // Conditional branch (to target)
-  struct {
-    BranchTarget target;
-  } BR;
-
-  // ==================================================
-  // Intermediate-language constructs
-  // ==================================================
-
-  // Conditional branch (to label)
-  struct {
-    Label label;
-  } BRL;
-
-  Label m_label;              // Label denoting branch target
-
-  // Semaphores
-  int semaId;                 // Semaphore id (range 0..15)
 
 
   Instr() : tag(NO_OP) {} 
@@ -161,7 +142,9 @@ struct Instr : public InstructionComment {
   void set_cond_clear() { m_set_cond.clear(); }
   void assign_cond(AssignCond rhs);
   AssignCond assign_cond() const;
-  void branch_cond(BranchCond rhs);
+
+  BranchTarget branch_target() const;
+  Instr &branch_cond(BranchCond rhs);
   BranchCond branch_cond() const;
 
   bool hasImm() const { return ALU.srcA.is_imm() || ALU.srcB.is_imm(); }
@@ -171,7 +154,6 @@ struct Instr : public InstructionComment {
   bool isZero() const;
   bool isLast() const;
   bool has_registers() const { return tag == InstrTag::LI || tag == InstrTag::ALU || tag == InstrTag::RECV; }
-
 
   Reg dest() const;
   void dest(Reg const &rhs);
@@ -199,7 +181,6 @@ struct Instr : public InstructionComment {
 
   bool operator!=(Instr const &rhs) const { return !(*this == rhs); }
 
-
   static Instr nop();
 
   /////////////////////////////////////
@@ -208,12 +189,8 @@ struct Instr : public InstructionComment {
 
   bool is_label() const { return tag == InstrTag::LAB; }
   bool is_branch_label() const { return tag == InstrTag::BRL; }
-
-  Label branch_label() const {
-    assert(tag == InstrTag::BRL);
-    return BRL.label;
-  }
-
+  Label branch_label() const;
+  void  branch_label(Label rhs);
   void label_to_target(int offset);
     
   void label(Label val) {
@@ -238,6 +215,11 @@ private:
   AssignCond m_assign_cond;
   BranchCond m_branch_cond;
   Reg        m_dest;
+
+  // Branch fields
+  BranchTarget m_branch_target;
+  Label        m_branch_label;      // Label to jump to in BRL instruction
+  Label        m_label;             // Label denoting branch target
 };
 
 

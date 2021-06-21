@@ -49,7 +49,6 @@ Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
 Instr li(Reg dst, Imm const &src);
 Instr branch(Label label);
-Instr branch(BranchCond cond, Label label);
 Instr label(Label in_label);
 
 //

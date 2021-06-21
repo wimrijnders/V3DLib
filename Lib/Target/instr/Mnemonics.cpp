@@ -152,14 +152,8 @@ Instr li(Reg dst, Imm const &src) {
  * Conditions can still be specified with helper methods (e.g. see `allzc()`)
  */
 Instr branch(Label label) {
-  BranchCond cond;
-  cond.tag = COND_ALWAYS;
-
-  Instr instr;
-  instr.tag       = BRL;
-  instr.BRL.label = label;
-  instr.branch_cond(cond);  // Default value, can still be changed downstream
-
+  Instr instr(BRL);
+  instr.branch_label(label);
   return instr;
 }
 
@@ -179,19 +173,6 @@ Instr label(Label in_label) {
   Instr instr;
   instr.tag = LAB;
   instr.label(in_label);
-
-  return instr;
-}
-
-
-/**
- * Create a conditional branch.
- */
-Instr branch(BranchCond cond, Label label) {
-  Instr instr;
-  instr.tag       = BRL;
-  instr.BRL.label = label;
-  instr.branch_cond(cond);
 
   return instr;
 }

@@ -449,12 +449,12 @@ void translateIf(Instr::List &seq, Stmt &s) {
   BranchCond cond  = condExp(seq, *s.if_cond());  // Compile condition
     
   if (s.elseStmt().get() == nullptr) {
-    seq << branch(cond.negate(), endifLabel);  // Branch over 'then' statement
+    seq << branch(endifLabel).branch_cond(cond.negate());  // Branch over 'then' statement
     stmt(&seq, s.thenStmt());                  // Compile 'then' statement
   } else {
     Label elseLabel = freshLabel();
 
-    seq << branch(cond.negate(), elseLabel);   // Branch to 'else' statement
+    seq << branch(elseLabel).branch_cond(cond.negate());   // Branch to 'else' statement
 
     stmt(&seq, s.thenStmt());                  // Compile 'then' statement
 
@@ -475,15 +475,15 @@ void translateWhile(Instr::List &seq, Stmt &s) {
   Label endLabel   = freshLabel();
   BranchCond cond  = condExp(seq, *s.loop_cond());     // Compile condition
  
-  seq << branch(cond.negate(), endLabel)             // Branch over loop body
-      << label(startLabel);                          // Start label
+  seq << branch(endLabel).branch_cond(cond.negate())   // Branch over loop body
+      << label(startLabel);                            // Start label
 
-  if (!s.body_is_null()) stmt(&seq, s.body());       // Compile body
-  condExp(seq, *s.loop_cond());                      // Compute condition again
-                                                     // TODO why is this necessary?
+  if (!s.body_is_null()) stmt(&seq, s.body());         // Compile body
+  condExp(seq, *s.loop_cond());                        // Compute condition again
+                                                       // TODO why is this necessary?
 
-  seq << branch(cond, startLabel)                    // Branch to start
-      << label(endLabel);                            // End label
+  seq << branch(startLabel).branch_cond(cond)          // Branch to start
+      << label(endLabel);                              // End label
 }
 
 

@@ -602,7 +602,7 @@ v3d::instr::Instr encodeBranchLabel(V3DLib::Instr src_instr) {
 
   // Prepare as branch without offset but with label
   auto dst_instr = branch(0, true);
-  dst_instr.label(src_instr.BRL.label);
+  dst_instr.label(src_instr.branch_label());
   dst_instr.set_branch_condition(src_instr.branch_cond());
 
   return dst_instr;

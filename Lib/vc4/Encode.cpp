@@ -481,12 +481,12 @@ uint64_t encodeInstr(Instr instr) {
     break;
 
     case BR:  // Branch
-      assertq(!instr.BR.target.useRegOffset, "Register offset not yet supported");
+      assertq(!instr.branch_target().useRegOffset, "Register offset not yet supported");
 
       vc4_instr.tag(vc4_Instr::BR);
       vc4_instr.cond_add = encodeBranchCond(instr.branch_cond());
-      vc4_instr.rel(instr.BR.target.relative);
-      vc4_instr.li_imm = 8*instr.BR.target.immOffset;
+      vc4_instr.rel(instr.branch_target().relative);
+      vc4_instr.li_imm = 8*instr.branch_target().immOffset;
     break;
 
     case ALU: {

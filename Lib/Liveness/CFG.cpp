@@ -280,8 +280,8 @@ void CFG::build(Instr::List &instrs) {
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
     if (instr.tag == BRL) {
-      assert(labelMap[instr.BRL.label] >= 0);
-      (*this)[i].insert(labelMap[instr.BRL.label]);
+      assert(labelMap[instr.branch_label()] >= 0);
+      (*this)[i].insert(labelMap[instr.branch_label()]);
     }
   }
 

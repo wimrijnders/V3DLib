@@ -36,8 +36,10 @@ std::string pretty_instr(Instr const &instr) {
     }
     break;
 
-    case BR:   buf << "if " << instr.branch_cond().to_string() << " goto " << instr.BR.target.to_string(); break;
-    case BRL:  buf << "if " << instr.branch_cond().to_string() << " goto L" << instr.BRL.label;            break;
+    case BR:   buf << "if " << instr.branch_cond().to_string()
+                   << " goto " << instr.branch_target().to_string();
+    break;
+    case BRL:  buf << "if " << instr.branch_cond().to_string() << " goto L" << instr.branch_label(); break;
     case LAB:  buf << "L" << instr.label();                                                          break;
     case RECV: buf << "RECV(" <<  instr.dest().dump() << ")";                                        break;
     case SINC: buf << "SINC " << instr.semaId;                                                       break;

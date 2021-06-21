@@ -677,7 +677,7 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
           // Branch to target
           case BR: {
             if (checkBranchCond(s, instr.branch_cond())) {
-              BranchTarget t = instr.BR.target;
+              BranchTarget t = instr.branch_target();
               if (t.relative && !t.useRegOffset) {
                 s->pc += 3+t.immOffset;
               } else {

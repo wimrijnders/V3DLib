@@ -46,6 +46,11 @@ Instr::Instr(InstrTag in_tag) {
     m_set_cond.clear();
     break;
 
+  case InstrTag::BRL:
+    tag               = in_tag;
+    m_branch_cond.tag = COND_ALWAYS;
+    break;
+
   case InstrTag::INIT_BEGIN:
   case InstrTag::INIT_END:
   case InstrTag::RECV:
@@ -245,21 +250,18 @@ bool Instr::isCondAssign() const {
 }
 
 
-void Instr::assign_cond(AssignCond rhs) {
-  assert (tag == InstrTag::LI || tag == InstrTag::ALU);
-  m_assign_cond = rhs;
-}
+void Instr::assign_cond(AssignCond rhs) { assert(tag == InstrTag::LI || tag == InstrTag::ALU); m_assign_cond = rhs; }
+AssignCond Instr::assign_cond() const   { assert(tag == InstrTag::LI || tag == InstrTag::ALU); return m_assign_cond; }
 
+BranchTarget Instr::branch_target() const { assert(tag == V3DLib::BR); return m_branch_target; }
 
-AssignCond Instr::assign_cond() const {
-  assert (tag == InstrTag::LI || tag == InstrTag::ALU);
-  return m_assign_cond;
-}
+void  Instr::branch_label(Label rhs) { assert(tag == InstrTag::BRL); m_branch_label = rhs; }
+Label Instr::branch_label() const    { assert(tag == InstrTag::BRL); return m_branch_label; }
 
-
-void Instr::branch_cond(BranchCond rhs) {
+Instr &Instr::branch_cond(BranchCond rhs) {
   assert(tag == V3DLib::BR || tag == V3DLib::BRL);
   m_branch_cond = rhs;
+  return *this;
 }
 
 
@@ -328,8 +330,8 @@ void Instr::label_to_target(int offset) {
   t.useRegOffset   = false;
   t.immOffset      = offset - 4;  // Compensate for the 4-op delay for executing a branch
 
-  tag       = InstrTag::BR;
-  BR.target = t;
+  tag = InstrTag::BR;
+  m_branch_target = t;
 }
 
 
