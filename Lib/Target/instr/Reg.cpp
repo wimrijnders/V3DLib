@@ -31,7 +31,51 @@ char const *specialStr(RegId rid) {
   assert(false);
   return "";
 }
+
+void var_to_reg(Var var, Reg &r) {
+  switch (var.tag()) {
+    case UNIFORM:
+      r.tag     = SPECIAL;
+      r.regId   = SPECIAL_UNIFORM;
+      r.isUniformPtr = var.is_uniform_ptr();
+      break;
+    case QPU_NUM:
+      r.tag     = SPECIAL;
+      r.regId   = SPECIAL_QPU_NUM;
+      break;
+    case ELEM_NUM:
+      r.tag     = SPECIAL;
+      r.regId   = SPECIAL_ELEM_NUM;
+      break;
+    case VPM_READ:
+      r.tag     = SPECIAL;
+      r.regId   = SPECIAL_VPM_READ;
+      break;
+    case STANDARD:
+      r.tag   = REG_A;
+      r.regId = var.id();
+      break;
+    case DUMMY:
+      r.tag   = NONE;
+      r.regId = var.id();
+      break;
+    case VPM_WRITE:
+      r = Target::instr::VPM_WRITE;
+      break;
+    case TMU0_ADDR:
+      r = Target::instr::TMU0_S;
+      break;
+    default:
+      assertq(false, "srcReg(): Unhandled Var-tag");
+      break;
+  }
+}
+
+
 }  //  anon namespace
+
+
+Reg::Reg(Var var) { var_to_reg(var, *this); }
 
 
 bool Reg::operator<(Reg const &rhs) const {
@@ -113,76 +157,6 @@ bool Reg::can_write(bool check) const {
   }
 
   return ret;
-}
-
-
-/**
- * Translate variable to source register.
- */
-Reg srcReg(Var v) {
-  Reg r;
-
-  switch (v.tag()) {
-    case UNIFORM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_UNIFORM;
-      r.isUniformPtr = v.is_uniform_ptr();
-      break;
-    case QPU_NUM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_QPU_NUM;
-      break;
-    case ELEM_NUM:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_ELEM_NUM;
-      break;
-    case VPM_READ:
-      r.tag     = SPECIAL;
-      r.regId   = SPECIAL_VPM_READ;
-      break;
-    case STANDARD:
-      r.tag   = REG_A;
-      r.regId = v.id();
-      break;
-    case VPM_WRITE:
-    case TMU0_ADDR:
-      assertq(false, "srcReg(): Reading from write-only special register is forbidden");
-      break;
-    case DUMMY:
-      r.tag   = NONE;
-      r.regId = v.id();
-      break;
-    default:
-      assertq(false, "srcReg(): Unhandled Var-tag");
-      break;
-  }
-
-  return r;
-}
-
-
-/**
- * Translate variable to target register.
- */
-Reg dstReg(Var v) {
-  using namespace V3DLib::Target::instr;
-
-  switch (v.tag()) {
-    case UNIFORM:
-    case QPU_NUM:
-    case ELEM_NUM:
-    case VarTag::VPM_READ:
-      assertq(false, "dstReg(): writing to read-only special register is forbidden");
-      return Reg();  // Return anything
-
-    case STANDARD:          return Reg(REG_A, v.id());
-    case VarTag::VPM_WRITE: return Target::instr::VPM_WRITE;
-    case TMU0_ADDR:         return TMU0_S;
-
-    default:
-      assertq(false, "dstReg(): Unhandled Var-tag");
-      return Reg();  // Return anything
-  }
 }
 
 

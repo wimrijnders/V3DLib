@@ -22,8 +22,7 @@ RegOrImm operand(Expr::Ptr e) {
   RegOrImm x;
 
   if (e->tag() == Expr::VAR) {
-    x = srcReg(e->var());
-    return x;
+    x = RegOrImm(e->var());
   } else if (e->tag() == Expr::INT_LIT) { 
     x = Imm(e->intLit);
   } else if (e->tag() == Expr::FLOAT_LIT) {
@@ -32,9 +31,6 @@ RegOrImm operand(Expr::Ptr e) {
     assert(false);
   }
 
-  //int enc = encodeSmallLit(*e);
-  //assert(enc >= 0);
-  //x.set_imm(enc);
   return x;
 }
 
@@ -216,7 +212,7 @@ void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
   instr.ALU.op       = ALUOp(op);
   instr.ALU.srcA     = operand(b.cmp_lhs());
   instr.ALU.srcB     = operand(b.cmp_rhs());
-  instr.dest(dstReg(dummy));
+  instr.dest(dummy);
 
   *seq << li(v, 0).comment("Store condition as Bool var")
        << instr
@@ -241,9 +237,9 @@ void boolVarExp(Instr::List &seq, BExpr b, Var v) {
   boolExp(&seq, b.rhs(), w);  // idem
 
   if (b.tag() == OR) {
-    seq << bor(dstReg(v), srcReg(v1), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var OR");
+    seq << bor(v, v1, w).setCondFlag(Flag::ZC).comment("Bool var OR");
   } else if (b.tag() == AND) {
-    seq << band(dstReg(v), srcReg(v1), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var AND");
+    seq << band(v, v1, w).setCondFlag(Flag::ZC).comment("Bool var AND");
   } else {
     assert(false);
   }
@@ -524,7 +520,7 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
       using Target::instr::recv;
 
       assert(s->address()->tag() == Expr::VAR);
-      *seq << recv(dstReg(s->address()->var()));
+      *seq << recv(s->address()->var());
       break;
     default:
       if (!getSourceTranslate().stmt(*seq, s)) {
@@ -613,7 +609,7 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
         instr.ALU.srcA  = operand(e.lhs());
         instr.ALU.srcB  = operand(e.rhs());
         instr.assign_cond(cond);
-        instr.dest(dstReg(v));
+        instr.dest(v);
 
         ret << instr;
         break;

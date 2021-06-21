@@ -20,8 +20,8 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
   using namespace V3DLib::Target::instr;
   Instr::List ret;
 
-  Reg srcData = srcReg(dst_addr);
-  Reg srcAddr = srcReg(src);
+  Reg srcData(dst_addr);
+  Reg srcAddr(src);
 
   ret << mov(TMUD, srcAddr)
       << mov(TMUA, srcData)

@@ -6,6 +6,10 @@ namespace V3DLib {
 namespace {
 
 Instr genInstr(ALUOp::Enum op, Reg dst, RegOrImm const &srcA, RegOrImm const &srcB) {
+  dst.can_write(true);
+  srcA.can_read(true);
+  srcB.can_read(true);
+
   Instr instr(ALU);
   instr.ALU.op   = ALUOp(op);
   instr.ALU.srcA = srcA;
@@ -74,14 +78,9 @@ Reg rf(uint8_t index) {
 }
 
 
-Dst::Dst(Var rhs) : Reg(dstReg(rhs)) { can_write(true); }
-Dst::Dst(Reg rhs) : Reg(rhs) { can_write(true); }
+Instr mov(Reg dst, RegOrImm const &src) {
+  dst.can_write(true);
 
-//Instr mov(Var dst, Var src) { return mov(dstReg(dst), srcReg(src)); }
-//Instr mov(Var dst, RegOrImm const &src) { return mov(dstReg(dst), src); }
-//Instr mov(Dst dst, Var src) { return mov(dst, srcReg(src)); }
-
-Instr mov(Dst dst, RegOrImm const &src) {
   if (Platform::compiling_for_vc4() && src.is_imm()) {
     return li(dst, src.imm().val);
   } else {
@@ -93,10 +92,9 @@ Instr mov(Dst dst, RegOrImm const &src) {
 
 // Generation of bitwise instructions
 Instr bor(Reg dst, RegOrImm const &srcA, RegOrImm const &srcB)  { return genInstr(ALUOp::A_BOR, dst, srcA, srcB); }
-Instr band(Reg dst, Reg srcA, Reg srcB) { return genInstr(ALUOp::A_BAND, dst, srcA, srcB); }
-Instr band(Var dst, Var srcA, Var srcB) { return genInstr(ALUOp::A_BAND, dstReg(dst), srcReg(srcA), srcReg(srcB)); }
-Instr band(Reg dst, Reg srcA, int n)    { return genInstr(ALUOp::A_BAND, dst, srcA, n); }
-Instr bxor(Var dst, Var srcA, int n)    { return genInstr(ALUOp::A_BXOR, dstReg(dst), srcReg(srcA), n); }
+Instr band(Reg dst, Reg srcA, Reg srcB)   { return genInstr(ALUOp::A_BAND, dst, srcA, srcB); }
+Instr band(Reg dst, Reg srcA, int n)      { return genInstr(ALUOp::A_BAND, dst, srcA, n); }
+Instr bxor(Var dst, RegOrImm srcA, int n) { return genInstr(ALUOp::A_BXOR, dst, srcA, n); }
 
 
 /**
@@ -138,16 +136,13 @@ Instr sub(Reg dst, Reg srcA, int n) {
  * Generate load-immediate instruction.
  */
 Instr li(Reg dst, Imm const &src) {
+  dst.can_write(true);
+
   Instr instr(LI);
   instr.LI.imm  = src;
   instr.dest(dst);
  
   return instr;
-}
-
-
-Instr li(Var v, Imm const &src) {
-  return li(dstReg(v), src).comment("li(Var, int)");
 }
 
 

@@ -63,6 +63,7 @@ struct Reg {
   Reg() = default;
   Reg(Reg const &rhs) : tag(rhs.tag), regId(rhs.regId), isUniformPtr(rhs.isUniformPtr) {}
   Reg(RegTag in_tag, RegId in_regId) : tag(in_tag), regId(in_regId) {}
+  Reg(Var var);
 
   bool operator==(Reg const &rhs) const { return tag == rhs.tag && regId == rhs.regId; }
   bool operator!=(Reg const &rhs) const { return !(*this == rhs); }
@@ -76,9 +77,6 @@ struct Reg {
   std::string dump() const;
 };
 
-
-Reg srcReg(Var v);
-Reg dstReg(Var v);
 
 bool is_dma_only_register(Reg const &reg);
 

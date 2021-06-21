@@ -275,7 +275,7 @@ Instr::List setStrideStmt(bool is_read, Expr::Ptr e) {
     else
       ret << genSetWriteStride(e->intLit);
   } else if (e->tag() == Expr::VAR) {
-    Reg reg = srcReg(e->var());
+    Reg reg(e->var());
 
     if (is_read)
       ret << genSetReadPitch(reg);
@@ -285,9 +285,9 @@ Instr::List setStrideStmt(bool is_read, Expr::Ptr e) {
     Var v = VarGen::fresh();
     ret << varAssign(v, e);
     if (is_read)
-      ret << genSetReadPitch(srcReg(v));
+      ret << genSetReadPitch(v);
     else
-      ret << genSetWriteStride(srcReg(v));
+      ret << genSetWriteStride(v);
   }
 
   return ret;
@@ -302,7 +302,7 @@ Instr::List startDMAReadStmt(Expr::Ptr e) {
     ret << varAssign(v, e);
   }
 
-  ret << genStartDMALoad(srcReg(e->var()));
+  ret << genStartDMALoad(e->var());
   return ret;
 }
 
@@ -315,7 +315,7 @@ Instr::List startDMAWriteStmt(Expr::Ptr e) {
     ret << varAssign(v, e);
   }
 
-  ret << genStartDMAStore(srcReg(e->var()));
+  ret << genStartDMAStore(e->var());
   return ret;
 }
 
@@ -362,11 +362,11 @@ Instr::List Stmt::setupVPMRead() {
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupVPMLoad(e->intLit, setup);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMLoad(srcReg(e->var()), setup);
+    ret << genSetupVPMLoad(e->var(), setup);
   else {
     Var v = VarGen::fresh();
     ret << varAssign(v, e)
-        << genSetupVPMLoad(srcReg(v), setup);
+        << genSetupVPMLoad(v, setup);
   }
 
   return ret;
@@ -389,12 +389,12 @@ Instr::List Stmt::setupDMARead() {
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->intLit);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var()));
+    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->var());
   else {
     Var v = VarGen::fresh();
 
     ret << varAssign(v, e)
-        << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(v));
+        << genSetupDMALoad(numRows, rowLen, hor, vpitch, v);
   }
 
   return ret;
@@ -412,12 +412,12 @@ Instr::List Stmt::setupDMAWrite() {
   if (e->tag() == Expr::INT_LIT) {
     ret << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
   } else if (e->tag() == Expr::VAR) {
-    ret << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var()));
+    ret << genSetupDMAStore(numRows, rowLen, hor, e->var());
   } else {
     Var v = VarGen::fresh();
 
     ret << varAssign(v, e)
-        << genSetupDMAStore(numRows, rowLen, hor, srcReg(v));
+        << genSetupDMAStore(numRows, rowLen, hor, v);
   }
 
   return ret;
@@ -434,11 +434,11 @@ Instr::List Stmt::setupVPMWrite() {
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupVPMStore(e->intLit, hor, stride);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMStore(srcReg(e->var()), hor, stride);
+    ret << genSetupVPMStore(e->var(), hor, stride);
   else {
     Var v = VarGen::fresh();
     ret << varAssign(v, e)
-        << genSetupVPMStore(srcReg(v), hor, stride);
+        << genSetupVPMStore(v, hor, stride);
   }
 
   return ret;
@@ -451,7 +451,7 @@ Instr::List Stmt::setupVPMWrite() {
 Instr::List loadRequest(Var &dst, Expr &e) {
   using namespace V3DLib::Target::instr;
 
-  Reg reg   = srcReg(e.deref_ptr()->var());
+  Reg reg(e.deref_ptr()->var());
   int setup = vpmSetupReadCode(1, 0, 1);
 
   Instr::List ret;
@@ -460,7 +460,7 @@ Instr::List loadRequest(Var &dst, Expr &e) {
       << genStartDMALoad(reg)                                                      // Start DMA load
       << genWaitDMALoad(false)                                                     // Wait for DMA
       << genSetupVPMLoad(QPU_ID, setup)                                            // Setup VPM
-      << shl(dstReg(dst), Target::instr::VPM_READ, 0).comment("End DMA load var"); // Get from VPM
+      << shl(dst, Target::instr::VPM_READ, 0).comment("End DMA load var");         // Get from VPM
 
   return ret;
 }
@@ -486,8 +486,8 @@ Instr::List storeRequest(Var dst_addr, Var src) {
 
       << genSetWriteStride(0)                                                  // Setup DMA
       << genSetupDMAStore(16, 1, 1, storeAddr)
-      << shl(Target::instr::VPM_WRITE, srcReg(src), 0)                         // Put to VPM
-      << genStartDMAStore(srcReg(dst_addr)).comment("End DMA store request");  // Start DMA
+      << shl(Target::instr::VPM_WRITE, src, 0)                                 // Put to VPM
+      << genStartDMAStore(dst_addr).comment("End DMA store request");          // Start DMA
 
   return ret;
 }

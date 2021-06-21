@@ -37,29 +37,17 @@ extern Reg const TMUA;
 
 Reg rf(uint8_t index);
 
-class Dst : public Reg {
-public:
- Dst(Reg rhs);
- Dst(Var rhs);
-};
-
-
 Instr bor(Reg dst, RegOrImm const &srcA, RegOrImm const &srcB);
 Instr band(Reg dst, Reg srcA, Reg srcB);
-Instr band(Var dst, Var srcA, Var srcB);
 Instr band(Reg dst, Reg srcA, int n);
-Instr bxor(Var dst, Var srcA, int n);
-//Instr mov(Var dst, Var src);
-//Instr mov(Var dst, RegOrImm const &src);
-//Instr mov(Dst dst, Var src);
-Instr mov(Dst dst, RegOrImm const &src);
+Instr bxor(Var dst, RegOrImm srcA, int n);
+Instr mov(Reg dst, RegOrImm const &src);
 Instr shl(Reg dst, Reg srcA, int val);
 Instr add(Reg dst, Reg srcA, Reg srcB);
 Instr add(Reg dst, Reg srcA, int n);
 Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
 Instr li(Reg dst, Imm const &src);
-Instr li(Var v, Imm const &src);
 Instr branch(Label label);
 Instr branch(BranchCond cond, Label label);
 Instr label(Label in_label);

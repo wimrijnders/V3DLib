@@ -28,8 +28,8 @@ Instr::List ISourceTranslate::load_var(Var &in_dst, Expr &e) {
 
   Instr::List ret;
 
-  Reg src = srcReg(e.deref_ptr()->var());
-  Reg dst = dstReg(in_dst);
+  Reg src(e.deref_ptr()->var());
+  Reg dst(in_dst);
 
   ret << mov(TMU0_S, src)
       << recv(dst);

@@ -8,7 +8,7 @@
 namespace V3DLib {
 
 RegOrImm::RegOrImm(Imm const &rhs) { set_imm(rhs.encode_imm()); }
-RegOrImm::RegOrImm(Var const &rhs) { set_reg(srcReg(rhs)); }
+RegOrImm::RegOrImm(Var const &rhs) { set_reg(rhs); }
 RegOrImm::RegOrImm(Reg const &rhs) { set_reg(rhs); }
 
 Reg &RegOrImm::reg()                  { assert(is_reg()); return m_reg; }
@@ -60,6 +60,13 @@ bool RegOrImm::operator==(Imm const &rhs) const {
   if (m_is_reg) return false;
   if (rhs.is_float()) return false;
   return m_smallImm.val == rhs.intVal();
+}
+
+
+bool RegOrImm::can_read(bool check) const {
+  if (m_is_reg) return m_reg.can_read(check);
+
+  return true;
 }
 
 
