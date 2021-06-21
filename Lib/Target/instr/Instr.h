@@ -109,7 +109,6 @@ struct Instr : public InstructionComment {
 
   // Load immediate
   struct {
-    SetCond    m_setCond;
     Imm        imm;
   } LI;
 
@@ -157,10 +156,14 @@ struct Instr : public InstructionComment {
   bool is_branch() const { return tag == InstrTag::BR || tag == InstrTag::BRL; }
   bool isCondAssign() const;
   bool is_always() const;
+
+  SetCond set_cond() const;
+  void set_cond_clear() { m_set_cond.clear(); }
   void assign_cond(AssignCond rhs);
   AssignCond assign_cond() const;
   void branch_cond(BranchCond rhs);
   BranchCond branch_cond() const;
+
   bool hasImm() const { return ALU.srcA.is_imm() || ALU.srcB.is_imm(); }
   bool isUniformLoad() const;
   bool isUniformPtrLoad() const;
@@ -184,7 +187,6 @@ struct Instr : public InstructionComment {
   Instr &src_a(RegOrImm const &rhs) { assert(tag == InstrTag::ALU); ALU.srcA = rhs;  return *this; }
   Instr &src_b(RegOrImm const &rhs) { assert(tag == InstrTag::ALU); ALU.srcB = rhs;  return *this; }
 
-  SetCond const &setCond() const;
   std::string mnemonic(bool with_comments = false, std::string const &pref = "") const;
   std::string dump() const;
   uint32_t get_acc_usage() const;
@@ -232,11 +234,10 @@ struct Instr : public InstructionComment {
 
 private:
   bool m_break_point = false;
+  SetCond    m_set_cond;
   AssignCond m_assign_cond;
   BranchCond m_branch_cond;
-  Reg  m_dest;
-
-  SetCond &setCond();
+  Reg        m_dest;
 };
 
 

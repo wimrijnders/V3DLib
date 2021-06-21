@@ -15,7 +15,7 @@ std::string pretty_instr(Instr const &instr) {
     case LI: {
       buf << instr.assign_cond().to_string()
           << "LI " << instr.dest().dump()
-          << " <-" << instr.setCond().pretty() << " "
+          << " <-" << instr.set_cond().pretty() << " "
           << instr.LI.imm.pretty();
     }
     break;
@@ -23,7 +23,7 @@ std::string pretty_instr(Instr const &instr) {
     case ALU: {
       buf << instr.assign_cond().to_string()
           << instr.dest().dump()
-          << " <-" << instr.setCond().pretty() << " "
+          << " <-" << instr.set_cond().pretty() << " "
           << instr.ALU.op.pretty();
 
       if (instr.ALU.noOperands()) {

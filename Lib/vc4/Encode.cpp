@@ -357,7 +357,7 @@ void convertInstr(Instr &instr) {
     case IRQ:
       instr.tag           = LI;
       instr.LI.imm        = Imm(1);
-      instr.LI.m_setCond.clear();
+      instr.set_cond_clear();
       instr.assign_cond(AssignCond(AssignCond::Tag::ALWAYS));
       instr.dest(Reg(SPECIAL, SPECIAL_HOST_INT));
       break;
@@ -368,7 +368,7 @@ void convertInstr(Instr &instr) {
 
       instr.tag     = ALU;
       instr.ALU.op  = ALUOp(ALUOp::A_BOR);
-      instr.ALU.m_setCond.clear();
+      instr.set_cond_clear();
       instr.assign_cond(AssignCond(AssignCond::Tag::NEVER));
 
       instr.ALU.srcA = Reg(SPECIAL, src);  // srcA is same as srcB
@@ -474,9 +474,9 @@ uint64_t encodeInstr(Instr instr) {
       vc4_instr.tag(vc4_Instr::LI);
       vc4_instr.cond_add  = encodeAssignCond(instr.assign_cond());
       vc4_instr.waddr_add = encodeDestReg(instr.dest(), &file);
-      vc4_instr.sf(li.m_setCond.flags_set());
       vc4_instr.ws(file != REG_A);
       vc4_instr.li_imm = li.imm.encode();
+      vc4_instr.sf(instr.set_cond().flags_set());
     }
     break;
 
@@ -505,7 +505,7 @@ uint64_t encodeInstr(Instr instr) {
         vc4_instr.ws(file != REG_A);
       }
 
-      vc4_instr.sf(alu.m_setCond.flags_set());
+      vc4_instr.sf(instr.set_cond().flags_set());
 
 
       if (alu.op.isRot()) {

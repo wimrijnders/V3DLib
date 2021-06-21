@@ -203,7 +203,7 @@ void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
   assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
   assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
 
-  auto const &setCond = src_instr.setCond();
+  auto setCond = src_instr.set_cond();
 
   if (!setCond.flags_set()) {
     ret.set_cond_tag(cond);
@@ -565,7 +565,7 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
   }
 
 
-  if (full_instr.setCond().flags_set()) {
+  if (full_instr.set_cond().flags_set()) {
     breakpoint;  // to check what flags need to be set - case not handled yet
   }
 

@@ -36,14 +36,14 @@ Instr::Instr(InstrTag in_tag) {
   switch (in_tag) {
   case InstrTag::ALU:
     tag          = in_tag;
-    ALU.m_setCond.clear();
     m_assign_cond = always;
+    m_set_cond.clear();
     break;
 
   case InstrTag::LI:
     tag           = in_tag;
-    LI.m_setCond.clear();
     m_assign_cond = always;
+    m_set_cond.clear();
     break;
 
   case InstrTag::INIT_BEGIN:
@@ -214,13 +214,15 @@ bool Instr::rename_dest(Reg const &current, Reg const &replace_with) {
 
 
 Instr &Instr::setCondFlag(Flag flag) {
-  setCond().setFlag(flag);
+  assert(tag == InstrTag::LI || InstrTag::ALU);
+  m_set_cond.setFlag(flag);
   return *this;
 }
 
 
 Instr &Instr::setCondOp(CmpOp const &cmp_op) {
-  setCond().tag(cmp_op.cond_tag());
+  assert(tag == InstrTag::LI || InstrTag::ALU);
+  m_set_cond.tag(cmp_op.cond_tag());
   return *this;
 }
 
@@ -291,38 +293,15 @@ bool Instr::isLast() const {
 }
 
 
-SetCond const &Instr::setCond() const {
-  switch (tag) {
-    case InstrTag::LI:
-      return LI.m_setCond;
-    case InstrTag::ALU:
-      return ALU.m_setCond;
-    default:
-      assertq(false, "setCond() can only be called for LI or ALU");
-      break;
-  }
-
-  return ALU.m_setCond;  // Return anything
-}
-
-
-SetCond &Instr::setCond() {
-  switch (tag) {
-    case InstrTag::LI:
-      return LI.m_setCond;
-    case InstrTag::ALU:
-      return ALU.m_setCond;
-    default:
-      assertq(false, "setCond() can only be called for LI or ALU");
-      break;
-  }
-
-  return ALU.m_setCond;  // Return anything
+SetCond Instr::set_cond() const {
+  assert(tag == InstrTag::LI || InstrTag::ALU);
+  return m_set_cond;
 }
 
 
 Instr &Instr::pushz() {
-  setCond().tag(SetCond::Z);
+  assert(tag == InstrTag::LI || InstrTag::ALU);
+  m_set_cond.tag(SetCond::Z);
   return *this;
 }
 
@@ -396,7 +375,7 @@ bool Instr::isRot() const {
  */
 bool Instr::isZero() const {
   return tag == InstrTag::LI
-      && !LI.m_setCond.flags_set()
+      && !m_set_cond.flags_set()
       && m_assign_cond == AssignCond(AssignCond::NEVER, ZS)
       && LI.imm.is_zero()
       && dest() == Reg(REG_A, 0) 

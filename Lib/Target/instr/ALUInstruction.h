@@ -7,7 +7,6 @@
 namespace V3DLib {
 
 struct ALUInstruction {
-  SetCond    m_setCond;
   RegOrImm   srcA;
   ALUOp      op;
   RegOrImm   srcB;

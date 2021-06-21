@@ -193,8 +193,8 @@ std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
       // So, for the time being, we will set a condition (how? Don't know for sure yet) if
       // srcA and srcB are the same in this respect, and set target same as both src's.
       is_none = true;
-      assert(src_instr.setCond().flags_set());
       assert(src_instr.tag == ALU);
+      assert(src_instr.set_cond().flags_set());
 
       auto &srcA = src_instr.ALU.srcA;
 
