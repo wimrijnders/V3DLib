@@ -88,9 +88,12 @@ void loadStorePass(Instr::List &instrs) {
     Instr instr = instrs[i];
 
     if (instr.tag == RECV && instr.dest() != ACC4) {
-      newInstrs << recv(ACC4)
-                << mov(instr.dest(), ACC4);
-      newInstrs.front().transfer_comments(instr);
+      Instr::List tmp(2);
+      tmp << recv(ACC4)
+          << mov(instr.dest(), ACC4);
+      tmp.front().transfer_comments(instr);
+
+      newInstrs << tmp;
       continue;
     }
 

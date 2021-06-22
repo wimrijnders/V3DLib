@@ -34,10 +34,19 @@ struct CoreState {
   void store_to_heap(Vec const &index, Vec &val);
   Vec  load_from_heap(Vec const &index);
 
+  static void reset_count() {
+    load_show_count = 0;
+    store_show_count = 0;
+  }
+
 private:
-  int load_show_count = 0;
-  int store_show_count = 0;
+  static int load_show_count;
+  static int store_show_count;
 };
+
+
+int CoreState::load_show_count = 0;
+int CoreState::store_show_count = 0;
 
 
 // State of the Interpreter.
@@ -56,6 +65,8 @@ struct InterpreterState {
 void CoreState::store_to_heap(Vec const &index, Vec &val) {
   assert(writeStride == 0);  // usage of writeStride is probably wrong!
 
+  int const show_count = 3;
+
   if (!index.is_uniform()) {
     // NOTE: This part will not work for vc4 DMA output!
     //       Better to get rid of it
@@ -63,10 +74,10 @@ void CoreState::store_to_heap(Vec const &index, Vec &val) {
     std::string msg;
     msg << "store_to_heap(): index does not have all same values:" << index.dump();
 
-    if (store_show_count == 1) {
+    if (store_show_count == (show_count - 1)) {
       msg << "\n(this message not shown any more for more occurences)";
     }
-    if (store_show_count < 2) {
+    if (store_show_count < show_count) {
       warning(msg);
     }
     store_show_count ++;
@@ -92,14 +103,16 @@ Vec CoreState::load_from_heap(Vec const &index) {
   assert(readStride == 0);  // Usage of readStride is probably wrong!
   Vec v;
 
+  int const show_count = 3;
+
   if (!index.is_uniform()) {
     std::string msg;
     msg << "load_from_heap(): index does not have all same values: " << index.dump();
 
-    if (load_show_count == 1) {
+    if (load_show_count == (show_count - 1)) {
       msg << "\n(this message not shown any more for more occurences)";
     }
-    if (load_show_count < 2) {
+    if (load_show_count < show_count) {
       warning(msg);
     }
     load_show_count ++;
@@ -672,6 +685,8 @@ void interpreter(
     stack = stmts;
     std::reverse(stack.begin(), stack.end());
   }
+
+  CoreState::reset_count();
 
   // Run code
   bool running = true;

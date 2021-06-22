@@ -107,12 +107,8 @@ struct Instr : public InstructionComment {
 
   InstrTag tag;
   ALUInstruction ALU;
-  int semaId;                 // Semaphore id (range 0..15)
-
-  // Load immediate
-  struct {
-    Imm        imm;
-  } LI;
+  int semaId;              // Semaphore id (range 0..15)
+  struct { Imm imm; } LI;  // Load immediate
 
 
   Instr() : tag(NO_OP) {} 
