@@ -63,10 +63,37 @@ struct Vec {
   bool apply(ALUOp const &op, Vec a, Vec b);
   bool is_uniform() const;
 
+  Vec recip() const;
+  Vec recip_sqrt() const;
+  Vec exp() const;
+  Vec log() const;
+
 private:
   Word elems[NUM_LANES];
 
   void assign(Vec const &rhs);
+};
+
+
+class EmuState {
+public:
+  int num_qpus;
+  Word vpm[VPM_SIZE];      // Shared VPM memory
+
+  EmuState(int in_num_qpus, IntList const &in_uniforms, bool add_dummy = false);
+  Vec get_uniform(int id, int &next_uniform);
+  bool sema_inc(int sema_id);
+  bool sema_dec(int sema_id);
+
+  static Vec const index_vec;
+
+private:
+  IntList uniforms;        // Kernel parameters
+  int sema[16];            // Semaphores
+
+  // Protection against locks due to semaphore waiting
+  int const MAX_SEMAPHORE_WAIT = 1024;
+  int semaphore_wait_count = 0;
 };
 
 

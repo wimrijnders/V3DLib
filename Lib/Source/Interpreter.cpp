@@ -13,25 +13,34 @@ using ::operator<<;  // C++ weirdness
 namespace {
 
 Vec const Always(1);
-Vec const index_vec({0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15});
 
 // State of a single core.
 struct CoreState {
   int id;                        // Core id
-  int numCores;                  // Core count
   int nextUniform = -2;          // Pointer to next uniform to read
+  Seq<Vec> loadBuffer;           // Load buffer
+
   int readStride = 0;            // Read stride
   int writeStride = 0;           // Write stride
-  Vec* env = nullptr;            // Environment mapping vars to values
-  int sizeEnv;                   // Size of the environment
+
   Stmts stack;                   // Control stack
-  Seq<Vec> loadBuffer;           // Load buffer
   Data emuHeap;
 
   ~CoreState() {
-    // Don't delete uniform and output here, these are used as references
-    delete [] env;
+    delete [] m_env;
   }
+
+  void init_env(int numVars) {
+    assert(numVars >= 0);
+    m_env   = new Vec [numVars + 1];
+    sizeEnv = numVars + 1;
+  }
+
+  Vec &env(int env_id) {
+    assert(0 <= env_id && env_id < sizeEnv);
+    assert(nullptr != m_env);
+    return m_env[env_id];
+  } 
 
   void store_to_heap(Vec const &index, Vec &val);
   Vec  load_from_heap(Vec const &index);
@@ -42,6 +51,9 @@ struct CoreState {
   }
 
 private:
+  Vec *m_env  = nullptr;      // Environment mapping vars to values
+  int sizeEnv = -1;           // Size of the environment
+
   static int load_show_count;
   static int store_show_count;
 };
@@ -52,16 +64,10 @@ int CoreState::store_show_count = 0;
 
 
 // State of the Interpreter.
-struct InterpreterState {
+struct InterpreterState : public EmuState {
   CoreState core[MAX_QPUS];  // State of each core
-  IntList uniforms;          // Arguments to kernel
-  Word vpm[VPM_SIZE];        // Shared VPM memory
-  int sema[16];              // Semaphores
 
-  InterpreterState() {
-    // Initialise semaphores
-    for (int i = 0; i < 16; i++) sema[i] = 0;
-  }
+  InterpreterState(int in_num_qpus, IntList const &in_uniforms) : EmuState(in_num_qpus, in_uniforms) {} 
 };
 
 
@@ -137,54 +143,6 @@ Vec CoreState::load_from_heap(Vec const &index) {
   return v;
 }
 
-
-// ============================================================================
-// Evaluate a variable
-// ============================================================================
-
-Vec evalVar(InterpreterState &is, CoreState* s, Var v) {
-  Vec x;
-
-  switch (v.tag()) {
-    case STANDARD:  // Normal variable
-      assert(v.id() < s->sizeEnv);
-      x = s->env[v.id()];
-      break;
-
-    case UNIFORM:  // Return next uniform
-      assert(s->nextUniform < is.uniforms.size());
-      if (s->nextUniform == -2)
-        x = s->id;
-      else if (s->nextUniform == -1)
-        x = s->numCores;
-      else
-        x = is.uniforms[s->nextUniform];
-
-      s->nextUniform++;
-      break;
-
-    case QPU_NUM:  // Return core id, appears to never be called. TODO cleanup?
-      assertq(false, "evalVar(): QPU_NUM called", true);
-      x = s->id;
-      break;
-
-    case ELEM_NUM:
-      x = index_vec;
-      break;
-
-    case VPM_READ:
-      assertq(false, "evalVar(): VPM_READ not supported by interpreter");
-      break;
-
-    default:
-      assertq(false, "evalVar(): reading from write-only variable");
-      break;
-
-  }
-
-  return x;
-}
-
 }  // anon namespace
 
 
@@ -197,11 +155,25 @@ Vec eval(InterpreterState &is, CoreState* s, Expr::Ptr e) {
   Vec v;
 
   switch (e->tag()) {
-    case Expr::INT_LIT:   v = e->intLit; break;
+    case Expr::INT_LIT:   v = e->intLit;   break;
     case Expr::FLOAT_LIT: v = e->floatLit; break;
-    case Expr::VAR:       v = evalVar(is, s, e->var()); break;
     case Expr::APPLY:     v.apply(e->apply_op(), eval(is, s, e->lhs()), eval(is, s, e->rhs())); break;
     case Expr::DEREF:     v = s->load_from_heap(eval(is, s, e->deref_ptr())); break;
+
+    case Expr::VAR: {
+      Var var = e->var();
+
+      switch (var.tag()) {
+        case STANDARD: v = s->env(var.id()); break;
+        case UNIFORM:  v = is.get_uniform(s->id, s->nextUniform); break;
+        case ELEM_NUM: v = EmuState::index_vec; break;
+
+        default:
+          assertq(false, "eval(): unhandled var tag");
+          break;
+      }
+    }
+    break;
 
     default:
       assertq(false, "eval(): unhandled Expr tag");
@@ -337,10 +309,11 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
   switch (v.tag()) {
     // Normal variable
     case STANDARD:
-      for (int i = 0; i < NUM_LANES; i++)
+      for (int i = 0; i < NUM_LANES; i++) {
         if (cond[i].intVal) {
-          s->env[v.id()][i] = x[i];
+          s->env(v.id())[i] = x[i];
         }
+      }
       break;
 
     case TMU0_ADDR: {  // Load via TMU
@@ -350,20 +323,8 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
       break;
     }
 
-    case VPM_WRITE:
-      assertq(false, "interpreter: vpmPut() not supported");
-      break;
-
-    // Others are read-only
-    case VPM_READ:
-    case UNIFORM:
-    case QPU_NUM:
-    case ELEM_NUM:
-      assertq(false, "interpreter: can not write to read-only variable");
-      break;
-
     default:
-      assertq(false, "interpreter: unexpected var-tag in assignToVar()");
+      assertq(false, "assignToVar(): unhandled var-tag");
       break;
   }
 }
@@ -373,16 +334,13 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
  * Execute assignment
  */
 void execAssign(InterpreterState &is, CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
-  // Evaluate RHS
   Vec val = eval(is, s, rhs);
 
   switch (lhs->tag()) {
-    // Variable
     case Expr::VAR:
       assignToVar(s, cond, lhs->var(), val);
       break;
 
-    // Dereferenced pointer
     case Expr::DEREF: {
       Vec index = eval(is, s, lhs->deref_ptr());
       s->store_to_heap(index, val);
@@ -470,25 +428,20 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
 bool dma_exec(InterpreterState &is, CoreState* s, Stmt::Ptr &stmt) {
   bool ret = true;
 
-  int semaId = stmt->dma.semaId();
-
   switch (stmt->tag) {
-    // Increment semaphore
-    // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
-    case Stmt::SEMA_INC:
-      assert(semaId >= 0 && semaId < 16);
-      if (is.sema[semaId] == 15) s->stack << stmt;
-      else is.sema[semaId]++;
-      break;
- 
-    // Decrement semaphore
-    // Note at SEMA_INC also applies here
-    case Stmt::SEMA_DEC:
-      assert(semaId >= 0 && semaId < 16);
-      if (is.sema[semaId] == 0) s->stack << stmt;
-      else is.sema[semaId]--;
-      break;
+    case Stmt::SET_READ_STRIDE: {
+      Vec v = eval(is, s, stmt->dma.stride_internal());
+      s->readStride = v[0].intVal;
+    }
+    break;
 
+    case Stmt::SET_WRITE_STRIDE: {
+      Vec v = eval(is, s, stmt->dma.stride_internal());
+      s->writeStride = v[0].intVal;
+    }
+    break;
+
+    case Stmt::SEND_IRQ_TO_HOST:
     case Stmt::DMA_READ_WAIT:
     case Stmt::DMA_WRITE_WAIT:
     case Stmt::SETUP_VPM_READ:
@@ -521,7 +474,7 @@ void exec(InterpreterState &is, int core_index) {
   Stmt::Ptr stmt = s->stack.back();
   s->stack.pop_back();
 
-  if (stmt == NULL) { // Apparently this happens
+  if (stmt == nullptr) { // Apparently this happens
     assertq(false, " Interpreter: not expecting nullptr for stmt", true);
     return;
   }
@@ -536,23 +489,23 @@ void exec(InterpreterState &is, int core_index) {
   switch (stmt->tag) {
     case Stmt::GATHER_PREFETCH: // Ignore
     case Stmt::SKIP:
-      return;
+      break;
 
     case Stmt::ASSIGN:          // Assignment
       execAssign(is, s, Always, stmt->assign_lhs(), stmt->assign_rhs());
-      return;
+      break;
 
     case Stmt::SEQ:             // Sequential composition
       s->stack << stmt->seq_s1();
       s->stack << stmt->seq_s0();
-      return;
+      break;
 
     case Stmt::WHERE: {         // Conditional assignment
       Vec b = evalBool(is, s, stmt->where_cond());
       execWhere(is, s, b, stmt->thenStmt());
       execWhere(is, s, b.negate(), stmt->elseStmt());
-      return;
     }
+    break;
 
     case Stmt::IF:
       if (evalCond(is, s, stmt->if_cond()))
@@ -560,33 +513,21 @@ void exec(InterpreterState &is, int core_index) {
       else if (stmt->elseStmt().get() != nullptr) {
         s->stack << stmt->elseStmt();
       }
-      return;
+      break;
 
     case Stmt::WHILE:
       if (evalCond(is, s, stmt->loop_cond())) {
         s->stack << stmt;
         s->stack << stmt->body();
       }
-      return;
-
-    case Stmt::SET_READ_STRIDE: {
-      Vec v = eval(is, s, stmt->dma.stride_internal());
-      s->readStride = v[0].intVal;
-    }
-    return;
-
-    case Stmt::SET_WRITE_STRIDE: {
-      Vec v = eval(is, s, stmt->dma.stride_internal());
-      s->writeStride = v[0].intVal;
-    }
-    return;
+      break;
 
     case Stmt::LOAD_RECEIVE:
       execLoadReceive(s, stmt->address());
-      return;
+      break;
 
-    case Stmt::SEND_IRQ_TO_HOST:
-      return;
+    case Stmt::SEMA_INC: if (is.sema_inc(stmt->dma.semaId())) s->stack << stmt; break;
+    case Stmt::SEMA_DEC: if (is.sema_dec(stmt->dma.semaId())) s->stack << stmt; break;
 
     default:
       if (!dma_exec(is, s, stmt)) {
@@ -624,18 +565,13 @@ void interpreter(
   IntList &uniforms,
   BufferObject &heap
 ) {
-  InterpreterState state;
-
-  state.uniforms = uniforms;
+  InterpreterState state(numCores, uniforms);
 
   // Initialise state
   for (int i = 0; i < numCores; i++) {
     CoreState &s = state.core[i];
-
     s.id          = i;
-    s.numCores    = numCores;
-    s.env         = new Vec [numVars + 1];
-    s.sizeEnv     = numVars + 1;
+    s.init_env(numVars);
     s.emuHeap.heap_view(heap);
   }
 

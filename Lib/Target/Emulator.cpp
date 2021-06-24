@@ -22,30 +22,10 @@ public:
     bool handled = true;
 
     switch (dest.regId) {
-    case SPECIAL_SFU_RECIP:
-      for (int i = 0; i < NUM_LANES; i++) {
-        float a = v[i].floatVal;
-        value[i] = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
-      }
-      break;
-    case SPECIAL_SFU_RECIPSQRT:
-      for (int i = 0; i < NUM_LANES; i++) {
-        float a = (float) ::sqrt(v[i].floatVal);
-        value[i] = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
-      }
-      break;
-    case SPECIAL_SFU_EXP:
-      for (int i = 0; i < NUM_LANES; i++) {
-        float a = v[i].floatVal;
-        value[i] = (float) ::exp2(a);
-      }
-      break;
-    case SPECIAL_SFU_LOG:
-      for (int i = 0; i < NUM_LANES; i++) {
-        float a = v[i].floatVal;
-        value[i] = (float) ::log2(a);  // TODO what would lg2(0) return?
-      }
-      break;
+    case SPECIAL_SFU_RECIP:     value = v.recip();      break;
+    case SPECIAL_SFU_RECIPSQRT: value = v.recip_sqrt(); break;
+    case SPECIAL_SFU_EXP:       value = v.exp();        break;
+    case SPECIAL_SFU_LOG:       value = v.log();        break;
     default:
       handled = false;
       break;
@@ -68,22 +48,27 @@ public:
     if (timer == 0) {
       // finish pending SFU function
       for (int i = 0; i < NUM_LANES; i++) {
-        r4[i].floatVal = value[i];
+        r4[i].floatVal = value[i].floatVal;
       }
       timer = -1;
     }
   }
 
 private:
-  float value[NUM_LANES];              // Last result of SFU unit call
-  int timer = -1;                      // Number of cycles to wait for SFU result.
+  Vec value;       // Last result of SFU unit call
+  int timer = -1;  // Number of cycles to wait for SFU result.
 };
 
 
 // State of a single QPU.
 struct QPUState {
   int id = 0;                          // QPU id
-  int numQPUs = 0;                     // QPU count
+  int nextUniform = -2;                // Pointer to next uniform to read
+  Seq<Vec> loadBuffer = 8;             // Load buffer for loads via TMU, 8 is initial size
+
+  int readPitch = 0;                   // Read pitch
+  int writeStride = 0;                 // Write stride
+
   bool running = false;                // Is QPU active, or has it halted?
   int pc = 0;                          // Program counter
   Vec* regFileA = nullptr;             // Register file A
@@ -93,16 +78,13 @@ struct QPUState {
   Vec accum[6];                        // Accumulator registers
   bool negFlags[NUM_LANES];            // Negative flags
   bool zeroFlags[NUM_LANES];           // Zero flags
-  int nextUniform = -2;                // Pointer to next uniform to read
+
   DMAAddr dmaLoad;                     // DMA load address
   DMAAddr dmaStore;                    // DMA store address
   DMALoadReq dmaLoadSetup;             // DMA load setup register
   DMAStoreReq dmaStoreSetup;           // DMA store setup register
   Queue<2, VPMLoadReq> vpmLoadQueue;   // VPM load queue
   VPMStoreReq vpmStoreSetup;           // VPM store setup
-  int readPitch = 0;                   // Read pitch
-  int writeStride = 0;                 // Write stride
-  Seq<Vec> loadBuffer = 8;             // Load buffer for loads via TMU, 8 is initial size
 
   SFU sfu;
 
@@ -136,51 +118,22 @@ struct QPUState {
 /**
  * State of the VideoCore
  */
-struct State {
+struct State : public EmuState {
   QPUState qpu[MAX_QPUS];  // State of each QPU
-  IntList uniforms;        // Kernel parameters
-  Word vpm[VPM_SIZE];      // Shared VPM memory
-  int sema[16];            // Semaphores
   Data emuHeap;
 
-  State() {
-    // Initialise semaphores
-    for (int i = 0; i < 16; i++) sema[i] = 0;
-  }
+  State(int in_num_qpus, IntList const &in_uniforms) : EmuState(in_num_qpus, in_uniforms, true) {}
 };
 
-}
 
+Vec DMA_readReg(QPUState* s, State* g, Reg reg, bool &handled) {
+  assert(reg.tag == SPECIAL);
 
-/**
- * Read a vector register
- */
-Vec readReg(QPUState* s, State* g, Reg reg) {
-  int r = reg.regId;
   Vec v(0);
+  handled = true;
 
-  switch (reg.tag) {
-    case REG_A:
-      assert(r >= 0 && r < s->sizeRegFileA);
-      return s->regFileA[r];
-    case REG_B:
-      assert(r >= 0 && r < s->sizeRegFileB);
-      return s->regFileB[reg.regId];
-    case ACC:
-      assert(r >= 0 && r <= 5);
-      return s->accum[r];
-    case SPECIAL:
-      if (reg.regId == SPECIAL_ELEM_NUM) {
-        for (int i = 0; i < NUM_LANES; i++)
-          v[i].intVal = i;
-        return v;
-      } else if (reg.regId == SPECIAL_UNIFORM) {
-        assertq(false, "readReg(): not expecting SPECIAL_UNIFORM to be handled any more");
-      } else if (reg.regId == SPECIAL_QPU_NUM) {
-        for (int i = 0; i < NUM_LANES; i++)
-          v[i].intVal = s->id;
-        return v;
-      } else if (reg.regId == SPECIAL_VPM_READ) {
+  switch (reg.regId) {
+      case SPECIAL_VPM_READ: {
         // Make sure there's a VPM load request waiting
         assert(!s->vpmLoadQueue.isEmpty());
         VPMLoadReq* req = s->vpmLoadQueue.first();
@@ -205,9 +158,10 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
         req->numVecs--;
         req->addr = req->addr + req->stride;
         if (req->numVecs == 0) s->vpmLoadQueue.deq(); 
-        return v;
       }
-      else if (reg.regId == SPECIAL_DMA_LD_WAIT) {
+      return v;
+
+      case SPECIAL_DMA_LD_WAIT: {
         // Perform DMA load to completion
         if (s->dmaLoad.active == false) return v;
         DMALoadReq* req = &s->dmaLoadSetup;
@@ -237,8 +191,10 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
           }
         }
         s->dmaLoad.active = false;
-        return v; // Return value unspecified
-      } else if (reg.regId == SPECIAL_DMA_ST_WAIT) {
+     }
+     return v; // Return value unspecified
+
+      case SPECIAL_DMA_ST_WAIT: {
         // Perform DMA store to completion
         if (s->dmaStore.active == false) return v;
         DMAStoreReq* req = &s->dmaStoreSetup;
@@ -274,9 +230,58 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
         s->dmaStore.active = false;
         return v; // Return value unspecified
       }
-      fatal("V3DLib: can't read special register");
+
+    default:
+      handled = false;
+      break;
+  }
+
+  return v;
+}
+
+}  // anon namespace
+
+
+/**
+ * Read a vector register
+ */
+Vec readReg(QPUState* s, State* g, Reg reg) {
+  int r = reg.regId;
+  Vec v(0);
+
+  switch (reg.tag) {
     case NONE:
       return v;
+
+    case REG_A:
+      assert(r >= 0 && r < s->sizeRegFileA);
+      return s->regFileA[r];
+
+    case REG_B:
+      assert(r >= 0 && r < s->sizeRegFileB);
+      return s->regFileB[reg.regId];
+
+    case ACC:
+      assert(r >= 0 && r <= 5);
+      return s->accum[r];
+
+    case SPECIAL:
+      if (reg.regId == SPECIAL_ELEM_NUM) {
+        return EmuState::index_vec;
+      } else if (reg.regId == SPECIAL_UNIFORM) {
+        assertq(false, "readReg(): not expecting SPECIAL_UNIFORM to be handled any more");
+      } else if (reg.regId == SPECIAL_QPU_NUM) {
+        return Vec(s->id);
+      } else {
+        bool handled;
+        v = DMA_readReg(s, g, reg, handled);
+        if (handled) {
+          return v; // Return value unspecified, don't care at this point
+        }
+      }
+      fatal("V3DLib: can't read special register");
+      break;
+
     default:
       break;  // Should not happen
   }
@@ -562,27 +567,15 @@ Vec readRegOrImm(QPUState* s, State &state, RegOrImm const &src) {
  * @param heap
  */
 void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, BufferObject &heap) {
-  State state;
-
-  state.uniforms = uniforms;
-  // Add final dummy uniform
-  // See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
-  state.uniforms << 0;
-
+  State state(numQPUs, uniforms);
   state.emuHeap.heap_view(heap);
 
   // Initialise state
   for (int i = 0; i < numQPUs; i++) {
     QPUState &q = state.qpu[i];
-
     q.id                 = i;
-    q.numQPUs            = numQPUs;
     q.init(maxReg);
   }
-
-  // Protection against locks due to semaphore waiting
-  int const MAX_SEMAPHORE_WAIT = 1024;
-  int semaphore_wait_count = 0;
 
   bool anyRunning = true;
 
@@ -625,15 +618,7 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
             Vec b;
 
             if (instr.isUniformLoad()) {
-              assert(s->nextUniform < state.uniforms.size());
-              if (s->nextUniform == -2)
-                a = s->id;
-              else if (s->nextUniform == -1)
-                a = s->numQPUs;
-              else
-                a = state.uniforms[s->nextUniform];
-              s->nextUniform++;
-
+              a = state.get_uniform(s->id, s->nextUniform);
               b = a; 
             } else {
               a = readRegOrImm(s, state, instr.ALU.srcA);
@@ -647,10 +632,6 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
           }
           break;
 
-          case END:  // End program (halt)
-            s->running = false;
-            break;
-
           case BR: {  // Branch to target
             if (checkBranchCond(s, instr.branch_cond())) {
               BranchTarget t = instr.branch_target();
@@ -663,12 +644,6 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
           }
           break;
 
-          case BRL:                                // Branch to label
-          case LAB:                                // Label
-            fatal("V3DLib: emulator does not support labels");
-          case NO_OP:
-            break;
-
           case RECV: {                             // receive load-via-TMU response
             assert(s->loadBuffer.size() > 0);
             Vec val = s->loadBuffer.remove(0);
@@ -678,40 +653,23 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
           }
           break;
 
-          case IRQ:                                 // Host IRQ
+          case SINC: if (state.sema_inc(instr.semaId)) s->pc--; break;
+          case SDEC: if (state.sema_dec(instr.semaId)) s->pc--; break;
+
+          case END:                                // End program (halt)
+            s->running = false;
             break;
 
-          case SINC: {                              // Semaphore increment
-            assert(instr.semaId >= 0 && instr.semaId <= 15);
-            if (state.sema[instr.semaId] == 15) {
-              semaphore_wait_count++;
-              assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SINC appears to be stuck");
-              s->pc--;
-            } else {
-              semaphore_wait_count = 0;
-              state.sema[instr.semaId]++;
-            }
-          }
-          break;
-
-          case SDEC: {                              // Semaphore decrement
-            assert(instr.semaId >= 0 && instr.semaId <= 15);
-            if (state.sema[instr.semaId] == 0) {
-              semaphore_wait_count++;
-              assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SDEC appears to be stuck");
-              s->pc--;
-            } else {
-              semaphore_wait_count = 0;
-              state.sema[instr.semaId]--;
-            }
-          }
-          break;
-
+          case BRL:                                // Branch to label
+          case LAB:                                // Label
+            fatal("V3DLib: emulator does not support labels");
+            // Fall-thru
+          case NO_OP:
+          case IRQ:
           case INIT_BEGIN:
           case INIT_END:
             break;  // ignore
 
-          // Should not be reached
           default: assert(false);
         }
       }

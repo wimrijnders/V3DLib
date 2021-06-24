@@ -147,21 +147,63 @@ Vec Vec::negate() const {
 }
 
 
+Vec Vec::recip() const {
+  Vec ret;
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    float a = elems[i].floatVal;
+    ret[i].floatVal = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
+  }
+
+  return ret;
+}
+
+
+Vec Vec::recip_sqrt() const {
+  Vec ret;
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    float a = (float) ::sqrt(elems[i].floatVal);
+    ret[i].floatVal = (a != 0)?1/a:0;      // TODO: not sure about value safeguard
+  }
+
+  return ret;
+}
+
+
+Vec Vec::exp() const {
+  Vec ret;
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    ret[i].floatVal = (float) ::exp2(elems[i].floatVal);
+  }
+
+  return ret;
+}
+
+
+Vec Vec::log() const {
+  Vec ret;
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    float a = (float) ::log2(elems[i].floatVal);  // TODO what would log2(0) return?
+    ret[i].floatVal = a;
+  }
+
+  return ret;
+}
+
+
 bool Vec::apply(Op const &op, Vec a, Vec b) {
   bool handled = true;
 
-  for (int i = 0; i < NUM_LANES; i++) {
-    float  x = a[i].floatVal;
-    float &d = elems[i].floatVal;
-
-    switch (op.op) {
-      case RECIP    : d = 1/x;                   break; // TODO guard against zero?
-      case RECIPSQRT: d = (float) (1/::sqrt(x)); break; // TODO idem
-      case EXP      : d = (float) ::exp2(x);     break;
-      case LOG      : d = (float) ::log2(x);     break; // TODO idem
-      default: handled = false;
-    }
-  }
+  switch (op.op) {
+    case RECIP    : *this = a.recip();      break;
+    case RECIPSQRT: *this = a.recip_sqrt(); break;
+    case EXP      : *this = a.exp();        break;
+    case LOG      : *this = a.log();        break;
+    default: handled = false;
+   }
 
   if (handled) return true;
   return apply(ALUOp(op), a, b);
@@ -282,6 +324,77 @@ bool Vec::is_uniform() const {
 void Vec::assign(Vec const &rhs) {
   for (int i = 0; i < NUM_LANES; i++) {
     elems[i] = rhs[i];
+  }
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class EmuState
+///////////////////////////////////////////////////////////////////////////////
+
+Vec const EmuState::index_vec({0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15});
+
+EmuState::EmuState(int in_num_qpus, IntList const &in_uniforms, bool add_dummy) :
+  num_qpus(in_num_qpus),
+  uniforms(in_uniforms)
+{
+  // Initialise semaphores
+  for (int i = 0; i < 16; i++) sema[i] = 0;
+
+  if (add_dummy) {
+    // Add final dummy uniform for emulator
+    // See Note 1, function `invoke()` in `vc4/Invoke.cpp`.
+    uniforms << 0;
+  }
+}
+
+
+Vec EmuState::get_uniform(int id, int &next_uniform) {
+  Vec a;
+
+  assert(next_uniform < uniforms.size());
+  if (next_uniform == -2)
+    a = id;
+  else if (next_uniform == -1)
+    a = num_qpus;
+  else
+    a = uniforms[next_uniform];
+
+  next_uniform++;
+  return a;
+}
+
+
+/**
+ * Increment semaphore
+ */
+bool EmuState::sema_inc(int sema_id) {
+  assert(sema_id >= 0 && sema_id < 16);
+  if (sema[sema_id] == 15) {
+    semaphore_wait_count++;
+    assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SINC appears to be stuck");
+    return true;
+  } else {
+    semaphore_wait_count = 0;
+    sema[sema_id]++;
+    return false;
+  }
+}
+
+
+/**
+ * Decrement semaphore
+ */
+bool EmuState::sema_dec(int sema_id) {
+  assert(sema_id >= 0 && sema_id < 16);
+  if (sema[sema_id] == 0) {
+    semaphore_wait_count++;
+    assertq(semaphore_wait_count < MAX_SEMAPHORE_WAIT, "Semaphore wait for SDEC appears to be stuck");
+    return true;
+  } else {
+    semaphore_wait_count = 0;
+    sema[sema_id]--;
+    return false;
   }
 }
 
