@@ -47,9 +47,6 @@ Vec rotate(Vec v, int n) {
 // Class Vec
 // ============================================================================
 
-Vec Vec::Always(1);
-
-
 Vec::Vec(int val) {
   for (int i = 0; i < NUM_LANES; i++)
     elems[i].intVal = 1;
@@ -75,6 +72,53 @@ Vec::Vec(Imm imm) {
 
     default: assert(false); break;
   }
+}
+
+
+Vec::Vec(std::vector<int> const &rhs) {
+  assert(rhs.size() == NUM_LANES);
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    (*this)[i].intVal = rhs[i];
+  }
+}
+
+
+Vec &Vec::operator=(int rhs) {
+  for (int i = 0; i < NUM_LANES; i++) {
+    (*this)[i].intVal = rhs;
+  }
+
+  return *this;
+}
+
+
+Vec &Vec::operator=(float rhs) {
+  for (int i = 0; i < NUM_LANES; i++) {
+    (*this)[i].floatVal = rhs;
+  }
+
+  return *this;
+}
+
+
+bool Vec::operator==(Vec const &rhs) const {
+  for (int i = 0; i < NUM_LANES; i++) {
+    if ((*this)[i].intVal != rhs[i].intVal) return false;
+  }
+
+  return true;
+}
+
+
+bool Vec::operator==(int rhs) const {
+  breakpoint
+
+  for (int i = 0; i < NUM_LANES; i++) {
+    if ((*this)[i].intVal != rhs) return false;
+  }
+
+  return true;
 }
 
 
@@ -115,18 +159,18 @@ bool Vec::apply(Op const &op, Vec a, Vec b) {
       case RECIPSQRT: d = (float) (1/::sqrt(x)); break; // TODO idem
       case EXP      : d = (float) ::exp2(x);     break;
       case LOG      : d = (float) ::log2(x);     break; // TODO idem
-      default: handled = false;;
+      default: handled = false;
     }
   }
 
   if (handled) return true;
-
   return apply(ALUOp(op), a, b);
 }
 
 
 bool Vec::apply(ALUOp const &op, Vec a, Vec b) {
   bool handled = true;
+  if (op.value() == ALUOp::NOP) return true;
 
   // Floating-point operations
   for (int i = 0; i < NUM_LANES; i++) {
@@ -214,6 +258,7 @@ bool Vec::apply(ALUOp const &op, Vec a, Vec b) {
     break;
   }
 
+  assertq(handled, "Vec::apply(): Unhandled op value");
   return handled;
 }
 

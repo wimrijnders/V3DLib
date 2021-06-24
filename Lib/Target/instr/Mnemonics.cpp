@@ -53,6 +53,7 @@ Reg const ACC2(ACC, 2);
 Reg const ACC3(ACC, 3);
 Reg const ACC4(ACC, 4);
 Reg const ACC5(ACC, 5);
+Reg const UNIFORM_READ( SPECIAL, SPECIAL_UNIFORM);
 Reg const QPU_ID(       SPECIAL, SPECIAL_QPU_NUM);
 Reg const ELEM_ID(      SPECIAL, SPECIAL_ELEM_NUM);
 Reg const TMU0_S(       SPECIAL, SPECIAL_TMU0_S);

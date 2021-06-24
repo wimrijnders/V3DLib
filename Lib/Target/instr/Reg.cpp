@@ -78,6 +78,12 @@ void var_to_reg(Var var, Reg &r) {
 Reg::Reg(Var var) { var_to_reg(var, *this); }
 
 
+bool Reg::operator==(Reg const &rhs) const {
+  // Comparison field isUniformPtr intentionially skipped here 
+  return tag == rhs.tag && regId == rhs.regId;
+}
+
+
 bool Reg::operator<(Reg const &rhs) const {
   if (tag != rhs.tag) {
     return tag < rhs.tag;

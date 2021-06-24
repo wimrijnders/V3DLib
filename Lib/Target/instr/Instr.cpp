@@ -341,22 +341,18 @@ bool Instr::isUniformLoad() const {
     return false;
   }
 
-  if (!ALU.srcA.is_reg() || !ALU.srcB.is_reg()) {
-    return false;  // Both operands must be regs
-  }
+  Reg const UNIFORM_READ( SPECIAL, SPECIAL_UNIFORM);  // From Mnemonics
 
-  Reg aReg  = ALU.srcA.reg();
-#ifdef DEBUG
-  Reg bReg  = ALU.srcB.reg();
-#endif
-
-  if (aReg.tag == SPECIAL && aReg.regId == SPECIAL_UNIFORM) {
-    assert(aReg == bReg);  // Apparently, this holds (NOT TRUE)
-    return true;
-  } else {
-    assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
+  if (ALU.srcA != UNIFORM_READ) {
+    assertq(ALU.srcB != UNIFORM_READ, "Both srcA and srcB should both be UNIFORM_READ or not");  // Sanity check
     return false;
   }
+
+  // Sanity checks
+  assertq(ALU.srcB == UNIFORM_READ, "Both srcA and srcB should be UNIFORM_READ");
+  assertq(ALU.op == ALUOp::A_BOR, "Expcting uniform read only in combination with move");  // This is how we use it, 
+                                                                                           // may be overly strict.
+  return true;
 }
 
 

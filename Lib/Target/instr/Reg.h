@@ -65,7 +65,7 @@ struct Reg {
   Reg(RegTag in_tag, RegId in_regId) : tag(in_tag), regId(in_regId) {}
   Reg(Var var);
 
-  bool operator==(Reg const &rhs) const { return tag == rhs.tag && regId == rhs.regId; }
+  bool operator==(Reg const &rhs) const;
   bool operator!=(Reg const &rhs) const { return !(*this == rhs); }
   bool operator<(Reg const &rhs) const;
 

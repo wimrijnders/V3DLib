@@ -12,11 +12,13 @@ using ::operator<<;  // C++ weirdness
 
 namespace {
 
+Vec const Always(1);
+Vec const index_vec({0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15});
+
 // State of a single core.
 struct CoreState {
   int id;                        // Core id
   int numCores;                  // Core count
-  IntList uniforms;         // Arguments to kernel
   int nextUniform = -2;          // Pointer to next uniform to read
   int readStride = 0;            // Read stride
   int writeStride = 0;           // Write stride
@@ -52,6 +54,7 @@ int CoreState::store_show_count = 0;
 // State of the Interpreter.
 struct InterpreterState {
   CoreState core[MAX_QPUS];  // State of each core
+  IntList uniforms;          // Arguments to kernel
   Word vpm[VPM_SIZE];        // Shared VPM memory
   int sema[16];              // Semaphores
 
@@ -139,55 +142,47 @@ Vec CoreState::load_from_heap(Vec const &index) {
 // Evaluate a variable
 // ============================================================================
 
-Vec evalVar(CoreState* s, Var v) {
+Vec evalVar(InterpreterState &is, CoreState* s, Var v) {
+  Vec x;
+
   switch (v.tag()) {
-    // Normal variable
-    case STANDARD:
+    case STANDARD:  // Normal variable
       assert(v.id() < s->sizeEnv);
-      return s->env[v.id()];
+      x = s->env[v.id()];
+      break;
 
-    // Return next uniform
-    case UNIFORM: {
-      assert(s->nextUniform < s->uniforms.size());
-      Vec x;
-      for (int i = 0; i < NUM_LANES; i++)
-        if (s->nextUniform == -2)
-          x[i].intVal = s->id;
-        else if (s->nextUniform == -1)
-          x[i].intVal = s->numCores;
-        else
-          x[i].intVal = s->uniforms[s->nextUniform];
+    case UNIFORM:  // Return next uniform
+      assert(s->nextUniform < is.uniforms.size());
+      if (s->nextUniform == -2)
+        x = s->id;
+      else if (s->nextUniform == -1)
+        x = s->numCores;
+      else
+        x = is.uniforms[s->nextUniform];
+
       s->nextUniform++;
-      return x;
-    }
+      break;
 
-    // Return core id
-    case QPU_NUM: {
-      Vec x;
-      for (int i = 0; i < NUM_LANES; i++)
-        x[i].intVal = s->id;
-      return x;
-    }
+    case QPU_NUM:  // Return core id, appears to never be called. TODO cleanup?
+      assertq(false, "evalVar(): QPU_NUM called", true);
+      x = s->id;
+      break;
 
-    // Return vector of integers 0..15 inclusive
-    case ELEM_NUM: {
-      Vec x;
-      for (int i = 0; i < NUM_LANES; i++)
-        x[i].intVal = i;
-      return x;
-    }
+    case ELEM_NUM:
+      x = index_vec;
+      break;
 
-    // VPM read
     case VPM_READ:
-      printf("V3DLib: vpmGet() not supported by interpreter\n");
+      assertq(false, "evalVar(): VPM_READ not supported by interpreter");
       break;
 
     default:
-      printf("V3DLib: reading from write-only variable\n");
+      assertq(false, "evalVar(): reading from write-only variable");
+      break;
+
   }
 
-  assert(false);
-  return Vec();
+  return x;
 }
 
 }  // anon namespace
@@ -198,50 +193,22 @@ Vec evalVar(CoreState* s, Var v) {
 // ============================================================================
 
 
-Vec eval(CoreState* s, Expr::Ptr e) {
+Vec eval(InterpreterState &is, CoreState* s, Expr::Ptr e) {
   Vec v;
+
   switch (e->tag()) {
-    // Integer literal
-    case Expr::INT_LIT:
-      for (int i = 0; i < NUM_LANES; i++)
-        v[i].intVal = e->intLit;
-      return v;
+    case Expr::INT_LIT:   v = e->intLit; break;
+    case Expr::FLOAT_LIT: v = e->floatLit; break;
+    case Expr::VAR:       v = evalVar(is, s, e->var()); break;
+    case Expr::APPLY:     v.apply(e->apply_op(), eval(is, s, e->lhs()), eval(is, s, e->rhs())); break;
+    case Expr::DEREF:     v = s->load_from_heap(eval(is, s, e->deref_ptr())); break;
 
-    // Float literal
-    case Expr::FLOAT_LIT:
-       for (int i = 0; i < NUM_LANES; i++)
-        v[i].floatVal = e->floatLit;
-      return v;
-   
-    // Variable
-    case Expr::VAR:
-      return evalVar(s, e->var());
-
-    // Operator application
-    case Expr::APPLY: {
-#ifdef DEBUG
-      Vec a = eval(s, e->lhs());
-      Vec b = eval(s, e->rhs());
-
-      bool did_something = v.apply(e->apply_op(), a, b);
-      assert(did_something);
-#else
-      eval(s, e->lhs());
-      eval(s, e->rhs());
-#endif  // DEBUG
-
-      return v;
-    }
-
-    // Dereference pointer
-    case Expr::DEREF:
-      Vec index = eval(s, e->deref_ptr());
-      v = s->load_from_heap(index);
-      return v;
+    default:
+      assertq(false, "eval(): unhandled Expr tag");
+      break;
   }
 
-  assert(false);
-  return Vec();
+  return v;
 }
 
 
@@ -249,21 +216,21 @@ Vec eval(CoreState* s, Expr::Ptr e) {
 // Evaluate boolean expression
 // ============================================================================
 
-Vec evalBool(CoreState* s, BExpr::Ptr e) {
+Vec evalBool(InterpreterState &is, CoreState* s, BExpr::Ptr e) {
   Vec v;
 
   switch (e->tag()) {
     // Negation
     case NOT:
-      v = evalBool(s, e->neg());
+      v = evalBool(is, s, e->neg());
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = !v[i].intVal;
       return v;
 
     // Conjunction
     case AND: {
-      Vec a = evalBool(s, e->lhs());
-      Vec b = evalBool(s, e->rhs());
+      Vec a = evalBool(is, s, e->lhs());
+      Vec b = evalBool(is, s, e->rhs());
 
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal && b[i].intVal;
@@ -272,8 +239,8 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 
     // Disjunction
     case OR: {
-      Vec a = evalBool(s, e->lhs());
-      Vec b = evalBool(s, e->rhs());
+      Vec a = evalBool(is, s, e->lhs());
+      Vec b = evalBool(is, s, e->rhs());
 
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal || b[i].intVal;
@@ -282,8 +249,8 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 
     // Comparison
     case CMP: {
-      Vec a = eval(s, e->cmp_lhs());
-      Vec b = eval(s, e->cmp_rhs());
+      Vec a = eval(is, s, e->cmp_lhs());
+      Vec b = eval(is, s, e->cmp_rhs());
       if (e->cmp.type() == FLOAT) {
         // Floating-point comparison
         for (int i = 0; i < NUM_LANES; i++) {
@@ -338,8 +305,8 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 // Evaulate condition
 // ============================================================================
 
-bool evalCond(CoreState* s, CExpr::Ptr e) {
-  Vec v = evalBool(s, e->bexpr());
+bool evalCond(InterpreterState &is, CoreState* s, CExpr::Ptr e) {
+  Vec v = evalBool(is, s, e->bexpr());
 
   switch (e->tag()) {
     case ALL: {
@@ -405,9 +372,9 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
 /**
  * Execute assignment
  */
-void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
+void execAssign(InterpreterState &is, CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
   // Evaluate RHS
-  Vec val = eval(s, rhs);
+  Vec val = eval(is, s, rhs);
 
   switch (lhs->tag()) {
     // Variable
@@ -417,7 +384,7 @@ void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
 
     // Dereferenced pointer
     case Expr::DEREF: {
-      Vec index = eval(s, lhs->deref_ptr());
+      Vec index = eval(is, s, lhs->deref_ptr());
       s->store_to_heap(index, val);
     }
     break;
@@ -448,7 +415,7 @@ Vec vecAnd(Vec x, Vec y) {
 // Execute where statement
 // ============================================================================
 
-void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
+void execWhere(InterpreterState &is, CoreState* s, Vec cond, Stmt::Ptr stmt) {
   if (stmt == NULL) return;
 
   switch (stmt->tag) {
@@ -459,21 +426,21 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
     // Sequential composition
     case Stmt::SEQ:
-      execWhere(s, cond, stmt->seq_s0());
-      execWhere(s, cond, stmt->seq_s1());
+      execWhere(is, s, cond, stmt->seq_s0());
+      execWhere(is, s, cond, stmt->seq_s1());
       return;
 
     // Assignment
     case Stmt::ASSIGN:
       assertq(stmt->assign_lhs()->tag() == Expr::VAR, "V3DLib: only var assignments permitted in 'where'");
-      execAssign(s, cond, stmt->assign_lhs(), stmt->assign_rhs());
+      execAssign(is, s, cond, stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
     // Nested where
     case Stmt::WHERE: {
-      Vec b = evalBool(s, stmt->where_cond());
-      execWhere(s, vecAnd(b, cond), stmt->thenStmt());
-      execWhere(s, vecAnd(b.negate(), cond), stmt->elseStmt());
+      Vec b = evalBool(is, s, stmt->where_cond());
+      execWhere(is, s, vecAnd(b, cond), stmt->thenStmt());
+      execWhere(is, s, vecAnd(b.negate(), cond), stmt->elseStmt());
       return;
     }
 
@@ -485,18 +452,6 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
 
 // ============================================================================
-// Execute set-stride statements
-// ============================================================================
-
-void execSetStride(CoreState* s, Stmt::Tag tag, Expr::Ptr e) {
-  Vec v = eval(s, e);
-  if (tag == Stmt::SET_READ_STRIDE)
-    s->readStride = v[0].intVal;
-  else
-    s->writeStride = v[0].intVal;
-}
-
-// ============================================================================
 // Execute load receive & store request statements
 // ============================================================================
 
@@ -504,7 +459,7 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
   assert(s->loadBuffer.size() > 0);
   assert(e->tag() == Expr::VAR);
   Vec val = s->loadBuffer.remove(0);
-  assignToVar(s, Vec::Always, e->var(), val);
+  assignToVar(s, Always, e->var(), val);
 }
 
 
@@ -512,7 +467,7 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
 // Execute code
 // ============================================================================
 
-bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
+bool dma_exec(InterpreterState &is, CoreState* s, Stmt::Ptr &stmt) {
   bool ret = true;
 
   int semaId = stmt->dma.semaId();
@@ -522,16 +477,16 @@ bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
     // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
     case Stmt::SEMA_INC:
       assert(semaId >= 0 && semaId < 16);
-      if (state->sema[semaId] == 15) s->stack << stmt;
-      else state->sema[semaId]++;
+      if (is.sema[semaId] == 15) s->stack << stmt;
+      else is.sema[semaId]++;
       break;
  
     // Decrement semaphore
     // Note at SEMA_INC also applies here
     case Stmt::SEMA_DEC:
       assert(semaId >= 0 && semaId < 16);
-      if (state->sema[semaId] == 0) s->stack << stmt;
-      else state->sema[semaId]--;
+      if (is.sema[semaId] == 0) s->stack << stmt;
+      else is.sema[semaId]--;
       break;
 
     case Stmt::DMA_READ_WAIT:
@@ -557,7 +512,8 @@ bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
 }
 
 
-void exec(InterpreterState* state, CoreState* s) {
+void exec(InterpreterState &is, int core_index) {
+  CoreState *s = &is.core[core_index];
   // Control stack must be non-empty
   assert(s->stack.size() > 0);
 
@@ -583,7 +539,7 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     case Stmt::ASSIGN:          // Assignment
-      execAssign(s, Vec::Always, stmt->assign_lhs(), stmt->assign_rhs());
+      execAssign(is, s, Always, stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
     case Stmt::SEQ:             // Sequential composition
@@ -592,14 +548,14 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     case Stmt::WHERE: {         // Conditional assignment
-      Vec b = evalBool(s, stmt->where_cond());
-      execWhere(s, b, stmt->thenStmt());
-      execWhere(s, b.negate(), stmt->elseStmt());
+      Vec b = evalBool(is, s, stmt->where_cond());
+      execWhere(is, s, b, stmt->thenStmt());
+      execWhere(is, s, b.negate(), stmt->elseStmt());
       return;
     }
 
     case Stmt::IF:
-      if (evalCond(s, stmt->if_cond()))
+      if (evalCond(is, s, stmt->if_cond()))
         s->stack << stmt->thenStmt();
       else if (stmt->elseStmt().get() != nullptr) {
         s->stack << stmt->elseStmt();
@@ -607,19 +563,23 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     case Stmt::WHILE:
-      if (evalCond(s, stmt->loop_cond())) {
+      if (evalCond(is, s, stmt->loop_cond())) {
         s->stack << stmt;
         s->stack << stmt->body();
       }
       return;
 
-    case Stmt::SET_READ_STRIDE:
-      execSetStride(s, Stmt::SET_READ_STRIDE, stmt->dma.stride_internal());
-      return;
+    case Stmt::SET_READ_STRIDE: {
+      Vec v = eval(is, s, stmt->dma.stride_internal());
+      s->readStride = v[0].intVal;
+    }
+    return;
 
-    case Stmt::SET_WRITE_STRIDE:
-      execSetStride(s, Stmt::SET_WRITE_STRIDE, stmt->dma.stride_internal());
-      return;
+    case Stmt::SET_WRITE_STRIDE: {
+      Vec v = eval(is, s, stmt->dma.stride_internal());
+      s->writeStride = v[0].intVal;
+    }
+    return;
 
     case Stmt::LOAD_RECEIVE:
       execLoadReceive(s, stmt->address());
@@ -629,7 +589,7 @@ void exec(InterpreterState* state, CoreState* s) {
       return;
 
     default:
-      if (!dma_exec(state, s, stmt)) {
+      if (!dma_exec(is, s, stmt)) {
         assertq(false, "interpreter: unexpected stmt-tag in exec()");
       }
       break;
@@ -666,13 +626,14 @@ void interpreter(
 ) {
   InterpreterState state;
 
+  state.uniforms = uniforms;
+
   // Initialise state
   for (int i = 0; i < numCores; i++) {
     CoreState &s = state.core[i];
 
     s.id          = i;
     s.numCores    = numCores;
-    s.uniforms    = uniforms;
     s.env         = new Vec [numVars + 1];
     s.sizeEnv     = numVars + 1;
     s.emuHeap.heap_view(heap);
@@ -695,7 +656,7 @@ void interpreter(
     for (int i = 0; i < numCores; i++) {
       if (state.core[i].stack.size() > 0) {
         running = true;
-        exec(&state, &state.core[i]);
+        exec(state, i);
       }
     }
   }

@@ -260,13 +260,13 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
           auto &instr2 = instrs[i];
           if (!instr2.is_src_reg(instr.dest())) continue;
 
-         if (instr2.assign_cond() != instr.assign_cond()) {
-          std::cout << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
-                    << "  dst usage: " << reg_usage.dump() << "\n"
-                    << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump()
-                    << std::endl;
-           continue;
-         }
+          if (instr2.assign_cond() != instr.assign_cond()) {
+            std::cout << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
+                      << "  dst usage: " << reg_usage.dump() << "\n"
+                      << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump()
+                      << std::endl;
+            continue;
+          }
 
           // Check if immediate could be used here
           bool can_use_imm = (instr2.ALU.srcA.is_reg() || instr2.ALU.srcA == instr.LI.imm)

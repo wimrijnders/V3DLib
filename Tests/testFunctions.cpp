@@ -78,17 +78,14 @@ void check_result(T1 const &result, T2 const &expected) {
  * Intended for v3d, where I don't see a hardware signal function as in vc4.
  * Works fine with vc4 also.
  */
-void sync_function(Int::Ptr signal) {
+void sync_qpus(Int::Ptr signal) {
   If (numQPUs() != 1) // Don't bother syncing if only one qpu
     *(signal - index() + me()) = 1;
 
     header("Start QPU sync");
 
     If (me() == 0)
-      Int expected = 0;
-
-      comment("QPU 0: Wait till all signals are set");
-
+      Int expected = 0;   comment("QPU 0: Wait till all signals are set");
       Where (index() < numQPUs())
         expected = 1;
       End 
@@ -98,19 +95,15 @@ void sync_function(Int::Ptr signal) {
         tmp = *signal;
       End
 
-      *signal = 0;
-      comment("QPU 0 done waiting, let other qpus continue");
+      *signal = 0;        comment("QPU 0 done waiting, let other qpus continue");
     Else
-      Int tmp = *signal;
-
-      comment("Other QPUs: Wait till all signals are cleared");
+      Int tmp = *signal;  comment("Other QPUs: Wait till all signals are cleared");
 
       While (0 != tmp)
         tmp = *signal;
       End
     End
   End
-
 }
 
 
@@ -125,7 +118,7 @@ void sync_kernel(Int::Ptr result, Int::Ptr signal) {
     End
   End
 
-  sync_function(signal);
+  sync_qpus(signal);
 
   // Let one qpu do extra work, to delay it
   If (me() == 6)
@@ -135,7 +128,7 @@ void sync_kernel(Int::Ptr result, Int::Ptr signal) {
   End
 
 
-  sync_function(signal);
+  sync_qpus(signal);
 
   If (me() != 3 && me() != 6)
     *output = me();
@@ -144,7 +137,7 @@ void sync_kernel(Int::Ptr result, Int::Ptr signal) {
 
 
 TEST_CASE("Test qpu sync [funcs][sync]") {
-  //Platform::use_main_memory(true);
+  Platform::use_main_memory(true);
 
   Int::Array result(16);
   result.fill(-1);
@@ -157,7 +150,10 @@ TEST_CASE("Test qpu sync [funcs][sync]") {
   k.pretty(false, "./obj/test/sync_kernel_v3d.txt");
   k.setNumQPUs(8);
   k.load(&result, &signal);
-  k.call();  //interpret();  // NOTE: emu() will not work here due to rewriting of pointers
+
+  // NOTE: emu() will not work here due to rewriting of pointers
+  // TODO can this be fixed?
+  k.interpret();  // call();
 
   //std::cout << "sync result: " << result.dump() << std::endl;
   //std::cout << "sync signal: " << signal.dump() << std::endl;
@@ -165,5 +161,5 @@ TEST_CASE("Test qpu sync [funcs][sync]") {
   std::vector<int> expected = { 0, 1, 2, 255, 4, 5, 255, 7, -1, -1, -1, -1, -1, -1, -1, -1};
   check_result(result, expected);
 
-  //Platform::use_main_memory(false);
+  Platform::use_main_memory(false);
 }

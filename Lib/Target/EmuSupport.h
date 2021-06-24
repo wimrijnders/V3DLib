@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_TARGET_EMUSUPPORT_H_
 #define _V3DLIB_TARGET_EMUSUPPORT_H_
 #include <stdint.h>
+#include <vector>
 #include "Common/Seq.h"
 #include "Target/instr/Imm.h"
 
@@ -31,6 +32,16 @@ struct Vec {
   Vec() = default;
   Vec(int val);
   Vec(Imm imm);
+  Vec(std::vector<int> const &rhs);
+
+  Vec &operator=(Vec const &rhs) { assign(rhs); return *this; }
+  Vec &operator=(int rhs);
+  Vec &operator=(float rhs);
+
+  bool operator==(Vec const &rhs) const;
+  bool operator!=(Vec const &rhs) const { return !(*this == rhs); }
+  bool operator==(int rhs) const;
+  bool operator!=(int rhs) const { return !(*this == rhs); }
 
   Word &get(int index) {
     assert(0 <= index && index < NUM_LANES);
@@ -51,10 +62,6 @@ struct Vec {
   bool apply(Op const &op, Vec a, Vec b);
   bool apply(ALUOp const &op, Vec a, Vec b);
   bool is_uniform() const;
-
-  Vec &operator=(Vec const &rhs) { assign(rhs); return *this; }
-
-  static Vec Always;
 
 private:
   Word elems[NUM_LANES];

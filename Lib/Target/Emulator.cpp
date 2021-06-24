@@ -157,11 +157,7 @@ struct State {
  */
 Vec readReg(QPUState* s, State* g, Reg reg) {
   int r = reg.regId;
-  Vec v;
-
-  // Initialize v to prevent warnings on uninitialized errors
-  for (int i = 0; i < NUM_LANES; i++)
-    v[i].intVal = 0;
+  Vec v(0);
 
   switch (reg.tag) {
     case REG_A:
@@ -179,23 +175,14 @@ Vec readReg(QPUState* s, State* g, Reg reg) {
           v[i].intVal = i;
         return v;
       } else if (reg.regId == SPECIAL_UNIFORM) {
-        assert(s->nextUniform < g->uniforms.size());
-        for (int i = 0; i < NUM_LANES; i++)
-          if (s->nextUniform == -2)
-            v[i].intVal = s->id;
-          else if (s->nextUniform == -1)
-            v[i].intVal = s->numQPUs;
-          else
-            v[i].intVal = g->uniforms[s->nextUniform];
-        s->nextUniform++;
-        return v;
+        assertq(false, "readReg(): not expecting SPECIAL_UNIFORM to be handled any more");
       } else if (reg.regId == SPECIAL_QPU_NUM) {
         for (int i = 0; i < NUM_LANES; i++)
           v[i].intVal = s->id;
         return v;
       } else if (reg.regId == SPECIAL_VPM_READ) {
         // Make sure there's a VPM load request waiting
-        assert(! s->vpmLoadQueue.isEmpty());
+        assert(!s->vpmLoadQueue.isEmpty());
         VPMLoadReq* req = s->vpmLoadQueue.first();
         assert(req->numVecs > 0);
         if (req->hor) {
@@ -554,42 +541,12 @@ Vec evalSmallImm(QPUState* s, EncodedSmallImm imm) {
 }
 
 
-Vec readRegOrImm(QPUState* s, State* g, RegOrImm const &src) {
+Vec readRegOrImm(QPUState* s, State &state, RegOrImm const &src) {
   if (src.is_reg()) {
-    return readReg(s, g, src.reg());
+    return readReg(s, &state, src.reg());
   } else {
     return evalSmallImm(s, src.imm());
   }
-}
-
-
-// ============================================================================
-// ALU
-// ============================================================================
-
-Vec alu(QPUState* s, State* g, RegOrImm srcA, ALUOp op, RegOrImm srcB) {
-  Vec c;
-  if (op.value() == ALUOp::NOP) return c;
-
-  // Obtain vector operands
-  Vec a, b;
-  a = readRegOrImm(s, g, srcA);
-
-  if (srcA.is_reg() && srcB.is_reg() && srcA.reg() == srcB.reg()) {
-    b = a;
-  } else {
-    b = readRegOrImm(s, g, srcB);
-  }
-
-  // Evaluate the operation
-#ifdef DEBUG
-  bool handled = c.apply(op, a, b);
-  assert(handled);
-#else
-  c.apply(op, a, b);
-#endif  // DEBUG
-
-  return c;
 }
 
 
@@ -656,26 +613,45 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
         }
 
         switch (instr.tag) {
-          // Load immediate
           case LI: {
             Vec imm(instr.LI.imm);
             writeReg(s, &state, instr.set_cond().flags_set(), instr.assign_cond(), instr.dest(), imm);
-            break;
           }
-          // ALU operation
-          case ALU: {
-            Vec result = alu(s, &state, instr.ALU.srcA, instr.ALU.op, instr.ALU.srcB);
-            if (!instr.ALU.op.isNOP())
-              writeReg(s, &state, instr.set_cond().flags_set(), instr.assign_cond(), instr.dest(), result);
-            break;
+          break;
+
+          case ALU:
+          if (!instr.ALU.op.isNOP()) {
+            Vec a;
+            Vec b;
+
+            if (instr.isUniformLoad()) {
+              assert(s->nextUniform < state.uniforms.size());
+              if (s->nextUniform == -2)
+                a = s->id;
+              else if (s->nextUniform == -1)
+                a = s->numQPUs;
+              else
+                a = state.uniforms[s->nextUniform];
+              s->nextUniform++;
+
+              b = a; 
+            } else {
+              a = readRegOrImm(s, state, instr.ALU.srcA);
+              b = readRegOrImm(s, state, instr.ALU.srcB);
+            }
+
+            Vec result;
+            result.apply(instr.ALU.op, a, b);
+
+            writeReg(s, &state, instr.set_cond().flags_set(), instr.assign_cond(), instr.dest(), result);
           }
-          // End program (halt)
-          case END: {
+          break;
+
+          case END:  // End program (halt)
             s->running = false;
             break;
-          }
-          // Branch to target
-          case BR: {
+
+          case BR: {  // Branch to target
             if (checkBranchCond(s, instr.branch_cond())) {
               BranchTarget t = instr.branch_target();
               if (t.relative && !t.useRegOffset) {
@@ -684,8 +660,8 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
                 fatal("V3DLib: found unsupported form of branch target");
               }
             }
-            break;
           }
+          break;
 
           case BRL:                                // Branch to label
           case LAB:                                // Label
@@ -699,10 +675,12 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
             AssignCond always;
             always.tag = ALWAYS;
             writeReg(s, &state, false, always, instr.dest(), val);
-            break;
           }
+          break;
+
           case IRQ:                                 // Host IRQ
             break;
+
           case SINC: {                              // Semaphore increment
             assert(instr.semaId >= 0 && instr.semaId <= 15);
             if (state.sema[instr.semaId] == 15) {
@@ -713,8 +691,9 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
               semaphore_wait_count = 0;
               state.sema[instr.semaId]++;
             }
-            break;
           }
+          break;
+
           case SDEC: {                              // Semaphore decrement
             assert(instr.semaId >= 0 && instr.semaId <= 15);
             if (state.sema[instr.semaId] == 0) {
@@ -725,8 +704,8 @@ void emulate(int numQPUs, Instr::List &instrs, int maxReg, IntList &uniforms, Bu
               semaphore_wait_count = 0;
               state.sema[instr.semaId]--;
             }
-            break;
           }
+          break;
 
           case INIT_BEGIN:
           case INIT_END:
