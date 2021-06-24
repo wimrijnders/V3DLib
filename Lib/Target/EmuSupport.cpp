@@ -49,7 +49,7 @@ Vec rotate(Vec v, int n) {
 
 Vec::Vec(int val) {
   for (int i = 0; i < NUM_LANES; i++)
-    elems[i].intVal = 1;
+    elems[i].intVal = val;
 }
 
 
