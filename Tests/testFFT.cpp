@@ -183,7 +183,6 @@ class Vec16 : private std::vector<int> {
   using Parent = std::vector<int>;
 
 public:
-  //using Parent::operator<<;
   using Parent::operator[];
   using Parent::size;
 
@@ -194,12 +193,25 @@ public:
     }
   }
 
+
   void operator=(std::vector<int> const &rhs) {
     assert(rhs.size() == 16);
     for (int n = 0; n < 16; ++n) {
       (*this)[n] = rhs[n];
     }
   }
+
+
+  Vec16 operator+(int rhs) const {
+    Vec16 ret;
+
+    for (int n = 0; n < 16; ++n) {
+      ret[n] = (*this)[n] + rhs;
+    }
+
+    return ret;
+  }
+
 
   Vec16 operator-(Vec16 const &rhs) const {
     Vec16 ret;
@@ -423,14 +435,22 @@ struct Indexes16 {
   }
 
 
+  /**
+   * Constant offset between k and k_m2 vectors
+   */
+  int diff() const {
+    return 1 << (s -1);
+  }
+
+
+  Vec16 k_m2() const {
+    return k_16 + diff();
+  }
+
+
   bool same_indexes(Indexes16 const &rhs) const {
     return (s == rhs.s && j == rhs.j && k_count == rhs.k_count);
   }
-/*
-  bool same_step(Indexes16 const &rhs) const {
-    return (step == rhs.step && k_count == rhs.k_count);
-  }
-*/
 
 
   /**
@@ -692,6 +712,9 @@ struct {
       return ret;
     }
 
+    //
+    // Show counts
+    //
     int max_s = -1;
     int max_j = -1;
     int max_k = -1;
@@ -729,7 +752,6 @@ struct {
         }
       }
     }
-
 
     return ret;
   }
@@ -1120,7 +1142,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 7;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
+    int log2n = 8;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
     int Dim = 1 << log2n;
     set_precision(log2n);
     REQUIRE(precision > 0.0f);
@@ -1258,6 +1280,98 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     }
 
   }
+}
+
+TEST_CASE("FFT check offsets [fft][check_offsets]") {
+  int log2n = 11;  // Following tests work for >= 5, tested till <= 22
+
+  fft_context.init(log2n, false);
+  std::cout << fft_context.dump() << std::endl;
+
+  //std::string ret;
+
+  bool reset_s;
+  bool reset_j;
+  int s_count;
+  int cur_s = -1;
+  int cur_j = -1;
+  int cur_k = -1;
+  Vec16 cur_k_16;
+
+  for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
+    auto &item = fft_context.vectors16[i];
+
+    reset_s = (cur_s != item.s);
+    if (cur_s != item.s) {
+      //ret << "s: " << item.s << ", ";
+      cur_s = item.s;
+      cur_j = -1;
+      cur_k = -1;
+    }
+
+    reset_j = reset_s || (cur_j != item.j);
+    if (cur_j != item.j) {
+      //ret << "j: " << item.j << ", ";
+      cur_j = item.j;
+      cur_k = -1;
+    }
+
+    if (reset_j) {
+      s_count = 0;
+    } else {
+      s_count++;
+    }
+
+
+    if (cur_k != item.k_count) {
+      //ret << "k: " << item.k_count << ":\n";
+      cur_k = item.k_count;
+    }
+
+    std::string cur;
+    cur << "  " << item.k_16.dump() << " / ";
+    cur << "  " << item.k_m2_16.dump() << "\n";
+
+    INFO("s: " << item.s << ", j: " << item.j << ", k: " << item.k_count);
+    INFO(cur);
+
+    REQUIRE(cur_s == item.s);
+
+    // Check offsets k and k_m2 vector
+    REQUIRE(item.k_m2_16 == item.k_m2());
+
+    // Check horizontal offsets within vectors
+    int mod = (1 << log2n) - 1;
+    for (int k = 1; k < 16; ++ k) {
+      int rhs = (item.k_16[0] + k*(1 << cur_s)) % mod;
+      REQUIRE(item.k_16[k] == rhs);
+
+      rhs += item.diff();
+      if (rhs > mod) {
+        rhs = rhs % mod;
+      }
+
+      REQUIRE(item.k_m2_16[k] == rhs);
+    }
+
+
+    // Checks offsets between vectors in s-range
+    if (reset_s) {
+      REQUIRE(item.k_16[0] == 0);
+      cur_k_16 = item.k_16;
+    } else {
+      int diff = 1 << (cur_s + 4);
+      if (diff >= (1 << log2n)) {
+        diff = 1 << (cur_s - 4);
+      }
+
+      REQUIRE(item.k_16[0] == cur_k_16[0] + s_count*diff + cur_j);
+    }
+
+    //ret << cur;
+  }
+
+  //std::cout << ret << std::endl;
 }
 
 
