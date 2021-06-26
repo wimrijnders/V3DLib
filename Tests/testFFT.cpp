@@ -576,18 +576,16 @@ struct {
   int log2n = -1;
   std::vector<Offsets> fft_indexes;
   std::vector<Indexes16> vectors16;
-  bool use_offsets = false;
 
   int const k_limit = 1;
 
-  void init(int in_log2n, bool in_use_offsets) {
+  void init(int in_log2n) {
     if (log2n != in_log2n) {
       fft_indexes = prepare_fft_indexes(in_log2n);
       vectors16   = indexes_to_16vectors(fft_indexes);
     }
 
     log2n = in_log2n;
-    use_offsets = in_use_offsets;
 
     // Check assumptions
     for (int i = 0; i < (int) vectors16.size(); i++) {
@@ -771,8 +769,6 @@ struct {
 } fft_context;
 
 
-
-
 /**
  * Construct mult factor to use
  */
@@ -938,7 +934,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
   int last_j        = -1;
   Complex w_off;
 
-  Int k_off     = 0;
+  Int k_off = 0;
 
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
@@ -963,66 +959,46 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
     }
 
     int same_count = fft_context.same_index_offsets(i);
+    int index_offset = 0;
 
-    bool do_inline = !(fft_context.use_offsets && item.k_count >= fft_context.k_limit);
-    if (do_inline) {
-      int index_offset = 0;
-
-      if (i > 0) {
-       index_offset = item.index_offset(fft_context.vectors16[i - 1]);
-      }
+    if (i > 0) {
+     index_offset = item.index_offset(fft_context.vectors16[i - 1]);
+    }
 
 
-      if (index_offset == 0) {
-        init_k(k_off, item);
-        fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
-      } else if (same_count == 1) {
-        k_off += index_offset;
-        fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
-      } else {
-        assert(same_count % 2 == 1);
-
-        auto fetch = [&i] (Complex::Ptr const &b_k) {
-          gather(b_k + fft_context.m2_offset(i));
-          gather(b_k);
-        };
-
-        Int k_off_out = k_off;
-
-        // NOT WORKING
-        //k_off += index_offset;
-        //fetch(b + k_off);
-
-        For (Int j = 0, j < same_count, j++)
-          k_off += index_offset;
-          fetch(b + k_off);
-
-          k_off_out += index_offset;
-          fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
-        End
-
-        //Complex dummy;
-        //receive(dummy);
-        //receive(dummy);
-
-        i += same_count - 1;
-      }
+    if (index_offset == 0) {
+      init_k(k_off, item);
+      fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
+    } else if (same_count == 1) {
+      k_off += index_offset;
+      fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
     } else {
-      if (same_count == 1) {
-        gather(offsets);
-        offsets.inc();
-        receive(k_off);
-        fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
-      } else {
-        For (Int j = 0, j < same_count, j++)
-          gather(offsets);
-          offsets.inc();
-          receive(k_off);
+      assert(same_count % 2 == 1);
 
-          fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
-        End
-        i += same_count - 1;
-      }
+      auto fetch = [&i] (Complex::Ptr const &b_k) {
+        gather(b_k + fft_context.m2_offset(i));
+        gather(b_k);
+      };
+
+      Int k_off_out = k_off;
+
+      // NOT WORKING
+      //k_off += index_offset;
+      //fetch(b + k_off);
+
+      For (Int j = 0, j < same_count, j++)
+        k_off += index_offset;
+        fetch(b + k_off);
+
+        k_off_out += index_offset;
+        fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
+      End
+
+      //Complex dummy;
+      //receive(dummy);
+      //receive(dummy);
+
+      i += same_count - 1;
     }
 
     fft_loop_increment(w, wm, i);
@@ -1093,7 +1069,7 @@ TEST_CASE("FFT test with scalar [fft]") {
       result[bitReverse(i, log2n)] = aa[i];
     }
 
-    fft_context.init(log2n, false);
+    fft_context.init(log2n);
     auto k = compile(fft_kernel, V3D);
     //k.pretty(true, "fft_kernel.txt", false);
     k.load(&result, &devnull, &offsets);
@@ -1206,14 +1182,13 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
     Complex::Array devnull(16);
     Int::Array offsets;
-
+    Complex::Array result_inline(size);
 
     // FFT inline offsets
     /* if (log2n <= 10) */ {  // After this segfault
-      Complex::Array result_inline(size);
       init_result(result_inline, a, Dim, log2n);
 
-      fft_context.init(log2n, false);
+      fft_context.init(log2n);
 
       Timer timer1("FFT inline compile time");
       auto k = compile(fft_kernel, V3D);
@@ -1233,37 +1208,11 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       check_result2(scalar_result, result_inline, Dim, precision);
     }
 
-
-    // FFT offsets in buffer
-    Complex::Array result_buf(size);
-    {
-      init_result(result_buf, a, Dim, log2n);
-
-      fft_context.init(log2n, true);
-      //std::cout << fft_context.dump() << std::endl;
-      fft_context.init_offsets_array(offsets);
-
-      Timer timer1("FFT buffer compile time");
-      auto k = compile(fft_kernel, V3D);
-      k.dump_compile_data(false, "fft_buffer_data.txt");
-      timer1.end();
-      std::cout << "FFT buffer kernel size: " << k.v3d_kernel_size() << std::endl;
-      std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
-
-      Timer timer2("FFT buffer run time");
-      k.load(&result_buf, &devnull, &offsets);
-      k.call();
-      timer2.end();
-
-      INFO("comparing FFT buffer with scalar");
-      check_result2(scalar_result, result_buf, Dim, precision);
-    }
-
     // output plot
     {
       float real_result[Dim];
       for (int c = 0; c < Dim; ++c) {
-        real_result[c] = result_buf[c].to_complex().magnitude();
+        real_result[c] = result_inline[c].to_complex().magnitude();
       }
 
 
@@ -1275,7 +1224,6 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       pgm.plot(real_result, Dim)
          .save(filename.c_str());
     }
-
   }
 }
 
@@ -1292,7 +1240,7 @@ std::set<int> &operator+=(std::set<int> &lhs, std::vector<int> const &rhs) {
 TEST_CASE("FFT check offsets [fft][check_offsets]") {
   int log2n = 9;  // Following tests work for >= 5, tested till <= 22
 
-  fft_context.init(log2n, false);
+  fft_context.init(log2n);
   std::cout << fft_context.dump() << std::endl;
 
   std::string ret;
