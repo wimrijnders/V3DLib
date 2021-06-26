@@ -457,10 +457,12 @@ struct Indexes16 {
   Indexes16(CombinedOffsets const &co, int in_s, int in_j) {
     s = in_s;
     j = in_j;
-    step        = co.step();
     k_count     = co.k_count();
+    step        = co.step();
+
     valid_index = co.valid_index(j);
   }
+
 
   Indexes16(CombinedOffsets const &co, int in_s, bool not_valid) {
     assert(not_valid == false);
@@ -474,7 +476,7 @@ struct Indexes16 {
    * Constant offset between k and k_m2 vectors
    */
   int diff() const {
-    return 1 << (s -1);
+    return 1 << (s - 1);
   }
 
 
@@ -593,7 +595,7 @@ struct {
       Vec16 k_diff = item.k_m2() - item.k_16;  // TODO cleanup
       assert(k_diff.is_uniform());
 
-      if (item.step == 0) {
+      if (item.k_count == 16) {
         assert((1 << (log2n - 1)) == k_diff.first());
       } else {
         assert(item.step/2 == k_diff.first());
@@ -614,7 +616,7 @@ struct {
 
 
   /**
-   * For Dim <=4, this will not init the offsets array, because the indexes are invalid.
+   * For Dim <= 4, this will not init the offsets array, because the indexes are invalid.
    * In the kernel, this means that the offset buffer is not used.
    */
   void init_offsets_array(Int::Array &offsets) const {
@@ -702,13 +704,14 @@ struct {
         break;
       }
     }
-/*
-    if (same_count > 1) {  // True for log2n >= 6
-      std::cout << "same_count: " << me_count << std::endl;
-    }
-*/
 
     return same_count;
+  }
+
+
+  int m2_offset(int index) const {
+    auto &item = vectors16[index];
+    return (item.step == 0)? (1 << (log2n - 1)): item.step/2;
   }
 
 
@@ -768,9 +771,6 @@ struct {
 } fft_context;
 
 
-int m2_offset(Indexes16 const &item) {
-  return (item.step == 0)? (1 << (fft_context.log2n - 1)): item.step/2;
-}
 
 
 /**
@@ -793,43 +793,27 @@ void init_mult_factor(Complex &w_off, Complex &wm, int k_count) {
  * Do full initialization for offsets
  */
 void init_k(Int &k_off, Indexes16 const &item) {
-/*
-  int mod = (1 << fft_context.log2n) - 1;
-  k_off = (item.k_16.first() + index()*(1 << item.s)) % mod;
-*/
+// Following can replace the entire content of this function
+//  int mod = (1 << fft_context.log2n) - 1;
+//  k_off = (item.k_16.first() + index()*(1 << item.s)) % mod;  // Issue: division in % is costly
 
-  Vec16 const &k_in    = item.k_16;
+  Vec16 const &k_in = item.k_16;
+  int k_count       = item.k_count;
 
-  // Do the full inits
   int step    = item.step;
-  int k_count = item.k_count;
+  if (k_count == 16) step = 1;
 
-  while (true) {
-    if (k_count == 16) {
-      // There is no step; load values in directly
-      load_16vec(k_off, k_in.parent());
-      break;;
-    }
+  k_off = k_in.first() + index()*step;
 
-    assert(step != -1);
-    k_off     = k_in[0];
-    k_off    += index()*step;
+  if (k_count == 1 || k_count == 16) return;
 
-    if (k_count == 1) {
-      break;
-    }
+  int width = 16/k_count;
+  for (int i = 1; i < k_count; i++) {
+    Int offset2 = index() - width*i;
 
-    int width = 16/k_count;
-    for (int i = 1; i < k_count; i++) {
-      Int offset2 = index() - width*i;
-
-      Where (offset2 >= 0)
-        k_off = k_in[i*width];
-        k_off += offset2*step;
-      End
-    }
-
-    break;
+    Where (offset2 >= 0)
+      k_off = k_in[i*width] + offset2*step;
+    End
   }
 }
 
@@ -978,64 +962,64 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
       last_k_count = item.k_count;
     }
 
+    int same_count = fft_context.same_index_offsets(i);
+
     bool do_inline = !(fft_context.use_offsets && item.k_count >= fft_context.k_limit);
     if (do_inline) {
       int index_offset = 0;
 
       if (i > 0) {
-       index_offset = fft_context.vectors16[i].index_offset(fft_context.vectors16[i - 1]);
+       index_offset = item.index_offset(fft_context.vectors16[i - 1]);
       }
 
-      auto &item = fft_context.vectors16[i];
-      int same_count = fft_context.same_index_offsets(i);
 
       if (index_offset == 0) {
-        init_k(k_off, fft_context.vectors16[i]);
-        fft_calc(b, k_off, w_off, m2_offset(item));
+        init_k(k_off, item);
+        fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
       } else if (same_count == 1) {
-          k_off    += index_offset;
-          fft_calc(b, k_off, w_off, m2_offset(item));
+        k_off += index_offset;
+        fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
       } else {
         assert(same_count % 2 == 1);
 
-          auto fetch = [&item] (Complex::Ptr const &b_k) {
-            gather(b_k + m2_offset(item));
-            gather(b_k);
-          };
+        auto fetch = [&i] (Complex::Ptr const &b_k) {
+          gather(b_k + fft_context.m2_offset(i));
+          gather(b_k);
+        };
 
-          Int k_off_out = k_off;
+        Int k_off_out = k_off;
 
-           // k_off += index_offset;
-           // fetch(b + k_off);
+        // NOT WORKING
+        //k_off += index_offset;
+        //fetch(b + k_off);
 
-          For (Int j = 0, j < same_count, j++)
-            k_off += index_offset;
-            fetch(b + k_off);
+        For (Int j = 0, j < same_count, j++)
+          k_off += index_offset;
+          fetch(b + k_off);
 
-            k_off_out += index_offset;
-            fft_step(b + k_off_out, w_off, m2_offset(item));
-          End
+          k_off_out += index_offset;
+          fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
+        End
 
-          //Complex dummy;
-          //receive(dummy);
-          //receive(dummy);
+        //Complex dummy;
+        //receive(dummy);
+        //receive(dummy);
 
-          i += same_count - 1;
+        i += same_count - 1;
       }
     } else {
-      int same_count = fft_context.same_indexes(i);
       if (same_count == 1) {
         gather(offsets);
         offsets.inc();
         receive(k_off);
-        fft_calc(b, k_off, w_off, m2_offset(item));
+        fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
       } else {
         For (Int j = 0, j < same_count, j++)
           gather(offsets);
           offsets.inc();
           receive(k_off);
 
-          fft_calc(b, k_off, w_off, m2_offset(item));
+          fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
         End
         i += same_count - 1;
       }
@@ -1295,6 +1279,16 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
   }
 }
 
+
+std::set<int> &operator+=(std::set<int> &lhs, std::vector<int> const &rhs) {
+  for (int i = 0; i < (int) rhs.size(); i++) {
+    lhs.insert(rhs[i]);
+  }
+
+  return lhs;
+}
+
+
 TEST_CASE("FFT check offsets [fft][check_offsets]") {
   int log2n = 9;  // Following tests work for >= 5, tested till <= 22
 
@@ -1351,7 +1345,12 @@ TEST_CASE("FFT check offsets [fft][check_offsets]") {
 
     // Check horizontal offsets within vectors
     int mod = (1 << log2n) - 1;
-    Vec16 rhs = (item.k_16.first() + Vec16::index()*(1 << item.s)) % mod;
+
+    int hor_step = (1 << item.s);
+    if (item.k_count == 16) hor_step = 1;
+    //REQUIRE(hor_step == item.step);  // False for item.k_count == 16, where item.step == 0 (instead of 1)
+
+    Vec16 rhs = (item.k_16.first() + Vec16::index()*hor_step) % mod;
     REQUIRE(item.k_16 == rhs);
 
     for (int k = 1; k < 16; ++ k) {
@@ -1375,7 +1374,47 @@ TEST_CASE("FFT check offsets [fft][check_offsets]") {
     ret << cur;
   }
 
-  std::cout << ret << std::endl;
+  //std::cout << ret << std::endl;
+
+
+  //
+  // Check indexes unique within s-group.
+  // This is interesting for doing multi-qpu in FFT.
+  //
+  cur_s = -1;
+  s_count = 0;
+  int s_num_indexes = -1;
+  std::set<int> s_indexes;
+
+  for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
+    auto &item = fft_context.vectors16[i];
+
+    if (cur_s != item.s) {
+      if (s_count != 0) {
+        INFO("cur_s: " << cur_s);
+        REQUIRE((int) s_indexes.size() == s_num_indexes);
+      }
+
+      cur_s = item.s;
+      s_count = 0;
+      s_num_indexes = 0;
+      s_indexes.clear();
+    } else {
+      s_indexes += item.k_16.parent();
+      s_indexes += item.k_m2().parent();
+      s_num_indexes += (int) item.k_16.size(); 
+      s_num_indexes += (int) item.k_m2().size(); 
+
+      s_count++;
+    }
+  }
+
+  // Don't forget the final check!
+  REQUIRE (s_count != 0);
+  if (s_count != 0) {
+    INFO("Final cur_s: " << cur_s);
+    REQUIRE((int) s_indexes.size() == s_num_indexes);
+  }
 }
 
 
