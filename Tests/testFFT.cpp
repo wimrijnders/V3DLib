@@ -186,6 +186,8 @@ public:
   using Parent::operator[];
   using Parent::size;
 
+  Parent const &parent() const { return *this; }
+
   Vec16() {
     resize(16);
     for (int i = 0; i < 16; i++) {
@@ -218,6 +220,28 @@ public:
 
     for (int n = 0; n < 16; ++n) {
       ret[n] = (*this)[n] - rhs[n];
+    }
+
+    return ret;
+  }
+
+
+  Vec16 operator*(int rhs) const {
+    Vec16 ret;
+
+    for (int n = 0; n < 16; ++n) {
+      ret[n] = (*this)[n]*rhs;
+    }
+
+    return ret;
+  }
+
+
+  Vec16 operator%(int rhs) const {
+    Vec16 ret;
+
+    for (int n = 0; n < 16; ++n) {
+      ret[n] = (*this)[n] % rhs;
     }
 
     return ret;
@@ -261,8 +285,20 @@ public:
     return ret;
   }
 
-  Parent const &parent() const { return *this; }
+
+  static Vec16 index() {
+    Vec16 ret;
+
+    for (int n = 0; n < (int) ret.size(); ++n) {
+      ret[n] = n;
+    }
+
+    return ret;
+  }
 };
+
+
+Vec16 operator+(int lhs, Vec16 const &rhs) { return rhs + lhs; }
 
 
 struct OffsetItem {
@@ -417,7 +453,6 @@ struct Indexes16 {
   int k_count      = -1;
   bool valid_index = false;
   Vec16 k_16;
-  Vec16 k_m2_16;
 
   Indexes16(CombinedOffsets const &co, int in_s, int in_j) {
     s = in_s;
@@ -458,11 +493,9 @@ struct Indexes16 {
    */
   int index_offset(Indexes16 const &rhs) const {
     Vec16 k_tmp    = k_16    - rhs.k_16;
-    Vec16 k_m2_tmp = k_m2_16 - rhs.k_m2_16;
 
-    if (k_tmp.is_uniform() && k_m2_tmp.is_uniform()) {
+    if (k_tmp.is_uniform()) {
       //std::cout << "uniform!\n";
-      assert(k_tmp.first() == k_m2_tmp.first());
       assert(k_tmp.first() != 0);
       return k_tmp.first();
     }
@@ -495,7 +528,6 @@ std::vector<Indexes16> indexes_to_16vectors(std::vector<Offsets> const &fft_inde
 
             for (int k = 0; k < 16; k++) {
               item.k_16[k]    = co.k_vec[offset + k];
-              item.k_m2_16[k] = co.k_m2_vec[offset + k];
             }
 
             ret << item;
@@ -506,7 +538,6 @@ std::vector<Indexes16> indexes_to_16vectors(std::vector<Offsets> const &fft_inde
 
           Indexes16 item(co, s, j);
           item.k_16    = co.k_vec;
-          item.k_m2_16 = co.k_m2_vec;
 
           ret << item;
         }
@@ -559,7 +590,7 @@ struct {
     // Check assumptions
     for (int i = 0; i < (int) vectors16.size(); i++) {
       auto &item  = vectors16[i];
-      Vec16 k_diff = item.k_m2_16 - item.k_16;
+      Vec16 k_diff = item.k_m2() - item.k_16;  // TODO cleanup
       assert(k_diff.is_uniform());
 
       if (item.step == 0) {
@@ -677,28 +708,6 @@ struct {
     }
 */
 
-/*
-    // Check assumptions
-
-    if (same_count > 1) {  // True for log2n >= 6
-
-    Vec16 k_base_diff = vectors16[i].k_m2_16 - vectors16[i].k_16;
-    bool checks_out = true;
-    for (int c = 1; c < same_count; c++) {
-      auto &item  = vectors16[i + c];
-      Vec16 k_diff = item.k_m2_16 - item.k_16;
-      if (k_diff != k_base_diff) {
-        checks_out = false;
-        break;
-      }
-    }
-    assert(checks_out);
-    assert(k_base_diff.is_uniform());
-    std::cout << "step " << vectors16[i].step << ": " << k_base_diff.dump() << std::endl;
-
-    }
-*/
-
     return same_count;
   }
 
@@ -781,9 +790,14 @@ void init_mult_factor(Complex &w_off, Complex &wm, int k_count) {
 
 
 /**
- * Do full init test for offsets
+ * Do full initialization for offsets
  */
 void init_k(Int &k_off, Indexes16 const &item) {
+/*
+  int mod = (1 << fft_context.log2n) - 1;
+  k_off = (item.k_16.first() + index()*(1 << item.s)) % mod;
+*/
+
   Vec16 const &k_in    = item.k_16;
 
   // Do the full inits
@@ -791,30 +805,29 @@ void init_k(Int &k_off, Indexes16 const &item) {
   int k_count = item.k_count;
 
   while (true) {
+    if (k_count == 16) {
+      // There is no step; load values in directly
+      load_16vec(k_off, k_in.parent());
+      break;;
+    }
 
-  if (k_count == 16) {
-    // There is no step; load values in directly
-    load_16vec(k_off, k_in.parent());
-    break;;
-  }
+    assert(step != -1);
+    k_off     = k_in[0];
+    k_off    += index()*step;
 
-  assert(step != -1);
-  k_off     = k_in[0];
-  k_off    += index()*step;
+    if (k_count == 1) {
+      break;
+    }
 
-  if (k_count == 1) {
-    break;
-  }
+    int width = 16/k_count;
+    for (int i = 1; i < k_count; i++) {
+      Int offset2 = index() - width*i;
 
-  int width = 16/k_count;
-  for (int i = 1; i < k_count; i++) {
-    Int offset2 = index() - width*i;
-
-    Where (offset2 >= 0)
-      k_off     = k_in[i*width];
-      k_off    += offset2*step;
-    End
-  }
+      Where (offset2 >= 0)
+        k_off = k_in[i*width];
+        k_off += offset2*step;
+      End
+    }
 
     break;
   }
@@ -1283,12 +1296,12 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 }
 
 TEST_CASE("FFT check offsets [fft][check_offsets]") {
-  int log2n = 11;  // Following tests work for >= 5, tested till <= 22
+  int log2n = 9;  // Following tests work for >= 5, tested till <= 22
 
   fft_context.init(log2n, false);
   std::cout << fft_context.dump() << std::endl;
 
-  //std::string ret;
+  std::string ret;
 
   bool reset_s;
   bool reset_j;
@@ -1303,7 +1316,7 @@ TEST_CASE("FFT check offsets [fft][check_offsets]") {
 
     reset_s = (cur_s != item.s);
     if (cur_s != item.s) {
-      //ret << "s: " << item.s << ", ";
+      ret << "s: " << item.s << ", ";
       cur_s = item.s;
       cur_j = -1;
       cur_k = -1;
@@ -1311,7 +1324,7 @@ TEST_CASE("FFT check offsets [fft][check_offsets]") {
 
     reset_j = reset_s || (cur_j != item.j);
     if (cur_j != item.j) {
-      //ret << "j: " << item.j << ", ";
+      ret << "j: " << item.j << ", ";
       cur_j = item.j;
       cur_k = -1;
     }
@@ -1324,34 +1337,25 @@ TEST_CASE("FFT check offsets [fft][check_offsets]") {
 
 
     if (cur_k != item.k_count) {
-      //ret << "k: " << item.k_count << ":\n";
+      ret << "k: " << item.k_count << ":\n";
       cur_k = item.k_count;
     }
 
     std::string cur;
-    cur << "  " << item.k_16.dump() << " / ";
-    cur << "  " << item.k_m2_16.dump() << "\n";
+    cur << "  " << item.k_16.dump() << "\n";
 
     INFO("s: " << item.s << ", j: " << item.j << ", k: " << item.k_count);
     INFO(cur);
 
     REQUIRE(cur_s == item.s);
 
-    // Check offsets k and k_m2 vector
-    REQUIRE(item.k_m2_16 == item.k_m2());
-
     // Check horizontal offsets within vectors
     int mod = (1 << log2n) - 1;
+    Vec16 rhs = (item.k_16.first() + Vec16::index()*(1 << item.s)) % mod;
+    REQUIRE(item.k_16 == rhs);
+
     for (int k = 1; k < 16; ++ k) {
-      int rhs = (item.k_16[0] + k*(1 << cur_s)) % mod;
-      REQUIRE(item.k_16[k] == rhs);
-
-      rhs += item.diff();
-      if (rhs > mod) {
-        rhs = rhs % mod;
-      }
-
-      REQUIRE(item.k_m2_16[k] == rhs);
+      REQUIRE(item.k_m2()[k] <= mod);
     }
 
 
@@ -1368,10 +1372,10 @@ TEST_CASE("FFT check offsets [fft][check_offsets]") {
       REQUIRE(item.k_16[0] == cur_k_16[0] + s_count*diff + cur_j);
     }
 
-    //ret << cur;
+    ret << cur;
   }
 
-  //std::cout << ret << std::endl;
+  std::cout << ret << std::endl;
 }
 
 
