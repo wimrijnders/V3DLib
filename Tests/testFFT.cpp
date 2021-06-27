@@ -494,7 +494,7 @@ struct Indexes16 {
    * @return uniform index offset if there is one, 0 otherwise
    */
   int index_offset(Indexes16 const &rhs) const {
-    Vec16 k_tmp    = k_16    - rhs.k_16;
+    Vec16 k_tmp = k_16 - rhs.k_16;
 
     if (k_tmp.is_uniform()) {
       //std::cout << "uniform!\n";
@@ -502,6 +502,7 @@ struct Indexes16 {
       return k_tmp.first();
     }
 
+    //std::cout << "Not uniform: " << k_tmp.dump() << "\n";
     return 0;
   }
 };
@@ -577,8 +578,6 @@ struct {
   std::vector<Offsets> fft_indexes;
   std::vector<Indexes16> vectors16;
 
-  int const k_limit = 1;
-
   void init(int in_log2n) {
     if (log2n != in_log2n) {
       fft_indexes = prepare_fft_indexes(in_log2n);
@@ -614,42 +613,6 @@ struct {
 
 
   /**
-   * For Dim <= 4, this will not init the offsets array, because the indexes are invalid.
-   * In the kernel, this means that the offset buffer is not used.
-   */
-  void init_offsets_array(Int::Array &offsets) const {
-    if (!valid_index()) return;
-
-    offsets.alloc((uint32_t) (16*offsets_size()));
-    int dst_index = 0;
-
-    for (int i = 0; i < (int) vectors16.size(); i++) {
-      auto &vec = vectors16[i];
-      if (vec.k_count < k_limit) continue;
-      assert(vec.k_16.size() == 16);
-
-      for (int j = 0; j < 16; j++) {
-        offsets[dst_index] = vec.k_16[j];
-        dst_index++;
-      }
-    }
-  }
-
-
-  int offsets_size() const {
-    int count = 0;
-
-    for (int i = 0; i < (int) vectors16.size(); i++) {
-      auto &item = vectors16[i];
-      if (item.k_count >= k_limit) count++;     
-    }
-
-    assert(count > 0);
-    return count;
-  }
-
-
-  /**
    * Count the number of consecutive items with the same s, j and k,
    * starting from index i
    */
@@ -681,22 +644,46 @@ struct {
    * Invalid index offsets are discounted
    */
   int same_index_offsets(int i) const {
-    if (i <= 0) {
-      return 1;
-    } 
-    if (i >= (int) vectors16.size()) {
-      return 1;
-    } 
+    assert(i >= 0);
+
+    if (i == 0) return 1;
+    if (i >= (int) vectors16.size()) return 0;
 
     int same_count = 1;
     int prev_offset = vectors16[i].index_offset(vectors16[i - 1]);
 
-    for (int j = i + 1; j < (int) vectors16.size(); j++) {
-      auto &item  = vectors16[j - 1];
-      auto &item2 = vectors16[j];
+    for (int j = i; j < (int) (vectors16.size() - 1); j++) {
+      auto &item  = vectors16[j];
+      auto &item2 = vectors16[j + 1];
 
       int index_offset = item2.index_offset(item);
+
+      if (index_offset == 0 && prev_offset != index_offset) {
+        std::cout << "prev_offset != index_offset" << std::endl;
+      }
+
       if (index_offset != 0 && prev_offset == index_offset && item.same_indexes(item2)) {
+        same_count++;
+      } else {
+        break;
+      }
+    }
+
+    return same_count;
+  }
+
+
+  int same_index_count(int i) const {
+    assert(i >= 0);
+    assert(i < (int) vectors16.size());
+
+    int same_count = 1;
+    auto &item  = vectors16[i];
+
+    for (int j = i + 1; j < (int) vectors16.size(); j++) {
+      auto &item2 = vectors16[j];
+      
+      if (item.same_indexes(item2)) {
         same_count++;
       } else {
         break;
@@ -901,15 +888,6 @@ void fft_loop_increment(Complex &w, Complex const &wm, int i) {
 }
 
 
-void fft_calc(Complex::Ptr const &b, Int const &k_off, Complex &w_off, int m2_offset) {
-  Complex::Ptr b_k = b + k_off;
-  gather(b_k + m2_offset);
-  gather(b_k);
-
-  fft_step(b_k, w_off, m2_offset);
-}
-
-
 /**
  * Kernel derived from scalar
  *
@@ -926,12 +904,12 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
     return;
   }
 
-  int last_s = -1;
-  Complex w(0, 0);
-  Complex wm(0, 0);
-
+  int last_s        = -1;
   int last_k_count  = -1;
   int last_j        = -1;
+
+  Complex w(0, 0);
+  Complex wm(0, 0);
   Complex w_off;
 
   Int k_off = 0;
@@ -940,7 +918,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
     auto &item = fft_context.vectors16[i];
 
     if (last_s != item.s) {
-      w = Complex(1, 0);
+      w  = Complex(1, 0);
       wm = Complex(-1.0f/((float) (1 << item.s)));
       last_s = item.s;
     }
@@ -958,47 +936,56 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
       last_k_count = item.k_count;
     }
 
-    int same_count = fft_context.same_index_offsets(i);
-    int index_offset = 0;
+    auto fetch = [&i] (Complex::Ptr const &b_k) {
+      gather(b_k + fft_context.m2_offset(i));
+      gather(b_k);
+    };
 
-    if (i > 0) {
-     index_offset = item.index_offset(fft_context.vectors16[i - 1]);
+
+    // First offset is a full initialization
+    init_k(k_off, item);
+    fetch(b + k_off);
+    fft_step(b + k_off, w_off, fft_context.m2_offset(i));
+
+    int same_count = fft_context.same_index_count(i);
+    {
+      std::string msg;
+      msg << "s: " << item.s << ", j: " << item.j << ", k: " << item.k_count
+          << ", same_count: " << same_count
+          << ", step: " << item.step;
+      debug(msg);
     }
 
+    // Any next offsets are relative to the first one
+    if (same_count > 1) {
+      int count = same_count - 1;
+      int index_offset = fft_context.vectors16[i+1].index_offset(item);
 
-    if (index_offset == 0) {
-      init_k(k_off, item);
-      fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
-    } else if (same_count == 1) {
-      k_off += index_offset;
-      fft_calc(b, k_off, w_off, fft_context.m2_offset(i));
-    } else {
-      assert(same_count % 2 == 1);
-
-      auto fetch = [&i] (Complex::Ptr const &b_k) {
-        gather(b_k + fft_context.m2_offset(i));
-        gather(b_k);
-      };
-
-      Int k_off_out = k_off;
-
-      // NOT WORKING
-      //k_off += index_offset;
-      //fetch(b + k_off);
-
-      For (Int j = 0, j < same_count, j++)
-        k_off += index_offset;
+      if (count == 1) {
+        k_off += index_offset;  // index_offset may be zero
         fetch(b + k_off);
+        fft_step(b + k_off, w_off, fft_context.m2_offset(i));
+      } else {
+        Int k_off_out = k_off;
 
-        k_off_out += index_offset;
-        fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
-      End
+        // NOT WORKING
+        //k_off += index_offset;
+        //fetch(b + k_off);
 
-      //Complex dummy;
-      //receive(dummy);
-      //receive(dummy);
+        For (Int j = 0, j < count, j++)
+          k_off += index_offset;
+          fetch(b + k_off);
 
-      i += same_count - 1;
+          k_off_out += index_offset;
+          fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
+        End
+
+        //Complex dummy;
+        //receive(dummy);
+        //receive(dummy);
+      }
+
+      i += count;
     }
 
     fft_loop_increment(w, wm, i);
@@ -1115,7 +1102,13 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    int log2n = 8;  // Tested up till 12 (compile times FFT buffer: 119s, inline: 56s)
+    // Tested up till 13
+    //   11: compile time: 47s
+    //   12: compile time: 119s
+    //   13: compile time: 207s, fails due to precision
+    // FFT beats DFT for >= 8
+    int log2n = 9;
+
     int Dim = 1 << log2n;
     set_precision(log2n);
     REQUIRE(precision > 0.0f);
@@ -1184,8 +1177,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     Int::Array offsets;
     Complex::Array result_inline(size);
 
-    // FFT inline offsets
-    /* if (log2n <= 10) */ {  // After this segfault
+    {
       init_result(result_inline, a, Dim, log2n);
 
       fft_context.init(log2n);
@@ -1203,18 +1195,16 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       k.call();
       timer2.end();
 
-      //std::cout << "FFT result: " << result.dump() << std::endl;
       INFO("comparing FFT inline with scalar");
       check_result2(scalar_result, result_inline, Dim, precision);
     }
 
-    // output plot
+    // Plot output
     {
       float real_result[Dim];
       for (int c = 0; c < Dim; ++c) {
         real_result[c] = result_inline[c].to_complex().magnitude();
       }
-
 
       char const *file_prefix = "fft";
       std::string filename = "obj/test/";
@@ -1237,7 +1227,7 @@ std::set<int> &operator+=(std::set<int> &lhs, std::vector<int> const &rhs) {
 }
 
 
-TEST_CASE("FFT check offsets [fft][check_offsets]") {
+TEST_CASE("FFT check offsets [fft][offsets]") {
   int log2n = 9;  // Following tests work for >= 5, tested till <= 22
 
   fft_context.init(log2n);
@@ -1322,7 +1312,7 @@ TEST_CASE("FFT check offsets [fft][check_offsets]") {
     ret << cur;
   }
 
-  //std::cout << ret << std::endl;
+  std::cout << ret << std::endl;
 
 
   //
