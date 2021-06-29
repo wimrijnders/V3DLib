@@ -594,7 +594,7 @@ struct {
 
       if (item.k_count == 16) {
         assert((1 << (log2n - 1)) == k_diff.first());
-      } else if (item.step != -1) {
+      } else {
         assert(item.step/2 == k_diff.first());
       }
 /*
@@ -672,6 +672,18 @@ struct {
     return same_count;
   }
 
+
+  int j_offset(int i) const {
+    int cur_s = vectors16[i].s;
+    int cur_k= vectors16[i].k_count;
+
+    int diff = 1 << (cur_s + 4);
+    if (diff >= (1 << log2n)) {
+      diff = 1 << (cur_s - 4);
+    }
+
+    return cur_k*diff;
+  }
 
   int same_index_count(int i, bool skip_j = false) const {
     assert(i >= 0);
@@ -789,16 +801,16 @@ void init_k(Int &k_off, Indexes16 const &item, bool add_first) {
 //  int mod = (1 << fft_context.log2n) - 1;
 //  k_off = (item.k_16.first() + index()*(1 << item.s)) % mod;  // Issue: division in % is costly
 
-  Vec16 const &k_in = item.k_16;
   int k_count       = item.k_count;
+
+  Vec16 const &k_in = item.k_16;
+  assert(item.k_16.first() == item.j);
 
   int step    = item.step;
   if (k_count == 16) step = 1;
 
   k_off = index()*step;
-  if (add_first) {
-    k_off += k_in.first();
-  }
+  if (add_first) k_off += k_in.first();
 
   if (k_count == 1 || k_count == 16) return;
 
@@ -808,9 +820,7 @@ void init_k(Int &k_off, Indexes16 const &item, bool add_first) {
 
     Where (offset2 >= 0)
       k_off = offset2*step;
-      if (add_first) {
-        k_off += k_in[i*width];
-      }
+      if (add_first) k_off += k_in[i*width];
     End
   }
 }
@@ -846,7 +856,7 @@ void fft_step(Complex::Ptr const &b_k, Complex const &w, int m2_offset) {
  * only one value is used in the 16-vec registers.
  */
 void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
-  debug("Fallback!");
+  //debug("Fallback!");
 
   for (int i = 0; i < (int) fft_context.fft_indexes.size(); i++) {
     int s = i + 1;
@@ -857,6 +867,8 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
     auto offsets = fft_context.fft_indexes[i];
 
     for (int j = 0; j < (int) offsets.size(); j++) {
+      Complex w_off;
+
       CombinedOffsets co(offsets, j);
       assert(!co.valid_index(j));  // Check if this is really for tiny fft
 
@@ -882,13 +894,6 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
 /**
  * Update w for the next round
  */
-void increment_w(int k_count, Complex &w, Complex const &wm) {
-  for (int k = 0; k < k_count; k++) {
-    w *= wm; 
-  }
-}
-
-
 void fft_loop_increment(Complex &w, Complex const &wm, int i) {
   if (i + 1 >= (int) fft_context.vectors16.size()) {  // Don't bother doing this for the last item
     return;
@@ -898,9 +903,113 @@ void fft_loop_increment(Complex &w, Complex const &wm, int i) {
   auto &next_item = fft_context.vectors16[i + 1];
 
   if (item.j != next_item.j) {
-    increment_w(item.k_count, w, wm);
+    // Extra loop offset for combined rows
+    for (int k = 1; k < item.k_count; k++) {
+      w *= wm; 
+    }
+
+    w *= wm;
   }
 }
+
+
+void fft_fetch(int i, Complex::Ptr const &b_k) {
+  gather(b_k + fft_context.m2_offset(i));
+  gather(b_k);
+}
+
+
+void fft_loop(int count, int i, Complex::Ptr &b, Int &k_off, Complex &w_off, bool use_k_increment) {
+  assert(count >= 0);
+  if (count == 0) return;
+
+  auto &item = fft_context.vectors16[i];
+
+  int inc;
+  if (use_k_increment) {
+    assert(item.j == 0);
+    inc = item.k_count;
+  } else {
+    inc = fft_context.vectors16[i+1].index_offset(item);
+  }
+
+  if (count == 1) {
+    k_off += inc;
+    fft_fetch(i, b + k_off);
+    fft_step(b + k_off, w_off, fft_context.m2_offset(i));
+  } else {
+    Int k_off_out = k_off;
+
+    // NOT WORKING
+    //k_off += index_offset;
+    //fft_fetch(i, b + k_off);
+
+    For (Int j = 0, j < count, j++)
+      k_off += inc;
+      fft_fetch(i, b + k_off);
+
+      k_off_out += inc;
+      fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
+    End
+
+    //Complex dummy;
+    //receive(dummy);
+    //receive(dummy);
+  }
+}
+
+
+struct FFTState {
+  Complex w;
+  Complex wm;
+  Complex w_off;
+  Int k_off;
+
+  FFTState() : w(0,0), wm(0,0), k_off(0) {}
+
+  void init_s(int index) {
+    m_index = index;
+    debug("new wm");
+    w  = Complex(1, 0);
+    wm = Complex(-1.0f/((float) (1 << item().s)));
+  }
+
+  void init_w() {
+    debug("new mult factor");
+    w_off = w;
+    init_mult_factor(w_off, wm, item().k_count);
+  }
+
+  void init_k() {
+    ::init_k(k_off, item(), true); // (same_count > 1));
+  }
+
+  void fetch(Complex::Ptr const &b_k) {
+    ::fft_fetch(m_index, b_k + k_off);
+  }
+
+
+  void step(Complex::Ptr const &b) {
+    ::fft_step(b + k_off, w_off, fft_context.m2_offset(m_index));
+  }
+
+  void loop(int count, Complex::Ptr &b, bool use_k_increment) {
+    ::fft_loop(count, m_index, b, k_off, w_off, use_k_increment);
+  }
+
+
+  void loop_increment() {
+    ::fft_loop_increment(w, wm, m_index);
+  }
+
+private:
+  int m_index = -1;
+
+  Indexes16 &item() {
+    assert(0 <= m_index && m_index < (int) fft_context.vectors16.size());
+    return fft_context.vectors16[m_index];
+  }
+};
 
 
 /**
@@ -920,103 +1029,68 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
   }
 
   int last_s        = -1;
+  int last_k_count  = -1;
+  int last_j        = -1;
 
-  Complex w(0, 0);
-  Complex wm(0, 0);
-  Complex w_off;
-
-  Int k_off = 0;
+  FFTState fft_state;
 
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
 
     if (last_s != item.s) {
-      w  = Complex(1, 0);
-      wm = Complex(-1.0f/((float) (1 << item.s)));
+      fft_state.init_s(i);
       last_s = item.s;
     }
 
     assert(item.valid_index);
 
-    w_off = w;
-    init_mult_factor(w_off, wm, item.k_count);
+    if (last_j != item.j) {
+      last_k_count = -1;
+      last_j = item.j;
+    }
 
-    auto fetch = [&i] (Complex::Ptr const &b_k) {
-      gather(b_k + fft_context.m2_offset(i));
-      gather(b_k);
-    };
+    if (last_k_count != item.k_count) {
+      fft_state.init_w();
+      last_k_count = item.k_count;
+    }
 
-
-    int same_count        = fft_context.same_index_count(i);
-    int same_count_skipjs = fft_context.same_index_count(i, true);
-
-/*
+    int same_count       = fft_context.same_index_count(i);
+    int same_index_count = fft_context.same_index_count(i, true);
     {
       std::string msg;
       msg << "s: " << item.s << ", j: " << item.j << ", k: " << item.k_count
           << ", step: " << item.step
           << ", same_count: " << same_count
-          << ", same_count skipjs: " << same_count_skipjs;
+          << ", count skip_js: " << same_index_count;
       debug(msg);
     }
-*/
+
+
+    fft_state.init_k();
 
     // First offset is a full initialization
-    init_k(k_off, item, true);  // (same_count > 1));
-    fetch(b + k_off);
-    fft_step(b + k_off, w_off, fft_context.m2_offset(i));
+    fft_state.fetch(b);
+    fft_state.step(b);
 
     // Any next offsets are relative to the first one
     if (same_count > 1) {
       int count = same_count - 1;
-      int index_offset = fft_context.vectors16[i + 1].index_offset(item);
-
-      if (count == 1) {
-        k_off += index_offset;
-        fetch(b + k_off);
-        fft_step(b + k_off, w_off, fft_context.m2_offset(i));
-      } else {
-        Int k_off_out = k_off;
-
-        // NOT WORKING
-        //k_off += index_offset;
-        //fetch(b + k_off);
-
-        For (Int j = 0, j < count, j++)
-          k_off += index_offset;
-          fetch(b + k_off);
-
-          k_off_out += index_offset;
-          fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
-        End
-
-        //Complex dummy;
-        //receive(dummy);
-        //receive(dummy);
-      }
+      fft_state.loop(count, b, false);
 
       i += count;
-      fft_loop_increment(w, wm, i);
-    } else if (same_count_skipjs > 1) {
-      assert(item.k_16.first() == 0);
+/*
+    } else {
+      assert(same_index_count > 1);
 
-      int count = same_count_skipjs - 1;
-      // Not much use doing count == 1 for large log2n, it's always only 4 loops
-
-      Int k_off_out = k_off;
-
-      For (Int j = 0, j < count, j++)
-        increment_w(item.k_count, w_off, wm);
-
-        k_off += item.k_count;
-        fetch(b + k_off);
-
-        k_off_out += item.k_count;
-        fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
-      End
+      int count = same_index_count - 1;
+      fft_loop(count, i, b, k_off, w_off, true);
 
       i += count;
+*/
     }
+
+
+    fft_state.loop_increment();
   }
 }
 
@@ -1130,14 +1204,11 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    // FFT beats DFT for >= 7
-    // Tested up till last value: 
-    //   11: compile time: 7s
-    //   12: compile time: 12s
-    //   13: compile time: 24s, from here on fails due to precision
-    //   14: compile time: 48s
-    //   15: compile time: 103s
-    //   16: compile time: 226s, for 1 QPU scalar 'only' twice as fast
+    // Tested up till 13
+    //   11: compile time: 47s
+    //   12: compile time: 119s
+    //   13: compile time: 207s, fails due to precision
+    // FFT beats DFT for >= 8
     int log2n = 8;
 
     int Dim = 1 << log2n;
@@ -1273,13 +1344,14 @@ TEST_CASE("FFT check offsets [fft][offsets]") {
   int cur_s = -1;
   int cur_j = -1;
   int cur_k = -1;
-  Vec16 cur_k_16;
+  Indexes16 *cur_s_item = nullptr;
+  int cur_s_index = -1;
 
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
 
     reset_s = (cur_s != item.s);
-    if (cur_s != item.s) {
+    if (reset_s) {
       if (show) ret << "s: " << item.s << ", ";
       cur_s = item.s;
       cur_j = -1;
@@ -1288,7 +1360,7 @@ TEST_CASE("FFT check offsets [fft][offsets]") {
 
     reset_j = reset_s || (cur_j != item.j);
     if (cur_j != item.j) {
-      if (show)  ret << "j: " << item.j << ", ";
+      if (show) ret << "j: " << item.j << ", ";
       cur_j = item.j;
       cur_k = -1;
     }
@@ -1331,14 +1403,16 @@ TEST_CASE("FFT check offsets [fft][offsets]") {
     // Checks offsets between vectors in s-range
     if (reset_s) {
       REQUIRE(item.k_16[0] == 0);
-      cur_k_16 = item.k_16;
+      REQUIRE(item.j == 0);
+      cur_s_item = &item;
+      cur_s_index = i;
     } else {
-      int diff = 1 << (cur_s + 4);
-      if (diff >= (1 << log2n)) {
-        diff = 1 << (cur_s - 4);
-      }
+      REQUIRE(cur_s_item != nullptr);
+      REQUIRE(cur_s_index != -1);
+      REQUIRE(cur_s_item->k_16[0] == 0);
+      REQUIRE(item.j == cur_j);
 
-      REQUIRE(item.k_16[0] == cur_k_16[0] + s_count*diff + cur_j);
+      REQUIRE(item.k_16[0] == cur_s_item->k_16[0] + s_count*fft_context.j_offset(i) + cur_j);
     }
 
     if (show) ret << cur;
