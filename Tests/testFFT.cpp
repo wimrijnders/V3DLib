@@ -784,7 +784,7 @@ void init_mult_factor(Complex &w_off, Complex &wm, int k_count) {
 /**
  * Do full initialization for offsets
  */
-void init_k(Int &k_off, Indexes16 const &item, bool add_first) {
+void init_k(Int &k_off, Indexes16 const &item) {
 // Following can replace the entire content of this function
 //  int mod = (1 << fft_context.log2n) - 1;
 //  k_off = (item.k_16.first() + index()*(1 << item.s)) % mod;  // Issue: division in % is costly
@@ -795,10 +795,7 @@ void init_k(Int &k_off, Indexes16 const &item, bool add_first) {
   int step    = item.step;
   if (k_count == 16) step = 1;
 
-  k_off = index()*step;
-  if (add_first) {
-    k_off += k_in.first();
-  }
+  k_off = index()*step + k_in.first();
 
   if (k_count == 1 || k_count == 16) return;
 
@@ -807,10 +804,7 @@ void init_k(Int &k_off, Indexes16 const &item, bool add_first) {
     Int offset2 = index() - width*i;
 
     Where (offset2 >= 0)
-      k_off = offset2*step;
-      if (add_first) {
-        k_off += k_in[i*width];
-      }
+      k_off = offset2*step + k_in[i*width];
     End
   }
 }
@@ -950,7 +944,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
     int same_count        = fft_context.same_index_count(i);
     int same_count_skipjs = fft_context.same_index_count(i, true);
 
-/*
     {
       std::string msg;
       msg << "s: " << item.s << ", j: " << item.j << ", k: " << item.k_count
@@ -959,64 +952,45 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
           << ", same_count skipjs: " << same_count_skipjs;
       debug(msg);
     }
-*/
 
-    // First offset is a full initialization
-    init_k(k_off, item, true);  // (same_count > 1));
-    fetch(b + k_off);
-    fft_step(b + k_off, w_off, fft_context.m2_offset(i));
+    init_k(k_off, item);
+    Int k_off_out = k_off;
 
-    // Any next offsets are relative to the first one
+    int count;
+    int index_offset;
     if (same_count > 1) {
-      int count = same_count - 1;
-      int index_offset = fft_context.vectors16[i + 1].index_offset(item);
-
-      if (count == 1) {
-        k_off += index_offset;
-        fetch(b + k_off);
-        fft_step(b + k_off, w_off, fft_context.m2_offset(i));
-      } else {
-        Int k_off_out = k_off;
-
-        // NOT WORKING
-        //k_off += index_offset;
-        //fetch(b + k_off);
-
-        For (Int j = 0, j < count, j++)
-          k_off += index_offset;
-          fetch(b + k_off);
-
-          k_off_out += index_offset;
-          fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
-        End
-
-        //Complex dummy;
-        //receive(dummy);
-        //receive(dummy);
-      }
-
-      i += count;
-      fft_loop_increment(w, wm, i);
-    } else if (same_count_skipjs > 1) {
+      count = same_count;  // same_count same for all j's in group
+      index_offset = fft_context.vectors16[i + 1].index_offset(item);
+    } else {
       assert(item.k_16.first() == 0);
 
-      int count = same_count_skipjs - 1;
+      count = same_count_skipjs;
       // Not much use doing count == 1 for large log2n, it's always only 4 loops
 
-      Int k_off_out = k_off;
+      index_offset = item.k_count;
+    }
 
-      For (Int j = 0, j < count, j++)
-        increment_w(item.k_count, w_off, wm);
+      // TODO figure out prefetch
 
-        k_off += item.k_count;
+      For (Int k = 0, k < count, k++)
         fetch(b + k_off);
-
-        k_off_out += item.k_count;
         fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
+
+        k_off += index_offset;
+        k_off_out += index_offset;
+
+        if (same_count == 1) {
+          increment_w(index_offset, w_off, wm);
+        }
       End
 
-      i += count;
-    }
+      // TODO for prefetch, don't forget dummy receive
+
+      i += count - 1;
+
+      if (same_count > 1) {
+        fft_loop_increment(w, wm, i);
+      }
   }
 }
 
@@ -1132,12 +1106,12 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
   SUBCASE("Compare FFT and DFT output") {
     // FFT beats DFT for >= 7
     // Tested up till last value: 
-    //   11: compile time: 7s
+    //   11: compile time: 7s, for 1 QPU scalar 'only' twice as fast
     //   12: compile time: 12s
     //   13: compile time: 24s, from here on fails due to precision
     //   14: compile time: 48s
     //   15: compile time: 103s
-    //   16: compile time: 226s, for 1 QPU scalar 'only' twice as fast
+    //   16: compile time: 226s
     int log2n = 8;
 
     int Dim = 1 << log2n;
