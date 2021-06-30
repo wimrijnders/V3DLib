@@ -778,6 +778,22 @@ struct {
 } fft_context;
 
 
+
+/**
+ * Loop optimization: skip For-loop if only 1 iteration
+ */
+void Loop(int count, std::function<void(Int const &)> f) {
+  assert(count > 0);
+  if (count == 1) {
+    f(0);
+  } else {
+    For (Int j = 0, j < count, j++)
+      f(j);
+    End
+  }
+}
+
+
 /**
  * Construct mult factor to use
  */
@@ -944,8 +960,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
 
 
     int same_count        = fft_context.same_index_count(i);
-    int same_count_skipjs = fft_context.same_index_count(i, true);
-/*
+    int same_count_skipjs = fft_context.same_index_count(i, true);  // Always same per s for given log2n
     {
       std::string msg;
       msg << "s: " << item.s << ", j: " << item.j << ", k: " << item.k_count
@@ -954,7 +969,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
           << ", same_count skipjs: " << same_count_skipjs;
       debug(msg);
     }
-*/
 
     assert(item.k_16.first() == 0);
     int j_count  = same_count_skipjs/same_count;
@@ -964,20 +978,20 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
     Int k_init = 0;
     init_k(k_init, item);
 
-    For (Int j = 0, j < j_count, j++)
+    Loop(j_count, [&] (Int const &j) {
       Int k_off = k_init + j*j_offset;
       Int k_off_out = k_off;
 
       fetch(b + k_off);      // Prefetch
       k_off += index_offset;
 
-      For (Int k = 0, k < same_count, k++)
+      Loop(same_count, [&] (Int const & k) {
         fetch(b + k_off);
         fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
 
         k_off += index_offset;
         k_off_out += index_offset;
-      End
+      });
 
       Complex dummy;   // Prefetch compensate extra fetch
       receive(dummy);
@@ -987,7 +1001,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
       for (int i = 0; i < j_offset; i++) {
         w_off *= wm; 
       }
-    End
+    });
 
     i += same_count_skipjs - 1;
   }
