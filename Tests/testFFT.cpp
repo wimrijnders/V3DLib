@@ -883,27 +883,27 @@ void increment_w(int k_count, Complex &w, Complex const &wm) {
 }
 
 
-void fft_loop_increment(Complex &w, Complex const &wm, int i) {
-  if (i + 1 >= (int) fft_context.vectors16.size()) {  // Don't bother doing this for the last item
-    return;
-  }
-
-  auto &item = fft_context.vectors16[i];
-  auto &next_item = fft_context.vectors16[i + 1];
-
-  if (item.j != next_item.j) {
-    increment_w(item.k_count, w, wm);
-  }
-}
-
-
 /**
  * Kernel derived from scalar
  *
  * The result is returned in b.
  *
- * This kernel works with `emu()` and on `v3d` with `call()`, *not* with `interpret()` or on `vc4`.
- * So be it. Life sucks sometimes.
+ * This kernel works with `emu()` and on `v3d` with `call()`,
+ * *not* with `interpret()` or on `vc4`. So be it. Life sucks sometimes.
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * Lesson learnt: Using loops is way more efficient than loop unroll (at least, for this kernel)
+ *   Issues:
+ *   - With full loop unroll, compile time + kernel size is (at least) O^2 with log2n;
+ *     with jk-loops, it is linear (e.g. log2n = 17 compile time 1.5s, log2n = 7 1.1s).
+ *   - Also, run time is way faster. Suspect that this is due to cache hits, otherwise optimization within
+ *     QPUs for code locality.
+ *
+ *  Conclusion: don't be afraid of NOP-overhead of loops.
+ *     
  */
 void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
   b -= index();
@@ -918,8 +918,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
   Complex w(0, 0);
   Complex wm(0, 0);
   Complex w_off;
-
-  Int k_off = 0;
 
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
@@ -953,44 +951,30 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
       debug(msg);
     }
 
-    init_k(k_off, item);
-    Int k_off_out = k_off;
+    assert(item.k_16.first() == 0);
+    int j_count  = same_count_skipjs/same_count;
+    int j_offset = item.k_count;
+    int index_offset = fft_context.vectors16[i + 1].index_offset(item);
 
-    int count;
-    int index_offset;
-    if (same_count > 1) {
-      count = same_count;  // same_count same for all j's in group
-      index_offset = fft_context.vectors16[i + 1].index_offset(item);
-    } else {
-      assert(item.k_16.first() == 0);
+    Int k_init = 0;
+    init_k(k_init, item);
 
-      count = same_count_skipjs;
-      // Not much use doing count == 1 for large log2n, it's always only 4 loops
+    // TODO figure out prefetch (inner loop) and last dummy receive
 
-      index_offset = item.k_count;
-    }
+    For (Int j = 0, j < j_count, j++)
+      Int k_off = k_init + j*j_offset;
 
-      // TODO figure out prefetch
-
-      For (Int k = 0, k < count, k++)
+      For (Int k = 0, k < same_count, k++)
         fetch(b + k_off);
-        fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
+        fft_step(b + k_off, w_off, fft_context.m2_offset(i));
 
         k_off += index_offset;
-        k_off_out += index_offset;
-
-        if (same_count == 1) {
-          increment_w(index_offset, w_off, wm);
-        }
       End
 
-      // TODO for prefetch, don't forget dummy receive
+      increment_w(j_offset, w_off, wm);
+    End
 
-      i += count - 1;
-
-      if (same_count > 1) {
-        fft_loop_increment(w, wm, i);
-      }
+    i += same_count_skipjs - 1;
   }
 }
 
@@ -1105,14 +1089,10 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
   SUBCASE("Compare FFT and DFT output") {
     // FFT beats DFT for >= 7
-    // Tested up till last value: 
-    //   11: compile time: 7s, for 1 QPU scalar 'only' twice as fast
-    //   12: compile time: 12s
-    //   13: compile time: 24s, from here on fails due to precision
-    //   14: compile time: 48s
-    //   15: compile time: 103s
-    //   16: compile time: 226s
-    int log2n = 8;
+    // FFT beats scalar for >=12 
+    // Seg fault for >= 18 (heap not big enough)
+    // Seg fault for >= 32 during compile (not enough memory)
+    int log2n = 12;
 
     int Dim = 1 << log2n;
     set_precision(log2n);

@@ -352,6 +352,7 @@ bool convert_int_powers(Instructions &output, int in_value) {
   }
 
   if (left_shift == 0) return false;
+  if (left_shift >= 16) return false;  // Must be positive small int
 
   int rep_value;
   if (!SmallImm::int_to_opcode_value(value, rep_value)) return false;
