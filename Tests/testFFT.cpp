@@ -17,6 +17,19 @@ namespace {
 // Support routines 
 ///////////////////////////////////////////////////////////////////////////////
 
+float max_mag_diff(cx const *scalar_result, Complex::Array const &result) {
+  float ret = 0;
+
+  for (int i = 0; i < (int) result.size(); i++) {
+    float diff = (float) abs(scalar_result[i] - result[i].to_complex());
+    if (ret < diff)
+      ret = diff;
+  }
+
+  return ret;
+}
+
+
 void check_result1(cx const *expected, Complex::Array2D const &result, int Dim, float precision) {
   REQUIRE(precision > 0.0f);
   for (int i = 0; i < Dim; ++i) {
@@ -874,16 +887,6 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
 
 
 /**
- * Update w for the next round
- */
-void increment_w(int k_count, Complex &w, Complex const &wm) {
-  for (int k = 0; k < k_count; k++) {
-    w *= wm; 
-  }
-}
-
-
-/**
  * Kernel derived from scalar
  *
  * The result is returned in b.
@@ -941,7 +944,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
 
     int same_count        = fft_context.same_index_count(i);
     int same_count_skipjs = fft_context.same_index_count(i, true);
-
+/*
     {
       std::string msg;
       msg << "s: " << item.s << ", j: " << item.j << ", k: " << item.k_count
@@ -950,6 +953,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
           << ", same_count skipjs: " << same_count_skipjs;
       debug(msg);
     }
+*/
 
     assert(item.k_16.first() == 0);
     int j_count  = same_count_skipjs/same_count;
@@ -971,7 +975,10 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
         k_off += index_offset;
       End
 
-      increment_w(j_offset, w_off, wm);
+      // Update w for the next round
+      for (int i = 0; i < j_offset; i++) {
+        w_off *= wm; 
+      }
     End
 
     i += same_count_skipjs - 1;
@@ -1088,10 +1095,11 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    // FFT beats DFT for >= 7
-    // FFT beats scalar for >=12 
-    // Seg fault for >= 18 (heap not big enough)
-    // Seg fault for >= 32 during compile (not enough memory)
+    // FFT beats DFT     for >=  7
+    // FFT beats scalar  for >= 12 
+    // Precision fails   for >= 13 (really bad!)
+    // Error             for >= 18 (heap not big enough)
+    // Compile Seg fault for >= 32 (not enough memory)
     int log2n = 12;
 
     int Dim = 1 << log2n;
@@ -1179,6 +1187,12 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       k.load(&result_inline, &devnull, &offsets);
       k.call();
       timer2.end();
+
+      {
+        std::string msg;
+        msg << "Max diff: " << max_mag_diff(scalar_result, result_inline);
+        debug(msg);
+      }
 
       INFO("comparing FFT inline with scalar");
       check_result2(scalar_result, result_inline, Dim, precision);
