@@ -925,6 +925,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
 
+    assert(last_s != item.s);
     if (last_s != item.s) {
       w  = Complex(1, 0);
       wm = Complex(-1.0f/((float) (1 << item.s)));
@@ -963,17 +964,24 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
     Int k_init = 0;
     init_k(k_init, item);
 
-    // TODO figure out prefetch (inner loop) and last dummy receive
-
     For (Int j = 0, j < j_count, j++)
       Int k_off = k_init + j*j_offset;
+      Int k_off_out = k_off;
+
+      fetch(b + k_off);      // Prefetch
+      k_off += index_offset;
 
       For (Int k = 0, k < same_count, k++)
         fetch(b + k_off);
-        fft_step(b + k_off, w_off, fft_context.m2_offset(i));
+        fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
 
         k_off += index_offset;
+        k_off_out += index_offset;
       End
+
+      Complex dummy;   // Prefetch compensate extra fetch
+      receive(dummy);
+      receive(dummy);
 
       // Update w for the next round
       for (int i = 0; i < j_offset; i++) {
@@ -1096,7 +1104,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
   SUBCASE("Compare FFT and DFT output") {
     // FFT beats DFT     for >=  7
-    // FFT beats scalar  for >= 12 
+    // FFT beats scalar  for >=  8 
     // Precision fails   for >= 13 (really bad!)
     // Error             for >= 18 (heap not big enough)
     // Compile Seg fault for >= 32 (not enough memory)
