@@ -38,6 +38,7 @@ void rotate_sum(Float &input, Float &result);
 void set_at(Int &dst, Int n, Int const &src);
 void set_at(Float &dst, Int n, Float const &src);
 
+void sync_qpus(Int::Ptr signal);
 
 }  // namespace V3DLib
 

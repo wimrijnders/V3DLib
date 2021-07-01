@@ -72,41 +72,6 @@ void check_result(T1 const &result, T2 const &expected) {
 }
 
 
-/**
- * Let QPUs wait for each other.
- *
- * Intended for v3d, where I don't see a hardware signal function as in vc4.
- * Works fine with vc4 also.
- */
-void sync_qpus(Int::Ptr signal) {
-  If (numQPUs() != 1) // Don't bother syncing if only one qpu
-    *(signal - index() + me()) = 1;
-
-    header("Start QPU sync");
-
-    If (me() == 0)
-      Int expected = 0;   comment("QPU 0: Wait till all signals are set");
-      Where (index() < numQPUs())
-        expected = 1;
-      End 
-
-      Int tmp = *signal;
-      While (expected != tmp)
-        tmp = *signal;
-      End
-
-      *signal = 0;        comment("QPU 0 done waiting, let other qpus continue");
-    Else
-      Int tmp = *signal;  comment("Other QPUs: Wait till all signals are cleared");
-
-      While (0 != tmp)
-        tmp = *signal;
-      End
-    End
-  End
-}
-
-
 void sync_kernel(Int::Ptr result, Int::Ptr signal) {
   Int::Ptr output = result - index() + me();
   *output = 0;

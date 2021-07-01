@@ -870,7 +870,7 @@ void fft_step(Complex::Ptr const &b_k, Complex const &w, int m2_offset) {
  * only one value is used in the 16-vec registers.
  */
 void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
-  debug("Fallback!");
+  //debug("Fallback!");
 
   for (int i = 0; i < (int) fft_context.fft_indexes.size(); i++) {
     int s = i + 1;
@@ -925,7 +925,15 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
  *  Conclusion: don't be afraid of NOP-overhead of loops.
  *     
  */
-void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
+void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
+  assertq(!Platform::compiling_for_vc4(), "FFT kernel runs only on v3d");
+
+  // num QPUs can only be 1 or 8
+  Int shift_num_qpu = 0;
+  If (numQPUs() == 8)
+    shift_num_qpu = 3;
+  End
+
   b -= index();
 
   if (!fft_context.valid_index()) {  // this path taken for log2n <= 4
@@ -951,8 +959,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
 
     assert(item.valid_index);
 
-    w_off = w;
-    init_mult_factor(w_off, wm, item.k_count);
 
     auto fetch = [&i] (Complex::Ptr const &b_k) {
       gather(b_k + fft_context.m2_offset(i));
@@ -981,20 +987,27 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
 
     //Loop(j_count, [&] (Int const &j) {
     For (Int j = 0, j < j_count, j++)
-      Int k_off = k_init + j*j_offset;
-      Int k_off_out = k_off;
-
-      fetch(b + k_off);      // Prefetch
-      k_off += index_offset;
-
+      w_off = w;
+      init_mult_factor(w_off, wm, item.k_count);
       For (Int i = 0, i < j, i++)
         for (int i = 0; i < j_offset; i++) {
           w_off *= wm; 
         }
       End
 
+      Int k_length = same_count >> shift_num_qpu;
+
+      //Int k_start = k_length*((j_count*index()) >> shift_num_qpu);
+      //Int k_off = k_init + j*j_offset + k_start*index_offset;
+      Int k_off = k_init + j*j_offset;
+
+      Int k_off_out = k_off;
+
+      fetch(b + k_off);      // Prefetch
+      k_off += index_offset;
+
       //Loop(same_count, [&] (Int const & k) {
-      For (Int k = 0, k < same_count, k++)
+      For (Int k = 0, k < k_length, k++)
         fetch(b + k_off);
         fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
 
@@ -1010,6 +1023,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr offsets) {
     End
     // });
 
+    sync_qpus(signal);
     i += same_count_skipjs - 1;
   }
 }
@@ -1066,7 +1080,8 @@ TEST_CASE("FFT test with scalar [fft]") {
     aa.fill(V3DLib::complex(0.0f, 0.0f));
     Complex::Array result(16);
     Complex::Array devnull(16);
-    Int::Array offsets;
+    Int::Array signal(16);
+    signal.fill(0);
 
     for (int i=0; i < Dim; ++i) {
       aa.re()[i] = (float) a[i].real();
@@ -1081,7 +1096,7 @@ TEST_CASE("FFT test with scalar [fft]") {
     fft_context.init(log2n);
     auto k = compile(fft_kernel, V3D);
     //k.pretty(true, "fft_kernel.txt", false);
-    k.load(&result, &devnull, &offsets);
+    k.load(&result, &devnull, &signal);
     k.call();
     //std::cout << "Kernel output: " << result.dump() << std::endl;
 
@@ -1196,7 +1211,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     }
 
     Complex::Array devnull(16);
-    Int::Array offsets;
+    Int::Array signal(16);
     Complex::Array result_inline(size);
 
     {
@@ -1213,7 +1228,8 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
 
       Timer timer2("FFT inline run time");
-      k.load(&result_inline, &devnull, &offsets);
+      //k.setNumQPUs(8);
+      k.load(&result_inline, &devnull, &signal);
       k.call();
       timer2.end();
 
