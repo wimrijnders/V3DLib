@@ -928,6 +928,9 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
  * NOTES
  * =====
  *
+ * * Parallellism achieved by spreading the so-called 'butterflies' over multiple QPUs.
+ *   This does require a sync operation between QPUs which, thankfully, works.
+ *
  * * Lesson learnt: Using loops is way more efficient than loop unroll (at least, for this kernel)
  *   Issues:
  *   - With full loop unroll, compile time + kernel size is (at least) O^2 with log2n;
