@@ -809,16 +809,36 @@ void Loop(int count, std::function<void()> f) {
 
 
 /**
+ * Raise a complex value by an integer power > 0
+ *
+ * TODO
+ * /
+void pow(Complex &lhs, int exp) {
+*/
+
+
+/**
  * Construct mult factor to use
  */
-void init_mult_factor(Complex &w_off, Complex &wm, int k_count) {
+void init_mult_factor(Complex &w, Complex &wm, int k_count) {
   if (k_count == 1) return;
 
   int width = 16/k_count;
   for (int i = 1; i < k_count; i++) {
-    Int offset = index() - width*i;
-    Where (offset >= 0)
-      w_off *= wm;
+    Where (index() >=  width*i)
+      w *= wm;
+    End
+  }
+}
+
+
+void init_mult_factor(Float &w_phase, Float const &wm_phase, int k_count) {
+  if (k_count == 1) return;
+
+  int width = 16/k_count;
+  for (int i = 1; i < k_count; i++) {
+    Where (index() >=  width*i)
+      w_phase += wm_phase;
     End
   }
 }
@@ -953,27 +973,13 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
 
   int last_s        = -1;
 
-  Complex w(0, 0);
-  Complex wm(0, 0);
-  Complex w_off;
-
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
-
-    assert(last_s != item.s);
-    if (last_s != item.s) {
-      w  = Complex(1, 0);
-      wm = Complex(-1.0f/((float) (1 << item.s)));
-      last_s = item.s;
-    }
-
     assert(item.valid_index);
+    assert(item.k_16.first() == 0);
+    assert(last_s != item.s);
+    last_s = item.s;
 
-
-    auto fetch = [&i] (Complex::Ptr const &b_k) {
-      gather(b_k + fft_context.m2_offset(i));
-      gather(b_k);
-    };
 
 
     int same_count        = fft_context.same_index_count(i);
@@ -987,7 +993,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
       debug(msg);
     }
 
-    assert(item.k_16.first() == 0);
     int j_count  = same_count_skipjs/same_count;
     int j_offset = item.k_count;
     int index_offset = fft_context.vectors16[i + 1].index_offset(item);
@@ -996,6 +1001,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     Int j_start = 0;
 
     int k_length = same_count/fft_context.num_qpus;
+    bool final_k = (k_length == 0);
     Int k_start = 0;
     if (k_length == 0) {
       k_length = same_count;
@@ -1009,13 +1015,42 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     Int k_init = 0;
     init_k(k_init, item);
 
-    w_off = w;
-    init_mult_factor(w_off, wm, item.k_count);
-    For (Int i = 0, i < j_start, i++)
-      for (int n = 0; n < j_offset; n++) {
-        w_off *= wm; 
-      }
-    End
+
+    Complex w(1, 0);
+    Complex wm(-1.0f/((float) (1 << item.s)));
+
+    init_mult_factor(w, wm, item.k_count);
+    if (final_k) {
+      For (Int i = 0, i < j_start, i++)
+        for (int n = 0; n < j_offset; n++) {
+          w *= wm; 
+        }
+      End
+    }
+
+/*
+  TODO Compile error using unassigned variables here - why?
+
+    Float w_phase = 0;
+    Float wm_phase = -1.0f/((float) (1 << item.s));
+    init_mult_factor(w_phase, wm_phase, item.k_count);
+    if (final_k) {
+      For (Int i = 0, i < j_start, i++)
+        for (int n = 0; n < j_offset; n++) {
+          w_phase += wm_phase; 
+        }
+      End
+    }
+
+    Complex w(w_phase);
+    Complex wm(wm_phase);
+*/
+
+
+    auto fetch = [&i] (Complex::Ptr const &b_k) {
+      gather(b_k + fft_context.m2_offset(i));
+      gather(b_k);
+    };
 
 
     Loop(j_length, [&] (Int const &j) {
@@ -1027,7 +1062,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
 
       Loop(k_length, [&] () {
         fetch(b + k_off);
-        fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
+        fft_step(b + k_off_out, w, fft_context.m2_offset(i));
 
         k_off += index_offset;
         k_off_out += index_offset;
@@ -1038,7 +1073,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
       receive(dummy);
 
       for (int n = 0; n < j_offset; n++) {
-        w_off *= wm; 
+        w *= wm; 
       }
     });
 

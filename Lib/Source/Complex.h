@@ -284,6 +284,7 @@ public:
   Complex(Ptr::Deref d);
   Complex(complex c);
   Complex(float phase);
+  Complex(Float const &phase);
 
   Float &re() { return m_re; }
   Float const &re() const { return m_re; }

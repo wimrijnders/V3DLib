@@ -30,6 +30,7 @@ ComplexExpr::ComplexExpr(Complex const &rhs) {
 complex::complex(float phase) : complex(cosf(2*((float) M_PI)*phase), sinf(2*((float) M_PI)*phase)) {}
 
 
+
 float complex::magnitude() const {
  return (float) sqrt(m_re*m_re + m_im*m_im);  // sqrt here is a cmath function
 }
@@ -80,6 +81,8 @@ Complex::Complex(complex c) : Complex(c.re(), c.im()) {}
  * Thus, phase = 0.5 corresponds with PI.
  */
 Complex::Complex(float phase) : Complex(complex(phase)) {}
+
+Complex::Complex(Float const &phase) : Complex(cos(phase), sin(phase)) {}
 
 
 Complex &Complex::self() { return *(const_cast<Complex *>(this)); }
