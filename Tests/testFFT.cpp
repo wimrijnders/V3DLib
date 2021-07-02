@@ -8,6 +8,7 @@
 #include "support/dft_support.h"
 #include "Kernels/Matrix.h"
 #include "Source/gather.h"
+#include "Source/Functions.h"
 
 using namespace V3DLib;
 
@@ -587,6 +588,7 @@ std::vector<Indexes16> indexes_to_16vectors(std::vector<Offsets> const &fft_inde
 
 
 struct {
+  int num_qpus = 1;
   int log2n = -1;
   std::vector<Offsets> fft_indexes;
   std::vector<Indexes16> vectors16;
@@ -781,7 +783,7 @@ struct {
 
 /**
  * Loop optimization: skip For-loop if only 1 iteration
- * /
+ */
 void Loop(int count, std::function<void(Int const &)> f) {
   assert(count > 0);
   if (count == 1) {
@@ -792,7 +794,18 @@ void Loop(int count, std::function<void(Int const &)> f) {
     End
   }
 }
-*/
+
+
+void Loop(int count, std::function<void()> f) {
+  assert(count > 0);
+  if (count == 1) {
+    f();
+  } else {
+    For (Int j = 0, j < count, j++)
+      f();
+    End
+  }
+}
 
 
 /**
@@ -928,12 +941,6 @@ void tiny_fft(Complex::Ptr &b, Complex::Ptr &devnull) {
 void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
   assertq(!Platform::compiling_for_vc4(), "FFT kernel runs only on v3d");
 
-  // num QPUs can only be 1 or 8
-  Int shift_num_qpu = 0;
-  If (numQPUs() == 8)
-    shift_num_qpu = 3;
-  End
-
   b -= index();
 
   if (!fft_context.valid_index()) {  // this path taken for log2n <= 4
@@ -982,46 +989,55 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     int j_offset = item.k_count;
     int index_offset = fft_context.vectors16[i + 1].index_offset(item);
 
+    int j_length = j_count;
+    Int j_start = 0;
+
+    int k_length = same_count/fft_context.num_qpus;
+    Int k_start = 0;
+    if (k_length == 0) {
+      k_length = same_count;
+      j_length = j_count/fft_context.num_qpus;
+      j_start = j_length*me();
+    } else {
+      k_start = k_length*me();
+    }
+
+
     Int k_init = 0;
     init_k(k_init, item);
 
-    //Loop(j_count, [&] (Int const &j) {
-    For (Int j = 0, j < j_count, j++)
-      w_off = w;
-      init_mult_factor(w_off, wm, item.k_count);
-      For (Int i = 0, i < j, i++)
-        for (int i = 0; i < j_offset; i++) {
-          w_off *= wm; 
-        }
-      End
+    w_off = w;
+    init_mult_factor(w_off, wm, item.k_count);
+    For (Int i = 0, i < j_start, i++)
+      for (int n = 0; n < j_offset; n++) {
+        w_off *= wm; 
+      }
+    End
 
-      Int k_length = same_count >> shift_num_qpu;
 
-      //Int k_start = k_length*((j_count*index()) >> shift_num_qpu);
-      //Int k_off = k_init + j*j_offset + k_start*index_offset;
-      Int k_off = k_init + j*j_offset;
-
+    Loop(j_length, [&] (Int const &j) {
+      Int k_off = k_init + (j_start + j)*j_offset + k_start*index_offset;
       Int k_off_out = k_off;
 
       fetch(b + k_off);      // Prefetch
       k_off += index_offset;
 
-      //Loop(same_count, [&] (Int const & k) {
-      For (Int k = 0, k < k_length, k++)
+      Loop(k_length, [&] () {
         fetch(b + k_off);
         fft_step(b + k_off_out, w_off, fft_context.m2_offset(i));
 
         k_off += index_offset;
         k_off_out += index_offset;
-      End
-      //});
+      });
 
       Complex dummy;   // Prefetch compensate extra fetch
       receive(dummy);
       receive(dummy);
 
-    End
-    // });
+      for (int n = 0; n < j_offset; n++) {
+        w_off *= wm; 
+      }
+    });
 
     sync_qpus(signal);
     i += same_count_skipjs - 1;
@@ -1139,8 +1155,10 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    // FFT beats DFT     for >=  7
-    // FFT beats scalar  for >=  8 
+    // TODO Profile timing for various combinations
+    //   - REDO FFT single beats DFT single for >=  8
+    //   - REDO FFT multi beats scalar for >=  11 
+    // FFT multi works for >=  10 (might be tweakable)
     // Precision fails   for >= 13 (really bad!)
     // Error             for >= 18 (heap not big enough)
     // Compile Seg fault for >= 32 (not enough memory)
@@ -1220,6 +1238,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       fft_context.init(log2n);
 
       Timer timer1("FFT inline compile time");
+      fft_context.num_qpus = 8;
       auto k = compile(fft_kernel, V3D);
       k.pretty(false, "./obj/test/fft_inline_v3d.txt", true);  // segfault for log2n == 9
       k.dump_compile_data(false, "fft_inline_dump_v3d.txt");
@@ -1228,7 +1247,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
 
       Timer timer2("FFT inline run time");
-      //k.setNumQPUs(8);
+      k.setNumQPUs(fft_context.num_qpus);
       k.load(&result_inline, &devnull, &signal);
       k.call();
       timer2.end();
