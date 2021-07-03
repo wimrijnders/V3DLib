@@ -819,19 +819,9 @@ void pow(Complex &lhs, int exp) {
 
 /**
  * Construct mult factor to use
+ *
+ * The phase are added here, rather than multiplying the complex values
  */
-void init_mult_factor(Complex &w, Complex &wm, int k_count) {
-  if (k_count == 1) return;
-
-  int width = 16/k_count;
-  for (int i = 1; i < k_count; i++) {
-    Where (index() >=  width*i)
-      w *= wm;
-    End
-  }
-}
-
-
 void init_mult_factor(Float &w_phase, Float const &wm_phase, int k_count) {
   if (k_count == 1) return;
 
@@ -1015,24 +1005,8 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     Int k_init = 0;
     init_k(k_init, item);
 
-
-    Complex w(1, 0);
-    Complex wm(-1.0f/((float) (1 << item.s)));
-
-    init_mult_factor(w, wm, item.k_count);
-    if (final_k) {
-      For (Int i = 0, i < j_start, i++)
-        for (int n = 0; n < j_offset; n++) {
-          w *= wm; 
-        }
-      End
-    }
-
-/*
-  TODO Compile error using unassigned variables here - why?
-
-    Float w_phase = 0;
-    Float wm_phase = -1.0f/((float) (1 << item.s));
+    Float w_phase = 0;  // Tried Int phase, a teeny bit worse than Float
+    Float wm_phase = -1.0f/((float) (1 << item.s));  // Tried this with Int, 
     init_mult_factor(w_phase, wm_phase, item.k_count);
     if (final_k) {
       For (Int i = 0, i < j_start, i++)
@@ -1041,10 +1015,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
         }
       End
     }
-
-    Complex w(w_phase);
-    Complex wm(wm_phase);
-*/
 
 
     auto fetch = [&i] (Complex::Ptr const &b_k) {
@@ -1060,6 +1030,8 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
       fetch(b + k_off);      // Prefetch
       k_off += index_offset;
 
+      Complex w(w_phase);
+
       Loop(k_length, [&] () {
         fetch(b + k_off);
         fft_step(b + k_off_out, w, fft_context.m2_offset(i));
@@ -1073,7 +1045,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
       receive(dummy);
 
       for (int n = 0; n < j_offset; n++) {
-        w *= wm; 
+        w_phase += wm_phase; 
       }
     });
 
@@ -1193,6 +1165,9 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
+    // There is a sweet spot for min run time at about log2n == 12, 
+    // after that, run time gets worse again (notably worse than scalar)
+    //
     // TODO Profile timing for various combinations
     //   - REDO FFT single beats DFT single for >=  8
     //   - REDO FFT multi beats scalar for >=  11 
@@ -1200,7 +1175,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     // Precision fails   for >= 13 (really bad!)
     // Error             for >= 18 (heap not big enough)
     // Compile Seg fault for >= 32 (not enough memory)
-    int log2n = 12;
+    int log2n = 17;
 
     int Dim = 1 << log2n;
     set_precision(log2n);
@@ -1278,8 +1253,8 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       Timer timer1("FFT inline compile time");
       fft_context.num_qpus = 8;
       auto k = compile(fft_kernel, V3D);
-      k.pretty(false, "./obj/test/fft_inline_v3d.txt", true);  // segfault for log2n == 9
-      k.dump_compile_data(false, "fft_inline_dump_v3d.txt");
+      k.pretty(false, "./obj/test/fft_inline_v3d.txt", true);
+      k.dump_compile_data(false, "./obj/test/fft_inline_dump_v3d.txt");
       timer1.end();
       std::cout << "FFT inline kernel size: " << k.v3d_kernel_size() << std::endl;
       std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
@@ -1292,7 +1267,8 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
       {
         std::string msg;
-        msg << "Max diff: " << max_mag_diff(scalar_result, result_inline);
+        msg << "Max diff: " << max_mag_diff(scalar_result, result_inline) << ", "
+            << "used precision: " << precision;
         debug(msg);
       }
 

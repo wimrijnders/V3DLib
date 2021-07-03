@@ -270,8 +270,9 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
         for (int i = reg_usage.first_usage() + 1; i <= reg_usage.last_usage(); i++) {
           auto &instr2 = instrs[i];
+          if (instr2.tag != InstrTag::ALU) continue;
           if (!instr2.is_src_reg(instr.dest())) continue;
-
+/*
           if (instr2.assign_cond() != instr.assign_cond()) {
             std::string msg;
             msg << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
@@ -280,6 +281,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
             warning(msg);
             continue;
           }
+*/
 
           // Can't substitute if a differing immediate is already present
           if (instr2.ALU.srcA.is_imm() && instr2.ALU.srcA != instr.LI.imm) {
