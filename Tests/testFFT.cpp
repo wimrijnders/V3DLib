@@ -1005,8 +1005,8 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     Int k_init = 0;
     init_k(k_init, item);
 
-    Float w_phase = 0;  // Tried Int phase, a teeny bit worse than Float
-    Float wm_phase = -1.0f/((float) (1 << item.s));  // Tried this with Int, 
+    Float w_phase = 0;  // Tried Int phase, slightly worse than Float
+    Float wm_phase = -1.0f/((float) (1 << item.s));
     init_mult_factor(w_phase, wm_phase, item.k_count);
     if (final_k) {
       For (Int i = 0, i < j_start, i++)

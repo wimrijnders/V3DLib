@@ -273,6 +273,9 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
           if (instr2.tag != InstrTag::ALU) continue;
           if (!instr2.is_src_reg(instr.dest())) continue;
 /*
+          // Looks like following check is unnecessary.
+          // Figures; immediates (which are constant) in instruction do not depend on condtion.
+
           if (instr2.assign_cond() != instr.assign_cond()) {
             std::string msg;
             msg << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
