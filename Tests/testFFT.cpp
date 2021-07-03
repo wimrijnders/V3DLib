@@ -809,15 +809,6 @@ void Loop(int count, std::function<void()> f) {
 
 
 /**
- * Raise a complex value by an integer power > 0
- *
- * TODO
- * /
-void pow(Complex &lhs, int exp) {
-*/
-
-
-/**
  * Construct mult factor to use
  *
  * The phase are added here, rather than multiplying the complex values
@@ -1009,11 +1000,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     Float wm_phase = -1.0f/((float) (1 << item.s));
     init_mult_factor(w_phase, wm_phase, item.k_count);
     if (final_k) {
-      For (Int i = 0, i < j_start, i++)
-        for (int n = 0; n < j_offset; n++) {
-          w_phase += wm_phase; 
-        }
-      End
+      w_phase += wm_phase*toFloat(j_start*j_offset); 
     }
 
 
@@ -1044,9 +1031,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
       receive(dummy);
       receive(dummy);
 
-      for (int n = 0; n < j_offset; n++) {
-        w_phase += wm_phase; 
-      }
+      w_phase += wm_phase*toFloat(j_offset);
     });
 
     sync_qpus(signal);
@@ -1165,17 +1150,18 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
 
   SUBCASE("Compare FFT and DFT output") {
-    // There is a sweet spot for min run time at about log2n == 12, 
-    // after that, run time gets worse again (notably worse than scalar)
+    // FFT beats scalar nicely for <= 15, after that it (suddenly) get worse.
+    // TODO reason why this happens
     //
     // TODO Profile timing for various combinations
+    // TODO Adjust used precision for adding phases
+    //
     //   - REDO FFT single beats DFT single for >=  8
     //   - REDO FFT multi beats scalar for >=  11 
     // FFT multi works for >=  10 (might be tweakable)
-    // Precision fails   for >= 13 (really bad!)
     // Error             for >= 18 (heap not big enough)
     // Compile Seg fault for >= 32 (not enough memory)
-    int log2n = 17;
+    int log2n = 16;
 
     int Dim = 1 << log2n;
     set_precision(log2n);
