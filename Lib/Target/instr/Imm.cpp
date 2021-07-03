@@ -22,13 +22,18 @@ bool Imm::is_zero() const { return m_tag == IMM_INT32 && m_intVal == 0; }
  * need to be constructed inline.
  */
 bool Imm::is_basic() const {
-  return -17 != encode_imm();
+  return INVALID_ENCODING != encode_imm();
 }
 
 
+/**
+ * Return encoded small value for immediate, if possible
+ *
+ * @return Encoded value if encoding possible, -17 otherwise
+ */
 int Imm::encode_imm() const {
   assert(m_tag != IMM_MASK);  // Not dealing with this here
-  int dummy = -17;  // Invalid value for both v3d and vc4
+  int dummy = INVALID_ENCODING;  // Invalid value for both v3d and vc4
 
   if (Platform::compiling_for_vc4()) {
     if (is_int()) {
@@ -37,15 +42,15 @@ int Imm::encode_imm() const {
       dummy = encodeSmallFloat(m_floatVal);
     }
 
-    if (dummy == -1) dummy = -17;
+    if (dummy == -1) dummy = INVALID_ENCODING;
   } else {
     if (is_int()) {
       if (!v3d::instr::SmallImm::int_to_opcode_value(m_intVal, dummy)) {
-        dummy = -17;
+        dummy = INVALID_ENCODING;
       }
     } else if (is_float()) {
       if (!v3d::instr::SmallImm::float_to_opcode_value(m_floatVal, dummy)) {
-        dummy = -17;
+        dummy = INVALID_ENCODING;
       }
     }
   }

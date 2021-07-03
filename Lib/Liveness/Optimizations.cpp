@@ -237,9 +237,20 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
   };
 
   auto msg_replace = [&live] (int k, Instr const &instr3, Reg current, Reg replace_with) {
-     std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
-               << current.dump() << " -> " << replace_with.dump()
-               << ", result: " << instr3.mnemonic(false) << std::endl;
+    std::string msg;
+    msg << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
+        << current.dump() << " -> " << replace_with.dump()
+        << ", result: " << instr3.mnemonic(false);
+    debug(msg);
+  };
+
+  auto msg_stop_forward_scan = [] (int j, Instr const &instr) {
+    std::string msg;
+    msg << "Stopping forward scan LIs: "
+        << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
+        << " as dst"
+        << ": " << instr.mnemonic(false);
+    debug(msg);
   };
 */
   
@@ -255,38 +266,43 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
       if (reg_usage.assigned_once()) {
         assert(reg_usage.first_usage() == reg_usage.first_dst());
-        bool changed = false;
+        bool can_remove = true;
+
         for (int i = reg_usage.first_usage() + 1; i <= reg_usage.last_usage(); i++) {
           auto &instr2 = instrs[i];
           if (!instr2.is_src_reg(instr.dest())) continue;
 
           if (instr2.assign_cond() != instr.assign_cond()) {
-            std::cout << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
-                      << "  dst usage: " << reg_usage.dump() << "\n"
-                      << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump()
-                      << std::endl;
+            std::string msg;
+            msg << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
+                << "  dst usage: " << reg_usage.dump() << "\n"
+                << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump();
+            warning(msg);
             continue;
           }
 
-          // Check if immediate could be used here
-          bool can_use_imm = (instr2.ALU.srcA.is_reg() || instr2.ALU.srcA == instr.LI.imm)
-                          && (instr2.ALU.srcB.is_reg() || instr2.ALU.srcB == instr.LI.imm);
+          // Can't substitute if a differing immediate is already present
+          if (instr2.ALU.srcA.is_imm() && instr2.ALU.srcA != instr.LI.imm) {
+            can_remove = false;
+            continue;
+          }
 
-          if (can_use_imm) {
-            // Perform the subst
-            if (instr2.ALU.srcA == instr.dest()) {
-              instr2.ALU.srcA = instr.LI.imm;
-              changed = true;
-            }
+          if (instr2.ALU.srcB.is_imm() && instr2.ALU.srcB != instr.LI.imm) {
+            can_remove = false;
+            continue;
+          }
 
-            if (instr2.ALU.srcB == instr.dest()) {
-              instr2.ALU.srcB = instr.LI.imm;
-              changed = true;
-            }
+          // Perform the subst
+          if (instr2.ALU.srcA == instr.dest()) {
+            instr2.ALU.srcA = instr.LI.imm;
+          }
+
+          if (instr2.ALU.srcB == instr.dest()) {
+            instr2.ALU.srcB = instr.LI.imm;
           }
         }
 
-        if (changed) {
+        if (can_remove) {
           instr.tag = SKIP;
         }
       }
@@ -321,18 +337,7 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
 
       if (instr2.is_dst_reg(instr.dest())) {
-/*
-        std::string msg;
-        msg << "Stopping forward scan LIs: "
-            << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
-            << " as dst"
-            << ": " << instrs[j].mnemonic(false);
-
-        if (instrs[j].isCondAssign()) {
-          msg << " (Conditional assign!)";
-        }
-        debug(msg);
-*/
+        //msg_stop_forward_scan(j, instr);
         break;
       }
 

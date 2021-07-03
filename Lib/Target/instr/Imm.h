@@ -13,6 +13,10 @@ struct Imm {
     IMM_MASK     // 1 bit per vector element (0 to 0xffff)
   };
 
+  enum {
+    INVALID_ENCODING = -17
+  };
+
   Imm() = default;
   Imm(int i);
   Imm(unsigned i);

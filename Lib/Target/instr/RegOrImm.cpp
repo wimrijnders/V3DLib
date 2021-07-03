@@ -58,8 +58,11 @@ bool RegOrImm::operator==(Reg const &rhs) const {
 
 bool RegOrImm::operator==(Imm const &rhs) const {
   if (m_is_reg) return false;
-  if (rhs.is_float()) return false;
-  return m_smallImm.val == rhs.intVal();
+
+  int rhs_encoded = rhs.encode_imm();
+  if (rhs_encoded == Imm::INVALID_ENCODING) return false; 
+
+  return m_smallImm.val == rhs_encoded;
 }
 
 

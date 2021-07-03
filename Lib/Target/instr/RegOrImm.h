@@ -30,6 +30,7 @@ struct RegOrImm {
   bool operator!=(RegOrImm const &rhs) const { return !(*this == rhs); }
   bool operator==(Reg const &rhs) const;
   bool operator==(Imm const &rhs) const;
+  bool operator!=(Imm const &rhs) const { return !(*this == rhs); }
 
   bool is_reg() const { return m_is_reg;  }
   bool is_imm() const { return !m_is_reg; }
