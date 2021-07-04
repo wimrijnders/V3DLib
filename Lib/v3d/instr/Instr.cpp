@@ -38,6 +38,31 @@ std::string binaryValue(uint64_t num) {
 }
 #endif
 
+
+v3d_qpu_cond translate_assign_cond(AssignCond cond) {
+  assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
+
+  v3d_qpu_cond tag_value = V3D_QPU_COND_NONE;
+
+  if (cond.tag != AssignCond::Tag::FLAG) return tag_value;
+
+  switch(cond.flag) {
+    case ZS:
+    case NS:
+      // set ifa tag
+      tag_value = V3D_QPU_COND_IFA;
+      break;
+    case ZC:
+    case NC:
+      // set ifna tag
+      tag_value = V3D_QPU_COND_IFNA;
+      break;
+    default: break;
+  }
+
+  return tag_value;
+}
+
 }  // anon namespace
 
 namespace instr {
@@ -65,9 +90,36 @@ bool Instr::has_signal(bool all_signals) const {
     return true;
   }
 
-  return (sig.thrsw || sig.ldunif || sig.ldunifa || sig.ldunifrf || sig.ldunifarf
-    || sig.ldtmu  || sig.ldvary  || sig.ldvpm    || sig.ldtlb
-    || sig.ldtlbu || sig.ucb || sig.wrtmuc);
+  if (uses_sig_dst()) return true;
+
+  return (sig.thrsw || sig.ldunif || sig.ldunifa 
+       || sig.ldvpm || sig.ucb || sig.wrtmuc);
+}
+
+
+/**
+ * Determine if singals use signal destination field.
+ *
+ * At most one signal should be using it
+ * Source: mesa/src/broadcom/qpu/qpu_instr.c v3d_qpu_sig_writes_address()
+ */
+int Instr::sig_dst_count() const {
+  int ld_count = 0;
+  if (sig.ldunifrf) ld_count++;
+  if (sig.ldunifarf) ld_count++;
+  if (sig.ldvary) ld_count++;
+  if (sig.ldtmu) ld_count++;
+  if (sig.ldtlb) ld_count++;
+  if (sig.ldtlbu) ld_count++;
+
+  return ld_count;
+}
+
+
+bool Instr::uses_sig_dst() const {
+  int ld_count = sig_dst_count();
+  assert(ld_count <= 1);
+  return ld_count != 0;
 }
 
 
@@ -75,34 +127,6 @@ bool Instr::flag_set() const {
   return (flags.ac || flags.mc || flags.apf || flags.mpf || flags.auf || flags.muf);
 }
 
-
-namespace {
-
-v3d_qpu_cond translate_assign_cond(AssignCond cond) {
-  assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
-
-  v3d_qpu_cond tag_value = V3D_QPU_COND_NONE;
-
-  if (cond.tag != AssignCond::Tag::FLAG) return tag_value;
-
-  switch(cond.flag) {
-    case ZS:
-    case NS:
-      // set ifa tag
-      tag_value = V3D_QPU_COND_IFA;
-      break;
-    case ZC:
-    case NC:
-      // set ifna tag
-      tag_value = V3D_QPU_COND_IFNA;
-      break;
-    default: break;
-  }
-
-  return tag_value;
-}
-
-} // anon namespace
 
 /**
  * Set the condition tags during translation.
@@ -174,11 +198,7 @@ void Instr::set_push_tag(SetCond set_cond) {
  * NOTE: There is no check here is add/mul dst are actually used.
  */
 bool Instr::check_dst() const {
-  int ld_count = 0;
-  if (sig.ldunifarf) ld_count++;
-  if (sig.ldunifrf) ld_count++;
-  if (sig.ldtmu) ld_count++;
-
+  int ld_count = sig_dst_count();
   if (ld_count > 1) {
     error("More than one ld-signal with dst register set");
     return false;
@@ -186,32 +206,27 @@ bool Instr::check_dst() const {
 
   bool ret = true;
 
-  if (ld_count == 1) {
-    // signal has a dst, compare with ALU destinations
-    if (alu.add.op != V3D_QPU_A_NOP && sig_addr == alu.add.waddr && sig_magic == alu.add.magic_write) {
-      breakpoint
+  DestReg sig_dst = sig_dest();
+  DestReg add_dst = add_dest();
+  DestReg mul_dst = mul_dest();
 
-      error("signal dst register same as add alu dst register");
-      ret = false;
-    }
-
-    if (alu.mul.op != V3D_QPU_M_NOP && sig_addr == alu.mul.waddr && sig_magic == alu.mul.magic_write) {
-      breakpoint
-
-      error("signal dst register same as mul alu dst register");
-      ret = false;
-    }
-  }
-
-  if (alu.add.op != V3D_QPU_A_NOP && alu.mul.op != V3D_QPU_M_NOP
-   && alu.add.waddr == alu.mul.waddr && alu.add.magic_write == alu.mul.magic_write) {
+  if (sig_dst == add_dst) {
     breakpoint
-
-    error("add alu dst register same as mul alu dst register");
+    error("signal dst register same as add alu dst register");
     ret = false;
   }
 
+  if (sig_dst == mul_dst) {
+    breakpoint
+    error("signal dst register same as mul alu dst register");
+    ret = false;
+  }
 
+  if (add_dst == mul_dst) {
+    breakpoint
+    error("add alu dst register same as mul alu dst register");
+    ret = false;
+  }
 
   return ret;
 }
@@ -466,6 +481,90 @@ void Instr::set_branch_condition(v3d_qpu_branch_cond cond) {
 ///////////////////////////////////////////////////////////////////////////////
 // End Conditions  branch instructions
 ///////////////////////////////////////////////////////////////////////////////
+
+DestReg Instr::sig_dest() const {
+  if (uses_sig_dst()) {
+    return DestReg(sig_addr, sig_magic);
+  }
+
+  return DestReg();
+}
+
+
+DestReg Instr::add_dest() const {
+  if (alu.add.op != V3D_QPU_A_NOP) {
+    return DestReg(alu.add.waddr, alu.add.magic_write);
+  }
+
+  return DestReg();
+}
+
+
+DestReg Instr::mul_dest() const {
+  if (alu.mul.op != V3D_QPU_M_NOP) {
+    return DestReg(alu.mul.waddr, alu.mul.magic_write);
+  }
+
+  return DestReg();
+}
+
+
+DestReg Instr::add_src_dest(v3d_qpu_mux src) const {
+  if (src < V3D_QPU_MUX_A) {
+    return DestReg(src, true);
+  } else if (src == V3D_QPU_MUX_A) {
+    return DestReg(raddr_a, false);
+  } else if (!sig.small_imm) {  // must be MUX_B
+    return DestReg(raddr_b, false);
+  }
+
+  return DestReg();
+}
+
+
+DestReg Instr::add_src_a() const {
+  if (alu.add.op == V3D_QPU_A_NOP) return DestReg();
+  return add_src_dest(alu.add.a);
+}
+
+
+DestReg Instr::add_src_b() const {
+  if (alu.add.op == V3D_QPU_A_NOP) return DestReg();
+  return add_src_dest(alu.add.b);
+}
+
+
+DestReg Instr::mul_src_a() const {
+  if (alu.mul.op == V3D_QPU_M_NOP) return DestReg();
+  return add_src_dest(alu.mul.a);
+}
+
+
+DestReg Instr::mul_src_b() const {
+  if (alu.mul.op == V3D_QPU_M_NOP) return DestReg();
+  return add_src_dest(alu.mul.b);
+}
+
+
+bool Instr::is_src(DestReg const &dst_reg) const {
+  if (is_branch()) return false;
+  if (!dst_reg.used()) return false;
+
+  return add_src_a() == dst_reg
+      || add_src_b() == dst_reg
+      || mul_src_a() == dst_reg
+      || mul_src_b() == dst_reg;
+}
+
+
+bool Instr::is_dst(DestReg const &dst_reg) const {
+  // Note that branch instruction can technically have a sig destination
+  if (!dst_reg.used()) return false;
+
+  return sig_dest() == dst_reg
+      || add_dest() == dst_reg
+      || mul_dest() == dst_reg;
+}
 
 
 void Instr::alu_add_set_dst(Location const &dst) {

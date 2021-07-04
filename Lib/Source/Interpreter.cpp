@@ -84,7 +84,7 @@ void CoreState::store_to_heap(Vec const &index, Vec &val) {
     msg << "store_to_heap(): index does not have all same values:" << index.dump();
 
     if (store_show_count == (show_count - 1)) {
-      msg << "\n(this message not shown any more for more occurences)";
+      msg << "\n(this message not shown for further occurences)";
     }
     if (store_show_count < show_count) {
       warning(msg);
@@ -119,7 +119,7 @@ Vec CoreState::load_from_heap(Vec const &index) {
     msg << "load_from_heap(): index does not have all same values: " << index.dump();
 
     if (load_show_count == (show_count - 1)) {
-      msg << "\n(this message not shown any more for more occurences)";
+      msg << "\n(this message not shown for further occurences)";
     }
     if (load_show_count < show_count) {
       warning(msg);

@@ -390,9 +390,6 @@ TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
   using namespace V3DLib::v3d::instr;
 
   SUBCASE("Correct output of dump program") {
-    struct v3d_device_info devinfo;  // NOTE: uninitialized struct! For test OK
-    devinfo.ver = 42;               //        <-- only this needs to be set
-
     const char *expected = "\n{\n\
   type: INSTR_TYPE_ALU,\n\
   sig: {ldunifrf },\n\
@@ -410,7 +407,7 @@ TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
     uint64_t nop = 0x3d803186bb800000;  // nop                  ; nop               ; ldunifrf.rf0 
 
     struct v3d_qpu_instr instr;
-    REQUIRE(instr_unpack(&devinfo, nop, &instr));
+    REQUIRE(instr_unpack(nop, &instr));
 
     char buffer[10*1024];
     instr_dump(buffer, &instr);

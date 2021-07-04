@@ -7,6 +7,25 @@ namespace V3DLib {
 namespace v3d {
 namespace instr {
 
+class DestReg {
+public:
+  DestReg() : m_used(false) {}
+  DestReg(uint8_t waddr, bool magic_write) : m_used(true),  m_waddr(waddr), m_magic_write(magic_write) {}
+
+  bool used() const { return m_used; }
+
+  bool operator==(DestReg const &rhs) const {
+    if (!m_used || !rhs.m_used) return false;
+    return (m_waddr == rhs.m_waddr && m_magic_write == rhs.m_magic_write);
+  }
+
+private:
+  bool    m_used = false;
+  uint8_t m_waddr;
+  bool    m_magic_write;
+};
+
+
 class Register : public Location {
 public: 
   Register(Register const &rhs) = default;

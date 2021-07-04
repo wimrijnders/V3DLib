@@ -965,6 +965,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
 
     int same_count        = fft_context.same_index_count(i);
     int same_count_skipjs = fft_context.same_index_count(i, true);  // Always same per s for given log2n
+/*
     {
       std::string msg;
       msg << "s: " << item.s << ", j: " << item.j << ", k: " << item.k_count
@@ -973,6 +974,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
           << ", same_count skipjs: " << same_count_skipjs;
       debug(msg);
     }
+*/
 
     int j_count  = same_count_skipjs/same_count;
     int j_offset = item.k_count;
@@ -1292,10 +1294,10 @@ std::set<int> &operator+=(std::set<int> &lhs, std::vector<int> const &rhs) {
 
 TEST_CASE("FFT check offsets [fft][offsets]") {
   int log2n = 8;  // Following tests work for >= 5, tested till <= 22
-  bool show = true;
+  bool show = false;
 
   fft_context.init(log2n);
-  std::cout << fft_context.dump() << std::endl;
+  if (show) std::cout << fft_context.dump() << std::endl;
 
   std::string ret;
 

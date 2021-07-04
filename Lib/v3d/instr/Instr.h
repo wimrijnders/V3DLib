@@ -65,8 +65,6 @@ public:
   void set_cond_tag(AssignCond cond);
   void set_push_tag(SetCond set_cond);
 
-  bool check_dst() const;
-
   std::string dump() const; 
   std::string mnemonic(bool with_comments = false) const;
   uint64_t code() const;
@@ -80,11 +78,31 @@ public:
 
   bool add_nop()    const { return alu.add.op == V3D_QPU_A_NOP; }
   bool mul_nop()    const { return alu.mul.op == V3D_QPU_M_NOP; }
+  bool is_nop()     const { return add_nop() && mul_nop(); }  // This does not exclude signal having dst registers
   bool add_nocond() const { return flags.ac == V3D_QPU_COND_NONE; }
   bool mul_nocond() const { return flags.mc == V3D_QPU_COND_NONE; }
 
 
   static bool compare_codes(uint64_t code1, uint64_t code2);
+
+  bool check_dst() const;
+  bool uses_sig_dst() const;
+  bool is_ldtmu() const { assert(sig_dst_count() <= 1); return sig.ldtmu; }
+  DestReg sig_dest() const;
+  DestReg add_dest() const;
+  DestReg mul_dest() const;
+
+private:
+  DestReg add_src_dest(v3d_qpu_mux src) const;
+  
+public:
+  DestReg add_src_a() const;
+  DestReg add_src_b() const;
+  DestReg mul_src_a() const;
+  DestReg mul_src_b() const;
+
+  bool is_src(DestReg const &dst_reg) const;
+  bool is_dst(DestReg const &dst_reg) const;
 
   void alu_add_set_dst(Location const &dst); // Still needed in Mnemonics
   bool alu_add_set_a(Source const &src);     // idem
@@ -100,6 +118,7 @@ private:
   std::unique_ptr<Source> alu_src(v3d_qpu_mux src) const;
 
 public:
+  // TODO see if following can be replaced by DestReg
   std::unique_ptr<Location> add_alu_dst() const;
   std::unique_ptr<Location> mul_alu_dst() const;
   std::unique_ptr<Source> add_alu_a() const;
@@ -117,6 +136,7 @@ private:
   bool m_skip = false;
 
   std::string pretty_instr() const;
+  int sig_dst_count() const;
 
   enum CheckSrc {
     CHECK_ADD_A,

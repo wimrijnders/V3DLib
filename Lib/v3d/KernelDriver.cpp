@@ -783,12 +783,18 @@ bool can_be_mul_alu(AddAlu const &add_alu) {
  * Check if given instructions have a dependency on each other.
  *
  * Pre: Instruction 'first' is predecessor of 'second'.
- * There is a dependency if instruction 'second' has a source which is a destination of 'first'.
- * /
+ * There is a dependency if:
+ *   - instruction 'second' has a source which is a destination of 'first'.
+ *   - instruction 'second' has a destination which is a destination of 'first'.
+ */
 bool have_dependency(v3d::instr::Instr const &first, v3d::instr::Instr const &second) {
-  // Determine destination registers of first;
+  return second.is_src(first.sig_dest())
+      || second.is_src(first.add_dest())
+      || second.is_src(first.mul_dest())
+      || second.is_dst(first.sig_dest())
+      || second.is_dst(first.add_dest())
+      || second.is_dst(first.mul_dest());
 }
-*/
 
 
 bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr2, bool &do_converse) {
@@ -802,8 +808,8 @@ bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr
   if (instr1.has_signal() || instr2.has_signal()) return false;
 
   // Skip full NOPs, they are there for a reason
-  if (instr1.add_nop() && instr1.mul_nop()) return false;
-  if (instr2.add_nop() && instr2.mul_nop()) return false;
+  if (instr1.is_nop()) return false;
+  if (instr2.is_nop()) return false;
 
   // skip both mul for now, needs extra logic and is probably scarce
   if (!instr1.mul_nop() && !instr2.mul_nop())  {
@@ -902,17 +908,7 @@ bool convert_alu_op_to_mul_op(v3d_qpu_mul_op &mul_op, v3d::instr::Instr const &a
 bool add_alu_to_mul_alu(Instr const &in_instr, Instr &dst) {
   assert((!in_instr.add_nop() &&  in_instr.mul_nop()) 
       || ( in_instr.add_nop() && !in_instr.mul_nop())); 
-
   assert(dst.mul_nop()); 
-/*
-  auto dst_dst = dst.add_alu_dst();
-  auto dst_a   = dst.add_alu_a();
-  auto dst_b   = dst.add_alu_b();
-  assert(dst_dst.get() != nullptr);
-  assert(dst_a.get()   != nullptr);
-  assert(dst_b.get()   != nullptr);
-*/
-
 
   //
   // Get used dst and src
@@ -1016,6 +1012,54 @@ void combine(Instructions &instructions) {
 
     assertq(!(instr1.skip() && instr2.skip()), "Deal with skips when they happen");
     if (instr1.skip()) continue;
+
+    //
+    // Combine pure nop ldtmu instruction with next
+    // 
+    if (false && instr1.is_ldtmu() && instr1.is_nop()) {
+
+      // There can be multiple consecutive tmu loads, shift them all in reverse order
+      int first = i - 1;
+      int last  = i;
+      for (int n = last; n < (int) instructions.size(); n++) {
+        auto &instr = instructions[n];
+
+        //breakpoint
+
+        assert(!instr.skip());
+        if (!instr.is_nop()) break;  // pure nop ldtmu only
+        if (!instr.is_ldtmu()) break;
+        last = n;
+      }
+
+      for (int n = last; n >= first; n--) {
+        auto &instr = instructions[n];
+        int shift_to = 0;
+
+        for (int m = n + 1; m < (int) instructions.size(); m++) {
+          auto &instr2 = instructions[m];
+          if (instr2.skip()) continue;
+          if (instr2.is_branch()) break;   // Paranoia safeguard; it might actually be possible
+          if (instr2.uses_sig_dst()) break;
+          if (have_dependency(instr, instr2)) break;
+          shift_to = m;
+        }
+
+        //breakpoint
+
+        if (shift_to != 0) {
+          auto &instr2 = instructions[shift_to];
+          instr2.sig.ldtmu = true;
+          instr2.sig_addr  = instr.sig_addr;
+          instr2.sig_magic = instr.sig_magic;
+          instr.skip(true);
+        }
+      }
+
+      //breakpoint
+      i += (last - first);
+      continue;
+    }
 
 
     //
