@@ -10,11 +10,6 @@
 #include "Mnemonics.h"
 #include "OpItems.h"
 
-namespace {
-
-struct v3d_device_info devinfo;  // NOTE: uninitialized struct, field 'ver' must be set! For asm/disasm OK
-
-}  // anon namespace
 
 
 namespace V3DLib {
@@ -287,9 +282,7 @@ std::string Instr::mnemonic(bool with_comments) const {
 
 
 uint64_t Instr::code() const {
-  init_ver();
-
-  uint64_t repack = instr_pack(&devinfo, const_cast<Instr *>(this));
+  uint64_t repack = instr_pack(const_cast<Instr *>(this));
   return repack;
 }
 
@@ -317,14 +310,7 @@ std::string Instr::mnemonics(std::vector<uint64_t> const &in_code) {
 }
 
 
-void Instr::init_ver() const {
-  devinfo.ver = 42;  // only this needs to be set
-}
-
-
 void Instr::init(uint64_t in_code) {
-  init_ver();
-
   raddr_a = 0;
 
   // These do not always get initialized in unpack
@@ -332,7 +318,7 @@ void Instr::init(uint64_t in_code) {
   sig_magic = false;
   raddr_b = 0; // Not set for branch
 
-  if (!instr_unpack(&devinfo, in_code, this)) {
+  if (!instr_unpack(in_code, this)) {
     warning("Instr:init: call to instr_unpack failed.");
     return;
   }

@@ -115,7 +115,6 @@ protected:
 private:
   bool m_skip = false;
 
-  void init_ver() const;
   std::string pretty_instr() const;
 
   enum CheckSrc {

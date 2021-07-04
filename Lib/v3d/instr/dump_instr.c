@@ -4,6 +4,15 @@
 #include "dump_instr.h"
 #include "broadcom/qpu/qpu_disasm.h"
 #include "util/ralloc.h"  // ralloc_free()
+#include "broadcom/common/v3d_device_info.h"
+
+
+//
+// Required by many broadcom v3d calls
+// The only field of interest is 'ver' which has value '42' for v3d
+// 
+struct v3d_device_info const v3d_devinfo = {42};
+
 
 static const struct v3d_qpu_alu_instr ALU_NOP = {
     add: {
@@ -477,14 +486,14 @@ void instr_dump(char *buffer, struct v3d_qpu_instr *instr) {
 // These are here to beat the external linkage issues I've been having.
 ///////////////////////////////////////////////////////////////////////////////
 
-bool instr_unpack(struct v3d_device_info const *devinfo, uint64_t packed_instr, struct v3d_qpu_instr *instr) {
-  return v3d_qpu_instr_unpack(devinfo, packed_instr, instr);
+bool instr_unpack(uint64_t packed_instr, struct v3d_qpu_instr *instr) {
+  return v3d_qpu_instr_unpack(&v3d_devinfo, packed_instr, instr);
 }
 
 
-uint64_t instr_pack(struct v3d_device_info const *devinfo, struct v3d_qpu_instr const *instr) {
+uint64_t instr_pack(struct v3d_qpu_instr const *instr) {
   uint64_t packed_instr;
-  v3d_qpu_instr_pack(devinfo, instr, &packed_instr);
+  v3d_qpu_instr_pack(&v3d_devinfo, instr, &packed_instr);
   //assert(packed_instr != 0);
   return packed_instr;
 }

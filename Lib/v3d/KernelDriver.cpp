@@ -779,6 +779,18 @@ bool can_be_mul_alu(AddAlu const &add_alu) {
 }
 
 
+/**
+ * Check if given instructions have a dependency on each other.
+ *
+ * Pre: Instruction 'first' is predecessor of 'second'.
+ * There is a dependency if instruction 'second' has a source which is a destination of 'first'.
+ * /
+bool have_dependency(v3d::instr::Instr const &first, v3d::instr::Instr const &second) {
+  // Determine destination registers of first;
+}
+*/
+
+
 bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr2, bool &do_converse) {
   assert(instr1.add_nop() || instr1.mul_nop());  // Not expecting fully filled instructions
   assert(instr2.add_nop() || instr2.mul_nop());  // idem
@@ -960,7 +972,7 @@ bool add_alu_to_mul_alu(Instr const &in_instr, Instr &dst) {
 void combine(Instructions &instructions) {
 
   //
-  // Detect useless copies, eg: or  rf2, rf2, rf2    ; nop
+  // Detect useless moves, eg: or  rf2, rf2, rf2    ; nop
   //
   auto check_assign_to_self = [] (Instr const &instr, int i) -> bool {
     if (!instr.is_branch() && !instr.add_nop() && instr.mul_nop() && instr.alu.add.op == V3D_QPU_A_OR) {
@@ -979,10 +991,11 @@ void combine(Instructions &instructions) {
         if (instr.flag_set()) {
           breakpoint // Deal with this when it happens
         }
-
-        std::string msg = "Useless copy at ";
+/*
+        std::string msg = "Useless move at ";
         msg << i << ": " << instr.mnemonic(false);
         warning(msg);
+*/
         return true;
       }
     }
@@ -998,21 +1011,32 @@ void combine(Instructions &instructions) {
     auto &instr1 = instructions[i - 1];
     auto &instr2 = instructions[i];
 
-    assertq(!instr1.mnemonic(false).empty(), "WTF 1", true);
+    assertq(!instr1.mnemonic(false).empty(), "WTF 1", true);  // Paranoia
     assertq(!instr2.mnemonic(false).empty(), "WTF 2", true);
 
     assertq(!(instr1.skip() && instr2.skip()), "Deal with skips when they happen");
     if (instr1.skip()) continue;
 
+
+    //
     // Skip instructions that have both add and mul alu
+    //
     if (!instr1.add_nop() && !instr1.mul_nop()) continue;
     if (!instr2.add_nop() && !instr2.mul_nop()) continue;
 
+
+    //
+    // Remove useless copies
+    //
     if (check_assign_to_self(instr2, i)) {
       instr2.skip(true);
       continue;
     }
 
+
+    //
+    // Combine add and mul instructions, if possible
+    //
     bool do_converse;
     if (!can_combine(instr1, instr2, do_converse)) continue;
 
@@ -1022,24 +1046,18 @@ void combine(Instructions &instructions) {
         << "  " << instr2.mnemonic(false);
 
     // attempt the conversion
-    bool success = false;
     {
       auto const &add_instr = do_converse?instr2:instr1;
       auto const &mul_instr = do_converse?instr1:instr2;
 
       assert(add_instr.mul_nop());
-/*
-      if (!mul_instr.mul_nop()) {
-        breakpoint;
-      }
-*/
 
       v3d::instr::Instr dst = add_instr;
 
       // First test: Don't deal with conditions yet in the mul alu
       // These need a bit of extra logic to set them for mul
       // TODO examine this
-      success = !mul_instr.flag_set() && add_alu_to_mul_alu(mul_instr, dst);
+      bool success = !mul_instr.flag_set() && add_alu_to_mul_alu(mul_instr, dst);
 
       if (success) {
         msg << "\n  Possible conversion: " << dst.mnemonic(false);
@@ -1054,8 +1072,8 @@ void combine(Instructions &instructions) {
       continue;
     }
 
-    debug(msg);
-    break;
+    debug(msg);  // Deal with unhandled case in this loop
+    break;       // ...as we encounter them
   }
 
   compile_data.num_instructions_combined += combine_count;
