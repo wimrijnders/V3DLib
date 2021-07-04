@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "v3d_api.h"
 #include "Support/InstructionComment.h"
 #include "Source.h"
 #include "Encode.h"

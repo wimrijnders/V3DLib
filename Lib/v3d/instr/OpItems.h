@@ -1,7 +1,7 @@
 #ifndef _V3DLIB_V3D_INSTR_OPITEMS_H
 #define _V3DLIB_V3D_INSTR_OPITEMS_H
 #include "Target/instr/Instr.h"
-#include "dump_instr.h"
+#include "v3d_api.h"
 
 namespace V3DLib {
 namespace v3d {

@@ -2,8 +2,7 @@
 #define _V3DLIB_V3D_INSTR_SMALLIMM_H
 #include <stdint.h>
 #include <string>
-#include "broadcom/qpu/qpu_instr.h"
-#include "dump_instr.h"
+#include "v3d_api.h"
 
 namespace V3DLib {
 namespace v3d {

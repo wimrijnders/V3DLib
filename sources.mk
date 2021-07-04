@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Sat 12 Jun 2021 06:32:10 AM CEST
+# Generated on: Sun 04 Jul 2021 06:15:43 AM CEST
 #
 ###############################################################################
 
@@ -99,7 +99,7 @@ OBJ := \
   Target/Subst.o  \
   Target/EmuSupport.o  \
   vc4/dump_instr.o  \
-  v3d/instr/dump_instr.o  \
+  v3d/instr/v3d_api.o  \
 
 # All programs in the Examples *and Tools* directory
 EXAMPLES := \
