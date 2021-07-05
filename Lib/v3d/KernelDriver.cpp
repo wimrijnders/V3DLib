@@ -1020,8 +1020,8 @@ void combine(Instructions &instructions) {
 
       // There can be multiple consecutive tmu loads, shift them all in reverse order
       int first = i - 1;
-      int last  = i;
-      for (int n = last; n < (int) instructions.size(); n++) {
+      int last  = i - 1;
+      for (int n = last + 1; n < (int) instructions.size(); n++) {
         auto &instr = instructions[n];
 
         //breakpoint
@@ -1035,13 +1035,38 @@ void combine(Instructions &instructions) {
       for (int n = last; n >= first; n--) {
         auto &instr = instructions[n];
         int shift_to = 0;
+         
+        int max_shift = -1;  // If set > 0, max number of instructions to look forward
 
-        for (int m = n + 1; m < (int) instructions.size(); m++) {
+        int end_m = (int) instructions.size();
+        if (max_shift > 0 && end_m > n + max_shift) {
+          end_m = n + max_shift;
+        }
+
+        for (int m = n + 1; m < end_m; m++) {
           auto &instr2 = instructions[m];
           if (instr2.skip()) continue;
           if (instr2.is_branch()) break;   // Paranoia safeguard; it might actually be possible
           if (instr2.uses_sig_dst()) break;
           if (have_dependency(instr, instr2)) break;
+
+          // Specials
+          if (!instr2.is_branch()) 
+            if (instr2.alu.add.op == V3D_QPU_A_BARRIERID    // In program end, syncs last TMU operation
+
+            //
+            // Following empirically determined
+            //
+
+            // TMU read and load don't mix
+            || (instr2.alu.add.waddr == V3D_QPU_WADDR_TMUA && instr2.alu.add.magic_write)
+
+            // Apparently, can't combine setting flags with TMU loads
+            || (instr2.flags.ac != V3D_QPU_COND_NONE || instr2.flags.mc != V3D_QPU_COND_NONE)
+            ) {
+            break;
+          }
+          
           shift_to = m;
         }
 
