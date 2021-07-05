@@ -91,16 +91,24 @@ struct Stmt : public InstructionComment {
   Stmt *first_in_seq() const;
   Stmt *last_in_seq() const;
 
-  Ptr seq_s0() const;
-  Ptr seq_s1() const;
+  //Ptr seq_s0() const;
+  //Ptr seq_s1() const;
+  Array &stmts();  // TODO consider const
 
-  Ptr thenStmt() const;
+  // TODO rename to thenBlock and elseBlock
+
+  //Ptr thenStmt() const;
+  //void thenStmt(Ptr then_ptr);
+  Array const &thenStmts() const;
   void thenStmt(Ptr then_ptr);
-
-  Ptr elseStmt() const;
   bool thenStmt(Array const &in_block);
+
+  //Ptr elseStmt() const;
+  Array const &elseStmts() const;
+
   bool add_block(Array const &in_block);
-  Ptr body() const;
+  //Ptr body() const;
+  Array const &body() const;
   void inc(Ptr ptr);
   bool body_is_null() const;
 
@@ -128,8 +136,10 @@ private:
   Expr::Ptr m_exp_a;
   Expr::Ptr m_exp_b;
 
-  Ptr m_stmt_a;
-  Ptr m_stmt_b;
+  Array m_stmts_a;
+  Array m_stmts_b;
+  //Ptr m_stmt_a;  // Used for conditional blocks (IF, WHERE, WHILE)
+  //Ptr m_stmt_b;  // idem
 
   CExpr::Ptr m_cond;
 

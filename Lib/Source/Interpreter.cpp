@@ -373,6 +373,16 @@ Vec vecAnd(Vec x, Vec y) {
 // Execute where statement
 // ============================================================================
 
+void execWhere(InterpreterState &is, CoreState* s, Vec cond, Stmt::Ptr stmt);
+
+
+void execWhere(InterpreterState &is, CoreState* s, Vec cond, Stmt::Array const &stmts) {
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    execWhere(is, s, cond, stmts[i]);
+  }
+}
+
+
 void execWhere(InterpreterState &is, CoreState* s, Vec cond, Stmt::Ptr stmt) {
   if (stmt == NULL) return;
 
@@ -383,10 +393,14 @@ void execWhere(InterpreterState &is, CoreState* s, Vec cond, Stmt::Ptr stmt) {
       return;
 
     // Sequential composition
-    case Stmt::SEQ:
-      execWhere(is, s, cond, stmt->seq_s0());
-      execWhere(is, s, cond, stmt->seq_s1());
+    case Stmt::SEQ: {
+      breakpoint
+      execWhere(is, s, cond, stmt->stmts());
+ 
+      //execWhere(is, s, cond, stmt->seq_s0());
+      //execWhere(is, s, cond, stmt->seq_s1());
       return;
+    }
 
     // Assignment
     case Stmt::ASSIGN:
@@ -396,9 +410,13 @@ void execWhere(InterpreterState &is, CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
     // Nested where
     case Stmt::WHERE: {
+      breakpoint
       Vec b = evalBool(is, s, stmt->where_cond());
-      execWhere(is, s, vecAnd(b, cond), stmt->thenStmt());
-      execWhere(is, s, vecAnd(b.negate(), cond), stmt->elseStmt());
+      execWhere(is, s, vecAnd(b, cond), stmt->thenStmts());
+      execWhere(is, s, vecAnd(b.negate(), cond), stmt->elseStmts());
+
+      //execWhere(is, s, vecAnd(b, cond), stmt->thenStmt());
+      //execWhere(is, s, vecAnd(b.negate(), cond), stmt->elseStmt());
       return;
     }
 
@@ -465,6 +483,15 @@ bool dma_exec(InterpreterState &is, CoreState* s, Stmt::Ptr &stmt) {
 }
 
 
+void append_stack(CoreState &s, Stmt::Array const &stmts, bool negate = false) {
+  assertq(!negate, "TODO", true);
+
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    s.stack << stmts[i];
+  }
+}
+
+
 void exec(InterpreterState &is, int core_index) {
   CoreState *s = &is.core[core_index];
   // Control stack must be non-empty
@@ -495,24 +522,44 @@ void exec(InterpreterState &is, int core_index) {
       execAssign(is, s, Always, stmt->assign_lhs(), stmt->assign_rhs());
       break;
 
-    case Stmt::SEQ:             // Sequential composition
-      s->stack << stmt->seq_s1();
-      s->stack << stmt->seq_s0();
-      break;
+    case Stmt::SEQ: {           // Sequential composition
+      breakpoint
+
+      append_stack(*s, stmt->stmts());
+
+      //s->stack << stmt->seq_s1();
+      //s->stack << stmt->seq_s0();
+    }
+    break;
 
     case Stmt::WHERE: {         // Conditional assignment
+      breakpoint
+
+      append_stack(*s, stmt->thenStmts());
+      append_stack(*s, stmt->elseStmts(), true);
+/*
       Vec b = evalBool(is, s, stmt->where_cond());
       execWhere(is, s, b, stmt->thenStmt());
       execWhere(is, s, b.negate(), stmt->elseStmt());
+*/
     }
     break;
 
     case Stmt::IF:
+      breakpoint
+
+      if (evalCond(is, s, stmt->if_cond()))
+        s->stack << stmt->thenStmts();
+      else if (!stmt->elseStmts().empty()) {  // This test shouldn't matter much
+        s->stack << stmt->elseStmts();
+      }
+/*
       if (evalCond(is, s, stmt->if_cond()))
         s->stack << stmt->thenStmt();
       else if (stmt->elseStmt().get() != nullptr) {
         s->stack << stmt->elseStmt();
       }
+*/
       break;
 
     case Stmt::WHILE:

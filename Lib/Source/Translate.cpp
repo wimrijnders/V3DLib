@@ -333,11 +333,17 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
   }
 
   // ---------------------------------------------
-  // Case: s0 ; s1, where s0 and s1 are statements
+  // Case: sequence of statements
   // ---------------------------------------------
   if (s->tag == Stmt::SEQ) {
-    ret << whereStmt(s->seq_s0(), condVar, cond, true)
-        << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
+    breakpoint
+
+    for (int i = 0; i < (int) s->stmts().size(); i++) {
+      ret << whereStmt(s->stmts()[i], condVar, cond, (i==0)?true:saveRestore);
+    }
+
+    //ret << whereStmt(s->seq_s0(), condVar, cond, true)
+    //    << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
     return ret;
   }
 
@@ -375,10 +381,13 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 
     if (cond.is_always()) {
       // Top-level handling of where-statements
+      breakpoint
 
       // Compile 'then' statement
-      if (s->thenStmt().get() != nullptr) {
-        auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, s->elseStmt().get() != nullptr);
+      //if (s->thenStmt().get() != nullptr) {
+      //  auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, s->elseStmt().get() != nullptr);
+      if (!s->thenStmts().empty()) {
+        auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, !s->elseStmts().empty());
         assert(!seq.empty());
         seq.front().comment("then-branch of where (always)");
         ret << seq;
@@ -501,10 +510,17 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
     case Stmt::ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
       assign(seq, s->assign_lhs(), s->assign_rhs());
       break;
-    case Stmt::SEQ:                      // 's0 ; s1', where s1 and s2 are statements
-      stmt(seq, s->seq_s0());
-      stmt(seq, s->seq_s1());
-      break;
+    case Stmt::SEQ: {                    // 's0 ; s1', where s1 and s2 are statements
+      breakpoint
+
+      for (int i = 0; i < (int) s->stmts().size(); i++) {
+        stmt(seq, s->stmts()[i]);
+      }
+
+      //stmt(seq, s->seq_s0());
+      //stmt(seq, s->seq_s1());
+    }
+    break;
     case Stmt::IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
       translateIf(*seq, *s);
       break;

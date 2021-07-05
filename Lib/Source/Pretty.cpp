@@ -30,6 +30,21 @@ void split_first_line(std::string const &in, std::string &first, std::string &re
 }
 
 
+std::string pretty(int indent, Stmt::Ptr s);
+
+
+std::string pretty(int indent, Stmt::Array const &stmts) {
+  breakpoint
+  std::string ret;
+
+  for (int i = 0; i < (int) stmts.size(); i++) {
+   ret << pretty(indent, stmts[i]);
+  }
+
+  return ret;
+}
+
+
 std::string pretty(int indent, Stmt::Ptr s) {
   std::string ret;
   bool do_eol = true;
@@ -42,20 +57,28 @@ std::string pretty(int indent, Stmt::Ptr s) {
           << s->assign_lhs()->pretty() << " = " << s->assign_rhs()->pretty() << ";";
       break;
 
-    case Stmt::SEQ:  // Sequential composition
-      ret << pretty(indent, s->seq_s0())
-          << pretty(indent, s->seq_s1());
+    case Stmt::SEQ: {  // Sequential composition
+      breakpoint
+      ret << pretty(indent, s->stmts());
+
+      //ret << pretty(indent, s->seq_s0())
+      //    << pretty(indent, s->seq_s1());
+
       do_eol = false;
-      break;
+    }
+    break;
 
     case Stmt::WHERE:
+      breakpoint
+
       ret << indentBy(indent)
           << "Where (" << s->where_cond()->dump() << ")\n"
-          << pretty(indent+2, s->thenStmt());
+          << pretty(indent+2, s->thenStmts());
 
-      if (s->elseStmt().get() != nullptr) {
+      //if (s->elseStmt().get() != nullptr) {
+      if (!s->elseStmts().empty()) {
         ret << indentBy(indent) << "Else\n"
-            << pretty(indent+2, s->elseStmt());
+            << pretty(indent+2, s->elseStmts());
       }
 
       ret << indentBy(indent) << "End";
@@ -64,11 +87,12 @@ std::string pretty(int indent, Stmt::Ptr s) {
     case Stmt::IF:
       ret << indentBy(indent)
           << "If (" << s->if_cond()->dump() << ")\n"
-          << pretty(indent+2, s->thenStmt());
+          << pretty(indent+2, s->thenStmts());
 
-      if (s->elseStmt().get() != nullptr) {
+      //if (s->elseStmt().get() != nullptr) {
+      if (!s->elseStmts().empty()) {
         ret << indentBy(indent) << "Else\n"
-            << pretty(indent+2, s->elseStmt());
+            << pretty(indent+2, s->elseStmts());
       }
 
       ret << indentBy(indent) << "End";
