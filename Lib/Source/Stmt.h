@@ -63,7 +63,6 @@ struct Stmt : public InstructionComment {
 
   class Array : public std::vector<Ptr> {
   public:
-    Ptr to_stmt() const;
     std::string dump() const;
   };
 
@@ -74,7 +73,7 @@ struct Stmt : public InstructionComment {
 
   std::string disp() const { return disp_intern(false, 0); }
   std::string dump() const { return disp_intern(true, 0); }
-  void append(Ptr rhs);
+  void append(Array const &rhs);
 
   //
   // Accessors for pointer objects.
@@ -89,27 +88,20 @@ struct Stmt : public InstructionComment {
   Expr::Ptr assign_rhs() const;
   Expr::Ptr address();
   Stmt *first_in_seq() const;
-  Stmt *last_in_seq() const;
 
-  //Ptr seq_s0() const;
-  //Ptr seq_s1() const;
   Array &stmts();  // TODO consider const
 
   // TODO rename to thenBlock and elseBlock
 
-  //Ptr thenStmt() const;
-  //void thenStmt(Ptr then_ptr);
   Array const &thenStmts() const;
-  void thenStmt(Ptr then_ptr);
   bool thenStmt(Array const &in_block);
 
-  //Ptr elseStmt() const;
   Array const &elseStmts() const;
 
   bool add_block(Array const &in_block);
-  //Ptr body() const;
   Array const &body() const;
-  void inc(Ptr ptr);
+
+  void inc(Array const &arr);
   bool body_is_null() const;
 
   void cond(CExpr::Ptr cond);
@@ -122,7 +114,6 @@ struct Stmt : public InstructionComment {
   static Ptr create(Tag in_tag);
   static Ptr create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1);
   static Ptr create_assign(Expr::Ptr lhs, Expr::Ptr rhs);
-  static Ptr create_sequence(Ptr s0, Ptr s1);
 
   Tag tag;
   DMA::Stmt dma;
@@ -138,8 +129,6 @@ private:
 
   Array m_stmts_a;
   Array m_stmts_b;
-  //Ptr m_stmt_a;  // Used for conditional blocks (IF, WHERE, WHILE)
-  //Ptr m_stmt_b;  // idem
 
   CExpr::Ptr m_cond;
 

@@ -188,7 +188,6 @@ bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
   msg  << "op: " << src_alu.op.value()
        << ", instr: " << src_instr.dump();
   assertq(false, msg, true);
-  //warning(msg);
 
   return false;
 }

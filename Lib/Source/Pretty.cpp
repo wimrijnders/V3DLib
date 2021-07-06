@@ -34,7 +34,6 @@ std::string pretty(int indent, Stmt::Ptr s);
 
 
 std::string pretty(int indent, Stmt::Array const &stmts) {
-  breakpoint
   std::string ret;
 
   for (int i = 0; i < (int) stmts.size(); i++) {
@@ -58,24 +57,16 @@ std::string pretty(int indent, Stmt::Ptr s) {
       break;
 
     case Stmt::SEQ: {  // Sequential composition
-      breakpoint
       ret << pretty(indent, s->stmts());
-
-      //ret << pretty(indent, s->seq_s0())
-      //    << pretty(indent, s->seq_s1());
-
       do_eol = false;
     }
     break;
 
     case Stmt::WHERE:
-      breakpoint
-
       ret << indentBy(indent)
           << "Where (" << s->where_cond()->dump() << ")\n"
           << pretty(indent+2, s->thenStmts());
 
-      //if (s->elseStmt().get() != nullptr) {
       if (!s->elseStmts().empty()) {
         ret << indentBy(indent) << "Else\n"
             << pretty(indent+2, s->elseStmts());
@@ -89,7 +80,6 @@ std::string pretty(int indent, Stmt::Ptr s) {
           << "If (" << s->if_cond()->dump() << ")\n"
           << pretty(indent+2, s->thenStmts());
 
-      //if (s->elseStmt().get() != nullptr) {
       if (!s->elseStmts().empty()) {
         ret << indentBy(indent) << "Else\n"
             << pretty(indent+2, s->elseStmts());
@@ -144,13 +134,6 @@ std::string pretty(int indent, Stmt::Ptr s) {
     if (!rest.empty()) {
       out << "\n" << rest;
     }
-/*
-    std::string msg;
-    msg << "first: '" << first << "'\n"
-        << "rest : '" << rest  << "'\n"
-        << "out  : '" << out   << "'\n";
-    debug(msg);
-*/
   }
 
   if (do_eol) {

@@ -307,6 +307,19 @@ BranchCond condExp(Instr::List &seq, CExpr &c) {
 // Where statements
 // ============================================================================
 
+Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore);
+
+Instr::List whereStmt(Stmt::Array const &stmts, Var condVar, AssignCond cond, bool saveRestore, bool first_true = false) {
+  Instr::List ret;
+
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    ret << whereStmt(stmts[i], condVar, cond, (i == 0 && first_true)?true:saveRestore);
+  }
+
+  return ret;
+}
+
+
 Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
   using namespace V3DLib::Target::instr;
   Instr::List ret;
@@ -336,14 +349,8 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
   // Case: sequence of statements
   // ---------------------------------------------
   if (s->tag == Stmt::SEQ) {
-    breakpoint
-
-    for (int i = 0; i < (int) s->stmts().size(); i++) {
-      ret << whereStmt(s->stmts()[i], condVar, cond, (i==0)?true:saveRestore);
-    }
-
-    //ret << whereStmt(s->seq_s0(), condVar, cond, true)
-    //    << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
+    breakpoint  // TODO apparently never reached, verify
+    ret << whereStmt(s->stmts(), condVar, cond, saveRestore, true);
     return ret;
   }
 
@@ -381,24 +388,21 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 
     if (cond.is_always()) {
       // Top-level handling of where-statements
-      breakpoint
 
       // Compile 'then' statement
-      //if (s->thenStmt().get() != nullptr) {
-      //  auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, s->elseStmt().get() != nullptr);
       if (!s->thenStmts().empty()) {
-        auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, !s->elseStmts().empty());
+        auto seq = whereStmt(s->thenStmts(), newCondVar, andCond, !s->elseStmts().empty());
         assert(!seq.empty());
         seq.front().comment("then-branch of where (always)");
         ret << seq;
       }
 
       // Compile 'else' statement
-      if (s->elseStmt().get() != nullptr) {
+      if (!s->elseStmts().empty()) {
         Var v2 = VarGen::fresh();
         ret << bxor(v2, newCondVar, 1).setCondFlag(Flag::ZC);
 
-        auto seq = whereStmt(s->elseStmt(), v2, andCond, false);
+        auto seq = whereStmt(s->elseStmts(), v2, andCond, false);
         assert(!seq.empty());
         seq.front().comment("else-branch of where (always)");
         ret << seq;
@@ -406,21 +410,21 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
     } else {
       // Where-statements nested in other where-statements
 
-      if (s->thenStmt().get() != nullptr) {  // NOTE: syntax allows then-stmt to be empty and else not empty
+      if (!s->thenStmts().empty()) {
         // AND new boolean expression with original condition
         Var dummy   = VarGen::fresh();
         ret << band(dummy, condVar, newCondVar).setCondFlag(Flag::ZC);
 
         // Compile 'then' statement
         {
-          auto seq = whereStmt(s->thenStmt(), dummy, andCond, false);
+          auto seq = whereStmt(s->thenStmts(), dummy, andCond, false);
           assert(!seq.empty());
           seq.front().comment("then-branch of where (nested)");
           ret << seq;
         }
       }
 
-      if (s->elseStmt() != nullptr) {
+      if (!s->elseStmts().empty()) {
         Var v2    = VarGen::fresh();
         Var dummy = VarGen::fresh();
 
@@ -429,7 +433,7 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 
         // Compile 'else' statement
         {
-          auto seq = whereStmt(s->elseStmt(), dummy, andCond, false);
+          auto seq = whereStmt(s->elseStmts(), dummy, andCond, false);
           assert(!seq.empty());
           seq.front().comment("else-branch of where (nested)");
           ret << seq;
@@ -448,6 +452,13 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 void stmt(Instr::List *seq, Stmt::Ptr s);  // Forward declaration
 
 
+void stmts(Instr::List *seq, Stmt::Array const &stmts) {
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    stmt(seq, stmts[i]);
+  }
+}
+
+
 /**
  * Translate if-then-else statement to target code
  */
@@ -457,20 +468,20 @@ void translateIf(Instr::List &seq, Stmt &s) {
   Label endifLabel = freshLabel();
   BranchCond cond  = condExp(seq, *s.if_cond());  // Compile condition
     
-  if (s.elseStmt().get() == nullptr) {
+  if (s.elseStmts().empty()) {
     seq << branch(endifLabel).branch_cond(cond.negate());  // Branch over 'then' statement
-    stmt(&seq, s.thenStmt());                  // Compile 'then' statement
+    stmts(&seq, s.thenStmts());                  // Compile 'then' statement
   } else {
     Label elseLabel = freshLabel();
 
     seq << branch(elseLabel).branch_cond(cond.negate());   // Branch to 'else' statement
 
-    stmt(&seq, s.thenStmt());                  // Compile 'then' statement
+    stmts(&seq, s.thenStmts());                  // Compile 'then' statement
 
     seq << branch(endifLabel)                  // Branch to endif
         << label(elseLabel);                   // Label for 'else' statement
 
-    stmt(&seq, s.elseStmt());                  // Compile 'else' statement
+    stmts(&seq, s.elseStmts());                  // Compile 'else' statement
   }
   
   seq << label(endifLabel);                    // Label for endif
@@ -487,7 +498,7 @@ void translateWhile(Instr::List &seq, Stmt &s) {
   seq << branch(endLabel).branch_cond(cond.negate())   // Branch over loop body
       << label(startLabel);                            // Start label
 
-  if (!s.body_is_null()) stmt(&seq, s.body());         // Compile body
+  if (!s.body_is_null()) stmts(&seq, s.body());        // Compile body
   condExp(seq, *s.loop_cond());                        // Compute condition again
                                                        // TODO why is this necessary?
 
@@ -510,17 +521,9 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
     case Stmt::ASSIGN:                   // 'lhs = rhs', where lhs and rhs are expressions
       assign(seq, s->assign_lhs(), s->assign_rhs());
       break;
-    case Stmt::SEQ: {                    // 's0 ; s1', where s1 and s2 are statements
-      breakpoint
-
-      for (int i = 0; i < (int) s->stmts().size(); i++) {
-        stmt(seq, s->stmts()[i]);
-      }
-
-      //stmt(seq, s->seq_s0());
-      //stmt(seq, s->seq_s1());
-    }
-    break;
+    case Stmt::SEQ:                      // 's0 ; s1', where s1 and s2 are statements
+      stmts(seq, s->stmts());
+      break;
     case Stmt::IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
       translateIf(*seq, *s);
       break;

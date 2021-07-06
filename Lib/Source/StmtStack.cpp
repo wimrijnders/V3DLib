@@ -58,12 +58,7 @@ void StmtStack::PrefetchContext::resolve_prefetches() {
     auto &assigns = *assign->top();
 
     assert(!m_prefetch_tags.empty());
-    auto &stmts = m_prefetch_tags;
-
-    // TODO: raise append level
-    for (int i = 0; i < (int) assigns.size() ; i++) {
-      stmts[0]->append(assigns[i]);  // Oof what a headache this was
-    }
+    m_prefetch_tags[0]->append(assigns);
   }
 
   for (int i = 1; i < (int) m_prefetch_tags.size(); ++i) {
@@ -74,15 +69,10 @@ void StmtStack::PrefetchContext::resolve_prefetches() {
     }
 
     assert(!m_prefetch_tags.empty());
-    auto &stmts = m_prefetch_tags;
-
     assert(m_assigns[assign_index]->size() == 1);
 
     auto &assigns = *m_assigns[assign_index]->top();
-
-    for (int j = 0; j < (int) assigns.size() ; j++) {
-     stmts[i]->append(assigns[j]);
-    }
+    m_prefetch_tags[i]->append(assigns);
   }
 
   m_prefetch_tags.clear();
@@ -257,6 +247,8 @@ std::string StmtStack::dump() const {
  * Only first item on stack is checked
  */
 Stmt *StmtStack::first_in_seq() const {
+  breakpoint  // TODO is this ever called?
+
   if (empty()) {
     return nullptr;
   }

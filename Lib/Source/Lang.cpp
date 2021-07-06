@@ -106,11 +106,12 @@ void Where__(BExpr::Ptr b) {
 //=============================================================================
 
 void ForBody_() {
-  auto inc = stmtStack().top()->to_stmt();
+  auto inc = stmtStack().top();
+  assert(inc);
   stmtStack().pop();
 
   Stmt::Ptr s = stmtStack().last_stmt();
-  s->inc(inc);
+  s->inc(*inc);
 
   stmtStack().push();
 }
