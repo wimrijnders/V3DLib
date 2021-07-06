@@ -134,44 +134,16 @@ namespace vc4 {
  * =====
  *
  * * Profile timing 20210406
- *
  *   vc4 DFT profiling in unit test, -d=272
- *   Conclusion: liveWith.init() is the main timing hog
- *
- *  - Matrix mult
- *      optimize                :  1.399301s
- *      compute                 :  0.872933s
- *      liveWith                :  5.927731s  <--
- *      allocate_reg            :  0.007310s
- *      apply allocate_registers:  0.003695s
- *      total                   :  8.217817s
- *
- *  - Inline complex
- *      optimize                :  9.845932s
- *      compute                 :  5.468031s
- *      liveWith                : 62.917497s  <--
- *      allocate_reg            :  0.031919s
- *      apply allocate_registers:  0.017052s
- *      Total                   : 78.310163s
- *
- *  - Inline float
- *      optimize                :  5.230446s
- *      compute                 :  2.488139s
- *      liveWith                : 19.684118s  <--
- *      allocate_reg            :  0.019152s
- *      apply allocate_registers:  0.015658s
- *      Total                   : 27.464903s
- *
- *  - Replacing `V3DLib::Set` with `std::set`:
- *
- *    Conclusion: still the biggest timing hog, but much better
- *
+ *   Conclusion: liveWith.init() is the main timing hog,
+ *               within it liveWith is the main culprit (but used to be much worse)
+ *               
  *  - Matrix mult
  *      liveWith                :  2.272735s
  *  - Inline complex
  *      liveWith                : 15.885858s
  *  - Inline float
- *    liveWith                  :  6.156424s
+ *      liveWith                :  6.156424s
  */
 void regAlloc(Instr::List &instrs) {
   assert(count_reg_types(instrs).safe_for_regalloc());
