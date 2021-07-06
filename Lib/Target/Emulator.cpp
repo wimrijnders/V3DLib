@@ -2,7 +2,6 @@
 #include <cmath>
 #include "Support/basics.h"  // fatal()
 #include "EmuSupport.h"
-#include "Common/Queue.h"
 #include "Common/SharedArray.h"
 #include "Target/SmallLiteral.h"
 #include "BufferObject.h"
@@ -10,6 +9,22 @@
 namespace V3DLib {
 
 namespace {
+
+/**
+ * Very simple queue containing N elements of type T
+ */
+template <int N, typename T> struct Queue {
+  T elems[N+1];
+  int front;
+  int back;
+  Queue() { front = back = 0; }
+  bool isEmpty() { return front == back; }
+  bool isFull() { return ((back+1)%(N+1)) == front; }
+  void enq(T elem) { elems[back] = elem; back = (back+1)%(N+1); }
+  T* first() { return &elems[front]; }
+  void deq() { front = (front+1)%(N+1); }
+};
+
 
 class SFU {
 public:
