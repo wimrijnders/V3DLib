@@ -57,7 +57,7 @@ std::string pretty(int indent, Stmt::Ptr s) {
       break;
 
     case Stmt::SEQ: {  // Sequential composition
-      ret << pretty(indent, s->stmts());
+      ret << pretty(indent, s->body());
       do_eol = false;
     }
     break;
@@ -65,11 +65,11 @@ std::string pretty(int indent, Stmt::Ptr s) {
     case Stmt::WHERE:
       ret << indentBy(indent)
           << "Where (" << s->where_cond()->dump() << ")\n"
-          << pretty(indent+2, s->thenStmts());
+          << pretty(indent+2, s->then_block());
 
-      if (!s->elseStmts().empty()) {
+      if (!s->else_block().empty()) {
         ret << indentBy(indent) << "Else\n"
-            << pretty(indent+2, s->elseStmts());
+            << pretty(indent+2, s->else_block());
       }
 
       ret << indentBy(indent) << "End";
@@ -78,11 +78,11 @@ std::string pretty(int indent, Stmt::Ptr s) {
     case Stmt::IF:
       ret << indentBy(indent)
           << "If (" << s->if_cond()->dump() << ")\n"
-          << pretty(indent+2, s->thenStmts());
+          << pretty(indent+2, s->then_block());
 
-      if (!s->elseStmts().empty()) {
+      if (!s->else_block().empty()) {
         ret << indentBy(indent) << "Else\n"
-            << pretty(indent+2, s->elseStmts());
+            << pretty(indent+2, s->else_block());
       }
 
       ret << indentBy(indent) << "End";

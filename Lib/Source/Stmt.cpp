@@ -79,43 +79,46 @@ Expr::Ptr Stmt::address() {
 }
 
 
-Stmt::Array &Stmt::stmts() {
-  // Extremely pedantic tests
-  assert(tag == SEQ);
-  assert(!m_stmts_a.empty());
-  assert(m_stmts_b.empty());
+bool Stmt::check_blocks() const {
+  // then and else blocks may not both be empty
+  if (m_stmts_a.empty() && m_stmts_b.empty()) return false;
 
-  for (int i = 0; i < (int) m_stmts_a.size(); i++) {
-    assert(m_stmts_a[i] != nullptr);
+  if (!m_stmts_a.empty()) {
+    for (int i = 0; i < (int) m_stmts_a.size(); i++) {
+      if (!m_stmts_a[i]) return false;
+    }
   }
 
-  // The actual thing this method does
-  return m_stmts_a;
+  if (!m_stmts_b.empty()) {
+    for (int i = 0; i < (int) m_stmts_b.size(); i++) {
+      if (!m_stmts_b[i]) return false;
+    }
+  }
+
+  return true;
 }
 
 
-Stmt::Array const &Stmt::thenStmts() const {
-  assertq(tag == IF || tag == WHERE || tag == WHILE, "Then-statement only valid for IF, WHERE and WHILE", true);
+Stmt::Array const &Stmt::then_block() const {
+  assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF, and WHERE", true);
+  assert(check_blocks());
 
-  // while must have then and no else
-  assert(tag != WHILE || (!m_stmts_a.empty() && m_stmts_b.empty()));
-
-  assertq(!m_stmts_a.empty() || !m_stmts_b.empty(),
-         "thenStmt(): then and else blocks may not both be empty",
-         true);
-
-  return m_stmts_a;  // May be empty
+  return m_stmts_a;
 }
 
 
 Stmt::Array const &Stmt::body() const {
-  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
-  assert(!m_stmts_a.empty());
+  assertq(tag == SEQ || tag == WHILE || tag == FOR, "Body-statement only valid for SEQ, WHILE and FOR", true);
+  assert(check_blocks());
+
+  // must have then and no else
+  assert(!m_stmts_a.empty() && m_stmts_b.empty());
+
   return m_stmts_a;
 }
 
 
-Stmt::Array const &Stmt::elseStmts() const {
+Stmt::Array const &Stmt::else_block() const {
   assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
   // where and else stmt may not both be empty
   assert(!m_stmts_a.empty() || !m_stmts_b.empty());
@@ -126,7 +129,7 @@ Stmt::Array const &Stmt::elseStmts() const {
 /**
  * @return true if block successfully added, false otherwise
  */
-bool Stmt::thenStmt(Array const &in_block) {
+bool Stmt::then_block(Array const &in_block) {
   assert((tag == Stmt::IF || tag == Stmt::WHERE ) && m_stmts_a.empty());  // TODO check if converse ever happens
 
   if ((tag == Stmt::IF || tag == Stmt::WHERE ) && m_stmts_a.empty()) {
@@ -142,40 +145,47 @@ bool Stmt::thenStmt(Array const &in_block) {
  * @return true if block successfully added, false otherwise
  */
 bool Stmt::add_block(Array const & /*in_*/ block) {
-  bool ok = false;
+  bool then_is_empty = (m_stmts_a.empty());  // TODO rename to _is_empty
+  bool else_is_empty = (m_stmts_b.empty());
 
-  bool then_is_null = (m_stmts_a.empty());  // TODO rename to _is_empty
-  bool else_is_null = (m_stmts_b.empty());
+  switch (tag) {
+    case Stmt::IF:
+    case Stmt::WHERE:
+      if (then_is_empty) {
+        then_block(block);
+        return true;
+      } else if (else_is_empty) {
+        m_stmts_b = block;
+        return true;
+      } else {
+        assert(false);
+      }
+      break;
 
-  if (tag == Stmt::IF || tag == Stmt::WHERE) {
-    if (then_is_null) {
-      thenStmt(block);
-      ok = true;
-    } else if (else_is_null) {
-      m_stmts_b = block;
-      ok = true;
-    } else {
-      assert(false);
-    }
+    case Stmt::WHILE:
+      if (then_is_empty) {
+        m_stmts_a = block;
+        return true;
+      }
+      break;
+
+    case FOR:
+      if (then_is_empty) {
+        // convert For to While
+        //m_cond retained as is
+        // m_stmts_b is inc
+        tag = WHILE;
+
+        m_stmts_a << block << m_stmts_b;
+        m_stmts_b.clear();
+        return true;
+      }
+      break;
+
+    default: break;
   }
 
-  if (tag == Stmt::WHILE && body_is_null()) {
-    m_stmts_a = block;
-    ok = true;
-  }
-
-  if (tag == Stmt::FOR && body_is_null()) {
-    // convert For to While
-
-    //m_cond retained as is
-    tag = WHILE;
-
-    m_stmts_a << block << m_stmts_b;  // m_stmts_b is inc
-    m_stmts_b.clear();  // !! New addition
-    ok = true;
-  }
-
-  return ok;
+  return false;
 }
 
 
@@ -183,13 +193,6 @@ void Stmt::inc(Array const &arr) {
   assertq(tag == FOR, "Inc-statement only valid for FOR", true);
   assert(m_stmts_b.empty());  // Only assign once
   m_stmts_b = arr;
-}
-
-
-// TODO rename
-bool Stmt::body_is_null() const {
-  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
-  return m_stmts_a.empty();
 }
 
 
@@ -249,22 +252,22 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
     break;
     case WHERE:
       assert(m_where_cond.get() != nullptr);
-      ret << "WHERE (" << m_where_cond->dump() << ") THEN " << thenStmts().dump();
-      if (!elseStmts().empty()) {
-        ret << " ELSE " << elseStmts().dump();
+      ret << "WHERE (" << m_where_cond->dump() << ") THEN " << then_block().dump();
+      if (!else_block().empty()) {
+        ret << " ELSE " << else_block().dump();
       }
     break;
     case IF:
       assert(m_cond.get() != nullptr);
-      ret << "IF (" << m_cond->dump() << ") THEN " << thenStmts().dump();
-      if (!elseStmts().empty()) {
-        ret << " ELSE " << elseStmts().dump();
+      ret << "IF (" << m_cond->dump() << ") THEN " << then_block().dump();
+      if (!else_block().empty()) {
+        ret << " ELSE " << else_block().dump();
       }
     break;
     case WHILE:
       assert(m_cond.get() != nullptr);
-      assert(!thenStmts().empty());
-      ret << "WHILE (" << m_cond->dump() << ") " << thenStmts().dump();
+      assert(!then_block().empty());
+      ret << "WHILE (" << m_cond->dump() << ") " << then_block().dump();
       // There is no ELSE for while
     break;
 

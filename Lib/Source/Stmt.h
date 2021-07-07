@@ -89,20 +89,13 @@ struct Stmt : public InstructionComment {
   Expr::Ptr address();
   Stmt *first_in_seq() const;
 
-  Array &stmts();  // TODO consider const
-
-  // TODO rename to thenBlock and elseBlock
-
-  Array const &thenStmts() const;
-  bool thenStmt(Array const &in_block);
-
-  Array const &elseStmts() const;
-
+  Array const &then_block() const;
+  bool then_block(Array const &in_block);
+  Array const &else_block() const;
   bool add_block(Array const &in_block);
   Array const &body() const;
 
   void inc(Array const &arr);
-  bool body_is_null() const;
 
   void cond(CExpr::Ptr cond);
   CExpr::Ptr if_cond() const;
@@ -137,6 +130,7 @@ private:
   static Ptr create(Tag in_tag, Ptr s0, Ptr s1);
   void init(Tag in_tag);
   std::string disp_intern(bool with_linebreaks, int seq_depth) const;
+  bool check_blocks() const;
 };
 
 

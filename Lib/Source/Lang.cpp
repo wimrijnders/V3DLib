@@ -35,7 +35,7 @@ void Else_() {
 
   Stmt::Ptr s = stmtStack().last_stmt();
 
-  if (!s->thenStmt(*block_ptr)) {
+  if (!s->then_block(*block_ptr)) {
     error("Syntax error: 'Else' without preceeding 'If' or 'Where'");
   }
 
