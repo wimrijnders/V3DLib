@@ -26,12 +26,6 @@ CmdParameters params = {
     kernel_id,
     "Select the kernel to use\n"
   },{
-    "Read method",
-    "-read=",
-    { "default", "prefetch", "none"}, 
-    "The way to retrieve data from memory. "
-    "Option 'none' skips all reads and writes, the rest have only effect on reads.\n"
-  },{
     "Matrix dimension",
     { "-d=","-dimension="},
     ParamType::POSITIVE_INTEGER,
@@ -52,7 +46,6 @@ struct MatrixSettings : public Settings {
   int kernel;
   int dimension;
   int repeats;
-  MatrixReadMethod read_method;
 
   int size() const { return dimension*dimension; }
 
@@ -64,19 +57,9 @@ struct MatrixSettings : public Settings {
     kernel      = p["Kernel"           ]->get_int_value();
     dimension   = p["Matrix dimension" ]->get_int_value();
     repeats     = p["Number of repeats"]->get_int_value();
-
-    int in_read_method = p["Read method"]->get_int_value();
-
-    switch (in_read_method) {
-      case 0: read_method = DEFAULT;      break;
-      case 1: read_method = DO_PREFETCH;  break;
-      case 2: read_method = NO_READWRITE; break;
-
-      default: assertq(false, "Unknown read method"); return false;
-    }
-
     return true;
   }
+
 } settings;
 
 
@@ -111,7 +94,7 @@ void run_scalar_kernel() {
 
 
 void run_qpu_kernel() {
-  auto k = compile(kernels::matrix_mult_decorator(settings.dimension, settings.read_method));  // Construct kernel
+  auto k = compile(kernels::matrix_mult_decorator(settings.dimension));  // Construct kernel
   k.setNumQPUs(settings.num_qpus);
 
 

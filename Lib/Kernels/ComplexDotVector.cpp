@@ -4,8 +4,8 @@ namespace kernels {
 namespace {
 
 void pre_read(Complex &dst, Complex::Ptr &src, int prefetch_label) {
-  kernels::pre_read(dst.re(), src.re(), prefetch_label);
-  kernels::pre_read(dst.im(), src.im(), prefetch_label);
+  prefetch(dst.re(), src.re(), prefetch_label); // on v3d, TMU is used always
+  prefetch(dst.im(), src.im(), prefetch_label);
 }
 
 }  // anon namespace
@@ -29,8 +29,8 @@ void ComplexDotVector::load(Complex::Ptr const &rhs) {
   Float::Ptr rhs_im = rhs.im();
 
   for (int i = 0; i < (int) size(); ++i) {
-    pre_read(re[i], rhs_re, label);
-    pre_read(im[i], rhs_im, label);
+    prefetch(re[i], rhs_re, label); // on v3d, TMU is used always
+    prefetch(im[i], rhs_im, label); // on v3d, TMU is used always
   }
 }
 
@@ -40,7 +40,7 @@ void ComplexDotVector::load(Float::Ptr const &rhs) {
   Float::Ptr rhs_re = rhs;  // Need to init ptr's here so that they are initialized before prefetch
 
   for (int i = 0; i < (int) size(); ++i) {
-    pre_read(re[i], rhs_re, label);
+    prefetch(re[i], rhs_re, label);
     im[i] = 0;
   }
 }

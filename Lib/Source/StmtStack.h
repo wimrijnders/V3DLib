@@ -87,6 +87,9 @@ void prefetch(T &dst, Pointer &src, int prefetch_label = 0) {
 }
 
 
+int prefetch_label();
+
+
 using StackCallback = std::function<void()>;
 Stmts tempStmt(StackCallback f);
 

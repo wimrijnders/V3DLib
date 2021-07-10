@@ -282,4 +282,13 @@ void initStack(StmtStack &stmtStack) {
   p_stmtStack = &stmtStack;
 }
 
+
+/**
+ * Generate a new prefetch label
+ */
+int prefetch_label() {
+  static int count = 0;
+  return ++count;
+}
+
 }  // namespace V3DLib

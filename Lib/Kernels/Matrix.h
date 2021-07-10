@@ -3,7 +3,6 @@
 #include "V3DLib.h"
 #include "Support/Helpers.h"
 
-
 ////////////////////////////////////////////////////////////////////////////////
 // Kernel code definitions for Matrix
 ////////////////////////////////////////////////////////////////////////////////
@@ -21,7 +20,6 @@ void square_matrix_mult_scalar(int N, float *dst, float *a, float *b);
 
 using FuncType = void (Float::Ptr dst, Float::Ptr a, Float::Ptr b);
 FuncType *matrix_mult_decorator(int dimension);
-
 FuncType *matrix_mult_decorator(Float::Array2D &a, Float::Array2D &b, Float::Array2D &result);
 
 
@@ -30,8 +28,7 @@ FuncType *matrix_mult_decorator(Float::Array2D &a, Float::Array2D &b, Float::Arr
 ///////////////////////////////////////////////////////////////////////////////
 
 using ComplexFuncType = void (Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b);
-
-ComplexFuncType *complex_matrix_mult_decorator( Complex::Array2D &a, Complex::Array2D &b, Complex::Array2D &result);
+ComplexFuncType *complex_matrix_mult_decorator(Complex::Array2D &a, Complex::Array2D &b, Complex::Array2D &result);
 
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -39,7 +36,6 @@ ComplexFuncType *complex_matrix_mult_decorator( Complex::Array2D &a, Complex::Ar
 ///////////////////////////////////////////////////////////////////////////////
 
 using DftFuncType = void (*)(Complex::Ptr dst, Complex::Ptr a);
-
 DftFuncType dft_inline_decorator(Complex::Array2D &a, Complex::Array2D &result);
 
 

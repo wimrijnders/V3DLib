@@ -57,14 +57,9 @@ struct matrix_settings {
 
 
   /**
-   * The rows size of the result array needs to be a multiple of the number of QPUs running.
-   *
-   * This is a consequence of the for-loop in matrix_mult, which might be specified better.
-   *
-   * TODO: Check if edit is acceptable for all #QPUs, make concrete if so.
+   * Number of rows in result array
    */
   int rows_result() const {
-    //return adjust_dimension(rows, 12);
     return rows;
   }
 

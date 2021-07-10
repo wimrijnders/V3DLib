@@ -33,8 +33,6 @@ private:
   std::vector<Float> elements;
 };
 
-int prefetch_label();
-void pre_read(Float &dst, Float::Ptr &src, int prefetch_label);
 void pre_write(Float::Ptr &dst, Float &src, bool add_result);
 
 }  // namespace kernels

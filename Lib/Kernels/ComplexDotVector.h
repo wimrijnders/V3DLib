@@ -29,7 +29,6 @@ private:
 
 void pre_write(Complex::Ptr &dst, Complex &src, bool add_result);
 
-
 }  // namespace kernels
 
 

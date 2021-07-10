@@ -9,6 +9,7 @@
 #include "LibSettings.h"
 #include "support/support.h"
 #include "Support/basics.h"
+#include "Kernels/ComplexDotVector.h"
 #include "Kernels/Matrix.h"
 #include "support/matrix_support.h"
 #include "support/ProfileOutput.h"
@@ -65,6 +66,7 @@ template<int const N>
 void check_dotvector(Float::Ptr dst, Float::Ptr a, Float::Ptr result) {
   kernels::DotVector vec(N);
   vec.load(a);
+
   vec.save(dst);
 
   Float tmp = -2;  // Silly value for detection in unit test
@@ -97,12 +99,13 @@ void test_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_dotvector<N>);
-  //k.pretty(false, "obj/test/check_dotvector_v3d.txt");
   k.load(&b, &a, &result);
   k.call();
 
   for (int i = 0; i < (int) a.size(); i++) {
     INFO("N: " << N << ", i: " << i);
+    INFO("a: " << a.dump());
+    INFO("b: " << b.dump());
     REQUIRE(a[i] == b[i]);
   }
 
@@ -211,28 +214,20 @@ void test_square_matrix_multiplication(int dimension) {
   }
 
 
-  // Can't have kernels k and k2 in the same context.
-  // One kernel runs but the seconds hangs. Either works fine when run by itself.
-  // Unclear why at this stage, but settings separate contexts works.
-  {
-    INFO("Doing TMU");
-    auto k = compile(kernels::matrix_mult_decorator(dimension));
-    k.load(&result, &a, &a);
-    check_matrix_results(dimension, k, a, result, a_scalar, expected);
-  }
+  INFO("Doing TMU");
+  auto k = compile(kernels::matrix_mult_decorator(dimension));
+  k.load(&result, &a, &a);
+  check_matrix_results(dimension, k, a, result, a_scalar, expected);
 
-  {
-    // Do the same thing with DMA (different for vc4 only)
-    LibSettings::use_tmu_for_load(false);  // selects DMA
-    INFO("Doing DMA");
+  // Do the same thing with DMA (different for vc4 only)
+  LibSettings::use_tmu_for_load(false);  // selects DMA
+  INFO("Doing DMA");
 
-    auto k2 = compile(kernels::matrix_mult_decorator(dimension));
-    //k2.pretty(false, "obj/test/Matrix_code_prefetch_dma.txt");  // TODO check on vc4
-    k2.load(&result, &a, &a);
-    check_matrix_results(dimension, k2, a, result, a_scalar, expected);
+  auto k2 = compile(kernels::matrix_mult_decorator(dimension));
+  k2.load(&result, &a, &a);
+  check_matrix_results(dimension, k2, a, result, a_scalar, expected);
 
-    LibSettings::use_tmu_for_load(true);
-  }
+  LibSettings::use_tmu_for_load(true);
 }
 
 
@@ -379,9 +374,7 @@ TEST_CASE("Test matrix algebra [matrix][mult]") {
     test_square_matrix_multiplication(16);
     test_square_matrix_multiplication(2*16);
     test_square_matrix_multiplication(5*16);
-
-    // 640x640 matrices, works! If you don't mind waiting for test to complete.
-    //test_square_matrix_multiplication(40*16);
+    //test_square_matrix_multiplication(40*16); // Works, if you don't mind waiting for test to complete.
   }
 }
 
@@ -540,31 +533,35 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
 
 
   SUBCASE("Compare pure real/im complex matrixes with real") {
-    int const Dim = 16;
+    int const Dim = 16*2;
     int const Size = Dim*Dim;
 
     float scalar[Size];
     fill_random(scalar, Size);
 
-    float scalar_transposed[Size];
-    copy_transposed(scalar_transposed, scalar, Dim, Dim);
-
     float scalar_result[Size];
-    kernels::square_matrix_mult_scalar(Dim, scalar_result, scalar, scalar_transposed);
+    {
+      float scalar_transposed[Size];
+      copy_transposed(scalar_transposed, scalar, Dim, Dim);
+      kernels::square_matrix_mult_scalar(Dim, scalar_result, scalar, scalar_transposed);
+    }
 
     Complex::Array2D a(Dim);
     Complex::Array2D result(Dim);
 
     auto k = compile(kernels::complex_matrix_mult_decorator(a, a, result));
     k.load(&result, &a, &a);
+    k.pretty(false, "obj/test/real_im_v3d.txt");
 
     //
     // Compare real only
     //
     copy_array(a.re(), scalar);
     a.im().fill(0.0f);
-
-    k.call();
+    {
+      Timer("Real only", true);
+      k.call();
+    }
     compare_arrays(result.re(), scalar_result);
     compare_array_scalar(result.im(), 0.0f);
 
@@ -574,10 +571,10 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
     //
     copy_array(a.im(), scalar);
     a.re().fill(0.0f);
-
-    k.interpret();
-
-    //std::cout << result.dump() << std::endl;
+    {
+      Timer("Im only", true);
+      k.call();
+    }
 
     // Negate result
     for (int r = 0; r < result.rows(); r++) {
