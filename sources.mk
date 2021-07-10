@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Tue 06 Jul 2021 10:14:39 AM CEST
+# Generated on: Sat 10 Jul 2021 06:23:30 AM CEST
 #
 ###############################################################################
 
@@ -31,7 +31,9 @@ OBJ := \
   Support/pgm.o  \
   Support/Timer.o  \
   Support/HeapManager.o  \
+  Kernels/ComplexDotVector.o  \
   Kernels/Rot3D.o  \
+  Kernels/DotVector.o  \
   Kernels/Matrix.o  \
   Kernels/Cursor.o  \
   SourceTranslate.o  \

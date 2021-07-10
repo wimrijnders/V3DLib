@@ -2,6 +2,7 @@
 #include <functional>
 #include "Support/basics.h"
 #include "Source/Functions.h"
+#include "ComplexDotVector.h"
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -22,8 +23,6 @@ struct matrix_settings {
   int inner;                                  // Inner dimension of the multiplication
                                               // inner == columns of a == rows of b (which is transposed)
   int columns;                                // Num columns of the result array
-
-  MatrixReadMethod read_method = DO_PREFETCH;
   bool add_result = false;
 
   void set(
@@ -144,76 +143,6 @@ void loop_unroll(int size, int unroll, std::function<void(Int const &)> f) {
 }
 #endif  // 0
 
-int prefetch_label() {
-  static int count = 0;
-
-  count++;
-  return count;
-}
-
-
-void pre_read(Float &dst, Float::Ptr &src, int prefetch_label) {
-  // on v3d, TMU is used always
-
-  switch (settings.read_method) {
-    case DEFAULT:
-      // on vc4, either TMU (default) or DMA (option)
-      dst = *src;
-      src.inc();
-      break;
-    case DO_PREFETCH:
-      prefetch(dst, src, prefetch_label);
-      break;
-    case NO_READWRITE:
-      dst = 0.0f;
-      src.inc();
-      break;
-    default:
-      assert(false);
-  }
-}
-
-
-/**
- * on v3d, TMU is used always for writes.
- * on vc4, DMA is used always.
- */
-void pre_write(Float::Ptr &dst, Float::Ptr &dst_read, Float &src, int pre_label) {
-
-  switch (settings.read_method) {
-    case DEFAULT:
-      *dst = src;
-      dst.inc();
-    break;
-    case DO_PREFETCH:
-
-      if (settings.add_result) {
-       //debug("Doing add prefetch");
-       //Intention: *dst = *dst + src;
-
-       Float tmp = 0;
-       prefetch(tmp, dst_read, pre_label);
-       *dst = tmp + src;
-      } else {
-       *dst = src;
-      }
-      dst.inc();
-      break;
-    case NO_READWRITE:
-      dst.inc();
-      break;
-    default:
-      assert(false);
-  }
-}
-
-
-void pre_write(Float::Ptr &dst, Float &src) {
-  int pre_label = prefetch_label();
-  Float::Ptr dst_read = dst;
-  pre_write(dst, dst_read, src, pre_label);
-}
-
 
 void check_allocate_result_array(Complex::Array2D &result) {
   if(!result.allocated()) {
@@ -257,74 +186,6 @@ void init_result_array(Float::Array2D &result) {
 }
 
 }  // anon namespace
-
-
-////////////////////////////////////////////////////////////////////////////////
-// Class DotVector 
-////////////////////////////////////////////////////////////////////////////////
-
-DotVector::DotVector(int size) {
-  assertq(size >= 1, "There must be at least one element for DotVector");
-  elements.resize(size);  
-}
-
-
-void DotVector::load(Float::Ptr input) {
-  int label = prefetch_label();
-
-  for (int i = 0; i < (int) elements.size(); ++i) {
-    pre_read(elements[i], input, label);
-  }
-}
-
-
-void DotVector::save(Float::Ptr dst) {
-  for (int i = 0; i < (int) elements.size(); ++i) {
-    pre_write(dst, elements[i]);
-  }
-}
-
-
-/**
- * Calculate the dot product of current instance and `rhs`.
- *
- * All vector elements of the result will contain the same value.
- */
-void DotVector::dot_product(Float::Ptr rhs, Float &result) {
-  int label = prefetch_label();
-  Float tmp = 0;  comment("DotVector::dot_product()");
-
-  for (int i = 0; i < (int) elements.size(); ++i) {
-    Float tmp2;
-    pre_read(tmp2, rhs, label);
-    tmp += elements[i]*tmp2;
-  }
-
-  rotate_sum(tmp, result);
-}
-
-
-/**
- * Multiply current instance with the DFT elements of line `k`.
- *
- * The DFT matrix elements are calculated inline.
- * Note that low-precision sin/cos is used for vc4.
- */
-void DotVector::dft_dot_product(Int const &k, Complex &result) {
-  Complex tmp(0, 0);               comment("DotVector::dft_dot_product()");
-
-  int num_elements = ((int) size())* 16;
-  for (int i = 0; i < (int) size(); ++i) {
-    Float param = -1.0f*toFloat(k*(i*16 + index()))/toFloat(num_elements);
-
-    Complex tmp1(elements[i]*cos(param), elements[i]*sin(param));
-
-    tmp += tmp1;
-  }
-
-  rotate_sum(tmp.re(), result.re());
-  rotate_sum(tmp.im(), result.im());
-}
 
 
 ///////////////////////////////////////////////////////////////////////////////n
@@ -372,42 +233,36 @@ void square_matrix_mult_scalar(int N, float *dst, float *a, float *b) {
  * - Use all QPU's
  * - All QPU's iterate over b together -> increase cache hits
  */
-void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
+template<typename T, typename Ptr, typename DotVecType>
+void matrix_mult(Ptr dst, Ptr a, Ptr b) {
+  //debug("matrix_mult");
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
 
-  a += me()*settings.stride();
+  int const DIM = settings.inner;
 
-  DotVector vec(settings.block_rowsize/16);  comment("DotVector init");
-  Float result = 0;  // NOTE explicit init required (TODO enforce)
+  DotVecType vec(settings.inner/16);
+  T result = 0;  // NOTE explicit init required (TODO enforce)
 
-  For (Int a_index = me(), a_index < settings.rows, a_index += numQPUs())
-    Float::Ptr dst_local = dst + a_index*settings.cols_result();
-    Float::Ptr b_local = b;
-
+  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
     vec.load(a);
 
-    Int b_index;
+    // b_index: column index of block of 16 columns to process by 1 QPU
+    For (Int b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
+      Ptr b_local   = b + b_index*settings.inner;
+      Ptr dst_local = dst + a_index*settings.cols_result() + b_index;
+  
+      T tmp;
+      For (Int j = 0,  j < 16, j += 1)
+        vec.dot_product(b_local, tmp);
 
-    For (b_index = 0, b_index < settings.columns, b_index++)
-      Float tmp;
-      vec.dot_product(b_local, tmp);
-
-      set_at(result, b_index & 0xf, tmp);  // intention: b_index % 16
-
-      If ((b_index & 0xf) == 15)
-        pre_write(dst_local, result);
+        result.set_at(j & 0xf, tmp);
+        b_local += settings.inner;
       End
 
-      b_local += settings.stride();
-    End  // IDIOT }  - never forget
-
-    // TODO check if following relevant
-    If ((b_index & 0xf) != 0)
-      pre_write(dst_local, result);
+      pre_write(dst_local, result, settings.add_result);
     End
 
-    // TODO make similar changes to other related kernels
-    a += settings.stride()*numQPUs();  // Go to next row for current QPU
+    a+= DIM;
   End
 }
 
@@ -429,20 +284,20 @@ void matrix_mult(Float::Ptr dst, Float::Ptr a, Float::Ptr b) {
  */ 
 void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b, Int in_offset) {
   if (Platform::compiling_for_vc4()) {
-    matrix_mult(in_dst, in_a + in_offset, in_b + in_offset);
+    matrix_mult<Float, Float::Ptr, DotVector>(in_dst, in_a + in_offset, in_b + in_offset);
   } else {
     // Offset param ignored here
     using kernels::settings;
 
     // First call doesn't need to get the result values for addition; they are zero anyway
     settings.add_result = false;
-    matrix_mult(in_dst, in_a, in_b);
+    matrix_mult<Float, Float::Ptr, DotVector>(in_dst, in_a, in_b);
 
     assert(settings.num_blocks == 1 || settings.num_blocks == 2);
     if (settings.num_blocks == 2) {
       settings.add_result = true;
       Int offset = settings.block_rowsize;
-      matrix_mult(in_dst, in_a + offset, in_b + offset);
+      matrix_mult<Float, Float::Ptr, DotVector>(in_dst, in_a + offset, in_b + offset);
     }
   }
 }
@@ -470,39 +325,26 @@ void matrix_mult_block(Float::Ptr in_dst, Float::Ptr in_a, Float::Ptr in_b, Int 
  *
  * @return  pointer to the actual kernel function
  */
-FuncType *matrix_mult_decorator(
-  int rows,
-  int inner,
-  int columns,
-  MatrixReadMethod read_method
-) {
+FuncType *matrix_mult_decorator(int rows, int inner, int columns) {
   settings.set(rows, inner, columns);
-  settings.read_method = read_method;
-  return matrix_mult;
+  return matrix_mult<Float, Float::Ptr, DotVector>;
 }
 
 
-FuncType *matrix_mult_decorator(int dimension, MatrixReadMethod read_method) {
-  return matrix_mult_decorator(dimension, dimension, dimension, read_method);
+FuncType *matrix_mult_decorator(int dimension) {
+  return matrix_mult_decorator(dimension, dimension, dimension);
 }
 
 
 /**
  * Override with extra safety checks of matrix dimensions
  */
-FuncType *matrix_mult_decorator(
-  Float::Array2D &a,
-  Float::Array2D &b,
-  Float::Array2D &result,
-  MatrixReadMethod read_method
-) {
+FuncType *matrix_mult_decorator(Float::Array2D &a, Float::Array2D &b, Float::Array2D &result) {
   assert(a.allocated());
   assert(b.allocated());
 
-  auto ret = matrix_mult_decorator(a.rows(), a.columns(), b.rows(), read_method);
-
+  auto ret = matrix_mult_decorator(a.rows(), a.columns(), b.rows());
   init_result_array(result);
-
   return ret;
 }
 
@@ -511,191 +353,19 @@ FuncType *matrix_mult_decorator(
 // Complex arrays
 ///////////////////////////////////////////////////////////////////////////////
 
-size_t ComplexDotVector::size() const {
-  assert(re.size() == im.size());
-  return re.size();
-}
-
-
-void ComplexDotVector::load(Complex::Ptr const &rhs) {
-  int label = prefetch_label();
-  Float::Ptr rhs_re = rhs.re();  // Need to init ptr's here so that they are initialized before prefetch
-  Float::Ptr rhs_im = rhs.im();
-
-  for (int i = 0; i < (int) size(); ++i) {
-    pre_read(re[i], rhs_re, label);
-    pre_read(im[i], rhs_im, label);
-  }
-}
-
-
-void ComplexDotVector::load(Float::Ptr const &rhs) {
-  int label = prefetch_label();
-  Float::Ptr rhs_re = rhs;  // Need to init ptr's here so that they are initialized before prefetch
-
-  for (int i = 0; i < (int) size(); ++i) {
-    pre_read(re[i], rhs_re, label);
-    im[i] = 0;
-  }
-}
-
-
-void pre_write(Complex::Ptr &dst, Complex &src) {
-  pre_write(dst.re(), src.re());
-  pre_write(dst.im(), src.im());
-}
-
-
-void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
-  int label = prefetch_label();
-  Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
-  Float::Ptr rhs_re = rhs.re();
-  Float::Ptr rhs_im = rhs.im();
-
-  for (int i = 0; i < (int) size(); ++i) {
-    Complex tmp1(re[i], im[i]);
-    Float re2;
-    Float im2;
-    pre_read(re2, rhs_re, label);
-    pre_read(im2, rhs_im, label);
-    tmp += tmp1*Complex(re2, im2);
-  }
-
-  rotate_sum(tmp.re(), result.re());
-  rotate_sum(tmp.im(), result.im());
-}
-
-
-/**
- * Multiply current instance with the DFT elements of line `k`.
- *
- * The DFT matrix elements are calculated inline.
- * Note that low-precision sin/cos is used for vc4.
- */
-void ComplexDotVector::dft_dot_product(Int const &k, Complex &result) {
-  Complex tmp(0, 0);               comment("ComplexDotVector::dft_dot_product()");
-
-  int num_elements = ((int) size())* 16;
-  for (int i = 0; i < (int) size(); ++i) {
-    Float param = -1.0f*toFloat(k*(i*16 + index()))/toFloat(num_elements);
-    Complex tmp1(re[i], im[i]);
-    Complex tmp2(cos(param), sin(param));
-
-    tmp += tmp1*tmp2;
-  }
-
-  rotate_sum(tmp.re(), result.re());
-  rotate_sum(tmp.im(), result.im());
-}
-
-
-/**
- * Intentionally made to parallel `matrix_mult`, with the hope of combining
- * the code (template?).
- */
-void complex_matrix_mult(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
-  assert(settings.inner > 0 && (settings.inner % 16 == 0));
-  int const DIM = settings.inner;
-  Int STEP = DIM*numQPUs();
-
-  a += me()*DIM;
-
-  ComplexDotVector vec(settings.inner/16);
-  Complex result(0,0);  // NOTE explicit init required (TODO enforce)
-
-  For (Int a_index = me(),  a_index < settings.rows, a_index += numQPUs())
-    Complex::Ptr dst_local = dst + a_index*settings.cols_result();
-    Complex::Ptr b_local = b;
-
-    vec.load(a);
-
-    Int b_index;
-
-    For (b_index = 0, b_index < settings.columns, b_index++)
-      Complex tmp;
-      vec.dot_product(b_local, tmp);
-
-      result.set_at(b_index & 0xf, tmp);  // intention: b_index % 16
-
-      If ((b_index & 0xf) == 15)
-        pre_write(dst_local, result);
-      End
-
-      b_local += DIM;
-    End  // IDIOT }  - never forget
-
-    If ((b_index & 0xf) != 0)
-      pre_write(dst_local, result);
-    End
-
-    a += STEP;
-  End
-}
-
-
-/**
- * Version of matrix mult, which allows for `a` to be an array with < 16 columns
- * (even 1), and not have a multiple of 16 as number of columns.
- *
- * As a benefit, this needs no columns alignment to 16 for result array.
- *
- * Needs to have the same prototype as `complex_matrix_mult()`.
- */
-void complex_matrix_mult_1(Complex::Ptr dst, Complex::Ptr a, Complex::Ptr b) {
-  assert(settings.inner > 0 && (settings.inner % 16 == 0));
-  assert(settings.columns > 0 && (settings.columns % 16 == 0));
-
-  int const DIM = settings.inner;
-
-  ComplexDotVector vec(settings.inner/16);
-  Complex result(0,0);  // NOTE explicit init required (TODO enforce)
-
-  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
-    vec.load(a);
-
-    // b_index: column index of block of 16 columns to process by 1 QPU
-    For (Int b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
-      Complex::Ptr b_local   = b + b_index*settings.inner;
-      Complex::Ptr dst_local = dst + a_index*settings.cols_result() + b_index;
-  
-      Complex tmp;
-      For (Int j = 0,  j < 16, j += 1)
-        vec.dot_product(b_local, tmp);
-
-        result.set_at(j & 0xf, tmp);
-        b_local += settings.inner;
-      End
-
-      pre_write(dst_local, result);
-    End
-
-    a+= DIM;
-  End
-}
-
-
 /**
  * Remember, b is transposed!
  */
-ComplexFuncType *complex_matrix_mult_decorator(
-  Complex::Array2D &a,
-  Complex::Array2D &b,
-  Complex::Array2D &result,
-  MatrixReadMethod read_method
-) {
+ComplexFuncType *complex_matrix_mult_decorator(Complex::Array2D &a, Complex::Array2D &b, Complex::Array2D &result) {
   assert(a.allocated());
   assert(b.allocated());
 
-  matrix_mult_decorator(a.rows(), a.columns(), b.rows(), read_method);
+  // NB b is tranposed, so 3rd param is actually columns
+  matrix_mult_decorator(a.rows(), a.columns(), b.rows());
   check_allocate_result_array(result);
 
-  if (a.rows() < 16 || a.rows() %16 != 0) {
-    //printf("using complex_matrix_mult_1\n");
-    return complex_matrix_mult_1;
-  } else {
-    //printf("using complex_matrix_mult\n");
-    return complex_matrix_mult;
-  }
+  //return complex_matrix_mult;
+  return matrix_mult<Complex, Complex::Ptr, ComplexDotVector>;
 }
 
 
@@ -741,7 +411,7 @@ void dft_inline_kernel(Complex::Ptr dst, T a) {
         result.set_at(j & 0xf, tmp);
       End
 
-      pre_write(dst_local, result);
+      pre_write(dst_local, result, settings.add_result);
     End
 
     a+= DIM;
@@ -749,20 +419,20 @@ void dft_inline_kernel(Complex::Ptr dst, T a) {
 }
 
 
-DftFuncType dft_inline_decorator(Complex::Array2D &a, Complex::Array2D &result, MatrixReadMethod read_method) {
+DftFuncType dft_inline_decorator(Complex::Array2D &a, Complex::Array2D &result) {
   assert(a.allocated());
 
-  matrix_mult_decorator(a.rows(), a.columns(), a.columns(), read_method);
+  matrix_mult_decorator(a.rows(), a.columns(), a.columns());
   check_allocate_result_array(result);
 
   return dft_inline_kernel<Complex::Ptr, ComplexDotVector>;
 }
 
 
-DftFuncType2 dft_inline_decorator(Float::Array &a, Complex::Array2D &result, MatrixReadMethod read_method) {
+DftFuncType2 dft_inline_decorator(Float::Array &a, Complex::Array2D &result) {
   assert(a.allocated());
 
-  matrix_mult_decorator(1, a.size(), a.size(), read_method);
+  matrix_mult_decorator(1, a.size(), a.size());
   check_allocate_result_array(result);
 
   return dft_inline_kernel<Float::Ptr, DotVector>;
