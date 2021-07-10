@@ -26,10 +26,10 @@ StmtStack::Ptr tempStack(StackCallback f) {
 } // anon namespace
 
 
-Stmt::Ptr tempStmt(StackCallback f) {
+Stmts tempStmt(StackCallback f) {
   StmtStack::Ptr assign = tempStack(f);
   assert(assign->size() == 1);
-  return assign->top();
+  return *assign->top();
 }
 
 
@@ -55,7 +55,10 @@ void StmtStack::PrefetchContext::resolve_prefetches() {
 */
 
     assert(assign->size() == 1);
-    m_prefetch_tags[0]->append(assign->top());
+    auto &assigns = *assign->top();
+
+    assert(!m_prefetch_tags.empty());
+    m_prefetch_tags[0]->append(assigns);
   }
 
   for (int i = 1; i < (int) m_prefetch_tags.size(); ++i) {
@@ -65,8 +68,11 @@ void StmtStack::PrefetchContext::resolve_prefetches() {
       break;
     }
 
+    assert(!m_prefetch_tags.empty());
     assert(m_assigns[assign_index]->size() == 1);
-    m_prefetch_tags[i]->append(m_assigns[assign_index]->top());
+
+    auto &assigns = *m_assigns[assign_index]->top();
+    m_prefetch_tags[i]->append(assigns);
   }
 
   m_prefetch_tags.clear();
@@ -95,6 +101,11 @@ void StmtStack::PrefetchContext::post_prefetch(Ptr assign) {
   }
 
   m_assigns.push_back(assign);
+}
+
+
+void StmtStack::PrefetchContext::add_prefetch_label(Stmt::Ptr pre) {
+  m_prefetch_tags.push_back(pre);
 }
 
 
@@ -155,31 +166,65 @@ void StmtStack::resolve_prefetches() {
 }
 
 
+void StmtStack::push(Stmt::Ptr s) {
+  if (empty()) {
+    push();
+  }
+
+  top()->push_back(s);
+}
+
+
+/**
+ * Return the last added statement on the stack
+ */
+Stmt::Ptr StmtStack::last_stmt() {
+  assert(!empty());
+  auto level = Parent::top();
+  assert(level != nullptr);
+  assert(!level->empty());
+
+  auto ptr = level->back();
+  assert(ptr.get() != nullptr);
+
+  return ptr;
+}
+
+
+/**
+ * Create a new level in the stack
+ */
+void StmtStack::push() {
+  Stack::Ptr stmts(new Stmts());
+  Parent::push(stmts);
+}
+
+
 void StmtStack::reset() {
   clear();
-  push(mkSkip());
+  push();
+
   prefetches.clear();
 }
 
 
 /**
  * Add passed statement to the end of the current instructions
- *
- * This is a logical operation;
- * a new sequence item is added on top, with the previous tree as the left branch,
- * and the new item as the right branch.
- *
- * The net effect is that the passed instruction is added to the end of the sequence
- * of statements to be compiled.
  */
 void StmtStack::append(Stmt::Ptr stmt) {
   assert(stmt.get() != nullptr);
-  assert(!empty());
+  if (empty()) {
+    push();
+  }
   
-  //push(Stmt::create_sequence(pop(), stmt));
-  auto top = top_item();
-  auto seq = Stmt::create_sequence(top->head, stmt);
-  top->head = seq;
+  Parent::top()->push_back(stmt);
+}
+
+
+void StmtStack::append(Stmts const &stmts) {
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    append(stmts[i]);
+  }
 }
 
 
@@ -188,8 +233,10 @@ std::string StmtStack::dump() const {
 
   std::string ret;
 
-  each([&ret] (Stmt const & item) {
-    ret << item.dump() << "\n";
+  each([&ret] (Stmts const &item) {
+    for (int i = 0; i < (int) item.size(); i++) {
+      ret << item[i]->dump() << "\n";
+    }
   });
 
   return ret;
@@ -200,12 +247,16 @@ std::string StmtStack::dump() const {
  * Only first item on stack is checked
  */
 Stmt *StmtStack::first_in_seq() const {
+  breakpoint  // TODO is this ever called?
+
   if (empty()) {
     return nullptr;
   }
 
-  Stmt::Ptr item = top();
-  return item->first_in_seq();
+  auto item = top();
+  assert(item.get() != nullptr);
+  assert(!item->empty());
+  return (*item)[0]->first_in_seq();
 }
 
 
@@ -216,8 +267,7 @@ StmtStack &stmtStack() {
 
 
 void clearStack() {
-  if (p_stmtStack == nullptr) {
-    // May occur if error occurs on init
+  if (p_stmtStack == nullptr) {  // May occur if error during initialization
     return;
   }
 

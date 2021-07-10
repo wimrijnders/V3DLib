@@ -24,6 +24,8 @@ using Code = SharedArray<uint32_t>;
  *    which can be mangled to the heart's content of the hardware.
  */
 void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList *params) {
+
+#ifdef DEBUG
   //
   // Number of 32-bit words needed for kernel code & parameters
   // - First two values are always the QPU ID and num QPU's
@@ -34,6 +36,7 @@ void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList *params) {
   //
   unsigned numWords = qpuCodeMemOffset + (2 + params->size() + 1)*numQPUs + 2*numQPUs;
   assert(numWords < codeMem.size());
+#endif  // DEBUG
 
   // Pointer to start of code
   uint32_t *qpuCodePtr = codeMem.getPointer();

@@ -1,13 +1,13 @@
 #include "Reg.h"
 #include "Support/basics.h"
-#include "Target/instr/Instructions.h"
+#include "Support/Platform.h"
+#include "Mnemonics.h"
 
 namespace V3DLib {
 namespace {
 
-const char* specialStr(RegId rid) {
-  Special s = (Special) rid;
-  switch (s) {
+char const *specialStr(RegId rid) {
+  switch ((Special) rid) {
     case SPECIAL_UNIFORM:       return "UNIFORM";
     case SPECIAL_ELEM_NUM:      return "ELEM_NUM";
     case SPECIAL_QPU_NUM:       return "QPU_NUM";
@@ -31,20 +31,13 @@ const char* specialStr(RegId rid) {
   assert(false);
   return "";
 }
-}  //  anon namespace
 
-
-/**
- * Translate variable to source register.
- */
-Reg srcReg(Var v) {
-  Reg r;
-
-  switch (v.tag()) {
+void var_to_reg(Var var, Reg &r) {
+  switch (var.tag()) {
     case UNIFORM:
       r.tag     = SPECIAL;
       r.regId   = SPECIAL_UNIFORM;
-      r.isUniformPtr = v.is_uniform_ptr();
+      r.isUniformPtr = var.is_uniform_ptr();
       break;
     case QPU_NUM:
       r.tag     = SPECIAL;
@@ -60,48 +53,116 @@ Reg srcReg(Var v) {
       break;
     case STANDARD:
       r.tag   = REG_A;
-      r.regId = v.id();
-      break;
-    case VPM_WRITE:
-    case TMU0_ADDR:
-      printf("V3DLib: Reading from write-only special register is forbidden\n");
-      assert(false);
+      r.regId = var.id();
       break;
     case DUMMY:
       r.tag   = NONE;
-      r.regId = v.id();
+      r.regId = var.id();
+      break;
+    case VPM_WRITE:
+      r = Target::instr::VPM_WRITE;
+      break;
+    case TMU0_ADDR:
+      r = Target::instr::TMU0_S;
       break;
     default:
-      assert(false);
+      assertq(false, "srcReg(): Unhandled Var-tag");
       break;
   }
+}
 
-  return r;
+
+}  //  anon namespace
+
+
+Reg::Reg(Var var) { var_to_reg(var, *this); }
+
+
+bool Reg::operator==(Reg const &rhs) const {
+  // Comparison field isUniformPtr intentionially skipped here 
+  return tag == rhs.tag && regId == rhs.regId;
+}
+
+
+bool Reg::operator<(Reg const &rhs) const {
+  if (tag != rhs.tag) {
+    return tag < rhs.tag;
+  }    
+
+  return regId < rhs.regId;
 }
 
 
 /**
- * Translate variable to target register.
+ * Determine reg file of current register
  */
-Reg dstReg(Var v) {
-  using namespace V3DLib::Target::instr;
+RegTag Reg::regfile() const {
+  if (!Platform::compiling_for_vc4()) return REG_A;  // There is no REG_B for v3d, only REG_A
 
-  switch (v.tag()) {
-    case UNIFORM:
-    case QPU_NUM:
-    case ELEM_NUM:
-    case VarTag::VPM_READ:
-      fatal("V3DLib: writing to read-only special register is forbidden");
-      return Reg();  // Return anything
+  assert(tag <= SPECIAL);
 
-    case STANDARD:          return Reg(REG_A, v.id());
-    case VarTag::VPM_WRITE: return Target::instr::VPM_WRITE;
-    case TMU0_ADDR:         return TMU0_S;
+  if (tag == REG_A) return REG_A;
+  if (tag == REG_B) return REG_B;
+
+  if (tag == SPECIAL) {
+    switch(regId) {
+    case SPECIAL_ELEM_NUM:
+    case SPECIAL_RD_SETUP:
+    case SPECIAL_DMA_LD_WAIT:
+    case SPECIAL_DMA_LD_ADDR:
+      return REG_A;
+
+    case SPECIAL_QPU_NUM:
+    case SPECIAL_WR_SETUP:
+    case SPECIAL_DMA_ST_WAIT:
+    case SPECIAL_DMA_ST_ADDR:
+      return REG_B;
 
     default:
-      fatal("Unhandled case in dstReg()");
-      return Reg();  // Return anything
+      break;
+    }
   }
+
+  return NONE;
+}
+
+
+bool Reg::can_read(bool check) const {
+  bool ret = true;
+
+  if (tag == SPECIAL) {
+    if (regId == SPECIAL_VPM_WRITE || regId == SPECIAL_TMU0_S) {
+      ret = false;
+    }
+  }
+
+  if (!ret && check) {
+    std::string msg = "Can not read from register ";
+    msg << dump();
+    assertq(false, msg);
+  }
+
+  return ret;
+}
+
+
+bool Reg::can_write(bool check) const {
+  bool ret = true;
+
+  if (tag == SPECIAL) {
+    if (regId == SPECIAL_UNIFORM || regId == SPECIAL_QPU_NUM
+     || regId == SPECIAL_ELEM_NUM || regId == SPECIAL_VPM_READ) {
+      ret = false;
+    }
+  }
+
+  if (!ret && check) {
+    std::string msg = "Can not write to register ";
+    msg << dump();
+    assertq(false, msg);
+  }
+
+  return ret;
 }
 
 

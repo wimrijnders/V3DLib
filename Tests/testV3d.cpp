@@ -390,9 +390,6 @@ TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
   using namespace V3DLib::v3d::instr;
 
   SUBCASE("Correct output of dump program") {
-    struct v3d_device_info devinfo;  // NOTE: uninitialized struct! For test OK
-    devinfo.ver = 42;               //        <-- only this needs to be set
-
     const char *expected = "\n{\n\
   type: INSTR_TYPE_ALU,\n\
   sig: {ldunifrf },\n\
@@ -410,7 +407,7 @@ TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
     uint64_t nop = 0x3d803186bb800000;  // nop                  ; nop               ; ldunifrf.rf0 
 
     struct v3d_qpu_instr instr;
-    REQUIRE(instr_unpack(&devinfo, nop, &instr));
+    REQUIRE(instr_unpack(nop, &instr));
 
     char buffer[10*1024];
     instr_dump(buffer, &instr);
@@ -462,7 +459,7 @@ TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
       "and  r1, r0, 15      ; nop"
     };
 
-    std::vector<Instr> instrs; 
+    Instructions instrs; 
 
     instrs << band(rf(0), r0, 0b1111)
            << band(r1, r0, 0b1111);
@@ -496,7 +493,7 @@ TEST_CASE("Check v3d assembly/disassembly [v3d][asm]") {
 
 
   SUBCASE("Opcodes not in qpu_disasm kernel assembled correctly") {
-    std::vector<Instr> ret;
+    Instructions ret;
 
     ret
       << nop().smul24(r1, SmallImm(2), rf(0))

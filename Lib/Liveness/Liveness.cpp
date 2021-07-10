@@ -9,6 +9,8 @@
 #include "Target/Subst.h"
 #include "Common/CompileData.h"
 #include "Optimizations.h"
+#include "Support/Timer.h"
+#include "UseDef.h"
 
 namespace V3DLib {
 namespace {
@@ -44,8 +46,7 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
     if (replace_with.tag == REG_A) return true;
     if (Platform::compiling_for_vc4() && replace_with.tag == REG_B) return true;
 
-    UseDefReg out;
-    out.set_used(instr);
+    UseDefReg out(instr);
 
     std::string msg = "regAlloc(): allocated register must be in register file.";
     msg << "\n"
@@ -58,22 +59,20 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
     return false;
   };
 
-  UseDef useDefSet;
-  useDefSet.set_used(instr);  // Registers only usage REG_A
+  UseDef useDefSet(instr);  // Registers only usage REG_A
 
-  for (int j = 0; j < useDefSet.def.size(); j++) {
-    RegId r = useDefSet.def[j];
+  if (useDefSet.def.tag != NONE) {
+    RegId r = useDefSet.def.regId; 
     assert(!alloc[r].unused());
     Reg replace_with = alloc[r].reg;
 
-    if (!check_regfile_register(replace_with, r)) continue;
-    replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
-
-    renameDest(instr, Reg(REG_A, r), replace_with);
+    if (check_regfile_register(replace_with, r)) {
+      replace_with.tag = (replace_with.tag == REG_A)?TMP_A:TMP_B;
+      instr.rename_dest(Reg(REG_A, r), replace_with);
+    }
   }
 
-  for (int j = 0; j < useDefSet.use.size(); j++) {
-    RegId r = useDefSet.use[j];
+  for (auto r: useDefSet.use) {
     assert(!alloc[r].unused());
     Reg replace_with = alloc[r].reg;
 
@@ -90,18 +89,25 @@ void allocate_registers(Instr &instr, RegUsage const &alloc) {
 
 /**
  * Removes all SKIP instructions from the list
+ *
+ * Creating a new list is MUCH faster than inline removal using Instr::remove().
+ * i.e.  Remove 1857 SKIPs from kernel final size 140828
+ *        - remove() -> 28.557023s
+ *        - new list -> 0.170661s
  */
-void remove_replaced_instructions(Instr::List &instrs) {
+Instr::List  remove_replaced_instructions(Instr::List &instrs) {
+  Instr::List ret;
+
   int cur   = 0;
   int count = 0;
 
   while (cur < instrs.size()) {
     if (instrs[cur].tag == InstrTag::SKIP) {
-      instrs.remove(cur);
       count++;
     } else {
-      cur++;
+      ret << instrs[cur];
     }
+    cur++;
   }
 
 /*
@@ -111,6 +117,8 @@ void remove_replaced_instructions(Instr::List &instrs) {
     debug(msg);
   }
 */
+
+  return ret;
 }
 
 }  // anon namespace
@@ -124,27 +132,28 @@ void remove_replaced_instructions(Instr::List &instrs) {
  * Determine the liveness sets for each instruction.
  */
 void Liveness::compute_liveness(Instr::List &instrs) {
+  //Timer t("compute_liveness", true);
+
   // Initialise live mapping to have one entry per instruction
   setSize(instrs.size());
-
-  UseDef useDef;
+/*
+  // Went wrong with Seq<>, you never know later on
+  for (int i = 0; i < (int) m_set.size(); i++) {
+    assert(m_set[i].empty());
+  }
+*/
 
   // For temporarily storing live-in and live-out variables
-  LiveSet liveIn;
-  LiveSet liveOut;
+  RegIdSet liveIn;
+  RegIdSet liveOut;
 
   bool changed = true;
   int count = 0;
 
-/*
-  {
-    std::string msg;
-    msg << "compute_liveness CFG:\n"
-        << m_cfg.dump();
-
-    debug(msg);
-}
-*/
+  //Timer t2("compute_liveness loop intern");
+  //Timer t3("compute liveOut");
+  //Timer t4("compute use/def rest");
+  //Timer t5("compute insert");
 
   // Iterate until no change, i.e. fixed point
   while (changed) {
@@ -155,11 +164,12 @@ void Liveness::compute_liveness(Instr::List &instrs) {
       auto &instr = instrs[i];
 
       bool also_set_used = false;
-      if (instr.isCondAssign()) {
-        UseDef useDef;
-        useDef.set_used(instr);
-        if (!useDef.def.empty()) {
-          auto &item = m_reg_usage[useDef.def[0]];
+
+      if (instr.isCondAssign()) {  // no performance impact ~ 1.5%
+        Reg dst = instr.dst_a_reg();
+
+        if (dst.tag != NONE) {
+          auto &item = m_reg_usage[dst.regId];
 
           // If the dst variable is not used before, it should not be set as used as well
           assert(item.first_dst() <= i);
@@ -178,23 +188,41 @@ void Liveness::compute_liveness(Instr::List &instrs) {
         }
       }
 
+      //t2.start();
       // Compute 'use' and 'def' sets
-      useDef.set_used(instr, also_set_used);
-      computeLiveOut(i, liveOut);
-      liveIn.add_not_used(liveOut, useDef);  // Remove the 'def' set from the live-out set to give live-in set
-      liveIn.add(useDef.use);
+      UseDef useDef(instr, also_set_used);
 
+      //t3.start();
+      computeLiveOut(i, liveOut);
+      //t3.stop();
+
+      //t4.start();
+      liveIn = liveOut;
+      if (useDef.def.tag != NONE) {
+        liveIn.remove(useDef.def.regId);  // Remove the 'def' set from the live-out set to give live-in set
+      }
+      liveIn.add(useDef.use);
+      //t4.stop();
+
+      //t5.start();
       if (insert(i, liveIn)) {
         changed = true;
       }
+      //t5.stop();
+      //t2.stop();
     }
 
     count++;
   }
 
+  //t2.end();
+  //t3.end();
+  //t4.end();
+  //t5.end();
+
 /*
   std::string msg;
-  msg << "compute_liveness count: " << count;
+  msg << "compute_liveness num iterations: " << count;
   debug(msg);
 */
 }
@@ -204,12 +232,6 @@ void Liveness::clear() {
   m_cfg.clear();
   m_set.clear();
   m_reg_usage.reset();
-
-/*
-  std::string msg;
-  msg << "Liveness after Liveness::clear(): " << this->dump();
-  debug(msg);
-*/
 }
 
 
@@ -219,24 +241,13 @@ void Liveness::compute(Instr::List &instrs) {
   m_cfg.build(instrs);
   m_reg_usage.set_used(instrs);
 
-  compute_liveness(instrs);
+  //Timer t3("compute liveness", false);
+  compute_liveness(instrs); // performance hog 23/28s
+  //t3.end();
   assert(instrs.size() == size());
 
-/*
-  {
-    std::string msg;
-    msg << " CFG table:\n" << cfg().dump();
-    debug(msg);
-}
-*/
-
   m_reg_usage.set_live(*this);
-/*
-  if (!Platform::compiling_for_vc4()) {
-    debug(m_reg_usage.dump(true));
-    breakpoint
-  }
-*/
+
   compile_data.reg_usage_dump = m_reg_usage.dump(true);
   compile_data.liveness_dump = dump();
 
@@ -250,58 +261,52 @@ void Liveness::compute(Instr::List &instrs) {
  * Compute the live-out variables of an instruction, given the live-in
  * variables of all instructions and the CFG.
  */
-void Liveness::computeLiveOut(InstrId i, LiveSet &liveOut) {
+void Liveness::computeLiveOut(InstrId i, RegIdSet &liveOut) {
   liveOut.clear();
-  Succs &s = m_cfg[i];
 
-  for (int j = 0; j < s.size(); j++) {
-    LiveSet &set = get(s[j]);
-    liveOut.add(set);
+  for (auto const &val : m_cfg[i]) {
+    liveOut.add(get(val));
   }
 }
 
 
 void Liveness::setSize(int size) {
-  m_set.set_size(size);
+  m_set.resize(size);
 }
 
 
-bool Liveness::insert(int index, LiveSet const &set) {
-  bool changed = false;
+/**
+ * @return true if something inserted, false otherwise
+ */
+bool Liveness::insert(int index, RegIdSet const &set) {
+  auto &item = m_set[index];
 
-  for (auto it : set) {
-    bool present = m_set[index].member(it);
-
-    m_set[index].insert(it);
-    assert(m_set[index].member(it));
-
-    if (!present) {
-      changed = true;
-    }
-  }
-
-  return changed;
+  int prev_size = (int) item.size();
+  item.add(set);
+  return ((int) item.size() != prev_size);
 }
 
 
 std::string Liveness::dump() {
   std::string ret;
 
-  for (int i = 0; i < m_set.size(); ++i) {
-    ret += std::to_string(i) + ": ";
+  for (int i = 0; i < (int) m_set.size(); ++i) {
+    std::string line;
+    line += std::to_string(i) + ": ";
 
     auto &item = m_set[i];
     bool did_first = false;
 
     for (auto it : item) {
       if (did_first) {
-        ret += ", ";
+        line += ", ";
       } else {
         did_first = true;
       }
-      ret += std::to_string(it);
+      line += std::to_string(it);
     }
 
+    ret += line;
     ret += "\n";
   }
 
@@ -325,20 +330,30 @@ void Liveness::optimize(Instr::List &instrs, int numVars) {
 
   compile_data.target_code_before_optimization = instrs.dump();
 
+  //Timer t1("live compute");
   Liveness live(numVars);
   live.compute(instrs);
-  //live.dump();
+  //std::cout << live.dump() << std::endl;
+  //t1.end();
 
   if (combineImmediates(live, instrs)) {
+    //std::cout << "After combineImmediates:\n"; 
     //std::cout << instrs.dump(true) << std::endl;  // Useful sometimes for debug
+
+    //Timer t3("combine immediates compute", true);
     live.compute(instrs);  // instructions have changed, redo liveness
+    //std::cout << live.dump() << std::endl;
   }
 
+  //Timer t3("introduceAccum");
   int prev_count_skips = count_skips(instrs);
   compile_data.num_accs_introduced = introduceAccum(live, instrs);
   assertq(prev_count_skips == count_skips(instrs), "SKIP count changed after introduceAccum()");
+	//t3.end();
 
-  remove_replaced_instructions(instrs);
+  // Times for following (now) insignificant
+
+  instrs = remove_replaced_instructions(instrs);
   assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list after cleanup");
 
   //std::cout << count_reg_types(instrs).dump() << std::endl;

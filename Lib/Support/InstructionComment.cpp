@@ -26,7 +26,9 @@ void InstructionComment::clear_comments() {
  * For display purposes only, when generating a dump of the opcodes.
  */
 void InstructionComment::header(std::string const &msg) {
+  if (msg.empty()) return;
   assertq(m_header.empty(), "Header comment already has a value when setting it", true);
+
   m_header = msg;
   findAndReplaceAll(m_header, "\n", "\n# ");
 }

@@ -4,7 +4,6 @@
 
 namespace V3DLib {
 
-RegTag regFileOf(Reg r);
 void satisfy(Instr::List &instrs);
 
 }  // namespace V3DLib

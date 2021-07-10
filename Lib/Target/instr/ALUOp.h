@@ -14,9 +14,6 @@ public:
   // M_: for 'mul' ALU
   //
   enum Enum :uint32_t {
-    // The idea behind this construct is to eventually be able to use
-    // one enum for OpIDs and ALUOp::Enum
-    FLOAT = 0x80000000, // signals float operation
     NONE = (uint32_t) -1,
 
     NOP = 0,            // No op
@@ -60,16 +57,11 @@ public:
     A_TIDX,
     A_EIDX,
     A_FFLOOR,
-    A_FSIN
-/*
-    // Example of use 'FLOAT'
-    NUM_OPS,
-
-    // NB don't implement this! using recip() instead
-    A_FDIV = NUM_OPS + FLOAT + OpId::DIV, // Floating-point divide
-*/
+    A_FSIN,
+    A_TMUWT
   };
 
+  ALUOp() = default;
   explicit ALUOp(Enum val) : m_value(val) {}
   explicit ALUOp(Op const &op);
 
@@ -77,7 +69,6 @@ public:
   bool isNOP() const { return m_value == NOP; }
   bool isRot() const { return m_value == M_ROTATE; }
   bool isMul() const;
-  bool noOperands() const { return (m_value == A_TIDX || m_value == A_EIDX); }
   std::string pretty() const;
 
   uint32_t vc4_encodeAddOp() const;

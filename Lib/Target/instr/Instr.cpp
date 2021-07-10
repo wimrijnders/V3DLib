@@ -1,59 +1,12 @@
 #include "Instr.h"         // Location of definition struct Instr
 #include "Support/debug.h"
 #include "Target/Pretty.h"  // pretty_instr_tag()
-#include "Support/basics.h" // fatal()
+#include "Support/basics.h"
 #include "Support/Platform.h"
 #include "Source/BExpr.h"   // class CmpOp
-#include "Target/SmallLiteral.h"
+#include "LibSettings.h"
 
 namespace V3DLib {
-
-// ============================================================================
-// Class RegOrImm
-// ============================================================================
-
-Reg &RegOrImm::reg()           { assert(is_reg()); return m_reg; }
-Reg RegOrImm::reg() const      { assert(is_reg()); return m_reg; }
-SmallImm &RegOrImm::imm()      { assert(is_imm()); return m_smallImm; }
-SmallImm RegOrImm::imm() const { assert(is_imm()); return m_smallImm; }
-
-void RegOrImm::set_imm(int rhs) {
-  m_is_reg  = false;
-  m_smallImm.val = rhs;
-}
-
-
-void RegOrImm::set_reg(RegTag tag, RegId id) {
-  m_is_reg  = true;
-  m_reg.tag   = tag;
-  m_reg.regId = id;
-}
-
-
-void RegOrImm::set_reg(Reg const &rhs) {
-  m_is_reg  = true;
-  m_reg = rhs;
-}
-
-bool RegOrImm::operator==(RegOrImm const &rhs) const {
-  if (m_is_reg != rhs.m_is_reg) return false;
-
-  if (m_is_reg) {
-    return m_reg == rhs.m_reg;
-  } else {
-    return m_smallImm == rhs.m_smallImm;
-  }
-}
-
-
-std::string RegOrImm::disp() const {
-  if (m_is_reg) {
-    return m_reg.dump();
-  } else {
-    return printSmallLit(m_smallImm.val);
-  }
-}
-
 
 // ============================================================================
 // Class BranchTarget
@@ -82,27 +35,46 @@ std::string BranchTarget::to_string() const {
 Instr::Instr(InstrTag in_tag) {
   switch (in_tag) {
   case InstrTag::ALU:
-    tag          = InstrTag::ALU;
-    ALU.m_setCond.clear();
-    ALU.cond     = always;
+    tag          = in_tag;
+    m_assign_cond = always;
+    m_set_cond.clear();
     break;
+
   case InstrTag::LI:
-    tag          = InstrTag::LI;
-    LI.m_setCond.clear();
-    LI.cond      = always;
+    tag           = in_tag;
+    m_assign_cond = always;
+    m_set_cond.clear();
+    break;
+
+  case InstrTag::BRL:
+    tag               = in_tag;
+    m_branch_cond.tag = COND_ALWAYS;
     break;
 
   case InstrTag::INIT_BEGIN:
   case InstrTag::INIT_END:
   case InstrTag::RECV:
   case InstrTag::END:
-  case InstrTag::TMU0_TO_ACC4:
+  case InstrTag::VPM_STALL:
     tag = in_tag;
     break;
+
   default:
     assert(false);
     break;
   }
+}
+
+
+Reg Instr::dest() const {
+  assertq(has_dest(), "oops", true);
+  return m_dest;
+}
+
+
+void Instr::dest(Reg const &rhs) {
+  assertq(has_dest(), "oops", true);
+  m_dest = rhs;
 }
 
 
@@ -114,22 +86,154 @@ Instr Instr::nop() {
 
 
 /**
- * Initial capital to discern it from member var's `setFlags`.
+ * There is at most 1 dst register.
+ *
+ * Absence of it is indicated by tag NONE in the return value
  */
+Reg Instr::dst_reg() const {
+  if (has_dest()) return dest();
+  return Reg(NONE, 0);
+}
+
+
+Reg Instr::dst_a_reg() const {
+  if (!has_dest()) return Reg(NONE, 0);
+
+  Reg ret = dest();
+  if (ret.tag != REG_A) ret.tag = NONE;
+  return ret;
+}
+
+
+RegIdSet Instr::src_a_regs(bool set_use_where) const {
+  RegIdSet ret;
+
+  for (auto const &r : src_regs(set_use_where)) {
+    if (r.tag == REG_A) ret.insert(r.regId);
+  }
+
+  return ret;
+}
+
+
+bool Instr::is_dst_reg(Reg const &rhs) const {
+  Reg dst = dst_reg();
+
+  if (rhs.tag == NONE) {
+    breakpoint
+  }
+
+  return (dst.tag != NONE && dst == rhs);
+}
+
+
+/**
+ * Return all source registers in this instruction
+ *
+ * Param 'set_use_where' need only be true during liveness analysis.
+ *
+ * @param set_use_where  if true, regard assignments in conditional 'where'
+ *                       instructions as usage.
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * 'set_use_where' needs to be true for the following case (target language):
+ *
+ *    LI A5 <- 0                  # assignment
+ *    ...
+ *    where ZC: LI A6 <- 1
+ *    where ZC: A5 <- or(A6, A6)  # Conditional assignment
+ *    ...
+ *    S[VPM_WRITE] <- shl(A5, 0)  # last use
+ *
+ *   If the condition is ignored (`set_use_where == false`), the conditional
+ *   assignment is regarded as an overwrite of the previous one. The variable
+ *   is then considered live from the conditional assignment onward.
+ *   This is wrong, the value of the first assignment may be significant due
+ *   to the condition. The usage of `A5` runs the risk of being assigned different
+ *   registers for the different assignments, which will lead to wrong code execution.
+ *
+ * * However, always using `set_use_where == true` leads to variables being live
+ *   for unnecessarily long. If this is the *only* usage of `A6`:
+ *
+ *    where ZC: LI A6 <- 1
+ *    where ZC: A5 <- or(A6, A6)  # Conditional assignment
+ *
+ *   ... `A6` would be considered live from the start of the program
+ *   onward till the last usage.
+ *   This unnecessarily ties up a register for a long duration, complicating the
+ *   allocation by creating a false shortage of registers.
+ *   This case can not be handled by the liveness analysis as implemented here.
+ *   It is corrected afterwards in methode `Liveness::compute()`.
+ */
+std::set<Reg> Instr::src_regs(bool set_use_where) const {
+  auto ALWAYS = AssignCond::Tag::ALWAYS;
+
+  std::set<Reg> ret;
+
+  if (set_use_where) {  // Add destination reg to 'use' set if conditional assigment
+    if (tag == InstrTag::LI || tag == InstrTag::ALU) {
+      if (m_assign_cond.tag != ALWAYS) {
+        ret.insert(dest());
+      }
+    }
+  }
+
+  if (tag == InstrTag::ALU) {
+    if (ALU.srcA.is_reg()) ret.insert(ALU.srcA.reg());
+    if (ALU.srcB.is_reg()) ret.insert(ALU.srcB.reg());
+  }  
+
+  return ret;
+}
+
+
+bool Instr::is_src_reg(Reg const &rhs) const {
+  if (tag != InstrTag::ALU) return false;
+
+  if (ALU.srcA.is_reg() && ALU.srcA.reg() == rhs) return true;
+  if (ALU.srcB.is_reg() && ALU.srcB.reg() == rhs) return true;
+
+  return false;
+}
+
+
+/**
+ * Rename a destination register in an instruction
+ *
+ * @return true if anything replaced, false otherwise
+ */
+bool Instr::rename_dest(Reg const &current, Reg const &replace_with) {
+  assert(current != replace_with);  // Otherwise subst is senseless
+  if (!has_dest()) return false;
+
+  if (dest() == current) {
+    dest(replace_with);
+    return true;
+  }
+
+  return false;
+}
+
+
 Instr &Instr::setCondFlag(Flag flag) {
-  setCond().setFlag(flag);
+  assert(tag == InstrTag::LI || InstrTag::ALU);
+  m_set_cond.setFlag(flag);
   return *this;
 }
 
 
 Instr &Instr::setCondOp(CmpOp const &cmp_op) {
-  setCond().tag(cmp_op.cond_tag());
+  assert(tag == InstrTag::LI || InstrTag::ALU);
+  m_set_cond.tag(cmp_op.cond_tag());
   return *this;
 }
 
 
 Instr &Instr::cond(AssignCond in_cond) {
-  ALU.cond = in_cond;
+  assign_cond(in_cond);
   return *this;
 }
 
@@ -138,24 +242,32 @@ Instr &Instr::cond(AssignCond in_cond) {
  * Determine if instruction is a conditional assignment
  */
 bool Instr::isCondAssign() const {
-  if (tag == InstrTag::LI && !LI.cond.is_always())
-    return true;
-
-  if (tag == InstrTag::ALU && !ALU.cond.is_always())
-    return true;
+  if (tag == InstrTag::LI || tag == InstrTag::ALU) {
+   return !m_assign_cond.is_always();
+  }
 
   return false;
 }
 
 
-AssignCond Instr::assign_cond() const {
-  if (tag == InstrTag::LI)
-    return LI.cond;
+void Instr::assign_cond(AssignCond rhs) { assert(tag == InstrTag::LI || tag == InstrTag::ALU); m_assign_cond = rhs; }
+AssignCond Instr::assign_cond() const   { assert(tag == InstrTag::LI || tag == InstrTag::ALU); return m_assign_cond; }
 
-  if (tag == InstrTag::ALU)
-    return ALU.cond;
+BranchTarget Instr::branch_target() const { assert(tag == V3DLib::BR); return m_branch_target; }
 
-  return always;
+void  Instr::branch_label(Label rhs) { assert(tag == InstrTag::BRL); m_branch_label = rhs; }
+Label Instr::branch_label() const    { assert(tag == InstrTag::BRL); return m_branch_label; }
+
+Instr &Instr::branch_cond(BranchCond rhs) {
+  assert(tag == V3DLib::BR || tag == V3DLib::BRL);
+  m_branch_cond = rhs;
+  return *this;
+}
+
+
+BranchCond Instr::branch_cond() const {
+  assert(tag == V3DLib::BR || tag == V3DLib::BRL);
+  return m_branch_cond;
 }
 
 
@@ -165,10 +277,11 @@ AssignCond Instr::assign_cond() const {
  * TODO check if this is the exact complement of isCondAssign()
  */
 bool Instr::is_always() const {
-  bool always = (tag == InstrTag::LI && LI.cond.is_always())
-             || (tag == InstrTag::ALU && ALU.cond.is_always());
+  if (tag == InstrTag::LI || tag == InstrTag::ALU) {
+    return m_assign_cond.is_always();
+  }
 
-  return always;
+  return true;  // TODO returned false previously, check correct working
 }
 
 
@@ -182,38 +295,22 @@ bool Instr::isLast() const {
 }
 
 
-SetCond const &Instr::setCond() const {
-  switch (tag) {
-    case InstrTag::LI:
-      return LI.m_setCond;
-    case InstrTag::ALU:
-      return ALU.m_setCond;
-    default:
-      assertq(false, "setCond() can only be called for LI or ALU");
-      break;
-  }
-
-  return ALU.m_setCond;  // Return anything
-}
-
-
-SetCond &Instr::setCond() {
-  switch (tag) {
-    case InstrTag::LI:
-      return LI.m_setCond;
-    case InstrTag::ALU:
-      return ALU.m_setCond;
-    default:
-      assertq(false, "setCond() can only be called for LI or ALU");
-      break;
-  }
-
-  return ALU.m_setCond;  // Return anything
+SetCond Instr::set_cond() const {
+  assert(tag == InstrTag::LI || InstrTag::ALU);
+  return m_set_cond;
 }
 
 
 Instr &Instr::pushz() {
-  setCond().tag(SetCond::Z);
+  assert(tag == InstrTag::LI || InstrTag::ALU);
+  m_set_cond.tag(SetCond::Z);
+  return *this;
+}
+
+Instr &Instr::allzc() {
+  assert(tag == InstrTag::BRL);
+  m_branch_cond.tag  = COND_ALL;
+  m_branch_cond.flag = Flag::ZC;
   return *this;
 }
 
@@ -221,21 +318,20 @@ Instr &Instr::pushz() {
 /**
  * Convert branch label to branch target
  * 
+ * Convert branch label (BRL) instruction to branch instruction with offset (BR).
+ * 
  * @param offset  offset to the label from current instruction
  */
 void Instr::label_to_target(int offset) {
   assert(tag == InstrTag::BRL);
-
-  // Convert branch label (BRL) instruction to branch instruction with offset (BR)
-  // Following assumes that BranchCond field 'cond' survives the transition to another union member
 
   BranchTarget t;
   t.relative       = true;
   t.useRegOffset   = false;
   t.immOffset      = offset - 4;  // Compensate for the 4-op delay for executing a branch
 
-  tag        = InstrTag::BR;
-  BR.target  = t;
+  tag = InstrTag::BR;
+  m_branch_target = t;
 }
 
 
@@ -245,22 +341,18 @@ bool Instr::isUniformLoad() const {
     return false;
   }
 
-  if (!ALU.srcA.is_reg() || !ALU.srcB.is_reg()) {
-    return false;  // Both operands must be regs
-  }
+  Reg const UNIFORM_READ( SPECIAL, SPECIAL_UNIFORM);  // From Mnemonics
 
-  Reg aReg  = ALU.srcA.reg();
-#ifdef DEBUG
-  Reg bReg  = ALU.srcB.reg();
-#endif
-
-  if (aReg.tag == SPECIAL && aReg.regId == SPECIAL_UNIFORM) {
-    assert(aReg == bReg);  // Apparently, this holds (NOT TRUE)
-    return true;
-  } else {
-    assert(!(bReg.tag == SPECIAL && bReg.regId == SPECIAL_UNIFORM));  // not expecting this to happen
+  if (ALU.srcA != UNIFORM_READ) {
+    assertq(ALU.srcB != UNIFORM_READ, "Both srcA and srcB should both be UNIFORM_READ or not");  // Sanity check
     return false;
   }
+
+  // Sanity checks
+  assertq(ALU.srcB == UNIFORM_READ, "Both srcA and srcB should be UNIFORM_READ");
+  assertq(ALU.op == ALUOp::A_BOR, "Expcting uniform read only in combination with move");  // This is how we use it, 
+                                                                                           // may be overly strict.
+  return true;
 }
 
 
@@ -269,27 +361,8 @@ bool Instr::isUniformPtrLoad() const {
 }
 
 
-bool Instr::isTMUAWrite(bool fetch_only) const {
-   if (tag != InstrTag::ALU) {
-    return false;
-  }
-
-  Reg reg = ALU.dest;
-  if (reg.tag != SPECIAL) {
-    return false;
-  }
-
-  return (!fetch_only && reg.regId == SPECIAL_DMA_ST_ADDR)
-      || (reg.regId == SPECIAL_TMU0_S);
-}
-
-
 bool Instr::isRot() const {
-  if (tag != InstrTag::ALU) {
-    return false;
-  }
-
-  return ALU.op.isRot();
+  return (tag == InstrTag::ALU) && ALU.op.isRot();
 }
 
 
@@ -300,13 +373,10 @@ bool Instr::isRot() const {
  */
 bool Instr::isZero() const {
   return tag == InstrTag::LI
-      && !LI.m_setCond.flags_set()
-      && LI.cond.tag      == AssignCond::NEVER
-      && LI.cond.flag     == ZS
-      && LI.dest.tag      == REG_A
-      && LI.dest.regId    == 0
-      && LI.dest.isUniformPtr == false 
+      && !m_set_cond.flags_set()
+      && m_assign_cond == AssignCond(AssignCond::NEVER, ZS)
       && LI.imm.is_zero()
+      && dest() == Reg(REG_A, 0) 
   ;
 }
 
@@ -322,47 +392,46 @@ std::string Instr::dump() const {
 /**
  * Determine the accumulators used in this instruction
  *
+ * There is no distinguishing dst and src here.
+ *
  * @return bitfield with the bits set for used accumulators,
  *         bit 0 == ACC0, bit 1 == ACC1 etc.
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ *
+ * 1. Somewhat of a hack: LI for v3d can potentially use r0 and r1, flag as used here.
+ *    See encode_int_immediate() and convert_int_powers() in v3d KernelDriver. 
+ *    This could be further specified.
+ *
+ *    Better would be to:
+ *     - Flag usage accs in v3d instruction generation
+ *     - Allow more flexibility in v3d instruction generation to select accs
+ *     - Don't use accs at all there, but that needs a way to select rf-regs during v3d generation
+ *
+ *    A bit unhappy about this, but it's necessary to prevent.
+ *    Another brilliant idea (ie use accs in v3d instructions) which is turning out to be a brain fart.
  */
 uint32_t Instr::get_acc_usage() const {
-  // No distinguishing dst and src here
   uint32_t ret = 0;
 
   switch (tag) {
-    case InstrTag::TMU0_TO_ACC4:  // Load immediate
-      ret |=  (1 << 4);
-      break;
-
     case InstrTag::LI:  // Load immediate
-      if (LI.dest.tag == ACC) {
-        ret |=  (1 << LI.dest.regId);
+      if (dest().tag == ACC) {
+        ret |=  (1 << dest().regId);
       }
 
-      //
-      // Somewhat of a hack.
-      //
-      // LI for v3d can potentially use r0 and r1, flag as used here.
-      // See encode_int_immediate() and convert_int_powers() in v3d KernelDriver. 
-      // This could be further specified.
-      //
-      // Better would be to:
-      //  - Flag usage accs in v3d instruction generation
-      //  - Allow more flexibility in v3d instruction generation to select accs
-      //  - Don't use accs at all there, but that needs a way to select rf-regs during v3d generation
-      //
-      // A bit unhappy about this, but it's necessary to prevent.
-      // Another brilliant idea (ie use accs in v3d instructions) which is turning out to be a brain fart.
-      //
-      if (!Platform::compiling_for_vc4()) {
+      if (!Platform::compiling_for_vc4()) {  // See Note 1.
         ret |= 3;  //debug("LI block acc0 and acc1");
       }
 
       break;
 
     case InstrTag::ALU:  // ALU operation
-      if (ALU.dest.tag == ACC) {
-        ret |=  (1 << ALU.dest.regId);
+      if (dest().tag == ACC) {
+        ret |=  (1 << dest().regId);
       }
 
       // NOTE: dst/srcA/srcB can be same acc
@@ -384,9 +453,9 @@ uint32_t Instr::get_acc_usage() const {
       }
       break;
 
-    case InstrTag::RECV:  // RECV instruction
-      if (RECV.dest.tag == ACC) {
-        ret |=  (1 << RECV.dest.regId);
+    case InstrTag::RECV:
+      if (dest().tag == ACC) {
+        ret |=  (1 << dest().regId);
       }
       break;
 
@@ -508,8 +577,7 @@ std::string Instr::List::check_acc_usage(int first, int last) const {
 
     if (accs == 0) continue;
 
-    ret //<< "Acc usage: "
-        << index << ": ";
+    ret << index << ": ";
 
     if (accs &  1) ret << "0, ";
     if (accs &  2) ret << "1, ";
@@ -582,11 +650,7 @@ int Instr::List::get_free_acc(int first, int last) const {
 void check_instruction_tag_for_platform(InstrTag tag, bool for_vc4) {
   char const *platform = nullptr;
 
-  if (for_vc4) {
-    if (tag >= V3D_ONLY && tag < END_V3D_ONLY) {
-      platform = "vc4";
-    } 
-  } else {  // v3d
+  if (!for_vc4) {
     if (tag >= VC4_ONLY && tag < END_VC4_ONLY) {
       platform = "v3d";
     }

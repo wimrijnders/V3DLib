@@ -23,7 +23,7 @@ public:
   std::string get_errors() const;
   int numVars() const { return m_numVars; }
   Instr::List &targetCode() { return m_targetCode; }
-  Stmt::Ptr sourceCode() { return m_body; }  //<< return AST representing the source code
+  Stmts &sourceCode();
 
   void pretty(char const *filename = nullptr, bool output_qpu_code = true);
   std::string compile_info() const;
@@ -33,7 +33,7 @@ protected:
   const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
 
   Instr::List m_targetCode;           // Target code generated from AST
-  Stmt::Ptr   m_body;
+  Stmts       m_body;
 
   int qpuCodeMemOffset = 0;
   std::vector<std::string> errors;

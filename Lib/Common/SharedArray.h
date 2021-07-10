@@ -159,14 +159,15 @@ public:
     using ::operator<<;
     std::string ret;
 
-    for (int c = 0; c < (int) size(); ++c) {
-      ret << "( ";
+    ret << "( ";
 
+    for (int c = 0; c < (int) size(); ++c) {
       if ( c != 0 && c % 16 == 0) ret << "\n";
 
       ret << (*this)[c] << ", ";
-      ret << ")\n";
     }
+
+    ret << ")";
 
     return ret;
   }

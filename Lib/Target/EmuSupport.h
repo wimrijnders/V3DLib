@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_TARGET_EMUSUPPORT_H_
 #define _V3DLIB_TARGET_EMUSUPPORT_H_
 #include <stdint.h>
+#include <vector>
 #include "Common/Seq.h"
 #include "Target/instr/Imm.h"
 
@@ -31,6 +32,16 @@ struct Vec {
   Vec() = default;
   Vec(int val);
   Vec(Imm imm);
+  Vec(std::vector<int> const &rhs);
+
+  Vec &operator=(Vec const &rhs) { assign(rhs); return *this; }
+  Vec &operator=(int rhs);
+  Vec &operator=(float rhs);
+
+  bool operator==(Vec const &rhs) const;
+  bool operator!=(Vec const &rhs) const { return !(*this == rhs); }
+  bool operator==(int rhs) const;
+  bool operator!=(int rhs) const { return !(*this == rhs); }
 
   Word &get(int index) {
     assert(0 <= index && index < NUM_LANES);
@@ -52,14 +63,37 @@ struct Vec {
   bool apply(ALUOp const &op, Vec a, Vec b);
   bool is_uniform() const;
 
-  Vec &operator=(Vec const &rhs) { assign(rhs); return *this; }
-
-  static Vec Always;
+  Vec recip() const;
+  Vec recip_sqrt() const;
+  Vec exp() const;
+  Vec log() const;
 
 private:
   Word elems[NUM_LANES];
 
   void assign(Vec const &rhs);
+};
+
+
+class EmuState {
+public:
+  int num_qpus;
+  Word vpm[VPM_SIZE];      // Shared VPM memory
+
+  EmuState(int in_num_qpus, IntList const &in_uniforms, bool add_dummy = false);
+  Vec get_uniform(int id, int &next_uniform);
+  bool sema_inc(int sema_id);
+  bool sema_dec(int sema_id);
+
+  static Vec const index_vec;
+
+private:
+  IntList uniforms;        // Kernel parameters
+  int sema[16];            // Semaphores
+
+  // Protection against locks due to semaphore waiting
+  int const MAX_SEMAPHORE_WAIT = 1024;
+  int semaphore_wait_count = 0;
 };
 
 

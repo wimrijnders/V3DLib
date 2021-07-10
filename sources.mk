@@ -1,7 +1,7 @@
 #
 # This file is generated!  Editing it directly is a bad idea.
 #
-# Generated on: Fri 14 May 2021 06:12:20 AM CEST
+# Generated on: Tue 06 Jul 2021 10:14:39 AM CEST
 #
 ###############################################################################
 
@@ -27,6 +27,7 @@ OBJ := \
   Support/InstructionComment.o  \
   Support/basics.o  \
   Support/Helpers.o  \
+  Support/RegIdSet.o  \
   Support/pgm.o  \
   Support/Timer.o  \
   Support/HeapManager.o  \
@@ -70,8 +71,12 @@ OBJ := \
   v3d/KernelDriver.o  \
   v3d/instr/Register.o  \
   v3d/instr/RFAddress.o  \
+  v3d/instr/Source.o  \
   v3d/instr/Snippets.o  \
+  v3d/instr/OpItems.o  \
+  v3d/instr/Mnemonics.o  \
   v3d/instr/Instr.o  \
+  v3d/instr/Encode.o  \
   v3d/instr/SmallImm.o  \
   v3d/PerformanceCounters.o  \
   Common/SharedArray.o  \
@@ -82,17 +87,19 @@ OBJ := \
   Target/SmallLiteral.o  \
   Target/Emulator.o  \
   Target/Pretty.o  \
+  Target/instr/ALUInstruction.o  \
   Target/instr/Conditions.o  \
-  Target/instr/Instructions.o  \
   Target/instr/Imm.o  \
   Target/instr/Reg.o  \
   Target/instr/Label.o  \
+  Target/instr/Mnemonics.o  \
   Target/instr/Instr.o  \
+  Target/instr/RegOrImm.o  \
   Target/instr/ALUOp.o  \
   Target/Subst.o  \
   Target/EmuSupport.o  \
   vc4/dump_instr.o  \
-  v3d/instr/dump_instr.o  \
+  v3d/instr/v3d_api.o  \
 
 # All programs in the Examples *and Tools* directory
 EXAMPLES := \

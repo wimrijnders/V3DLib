@@ -10,9 +10,6 @@ namespace V3DLib {
 // Types                   
 // ============================================================================
 
-//class CExpr;  //  forward declaration
-//class BExpr;  //  forward declaration
-
 struct Cond {
   CExpr::Ptr cexpr() { return m_cexpr; } 
 

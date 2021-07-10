@@ -1,6 +1,6 @@
 #include "disasm_kernel.h"
-#include "../../Lib/Support/basics.h"
-#include "v3d/instr/Instr.h"
+#include "Support/basics.h"
+#include "v3d/instr/Mnemonics.h"
 #include "qpu_disasm.h"
 
 namespace {
@@ -42,7 +42,7 @@ std::vector<uint64_t> &qpu_disasm_bytecode() {
 std::vector<uint64_t> qpu_disasm_kernel() {
   using namespace V3DLib::v3d::instr;
 
-  std::vector<Instr> ret;
+  V3DLib::v3d::Instructions ret;
 
   ret
     << nop().ldvary()

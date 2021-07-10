@@ -1,4 +1,5 @@
 #include "dft_support.h"
+#include <iostream>
 #include "Support/debug.h"
 #include "Source/Functions.h"
 #include "Support/Helpers.h"  // random_float()
@@ -28,4 +29,12 @@ float wavelet_function(int c, int const Dim) {
   float val2  = 0.75f*functions::sin(freq2*((float) c), true);
 
   return (offset + noise + (filter*filter)*(val1 + val2));
+}
+
+
+void scalar_dump(cx *b, int size) {
+  std::cout << "Scalar output: ";
+  for (int i=0; i < size; ++i) 
+    std::cout << b[i] << ", ";
+  std::cout << std::endl;
 }

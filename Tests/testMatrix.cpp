@@ -97,7 +97,7 @@ void test_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_dotvector<N>);
-  //k.pretty(true, "obj/test/check_dotvector.txt", false);
+  //k.pretty(false, "obj/test/check_dotvector_v3d.txt");
   k.load(&b, &a, &result);
   k.call();
 

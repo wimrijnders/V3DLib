@@ -47,6 +47,7 @@ char const *pretty_op(ALUOp::Enum value) {
     case Enum::A_EIDX:    return "eidx";
     case Enum::A_FFLOOR:  return "ffloor";
     case Enum::A_FSIN:    return "sin";
+    case Enum::A_TMUWT:   return "tmuwt";
     default:
       assertq(false, "pretty_op(): Unknown alu opcode", true);
       return "";
@@ -74,7 +75,6 @@ bool ALUOp::isMul() const {
 
   return ret;
 }
-
 
 std::string ALUOp::pretty() const { return pretty_op(m_value); }
 
@@ -129,7 +129,5 @@ uint32_t ALUOp::vc4_encodeMulOp() const {
       return 0;
   }
 }
-
-
 
 }  // namespace V3DLib

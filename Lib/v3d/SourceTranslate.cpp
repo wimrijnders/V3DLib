@@ -1,12 +1,13 @@
 #include "SourceTranslate.h"
 #include <iostream>
 #include "Support/basics.h"
+#include "Support/Timer.h"
 #include "Source/Translate.h"
 #include "Source/Stmt.h"
 #include "Liveness/Liveness.h"
 #include "Target/Subst.h"
 #include "vc4/DMA/DMA.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
 #include "Common/CompileData.h"
 
 namespace V3DLib {
@@ -19,8 +20,8 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
   using namespace V3DLib::Target::instr;
   Instr::List ret;
 
-  Reg srcData = srcReg(dst_addr);
-  Reg srcAddr = srcReg(src);
+  Reg srcData(dst_addr);
+  Reg srcAddr(src);
 
   ret << mov(TMUD, srcAddr)
       << mov(TMUA, srcData)
@@ -33,18 +34,26 @@ Instr::List SourceTranslate::store_var(Var dst_addr, Var src) {
 
 
 void SourceTranslate::regAlloc(Instr::List &instrs) {
+  //Timer t1("regAlloc", true);
   int numVars = VarGen::count();
+
+  //Timer t2("regAlloc optimize");
   Liveness::optimize(instrs, numVars);
+  //t2.end();
 
   // Step 0 - Perform liveness analysis
+  //Timer t3("regAlloc compute");
   Liveness live(numVars);
   live.compute(instrs);
-
+  //t3.end();
 
   // Step 2 - For each variable, determine all variables ever live at the same time
+  //Timer t4("regAlloc liveWith");
   LiveSets liveWith(numVars);
   liveWith.init(instrs, live);
+  //t4.end();
 
+  //Timer t5("regAlloc Allocate reg to var");
 
   // Step 3 - Allocate a register to each variable
   for (int i = 0; i < numVars; i++) {
@@ -64,10 +73,14 @@ void SourceTranslate::regAlloc(Instr::List &instrs) {
     }
   }
 
+  //t5.end();
+
   compile_data.allocated_registers_dump = live.reg_usage().dump(true);
 
   // Step 4 - Apply the allocation to the code
+  //Timer t6("regAlloc allocate_registers");
   allocate_registers(instrs, live.reg_usage());
+  //t6.end();
 }
 
 

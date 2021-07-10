@@ -23,10 +23,10 @@ int main(int argc, const char *argv[]) {
   k.setNumQPUs(numQPUs);
 
   Int::Array result(16*numQPUs);                  // Allocate and initialise array shared between ARM and GPU
-  result.fill(0);
+  result.fill(-1);
 
   Int::Array index_array(16*numQPUs);
-  index_array.fill(0);
+  index_array.fill(2);
 
   k.load(&result, &index_array);                  // Load the uniforms
   settings.process(k);                            // Invoke the kernel

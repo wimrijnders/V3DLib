@@ -1,4 +1,5 @@
 #include "Source/Interpreter.h"
+#include <algorithm>  // reverse()
 #include "Common/SharedArray.h"
 #include "Source/Stmt.h"
 #include "Common/BufferObject.h"
@@ -11,68 +12,88 @@ using ::operator<<;  // C++ weirdness
 
 namespace {
 
+Vec const Always(1);
+
 // State of a single core.
 struct CoreState {
   int id;                        // Core id
-  int numCores;                  // Core count
-  IntList uniforms;         // Arguments to kernel
   int nextUniform = -2;          // Pointer to next uniform to read
+  Seq<Vec> loadBuffer;           // Load buffer
+
   int readStride = 0;            // Read stride
   int writeStride = 0;           // Write stride
-  Vec* env = nullptr;            // Environment mapping vars to values
-  int sizeEnv;                   // Size of the environment
-  Seq<Stmt::Ptr> stack;          // Control stack
-  Seq<Vec> loadBuffer;           // Load buffer
+
+  Stmts stack;                   // Control stack
   Data emuHeap;
 
   ~CoreState() {
-    // Don't delete uniform and output here, these are used as references
-    delete [] env;
+    delete [] m_env;
   }
+
+  void init_env(int numVars) {
+    assert(numVars >= 0);
+    m_env   = new Vec [numVars + 1];
+    sizeEnv = numVars + 1;
+  }
+
+  Vec &env(int env_id) {
+    assert(0 <= env_id && env_id < sizeEnv);
+    assert(nullptr != m_env);
+    return m_env[env_id];
+  } 
 
   void store_to_heap(Vec const &index, Vec &val);
   Vec  load_from_heap(Vec const &index);
 
+  static void reset_count() {
+    load_show_count = 0;
+    store_show_count = 0;
+  }
+
 private:
-  int load_show_count = 0;
-  int store_show_count = 0;
+  Vec *m_env  = nullptr;      // Environment mapping vars to values
+  int sizeEnv = -1;           // Size of the environment
+
+  static int load_show_count;
+  static int store_show_count;
 };
 
 
-// State of the Interpreter.
-struct InterpreterState {
-  CoreState core[MAX_QPUS];  // State of each core
-  Word vpm[VPM_SIZE];        // Shared VPM memory
-  int sema[16];              // Semaphores
+int CoreState::load_show_count = 0;
+int CoreState::store_show_count = 0;
 
-  InterpreterState() {
-    // Initialise semaphores
-    for (int i = 0; i < 16; i++) sema[i] = 0;
-  }
+
+// State of the Interpreter.
+struct InterpreterState : public EmuState {
+  CoreState core[MAX_QPUS];  // State of each core
+
+  InterpreterState(int in_num_qpus, IntList const &in_uniforms) : EmuState(in_num_qpus, in_uniforms) {} 
 };
 
 
 void CoreState::store_to_heap(Vec const &index, Vec &val) {
   assert(writeStride == 0);  // usage of writeStride is probably wrong!
 
+  int const show_count = 3;
+
   if (!index.is_uniform()) {
     // NOTE: This part will not work for vc4 DMA output!
     //       Better to get rid of it
 
     std::string msg;
-    msg << "store_to_heap(): index does not have all same values" << index.dump();
+    msg << "store_to_heap(): index does not have all same values:" << index.dump();
 
-    if (store_show_count == 1) {
-      msg << "\n(this message not shown any more for more occurences)";
+    if (store_show_count == (show_count - 1)) {
+      msg << "\n(this message not shown for further occurences)";
     }
-    if (store_show_count < 2) {
+    if (store_show_count < show_count) {
       warning(msg);
     }
     store_show_count ++;
     // The human has been warned, assume that she knows what she's doing
 
     for (int i = 0; i < NUM_LANES; i++) {
-      uint32_t hp = (uint32_t) index[i].intVal + 4*i;
+      uint32_t hp = (uint32_t) index[i].intVal + 4*i;  // TODO examine why '4*i' is necessary
       emuHeap.phy(hp>>2) = val[i].intVal;
     }
   } else {
@@ -91,14 +112,16 @@ Vec CoreState::load_from_heap(Vec const &index) {
   assert(readStride == 0);  // Usage of readStride is probably wrong!
   Vec v;
 
+  int const show_count = 3;
+
   if (!index.is_uniform()) {
     std::string msg;
     msg << "load_from_heap(): index does not have all same values: " << index.dump();
 
-    if (load_show_count == 1) {
-      msg << "\n(this message not shown any more for more occurences)";
+    if (load_show_count == (show_count - 1)) {
+      msg << "\n(this message not shown for further occurences)";
     }
-    if (load_show_count < 2) {
+    if (load_show_count < show_count) {
       warning(msg);
     }
     load_show_count ++;
@@ -120,62 +143,6 @@ Vec CoreState::load_from_heap(Vec const &index) {
   return v;
 }
 
-
-// ============================================================================
-// Evaluate a variable
-// ============================================================================
-
-Vec evalVar(CoreState* s, Var v) {
-  switch (v.tag()) {
-    // Normal variable
-    case STANDARD:
-      assert(v.id() < s->sizeEnv);
-      return s->env[v.id()];
-
-    // Return next uniform
-    case UNIFORM: {
-      assert(s->nextUniform < s->uniforms.size());
-      Vec x;
-      for (int i = 0; i < NUM_LANES; i++)
-        if (s->nextUniform == -2)
-          x[i].intVal = s->id;
-        else if (s->nextUniform == -1)
-          x[i].intVal = s->numCores;
-        else
-          x[i].intVal = s->uniforms[s->nextUniform];
-      s->nextUniform++;
-      return x;
-    }
-
-    // Return core id
-    case QPU_NUM: {
-      Vec x;
-      for (int i = 0; i < NUM_LANES; i++)
-        x[i].intVal = s->id;
-      return x;
-    }
-
-    // Return vector of integers 0..15 inclusive
-    case ELEM_NUM: {
-      Vec x;
-      for (int i = 0; i < NUM_LANES; i++)
-        x[i].intVal = i;
-      return x;
-    }
-
-    // VPM read
-    case VPM_READ:
-      printf("V3DLib: vpmGet() not supported by interpreter\n");
-      break;
-
-    default:
-      printf("V3DLib: reading from write-only variable\n");
-  }
-
-  assert(false);
-  return Vec();
-}
-
 }  // anon namespace
 
 
@@ -184,45 +151,36 @@ Vec evalVar(CoreState* s, Var v) {
 // ============================================================================
 
 
-Vec eval(CoreState* s, Expr::Ptr e) {
+Vec eval(InterpreterState &is, CoreState* s, Expr::Ptr e) {
   Vec v;
+
   switch (e->tag()) {
-    // Integer literal
-    case Expr::INT_LIT:
-      for (int i = 0; i < NUM_LANES; i++)
-        v[i].intVal = e->intLit;
-      return v;
+    case Expr::INT_LIT:   v = e->intLit;   break;
+    case Expr::FLOAT_LIT: v = e->floatLit; break;
+    case Expr::APPLY:     v.apply(e->apply_op(), eval(is, s, e->lhs()), eval(is, s, e->rhs())); break;
+    case Expr::DEREF:     v = s->load_from_heap(eval(is, s, e->deref_ptr())); break;
 
-    // Float literal
-    case Expr::FLOAT_LIT:
-       for (int i = 0; i < NUM_LANES; i++)
-        v[i].floatVal = e->floatLit;
-      return v;
-   
-    // Variable
-    case Expr::VAR:
-      return evalVar(s, e->var());
+    case Expr::VAR: {
+      Var var = e->var();
 
-    // Operator application
-    case Expr::APPLY: {
-      Vec a = eval(s, e->lhs());
-      Vec b = eval(s, e->rhs());
+      switch (var.tag()) {
+        case STANDARD: v = s->env(var.id()); break;
+        case UNIFORM:  v = is.get_uniform(s->id, s->nextUniform); break;
+        case ELEM_NUM: v = EmuState::index_vec; break;
 
-      bool did_something = v.apply(e->apply_op(), a, b);
-      assert(did_something);
-
-      return v;
+        default:
+          assertq(false, "eval(): unhandled var tag");
+          break;
+      }
     }
+    break;
 
-    // Dereference pointer
-    case Expr::DEREF:
-      Vec index = eval(s, e->deref_ptr());
-      v = s->load_from_heap(index);
-      return v;
+    default:
+      assertq(false, "eval(): unhandled Expr tag");
+      break;
   }
 
-  assert(false);
-  return Vec();
+  return v;
 }
 
 
@@ -230,21 +188,21 @@ Vec eval(CoreState* s, Expr::Ptr e) {
 // Evaluate boolean expression
 // ============================================================================
 
-Vec evalBool(CoreState* s, BExpr::Ptr e) {
+Vec evalBool(InterpreterState &is, CoreState* s, BExpr::Ptr e) {
   Vec v;
 
   switch (e->tag()) {
     // Negation
     case NOT:
-      v = evalBool(s, e->neg());
+      v = evalBool(is, s, e->neg());
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = !v[i].intVal;
       return v;
 
     // Conjunction
     case AND: {
-      Vec a = evalBool(s, e->lhs());
-      Vec b = evalBool(s, e->rhs());
+      Vec a = evalBool(is, s, e->lhs());
+      Vec b = evalBool(is, s, e->rhs());
 
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal && b[i].intVal;
@@ -253,8 +211,8 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 
     // Disjunction
     case OR: {
-      Vec a = evalBool(s, e->lhs());
-      Vec b = evalBool(s, e->rhs());
+      Vec a = evalBool(is, s, e->lhs());
+      Vec b = evalBool(is, s, e->rhs());
 
       for (int i = 0; i < NUM_LANES; i++)
         v[i].intVal = a[i].intVal || b[i].intVal;
@@ -263,8 +221,8 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 
     // Comparison
     case CMP: {
-      Vec a = eval(s, e->cmp_lhs());
-      Vec b = eval(s, e->cmp_rhs());
+      Vec a = eval(is, s, e->cmp_lhs());
+      Vec b = eval(is, s, e->cmp_rhs());
       if (e->cmp.type() == FLOAT) {
         // Floating-point comparison
         for (int i = 0; i < NUM_LANES; i++) {
@@ -319,8 +277,8 @@ Vec evalBool(CoreState* s, BExpr::Ptr e) {
 // Evaulate condition
 // ============================================================================
 
-bool evalCond(CoreState* s, CExpr::Ptr e) {
-  Vec v = evalBool(s, e->bexpr());
+bool evalCond(InterpreterState &is, CoreState* s, CExpr::Ptr e) {
+  Vec v = evalBool(is, s, e->bexpr());
 
   switch (e->tag()) {
     case ALL: {
@@ -351,10 +309,11 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
   switch (v.tag()) {
     // Normal variable
     case STANDARD:
-      for (int i = 0; i < NUM_LANES; i++)
+      for (int i = 0; i < NUM_LANES; i++) {
         if (cond[i].intVal) {
-          s->env[v.id()][i] = x[i];
+          s->env(v.id())[i] = x[i];
         }
+      }
       break;
 
     case TMU0_ADDR: {  // Load via TMU
@@ -364,20 +323,8 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
       break;
     }
 
-    case VPM_WRITE:
-      assertq(false, "interpreter: vpmPut() not supported");
-      break;
-
-    // Others are read-only
-    case VPM_READ:
-    case UNIFORM:
-    case QPU_NUM:
-    case ELEM_NUM:
-      assertq(false, "interpreter: can not write to read-only variable");
-      break;
-
     default:
-      assertq(false, "interpreter: unexpected var-tag in assignToVar()");
+      assertq(false, "assignToVar(): unhandled var-tag");
       break;
   }
 }
@@ -386,19 +333,16 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
 /**
  * Execute assignment
  */
-void execAssign(CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
-  // Evaluate RHS
-  Vec val = eval(s, rhs);
+void execAssign(InterpreterState &is, CoreState* s, Vec cond, Expr::Ptr lhs, Expr::Ptr rhs) {
+  Vec val = eval(is, s, rhs);
 
   switch (lhs->tag()) {
-    // Variable
     case Expr::VAR:
       assignToVar(s, cond, lhs->var(), val);
       break;
 
-    // Dereferenced pointer
     case Expr::DEREF: {
-      Vec index = eval(s, lhs->deref_ptr());
+      Vec index = eval(is, s, lhs->deref_ptr());
       s->store_to_heap(index, val);
     }
     break;
@@ -429,32 +373,43 @@ Vec vecAnd(Vec x, Vec y) {
 // Execute where statement
 // ============================================================================
 
-void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
-  if (stmt == NULL) return;
+void execWhere(InterpreterState &is, CoreState *s, Vec cond, Stmt::Ptr stmt);
+
+
+void execWhere(InterpreterState &is, CoreState *s, Vec cond, Stmt::Array const &stmts) {
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    execWhere(is, s, cond, stmts[i]);
+  }
+}
+
+
+void execWhere(InterpreterState &is, CoreState *s, Vec cond, Stmt::Ptr stmt) {
+  if (!stmt) return;
 
   switch (stmt->tag) {
-    // No-op
+    // No-ops
     case Stmt::GATHER_PREFETCH:
     case Stmt::SKIP:
       return;
 
     // Sequential composition
-    case Stmt::SEQ:
-      execWhere(s, cond, stmt->seq_s0());
-      execWhere(s, cond, stmt->seq_s1());
+    case Stmt::SEQ: {
+      breakpoint
+      execWhere(is, s, cond, stmt->body());
       return;
+    }
 
     // Assignment
     case Stmt::ASSIGN:
       assertq(stmt->assign_lhs()->tag() == Expr::VAR, "V3DLib: only var assignments permitted in 'where'");
-      execAssign(s, cond, stmt->assign_lhs(), stmt->assign_rhs());
+      execAssign(is, s, cond, stmt->assign_lhs(), stmt->assign_rhs());
       return;
 
     // Nested where
     case Stmt::WHERE: {
-      Vec b = evalBool(s, stmt->where_cond());
-      execWhere(s, vecAnd(b, cond), stmt->thenStmt());
-      execWhere(s, vecAnd(b.negate(), cond), stmt->elseStmt());
+      Vec b = evalBool(is, s, stmt->where_cond());
+      execWhere(is, s, vecAnd(b, cond), stmt->then_block());
+      execWhere(is, s, vecAnd(b.negate(), cond), stmt->else_block());
       return;
     }
 
@@ -466,18 +421,6 @@ void execWhere(CoreState* s, Vec cond, Stmt::Ptr stmt) {
 
 
 // ============================================================================
-// Execute set-stride statements
-// ============================================================================
-
-void execSetStride(CoreState* s, Stmt::Tag tag, Expr::Ptr e) {
-  Vec v = eval(s, e);
-  if (tag == Stmt::SET_READ_STRIDE)
-    s->readStride = v[0].intVal;
-  else
-    s->writeStride = v[0].intVal;
-}
-
-// ============================================================================
 // Execute load receive & store request statements
 // ============================================================================
 
@@ -485,7 +428,7 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
   assert(s->loadBuffer.size() > 0);
   assert(e->tag() == Expr::VAR);
   Vec val = s->loadBuffer.remove(0);
-  assignToVar(s, Vec::Always, e->var(), val);
+  assignToVar(s, Always, e->var(), val);
 }
 
 
@@ -493,28 +436,23 @@ void execLoadReceive(CoreState* s, Expr::Ptr e) {
 // Execute code
 // ============================================================================
 
-bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
+bool dma_exec(InterpreterState &is, CoreState* s, Stmt::Ptr &stmt) {
   bool ret = true;
 
-  int semaId = stmt->dma.semaId();
-
   switch (stmt->tag) {
-    // Increment semaphore
-    // NOTE: emulator has a guard for protecting against loops due to semaphore waiting, perhaps also required here
-    case Stmt::SEMA_INC:
-      assert(semaId >= 0 && semaId < 16);
-      if (state->sema[semaId] == 15) s->stack.push(stmt);
-      else state->sema[semaId]++;
-      break;
- 
-    // Decrement semaphore
-    // Note at SEMA_INC also applies here
-    case Stmt::SEMA_DEC:
-      assert(semaId >= 0 && semaId < 16);
-      if (state->sema[semaId] == 0) s->stack.push(stmt);
-      else state->sema[semaId]--;
-      break;
+    case Stmt::SET_READ_STRIDE: {
+      Vec v = eval(is, s, stmt->dma.stride_internal());
+      s->readStride = v[0].intVal;
+    }
+    break;
 
+    case Stmt::SET_WRITE_STRIDE: {
+      Vec v = eval(is, s, stmt->dma.stride_internal());
+      s->writeStride = v[0].intVal;
+    }
+    break;
+
+    case Stmt::SEND_IRQ_TO_HOST:
     case Stmt::DMA_READ_WAIT:
     case Stmt::DMA_WRITE_WAIT:
     case Stmt::SETUP_VPM_READ:
@@ -538,15 +476,24 @@ bool dma_exec(InterpreterState* state, CoreState* s, Stmt::Ptr &stmt) {
 }
 
 
-void exec(InterpreterState* state, CoreState* s) {
-  // Control stack must be non-empty
+void append_stack(CoreState &s, Stmt::Array const &stmts) {
+  // statements need to be placed reversed on the stack, which pushes and pops on the back
+  for (int i = (int) stmts.size() - 1; i >= 0; i--) {
+    s.stack << stmts[i];
+  }
+}
+
+
+void exec(InterpreterState &is, int core_index) {
+  CoreState *s = &is.core[core_index];
   assert(s->stack.size() > 0);
 
-  // Pop the statement at the top of the stack
-  Stmt::Ptr stmt = s->stack.pop();
+  // Get next statement
+  Stmt::Ptr stmt = s->stack.back();
+  s->stack.pop_back();
 
-  if (stmt == NULL) { // Apparently this happens
-    //assertq(false, " Interpreter: not expecting nullptr for stmt");
+  if (stmt == nullptr) { // Apparently this happened
+    assertq(false, " Interpreter: not expecting nullptr for stmt", true);
     return;
   }
 
@@ -560,55 +507,47 @@ void exec(InterpreterState* state, CoreState* s) {
   switch (stmt->tag) {
     case Stmt::GATHER_PREFETCH: // Ignore
     case Stmt::SKIP:
-      return;
+      break;
 
     case Stmt::ASSIGN:          // Assignment
-      execAssign(s, Vec::Always, stmt->assign_lhs(), stmt->assign_rhs());
-      return;
+      execAssign(is, s, Always, stmt->assign_lhs(), stmt->assign_rhs());
+      break;
 
     case Stmt::SEQ:             // Sequential composition
-      s->stack.push(stmt->seq_s1());
-      s->stack.push(stmt->seq_s0());
-      return;
+      append_stack(*s, stmt->body());
+      break;
 
     case Stmt::WHERE: {         // Conditional assignment
-      Vec b = evalBool(s, stmt->where_cond());
-      execWhere(s, b, stmt->thenStmt());
-      execWhere(s, b.negate(), stmt->elseStmt());
-      return;
+      Vec b = evalBool(is, s, stmt->where_cond());
+      execWhere(is, s, b, stmt->then_block());
+      execWhere(is, s, b.negate(), stmt->else_block());
     }
+    break;
 
     case Stmt::IF:
-      if (evalCond(s, stmt->if_cond()))
-        s->stack.push(stmt->thenStmt());
-      else
-        s->stack.push(stmt->elseStmt());
-      return;
+      if (evalCond(is, s, stmt->if_cond()))
+        append_stack(*s, stmt->then_block());
+      else if (!stmt->else_block().empty()) {  // This test shouldn't matter much
+        append_stack(*s, stmt->else_block());
+      }
+      break;
 
     case Stmt::WHILE:
-      if (evalCond(s, stmt->loop_cond())) {
-        s->stack.push(stmt);
-        s->stack.push(stmt->body());
+      if (evalCond(is, s, stmt->loop_cond())) {
+        s->stack << stmt;
+        append_stack(*s, stmt->body());
       }
-      return;
-
-    case Stmt::SET_READ_STRIDE:
-      execSetStride(s, Stmt::SET_READ_STRIDE, stmt->dma.stride_internal());
-      return;
-
-    case Stmt::SET_WRITE_STRIDE:
-      execSetStride(s, Stmt::SET_WRITE_STRIDE, stmt->dma.stride_internal());
-      return;
+      break;
 
     case Stmt::LOAD_RECEIVE:
       execLoadReceive(s, stmt->address());
-      return;
+      break;
 
-    case Stmt::SEND_IRQ_TO_HOST:
-      return;
+    case Stmt::SEMA_INC: if (is.sema_inc(stmt->dma.semaId())) s->stack << stmt; break;
+    case Stmt::SEMA_DEC: if (is.sema_dec(stmt->dma.semaId())) s->stack << stmt; break;
 
     default:
-      if (!dma_exec(state, s, stmt)) {
+      if (!dma_exec(is, s, stmt)) {
         assertq(false, "interpreter: unexpected stmt-tag in exec()");
       }
       break;
@@ -638,28 +577,30 @@ void exec(InterpreterState* state, CoreState* s) {
  */
 void interpreter(
   int numCores,
-  Stmt::Ptr stmt,
+  Stmts const &stmts,
   int numVars,
   IntList &uniforms,
   BufferObject &heap
 ) {
-  InterpreterState state;
+  InterpreterState state(numCores, uniforms);
 
   // Initialise state
   for (int i = 0; i < numCores; i++) {
     CoreState &s = state.core[i];
-
     s.id          = i;
-    s.numCores    = numCores;
-    s.uniforms    = uniforms;
-    s.env         = new Vec [numVars + 1];
-    s.sizeEnv     = numVars + 1;
+    s.init_env(numVars);
     s.emuHeap.heap_view(heap);
   }
 
   // Put statement on each core's control stack
-  for (int i = 0; i < numCores; i++)
-    state.core[i].stack.push(stmt);
+  // Note the reversal, to use it as an actual stack
+  for (int i = 0; i < numCores; i++) {
+    auto &stack = state.core[i].stack;
+    stack = stmts;
+    std::reverse(stack.begin(), stack.end());
+  }
+
+  CoreState::reset_count();
 
   // Run code
   bool running = true;
@@ -668,7 +609,7 @@ void interpreter(
     for (int i = 0; i < numCores; i++) {
       if (state.core[i].stack.size() > 0) {
         running = true;
-        exec(&state, &state.core[i]);
+        exec(state, i);
       }
     }
   }

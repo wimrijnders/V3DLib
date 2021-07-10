@@ -59,6 +59,12 @@ bool RegUsageItem::unused() const {
 }
 
 
+bool RegUsageItem::assigned_once() const {
+  assert(!unused());
+  return use_dst.size() == 1;
+}
+
+
 std::string RegUsageItem::dump() const {
   std::string ret;
 
@@ -84,8 +90,18 @@ std::string RegUsageItem::dump() const {
 }
 
 
-void RegUsageItem::add_dst(int n) {
+void RegUsageItem::add_dst(int n, bool is_cond_assign) {
   assertq(use_dst.empty() || use_dst.back() < n, "RegUsageItem::add_dst() failed", true);
+
+/*
+  // See disabled code where this is used
+
+  if (is_cond_assign && !use_dst.empty()) {
+    // Conditional assign counts as src access as well (remember why, old man?)
+    add_src(n);
+  }
+*/
+
   use_dst << n;
 }
 
@@ -112,13 +128,73 @@ int RegUsageItem::live_range() const {
 int RegUsageItem::use_range() const {
   if (unused()) return 0;
 
+#if 0
+  if (only_assigned()) return 0;  // This is wrong for the normal case, used to solve issue with this code 
+
+  //
+  // Alternate way of calculating use range, without touching live range
+  //
+  // The idea here is to get rid of liveness analysis before optimization.
+  // However, there are just so many cases to handle. The last one I ran into is (pseudo code):
+  //
+  //    A0 = 0
+  //    If something
+  //      A0 = 1
+  //    End
+  //
+  //    dst = cmd A0,...
+  //
+  //  - As far as liveness is concerned, A0 is live from 'A0 = 0' onward, which is correct
+  //  - src/dst analysis, however, does not see the If and infers that liveness is from `A0 = 1` onwards.
+  //  - As far as dst-use is concerned, this is a non-issue, because A0 is used way past any assignments to it.
+  //    Question is, how to handle?
+  //
+  // Stopped this for now because it is burning my brain cells.
+  //
+
+  // determine first write before src usage (there might be a dummy write before
+  assertq(src_range.first() != -1, "oops", true);
+  int first_write = -1;
+  for (auto dst : use_dst) {
+    if (dst >= src_range.first()) break;  // >= because instr can have reg as src as well as dst (eg. add src, src, 1)
+    first_write = dst;
+  }
+  assert(first_write != -1);
+
+  // Live range goes in after found dst
+  int first_1 = first_write + 1;
+  int last_1 = src_range.last();
+  if (last_1 == -1) {                        // Guard for case where var is write only (eg. dummy output)
+    last_1 = first_1;
+  }
+#endif
+
+  //
+  // Original way of determining use range
+  //
   int first = m_live_range.first();
-  if (!use_dst.empty()) first = use_dst[0];  // Guard for case where var is read only (eg. dummy input)
+  //if (!use_dst.empty()) first = use_dst[0];  // Guard for case where var is read only (eg. dummy input)
+  if (first == -1) {
+    if (!use_dst.empty()) {
+      first = use_dst[0] + 1;  // Guard for case where var is read only (eg. dummy input)
+    }
+  }
 
   int last = m_live_range.last();
   if (last == -1) {                        // Guard for case where var is write only (eg. dummy output)
     last = first;
   }
+
+#if 0
+  assert(first_1 == first);
+  assert(last_1 <= last);  // Inequality: live range need not be the same as src usage.
+                           // This happens with liveness analysis with conditional loop, where var is used
+                           // only within that loop. The liveness of that var goes until the end of the loop,
+                           // past last src usage.
+                           //
+                           // This looks like a bug in liveness, not sure.
+                           // But then again, liveness is something of a black magic for me.
+#endif
 
   int ret = (last - first + 1);
   assert(ret > 0);  // really expecting something here
@@ -178,15 +254,16 @@ void RegUsage::reset() {
 
 void RegUsage::set_used(Instr::List &instrs) {
   for (int i = 0; i < instrs.size(); i++) {
-    UseDef out;
-    out.set_used(instrs[i]);
+    if (!instrs[i].has_registers()) continue;
 
-    for (int j = 0; j < out.def.size(); j++) {
-      (*this)[out.def[j]].add_dst(i);
+    UseDef out(instrs[i]);
+
+    if (out.def.tag != NONE) {
+      (*this)[out.def.regId].add_dst(i, instrs[i].isCondAssign());
     }
 
-    for (int j = 0; j < out.use.size(); j++) {
-      (*this)[out.use[j]].add_src(i);
+    for (auto r : out.use) {
+      (*this)[r].add_src(i);
     }
   }
 }
@@ -211,24 +288,12 @@ void RegUsage::set_live(Liveness &live) {
 void RegUsage::check() const {
   std::string ret;
 
-  //
-  // Following is pretty common and not much of an issue (any more).
+  // Case 'instruction variables which are assigned but never used'
+  // is pretty common and not much of an issue (any more).
   // E.g. It occurs if condition flags need to be set and the result of the 
   // operation is discarded.
   //
-  // Might need to further specify this, i.e. by removing var's which are known
-  // and intended to be used as dummy's (TODO?)
-  //
-/*
-  std::string tmp;
-  tmp = get_assigned_only_list(*this);
-  if (!tmp.empty()) {
-    std::string msg = prefix;
-    msg << "There are internal instruction variables which are assigned but never used.\n"
-        << "Variables: " << tmp << "\n";
-    warning(msg);
-  }
-*/
+  // Does not need to be tested.
 
   {
     std::string tmp = get_never_assigned_list(*this);
@@ -246,7 +311,8 @@ void RegUsage::check() const {
 
     for (int i = 0; i < (int) size(); i++) {
       auto const &item = (*this)[i];
-      if (!item.regular_use()) continue;
+      if (!item.regular_use())   continue;
+      if (item.never_assigned()) continue;  // Tested in previous block
 
       if (item.first_live() <= item.first_dst()) {
         tmp << "  Variable " << i << " is live before first assignment" << "\n";
@@ -357,13 +423,5 @@ void RegUsage::check_overlap_usage(Reg acc, RegUsageItem const &item) const {
     assertq(!cur.use_overlaps(item), "Detected conflicting usage of replacement acc", true);
   }
 }
-
-/*
-RegUsageItem &RegUsageItem::find(RegId id) {
-  assert(id >= 0 && id < size());
-  assert((*this)[id].tag == NONE); 
-  return (*this)[id];
-}
-*/
 
 }  // namespace V3DLib

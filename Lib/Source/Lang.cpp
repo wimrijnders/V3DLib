@@ -5,13 +5,16 @@
 #include "StmtStack.h"
 
 namespace V3DLib {
-
 namespace {
-  StmtStack controlStack;
-} // anon namespace
 
+void prepare_stack(Stmt::Ptr s) {
+  auto &stack = stmtStack();
+  stack.push();
+  stack.push(s);
+  stack.push();
+}
 
-// Interface to the embedded language.
+}  // anon namespace
 
 //=============================================================================
 // Assignment token
@@ -23,155 +26,115 @@ void assign(Expr::Ptr lhs, Expr::Ptr rhs) {
 
 
 //=============================================================================
-// 'If' token
-//=============================================================================
-
-void If_(Cond c) {
-  Stmt::Ptr s = Stmt::mkIf(c.cexpr(), nullptr, nullptr);
-  controlStack.push(s);
-  stmtStack().push(mkSkip());
-}
-
-void If_(BoolExpr b) {
-  If_(any(b));
-}
-
-
-//=============================================================================
 // 'Else' token
 //=============================================================================
 
 void Else_() {
-  int ok = 0;
+  auto block_ptr  = stmtStack().top();
+  stmtStack().pop();
 
-  if (controlStack.size() > 0) {
-    Stmt::Ptr s = controlStack.top();
+  Stmt::Ptr s = stmtStack().last_stmt();
 
-    if ((s->tag == Stmt::IF || s->tag == Stmt::WHERE ) && s->then_is_null()) {
-      s->thenStmt(stmtStack().pop());
-      stmtStack().push(mkSkip());
-      ok = 1;
-    }
+  if (!s->then_block(*block_ptr)) {
+    error("Syntax error: 'Else' without preceeding 'If' or 'Where'");
   }
 
-  if (!ok) {
-    fatal("Syntax error: 'Else' without preceeding 'If' or 'Where'");
-  }
+  stmtStack().push();  // Set top stack item for else-block
 }
+
 
 //=============================================================================
 // 'End' token
 //=============================================================================
 
 void End_() {
-  int ok = 0;
+  auto block_ptr = stmtStack().top();
+  stmtStack().pop();
 
-  if (!controlStack.empty()) {
-    Stmt::Ptr s = controlStack.top();
+  Stmt::Ptr s = stmtStack().last_stmt();
 
-    if (s->tag == Stmt::IF || s->tag == Stmt::WHERE) {
-      if (s->then_is_null()) {
-        s->thenStmt(stmtStack().pop());
-        ok = 1;
-      } else if (s->else_is_null()) {
-        s->elseStmt(stmtStack().pop());
-        ok = 1;
-      }
-    }
-
-    if (s->tag == Stmt::WHILE && s->body_is_null()) {
-      s->body(stmtStack().pop());
-      ok = 1;
-    }
-
-    if (s->tag == Stmt::FOR && s->body_is_null()) {
-      s->for_to_while(stmtStack().pop());
-      ok = 1;
-    }
-
-    if (ok) {
-      stmtStack().append(controlStack.pop());
-    }
+  if (!s->add_block(*block_ptr)) {
+    error("Syntax error: unexpected 'End'", true);
   }
 
-  if (!ok) {
-    fatal("Syntax error: unexpected 'End'");
-  }
+  stmtStack().pop();
+  stmtStack().append(s);
 }
 
 
 //=============================================================================
-// 'While' token
+// Tokens with block handling
 //=============================================================================
+
+void If_(Cond c) {
+  Stmt::Ptr s = Stmt::create(Stmt::IF);
+  s->cond(c.cexpr());
+  prepare_stack(s);
+}
+
+void If_(BoolExpr b) { If_(any(b)); }
+
 
 void While_(Cond c) {
-  Stmt::Ptr s = Stmt::mkWhile(c.cexpr(), nullptr);
-  controlStack.push(s);
-  stmtStack().push(mkSkip());
+  Stmt::Ptr s = Stmt::create(Stmt::WHILE);
+  s->cond(c.cexpr());
+  prepare_stack(s);
 }
 
+void While_(BoolExpr c) { While_(any(c)); }
 
-void While_(BoolExpr b) {
-  While_(any(b));
-}
-
-
-//=============================================================================
-// 'Where' token
-//=============================================================================
-
-void Where__(BExpr::Ptr b) {
-  Stmt::Ptr s = mkWhere(b, nullptr, nullptr);
-  controlStack.push(s);
-  stmtStack().push(mkSkip());
-}
-
-
-//=============================================================================
-// 'For' token
-//=============================================================================
 
 void For_(Cond c) {
-  Stmt::Ptr s = Stmt::mkFor(c.cexpr(), nullptr, nullptr);
-  controlStack.push(s);
-  stmtStack().push(mkSkip());
+  Stmt::Ptr s = Stmt::create(Stmt::FOR);
+  s->cond(c.cexpr());
+  prepare_stack(s);
 }
 
 
-void For_(BoolExpr b) {
-  For_(any(b));
+void For_(BoolExpr b)   { For_(any(b)); }
+
+
+void Where__(BExpr::Ptr b) {
+  Stmt::Ptr s = Stmt::create(Stmt::WHERE);
+  s->where_cond(b);
+  prepare_stack(s);
 }
 
+
+//=============================================================================
+// 'For' handling
+//=============================================================================
 
 void ForBody_() {
-  Stmt::Ptr s = controlStack.top();
-  s->inc(stmtStack().pop());
-  stmtStack().push(mkSkip());
+  auto inc = stmtStack().top();
+  assert(inc);
+  stmtStack().pop();
+
+  Stmt::Ptr s = stmtStack().last_stmt();
+  s->inc(*inc);
+
+  stmtStack().push();
 }
 
 
+//=============================================================================
+// Comments and breakpoints
+//=============================================================================
+
 void header(char const *str) {
-  assert(stmtStack().top() != nullptr);
-  stmtStack().top()->seq_s1()->header(str);
+  stmtStack().last_stmt()->header(str);
 }
 
 
 void comment(char const *str) {
-  assert(stmtStack().top() != nullptr);
-  stmtStack().top()->seq_s1()->comment(str);
+  stmtStack().last_stmt()->comment(str);
 }
 
 
 void break_point(bool val) {
   if (val) {
-    assert(stmtStack().top() != nullptr);
-    stmtStack().top()->seq_s1()->break_point();
+    stmtStack().last_stmt()->break_point();
   }
-}
-
-
-void initStmt() {
-  controlStack.clear();
 }
 
 }  // namespace V3DLib

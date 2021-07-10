@@ -12,7 +12,7 @@
 #include "Source/Int.h"
 #include "Source/Float.h"
 #include "v3d/Driver.h"
-#include "v3d/instr/Instr.h"
+#include "v3d/instr/Mnemonics.h"
 #include "v3d/BufferObject.h"
 
 double get_time();

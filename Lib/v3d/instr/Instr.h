@@ -3,12 +3,16 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "v3d_api.h"
 #include "Support/InstructionComment.h"
-#include "SmallImm.h"
-#include "Register.h"
-#include "RFAddress.h"
+#include "Source.h"
+#include "Encode.h"
+#include "Target/instr/ALUInstruction.h"
 
 namespace V3DLib {
+
+class ALUInstruction;
+
 namespace v3d {
 namespace instr {
 
@@ -16,6 +20,15 @@ using rf = RFAddress;
 using si = SmallImm;
 
 
+/**
+ * NOTE: branch condition is distinct from add/mul alu assign condition tags.
+ *       Would it then be possible to combine them?? E.g. something like:
+ * 
+ *           bb(L0).ifna().a0();
+ *           bb(L0).nop().ifna().a0();  // Would use mul alu flag
+ *       
+ *       TODO examine this, not expecting it to work but better to know for sure
+ */
 class Instr : public v3d_qpu_instr, public InstructionComment {
 
   // Label support
@@ -34,236 +47,110 @@ public:
   void label_to_target(int offset);
   // End Label support
 
-
 public:
   Instr(uint64_t in_code = NOP);
-  Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, Location const &srcb);
-  Instr(v3d_qpu_add_op op, Location const &dst, Location const &srca, SmallImm const &immb);
-  Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, Location const &srcb);
-  Instr(v3d_qpu_add_op op, Location const &dst, SmallImm const &imma, SmallImm const &immb);
 
+  bool skip() const { return m_skip; }
+  void skip(bool val) { m_skip = val; }
+
+  // Grumbl
   Instr &header(std::string const &msg) { InstructionComment::header(msg);  return *this; }
   Instr &comment(std::string msg)       { InstructionComment::comment(msg); return *this; }
+  std::string const &header() const     { return InstructionComment::header();}
+  std::string const &comment() const    { return InstructionComment::comment();}
+
+  bool is_branch()  const;
+  bool has_signal(bool all_signals = false) const;
+  bool flag_set() const;
+  void set_cond_tag(AssignCond cond);
+  void set_push_tag(SetCond set_cond);
 
   std::string dump() const; 
   std::string mnemonic(bool with_comments = false) const;
   uint64_t code() const;
   static std::string dump(uint64_t in_code);
   static std::string mnemonic(uint64_t in_code);
-  static std::string mnemonics(std::vector<uint64_t> in_code);
+  static std::string mnemonics(std::vector<uint64_t> const &in_code);
 
   operator uint64_t() const { return code(); }
 
+  void set_branch_condition(V3DLib::BranchCond src_cond);
+
   bool add_nop()    const { return alu.add.op == V3D_QPU_A_NOP; }
   bool mul_nop()    const { return alu.mul.op == V3D_QPU_M_NOP; }
+  bool is_nop()     const { return add_nop() && mul_nop(); }  // This does not exclude signal having dst registers
   bool add_nocond() const { return flags.ac == V3D_QPU_COND_NONE; }
   bool mul_nocond() const { return flags.mc == V3D_QPU_COND_NONE; }
 
-  Instr &pushz();
-  Instr &pushc();
-  Instr &pushn();
-
-  Instr &thrsw();
-  Instr &ldvary();
-  Instr &ldunif();
-  Instr &ldunifa();
-  Instr &ldunifarf(Location const &loc);
-  Instr &ldunifrf(RFAddress const &loc);
-  Instr &ldtmu(Register const &reg);
-  Instr &ldvpm();
-
-  // Conditional execution of instructions
-  Instr &ifa();
-  Instr &ifna();
-  Instr &ifb();
-  Instr &ifnb();
-
-  Instr &norn();
-  Instr &nornn();
-  Instr &norc();
-  Instr &nornc();
-  Instr &norz();
-
-  Instr &andn();
-  Instr &andz();
-  Instr &andc();
-  Instr &andnc();
-  Instr &andnn();
-
-  // For branch instructions
-  Instr &a0();
-  Instr &na0();
-  Instr &alla();
-  Instr &allna();
-  Instr &anya();
-  Instr &anyaq();
-  Instr &anyap();
-  Instr &anyna();
-  Instr &anynaq();
-  Instr &anynap();
-
-  //
-  // Calls to set the mul part of the instruction
-  //
-  Instr &nop();
-
-  Instr &add(Location const &dst, Location const &srca, Location const &srcb);
-  Instr &sub(Location const &dst, Location const &srca, Location const &srcb);
-
-  Instr &mov(Location const &dst, SmallImm const &imm);
-  Instr &mov(uint8_t rf_addr, Register const &reg);
-  Instr &mov(Location const &loc1, Location const &loc2);
-  Instr &fmov(Location const &dst, SmallImm const &imma);
-
-  Instr &fmul(Location const &loc1, Location const &loc2, Location const &loc3);
-  Instr &fmul(Location const &loc1, SmallImm imm2, Location const &loc3);
-  Instr &fmul(Location const &loc1, Location const &loc2, SmallImm const &imm3);
-  Instr &smul24(Location const &dst, Location const &loca, Location const &locb); 
-  Instr &smul24(Location const &dst, SmallImm const &imma, Location const &locb); 
-  Instr &smul24(Location const &dst, Location const &loca, SmallImm const &immb); 
-  Instr &vfmul(Location const &rf_addr1, Register const &reg2, Register const &reg3);
-
-  Instr &rotate(Location const &dst, Location const &a, SmallImm const &b);
-  Instr &rotate(Location const &dst, Location const &a, Location const &b);
 
   static bool compare_codes(uint64_t code1, uint64_t code2);
 
-  void alu_add_set_dst(Location const &dst); 
-  void alu_mul_set_dst(Location const &dst); 
-  void alu_add_set_reg_a(Location const &loc);
-  void alu_add_set_reg_b(Location const &loc);
-  void alu_mul_set_reg_a(Location const &loc);
-  void alu_mul_set_reg_b(Location const &loc);
-  void alu_set_imm(SmallImm const &imm);
-  void alu_add_set_imm_a(SmallImm const &imm);
-  void alu_add_set_imm_b(SmallImm const &imm);
-  void alu_mul_set_imm_a(SmallImm const &imm);
-  void alu_mul_set_imm_b(SmallImm const &imm);
-
-  void alu_add_set(Location const &dst, Location const &a, Location const &b); 
-  void alu_add_set(Location const &dst, SmallImm const &a, Location const &b);
-  void alu_add_set(Location const &dst, Location const &a, SmallImm const &b);
-  void alu_add_set(Location const &dst, SmallImm const &a, SmallImm const &b);
-  void alu_mul_set(Location const &dst, Location const &a, Location const &b); 
-  void alu_mul_set(Location const &dst, Location const &a, SmallImm const &b); 
-  void alu_mul_set(Location const &dst, SmallImm const &a, Location const &b); 
-
-  // ==================================================
-  // Private State 
-  // ==================================================
+  bool check_dst() const;
+  bool uses_sig_dst() const;
+  bool is_ldtmu() const { assert(sig_dst_count() <= 1); return sig.ldtmu; }
+  DestReg sig_dest() const;
+  DestReg add_dest() const;
+  DestReg mul_dest() const;
 
 private:
+  DestReg add_src_dest(v3d_qpu_mux src) const;
+  
+public:
+  DestReg add_src_a() const;
+  DestReg add_src_b() const;
+  DestReg mul_src_a() const;
+  DestReg mul_src_b() const;
+
+  bool is_src(DestReg const &dst_reg) const;
+  bool is_dst(DestReg const &dst_reg) const;
+
+  void alu_add_set_dst(Location const &dst); // Still needed in Mnemonics
+  bool alu_add_set_a(Source const &src);     // idem
+
+public:
+  bool alu_add_set(Location const &dst, Source const &a, Source const &b);
+  bool alu_mul_set(Location const &dst, Source const &a, Source const &b);
+
+  bool alu_add_set(V3DLib::Instr const &src_instr);
+  bool alu_mul_set(V3DLib::Instr const &src_instr);
+
+private:
+  std::unique_ptr<Source> alu_src(v3d_qpu_mux src) const;
+
+public:
+  // TODO see if following can be replaced by DestReg
+  std::unique_ptr<Location> add_alu_dst() const;
+  std::unique_ptr<Location> mul_alu_dst() const;
+  std::unique_ptr<Source> add_alu_a() const;
+  std::unique_ptr<Source> add_alu_b() const;
+  std::unique_ptr<Source> mul_alu_a() const;
+  std::unique_ptr<Source> mul_alu_b() const;
+
+protected:
   static uint64_t const NOP;
-  bool m_doing_add = true;
 
-  void init_ver() const;
   void init(uint64_t in_code);
-  Instr &set_branch_condition(v3d_qpu_branch_cond cond);
-  void set_c(v3d_qpu_cond val);
-  void set_uf(v3d_qpu_uf val);
-  void set_pf(v3d_qpu_pf val);
+  void set_branch_condition(v3d_qpu_branch_cond cond);
 
-  bool raddr_a_is_safe(Location const &loc) const;
+private:
+  bool m_skip = false;
 
   std::string pretty_instr() const;
+  int sig_dst_count() const;
+
+  enum CheckSrc {
+    CHECK_ADD_A,
+    CHECK_ADD_B,
+    CHECK_MUL_A,
+    CHECK_MUL_B,
+  };
+
+  bool raddr_in_use(CheckSrc check_src, v3d_qpu_mux mux) const;
+  bool raddr_a_is_safe(Location const &loc, CheckSrc check_src) const;
+  bool raddr_b_is_safe(Location const &loc, CheckSrc check_src) const;
+
+  bool alu_set_src(Source const &src, v3d_qpu_mux &mux, CheckSrc check_src);
 };
-
-
-const uint8_t  vpm       = 14;
-const uint32_t zero_addr = 0;
-
-Instr nop();
-Instr tidx(Location const &reg);
-Instr eidx(Location const &reg);
-
-Instr itof(Location const &dst, Location const &a, SmallImm const &b);
-Instr ftoi(Location const &dst, Location const &a, SmallImm const &b);
-
-Instr mov(Location const &dst, SmallImm const &a);
-Instr mov(Location const &dst, Location const &a);
-
-Instr shr(Location const &dst, Location const &a, SmallImm const &b);
-Instr shl(Location const &dst, Location const &a, SmallImm const &b);
-Instr shl(Location const &dst, SmallImm const &a, SmallImm const &b);
-Instr shl(Location const &dst, Location const &a, Location const &b);
-Instr shl(Location const &dst, SmallImm const &a, Location const &b);
-Instr shl(Location const &dst, Location const &a, Location const &b);
-Instr asr(Location const &dst, Location const &a, SmallImm const &b);
-Instr asr(Location const &dst, Location const &a, Location const &b);
-Instr add(Location const &dst, Location const &a, Location const &b);
-Instr add(Location const &dst, Location const &a, SmallImm const &b);
-Instr add(Location const &dst, SmallImm const &a, Location const &b);
-Instr sub(Location const &dst, Location const &a, Location const &b);
-Instr sub(Location const &dst, Location const &a, SmallImm const &b);
-Instr sub(Location const &dst, SmallImm const &a, Location const &b);
-Instr fsub(Location const &dst, Location const &a, Location const &b);
-Instr fsub(Location const &dst, SmallImm const &a, Location const &b);
-Instr fsub(Location const &dst, Location const &a, SmallImm const &b);
-Instr fadd(Location const &dst, Location const &a, Location const &b);
-Instr fadd(Location const &dst, Location const &a, SmallImm const &b);
-Instr fadd(Location const &dst, SmallImm const &a, Location const &b);
-Instr faddnf(Location const &dst, Location const &a, Location const &b);
-Instr faddnf(Location const &dst, SmallImm const &a, Location const &b);
-
-Instr bor( Location const &dst, Location const &a, Location const &b);
-Instr bor( Location const &dst, Location const &a, SmallImm const &b);
-Instr bor( Location const &dst, SmallImm const &a, SmallImm const &b);
-Instr band(Location const &dst, Location const &a, Location const &b);
-Instr band(Location const &dst, Location const &a, SmallImm const &b);
-Instr bxor(Location const &dst, Location const &a, SmallImm const &b);
-Instr bxor(Location const &dst, SmallImm const &a, SmallImm const &b);
-
-Instr fmax(Location const &dst, Location const &a, Location const &b);
-Instr fcmp(Location const &loc1, Location const &a, Location const &b);
-Instr vfpack(Location const &dst, Location const &a, Location const &b);
-Instr vfmin(Location const &dst, SmallImm const &a, Location const &b);
-Instr vfmin(Location const &dst, Location const &a, Location const &b);
-Instr min(Location const &dst, Location const &a, Location const &b);
-Instr max(Location const &dst, Location const &a, Location const &b);
-
-v3d_qpu_waddr const syncb = V3D_QPU_WADDR_SYNCB;  // Needed for barrierid()
-
-Instr barrierid(v3d_qpu_waddr waddr);
-
-Instr vpmsetup(Register const &reg2);
-
-Instr ffloor(Location const &dst, Location const &srca);
-Instr flpop(RFAddress rf_addr1, RFAddress rf_addr2);
-
-Instr fdx(Location const &dst, Location const &srca);
-Instr vflb(Location const &dst);
-Instr tmuwt();
-
-Instr ldvpmg_in(Location const &dst, Location const &a, Location const &b);
-Instr stvpmv(SmallImm const &a, Location const &b);
-Instr sampid(Location const &dst);
-
-Instr rotate(Location const &dst, Location const &a, Location const &b);
-Instr rotate(Location const &dst, Location const &a, SmallImm const &b);
-
-
-///////////////////////////////////////////////////////////////////////////////
-// Branch Instructions
-///////////////////////////////////////////////////////////////////////////////
-
-Instr branch(int target, int current);
-Instr branch(int target, bool relative);
-Instr bb(Location const &loc1);
-Instr bb(BranchDest const &loc1);
-Instr bb(uint32_t addr);
-Instr bu(uint32_t addr, Location const &loc2);
-Instr bu(BranchDest const &loc1, Location const &loc2);
-
-
-///////////////////////////////////////////////////////////////////////////////
-// SFU Instructions - NOT WORKING, they return nothing
-///////////////////////////////////////////////////////////////////////////////
-Instr brecip(Location const &dst, Location const &a);
-Instr brsqrt(Location const &dst, Location const &a);
-Instr brsqrt2(Location const &dst, Location const &a);
-Instr bsin(Location const &dst, Location const &a);
-Instr bexp(Location const &dst, Location const &a);
-Instr blog(Location const &dst, Location const &a);
 
 }  // instr
 
@@ -280,30 +167,30 @@ public:
   Instructions(Parent const &rhs) : Parent(rhs) {}
 
   Instructions &header(std::string const &msg) { front().header(msg);  return *this; }
-
-  Instructions &comment(std::string msg, bool to_front = true) {
-    assert(!empty());
-
-    if (to_front) {
-      front().comment(msg);
-    } else {
-      back().comment(msg);
-    }
-
-    return *this;
-  }
+  Instructions &comment(std::string msg, bool to_front = true);
+  void set_cond_tag(AssignCond cond);
+  bool check_consistent() const;
 };
 
 
-namespace instr {
+/**
+ * Why this has suddenly become necessary is beyond me.
+ *
+ * Just going with the flow here, some C++ shit is arcane.
+ */
+inline Instructions &operator<<(Instructions &lhs, instr::Instr const &rhs) {
+  lhs.push_back(rhs);
+  return lhs;
+}
 
-///////////////////////////////////////////////////////////////////////////////
-// Aggregated Instructions
-///////////////////////////////////////////////////////////////////////////////
 
-Instructions fsin(Location const &dst, Location const &a);
+inline Instructions &operator<<(Instructions &lhs, Instructions const &rhs) {
+  for (auto const &item : rhs) {
+    lhs << item;
+  }
 
-}  // instr
+  return lhs;
+}
 
 }  // v3d
 }  // V3DLib

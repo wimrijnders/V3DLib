@@ -45,8 +45,6 @@ inline void comment(std::string const &str) { comment(str.c_str()); }
 
 void break_point(bool val = true);
 
-void initStmt();
-
 }  // namespace V3DLib
 
 #endif  // _V3DLIB_SOURCE_LANG_H_

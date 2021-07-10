@@ -3,6 +3,8 @@
 #include "Liveness.h"
 #include "Support/Platform.h"
 #include "Target/Subst.h"
+#include "Support/Timer.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 namespace {
@@ -13,9 +15,9 @@ void replace_acc(Instr::List &instrs, RegUsageItem &item, int var_id, int acc_id
 
   for (int i = item.first_usage(); i <= item.last_usage(); i++) {
     auto &instr = instrs[i];
+    if (!instr.has_registers()) continue;  // Doesn't help much
 
-    // Both replace 'current' register only if present
-    renameDest(instr, current, replace_with);
+    instr.rename_dest(current, replace_with);
     renameUses(instr, current, replace_with);
   }
 
@@ -38,7 +40,6 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
 
   for (int var_id = 0; var_id < (int) allocated_vars.size(); var_id++) {
     auto &item = allocated_vars[var_id];
-    assert(item.unused() || item.use_range() > 0);
 
     if (item.reg.tag != NONE) continue;
     if (item.unused()) continue;
@@ -76,7 +77,12 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
     }
 
     Reg replace_with(ACC, acc_id);
+
+/*
+    // This call is an extreme performance hog and has not failed in recent memory
+    // Enable if you're totally paranoid
     allocated_vars.check_overlap_usage(replace_with, item);
+*/
 
     replace_acc(instrs, item, var_id, acc_id);
 
@@ -105,17 +111,18 @@ int peephole_0(int range_size, Instr::List &instrs, RegUsage &allocated_vars) {
  * @return Number of substitutions performed;
  */
 int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
-  UseDef  useDefPrev;
-  UseDef  useDefCurrent;
-  LiveSet liveOut;
-  int     subst_count = 0;
+  RegIdSet liveOut;
+  int subst_count = 0;
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr prev  = instrs[i-1];
+    if (!prev.has_registers()) continue;  // Doesn't help much
+
     Instr instr = instrs[i];
 
-    useDefPrev.set_used(prev);        // Compute vars defined by prev
-    if (useDefPrev.def.empty()) continue;
+    Reg dst = prev.dst_a_reg();
+    if (dst.tag == NONE) continue;
+    RegId def = dst.regId;
 
     // Guard for this special case for the time being.
     // It should actually be possible to load a uniform in an accumulator,
@@ -124,13 +131,10 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
       continue;
     }
 
-    RegId def = useDefPrev.def[0];
-
-    useDefCurrent.set_used(instr);    // Compute vars used by instr
     live.computeLiveOut(i, liveOut);  // Compute vars live-out of instr
 
     // If 'instr' is not last usage of the found var, skip
-    if (!(useDefCurrent.use.member(def) && !liveOut.member(def))) continue;
+    if (!(instr.src_a_regs().member(def) && !liveOut.member(def))) continue;
 
     // Can't remove this test.
     // Reason: There may be a preceding instruction which sets the var to be replaced.
@@ -151,7 +155,7 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
     Reg replace_with(ACC, instrs.get_free_acc(i - 1, i));
     assert(replace_with.regId != -1);
 
-    renameDest( prev, current, replace_with);
+    prev.rename_dest(current, replace_with);
     renameUses(instr, current, replace_with);
     instrs[i-1] = prev;
     instrs[i]   = instr;
@@ -170,11 +174,11 @@ int peephole_1(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
  * Replace assign-only variables with an accumulator
  */
 int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
-  UseDef  useDefCurrent;
-  int     subst_count = 0;
+  int subst_count = 0;
 
   for (int i = 1; i < instrs.size(); i++) {
     Instr instr = instrs[i];
+    if (!instr.has_registers()) continue;  // Doesn't help much
 
     // Guard for this special case for the time being.
     // It should actually be possible to load a uniform in an accumulator,
@@ -183,18 +187,18 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
       continue;
     }
 
-    useDefCurrent.set_used(instr);    // Compute vars used by instr
-    if (useDefCurrent.def.empty()) continue;
-    assert(useDefCurrent.def.size() == 1);
-    RegId def = useDefCurrent.def[0];
+    Reg dst = instr.dst_a_reg();
+    if (dst.tag == NONE) continue;
+    RegId def = dst.regId;
+
     if (!allocated_vars[def].only_assigned()) continue;
 
     Reg current(REG_A, def);
     Reg replace_with(ACC, instrs.get_free_acc(i, i));
     assert(replace_with.regId != -1);
 
-    renameDest(instr, current, replace_with);
-    instrs[i]   = instr;
+    instr.rename_dest(current, replace_with);
+    instrs[i] = instr;
 
     // DANGEROUS! Do not use this value downstream (remember why, old fart?).   
     // Currently stored for debug display purposes only! 
@@ -213,12 +217,103 @@ int peephole_2(Liveness &live, Instr::List &instrs, RegUsage &allocated_vars) {
  * @return true if any replacements were made, false otherwise
  */
 bool combineImmediates(Liveness &live, Instr::List &instrs) {
+  //Timer t3("combineImmediates loop3", true);
+  //Timer t1("combineImmediates", true);
+
   bool found_something = false;
 
+/*
+  auto msg_stop_replace = [] (int k, Instr const &instr2, Instr const &instr3) {
+    std::string msg;
+    msg << "Stopping replacing same LIs: "
+        << "instrs[" << k << "] uses reg " << instr2.LI.dest.dump()
+        << " as dst"
+        << ": " << instr3.mnemonic(false);
+
+    if (instr3.isCondAssign()) {
+      msg << " (Conditional assign!)";
+    }
+    debug(msg);
+  };
+
+  auto msg_replace = [&live] (int k, Instr const &instr3, Reg current, Reg replace_with) {
+    std::string msg;
+    msg << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
+        << current.dump() << " -> " << replace_with.dump()
+        << ", result: " << instr3.mnemonic(false);
+    debug(msg);
+  };
+
+  auto msg_stop_forward_scan = [] (int j, Instr const &instr) {
+    std::string msg;
+    msg << "Stopping forward scan LIs: "
+        << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
+        << " as dst"
+        << ": " << instr.mnemonic(false);
+    debug(msg);
+  };
+*/
+  
+  int const LAST_USE_LIMIT = 50;
+
+  // Detect all LI instructions
   for (int i = 0; i < (int) instrs.size(); i++) {
     Instr &instr = instrs[i];
     if (instr.tag != InstrTag::LI) continue;
-    if (instr.LI.imm.is_basic()) continue;
+
+    if (instr.LI.imm.is_basic()) {
+      auto const &reg_usage = live.reg_usage()[instr.dest().regId];
+
+      if (reg_usage.assigned_once()) {
+        assert(reg_usage.first_usage() == reg_usage.first_dst());
+        bool can_remove = true;
+
+        for (int i = reg_usage.first_usage() + 1; i <= reg_usage.last_usage(); i++) {
+          auto &instr2 = instrs[i];
+          if (instr2.tag != InstrTag::ALU) continue;
+          if (!instr2.is_src_reg(instr.dest())) continue;
+/*
+          // Looks like following check is unnecessary.
+          // Figures; immediates (which are constant) in instruction do not depend on condtion.
+
+          if (instr2.assign_cond() != instr.assign_cond()) {
+            std::string msg;
+            msg << "  LI basic immediate at " << i << ": " << instr.dump() << "\n"
+                << "  dst usage: " << reg_usage.dump() << "\n"
+                << "  WARNING: instruction has differing cond assign, skipping for now: " << instr2.dump();
+            warning(msg);
+            continue;
+          }
+*/
+
+          // Can't substitute if a differing immediate is already present
+          if (instr2.ALU.srcA.is_imm() && instr2.ALU.srcA != instr.LI.imm) {
+            can_remove = false;
+            continue;
+          }
+
+          if (instr2.ALU.srcB.is_imm() && instr2.ALU.srcB != instr.LI.imm) {
+            can_remove = false;
+            continue;
+          }
+
+          // Perform the subst
+          if (instr2.ALU.srcA == instr.dest()) {
+            instr2.ALU.srcA = instr.LI.imm;
+          }
+
+          if (instr2.ALU.srcB == instr.dest()) {
+            instr2.ALU.srcB = instr.LI.imm;
+          }
+        }
+
+        if (can_remove) {
+          instr.tag = SKIP;
+        }
+      }
+
+      continue;
+    }
 
    //std::cout << "  Scanning for LI: " << instr.dump() << std::endl; 
 
@@ -229,10 +324,12 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
 
     // Scan forward to find replaceable LI's (i.e. LI's with same value in same or child block)
     int last_use = i;
-    int const LAST_USE_LIMIT = 50;
 
+    // Detect subsequent LI instructions loading the same value
     for (int j = i + 1; j < (int) instrs.size(); j++) {
-      if (instrs[j].is_branch()) {  // Don't go over branches, this affects liveness in a bad way
+      Instr &instr2 = instrs[j];
+
+      if (instr2.is_branch()) {  // Don't go over branches, this affects liveness in a bad way
         break;
       }
 
@@ -242,77 +339,58 @@ bool combineImmediates(Liveness &live, Instr::List &instrs) {
         break;
       }
 
-      {
-        UseDefReg regs;
-        regs.set_used(instrs[j]);
 
-        if (regs.is_dest(instr.LI.dest)) {
-/*
-          std::string msg;
-          msg << "Stopping forward scan LIs: "
-              << "instrs[" << j << "] rewrites reg " << instr.LI.dest.dump()
-              << " as dst"
-              << ": " << instrs[j].mnemonic(false);
 
-          if (instrs[j].isCondAssign()) {
-            msg << " (Conditional assign!)";
-          }
-          debug(msg);
-*/
-          break;
-        }
+      if (instr2.is_dst_reg(instr.dest())) {
+        //msg_stop_forward_scan(j, instr);
+        break;
       }
 
-      Instr &instr2 = instrs[j];
-
-      if (!(instr2.tag == InstrTag::LI && instr2.LI.imm == instr.LI.imm)) continue;
+      if (instr2.tag != InstrTag::LI) continue;
+      if (instr2.LI.imm != instr.LI.imm) continue;
       if (!live.cfg().is_parent_block(j, live.cfg().block_at(i))) continue;
-
-
 //      std::cout << "  Could replace LI at " << j << " (block " << live.cfg().block_at(j) << "): "
 //                << instr2.mnemonic(false) << std::endl;
 
-//      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl; 
+//      std::cout << "  Scanning for dest reg: " << instr2.LI.dest.dump() << std::endl;
 
-
-      int block_end = live.cfg().block_end(j);
-      UseDefReg regs;
+      //
+      // Find and replace all occurences of the second LI with the first LI instruction
+      //
       int num_subsitutions = 0;
+      Reg current      = instr2.dest();
+      Reg replace_with = instr.dest();
 
-      for (int k = j + 1; k <= block_end; k++) {
-        regs.set_used(instrs[k]);
+      // The bulk of the time (99%) in this function goes into the following part, 
+      // last init + loop.
+      //t3.start();
 
-        if (regs.is_dest(instr2.LI.dest)) {
-/*
-          std::string msg;
-          msg << "Stopping replacing same LIs: "
-              << "instrs[" << k << "] uses reg " << instr2.LI.dest.dump()
-              << " as dst"
-              << ": " << instrs[k].mnemonic(false);
+      // Limit search range to reg usage, or until end of block
+      int last = live.cfg().block_end(j);
+      {
+        RegUsage &reg_usage = live.reg_usage();
+        assert(!reg_usage[current.regId].unused());
+        int last_usage = reg_usage[current.regId].last_usage();
+       
+        if (last > last_usage) last = last_usage;
+      }
 
-          if (instrs[k].isCondAssign()) {
-            msg << " (Conditional assign!)";
-          }
-          debug(msg);
-*/
+      for (int k = j + 1; k <= last; k++) {
+        Instr &instr3 = instrs[k];
+        if (!instr3.has_registers()) continue;
 
+        if (instr3.is_dst_reg(current)) {
+          //msg_stop_replace(k, instr2, instr3);
           break;  // Stop if var to replace is rewritten
         }
 
-        Reg current      = instr2.LI.dest;
-        Reg replace_with = instr.LI.dest;
 
-        if (regs.is_src(current)) {
-/*
-          // Shows an actual replacement
-          std::cout << "    instr[" << k << "] (block " << live.cfg().block_at(k) << "), "
-                    << current.dump() << " -> " << replace_with.dump()
-                    << ": " << instrs[k].mnemonic(false) << std::endl;
-*/
-          renameUses(instrs[k], current, replace_with);
+        if (renameUses(instr3, current, replace_with)) {
+          //msg_replace(k, instr3, current, replace_with);
           num_subsitutions++;
         }
       }
+      //t3.stop();
 
       if (num_subsitutions > 0) {
         last_use = j;
@@ -370,6 +448,7 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
 
   //debug(allocated_vars.dump_use_ranges());
   // Picks up a lot usually, but range_size > 1 seldom results in something
+  //Timer t("peephole_0");
   for (int range_size = 1; range_size <= MAX_RANGE_SIZE; range_size++) {
     int count = peephole_0(range_size, instrs, allocated_vars);
 
@@ -383,9 +462,11 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
 
     subst_count += count;
   }
+  //t.end();
 
   // This peephole still does a lot of useful stuff
   {
+    //Timer t("peephole_1", true);
     int count = peephole_1(live, instrs, allocated_vars);
 
 /*
@@ -401,6 +482,7 @@ int introduceAccum(Liveness &live, Instr::List &instrs) {
 
   // And some things still get done with this peephole, regularly 1 or 2 per compile
   {
+    //Timer t("peephole_2", true);
     int count = peephole_2(live, instrs, allocated_vars);
 /*
     if (count > 0) {

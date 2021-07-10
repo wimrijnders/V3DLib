@@ -7,7 +7,11 @@
 #include "Target/RemoveLabels.h"
 #include "instr/Snippets.h"
 #include "Support/basics.h"
+#include "Support/Timer.h"
 #include "SourceTranslate.h"
+#include "instr/Encode.h"
+#include "instr/Mnemonics.h"
+#include "instr/OpItems.h"
 
 namespace V3DLib {
 
@@ -19,244 +23,15 @@ using ::operator<<; // C++ weirdness
 
 namespace v3d {
 
+
 using namespace V3DLib::v3d::instr;
 using Instructions = V3DLib::v3d::Instructions;
 
 namespace {
 
-uint8_t const NOP_ADDR    = 39;
-uint8_t const REGB_OFFSET = 32;
-uint8_t const NUM_REGS_RF = 64;  // Number of available registers in the register file
+using ::operator<<; // C++ weirdness
 
 std::vector<std::string> local_errors;
-
-
-void check_reg(Reg reg) {
-  if (reg.regId < 0) {
-    error("Unassigned regId value", true);
-  }
-
-  if (reg.regId >= NUM_REGS_RF) {
-    breakpoint
-    error("regId value out of range", true);
-  }
-}
-
-
-uint8_t to_waddr(Reg const &reg) {
-  assertq(reg.tag != REG_B, "to_waddr(): Not expecting REG_B any more, examine");
-  assert(reg.tag == REG_A);
-  return (uint8_t) (reg.regId);
-}
-
-
-/**
- * Translate imm index value from vc4 to v3d
- */
-SmallImm encodeSmallImm(RegOrImm const &src_reg) {
-  assert(src_reg.is_imm());
-
-  Word w = decodeSmallLit(src_reg.imm().val);
-  SmallImm ret(w.intVal);
-  return ret;
-}
-
-
-std::unique_ptr<Location> loc_ptr(Register const &reg) {
-  std::unique_ptr<Location> ret;
-  ret.reset(new Register(reg));
-  return ret;
-}
-
-
-std::unique_ptr<Location> loc_acc(RegId regId, int max_id) {
-  assert(regId >= 0 && regId <= max_id);
-  std::unique_ptr<Location> ret;
-
-  switch(regId) {
-    case 0: ret = loc_ptr(r0); break;
-    case 1: ret = loc_ptr(r1); break;
-    case 2: ret = loc_ptr(r2); break;
-    case 3: ret = loc_ptr(r3); break;
-    case 4: ret = loc_ptr(r4); break;
-    case 5: ret = loc_ptr(r5); break;
-  }
-
-  assert(ret.get() != nullptr);
-  return ret;
-}
-
-
-void check_unhandled_registers(Reg reg, bool do_src_regs) {
-  if (do_src_regs) {
-    switch (reg.tag) {
-      case REG_B:
-        debug_break("check_unhandled_registers(): Not expecting REG_B any more, examine");
-      break;
-
-    case SPECIAL:
-      if (is_dma_only_register(reg)) {
-        throw Exception("The code uses DMA source registers. These are not supported for v3d.");
-      }
-
-      switch (reg.regId) {
-        case SPECIAL_UNIFORM:
-        case SPECIAL_ELEM_NUM:
-        case SPECIAL_QPU_NUM:
-          assertq(false, "check_unhandled_registers(): Not expecting this SPECIAL regId, should be handled before call()", true);
-        break;
-
-        default: break;
-      }
-      break;
-
-      default: break;
-    }
-
-    return;
-  }
-
-  // Do dst regs
-  switch (reg.tag) {
-    case REG_B:
-      debug_break("encodeDestReg(): Not expecting REG_B any more, examine");
-      break;
-    case SPECIAL:
-      if (is_dma_only_register(reg)) {
-        throw Exception("The code uses DMA destination registers. These are not supported for v3d.");
-      }
-      break;
-
-    default: break;
-  }
-}
-
-
-/**
- *
- */
-std::unique_ptr<Location> encodeSrcReg(Reg reg) {
-  check_unhandled_registers(reg, true);
-
-  bool is_none = false;
-  std::unique_ptr<Location> ret;
-
-  switch (reg.tag) {
-    case REG_A:
-      check_reg(reg);
-      ret.reset(new RFAddress(to_waddr(reg)));
-      break;
-    case ACC:
-      ret = loc_acc(reg.regId, 4);  // r5 not allowed here (?)
-      break;
-    case NONE:
-      is_none = true;
-      breakpoint  // Apparently never reached
-      break;
-
-    default:
-      assertq(false, "V3DLib: unexpected reg-tag in encodeSrcReg()");
-  }
-
-  if (ret.get() == nullptr && !is_none) {
-    assertq(false, "V3DLib: missing case in encodeSrcReg()", true);
-  }
-
-  return ret;
-}
-
-
-std::unique_ptr<Location> encodeDestReg(V3DLib::Instr const &src_instr) {
-  assert(!src_instr.isUniformLoad());
-
-  bool is_none = false;
-  std::unique_ptr<Location> ret;
-
-  Reg reg;
-  if (src_instr.tag == ALU) {
-    reg = src_instr.ALU.dest;
-  } else {
-    assert(src_instr.tag == LI);
-    reg = src_instr.LI.dest;
-  }
-
-  check_unhandled_registers(reg, false);
-
-  switch (reg.tag) {
-    case REG_A:
-      check_reg(reg);
-      ret.reset(new RFAddress(to_waddr(reg)));
-      break;
-
-    case ACC:
-      ret = loc_acc(reg.regId, 5);
-      break;
-
-    case SPECIAL:
-      switch (reg.regId) {
-        // These DMA registers *are* handled
-        // They get translated to the corresponding v3d registers
-        // TODO get VPM/DMA out of sight
-        case SPECIAL_VPM_WRITE:           // Write TMU, to set data to write
-          ret = loc_ptr(tmud);
-          break;
-        case SPECIAL_DMA_ST_ADDR:         // Write TMU, to set memory address to write to
-          ret = loc_ptr(tmua);
-          break;
-        case SPECIAL_TMU0_S:              // Read TMU
-          ret = loc_ptr(tmua);
-          break;
-
-        // SFU registers
-        case SPECIAL_SFU_RECIP    : ret = loc_ptr(recip);     break;
-        case SPECIAL_SFU_RECIPSQRT: ret = loc_ptr(rsqrt);     break;  // Alternative: register rsqrt2
-        case SPECIAL_SFU_EXP      : ret = loc_ptr(exp);       break;
-        case SPECIAL_SFU_LOG      : ret = loc_ptr(log);       break;
-
-        default:
-          assertq(false, "encodeDestReg(): not expecting reg tag", true);
-          break;
-      }
-      break;
-    case NONE: {
-      // As far as I can tell, there is no such thing as a NONE register on v3d;
-      // it may be one of the bits in `struct v3d_qpu_sig`.
-      //
-      // The first time I encountered this was in (V3DLib target code):
-      //       _ <-{sf} or(B6, B6)
-      //
-      // The idea seems to be to set the CNZ flags depending on the value of a given rf-register.
-      // So, for the time being, we will set a condition (how? Don't know for sure yet) if
-      // srcA and srcB are the same in this respect, and set target same as both src's.
-      is_none = true;
-      assert(src_instr.setCond().flags_set());
-      assert(src_instr.tag == ALU);
-
-      auto &srcA = src_instr.ALU.srcA;
-
-      // srcA and srcB are the same rf-register
-      if (srcA.is_reg()
-      && (srcA.reg().tag == REG_A || srcA.reg().tag == REG_B)
-      && (srcA == src_instr.ALU.srcB)
-      ) {
-        ret = encodeSrcReg(srcA.reg());
-      } else {
-        breakpoint  // case not handled yet
-      }
-    }
-    break;
-
-    default:
-      assertq(false, "V3DLib: unexpected reg tag in encodeDestReg()");
-  }
-
-  if (ret.get() == nullptr && !is_none) {
-    fprintf(stderr, "V3DLib: missing case in encodeDestReg\n");
-    assert(false);
-  }
-
-  return ret;
-}
 
 
 /**
@@ -332,208 +107,196 @@ bool is_special_index(V3DLib::Instr const &src_instr, Special index ) {
 }
 
 
-/**
- */
-void setCondTag(AssignCond cond, v3d::Instr &out_instr) {
-  if (cond.is_always()) {
-    return;
-  }
-  assertq(cond.tag != AssignCond::Tag::NEVER, "Not expecting NEVER (yet)", true);
-  assertq(cond.tag == AssignCond::Tag::FLAG,  "const.tag can only be FLAG here");  // The only remaining option
-
-  // NOTE: condition tags are set for add alu only here
-  // TODO: Set for mul tag as well if required
-  //       Prob the easiest is to always set them for both for now
-
-  switch(cond.flag) {
-    case ZS:
-    case NS:
-      out_instr.ifa(); 
-      break;
-    case ZC:
-    case NC:
-      out_instr.ifna(); 
-      break;
-    default:  assert(false);
+bool handle_special_index(V3DLib::Instr const &src_instr, Instructions &ret) {
+  if (src_instr.tag == ALU && src_instr.ALU.op == ALUOp::A_TMUWT) {
+    ret << tmuwt();
+    return true;
   }
 
-}
+  auto dst_reg = encodeDestReg(src_instr);
+  assert(dst_reg);
 
+  auto reg_a = src_instr.ALU.srcA;
+  auto reg_b = src_instr.ALU.srcB;
 
-void setCondTag(AssignCond cond, Instructions &ret) {
-  for (auto &instr : ret) {
-    setCondTag(cond, instr);
-  }
-}
-
-
-void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
-  auto &cond = src_instr.ALU.cond;
-
-  // src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
-  assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
-  assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
-
-  auto const &setCond = src_instr.setCond();
-
-  if (setCond.flags_set()) {
-    // Set a condition flag with current instruction
-    assertq(cond.is_always(), "Currently expecting only ALWAYS here", true);
-
-    // Note that the condition is only set for the last in the list.
-    // Any preceding instructions are assumed to be for calculating the condition
-    Instr &instr = ret.back();
-
-    assertq(setCond.tag() == SetCond::Z || setCond.tag() == SetCond::N,
-      "Unhandled setCond flag", true);
-
-    if (setCond.tag() == SetCond::Z) {
-      instr.pushz();
-    } else {
-      instr.pushn();
+  if (reg_a.is_reg() && reg_b.is_reg()) {
+    checkSpecialIndex(src_instr);
+    if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
+      ret << tidx(*dst_reg);
+      return true;
+    } else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
+      ret << eidx(*dst_reg);
+      return true;
     }
-
-  } else {
-    // use flag as run condition for current instruction(s)
-    if (cond.is_always()) {
-      return; // ALWAYS executes always (duh, is default)
-    }
-
-    setCondTag(cond, ret);
   }
+
+  return false;
 }
 
 
 bool translateOpcode(V3DLib::Instr const &src_instr, Instructions &ret) {
+  if (handle_special_index(src_instr, ret)) return true;
+
   bool did_something = true;
 
   auto reg_a = src_instr.ALU.srcA;
   auto reg_b = src_instr.ALU.srcB;
 
+  assertq(src_instr.ALU.op.value() != ALUOp::A_FSIN || (reg_a.is_reg() && reg_b.is_reg()), "sin has smallims");
+
   auto dst_reg = encodeDestReg(src_instr);
+  assert(dst_reg);
 
-  if (dst_reg && reg_a.is_reg() && reg_b.is_reg()) {
-    checkSpecialIndex(src_instr);
-    if (is_special_index(src_instr, SPECIAL_QPU_NUM)) {
-      ret << tidx(*dst_reg);
-    } else if (is_special_index(src_instr, SPECIAL_ELEM_NUM)) {
-      ret << eidx(*dst_reg);
-    } else if (reg_a.reg().tag == NONE && reg_b.reg().tag == NONE) {
-      assert(src_instr.ALU.op.noOperands());
+  switch (src_instr.ALU.op.value()) {
+  case ALUOp::A_FSIN:
+    assert(src_instr.ALU.oneOperand());
+    ret << fsin(*dst_reg, reg_a);
+    break;
+  case ALUOp::A_FFLOOR:
+    assert(src_instr.ALU.oneOperand());
+    ret << ffloor(*dst_reg, reg_a);
+    break;
+  case ALUOp::A_TMUWT:
+    assert(src_instr.ALU.noOperands());
+    ret << tmuwt();
+    break;
+  case ALUOp::A_TIDX:
+    breakpoint  // Apparently never called?
+    assert(src_instr.ALU.noOperands());
+    ret << tidx(*dst_reg);
+    break;
+  case ALUOp::A_EIDX:
+    assert(src_instr.ALU.noOperands());
+    ret << eidx(*dst_reg);
+    break;
+  default: {
+    // Handle general case
+    Instr instr;
 
-      switch (src_instr.ALU.op.value()) {
-        case ALUOp::A_TIDX:  ret << tidx(*dst_reg); break;
-        case ALUOp::A_EIDX:  ret << eidx(*dst_reg); break;
-        default:
-          assertq("unimplemented op, input none", true);
-          did_something = false;
-        break;
-      }
-    } else if (reg_a.reg().tag != NONE && reg_b.reg().tag == NONE) {
-      // 1 input
-      auto src_a = encodeSrcReg(reg_a.reg());
-      assert(src_a);
-
-      switch (src_instr.ALU.op.value()) {
-        case ALUOp::A_FFLOOR:  ret << ffloor(*dst_reg, *src_a); break;
-        case ALUOp::A_FSIN:    ret << fsin(*dst_reg, *src_a);    break;
-        default:
-          assertq("unimplemented op, input reg", true);
-          did_something = false;
-        break;
-      }
+    if (instr.alu_add_set(src_instr) || instr.alu_mul_set(src_instr)) {
+      ret << instr;
     } else {
-      auto src_a = encodeSrcReg(reg_a.reg());
-      auto src_b = encodeSrcReg(reg_b.reg());
-      assert(src_a && src_b);
-
-      switch (src_instr.ALU.op.value()) {
-        case ALUOp::A_ASR:   ret << asr(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_BOR:   ret << bor(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_BAND:  ret << band(*dst_reg, *src_a, *src_b);         break;
-        case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, *src_b);   break;
-        case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, *src_a, *src_b); break;
-        case ALUOp::A_FSUB:  ret << fsub(*dst_reg, *src_a, *src_b);         break;
-        case ALUOp::A_FADD:  ret << fadd(*dst_reg, *src_a, *src_b);         break;
-        case ALUOp::A_MIN:   ret << min(*dst_reg, *src_a, *src_b);          break;
-        case ALUOp::A_MAX:   ret << max(*dst_reg, *src_a, *src_b);          break;
-        default:
-          assertq("unimplemented op, input reg, reg", true);
-          did_something = false;
-        break;
-      }
+      did_something = false;
     }
-  } else if (dst_reg && reg_a.is_reg() && reg_b.is_imm()) {
-    auto src_a = encodeSrcReg(reg_a.reg());
-    assert(src_a);
-    SmallImm imm = encodeSmallImm(reg_b);
-
-    switch (src_instr.ALU.op.value()) {
-      case ALUOp::A_SHL:   ret << shl(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_SHR:   ret << shr(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_ASR:   ret << asr(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_BAND:  ret << band(*dst_reg, *src_a, imm);         break;
-      case ALUOp::A_SUB:   ret << sub(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_ADD:   ret << add(*dst_reg, *src_a, imm);          break;
-      case ALUOp::A_FADD:  ret << fadd(*dst_reg, *src_a, imm);         break;
-      case ALUOp::A_FSUB:  ret << fsub(*dst_reg, *src_a, imm);         break;
-      case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, *src_a, imm);   break;
-      case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, *src_a, imm); break;
-      case ALUOp::A_ItoF:  ret << itof(*dst_reg, *src_a, imm);         break;
-      case ALUOp::A_FtoI:  ret << ftoi(*dst_reg, *src_a, imm);         break;
-      case ALUOp::A_BXOR:  ret << bxor(*dst_reg, *src_a, imm);         break;
-      default:
-        assertq("unimplemented op, input reg, imm", true);
-        did_something = false;
-      break;
-    }
-  } else if (dst_reg && reg_a.is_imm() && reg_b.is_reg()) {
-    SmallImm imm = encodeSmallImm(reg_a);
-    auto src_b   = encodeSrcReg(reg_b.reg());
-    assert(src_b);
-
-    switch (src_instr.ALU.op.value()) {
-      case ALUOp::A_SHL:   ret << shl(*dst_reg, imm, *src_b);          break;
-      case ALUOp::M_MUL24: ret << nop().smul24(*dst_reg, imm, *src_b); break;
-      case ALUOp::M_FMUL:  ret << nop().fmul(*dst_reg, imm, *src_b);   break;
-      case ALUOp::A_FSUB:  ret << fsub(*dst_reg, imm, *src_b);         break;
-      case ALUOp::A_SUB:   ret << sub(*dst_reg, imm, *src_b);          break;
-      case ALUOp::A_ADD:   ret << add(*dst_reg, imm, *src_b);          break;
-      case ALUOp::A_FADD:  ret << fadd(*dst_reg, imm, *src_b);         break;
-      default:
-        assertq("unimplemented op, input imm, reg", true);
-        did_something = false;
-      break;
-    }
-  } else if (dst_reg && reg_a.is_imm() && reg_b.is_imm()) {
-    SmallImm imm_a = encodeSmallImm(reg_a);
-    SmallImm imm_b = encodeSmallImm(reg_b);
-
-    switch (src_instr.ALU.op.value()) {
-      case ALUOp::A_BOR:   ret << bor(*dst_reg, imm_a, imm_b);          break;
-      default:
-        assertq("unimplemented op, input imm, imm", true);
-        did_something = false;
-      break;
-    }
-  } else {
-    assertq("Unhandled combination of inputs/output", true);
-    did_something = false;
+  }
   }
 
-  return did_something;
+  if (did_something) return true;
+
+  auto const &src_alu = src_instr.ALU;
+  std::string msg = "translateOpcode(): Unknown conversion for src ";
+  msg  << "op: " << src_alu.op.value()
+       << ", instr: " << src_instr.dump();
+  assertq(false, msg, true);
+
+  return false;
+}
+
+
+void handle_condition_tags(V3DLib::Instr const &src_instr, Instructions &ret) {
+  using ::operator<<; // C++ weirdness
+
+  auto cond = src_instr.assign_cond();
+
+  // src_instr.ALU.cond.tag has 3 possible values: NEVER, ALWAYS, FLAG
+  assertq(cond.tag != AssignCond::Tag::NEVER, "NEVER encountered in ALU.cond.tag", true);          // Not expecting it
+  assertq(cond.tag == AssignCond::Tag::FLAG || cond.is_always(), "Really expecting FLAG here", true); // Pedantry
+
+  auto setCond = src_instr.set_cond();
+
+  if (!setCond.flags_set()) {
+    ret.set_cond_tag(cond);
+    return;
+  }
+
+  //
+  // Set a condition flag with current instruction
+  //
+  // The condition is only set for the last in the list.
+  // Any preceding instructions are assumed to be for calculating the condition
+  //
+  assertq(cond.is_always(), "Currently expecting only ALWAYS here", true);
+
+  bool is_final_where_cond = src_instr.comment().find("where condition final") != src_instr.comment().npos;
+
+  if (!is_final_where_cond) {
+    ret.back().set_push_tag(setCond);
+    return;
+  }
+
+  //
+  // Process final where condition
+  // In this case, condition flag must be pushed for both add and mul alu.
+  //
+
+  if (false) {
+    std::string msg = "handle_condition_tags(): detected final where condition: '";
+    msg << src_instr.dump() << "'\n";
+    msg << "v3d: " << ret.back().mnemonic() << "'\n";
+    debug(msg);
+  }
+
+  ret.back().set_push_tag(setCond);
+
+  //
+  // Add and mul alus are set to have the same destination, normally this is risky!
+  // However, in this case the dst is a dummy (assumption? check), so if the hardware
+  // allows it, this is ok.
+  //
+  // or.pushz  r0, r3, r3 ; mov.pushz  r0, r3
+  //
+/*
+  Instructions tmp;
+  assertq(translateOpcode(src_instr, tmp), "translateOpcode() failed");
+  assert(tmp.size() == 1);
+  Instr &tmp_instr = tmp[0];
+*/
+/*
+  Instr tmp_instr;
+  if(!tmp_instr.alu_mul_set(src_instr)) {
+    assert(false);
+  }
+
+  tmp_instr.set_push_tag(setCond);
+*/
+
+
+  Instr tmp_instr;
+  auto reg = encodeDestReg(src_instr);
+  assert(reg);
+  tmp_instr = nop().sub(*reg, *reg, SmallImm(0)).pushz();
+
+  ret << tmp_instr;
+
+  if (false) {
+    std::string msg = "handle_condition_tags() ";
+    msg << "v3d final: " << ret.back().mnemonic() << "'\n";
+    msg << "v3d tmp: " << tmp_instr.mnemonic() << "'\n";
+    debug(msg);
+  }
 }
 
 
 /**
  * @return true if rotate handled, false otherwise
+ *
+ * ============================================================================
+ * NOTES
+ * =====
+ *
+ * * From vc4 reg doc (assuming also applies to v3d):
+ *   - An instruction that does a vector rotate by r5 must not immediately follow an instruction that writes to r5.
+ *   - An instruction that does a vector rotate must not immediately follow an instruction that writes
+ *      to the accumulator that is being rotated.
+ *
+ *   This implies that the srcA is always an accumulator, srcB either smallimm or r5.
+ *   Adding preceding NOP is too strict now, assuming r0 always, and in fact 2 NOPs are added.
+ *   TODO make better.
+ *
+ * * A rotate is actually a mov() with the rotate signal set.
  */
 bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
-  if (!instr.ALU.op.isRot()) {
-    return false;
-  }
+  if (!instr.ALU.op.isRot()) return false;
 
   // dest is location where r1 (result of rotate) must be stored 
   auto dst_reg = encodeDestReg(instr);
@@ -554,7 +317,7 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
   ret << nop().comment("NOP required for rotate");
 
   if (reg_b.is_reg()) {
-    breakpoint
+    breakpoint  // Not called yet
 
     assert(instr.ALU.srcB.reg().tag == ACC && instr.ALU.srcB.reg().regId == 5);  // reg b must be r5
     auto src_b = encodeSrcReg(reg_b.reg());
@@ -562,7 +325,7 @@ bool translateRotate(V3DLib::Instr const &instr, Instructions &ret) {
     ret << rotate(r1, r0, *src_b);
 
   } else {
-    SmallImm imm = encodeSmallImm(reg_b);  // Legal values small imm tested in rotate()
+    SmallImm imm(reg_b.imm().val); // Legal values small imm tested in rotate()
     ret << rotate(r1, r0, imm);
   }
 
@@ -588,6 +351,7 @@ bool convert_int_powers(Instructions &output, int in_value) {
   }
 
   if (left_shift == 0) return false;
+  if (left_shift >= 16) return false;  // Must be positive small int
 
   int rep_value;
   if (!SmallImm::int_to_opcode_value(value, rep_value)) return false;
@@ -652,8 +416,6 @@ bool encode_int_immediate(Instructions &output, int in_value) {
       if (i > 0) {
         if (convert_int_powers(ret, 4*i)) {
           // r0 now contains value for left shift
-          //ret << mov(r2, imm);
-          //ret << shl(r0, r2, r0);
           ret << shl(r0, imm, r0);
         } else {
           ret << mov(r0, imm);
@@ -670,11 +432,11 @@ bool encode_int_immediate(Instructions &output, int in_value) {
   if (ret.empty()) return false;  // Not expected, but you never know
 
   std::string cmt;
-  cmt << "Load immediate " << in_value;
+  cmt << "Full load imm " << in_value;
   ret.front().comment(cmt);
 
   std::string cmt2;
-  cmt2 << "End load immediate " << in_value;
+  cmt2 << "full load imm " << in_value;
   ret.back().comment(cmt2);
 
   output << ret;
@@ -705,26 +467,39 @@ bool encode_float(Instructions &ret, std::unique_ptr<Location> &dst, float value
   bool success = true;
   int rep_value;
 
+  auto load_float_as_int = [&ret, &dst] (float value) -> bool {
+    int int_value = (int) value;
+
+    if (encode_int(ret, dst, int_value)) {
+      std::string cmt;
+      cmt << "Load float imm " << value;
+
+      ret  << itof(*dst,*dst).comment(cmt);
+      return true;
+    } else {
+      assertq("Full-int float conversion failed", true);  // Actually has never failed
+      return false;
+    }
+  };
+
   if (value < 0 && SmallImm::float_to_opcode_value(-value, rep_value)) {
-    ret << nop().fmov(*dst, rep_value)
+    std::string cmt;
+    cmt << "Load neg float small imm " << value;
+
+    ret << nop().fmov(*dst, rep_value).comment(cmt)
         << fsub(*dst, 0, *dst);                   // Works because float zero is 0x0
   } else if (SmallImm::float_to_opcode_value(value, rep_value)) {
     ret << nop().fmov(*dst, rep_value);
   } else if ((value == (float) ((int) value))) {  // Special case: float is encoded int, no fraction
-    int int_value = (int) value;
-    SmallImm dummy(0);                            // TODO why need this???
-
-    if (encode_int(ret, dst, int_value)) {
-      ret  << itof(*dst, *dst, dummy);
-    } else {
-      assertq("Full-int float conversion failed", true);
-      success = false;
-    }
+    success = load_float_as_int(value);
   } else {
     // Do the full blunt int conversion
     int int_value = *((int *) &value);
     if (encode_int_immediate(ret, int_value)) {
-      ret << mov(*dst, r1);                       // Result is int but will be handled as float downstream
+      std::string cmt;
+      cmt << "Load full float imm " << value;
+
+      ret << mov(*dst, r1).comment(cmt);          // Result is int but will be handled as float downstream
     } else {
       success = false;
     }
@@ -790,11 +565,11 @@ Instructions encodeLoadImmediate(V3DLib::Instr const full_instr) {
   }
 
 
-  if (full_instr.setCond().flags_set()) {
+  if (full_instr.set_cond().flags_set()) {
     breakpoint;  // to check what flags need to be set - case not handled yet
   }
 
-  setCondTag(instr.cond, ret);
+  ret.set_cond_tag(full_instr.assign_cond());
   return ret;
 }
 
@@ -803,8 +578,7 @@ Instructions encodeALUOp(V3DLib::Instr instr) {
   Instructions ret;
 
   if (instr.isUniformLoad()) {
-    Reg dst_reg = instr.ALU.dest;
-    uint8_t rf_addr = to_waddr(dst_reg);
+    uint8_t rf_addr = to_waddr(instr.dest());
     ret << nop().ldunifrf(rf(rf_addr));
    } else if (translateRotate(instr, ret)) {
     handle_condition_tags(instr, ret);
@@ -820,63 +594,16 @@ Instructions encodeALUOp(V3DLib::Instr instr) {
 
 
 /**
- * Convert conditions from Target source to v3d
- *
- * Incoming conditions are vc4 only, the conditions don't exist on v3d.
- * They therefore need to be translated.
- */
-void encodeBranchCondition(v3d::instr::Instr &dst_instr, V3DLib::BranchCond src_cond) {
-  // TODO How to deal with:
-  //
-  //      dst_instr.na0();
-  //      dst_instr.a0();
-
-  if (src_cond.tag == COND_ALWAYS) {
-    return;  // nothing to do
-  } else if (src_cond.tag == COND_ALL) {
-    switch (src_cond.flag) {
-      case ZC:
-      case NC:
-        dst_instr.allna();
-        break;
-      case ZS:
-      case NS:
-        dst_instr.alla();
-        break;
-      default:
-        debug_break("Unknown branch condition under COND_ALL");  // Warn me if this happens
-    }
-  } else if (src_cond.tag == COND_ANY) {
-    switch (src_cond.flag) {
-      case ZC:
-      case NC:
-        dst_instr.anyna();  // TODO: verify
-        break;
-      case ZS:
-      case NS:
-        dst_instr.anya();  // TODO: verify
-        break;
-      default:
-        debug_break("Unknown branch condition under COND_ANY");  // Warn me if this happens
-    }
-  } else {
-    debug_break("Branch condition not COND_ALL or COND_ANY");  // Warn me if this happens
-  }
-}
-
-
-/**
  * Create a branch instruction, including any branch conditions,
  * from Target source instruction.
  */
 v3d::instr::Instr encodeBranchLabel(V3DLib::Instr src_instr) {
   assert(src_instr.tag == BRL);
-  auto &instr = src_instr.BRL;
 
   // Prepare as branch without offset but with label
   auto dst_instr = branch(0, true);
-  dst_instr.label(instr.label);
-  encodeBranchCondition(dst_instr, instr.cond);
+  dst_instr.label(src_instr.branch_label());
+  dst_instr.set_branch_condition(src_instr.branch_cond());
 
   return dst_instr;
 }
@@ -924,14 +651,16 @@ Instructions encodeInstr(V3DLib::Instr instr) {
     }
     break;
 
-    //
-    // Handled tags
-    //
-    case LI:           ret << encodeLoadImmediate(instr); break;
-    case ALU:          ret << encodeALUOp(instr);         break;
-    case TMU0_TO_ACC4: ret << nop().ldtmu(r4);            break;
-    case NO_OP:        ret << nop();                      break;
-    case TMUWT:        ret << tmuwt();                    break;
+    case RECV: {
+      auto dst_reg = encodeDestReg(instr);
+      assert(dst_reg);
+      ret << nop().ldtmu(*dst_reg);
+    }
+    break;
+
+    case LI:           ret << encodeLoadImmediate(instr);   break;
+    case ALU:          ret << encodeALUOp(instr);           break;
+    case NO_OP:        ret << nop();                        break;
 
     default:
       fatal("v3d: missing case in encodeInstr");
@@ -967,6 +696,8 @@ Instructions encode_init() {
 }
 
 
+#ifdef DEBUG
+
 /**
  * Check assumption: uniform loads are always at the top of the instruction list.
  */
@@ -993,79 +724,7 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
   return true;
 }
 
-
-/**
- * Criteria are intentional extremely strict.
- * These will be relaxed when further cases for optimization are encountered.
- *
- * Note that index can change!
- */
-bool handle_target_specials(Instructions &ret, V3DLib::Instr::List const &instrs, int &index) {
-  if (index + 1 == instrs.size()) return false;
-
-  auto const &instr = instrs[index];
-  auto const &next_instr = instrs[index + 1];
-  if (instr.isCondAssign()) return false;
-  if (next_instr.isCondAssign()) return false;
-
-  //
-  // If possible, combine a TMU gather with the next statement
-  // Currently, only add as next statement allowed
-  //
-  if (instr.isTMUAWrite(true)) {
-    bool simple_int_add = (next_instr.tag == ALU && next_instr.ALU.op == ALUOp::A_ADD);
-    if (!simple_int_add) return false; 
-
-    // Can combine if there are at most two different source values
-    int unique_src_count = 1;  // for instr src A
-
-    // Don't feel like making this pretty right now
-    if (instr.ALU.srcA != instr.ALU.srcB) ++unique_src_count;
-    if (instr.ALU.srcA != next_instr.ALU.srcA && instr.ALU.srcB != next_instr.ALU.srcA) ++unique_src_count;
-
-    if (instr.ALU.srcA      != next_instr.ALU.srcB
-     && instr.ALU.srcB      != next_instr.ALU.srcB
-     && next_instr.ALU.srcA != next_instr.ALU.srcB) ++unique_src_count;
-
-    if (unique_src_count > 2) {
-      std::string msg = "unique_src_count: ";
-      msg << unique_src_count                      << "\n"
-          << "  instr     : " << instr.dump()      << "\n"
-          << "  next_instr: " << next_instr.dump() << "\n";
-
-      assertq(false, msg); // Warn me if this happens, will need unit test
-      return false;
-    }
-
-    //
-    // Can combine!
-    //
-    //std::cout << "Target instr is TMU fetch: " << instr.dump() << std::endl;
-    //std::cout << "Next target instr is add: " << next_instr.dump() << std::endl;
-
-    Instructions tmp;
-    assertq(translateOpcode(instr, tmp), "translateOpcode() failed");
-    assert(tmp.size() == 1);
-
-    auto dst   = encodeDestReg(next_instr);
-    assert(dst);
-    auto reg_a = next_instr.ALU.srcA;
-    auto reg_b = next_instr.ALU.srcB;
-    auto src_a = encodeSrcReg(reg_a.reg());
-    auto src_b = encodeSrcReg(reg_b.reg());
-    assert(src_a && src_b);
-    tmp[0].add(*dst, *src_a, *src_b);
-    tmp[0].comment(instr.comment());
-    tmp[0].comment(next_instr.comment());
-
-    //std::cout << "result: " << tmp[0].mnemonic(true) << std::endl;
-    index++;
-    ret << tmp;
-    return true;
-  }
-
-  return false;
-}
+#endif  // DEBUG
 
 
 /**
@@ -1088,11 +747,7 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
       instructions << encode_init();
       prev_was_init_end = true;
     } else {
-      Instructions ret;
-
-      if (!handle_target_specials(ret, instrs, i)) {
-        ret = v3d::encodeInstr(instr);
-      }
+      Instructions ret = v3d::encodeInstr(instr);
 
       if (prev_was_init_begin) {
         ret.front().header("Init block");
@@ -1110,6 +765,416 @@ void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
 
   instructions << sync_tmu()
                << end_program();
+}
+
+
+template<typename AddAlu>
+bool can_be_mul_alu(AddAlu const &add_alu) {
+  return ((add_alu.op == V3D_QPU_A_OR && add_alu.a == add_alu.b)       // ORs with 1 source can be translated to mul alu MOV
+        || add_alu.op == V3D_QPU_A_ADD
+        || add_alu.op == V3D_QPU_A_SUB)
+       && (!add_alu.magic_write || add_alu.waddr < V3D_QPU_WADDR_NOP)  // Don't write to special registers in the mul alu
+  ;
+}
+
+
+/**
+ * Check if given instructions have a dependency on each other.
+ *
+ * Pre: Instruction 'first' is predecessor of 'second'.
+ * There is a dependency if:
+ *   - instruction 'second' has a source which is a destination of 'first'.
+ *   - instruction 'second' has a destination which is a destination of 'first'.
+ */
+bool have_dependency(v3d::instr::Instr const &first, v3d::instr::Instr const &second) {
+  return second.is_src(first.sig_dest())
+      || second.is_src(first.add_dest())
+      || second.is_src(first.mul_dest())
+      || second.is_dst(first.sig_dest())
+      || second.is_dst(first.add_dest())
+      || second.is_dst(first.mul_dest());
+}
+
+
+bool can_combine(v3d::instr::Instr const &instr1, v3d::instr::Instr const &instr2, bool &do_converse) {
+  assert(instr1.add_nop() || instr1.mul_nop());  // Not expecting fully filled instructions
+  assert(instr2.add_nop() || instr2.mul_nop());  // idem
+
+  // Skip branches
+  if (instr1.type == V3D_QPU_INSTR_TYPE_BRANCH || instr2.type == V3D_QPU_INSTR_TYPE_BRANCH) return false;
+
+  // Skip special signals for now - there might be something to be won with the ld's
+  if (instr1.has_signal() || instr2.has_signal()) return false;
+
+  // Skip full NOPs, they are there for a reason
+  if (instr1.is_nop()) return false;
+  if (instr2.is_nop()) return false;
+
+  // skip both mul for now, needs extra logic and is probably scarce
+  if (!instr1.mul_nop() && !instr2.mul_nop())  {
+    return false;
+  }
+
+
+  auto magic_write1 = instr1.mul_nop()?instr1.alu.add.magic_write:instr1.alu.mul.magic_write;
+  auto waddr1       = instr1.mul_nop()?instr1.alu.add.waddr:instr1.alu.mul.waddr;
+  auto magic_write2 = instr2.mul_nop()?instr2.alu.add.magic_write:instr2.alu.mul.magic_write;
+  auto waddr2       = instr2.mul_nop()?instr2.alu.add.waddr:instr2.alu.mul.waddr;
+
+  // Skip combined special waddresses - important for tmu operations
+  if ((magic_write1 && waddr1 >= V3D_QPU_WADDR_NOP)
+   && (magic_write2 && waddr2 >= V3D_QPU_WADDR_NOP)) return false;
+
+  // Disallow same dest reg
+  if (waddr1 == waddr2 && magic_write1 == magic_write2) return false;
+
+
+  // Don't combine set conditional with use conditional
+  if (instr1.flags.apf && instr2.flags.ac) return false;
+
+
+  // Output instr1 should not be used as input instr2
+  auto a2 = instr2.mul_nop()?instr2.alu.add.a:instr2.alu.mul.a;
+  auto b2 = instr2.mul_nop()?instr2.alu.add.b:instr2.alu.mul.b;
+
+  bool is_rf1 = !magic_write1;
+  if (is_rf1) {
+    if (a2 == V3D_QPU_MUX_A && instr2.raddr_a == waddr1) return false;
+    if (b2 == V3D_QPU_MUX_A && instr2.raddr_a == waddr1) return false;
+
+    if (a2 == V3D_QPU_MUX_B && !instr2.sig.small_imm && instr2.raddr_b == waddr1) return false;
+    if (b2 == V3D_QPU_MUX_B && !instr2.sig.small_imm && instr2.raddr_b == waddr1) return false;
+  } else {
+    if (a2 < V3D_QPU_MUX_A && a2 == waddr1) return false;
+    if (b2 < V3D_QPU_MUX_A && b2 == waddr1) return false;
+  }
+
+  // mul/alu splits can always be combined
+  if (instr1.mul_nop() && !instr2.mul_nop()) {
+    do_converse = false;
+    return true;
+  }
+
+  if (!instr1.mul_nop() && instr2.mul_nop()) {
+    do_converse = true;
+    return true;
+  }
+
+
+  //
+  // Determine add alu instructions with mul alu equivalents
+  //
+  if (can_be_mul_alu(instr2.alu.add)) {
+    do_converse = false;
+    return true;
+  }
+
+  if (can_be_mul_alu(instr1.alu.add)) {
+    do_converse = true;
+    return true;
+  }
+
+  return false;
+}
+
+
+bool convert_alu_op_to_mul_op(v3d_qpu_mul_op &mul_op, v3d::instr::Instr const &add_instr) {
+  switch (add_instr.alu.add.op) {
+    case V3D_QPU_A_OR:
+      if (add_instr.alu.add.a == add_instr.alu.add.b) {
+        mul_op = V3D_QPU_M_MOV;
+        return true;
+      }
+
+    case V3D_QPU_A_ADD:
+      mul_op = V3D_QPU_M_ADD;
+      return true;
+
+    case V3D_QPU_A_SUB:
+      mul_op = V3D_QPU_M_SUB;
+      return true;
+
+    default: break;
+  }
+
+  return false;
+}
+
+
+/**
+ * Set the mul alu with the add alu part of in_instr
+ */
+bool add_alu_to_mul_alu(Instr const &in_instr, Instr &dst) {
+  assert((!in_instr.add_nop() &&  in_instr.mul_nop()) 
+      || ( in_instr.add_nop() && !in_instr.mul_nop())); 
+  assert(dst.mul_nop()); 
+
+  //
+  // Get used dst and src
+  //
+  std::unique_ptr<Location> dst_loc;
+  std::unique_ptr<Source> src_a;
+  std::unique_ptr<Source> src_b;
+
+  if (in_instr.mul_nop()) {
+    v3d_qpu_mul_op mul_op;
+    if (!convert_alu_op_to_mul_op(mul_op, in_instr)) return false;
+    dst.alu.mul.op = mul_op;
+
+    // Take values from add alu 
+    dst_loc = in_instr.add_alu_dst();
+    src_a   = in_instr.add_alu_a();
+    src_b   = in_instr.add_alu_b();
+  } else {
+    dst.alu.mul.op = in_instr.alu.mul.op;
+
+    // Take values from mul alu 
+    dst_loc = in_instr.mul_alu_dst();
+    src_a   = in_instr.mul_alu_a();
+    src_b   = in_instr.mul_alu_b();
+  }
+  assert(dst_loc.get() != nullptr);
+  assert(src_a.get()   != nullptr);
+  assert(src_b.get()   != nullptr);
+
+  if (!dst.alu_mul_set(*dst_loc, *src_a, *src_b)) return false;
+
+  if (in_instr.mul_nop()) {
+    dst.alu.mul.output_pack = in_instr.alu.add.output_pack;
+    dst.alu.mul.a_unpack    = in_instr.alu.add.a_unpack;
+    dst.alu.mul.b_unpack    = in_instr.alu.add.b_unpack;
+
+    dst.flags.mc  = in_instr.flags.ac;
+    dst.flags.mpf = in_instr.flags.apf;
+    dst.flags.muf = in_instr.flags.auf;
+  } else {
+    dst.alu.mul.output_pack = in_instr.alu.mul.output_pack;
+    dst.alu.mul.a_unpack    = in_instr.alu.mul.a_unpack;
+    dst.alu.mul.b_unpack    = in_instr.alu.mul.b_unpack;
+
+    dst.flags.mc  = in_instr.flags.mc;
+    dst.flags.mpf = in_instr.flags.mpf;
+    dst.flags.muf = in_instr.flags.muf;
+  }
+
+  dst.header(in_instr.header());
+  dst.comment(in_instr.comment());
+
+  return true;
+}
+
+
+void combine(Instructions &instructions) {
+
+  //
+  // Detect useless moves, eg: or  rf2, rf2, rf2    ; nop
+  //
+  auto check_assign_to_self = [] (Instr const &instr, int i) -> bool {
+    if (!instr.is_branch() && !instr.add_nop() && instr.mul_nop() && instr.alu.add.op == V3D_QPU_A_OR) {
+      auto dst = instr.add_alu_dst();
+      assert(dst);
+      auto a = instr.add_alu_a();
+      assert(a);
+      auto b = instr.add_alu_b();
+      assert(b);
+
+      if (*a == *b && *dst == *a) {
+        if (instr.has_signal(true)) {
+          breakpoint // Deal with this when it happens
+        }
+
+        if (instr.flag_set()) {
+          breakpoint // Deal with this when it happens
+        }
+/*
+        std::string msg = "Useless move at ";
+        msg << i << ": " << instr.mnemonic(false);
+        warning(msg);
+*/
+        return true;
+      }
+    }
+
+    return false;
+  };
+
+  assertq(!check_assign_to_self(instructions[0], 0), "First instruction is useless copy");
+
+  int combine_count = 0;
+
+  for (int i = 1; i < (int) instructions.size(); i++) {
+    auto &instr1 = instructions[i - 1];
+    auto &instr2 = instructions[i];
+
+    assertq(!instr1.mnemonic(false).empty(), "WTF 1", true);  // Paranoia
+    assertq(!instr2.mnemonic(false).empty(), "WTF 2", true);
+
+    assertq(!(instr1.skip() && instr2.skip()), "Deal with skips when they happen");
+    if (instr1.skip()) continue;
+
+    //
+    // Combine pure nop ldtmu instruction with next
+    // 
+    if (false && instr1.is_ldtmu() && instr1.is_nop()) {
+
+      // There can be multiple consecutive tmu loads, shift them all in reverse order
+      int first = i - 1;
+      int last  = i - 1;
+      for (int n = last + 1; n < (int) instructions.size(); n++) {
+        auto &instr = instructions[n];
+
+        //breakpoint
+
+        assert(!instr.skip());
+        if (!instr.is_nop()) break;  // pure nop ldtmu only
+        if (!instr.is_ldtmu()) break;
+        last = n;
+      }
+
+      for (int n = last; n >= first; n--) {
+        auto &instr = instructions[n];
+        int shift_to = 0;
+         
+        int max_shift = -1;  // If set > 0, max number of instructions to look forward
+
+        int end_m = (int) instructions.size();
+        if (max_shift > 0 && end_m > n + max_shift) {
+          end_m = n + max_shift;
+        }
+
+        for (int m = n + 1; m < end_m; m++) {
+          auto &instr2 = instructions[m];
+          if (instr2.skip()) continue;
+          if (instr2.is_branch()) break;   // Paranoia safeguard; it might actually be possible
+          if (instr2.uses_sig_dst()) break;
+          if (have_dependency(instr, instr2)) break;
+
+          // Specials
+          if (!instr2.is_branch()) 
+            if (instr2.alu.add.op == V3D_QPU_A_BARRIERID    // In program end, syncs last TMU operation
+
+            //
+            // Following empirically determined
+            //
+
+            // TMU read and load don't mix
+            || (instr2.alu.add.waddr == V3D_QPU_WADDR_TMUA && instr2.alu.add.magic_write)
+
+            // Apparently, can't combine setting flags with TMU loads
+            || (instr2.flags.ac != V3D_QPU_COND_NONE || instr2.flags.mc != V3D_QPU_COND_NONE)
+            ) {
+            break;
+          }
+          
+          shift_to = m;
+        }
+
+        //breakpoint
+
+        if (shift_to != 0) {
+          auto &instr2 = instructions[shift_to];
+          instr2.sig.ldtmu = true;
+          instr2.sig_addr  = instr.sig_addr;
+          instr2.sig_magic = instr.sig_magic;
+          instr.skip(true);
+        }
+      }
+
+      //breakpoint
+      i += (last - first);
+      continue;
+    }
+
+
+    //
+    // Skip instructions that have both add and mul alu
+    //
+    if (!instr1.add_nop() && !instr1.mul_nop()) continue;
+    if (!instr2.add_nop() && !instr2.mul_nop()) continue;
+
+
+    //
+    // Remove useless copies
+    //
+    if (check_assign_to_self(instr2, i)) {
+      instr2.skip(true);
+      continue;
+    }
+
+
+    //
+    // Combine add and mul instructions, if possible
+    //
+    bool do_converse;
+    if (!can_combine(instr1, instr2, do_converse)) continue;
+
+    std::string msg = "combine() considering ";
+    msg << "line " << i << ":\n"
+        << "  " << instr1.mnemonic(false) << "\n"
+        << "  " << instr2.mnemonic(false);
+
+    // attempt the conversion
+    {
+      auto const &add_instr = do_converse?instr2:instr1;
+      auto const &mul_instr = do_converse?instr1:instr2;
+
+      assert(add_instr.mul_nop());
+
+      v3d::instr::Instr dst = add_instr;
+
+      // First test: Don't deal with conditions yet in the mul alu
+      // These need a bit of extra logic to set them for mul
+      // TODO examine this
+      bool success = !mul_instr.flag_set() && add_alu_to_mul_alu(mul_instr, dst);
+
+      if (success) {
+        msg << "\n  Possible conversion: " << dst.mnemonic(false);
+        //debug(msg);
+
+        instr1.skip(true);
+        instr2 = dst;
+
+        combine_count++;
+        i++;
+      }
+      continue;
+    }
+
+    debug(msg);  // Deal with unhandled case in this loop
+    break;       // ...as we encounter them
+  }
+
+  compile_data.num_instructions_combined += combine_count;
+/*
+  if (combine_count > 0) {
+    std::string msg;
+    msg << "Combined " << combine_count << " v3d instructions";
+    debug(msg);
+  }
+*/
+
+  //
+  // Combine skips
+  //
+  Instructions ret;
+  int skip_count = 0;
+  for (int i = 0; i < (int) instructions.size(); i++) {
+    auto const &instr = instructions[i];
+    if (instr.skip()) {
+      skip_count++;
+    } else {
+      ret << instr;
+    }
+  }
+
+  if (skip_count > 0) {
+/*
+    std::string msg;
+    msg << "Skipped " << skip_count << " instructions";
+    debug(msg);
+*/
+    instructions = ret;
+  }
 }
 
 
@@ -1167,7 +1232,14 @@ void KernelDriver::encode() {
 
   // Encode target instructions
   _encode(m_targetCode, instructions);
+  combine(instructions);
   removeLabels(instructions);
+
+  if (!instructions.check_consistent()) {
+    std::string err;
+    err << "Overlapping dst registers present";
+    local_errors << err;
+  }
 
   if (!local_errors.empty()) {
     breakpoint
@@ -1197,12 +1269,21 @@ std::vector<uint64_t> KernelDriver::to_opcodes() {
 
 
 void KernelDriver::compile_intern() {
+  //Timer t1("compile_intern", true);
+
   obtain_ast();
-  translate_stmt(m_targetCode, m_body);
+
+  //Timer t3("translate_stmt");
+  translate_stmt(m_targetCode, m_body);  // performance hog 2 12/45s
+  //t3.end();
+
   insertInitBlock(m_targetCode);
   add_init(m_targetCode);
 
-  compile_postprocess(m_targetCode);
+  //Timer t5("compile_postprocess");
+  compile_postprocess(m_targetCode);  // performance hog 1 31/45s
+  //t5.end();
+
   encode();
 }
 

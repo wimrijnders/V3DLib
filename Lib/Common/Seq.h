@@ -224,8 +224,6 @@ private:
     if (newSize == 0) {
       assertq(elems == nullptr, "Seq::extend_by(): sequence has no internal storage");
       newSize = INITIAL_MAX_ELEMS;
-
-      // Following actually happened during gdb debug sessions, prob due to skipping of ctor Set.
       assertq(newSize != 0, "Seq::extend_by(): Weirdness! newSize assigned but is zero anyway.");
     }
 

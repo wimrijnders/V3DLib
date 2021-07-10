@@ -1,13 +1,14 @@
 #ifndef _V3DLIB_LIVENESS_CFG_H_
 #define _V3DLIB_LIVENESS_CFG_H_
-#include "Common/Set.h"
+#include <set>
+#include <vector>
 #include "Target/instr/Instr.h"
 #include "Range.h"
 
 namespace V3DLib {
 
-typedef int InstrId;                           // Index of instruction in instruction list
-using Succs = SmallSet<InstrId>;               // Set of successors.
+typedef int InstrId;                  // Index of instruction in instruction list
+using Succs = RegIdSet;               // Set of successors.
 
 
 /**
@@ -15,8 +16,8 @@ using Succs = SmallSet<InstrId>;               // Set of successors.
  *
  * Set of successors for each instruction.
  */
-class CFG : public Set<Succs> {
-  using Parent = Set<Succs>;
+class CFG : public std::vector<Succs> {
+  using Parent = std::vector<Succs>;
 
 public:
   void build(Instr::List &instrs);

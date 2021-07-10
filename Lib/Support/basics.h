@@ -72,5 +72,6 @@ inline std::string &operator<<(std::string &a, long val)     { a += std::to_stri
 inline std::string &operator<<(std::string &a, uint32_t val) { a += std::to_string(val); return a; }
 inline std::string &operator<<(std::string &a, uint64_t val) { a += std::to_string(val); return a; }
 inline std::string &operator<<(std::string &a, float val)    { a += std::to_string(val); return a; }
+inline std::string &operator<<(std::string &a, bool val)     { a += val?"true":"false";  return a; }
 
 #endif  // _V3DLIB_SUPPORT_BASICS_H

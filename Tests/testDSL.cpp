@@ -398,7 +398,7 @@ TEST_CASE("Test Conditionals [dsl][cond]") {
 
     auto k = compile(kernelIfWhen);
 /*
-    k.pretty(true, "obj/test/kernelIfWhen_vc4.txt", false);
+    k.pretty(true,  "obj/test/kernelIfWhen_vc4.txt", false);
     k.pretty(false, "obj/test/kernelIfWhen_v3d.txt");
     k.dump_compile_data(false, "obj/test/kernelIfWhen_v3d_data.txt");
 */
@@ -898,12 +898,10 @@ TEST_CASE("Test functions [dsl][func]") {
 
     {
       auto k = compile(cosine_kernel);
-      //k.pretty(false, nullptr, true);
       k.load(&qpu_cos, size, freq, offset);
-      k.call();
+      k.interpret();
 
       float max_diff = calc_max_diff(lib_cos, qpu_cos, size); 
-      //printf("Max diff: %f\n", max_diff);
       INFO("Max diff: " << max_diff);
       REQUIRE(max_diff < MAX_DIFF);
     }
@@ -1025,12 +1023,15 @@ TEST_CASE("Test issues [dsl][issues]") {
 
     auto k = compile(issues_kernel);
     //k.pretty(true, "obj/test/issues_kernel_vc4.txt", false);
+    //k.dump_compile_data(true, "obj/test/issues_kernel_vc4_dump.txt");
     //k.pretty(false, "obj/test/issues_kernel_v3d.txt");
 
     Int::Array input(16);
     input.fill(7);
 
     Int::Array result(16*N);
+    result.fill(-1);
+
     k.load(&result, &input);
     k.emu();
 
@@ -1061,6 +1062,8 @@ TEST_CASE("Test issues [dsl][issues]") {
    * Anything more elaborate, forget it. I've racked my brain on this, there is no salvation.
    */
   SUBCASE("Check init self issue") {
+    log_to_cout(false);
+
     {
       auto k = compile(init_self_1_kernel);
       REQUIRE(k.has_errors());
@@ -1075,10 +1078,108 @@ TEST_CASE("Test issues [dsl][issues]") {
       auto k = compile(init_self_3_kernel);
       REQUIRE(k.has_errors());
     }
+
+    log_to_cout(true);
   }
 
   Platform::use_main_memory(false);
 }
+
+
+//=============================================================================
+// Test Block Syntax
+//
+// Notably, missing End's for If/Where/etc.
+//=============================================================================
+
+void if_noend_kernel(Int::Ptr result) {
+  Int i = 1;
+  Int cond = 1;
+
+  If (cond == 1)
+    i = 42;
+  }  // End
+
+  *result = i;
+}
+
+
+void while_noend_kernel(Int::Ptr result) {
+  Int i = 1;
+  Int cond = 1;
+
+  While (cond == 1)
+    i = 42;
+  }  // End
+
+  *result = i;
+}
+
+
+void where_noend_kernel(Int::Ptr result) {
+  Int i = 1;
+  Int cond = 1;
+
+  Where (cond == 1)
+    i = 42;
+  }  // End
+
+  *result = i;
+}
+
+
+void for_noend_kernel(Int::Ptr result) {
+  Int i = 1;
+
+  For (Int cond = 0, cond < 1, cond++)
+    i = 42;
+  }  // End
+
+  *result = i;
+}
+
+
+TEST_CASE("Test issues [dsl][block]") {
+  int const N = 1;
+
+  Platform::use_main_memory(true);
+  log_to_cout(false);
+
+  Int::Array result(16*N);
+  result.fill(-1);
+
+  {
+    auto k = compile(if_noend_kernel);
+    k.load(&result).interpret();
+    REQUIRE(k.has_errors());
+  }
+
+  {
+    auto k = compile(while_noend_kernel);
+    k.load(&result).interpret();
+    REQUIRE(k.has_errors());
+  }
+
+  {
+    auto k = compile(where_noend_kernel);
+    k.load(&result).interpret();
+    REQUIRE(k.has_errors());
+  }
+
+  {
+    auto k = compile(for_noend_kernel);
+    k.load(&result).interpret();
+    REQUIRE(k.has_errors());
+  }
+
+  log_to_cout(true);
+  Platform::use_main_memory(false);
+}
+
+
+//=============================================================================
+// Test Trigonometric Functions
+//=============================================================================
 
 
 void sincos_kernel(Float::Ptr result, Int size) {

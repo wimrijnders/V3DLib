@@ -4,7 +4,7 @@
 #include "Support/Platform.h"
 #include "vc4/SourceTranslate.h"
 #include "v3d/SourceTranslate.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
 
 namespace {
 
@@ -28,12 +28,11 @@ Instr::List ISourceTranslate::load_var(Var &in_dst, Expr &e) {
 
   Instr::List ret;
 
-  Reg src = srcReg(e.deref_ptr()->var());
-  Reg dst = dstReg(in_dst);
+  Reg src(e.deref_ptr()->var());
+  Reg dst(in_dst);
 
   ret << mov(TMU0_S, src)
-      << Instr(TMU0_TO_ACC4)  // TODO is r4 safe? Do we need to select an accumulator in some way?
-      << mov(dst, ACC4);
+      << recv(dst);
 
   return ret;
 }

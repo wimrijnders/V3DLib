@@ -2,9 +2,16 @@
 #define _V3DLIB_SOURCE_FUNCTIONS_H_
 #include "Int.h"
 #include "Float.h"
+#include "StmtStack.h"  // StackCallback
 
 namespace V3DLib {
 namespace functions {
+
+// These exposed for unit tests
+void Return(Int const &val);
+void Return(Float const &val);
+IntExpr create_function_snippet(StackCallback f);
+FloatExpr create_float_function_snippet(StackCallback f);
 
 IntExpr two_complement(IntExpr a);
 IntExpr abs(IntExpr a);
@@ -31,6 +38,7 @@ void rotate_sum(Float &input, Float &result);
 void set_at(Int &dst, Int n, Int const &src);
 void set_at(Float &dst, Int n, Float const &src);
 
+void sync_qpus(Int::Ptr signal);
 
 }  // namespace V3DLib
 

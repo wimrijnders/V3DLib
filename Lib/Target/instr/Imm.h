@@ -13,7 +13,13 @@ struct Imm {
     IMM_MASK     // 1 bit per vector element (0 to 0xffff)
   };
 
+  enum {
+    INVALID_ENCODING = -17
+  };
+
+  Imm() = default;
   Imm(int i);
+  Imm(unsigned i);
   Imm(float f);
 
   ImmTag tag() const { return m_tag; }
@@ -23,6 +29,7 @@ struct Imm {
   int    mask() const;
   float  floatVal() const;
   uint32_t encode() const;
+  int encode_imm() const;
 
   bool is_zero() const;
   bool is_basic() const;

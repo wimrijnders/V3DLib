@@ -1,6 +1,6 @@
 #include "CFG.h"
 #include <iostream>
-#include "Support/debug.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
 
@@ -19,11 +19,8 @@ void CFG::Blocks::build(CFG const &cfg) {
 
   for (int i = 0; i < (int) cfg.size(); i++) {
     if (cfg.is_regular(i)) continue;
-    auto const &item = cfg[i];
 
-    for (int j = 0; j < (int) item.size(); j++) {
-      int jump_instr = item[j];
-
+    for (auto jump_instr : cfg[i]) {
       if (jump_instr == i + 1) continue;  // Skip regular successor
       if (jump_instr <= i) continue;  // Skip jumps backward for now. TODO investigate if these should be noted here
 
@@ -67,10 +64,16 @@ std::string CFG::Blocks::dump() const {
   auto tabs = [] (int i) -> int {
     int ret = -1;
 
-   if (i < 10)        ret = 1;
-   else if (i < 100)  ret = 2;
-   else if (i < 1000) ret = 3;
-   else assert(false);  // Expand this list if this happens
+   if      (i < 10)     ret = 1;
+   else if (i < 100)    ret = 2;
+   else if (i < 1000)   ret = 3;
+   else if (i < 10000)  ret = 4;
+   else if (i < 100000) ret = 5;
+   else {
+     std::string msg =  "Blocks::dump() i: ";
+     msg << i;
+     assertq(false, msg);  // Expand this list if this happens
+   }
 
     return ret;
   };
@@ -161,8 +164,6 @@ bool CFG::Blocks::block_in(int cur_block, int parent_block) const {
   assert(list[0] == 0);                                                     // Double-check that top block is zero.
   assert(ranges[0].first() == 0 && ranges[0].last() == ((int)list.size() - 1));  // idem
 
-//  if (block == 0) return true;  // In that case, block is always parent
-
   if (cur_block == parent_block) return true;
 
   if (ranges[parent_block].is_embedded(ranges[cur_block])) {
@@ -200,22 +201,20 @@ int CFG::Blocks::max_block_num() const {
  */
 bool CFG::is_regular(InstrId i) const {
   auto const &item = (*this)[i];
-  return (item.size() == 1 && item[0] == (i + 1));
+  return (item.size() == 1 && item.first() == (i + 1));
 }
 
 
 std::string CFG::dump() const {
-  using ::operator<<;
-
   std::string ret;
 
   ret << "Instruction length: " << size() << "\n";
 
-  for (int i = 0; i < size(); ++i) {
+  for (int i = 0; i < (int) size(); ++i) {
     auto const &item = (*this)[i];
     if (is_regular(i)) continue;
 
-    ret << i << ": " << item << "\n";
+    ret << i << ": " << item.dump() << "\n";
   } 
 
   ret << blocks.dump();
@@ -228,7 +227,8 @@ std::string CFG::dump() const {
  */
 void CFG::build(Instr::List &instrs) {
   assert(empty());
-  set_size(instrs.size());
+  //set_size(instrs.size());
+  resize(instrs.size());
 
   // ----------
   // First pass
@@ -255,7 +255,7 @@ void CFG::build(Instr::List &instrs) {
     Instr instr = instrs[i];
 
     // Is it an unconditional jump?
-    bool uncond = instr.tag == BRL && instr.BRL.cond.tag == COND_ALWAYS;
+    bool uncond = instr.tag == BRL && instr.branch_cond().tag == COND_ALWAYS;
 
     // Is it a final instruction?
     bool end = instr.tag == END || i+1 == instrs.size();
@@ -280,8 +280,8 @@ void CFG::build(Instr::List &instrs) {
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs[i];
     if (instr.tag == BRL) {
-      assert(labelMap[instr.BRL.label] >= 0);
-      (*this)[i].insert(labelMap[instr.BRL.label]);
+      assert(labelMap[instr.branch_label()] >= 0);
+      (*this)[i].insert(labelMap[instr.branch_label()]);
     }
   }
 

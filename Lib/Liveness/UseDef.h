@@ -1,27 +1,31 @@
 #ifndef _V3DLIB_LIVENESS_USEDEF_H_
 #define _V3DLIB_LIVENESS_USEDEF_H_
 #include <string>
-#include "Common/Set.h"
+#include <set>
 #include "Target/instr/Instr.h"
 
 namespace V3DLib {
 
 struct UseDefReg {
-  SmallSet<Reg> use;   // the variables used as src in an instruction
-  SmallSet<Reg> def;   // the variables (at most 1!) used as dst by an instruction
+  std::set<Reg> use;   // the variables used as src in an instruction
+  Reg  def;            // the variable (at most 1, absence indicated by NONE tag)) used as dst by an instruction
 
-  void set_used(Instr instr, bool set_use_where = false);
-  bool is_dest(Reg const &rhs) const;
-  bool is_src(Reg const &rhs) const;
+  UseDefReg(Instr const &instr, bool set_use_where = false);
+
   std::string dump() const;
 };   
 
      
+/**
+ * Get variables used in instruction
+ *
+ * Same as `useDefReg`, except only yields ids of registers in register file A.
+ */
 struct UseDef {
-  SmallSet<RegId> use;
-  SmallSet<RegId> def;
+  RegIdSet use;
+  Reg def;
 
-  void set_used(Instr const &instr, bool set_use_where = false);
+  UseDef(Instr const &instr, bool set_use_where = false);
   std::string dump() const;
 };   
 

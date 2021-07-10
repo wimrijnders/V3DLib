@@ -1,8 +1,9 @@
 #include "Int.h"
-#include "Lang.h"  // only for assign()!
+#include "Lang.h"       // only for assign()!
 #include "SourceTranslate.h"
 #include "Support/Platform.h"
 #include "Support/debug.h"
+#include "Functions.h"  // operator/
 
 namespace V3DLib {
 
@@ -146,15 +147,23 @@ IntExpr rotate(IntExpr a, IntExpr b) {
 IntExpr operator+(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(ADD,  INT32), b); }
 IntExpr operator-(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(SUB,  INT32), b); }
 IntExpr operator*(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(MUL,  INT32), b); }
-IntExpr min(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(MIN,  INT32), b); }
-IntExpr max(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(MAX,  INT32), b); }
 IntExpr operator<<(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SHL,  INT32), b); }
 IntExpr operator>>(IntExpr a, IntExpr b) { return mkIntApply(a, Op(SHR,  INT32), b); }
 IntExpr operator&(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(BAND, INT32), b); }
 IntExpr operator|(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(BOR,  INT32), b); }
 IntExpr operator^(IntExpr a, IntExpr b)  { return mkIntApply(a, Op(BXOR, INT32), b); }
 IntExpr operator~(IntExpr a)             { return mkIntApply(a, Op(BNOT, INT32), a); }
+IntExpr min(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(MIN,  INT32), b); }
+IntExpr max(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(MAX,  INT32), b); }
 IntExpr shr(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(USHR, INT32), b); }
 IntExpr ror(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(ROR,  INT32), b); }
+
+
+IntExpr operator%(IntExpr a, int b) {
+  assert(b != 0);
+  using functions::operator/;
+
+  return a - b*(a/b);
+}
 
 }  // namespace V3DLib

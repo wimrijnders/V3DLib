@@ -25,11 +25,21 @@ void Stmt::init(Tag in_tag) {
 }
 
 
-void Stmt::append(Ptr rhs) {
-  Ptr s0;
-  s0.reset(new Stmt(*this));
-  auto tmp = create_sequence(s0, rhs);
-  *this = *tmp;
+void Stmt::append(Array const &rhs) {
+  if (tag != SEQ) {
+    Ptr s0;
+    s0.reset(new Stmt(*this));
+    auto tmp = Stmt::create(SEQ);
+    tmp->m_stmts_a << s0;
+    *this = *tmp;
+  }
+
+  m_stmts_a << rhs;
+}
+
+
+void Stmt::cond(CExpr::Ptr cond) {
+  m_cond = cond;
 }
 
 
@@ -69,89 +79,120 @@ Expr::Ptr Stmt::address() {
 }
 
 
-Stmt::Ptr Stmt::seq_s0() const {
-  assert(tag == SEQ);
-  assert(m_stmt_a.get() != nullptr);
-  return m_stmt_a;
+bool Stmt::check_blocks() const {
+  // then and else blocks may not both be empty
+  if (m_stmts_a.empty() && m_stmts_b.empty()) return false;
+
+  if (!m_stmts_a.empty()) {
+    for (int i = 0; i < (int) m_stmts_a.size(); i++) {
+      if (!m_stmts_a[i]) return false;
+    }
+  }
+
+  if (!m_stmts_b.empty()) {
+    for (int i = 0; i < (int) m_stmts_b.size(); i++) {
+      if (!m_stmts_b[i]) return false;
+    }
+  }
+
+  return true;
 }
 
 
-Stmt::Ptr Stmt::seq_s1() const {
-  assertq(tag == SEQ, "Expecting SEQ", true);
-  assert(m_stmt_b.get() != nullptr);
-  return m_stmt_b;
+Stmt::Array const &Stmt::then_block() const {
+  assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF, and WHERE", true);
+  assert(check_blocks());
+
+  return m_stmts_a;
 }
 
 
-Stmt::Ptr Stmt::thenStmt() const {
-  assertq(tag == IF || tag == WHERE || tag == WHILE, "Then-statement only valid for IF, WHERE and WHILE", true);
-  // while must have then and no else
-  assert(tag != WHILE || (m_stmt_a.get() != nullptr || m_stmt_b.get() == nullptr));
-  // where and else stmt may not both be null
-  assert(m_stmt_a.get() != nullptr || m_stmt_b.get() != nullptr);
+Stmt::Array const &Stmt::body() const {
+  assertq(tag == SEQ || tag == WHILE || tag == FOR, "Body-statement only valid for SEQ, WHILE and FOR", true);
+  assert(check_blocks());
 
-  return m_stmt_a;  // May be null
+  // must have then and no else
+  assert(!m_stmts_a.empty() && m_stmts_b.empty());
+
+  return m_stmts_a;
 }
 
 
-Stmt::Ptr Stmt::body() const {
-  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
-  assert(m_stmt_a.get() != nullptr);
-  return m_stmt_a;
-}
-
-
-Stmt::Ptr Stmt::elseStmt() const {
+Stmt::Array const &Stmt::else_block() const {
   assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
-  // where and else stmt may not both be null
-  assert(m_stmt_a.get() != nullptr || m_stmt_b.get() != nullptr);
-  return m_stmt_b; // May be null
+  // where and else stmt may not both be empty
+  assert(!m_stmts_a.empty() || !m_stmts_b.empty());
+  return m_stmts_b; // May be null
 }
 
 
-void Stmt::thenStmt(Ptr then_ptr) {
-  assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF and WHERE", true);
-  assert(m_stmt_a.get() == nullptr);  // Only assign once
-  m_stmt_a = then_ptr;
+/**
+ * @return true if block successfully added, false otherwise
+ */
+bool Stmt::then_block(Array const &in_block) {
+  assert((tag == Stmt::IF || tag == Stmt::WHERE ) && m_stmts_a.empty());  // TODO check if converse ever happens
+
+  if ((tag == Stmt::IF || tag == Stmt::WHERE ) && m_stmts_a.empty()) {
+    m_stmts_a << in_block;
+    return true;
+  }
+
+  return false;
 }
 
 
-void Stmt::elseStmt(Ptr else_ptr) {
-  assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
-  assert(m_stmt_b.get() == nullptr);  // Only assign once
-  m_stmt_b = else_ptr;
+/**
+ * @return true if block successfully added, false otherwise
+ */
+bool Stmt::add_block(Array const & /*in_*/ block) {
+  bool then_is_empty = (m_stmts_a.empty());  // TODO rename to _is_empty
+  bool else_is_empty = (m_stmts_b.empty());
+
+  switch (tag) {
+    case Stmt::IF:
+    case Stmt::WHERE:
+      if (then_is_empty) {
+        then_block(block);
+        return true;
+      } else if (else_is_empty) {
+        m_stmts_b = block;
+        return true;
+      } else {
+        assert(false);
+      }
+      break;
+
+    case Stmt::WHILE:
+      if (then_is_empty) {
+        m_stmts_a = block;
+        return true;
+      }
+      break;
+
+    case FOR:
+      if (then_is_empty) {
+        // convert For to While
+        //m_cond retained as is
+        // m_stmts_b is inc
+        tag = WHILE;
+
+        m_stmts_a << block << m_stmts_b;
+        m_stmts_b.clear();
+        return true;
+      }
+      break;
+
+    default: break;
+  }
+
+  return false;
 }
 
 
-void Stmt::body(Ptr ptr) {
-  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
-  assert(m_stmt_a.get() == nullptr);  // Only assign once
-  m_stmt_a = ptr;
-}
-
-
-void Stmt::inc(Ptr ptr) {
+void Stmt::inc(Array const &arr) {
   assertq(tag == FOR, "Inc-statement only valid for FOR", true);
-  assert(m_stmt_b.get() == nullptr);  // Only assign once
-  m_stmt_b = ptr;
-}
-
-
-bool Stmt::then_is_null() const {
-  assertq(tag == IF || tag == WHERE, "Then-statement only valid for IF and WHERE", true);
-  return m_stmt_a.get() == nullptr;
-}
-
-
-bool Stmt::else_is_null() const {
-  assertq(tag == IF || tag == WHERE, "Else-statement only valid for IF and WHERE", true);
-  return m_stmt_b.get() == nullptr;
-}
-
-
-bool Stmt::body_is_null() const {
-  assertq(tag == WHILE || tag == FOR, "Body-statement only valid for WHILE and FOR", true);
-  return m_stmt_a.get() == nullptr;
+  assert(m_stmts_b.empty());  // Only assign once
+  m_stmts_b = arr;
 }
 
 
@@ -169,14 +210,15 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
       ret << "ASSIGN " << assign_lhs()->dump() << " = " << assign_rhs()->dump();
     break;
     case SEQ:
-      assert(seq_s0().get() != nullptr);
-      assert(seq_s1().get() != nullptr);
+      assert(!m_stmts_a.empty());
+      assert(m_stmts_b.empty());
 
       if (with_linebreaks) {
         std::string tmp;
 
-        tmp << "  " << seq_s0()->disp_intern(with_linebreaks, seq_depth + 1) << "\n"
-            << "  " << seq_s1()->disp_intern(with_linebreaks, seq_depth + 1) << "\n";
+        for (int i = 0; i < (int) m_stmts_a.size(); i++) {
+          tmp << "  " << m_stmts_a[i]->disp_intern(with_linebreaks, seq_depth + 1) << "\n";
+        }
 
         // Remove all superfluous whitespace
         if (seq_depth == 0) {
@@ -199,27 +241,33 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
         }
   
       } else {
-        ret << "SEQ {" << seq_s0()->disp_intern(with_linebreaks, seq_depth + 1) << "; "
-                       << seq_s1()->disp_intern(with_linebreaks, seq_depth + 1) << "}";
+        ret << "SEQ {";
+
+        for (int i = 0; i < (int) m_stmts_a.size(); i++) {
+          ret << m_stmts_a[i]->disp_intern(with_linebreaks, seq_depth + 1) << "; ";
+        }
+
+        ret << "}";
       }
     break;
     case WHERE:
       assert(m_where_cond.get() != nullptr);
-      ret << "WHERE (" << m_where_cond->dump() << ") THEN " << thenStmt()->dump();
-      if (elseStmt().get() != nullptr) {
-        ret << " ELSE " << elseStmt()->dump();
+      ret << "WHERE (" << m_where_cond->dump() << ") THEN " << then_block().dump();
+      if (!else_block().empty()) {
+        ret << " ELSE " << else_block().dump();
       }
     break;
     case IF:
       assert(m_cond.get() != nullptr);
-      ret << "IF (" << m_cond->dump() << ") THEN " << thenStmt()->dump();
-      if (elseStmt().get() != nullptr) {
-        ret << " ELSE " << elseStmt()->dump();
+      ret << "IF (" << m_cond->dump() << ") THEN " << then_block().dump();
+      if (!else_block().empty()) {
+        ret << " ELSE " << else_block().dump();
       }
     break;
     case WHILE:
       assert(m_cond.get() != nullptr);
-      ret << "WHILE (" << m_cond->dump() << ") " << thenStmt()->dump();
+      assert(!then_block().empty());
+      ret << "WHILE (" << m_cond->dump() << ") " << then_block().dump();
       // There is no ELSE for while
     break;
 
@@ -237,7 +285,7 @@ std::string Stmt::disp_intern(bool with_linebreaks, int seq_depth) const {
             msg << "; tag out of range";
           }
 
-          assertq(false, msg);
+          assertq(false, msg, true);
         }
         ret << tmp;
       }
@@ -293,90 +341,8 @@ Stmt::Ptr Stmt::create(Tag in_tag, Expr::Ptr e0, Expr::Ptr e1) {
 }
 
 
-Stmt::Ptr Stmt::create(Tag in_tag, Ptr s0, Ptr s1) {
-  Ptr ret(new Stmt());
-  ret->init(in_tag);
-
-  switch (in_tag) {
-    case SEQ:
-      assertq(s0.get() != nullptr && s1.get() != nullptr, "create 3");
-      assertq(ret->m_stmt_a.get() == nullptr, "create() SEQ: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() SEQ: don't reassign stmt b ptr");
-
-      ret->m_stmt_a = s0;
-      ret->m_stmt_b = s1;
-    break;
-    case WHERE:
-      // s0, s1 can be nullptr's
-      assertq(ret->m_stmt_a.get() == nullptr, "create() WHERE: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() WHERE: don't reassign stmt b ptr");
-
-      ret->m_where_cond.reset();  // NOTE: needs to be set elsewhere
-      ret->m_stmt_a = s0;
-      ret->m_stmt_b = s1;
-    break;
-    case IF:
-      // s0, s1 can be nullptr's
-      assertq(ret->m_stmt_a.get() == nullptr, "create() IF: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() IF: don't reassign stmt b ptr");
-
-      ret->m_cond.reset();  // NOTE: needs to be set elsewhere
-      ret->m_stmt_a = s0;
-      ret->m_stmt_b = s1;
-    break;
-    case WHILE:
-      // s0 can be nullptr, s1 not used
-      assertq(ret->m_stmt_a.get() == nullptr, "create() WHILE: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() WHILE: don't reassign stmt b ptr");
-      assertq(s1.get() == nullptr, "create() WHILE: not expecting assignment stmt b ptr");
-
-      ret->m_cond.reset();  // NOTE: needs to be set elsewhere
-      ret->m_stmt_a = s0;
-    break;
-    case FOR:
-      // s0, s1 can be nullptr's
-       // m_stmt_a is body, m_stmt_b is inc.
-      assertq(ret->m_stmt_a.get() == nullptr, "create() FOR: don't reassign stmt a ptr");
-      assertq(ret->m_stmt_b.get() == nullptr, "create() FOR: don't reassign stmt b ptr");
-
-      ret->m_cond.reset();  // NOTE: needs to be set elsewhere
-      ret->m_stmt_a = s1;  // NOTE: s1, s0 reversed
-      ret->m_stmt_b = s0;
-    break;
-    default:
-      fatal("This tag not handled yet in create(Stmt,Stmt)");
-    break;
-  }
-
-  return ret;
-}
-
-
 Stmt::Ptr Stmt::create_assign(Expr::Ptr lhs, Expr::Ptr rhs) {
   return create(ASSIGN, lhs, rhs);
-}
-
-
-Stmt::Ptr Stmt::create_sequence(Ptr s0, Ptr s1) {
-  return Stmt::create(SEQ, s0, s1);
-}
-
-
-/**
- * Convert 'for' loop to 'while' loop
- *
- * m_stmt_a is body, m_stmt_b is inc.
- */
-void Stmt::for_to_while(Ptr in_body) {
-  assertq(tag == FOR, "Only FOR-statement can be converted to WHILE", true);
-  assert(m_stmt_a.get() == nullptr);  // Don't reassign body
-
-  auto inc = m_stmt_b;  // TODO Check should m_stmt_b be reset to null here?
-
-  tag = WHILE;
-  Stmt::Ptr whileBody = Stmt::create_sequence(in_body, inc);
-  body(whileBody);
-  //m_cond retained as is
 }
 
 
@@ -398,6 +364,8 @@ CExpr::Ptr Stmt::loop_cond() const {
  * Do a leftmost search for non-SEQ item
  */
 Stmt *Stmt::first_in_seq() const {
+  breakpoint  // TODO is this ever called?
+
   if (tag != SEQ) {
     if (tag == SKIP) {
       return nullptr;
@@ -407,60 +375,26 @@ Stmt *Stmt::first_in_seq() const {
     }
   }
 
-  Stmt *ret = seq_s0()->first_in_seq();
-  if (ret != nullptr) {
-    return ret;
+  if (m_stmts_a.empty()) return nullptr;
+  assert(m_stmts_a[0] != nullptr);
+
+  return m_stmts_a[0]->first_in_seq();
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+// Class Stmt::Array
+///////////////////////////////////////////////////////////////////////////////
+
+std::string Stmt::Array::dump() const {
+  if (empty()) return "<Empty>";
+  std::string ret;
+
+  for (int i = 0; i < (int) size(); i++) {
+    ret << (*this)[i]->dump() << "\n";
   }
 
-  return seq_s1()->first_in_seq();
-}
-
-
-Stmt *Stmt::last_in_seq() const {
-  if (tag == SEQ) {
-    return seq_s1()->last_in_seq();
-  }
-
-  assert(tag != SKIP);                   // paranoia
-  assert(tag != Stmt::GATHER_PREFETCH);  // paranoia
-
-  return const_cast<Stmt *>(this);
-}
-
-
-
-
-// ============================================================================
-// Functions on statements
-// ============================================================================
-
-Stmt::Ptr mkSkip() { return Stmt::create(Stmt::SKIP); }
-
-Stmt::Ptr mkWhere(BExpr::Ptr cond, Stmt::Ptr thenStmt, Stmt::Ptr elseStmt) {
-  Stmt::Ptr s = Stmt::create(Stmt::WHERE, thenStmt, elseStmt);
-  s->where_cond(cond);
-  return s;
-}
-
-
-Stmt::Ptr Stmt::mkIf(CExpr::Ptr cond, Ptr thenStmt, Ptr elseStmt) {
-  Stmt::Ptr s = Stmt::create(Stmt::IF, thenStmt, elseStmt);
-  s->m_cond   = cond;
-  return s;
-}
-
-
-Stmt::Ptr Stmt::mkWhile(CExpr::Ptr cond, Ptr body) {
-  Stmt::Ptr s = Stmt::create(Stmt::WHILE, body, Stmt::Ptr());
-  s->m_cond   = cond;
-  return s;
-}
-
-
-Stmt::Ptr Stmt::mkFor(CExpr::Ptr cond, Ptr inc, Ptr body) {
-  Stmt::Ptr s = Stmt::create(Stmt::FOR, inc, body);
-  s->m_cond   = cond;
-  return s;
+  return ret;
 }
 
 }  // namespace V3DLib

@@ -2,9 +2,13 @@
 #include "Support/Platform.h"
 #include "SourceTranslate.h"
 #include "Target/SmallLiteral.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
+#include "Support/basics.h"
 
 namespace V3DLib {
+
+using ::operator<<;  // C++ weirdness
+
 namespace {
 
 // ============================================================================
@@ -18,13 +22,15 @@ RegOrImm operand(Expr::Ptr e) {
   RegOrImm x;
 
   if (e->tag() == Expr::VAR) {
-    x.set_reg(srcReg(e->var()));
-    return x;
+    x = RegOrImm(e->var());
+  } else if (e->tag() == Expr::INT_LIT) { 
+    x = Imm(e->intLit);
+  } else if (e->tag() == Expr::FLOAT_LIT) {
+    x = Imm(e->floatLit);
+  } else {
+    assert(false);
   }
 
-  int enc = encodeSmallLit(*e);
-  assert(enc >= 0);
-  x.set_imm(enc);
   return x;
 }
 
@@ -203,10 +209,10 @@ void cmpExp(Instr::List *seq, BExpr::Ptr bexpr, Var v) {
 
   Instr instr(ALU);
   instr.setCondOp(b.cmp);
-  instr.ALU.dest     = dstReg(dummy);
-  instr.ALU.srcA     = operand(b.cmp_lhs());
   instr.ALU.op       = ALUOp(op);
+  instr.ALU.srcA     = operand(b.cmp_lhs());
   instr.ALU.srcB     = operand(b.cmp_rhs());
+  instr.dest(dummy);
 
   *seq << li(v, 0).comment("Store condition as Bool var")
        << instr
@@ -231,9 +237,9 @@ void boolVarExp(Instr::List &seq, BExpr b, Var v) {
   boolExp(&seq, b.rhs(), w);  // idem
 
   if (b.tag() == OR) {
-    seq << bor(dstReg(v), srcReg(v1), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var OR");
+    seq << bor(v, v1, w).setCondFlag(Flag::ZC).comment("Bool var OR");
   } else if (b.tag() == AND) {
-    seq << band(dstReg(v), srcReg(v1), srcReg(w)).setCondFlag(Flag::ZC).comment("Bool var AND");
+    seq << band(v, v1, w).setCondFlag(Flag::ZC).comment("Bool var AND");
   } else {
     assert(false);
   }
@@ -301,6 +307,19 @@ BranchCond condExp(Instr::List &seq, CExpr &c) {
 // Where statements
 // ============================================================================
 
+Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore);
+
+Instr::List whereStmt(Stmt::Array const &stmts, Var condVar, AssignCond cond, bool saveRestore, bool first_true = false) {
+  Instr::List ret;
+
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    ret << whereStmt(stmts[i], condVar, cond, (i == 0 && first_true)?true:saveRestore);
+  }
+
+  return ret;
+}
+
+
 Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestore) {
   using namespace V3DLib::Target::instr;
   Instr::List ret;
@@ -327,11 +346,11 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
   }
 
   // ---------------------------------------------
-  // Case: s0 ; s1, where s0 and s1 are statements
+  // Case: sequence of statements
   // ---------------------------------------------
   if (s->tag == Stmt::SEQ) {
-    ret << whereStmt(s->seq_s0(), condVar, cond, true)
-        << whereStmt(s->seq_s1(), condVar, cond, saveRestore);
+    breakpoint  // TODO apparently never reached, verify
+    ret << whereStmt(s->body(), condVar, cond, saveRestore, true);
     return ret;
   }
 
@@ -343,62 +362,69 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
     using Target::instr::mov;
     AssignCond andCond(CmpOp(CmpOp::NEQ, INT32));  // Wonky syntax to get the flags right
 
+    Var newCondVar   = VarGen::fresh();
+    AssignCond newCond;
+    {
+      // Compile new boolean expression
+      Instr::List seq;
+      newCond = boolExp(&seq, s->where_cond(), newCondVar);
+      assert(!seq.empty());
+
+      std::string cmt = "Start where (";
+      cmt << (cond.is_always()?"always":"nested") << ")";
+      seq.front().comment(cmt);
+
+      // This comment is used to signal downstream that this is the
+      // statement processing the final step for the where-condition.
+      // This statement pushes condition flags for the where-body.
+      //
+      // It's a dubious thing to use comments to signal this, but currently
+      // it's the most obvious thing to use.
+      // Used in v3d when combining add/mul alu instructions
+      seq.back().comment("where condition final");
+
+      ret << seq;
+    }
+
     if (cond.is_always()) {
       // Top-level handling of where-statements
 
-      Var newCondVar   = VarGen::fresh();
-      AssignCond newCond;
-      {
-        // Compile new boolean expression
-        Instr::List seq;
-        newCond = boolExp(&seq, s->where_cond(), newCondVar);
-        if (!seq.empty()) seq.front().comment("Start where (always)");
-        ret << seq;
-      }
-
       // Compile 'then' statement
-      if (s->thenStmt().get() != nullptr) {
-        auto seq = whereStmt(s->thenStmt(), newCondVar, andCond, s->elseStmt().get() != nullptr);
-        if (!seq.empty()) seq.front().comment("then-branch of where (always)");
+      if (!s->then_block().empty()) {
+        auto seq = whereStmt(s->then_block(), newCondVar, andCond, !s->else_block().empty());
+        assert(!seq.empty());
+        seq.front().comment("then-branch of where (always)");
         ret << seq;
       }
 
       // Compile 'else' statement
-      if (s->elseStmt().get() != nullptr) {
+      if (!s->else_block().empty()) {
         Var v2 = VarGen::fresh();
         ret << bxor(v2, newCondVar, 1).setCondFlag(Flag::ZC);
 
-        auto seq = whereStmt(s->elseStmt(), v2, andCond, false);
-        if (!seq.empty()) seq.front().comment("else-branch of where (always)");
+        auto seq = whereStmt(s->else_block(), v2, andCond, false);
+        assert(!seq.empty());
+        seq.front().comment("else-branch of where (always)");
         ret << seq;
       }
     } else {
       // Where-statements nested in other where-statements
 
-      Var newCondVar   = VarGen::fresh();
-      AssignCond newCond;
-      {
-        // Compile new boolean expression
-        Instr::List seq;
-        newCond = boolExp(&seq, s->where_cond(), newCondVar);
-        if (!seq.empty()) seq.front().comment("Start where (nested)");
-        ret << seq;
-      }
-
-      if (s->thenStmt().get() != nullptr) {  // NOTE: syntax allows then-stmt to be empty and else not empty
+      if (!s->then_block().empty()) {
         // AND new boolean expression with original condition
         Var dummy   = VarGen::fresh();
         ret << band(dummy, condVar, newCondVar).setCondFlag(Flag::ZC);
 
         // Compile 'then' statement
         {
-          auto seq = whereStmt(s->thenStmt(), dummy, andCond, false);
-          if (!seq.empty()) seq.front().comment("then-branch of where (nested)");
+          auto seq = whereStmt(s->then_block(), dummy, andCond, false);
+          assert(!seq.empty());
+          seq.front().comment("then-branch of where (nested)");
           ret << seq;
         }
       }
 
-      if (s->elseStmt() != nullptr) {
+      if (!s->else_block().empty()) {
         Var v2    = VarGen::fresh();
         Var dummy = VarGen::fresh();
 
@@ -407,8 +433,9 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 
         // Compile 'else' statement
         {
-          auto seq = whereStmt(s->elseStmt(), dummy, andCond, false);
-          if (!seq.empty()) seq.front().comment("else-branch of where (nested)");
+          auto seq = whereStmt(s->else_block(), dummy, andCond, false);
+          assert(!seq.empty());
+          seq.front().comment("else-branch of where (nested)");
           ret << seq;
         }
       }
@@ -422,16 +449,14 @@ Instr::List whereStmt(Stmt::Ptr s, Var condVar, AssignCond cond, bool saveRestor
 }
 
 
-Instr loadReceive(Expr::Ptr dest) {
-  assert(dest->tag() == Expr::VAR);
-
-  Instr instr(RECV);
-  instr.RECV.dest = dstReg(dest->var());
-  return instr;
-}
-
-
 void stmt(Instr::List *seq, Stmt::Ptr s);  // Forward declaration
+
+
+void stmts(Instr::List *seq, Stmt::Array const &stmts) {
+  for (int i = 0; i < (int) stmts.size(); i++) {
+    stmt(seq, stmts[i]);
+  }
+}
 
 
 /**
@@ -443,20 +468,20 @@ void translateIf(Instr::List &seq, Stmt &s) {
   Label endifLabel = freshLabel();
   BranchCond cond  = condExp(seq, *s.if_cond());  // Compile condition
     
-  if (s.elseStmt().get() == nullptr) {
-    seq << branch(cond.negate(), endifLabel);  // Branch over 'then' statement
-    stmt(&seq, s.thenStmt());                  // Compile 'then' statement
+  if (s.else_block().empty()) {
+    seq << branch(endifLabel).branch_cond(cond.negate());  // Branch over 'then' statement
+    stmts(&seq, s.then_block());                  // Compile 'then' statement
   } else {
     Label elseLabel = freshLabel();
 
-    seq << branch(cond.negate(), elseLabel);   // Branch to 'else' statement
+    seq << branch(elseLabel).branch_cond(cond.negate());   // Branch to 'else' statement
 
-    stmt(&seq, s.thenStmt());                  // Compile 'then' statement
+    stmts(&seq, s.then_block());                  // Compile 'then' statement
 
     seq << branch(endifLabel)                  // Branch to endif
         << label(elseLabel);                   // Label for 'else' statement
 
-    stmt(&seq, s.elseStmt());                  // Compile 'else' statement
+    stmts(&seq, s.else_block());                  // Compile 'else' statement
   }
   
   seq << label(endifLabel);                    // Label for endif
@@ -470,15 +495,15 @@ void translateWhile(Instr::List &seq, Stmt &s) {
   Label endLabel   = freshLabel();
   BranchCond cond  = condExp(seq, *s.loop_cond());     // Compile condition
  
-  seq << branch(cond.negate(), endLabel)             // Branch over loop body
-      << label(startLabel);                          // Start label
+  seq << branch(endLabel).branch_cond(cond.negate())   // Branch over loop body
+      << label(startLabel);                            // Start label
 
-  if (!s.body_is_null()) stmt(&seq, s.body());       // Compile body
-  condExp(seq, *s.loop_cond());                      // Compute condition again
-                                                     // TODO why is this necessary?
+  if (!s.body().empty()) stmts(&seq, s.body());        // Compile body
+  condExp(seq, *s.loop_cond());                        // Compute condition again
+                                                       // TODO why is this necessary?
 
-  seq << branch(cond, startLabel)                    // Branch to start
-      << label(endLabel);                            // End label
+  seq << branch(startLabel).branch_cond(cond)          // Branch to start
+      << label(endLabel);                              // End label
 }
 
 
@@ -497,8 +522,7 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
       assign(seq, s->assign_lhs(), s->assign_rhs());
       break;
     case Stmt::SEQ:                      // 's0 ; s1', where s1 and s2 are statements
-      stmt(seq, s->seq_s0());
-      stmt(seq, s->seq_s1());
+      stmts(seq, s->body());
       break;
     case Stmt::IF:                       // 'if (c) s0 s1', where c is a condition, and s0, s1 statements
       translateIf(*seq, *s);
@@ -512,7 +536,10 @@ void stmt(Instr::List *seq, Stmt::Ptr s) {
       }
       break;
     case Stmt::LOAD_RECEIVE:             // 'receive(e)', where e is an expr
-      *seq << loadReceive(s->address());
+      using Target::instr::recv;
+
+      assert(s->address()->tag() == Expr::VAR);
+      *seq << recv(s->address()->var());
       break;
     default:
       if (!getSourceTranslate().stmt(*seq, s)) {
@@ -597,11 +624,11 @@ Instr::List varAssign(AssignCond cond, Var v, Expr::Ptr expr) {
       default:
         // Everything else is considered to be a single binary operation
         Instr instr(ALU);
-        instr.ALU.cond       = cond;
-        instr.ALU.dest       = dstReg(v);
-        instr.ALU.srcA       = operand(e.lhs());
-        instr.ALU.op         = ALUOp(e.apply_op());
-        instr.ALU.srcB       = operand(e.rhs());
+        instr.ALU.op    = ALUOp(e.apply_op());
+        instr.ALU.srcA  = operand(e.lhs());
+        instr.ALU.srcB  = operand(e.rhs());
+        instr.assign_cond(cond);
+        instr.dest(v);
 
         ret << instr;
         break;
@@ -657,41 +684,12 @@ Expr::Ptr putInVar(Instr::List *seq, Expr::Ptr e) {
  *
  * Entry point for translation of statements.
  */
-void translate_stmt(Instr::List &seq, Stmt::Ptr s) {
+void translate_stmt(Instr::List &seq, Stmts &s) {
   assert(seq.empty());  // TODO perhaps move this test up, or seq as return value
-  stmt(&seq, s);
-}
 
-
-// ============================================================================
-// Load/Store pass
-// ============================================================================
-
-void loadStorePass(Instr::List &instrs) {
-  using namespace V3DLib::Target::instr;
-
-  Instr::List newInstrs(instrs.size()*2);
-
-  for (int i = 0; i < instrs.size(); i++) {
-    Instr instr = instrs[i];
-
-    switch (instr.tag) {
-      case RECV: {
-        newInstrs << Instr(TMU0_TO_ACC4)
-                  << mov(instr.RECV.dest, ACC4);
-        newInstrs.front().transfer_comments(instr);
-        break;
-      }
-      default:
-        newInstrs << instr;
-        break;
-    }
+  for (int i = 0; i < (int) s.size(); i++) {
+    stmt(&seq, s[i]);
   }
-
-
-  // Update original instruction sequence
-  instrs.clear();
-  instrs << newInstrs;
 }
 
 }  // namespace V3DLib

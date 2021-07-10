@@ -256,9 +256,9 @@ public:
     Ptr(ComplexExpr rhs);
     Ptr(Ptr::Expr rhs);
 
-    Deref operator*();
+    Deref operator*() const;
     Deref operator[](IntExpr index);
-    Ptr::Expr operator+(IntExpr b);
+    Ptr::Expr operator+(IntExpr b) const;
     Ptr &operator+=(IntExpr rhs);
     Ptr &operator-=(IntExpr rhs);
     void inc() { m_re.inc(); m_im.inc(); }
@@ -284,6 +284,7 @@ public:
   Complex(Ptr::Deref d);
   Complex(complex c);
   Complex(float phase);
+  Complex(Float const &phase);
 
   Float &re() { return m_re; }
   Float const &re() const { return m_re; }
@@ -294,11 +295,11 @@ public:
 
   Float mag_square() const;
 
-  Complex operator+(Complex rhs) const;
-  Complex operator-(Complex rhs) const;
-  Complex &operator+=(Complex rhs);
-  Complex operator*(Complex rhs) const;
-  Complex &operator*=(Complex rhs);
+  Complex operator+(Complex const &rhs) const;
+  Complex operator-(Complex const &rhs) const;
+  Complex &operator+=(Complex const &rhs);
+  Complex operator*(Complex const &rhs) const;
+  Complex &operator*=(Complex const &rhs);
   void operator=(Complex const &rhs);
 
   void set_at(Int n, Complex const &src);

@@ -8,7 +8,7 @@
 #include "Encode.h"
 #include "DMA/Operations.h"
 #include "dump_instr.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
 #include "SourceTranslate.h"  // add_uniform_pointer_offset()
 
 namespace V3DLib {
@@ -47,7 +47,7 @@ void KernelDriver::encode() {
   if (has_errors()) return;         // Don't do this if compile errors occured
   assert(!qpuCodeMem.allocated());
 
-  V3DLib::vc4::encode(m_targetCode, code);
+  code = V3DLib::vc4::encode(m_targetCode);
 }
 
 
@@ -56,18 +56,12 @@ void KernelDriver::emit_opcodes(FILE *f) {
   fprintf(f, "===============\n\n");
   fflush(f);
 
+  encode();
+
   if (code.empty()) {
     fprintf(f, "<No opcodes to print>\n");
   } else {
-    // Note: this is the same as code, but code is uint64_t and this is uint64_t.
-    Seq<uint64_t> instructions;
-
-    for (int i = 0; i < m_targetCode.size(); ++i ) {
-      instructions << vc4::encode(m_targetCode[i]);
-    }
-
-    assert(instructions.size()*2 == code.size());
-    dump_instr(f, instructions.data(), instructions.size());
+    dump_instr(f, (uint64_t const *) code.data(), code.size()/2);
   }
 }
 
@@ -89,7 +83,6 @@ void KernelDriver::compile_intern() {
     // and uniform ptr index offsets
 
     Instr::List ret;
-
     ret << mov(VarGen::fresh(), Var(UNIFORM)).comment("Last uniform load is dummy value")
         << add_uniform_pointer_offset(m_targetCode);  // !!! NOTE: doesn't take dummy in previous into account
                                                       // This should not be a problem

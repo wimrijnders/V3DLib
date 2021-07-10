@@ -30,6 +30,7 @@ ComplexExpr::ComplexExpr(Complex const &rhs) {
 complex::complex(float phase) : complex(cosf(2*((float) M_PI)*phase), sinf(2*((float) M_PI)*phase)) {}
 
 
+
 float complex::magnitude() const {
  return (float) sqrt(m_re*m_re + m_im*m_im);  // sqrt here is a cmath function
 }
@@ -81,6 +82,8 @@ Complex::Complex(complex c) : Complex(c.re(), c.im()) {}
  */
 Complex::Complex(float phase) : Complex(complex(phase)) {}
 
+Complex::Complex(Float const &phase) : Complex(cos(phase), sin(phase)) {}
+
 
 Complex &Complex::self() { return *(const_cast<Complex *>(this)); }
 
@@ -93,33 +96,36 @@ Float Complex::mag_square() const {
 }
 
 
-Complex Complex::operator+(Complex rhs) const {
+Complex Complex::operator+(Complex const &rhs) const {
   return Complex(m_re + rhs.m_re, m_im + rhs.m_im);
 }
 
 
-Complex Complex::operator-(Complex rhs) const {
+Complex Complex::operator-(Complex const &rhs) const {
   return Complex(m_re - rhs.m_re, m_im - rhs.m_im);
 }
 
 
-Complex &Complex::operator+=(Complex rhs) {
+Complex &Complex::operator+=(Complex const &rhs) {
   m_re += rhs.m_re;
   m_im += rhs.m_im;
   return *this;
 }
 
 
-Complex Complex::operator*(Complex rhs) const {
+Complex Complex::operator*(Complex const &rhs) const {
+/*
   Complex tmp;
   tmp.m_re = m_re*rhs.m_re - m_im*rhs.m_im;
   tmp.m_im = m_re*rhs.m_im + m_im*rhs.m_re;
 
   return tmp;
+*/
+  return Complex(m_re*rhs.m_re - m_im*rhs.m_im, m_re*rhs.m_im + m_im*rhs.m_re);
 }
 
 
-Complex &Complex::operator*=(Complex rhs) {
+Complex &Complex::operator*=(Complex const &rhs) {
   *this = (*this)*rhs;
   return *this;
 }
@@ -164,7 +170,7 @@ Complex::Ptr::Deref &Complex::Ptr::Deref::operator=(Complex const &rhs) {
 }
 
 
-Complex::Ptr::Deref Complex::Ptr::operator*() {
+Complex::Ptr::Deref Complex::Ptr::operator*() const {
   auto re_deref = mkDeref(m_re.expr());
   auto im_deref = mkDeref(m_im.expr());
 
@@ -191,13 +197,13 @@ Complex::Ptr &Complex::Ptr::operator-=(IntExpr rhs) {
 }
 
 
-Complex::Ptr::Expr Complex::Ptr::Expr::operator+(IntExpr b)  {
+Complex::Ptr::Expr Complex::Ptr::Expr::operator+(IntExpr b) {
   return Expr(m_re + b, m_im + b);
 }
 
 
 // TODO: can this be combined with previous?
-Complex::Ptr::Expr Complex::Ptr::operator+(IntExpr b)  {
+Complex::Ptr::Expr Complex::Ptr::operator+(IntExpr b) const {
   return Expr(m_re + b, m_im + b);
 }
 

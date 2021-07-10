@@ -12,17 +12,22 @@ namespace V3DLib {
 /**
  * 
  */
-class StmtStack : public Stack<Stmt> {
+class StmtStack : public Stack<Stmts> {
+  using Parent = Stack<Stmts>;
+
 public:
   using Ptr = std::shared_ptr<StmtStack>;
 
+  void push();
+  void push(Stmt::Ptr s);
+  Stmt::Ptr last_stmt();
+
   void reset();
   void append(Stmt::Ptr stmt);
+  void append(Stmts const &stmts);
 
-  StmtStack &operator<<(Stmt::Ptr stmt) {
-    append(stmt);
-    return *this;
-  }
+  StmtStack &operator<<(Stmt::Ptr stmt) { append(stmt); return *this; }
+  StmtStack &operator<<(Stmts const &stmts)  { append(stmts); return *this; }
 
   std::string dump() const;
 
@@ -37,15 +42,15 @@ private:
   class PrefetchContext {
   public:
     void resolve_prefetches();
-    void add_prefetch_label(Stmt::Ptr pre) { m_prefetch_tags.push_back(pre); }
+    void add_prefetch_label(Stmt::Ptr pre);
     bool tags_empty() const { return m_prefetch_tags.empty(); }
     void post_prefetch(Ptr assign);
 
   private:
     int prefetch_count = 0;
 
-    std::vector<Stmt::Ptr> m_prefetch_tags;
-    std::vector<Ptr>       m_assigns;
+    Stmts              m_prefetch_tags;
+    std::vector<Ptr>   m_assigns;
 
     bool empty() const { return m_prefetch_tags.empty() &&  m_assigns.empty(); }
   };
@@ -83,7 +88,7 @@ void prefetch(T &dst, Pointer &src, int prefetch_label = 0) {
 
 
 using StackCallback = std::function<void()>;
-Stmt::Ptr tempStmt(StackCallback f);
+Stmts tempStmt(StackCallback f);
 
 }  // namespace V3DLib
 

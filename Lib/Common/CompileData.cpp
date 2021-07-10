@@ -43,6 +43,7 @@ void CompileData::clear() {
   target_code_before_liveness.clear();
   allocated_registers_dump.clear();
   num_accs_introduced = 0;
+  num_instructions_combined = 0;
 }
 
 }  // namespace V3DLib

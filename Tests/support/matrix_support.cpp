@@ -38,7 +38,8 @@ void compare_arrays(Float::Array2D &a, Float::Array2D &b, float precision) {
 
   if ( precision == -1.0f) {
     //precision = 1.0e-4f;   // for high precision sin/cos in kernels
-    precision = 4.0e-1f;     // for low  precision sin/cos in kernels
+    //precision = 4.0e-1f;     // for low  precision sin/cos in kernels (yeah, it sucks)
+    precision = 4.1e-1f;     // for low  precision sin/cos in vc4 kernels (sucks a bit moe)
   }
 
   for (int r = 0; r < a.rows(); ++r) {

@@ -138,7 +138,7 @@ namespace V3DLib {
  *
  * Currently, the matrices are each split into 2 blocks.
  * This serves as a proof of concept; in due time it, is possible
- * to split them into any number of block matricesi, thereby allowing
+ * to split them into any number of block matrices, thereby allowing
  * arbitrary dimensions for the matrices (multiples of 16, always).
  */
 class Matrix {

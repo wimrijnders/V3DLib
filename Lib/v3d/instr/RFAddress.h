@@ -12,10 +12,13 @@ public:
 
   v3d_qpu_waddr to_waddr() const override { return (v3d_qpu_waddr) m_val; }
   v3d_qpu_mux to_mux() const override;
+  Location *clone() const override { return new RFAddress(*this); }
 
   RFAddress l() const;
   RFAddress h() const;
   RFAddress abs() const;
+
+  bool operator==(Location const &rhs) const override;
 
 private:
   uint8_t m_val;

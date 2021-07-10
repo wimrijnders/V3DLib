@@ -1,5 +1,5 @@
-#ifndef _V3DLIB_TARGET_INSTR_INSTRUCTIONS_H_
-#define _V3DLIB_TARGET_INSTR_INSTRUCTIONS_H_
+#ifndef _V3DLIB_TARGET_INSTR_MNEMONICS_H_
+#define _V3DLIB_TARGET_INSTR_MNEMONICS_H_
 #include "Instr.h"
 
 namespace V3DLib {
@@ -12,6 +12,8 @@ extern Reg const ACC1;
 extern Reg const ACC2;
 extern Reg const ACC3;
 extern Reg const ACC4;
+extern Reg const ACC5;
+extern Reg const UNIFORM_READ;
 extern Reg const QPU_ID;
 extern Reg const ELEM_ID;
 extern Reg const TMU0_S;
@@ -36,27 +38,18 @@ extern Reg const TMUA;
 
 Reg rf(uint8_t index);
 
-Instr bor(Reg dst, Reg srcA, Reg srcB);
+Instr bor(Reg dst, RegOrImm const &srcA, RegOrImm const &srcB);
 Instr band(Reg dst, Reg srcA, Reg srcB);
-Instr band(Var dst, Var srcA, Var srcB);
 Instr band(Reg dst, Reg srcA, int n);
-Instr bxor(Var dst, Var srcA, int n);
-Instr mov(Var dst, Var src);
-Instr mov(Var dst, Reg src);
-Instr mov(Var dst, int n);
-Instr mov(Reg dst, Var src);
-Instr mov(Reg dst, int n);
-Instr mov(Reg dst, Reg src);
+Instr bxor(Var dst, RegOrImm srcA, int n);
+Instr mov(Reg dst, RegOrImm const &src);
 Instr shl(Reg dst, Reg srcA, int val);
 Instr add(Reg dst, Reg srcA, Reg srcB);
 Instr add(Reg dst, Reg srcA, int n);
 Instr sub(Reg dst, Reg srcA, int n);
 Instr shr(Reg dst, Reg srcA, int n);
-Instr li(Reg dst, int i);
-Instr li(Var v, int i);
-Instr li(Var v, float f);
+Instr li(Reg dst, Imm const &src);
 Instr branch(Label label);
-Instr branch(BranchCond cond, Label label);
 Instr label(Label in_label);
 
 //
@@ -67,6 +60,8 @@ Instr::List recipsqrt(Var dst, Var srcA);
 Instr::List bexp(Var dst, Var srcA);
 Instr::List blog(Var dst, Var srcA);
 
+Instr recv(Reg dst);
+
 // v3d only
 Instr tmuwt();
 
@@ -74,4 +69,4 @@ Instr tmuwt();
 }  // namespace Target
 }  // namespace V3DLib
 
-#endif  // _V3DLIB_TARGET_INSTR_INSTRUCTIONS_H_
+#endif  // _V3DLIB_TARGET_INSTR_MNEMONICS_H_

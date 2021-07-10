@@ -45,8 +45,6 @@ struct SetCond {
     C
   };
 
-  SetCond() : m_tag(NO_COND) {}
-
   bool flags_set() const { return m_tag != NO_COND; }
   void tag(Tag tag) { m_tag = tag; }
   Tag tag() const { return m_tag; }
@@ -71,20 +69,19 @@ struct AssignCond {
     FLAG
   };
 
-  Tag tag;    // Kind of assignment condition
-  Flag flag;  // Condition flag
+  Tag tag   = ALWAYS; // Kind of assignment condition
+  Flag flag = ZC;     // Condition flag
 
   AssignCond() = default;
   AssignCond(CmpOp const &cmp_op);
-  AssignCond(Tag in_tag) : tag(in_tag) {}
+  AssignCond(Tag in_tag, Flag in_flag = ZC) : tag(in_tag), flag(in_flag) {}
 
   bool is_always() const { return tag == ALWAYS; }
   bool is_never()  const { return tag == NEVER; }
   AssignCond negate() const;
 
-  bool operator==(AssignCond rhs) const {
-    return (tag == rhs.tag && flag == rhs.flag);
-  }
+  bool operator==(AssignCond rhs) const { return (tag == rhs.tag && flag == rhs.flag); }
+  bool operator!=(AssignCond rhs) const { return !(*this == rhs); }
 
   std::string to_string() const;
   BranchCond to_branch_cond(bool do_all) const;

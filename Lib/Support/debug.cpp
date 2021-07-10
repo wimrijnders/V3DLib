@@ -14,20 +14,21 @@ enum LogLevel {
 };
 
 LogLevel log_level = ALL;
+bool     param_log_to_cout = true;
 
 }  // anon namespace
 
 #ifdef DEBUG
 
 void debug(const char *str) {
-  if (log_level <= LEVEL_DEBUG) {
+  if (param_log_to_cout && log_level <= LEVEL_DEBUG) {
     printf("DEBUG: %s\n", str);
   }
 }
 
 
 void warning(const char *str) {
-  if (log_level <= WARNING) {
+  if (param_log_to_cout && log_level <= WARNING) {
     printf("WARNING: %s\n", str);
   }
 }
@@ -44,7 +45,7 @@ void debug_break(const char *str) {
 
 
 void error(const char *str, bool do_throw) {
-  if (log_level <= ERROR) {
+  if (param_log_to_cout && log_level <= ERROR) {
     printf("ERROR: %s\n", str);
   }
 
@@ -55,8 +56,9 @@ void error(const char *str, bool do_throw) {
   }
 }
 
-void disable_logging() {
-  log_level = NONE;
+
+void log_to_cout(bool val) {
+  param_log_to_cout = val;
 }
 
 

@@ -13,43 +13,45 @@ std::string pretty_instr(Instr const &instr) {
 
   switch (instr.tag) {
     case LI: {
-      buf << instr.LI.cond.to_string()
-          << "LI " << instr.LI.dest.dump()
-          << " <-" << instr.setCond().pretty() << " "
+      buf << instr.assign_cond().to_string()
+          << "LI " << instr.dest().dump()
+          << " <-" << instr.set_cond().pretty() << " "
           << instr.LI.imm.pretty();
     }
     break;
 
     case ALU: {
-      buf << instr.ALU.cond.to_string()
-          << instr.ALU.dest.dump()
-          << " <-" << instr.setCond().pretty() << " "
+      buf << instr.assign_cond().to_string()
+          << instr.dest().dump()
+          << " <-" << instr.set_cond().pretty() << " "
           << instr.ALU.op.pretty();
 
-      if (instr.ALU.op.noOperands()) {
+      if (instr.ALU.noOperands()) {
         buf << "()";
+      } else if (instr.ALU.oneOperand()) {
+        buf << "(" << instr.ALU.srcA.disp() << ")";
       } else {
         buf << "(" << instr.ALU.srcA.disp() << ", " << instr.ALU.srcB.disp() << ")";
       }
     }
     break;
 
-    case BR:   buf << "if " << instr.BR.cond.to_string() << " goto " << instr.BR.target.to_string(); break;
-    case BRL:  buf << "if " << instr.BRL.cond.to_string() << " goto L" << instr.BRL.label;           break;
+    case BR:   buf << "if " << instr.branch_cond().to_string()
+                   << " goto " << instr.branch_target().to_string();
+    break;
+    case BRL:  buf << "if " << instr.branch_cond().to_string() << " goto L" << instr.branch_label(); break;
     case LAB:  buf << "L" << instr.label();                                                          break;
-    case RECV: buf << "RECV(" <<  instr.RECV.dest.dump() << ")";                                     break;
+    case RECV: buf << "RECV(" <<  instr.dest().dump() << ")";                                        break;
     case SINC: buf << "SINC " << instr.semaId;                                                       break;
     case SDEC: buf << "SDEC " << instr.semaId;                                                       break;
 
     case INIT_BEGIN:
     case INIT_END:
     case END:         // vc4
-    case TMU0_TO_ACC4:
     case NO_OP:
     case SKIP:
     case IRQ:
     case VPM_STALL:
-    case TMUWT:
       buf << V3DLib::pretty_instr_tag(instr.tag);
       break;
 
@@ -76,10 +78,8 @@ const char *pretty_instr_tag(InstrTag tag) {
     case RECV:         return "RECV";
     case IRQ:          return "IRQ";
     case VPM_STALL:    return "VPM_STALL";
-    case TMU0_TO_ACC4: return "TMU0_TO_ACC4";
     case INIT_BEGIN:   return "INIT_BEGIN";
     case INIT_END:     return "INIT_END";
-    case TMUWT:        return "TMUWT";
 
     default:
       assert(false);  // Add other tags here as required

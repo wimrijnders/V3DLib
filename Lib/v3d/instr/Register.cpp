@@ -1,5 +1,6 @@
 #include "Register.h"
 #include "Support/basics.h"  // Exception
+#include "RFAddress.h"
 
 
 namespace V3DLib {
@@ -87,31 +88,43 @@ v3d_qpu_mux BranchDest::to_mux() const {
 }
 
 
-Register const r0("r0", V3D_QPU_WADDR_R0, V3D_QPU_MUX_R0, true);
-Register const r1("r1", V3D_QPU_WADDR_R1, V3D_QPU_MUX_R1, true);
-Register const r2("r2", V3D_QPU_WADDR_R2, V3D_QPU_MUX_R2, true);
-Register const r3("r3", V3D_QPU_WADDR_R3, V3D_QPU_MUX_R3, true);
-Register const r4("r4", V3D_QPU_WADDR_R4, V3D_QPU_MUX_R4, true);
-Register const r5("r5", V3D_QPU_WADDR_R5, V3D_QPU_MUX_R5);
-Register const tmua("tmua", V3D_QPU_WADDR_TMUA);
-Register const tmud("tmud", V3D_QPU_WADDR_TMUD);
-Register const tlb("tlb", V3D_QPU_WADDR_TLB);
-Register const recip("recip", V3D_QPU_WADDR_RECIP);
-Register const rsqrt("rsqrt", V3D_QPU_WADDR_RSQRT);
-Register const exp("exp", V3D_QPU_WADDR_EXP);
-Register const log("log", V3D_QPU_WADDR_LOG);
-Register const sin("sin", V3D_QPU_WADDR_SIN);
-Register const rsqrt2("rsqrt2", V3D_QPU_WADDR_RSQRT2);
+bool BranchDest::operator==(Location const &rhs) const {
+  BranchDest const *rhs_dst = dynamic_cast<BranchDest const *>(&rhs);
+  if (rhs_dst == nullptr) return false;
+
+  return (m_dest == rhs_dst->m_dest);
+}
 
 
-// For branch
-BranchDest const lri("lri", V3D_QPU_WADDR_R0);
+bool Register::operator==(Location const &rhs) const {
+  RFAddress const *rhs_rf = dynamic_cast<RFAddress const *>(&rhs);
+  if (rhs_rf != nullptr) {
+    if (m_mux_is_set) {
+      return (m_mux_val == V3D_QPU_MUX_A || m_mux_val == V3D_QPU_MUX_B) && m_waddr_val == rhs_rf->to_waddr();
+    } else {
+      return m_waddr_val == rhs_rf->to_waddr();
+    }
+  }
 
-// Some obscure 'registers' in the broadcom tests
-// Prefix a/r appears to indicate absolute/relative for the bdu field,
-// 2nd parameter irrelevant
-Register const r_unif("r_unif", V3D_QPU_WADDR_R0);
-Register const a_unif("a_unif", V3D_QPU_WADDR_R0);
+
+  Register const *rhs_reg = dynamic_cast<Register const *>(&rhs);
+  if (rhs_reg == nullptr) return false;
+
+  assert(!m_is_rf);
+  assert(m_is_rf == rhs_reg->m_is_rf);
+
+  if (m_output_pack != rhs_reg->m_output_pack || m_input_unpack != rhs_reg->m_input_unpack) {
+    warning("Register::==(): packing differs");
+  }
+
+  if (m_mux_is_set != rhs_reg->m_mux_is_set) return false;
+
+  if (m_mux_is_set) {
+    return m_waddr_val == rhs_reg->m_waddr_val && m_mux_val == rhs_reg->m_mux_val;
+  } else {
+    return m_waddr_val == rhs_reg->m_waddr_val;
+  }
+}
 
 }  // instr
 }  // v3d

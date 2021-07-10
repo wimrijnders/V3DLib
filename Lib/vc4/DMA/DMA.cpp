@@ -174,6 +174,8 @@ std::string disp(int in_tag) {
   switch (tag) {
     case V3DLib::Stmt::SET_READ_STRIDE:  ret << "SET_READ_STRIDE";  break;
     case V3DLib::Stmt::SET_WRITE_STRIDE: ret << "SET_WRITE_STRIDE"; break;
+    case V3DLib::Stmt::SEND_IRQ_TO_HOST: ret << "SEND_IRQ_TO_HOST"; break;
+    case V3DLib::Stmt::SEMA_INC:         ret << "SEMA_INC";         break;
     case V3DLib::Stmt::SEMA_DEC:         ret << "SEMA_DEC";         break;
     case V3DLib::Stmt::SETUP_VPM_READ:   ret << "SETUP_VPM_READ";   break;
     case V3DLib::Stmt::SETUP_VPM_WRITE:  ret << "SETUP_VPM_WRITE";  break;

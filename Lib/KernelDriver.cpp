@@ -9,6 +9,7 @@
 #include "Target/Satisfy.h"
 #include "SourceTranslate.h"
 #include "Support/Timer.h"
+#include "Target/instr/Mnemonics.h"
 
 namespace V3DLib {
 
@@ -43,14 +44,14 @@ void title(FILE *f, std::string const &in_title) {
 /**
  * Emit source code
  */
-void print_source_code(FILE *f, Stmt::Ptr body) {
+void print_source_code(FILE *f, Stmts const &body) {
   if (f == nullptr) {
     f = stdout;
   }
 
   title(f, "Source code");
 
-  if (body.get() == nullptr) {
+  if (body.empty()) {
     fprintf(f, "<No source code to print>\n");
   } else {
     fprintf(f, pretty(body).c_str());
@@ -73,6 +74,38 @@ void print_target_code(FILE *f, Instr::List const &code) {
   fflush(f);
 }
 
+
+/**
+ * vc4 LDTMU implicitly writes to ACC4, take this into account
+ */
+void loadStorePass(Instr::List &instrs) {
+  assert(Platform::compiling_for_vc4());
+  using namespace V3DLib::Target::instr;
+
+  Instr::List newInstrs(instrs.size()*2);
+
+  for (int i = 0; i < instrs.size(); i++) {
+    Instr instr = instrs[i];
+
+    if (instr.tag == RECV && instr.dest() != ACC4) {
+      Instr::List tmp(2);
+      tmp << recv(ACC4)
+          << mov(instr.dest(), ACC4);
+      tmp.front().transfer_comments(instr);
+
+      newInstrs << tmp;
+      continue;
+    }
+
+    newInstrs << instr;
+  }
+
+
+  // Update original instruction sequence
+  instrs.clear();
+  instrs << newInstrs;
+}
+
 }  // anon namespace
 
 
@@ -86,12 +119,14 @@ void print_target_code(FILE *f, Instr::List const &code) {
 void compile_postprocess(Instr::List &targetCode) {
   assertq(!targetCode.empty(), "compile_postprocess(): passed target code is empty");
 
-  loadStorePass(targetCode);
+  if (Platform::compiling_for_vc4()) {
+    loadStorePass(targetCode);
+  }
 
   //compile_data.target_code_before_regalloc = targetCode.dump();
 
   // Perform register allocation
-  getSourceTranslate().regAlloc(targetCode);
+  getSourceTranslate().regAlloc(targetCode);  // performance hog 32/33s
 
   // Satisfy target code constraints
   satisfy(targetCode);
@@ -113,7 +148,6 @@ KernelDriver::~KernelDriver() {}
  * @param numVars           number of variables already assigned prior to compilation
  */
 void KernelDriver::init_compile() {
-  initStmt();
   initStack(m_stmtStack);
   VarGen::reset();
   resetFreshLabelGen();
@@ -129,7 +163,13 @@ void KernelDriver::init_compile() {
 
 void KernelDriver::obtain_ast() {
   clearStack();
-  m_body = m_stmtStack.pop();
+
+  if (m_stmtStack.size() != 1) {
+    std::string buf = "Expected exactly one item on stmtstack; perhaps an 'End'-statement is missing.";
+    error(buf, true);
+  }
+
+  m_body = *m_stmtStack.pop();
 }
 
 
@@ -143,7 +183,6 @@ void KernelDriver::compile(std::function<void()> create_ast) {
     create_ast();
     compile_intern();
     m_numVars = VarGen::count();
-    //clearStack();
   } catch (V3DLib::Exception const &e) {
     std::string msg = "Exception occured during compilation: ";
     msg << e.msg();
@@ -192,6 +231,16 @@ bool KernelDriver::handle_errors() {
 
 
 /**
+ * Return AST representing the source code
+ *
+ * But it's not really a 'tree' anymore, it's a top-level sequence of statements
+ */
+Stmts &KernelDriver::sourceCode() {
+  return m_body;
+}
+
+
+/**
 * @brief Output a human-readable representation of the source and target code.
 *
 * @param filename  if specified, print the output to this file. Otherwise, print to stdout
@@ -206,7 +255,7 @@ void KernelDriver::pretty(char const *filename, bool output_qpu_code) {
     fprintf(f, "\n\n");
   }
 
-  print_source_code(f, sourceCode());
+  print_source_code(f, m_body);
   print_target_code(f, m_targetCode);
 
   if (output_qpu_code) {

@@ -49,7 +49,7 @@ using Data         = V3DLib::Data;
 ByteCode qpu_cond_push_a() {
   Instructions ret;
 
-  auto set_cond_push = [] (Instr &instr, int index) {
+  auto set_cond_push = [] (Mnemonic &instr, int index) {
     // Set a-flag with given condition
     switch (index) {
       case 0: instr.pushz(); break;  // == 0
@@ -58,7 +58,7 @@ ByteCode qpu_cond_push_a() {
     }
   }
 ;
-  auto set_cond_if = [] (Instr &instr, int index) {
+  auto set_cond_if = [] (Mnemonic &instr, int index) {
     switch (index) {
       case 0: instr.ifa();  break;  // Test if set
       case 1: instr.ifna(); break;  // Test if not set
@@ -76,7 +76,7 @@ ByteCode qpu_cond_push_a() {
   for (int index = 0; index < 3; ++ index) {
     ret << eidx(r0);
 
-    Instr instr = sub(r0, r0, 10);  // r0 = index - 10
+    Mnemonic instr = sub(r0, r0, 10);  // r0 = index - 10
     set_cond_push(instr, index);
 
     ret << instr
@@ -128,6 +128,8 @@ TEST_CASE("Check v3d condition codes [v3d][cond]") {
     const int DATA_SIZE = 16;
 
     ByteCode bytecode = qpu_cond_push_a();
+    //std::cout << Instr::mnemonics(bytecode) << std::endl;
+
     BufferObject heap;
     heap.alloc(10*1024);  // arbitrary size, large enough
 
@@ -497,7 +499,7 @@ TEST_CASE("Test if/where without loop [noloop][cond]") {
   }
 
 
-  SUBCASE("Testing noloop_if_and_where_kernel") {
+  SUBCASE("Testing noloop_if_and_kernel") {
     Int::Array result(VEC_SIZE);
 
     auto k2 = compile(noloop_if_and_kernel);
@@ -568,6 +570,7 @@ TEST_CASE("Test multiple and/or [andor][cond]") {
 
     auto k = compile(andor_kernel);
     k.load(&result);
+    k.pretty(false, "andor_kernel_v3d.txt");
 
     reset(result);
     k.interpret();

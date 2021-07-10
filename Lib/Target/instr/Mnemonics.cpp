@@ -1,57 +1,38 @@
-#include "Instructions.h"
+#include "Mnemonics.h"
 #include "Support/basics.h"
 #include "Support/Platform.h"
 
 namespace V3DLib {
 namespace {
 
-Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, Reg srcB) {
+Instr genInstr(ALUOp::Enum op, Reg dst, RegOrImm const &srcA, RegOrImm const &srcB) {
+  dst.can_write(true);
+  srcA.can_read(true);
+  srcB.can_read(true);
+
   Instr instr(ALU);
-  instr.ALU.cond      = always;
-  instr.ALU.dest      = dst;
-  instr.ALU.srcA.set_reg(srcA);
-  instr.ALU.op        = ALUOp(op);
-  instr.ALU.srcB.set_reg(srcB);
-
-  return instr;
-}
-
-
-Instr genInstr(ALUOp::Enum op, Reg dst, Reg srcA, int n) {
-  Instr instr(ALU);
-  instr.ALU.dest              = dst;
-  instr.ALU.srcA.set_reg(srcA);
-  instr.ALU.op                = ALUOp(op);
-  instr.ALU.srcB.set_imm(n);
-
-  return instr;
-}
-
-
-Instr genInstr(ALUOp::Enum op, Reg dst, int n, int m) {
-  Instr instr(ALU);
-  instr.ALU.dest              = dst;
-  instr.ALU.srcA.set_imm(n);
-  instr.ALU.op                = ALUOp(op);
-  instr.ALU.srcB.set_imm(m);
+  instr.ALU.op   = ALUOp(op);
+  instr.ALU.srcA = srcA;
+  instr.ALU.srcB = srcB;
+  instr.dest(dst);
 
   return instr;
 }
 
 
 /**
- * This uses acc4 as interim storage.
+ * SFU functions always write to ACC4
  * Also 2 NOP's required; TODO see this can be optimized
  */
 Instr::List sfu_function(Var dst, Var srcA, Reg const &sfu_reg, const char *label) {
   using namespace V3DLib::Target::instr;
 
-  Instr nop;
-  Instr::List ret;
-
   std::string cmt = "SFU function ";
   cmt << label;
 
+  Instr nop;
+
+  Instr::List ret;
   ret << mov(sfu_reg, srcA).comment(cmt)
       << nop
       << nop
@@ -71,6 +52,8 @@ Reg const ACC1(ACC, 1);
 Reg const ACC2(ACC, 2);
 Reg const ACC3(ACC, 3);
 Reg const ACC4(ACC, 4);
+Reg const ACC5(ACC, 5);
+Reg const UNIFORM_READ( SPECIAL, SPECIAL_UNIFORM);
 Reg const QPU_ID(       SPECIAL, SPECIAL_QPU_NUM);
 Reg const ELEM_ID(      SPECIAL, SPECIAL_ELEM_NUM);
 Reg const TMU0_S(       SPECIAL, SPECIAL_TMU0_S);
@@ -96,30 +79,23 @@ Reg rf(uint8_t index) {
 }
 
 
-Instr mov(Var dst, Var src) { return mov(dstReg(dst), srcReg(src)); }
-Instr mov(Var dst, Reg src) { return mov(dstReg(dst), src); }
-Instr mov(Reg dst, Var src) { return mov(dst, srcReg(src)); }
-Instr mov(Reg dst, Reg src) { return bor(dst, src, src); }
+Instr mov(Reg dst, RegOrImm const &src) {
+  dst.can_write(true);
 
-Instr mov(Reg dst, int n)   {
-  if (Platform::compiling_for_vc4()) {
-    // Hereby assuming that two imm's for vc4 are not allowed
-    // (assert in encode)
-    return li(dst, n);
+  if (Platform::compiling_for_vc4() && src.is_imm()) {
+    return li(dst, src.imm().val);
   } else {
-    return genInstr(ALUOp::A_BOR, dst, n, n);
+    return bor(dst, src, src);
   }
 }
 
-Instr mov(Var dst, int n)   { return mov(dstReg(dst), n); }
 
 
 // Generation of bitwise instructions
-Instr bor(Reg dst, Reg srcA, Reg srcB)  { return genInstr(ALUOp::A_BOR, dst, srcA, srcB); }
-Instr band(Reg dst, Reg srcA, Reg srcB) { return genInstr(ALUOp::A_BAND, dst, srcA, srcB); }
-Instr band(Var dst, Var srcA, Var srcB) { return genInstr(ALUOp::A_BAND, dstReg(dst), srcReg(srcA), srcReg(srcB)); }
-Instr band(Reg dst, Reg srcA, int n)    { return genInstr(ALUOp::A_BAND, dst, srcA, n); }
-Instr bxor(Var dst, Var srcA, int n)    { return genInstr(ALUOp::A_BXOR, dstReg(dst), srcReg(srcA), n); }
+Instr bor(Reg dst, RegOrImm const &srcA, RegOrImm const &srcB)  { return genInstr(ALUOp::A_BOR, dst, srcA, srcB); }
+Instr band(Reg dst, Reg srcA, Reg srcB)   { return genInstr(ALUOp::A_BAND, dst, srcA, srcB); }
+Instr band(Reg dst, Reg srcA, int n)      { return genInstr(ALUOp::A_BAND, dst, srcA, n); }
+Instr bxor(Var dst, RegOrImm srcA, int n) { return genInstr(ALUOp::A_BXOR, dst, srcA, n); }
 
 
 /**
@@ -160,26 +136,12 @@ Instr sub(Reg dst, Reg srcA, int n) {
 /**
  * Generate load-immediate instruction.
  */
-Instr li(Reg dst, int i) {
+Instr li(Reg dst, Imm const &src) {
+  dst.can_write(true);
+
   Instr instr(LI);
-  instr.LI.cond = always;
-  instr.LI.dest = dst;
-  instr.LI.imm  = Imm(i);
- 
-  return instr;
-}
-
-
-Instr li(Var v, int i) {
-  return li(dstReg(v), i).comment("li(Var, int)");
-}
-
-
-Instr li(Var v, float f) {
-  Instr instr(LI);
-  instr.LI.cond = always;
-  instr.LI.dest = dstReg(v);
-  instr.LI.imm  = Imm(f);
+  instr.LI.imm  = src;
+  instr.dest(dst);
  
   return instr;
 }
@@ -191,11 +153,8 @@ Instr li(Var v, float f) {
  * Conditions can still be specified with helper methods (e.g. see `allzc()`)
  */
 Instr branch(Label label) {
-  Instr instr;
-  instr.tag          = BRL;
-  instr.BRL.cond.tag = COND_ALWAYS;    // Can still be changed
-  instr.BRL.label    = label;
-
+  Instr instr(BRL);
+  instr.branch_label(label);
   return instr;
 }
 
@@ -221,14 +180,11 @@ Instr label(Label in_label) {
 
 
 /**
- * Create a conditional branch.
+ * Load next value from TMU
  */
-Instr branch(BranchCond cond, Label label) {
-  Instr instr;
-  instr.tag       = BRL;
-  instr.BRL.cond  = cond; 
-  instr.BRL.label = label;
-
+Instr recv(Reg dst) {
+  Instr instr(RECV);
+  instr.dest(dst);
   return instr;
 }
 
@@ -237,9 +193,7 @@ Instr branch(BranchCond cond, Label label) {
  * v3d only
  */
 Instr tmuwt() {
-  Instr instr;
-  instr.tag = TMUWT;
-  return instr;
+  return genInstr(ALUOp::A_TMUWT, None, None, None);
 }
 
 }  // namespace instr

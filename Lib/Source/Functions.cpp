@@ -19,6 +19,9 @@ namespace {
 
 int const MAX_INT = 2147483647;  // Largest positive 32-bit integer that can be negated
 
+} // anon namespace
+
+
 /**
  * Ensure a common exit method for function snippets.
  *
@@ -35,7 +38,7 @@ void Return(Int const &val) {
   dummy = val;
 }
 
-// TODO see if this can be merged with the Int version.
+
 void Return(Float const &val) {
   // Prepare an expression which can be assigned
   // dummy is not used downstream, only the rhs matters
@@ -65,28 +68,26 @@ void Return(Float const &val) {
  * But then again, nothing using the global statement stack is.
  */
 IntExpr create_function_snippet(StackCallback f) {
-  Stmt::Ptr stmt = tempStmt(f);
-
-  //std::cout << stmt->dump() << std::endl;
-  stmtStack() << stmt;
-
-  Stmt *ret = stmt->last_in_seq();
+  auto stmts = tempStmt(f);
+  assert(!stmts.empty());
+  stmtStack() << stmts;
+  Stmt::Ptr ret = stmts.back();
   return ret->assign_rhs();
 }
 
 
 // TODO see if this can be merged with the Int version.
 FloatExpr create_float_function_snippet(StackCallback f) {
-  Stmt::Ptr stmt = tempStmt(f);
+  auto stmts = tempStmt(f);
 
-  //std::cout << stmt->dump() << std::endl;
-  stmtStack() << stmt;
+  assert(!stmts.empty());
 
-  Stmt *ret = stmt->last_in_seq();
-  return ret->assign_rhs();
+  // Return only the assign part of the final statement and remove that statement
+  auto stmt = stmts.back();
+  stmts.pop_back();
+  stmtStack() << stmts;
+  return stmt->assign_rhs();
 }
-
-}  // anon namespace
 
 
 /**
@@ -259,7 +260,6 @@ FloatExpr sin(FloatExpr x_in, bool extra_precision) {
  * Also works only in range -PI/2..PI/2.
  *
  * Incoming values are multiples of 2*PI.
- * Following preamble to actual sin() is to get int param within the allowed range.
  *
  * ============================================================================
  * NOTES
@@ -308,6 +308,8 @@ FloatExpr sin_v3d(FloatExpr x_in) {
     Float tmp = x_in;                    comment("Start source lang v3d sin");
 
     tmp += 0.25f;                        // Modulo to range -0.25...0.75
+    comment("v3d sin preamble to get param in the allowed range");
+
     tmp -= functions::ffloor(tmp);       // Get the fractional part
     tmp -= 0.25f;
 
@@ -316,6 +318,7 @@ FloatExpr sin_v3d(FloatExpr x_in) {
     End
 
     tmp *= 2;                            // Convert to multiple of PI
+    comment("End v3d sin preamble");
 
     Return(sin_op(tmp));
   });
@@ -441,6 +444,41 @@ void set_at(Float &dst, Int n, Float const &src) {
   Where(index() == n)
     dst = src;
   End 
+}
+
+
+/**
+ * Let QPUs wait for each other.
+ *
+ * Intended for v3d, where I don't see a hardware signal function as in vc4.
+ * Works fine with vc4 also.
+ */
+void sync_qpus(Int::Ptr signal) {
+  If (numQPUs() != 1) // Don't bother syncing if only one qpu
+    *(signal - index() + me()) = 1;
+
+    header("Start QPU sync");
+
+    If (me() == 0)
+      Int expected = 0;   comment("QPU 0: Wait till all signals are set");
+      Where (index() < numQPUs())
+        expected = 1;
+      End 
+
+      Int tmp = *signal;
+      While (expected != tmp)
+        tmp = *signal;
+      End
+
+      *signal = 0;        comment("QPU 0 done waiting, let other qpus continue");
+    Else
+      Int tmp = *signal;  comment("Other QPUs: Wait till all signals are cleared");
+
+      While (0 != tmp)
+        tmp = *signal;
+      End
+    End
+  End
 }
 
 }  // namespace V3DLib

@@ -1,7 +1,7 @@
 #include "LoadStore.h"
 #include "Support/debug.h" 
 #include "Source/Translate.h"
-#include "Target/instr/Instructions.h"
+#include "Target/instr/Mnemonics.h"
 #include "Helpers.h"
 
 namespace V3DLib {
@@ -55,34 +55,26 @@ static int vpmSetupWriteCode(int hor, int stride) {
   return code;
 }
 
-// Generate instructions to setup VPM load.
 
-Instr::List genSetupVPMLoad(int n, int addr, int hor, int stride) {
-  Instr::List ret;
+Instr::List genSetupVPMLoad(int addr, int setup) {
   assert(addr < 256);
+  setup |= (addr & 0xff);
 
-  int setup = vpmSetupReadCode(n, hor, stride) | (addr & 0xff);
-  Instr instr;
-  instr.tag = VPM_STALL;
-
+  Instr::List ret;
   ret << li(RD_SETUP, setup)
-      << instr;
+      << Instr(VPM_STALL);
 
   return ret;
 }
 
 
-Instr::List genSetupVPMLoad(int n, Reg addr, int hor, int stride) {
-  Instr::List ret;
+Instr::List genSetupVPMLoad(Reg addr, int setup) {
   Reg tmp = freshReg();
-  int setup = vpmSetupReadCode(n, hor, stride);
 
-  Instr instr;
-  instr.tag = VPM_STALL;
-
+  Instr::List ret;
   ret << li(tmp, setup)
       << bor(RD_SETUP, addr, tmp)
-      << instr;
+      << Instr(VPM_STALL);
 
   return ret;
 }
@@ -98,12 +90,13 @@ Instr genSetupVPMStore(int addr, int hor, int stride) {
 
 
 Instr::List genSetupVPMStore(Reg addr, int hor, int stride) {
-  Instr::List ret;
   Reg tmp = freshReg();
   int setup = vpmSetupWriteCode(hor, stride);
 
+  Instr::List ret;
   ret << li(tmp, setup)
       << bor(WR_SETUP, addr, tmp);
+
   return ret;
 }
 
@@ -282,7 +275,7 @@ Instr::List setStrideStmt(bool is_read, Expr::Ptr e) {
     else
       ret << genSetWriteStride(e->intLit);
   } else if (e->tag() == Expr::VAR) {
-    Reg reg = srcReg(e->var());
+    Reg reg(e->var());
 
     if (is_read)
       ret << genSetReadPitch(reg);
@@ -292,9 +285,9 @@ Instr::List setStrideStmt(bool is_read, Expr::Ptr e) {
     Var v = VarGen::fresh();
     ret << varAssign(v, e);
     if (is_read)
-      ret << genSetReadPitch(srcReg(v));
+      ret << genSetReadPitch(v);
     else
-      ret << genSetWriteStride(srcReg(v));
+      ret << genSetWriteStride(v);
   }
 
   return ret;
@@ -309,7 +302,7 @@ Instr::List startDMAReadStmt(Expr::Ptr e) {
     ret << varAssign(v, e);
   }
 
-  ret << genStartDMALoad(srcReg(e->var()));
+  ret << genStartDMALoad(e->var());
   return ret;
 }
 
@@ -322,7 +315,7 @@ Instr::List startDMAWriteStmt(Expr::Ptr e) {
     ret << varAssign(v, e);
   }
 
-  ret << genStartDMAStore(srcReg(e->var()));
+  ret << genStartDMAStore(e->var());
   return ret;
 }
 
@@ -364,15 +357,16 @@ Instr::List Stmt::setupVPMRead() {
   Expr::Ptr e = address_internal();
   int hor     = m_setupVPMRead.hor;
   int stride  = m_setupVPMRead.stride;
+  int setup   = vpmSetupReadCode(n, hor, stride);
 
   if (e->tag() == Expr::INT_LIT)
-    ret << genSetupVPMLoad(n, e->intLit, hor, stride);
+    ret << genSetupVPMLoad(e->intLit, setup);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMLoad(n, srcReg(e->var()), hor, stride);
+    ret << genSetupVPMLoad(e->var(), setup);
   else {
     Var v = VarGen::fresh();
     ret << varAssign(v, e)
-        << genSetupVPMLoad(n, srcReg(v), hor, stride);
+        << genSetupVPMLoad(v, setup);
   }
 
   return ret;
@@ -395,12 +389,12 @@ Instr::List Stmt::setupDMARead() {
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->intLit);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(e->var()));
+    ret << genSetupDMALoad(numRows, rowLen, hor, vpitch, e->var());
   else {
     Var v = VarGen::fresh();
 
     ret << varAssign(v, e)
-        << genSetupDMALoad(numRows, rowLen, hor, vpitch, srcReg(v));
+        << genSetupDMALoad(numRows, rowLen, hor, vpitch, v);
   }
 
   return ret;
@@ -418,12 +412,12 @@ Instr::List Stmt::setupDMAWrite() {
   if (e->tag() == Expr::INT_LIT) {
     ret << genSetupDMAStore(numRows, rowLen, hor, e->intLit);
   } else if (e->tag() == Expr::VAR) {
-    ret << genSetupDMAStore(numRows, rowLen, hor, srcReg(e->var()));
+    ret << genSetupDMAStore(numRows, rowLen, hor, e->var());
   } else {
     Var v = VarGen::fresh();
 
     ret << varAssign(v, e)
-        << genSetupDMAStore(numRows, rowLen, hor, srcReg(v));
+        << genSetupDMAStore(numRows, rowLen, hor, v);
   }
 
   return ret;
@@ -440,11 +434,11 @@ Instr::List Stmt::setupVPMWrite() {
   if (e->tag() == Expr::INT_LIT)
     ret << genSetupVPMStore(e->intLit, hor, stride);
   else if (e->tag() == Expr::VAR)
-    ret << genSetupVPMStore(srcReg(e->var()), hor, stride);
+    ret << genSetupVPMStore(e->var(), hor, stride);
   else {
     Var v = VarGen::fresh();
     ret << varAssign(v, e)
-        << genSetupVPMStore(srcReg(v), hor, stride);
+        << genSetupVPMStore(v, hor, stride);
   }
 
   return ret;
@@ -457,15 +451,16 @@ Instr::List Stmt::setupVPMWrite() {
 Instr::List loadRequest(Var &dst, Expr &e) {
   using namespace V3DLib::Target::instr;
 
-  Reg reg = srcReg(e.deref_ptr()->var());
+  Reg reg(e.deref_ptr()->var());
+  int setup = vpmSetupReadCode(1, 0, 1);
+
   Instr::List ret;
-  
   ret << genSetReadPitch(4).comment("Start DMA load var")                          // Setup DMA
       << genSetupDMALoad(16, 1, 1, 1, QPU_ID)
       << genStartDMALoad(reg)                                                      // Start DMA load
       << genWaitDMALoad(false)                                                     // Wait for DMA
-      << genSetupVPMLoad(1, QPU_ID, 0, 1)                                          // Setup VPM
-      << shl(dstReg(dst), Target::instr::VPM_READ, 0).comment("End DMA load var"); // Get from VPM
+      << genSetupVPMLoad(QPU_ID, setup)                                            // Setup VPM
+      << shl(dst, Target::instr::VPM_READ, 0).comment("End DMA load var");         // Get from VPM
 
   return ret;
 }
@@ -491,8 +486,8 @@ Instr::List storeRequest(Var dst_addr, Var src) {
 
       << genSetWriteStride(0)                                                  // Setup DMA
       << genSetupDMAStore(16, 1, 1, storeAddr)
-      << shl(Target::instr::VPM_WRITE, srcReg(src), 0)                         // Put to VPM
-      << genStartDMAStore(srcReg(dst_addr)).comment("End DMA store request");  // Start DMA
+      << shl(Target::instr::VPM_WRITE, src, 0)                                 // Put to VPM
+      << genStartDMAStore(dst_addr).comment("End DMA store request");          // Start DMA
 
   return ret;
 }
