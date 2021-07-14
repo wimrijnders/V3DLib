@@ -5,7 +5,7 @@ Jump straight to the actual [Basic Build Instructions](#basic-build-instructions
 
 ## General Project Information
 
-- The C++ code is compiled with language version `c++11`
+- The C++ code is compiled with language version `c++17`
 - Indent is two spaces. Not because I want it to (I vastly prefer tabs), but because `github`
   otherwise makes a mess of the source display, especially when tabs and spaces are mixed.
 
