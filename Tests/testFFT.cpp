@@ -785,8 +785,10 @@ struct {
  * Loop optimization: skip For-loop if only 1 iteration
  */
 void Loop(int count, std::function<void(Int const &)> f) {
-  assert(count > 0);
-  if (count == 1) {
+  assert(count >= 0);
+  if (count == 0) {
+    // Do nothing
+  } else if (count == 1) {
     f(0);
   } else {
     For (Int j = 0, j < count, j++)
@@ -965,7 +967,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
 
     int same_count        = fft_context.same_index_count(i);
     int same_count_skipjs = fft_context.same_index_count(i, true);  // Always same per s for given log2n
-/*
+
     {
       std::string msg;
       msg << "s: " << item.s << ", j: " << item.j << ", k: " << item.k_count
@@ -974,7 +976,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
           << ", same_count skipjs: " << same_count_skipjs;
       debug(msg);
     }
-*/
 
     int j_count  = same_count_skipjs/same_count;
     int j_offset = item.k_count;
@@ -984,6 +985,12 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     Int j_start = 0;
 
     int k_length = same_count/fft_context.num_qpus;
+    {
+      std::string msg;
+      msg << "k_length: " << k_length;
+      debug(msg);
+    }
+
     bool final_k = (k_length == 0);
     Int k_start = 0;
     if (k_length == 0) {
@@ -1163,7 +1170,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     // FFT multi works for >=  10 (might be tweakable)
     // Error             for >= 18 (heap not big enough)
     // Compile Seg fault for >= 32 (not enough memory)
-    int log2n = 16;
+    int log2n = 8; //16;
 
     int Dim = 1 << log2n;
     set_precision(log2n);
@@ -1211,7 +1218,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     if (log2n <= 9) {  // Reg allocation fails above this
       Complex::Array2D result_dft;
       Timer timer1("DFT compile time");
-      auto k = compile(kernels::dft_inline_decorator(a, result_dft), V3D);
+      auto k = compile(kernels::dft_decorator(a, result_dft), V3D);
       k.pretty(false, "obj/test/dft_compare_v3d.txt");
       timer1.end();
       std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;

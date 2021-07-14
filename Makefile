@@ -201,7 +201,7 @@ $(MESA_LIB):
 $(OBJ_DIR)/%.o: %.cpp | init
 	@echo Compiling $<
 	@mkdir -p $(@D)
-	@$(CXX) -std=c++11 -c -o $@ $< $(CXX_FLAGS)
+	@$(CXX) -std=c++17 -c -o $@ $< $(CXX_FLAGS)
 
 # Same thing for C-files
 $(OBJ_DIR)/%.o: %.c | init

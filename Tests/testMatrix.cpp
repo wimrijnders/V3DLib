@@ -31,7 +31,7 @@ void prepare_random(Float::Array2D &a, std::vector<float> &expected, int dimensi
   fill_random(a_scalar);
   copy_array(a, a_scalar);
   copy_transposed(a_transposed, a_scalar, dimension, dimension);
-  kernels::square_matrix_mult_scalar(dimension, expected.data(), a_scalar.data(), a_transposed.data());
+  kernels::matrix_mult_scalar(dimension, expected.data(), a_scalar.data(), a_transposed.data());
 }
 
 
@@ -176,7 +176,7 @@ void check_matrix_results(
   float a_transposed[dimension*dimension];
   copy_transposed(a_transposed, a_scalar, dimension, dimension);
 
-  kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_transposed);
+  kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_transposed);
   k.load(&result, &a, &a);
   k.call();
 
@@ -207,7 +207,7 @@ void test_square_matrix_multiplication(int dimension) {
   for (int i = 0; i < SIZE; i++) {
     expected[i] = -1;
   }
-  kernels::square_matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
+  kernels::matrix_mult_scalar(dimension, expected, a_scalar, a_scalar);
 
   for (int i = 0; i < SIZE; i++) {
     REQUIRE(expected[i] == (float) dimension);
@@ -289,7 +289,7 @@ TEST_CASE("Test matrix algebra components [matrix][comp]") {
     for (int i = 0; i < SIZE; i++) { b[i] =  2; }
     for (int i = 0; i < SIZE; i++) { c[i] = -1; }
 
-    kernels::square_matrix_mult_scalar(N, c, a, b);
+    kernels::matrix_mult_scalar(N, c, a, b);
     
     for (int i = 0; i < SIZE; i++) {
       REQUIRE(c[i] == (float) 32);
@@ -495,7 +495,7 @@ void test_complex_matrix_multiplication(
 
   REQUIRE(a.columns() == b.rows());
 
-  auto k = compile(kernels::complex_matrix_mult_decorator(a, b, result));
+  auto k = compile(kernels::matrix_mult_decorator(a, b, result));
   k.setNumQPUs(num_qpus);
   result.fill({-1.0f, -1.0f});
 
@@ -543,13 +543,13 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
     {
       float scalar_transposed[Size];
       copy_transposed(scalar_transposed, scalar, Dim, Dim);
-      kernels::square_matrix_mult_scalar(Dim, scalar_result, scalar, scalar_transposed);
+      kernels::matrix_mult_scalar(Dim, scalar_result, scalar, scalar_transposed);
     }
 
     Complex::Array2D a(Dim);
     Complex::Array2D result(Dim);
 
-    auto k = compile(kernels::complex_matrix_mult_decorator(a, a, result));
+    auto k = compile(kernels::matrix_mult_decorator(a, a, result));
     k.load(&result, &a, &a);
     k.pretty(false, "obj/test/real_im_v3d.txt");
 
@@ -704,7 +704,7 @@ void test_simple_block(int dimension) {
       INFO("Checking mult random values");
 
       float precision = -1.0f;
-      if (dimension >  Matrix::MAX_FULL_BLOCKS_V3D) {
+      if (dimension >  m.MAX_FULL_BLOCKS_V3D) {
         precision = 1e-3f;  // For big arrays using blocks
       }
 

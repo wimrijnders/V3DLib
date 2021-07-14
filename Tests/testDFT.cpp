@@ -154,7 +154,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     // In this call, the matrix and input are switched.
     // This is slightly more efficient and should not affect the result
     Timer timer1;
-    auto k = compile(kernels::complex_matrix_mult_decorator(input, dft_matrix, result_mult), for_platform);
+    auto k = compile(kernels::matrix_mult_decorator(input, dft_matrix, result_mult), for_platform);
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
@@ -168,10 +168,10 @@ bool compare_dfts(int Dim, bool do_profiling) {
   }
 
   {
-    std::string label = "inline complex";
+    std::string label = "complex";
 
     Timer timer1;
-    auto k = compile(kernels::dft_inline_decorator(input, result_complex), for_platform);
+    auto k = compile(kernels::dft_decorator(input, result_complex), for_platform);
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
@@ -181,17 +181,17 @@ bool compare_dfts(int Dim, bool do_profiling) {
         k.setNumQPUs(numQPUs);
         k.call();
       });
-      output_dft(input, result_complex, "dft_inline_complex");
+      output_dft(input, result_complex, "dft_complex");
     }
   }
 
   {
-    std::string label = "inline float";
+    std::string label = "float";
 
     Timer timer1;
-    auto k = compile(kernels::dft_inline_decorator(input_float, result_float), for_platform);
-    //k.pretty(false, "obj/test/dft_inline_float_v3d_hardware_sin.txt");
-    //k.dump_compile_data(false, "obj/test/dft_inline_float_v3d_hardware_sin_data.txt");
+    auto k = compile(kernels::dft_decorator(input_float, result_float), for_platform);
+    //k.pretty(false, "obj/test/dft_float_v3d_hardware_sin.txt");
+    //k.dump_compile_data(false, "obj/test/dft_float_v3d_hardware_sin_data.txt");
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
@@ -201,7 +201,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
         k.setNumQPUs(numQPUs);
         k.call();
       });
-      output_dft(input, result_float, "dft_inline_float");
+      output_dft(input, result_float, "dft_float");
     }
   }
 
@@ -267,7 +267,7 @@ TEST_CASE("Discrete Fourier Transform [dft]") {
 
     Complex::Array2D result;
 
-    auto k = compile(kernels::complex_matrix_mult_decorator(dft_conjugate, dft_matrix, result));
+    auto k = compile(kernels::matrix_mult_decorator(dft_conjugate, dft_matrix, result));
     result.fill({-1, -1});
     k.load(&result, &dft_conjugate, &dft_matrix).emu();
 
@@ -308,7 +308,7 @@ TEST_CASE("Discrete Fourier Transform [dft]") {
 
     {
       Complex::Array2D result_tmp;  // Will be Dimx16, columns padded to 16 and only 1st relevant
-      auto k = compile(kernels::complex_matrix_mult_decorator(dft_matrix, input, result_tmp));
+      auto k = compile(kernels::matrix_mult_decorator(dft_matrix, input, result_tmp));
       k.pretty(false,  "obj/test/dft_matrix_v3d.txt");
 
       //std::cout << "result dimensions: (" << result_tmp.rows() << ", " << result_tmp.columns() << ")" << std::endl;
@@ -331,7 +331,7 @@ TEST_CASE("Discrete Fourier Transform [dft]") {
     Complex::Array2D result_switched;  // Will be Dimx1
 
     {
-      auto k = compile(kernels::complex_matrix_mult_decorator(input, dft_matrix, result_switched));
+      auto k = compile(kernels::matrix_mult_decorator(input, dft_matrix, result_switched));
 
       k.setNumQPUs(8);  // Running with multi-QPU gives very limited performance improvement
       k.load(&result_switched, &input, &dft_matrix);
@@ -362,18 +362,18 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
     Complex::Array2D result;
 
     Timer timer1("DFT compile time");
-    auto k = compile(kernels::dft_inline_decorator(input, result));
+    auto k = compile(kernels::dft_decorator(input, result));
     timer1.end();
 /*
-    k.pretty(true,  "obj/test/dft_inline_vc4.txt", false);
+    k.pretty(true,  "obj/test/dft_vc4.txt", false);
     k.dump_compile_data(true, "obj/test/dft_compile_data_vc4.txt");
-    k.pretty(false, "obj/test/dft_inline_v3d.txt", false);
+    k.pretty(false, "obj/test/dft_v3d.txt", false);
     std::cout << k.compile_info() << std::endl;
 */
     k.load(&result, &input);
     k.call();
 
-    output_dft(input, result, "dft_inline");
+    output_dft(input, result, "dft");
   }
 
   SUBCASE("All DFT calculations should return the same") {
