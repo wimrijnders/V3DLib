@@ -103,8 +103,6 @@ void init_result_array(Array2D &result) {
  */
 template<typename Ptr>
 void matrix_mult(Ptr dst, Ptr a, Ptr b) {
-  //debug("matrix_mult");
-
   auto &settings = get_matrix_settings();
 
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
@@ -297,6 +295,31 @@ auto dft_decorator(Array &a, Complex::Array2D &result) -> decltype(*dft_kernel<P
  */ 
 template<typename Ptr>
 void matrix_mult_block(Ptr in_dst, Ptr in_a, Ptr in_b, Int in_offset) {
+  auto call = [&in_offset] (std::function<void (Int const &offset)> f) {
+    if (Platform::compiling_for_vc4()) {
+      f(in_offset);
+    } else {
+      // Offset param ignored here
+      auto &settings = get_matrix_settings();
+
+      // First call doesn't need to get the result values for addition; they are zero anyway
+      settings.add_result = false;
+      f(0);
+
+      assert(settings.num_blocks == 1 || settings.num_blocks == 2);
+      if (settings.num_blocks == 2) {
+        settings.add_result = true;
+        Int offset = settings.block_rowsize;
+        f(offset);
+      }
+    }
+  };
+
+  call([&in_dst, &in_a , &in_b] (Int const &offset) {
+     matrix_mult<Ptr>(in_dst, in_a + offset, in_b + offset);
+  });
+
+/*
   if (Platform::compiling_for_vc4()) {
     matrix_mult<Ptr>(in_dst, in_a + in_offset, in_b + in_offset);
   } else {
@@ -314,6 +337,7 @@ void matrix_mult_block(Ptr in_dst, Ptr in_a, Ptr in_b, Int in_offset) {
       matrix_mult<Ptr>(in_dst, in_a + offset, in_b + offset);
     }
   }
+*/
 }
 
 }  // namespace kernels
@@ -335,11 +359,10 @@ namespace V3DLib {
  */
 template<
   typename Array2D,
-  typename Ptr = typename std::conditional<std::is_same<Array2D, Float::Array2D>::value, Float::Ptr, Complex::Ptr>::type
+  typename Ptr,
+  typename BlockKernelType
 >
-class Matrix {
- using BlockKernelType = V3DLib::Kernel<Ptr, Ptr, Ptr, Int>;
-
+class BlockMatrix {
 public:
   enum {
     DEFAULT_NUM_BLOCKS  =  -1,  // Let instance figure out itself whether to use full or block mult
@@ -351,9 +374,9 @@ public:
   };
 
 
-  Matrix(Array2D &a, Array2D &b) : m_a(a), m_b(b) { }
+  BlockMatrix(Array2D &a, Array2D &b) : m_a(a), m_b(b) { }
 
-  Float::Array2D &result() { return m_result; }
+  Array2D &result() { return m_result; }
   BlockKernelType &kernel() { return *m_k; }
   void compile()  { init_block(); }
   bool has_errors() const { return m_k_first_vc4->has_errors() || m_k->has_errors(); }
@@ -387,7 +410,7 @@ public:
    * 
    * Further splitting is possible, but this serves our purposes for now.
    */
-  void mult() {
+  void call() {
     init_block();
     assertq(!has_errors(), "Can not run Matrix::mult(), there are errors");
     assert(m_k.get() != nullptr);
@@ -418,19 +441,15 @@ public:
   }
 
 
-private:
-  int m_num_blocks = DEFAULT_NUM_BLOCKS;
-  Array2D &m_a;
-  Array2D &m_b;
-  Array2D m_result;
+protected:
+  virtual void init_block() = 0;
 
-  std::unique_ptr<BlockKernelType> m_k;
-  std::unique_ptr<BlockKernelType> m_k_first_vc4;
 
   /**
    * Prepare the block matrix multiplication
    */
-  void init_block() {
+  template<typename KernelType>  
+  void init_block_kernels(KernelType kernel) {
     auto &settings = kernels::get_matrix_settings();
 
     if (m_k.get() != nullptr) {
@@ -448,7 +467,7 @@ private:
 
     settings.add_result = false;
     m_k_first_vc4.reset(
-      new BlockKernelType(V3DLib::compile(kernels::matrix_mult_block<Float::Ptr>))
+      new BlockKernelType(V3DLib::compile(kernel))
     );
 
     if (m_k_first_vc4->has_errors()) {
@@ -459,12 +478,21 @@ private:
 
     settings.add_result = true;
     m_k.reset(
-      new BlockKernelType(V3DLib::compile(kernels::matrix_mult_block<Float::Ptr>))
+      new BlockKernelType(V3DLib::compile(kernel))
     );
     //m_k->pretty(true, "block_mult_vc4.txt");
     //m_k->pretty(false, "block_mult_v3d.txt");
     //m_k->dump_compile_data(true, "block_mult_data_vc4.txt");
   }
+
+private:
+  int m_num_blocks = DEFAULT_NUM_BLOCKS;
+  Array2D &m_a;
+  Array2D &m_b;
+  Array2D m_result;
+
+  std::unique_ptr<BlockKernelType> m_k;
+  std::unique_ptr<BlockKernelType> m_k_first_vc4;
 
 
   /**
@@ -479,6 +507,22 @@ private:
     }
 
     return m_num_blocks;
+  }
+};
+
+
+template<
+  typename Array2D,
+  typename Ptr = typename std::conditional<std::is_same<Array2D, Float::Array2D>::value, Float::Ptr, Complex::Ptr>::type,
+  typename Parent = BlockMatrix<Array2D, Ptr, V3DLib::Kernel<Ptr, Ptr, Ptr, Int> >
+>
+class Matrix : public Parent {
+public:
+  Matrix(Array2D &a, Array2D &b) : Parent(a, b)  { }
+  void mult() { Parent::call(); }
+
+  void init_block() override {
+    Parent::init_block_kernels(kernels::matrix_mult_block<Ptr>);
   }
 };
 

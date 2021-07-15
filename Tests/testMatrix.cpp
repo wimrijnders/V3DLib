@@ -478,9 +478,26 @@ void test_complex_dotvector() {
 }
 
 
+void check_complex_matrix_multiplication(
+  int rows, int inner, int cols,
+  Complex::Array2D const &result,
+  complex expected
+) {
+  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
+  for (int r = 0; r < rows; ++r) {
+    for (int c = 0; c < cols; ++c) {
+      INFO("r: " << r << ", c: " << c);
+      INFO("result: " << result[r][c].dump() << ", expected: " << (((float) inner)*expected).dump());
+      REQUIRE(result[r][c] == ((float) inner)*expected);
+    }
+  }
+}
+
+
 void test_complex_matrix_multiplication(
   int rows, int inner, int cols,
   int num_qpus = 1,
+  int num_blocks = 1,
   complex init_a = {1, 0},
   complex init_b = {1, 0}
 ) {
@@ -495,21 +512,26 @@ void test_complex_matrix_multiplication(
 
   REQUIRE(a.columns() == b.rows());
 
+  //
+  // Test using decorator
+  //
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
   k.setNumQPUs(num_qpus);
   result.fill({-1.0f, -1.0f});
 
   k.load(&result, &a, &b);
   k.call();
+  check_complex_matrix_multiplication(rows, inner, cols, result, init_a*init_b);
 
-  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
-  for (int r = 0; r < rows; ++r) {
-    for (int c = 0; c < cols; ++c) {
-      INFO("r: " << r << ", c: " << c);
-      INFO("result: " << result[r][c].dump() << ", expected: " << (((float) inner)*init_a*init_b).dump());
-      REQUIRE(result[r][c] == ((float) inner)*init_a*init_b);
-    }
-  }
+  //
+  // Test using class Matrix
+  //
+  debug("Matrix");
+  Matrix m(a, b);
+  m.setNumQPUs(num_qpus);
+  m.num_blocks(num_blocks);
+  m.call();
+  check_complex_matrix_multiplication(rows, inner, cols, m.result(), init_a*init_b);
 }
 
 
@@ -521,14 +543,18 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
   }
 
   SUBCASE("Check complex matrix multiplication") {
-    test_complex_matrix_multiplication( 1,    16,   1, 1);
-    test_complex_matrix_multiplication( 2,  3*16,   2, 1, {-1.0f, 2.0f});
-    test_complex_matrix_multiplication( 2,  3*16,   2, 1, {-1.0f, 2.0f}, { 1.0f, -1.0f });
+    auto test = [] (int num_qpus, int num_blocks = 1) {
+      test_complex_matrix_multiplication( 1,    2*16,   1, num_qpus, num_blocks);
+      //test_complex_matrix_multiplication( 1,    16,   1, num_qpus, num_blocks);
+      //test_complex_matrix_multiplication( 2,  3*16,   2, num_qpus, num_blocks, {-1.0f, 2.0f});
+      //test_complex_matrix_multiplication( 2,  3*16,   2, num_qpus, num_blocks, {-1.0f, 2.0f}, { 1.0f, -1.0f });
+    };
 
-    // same thing with > 1 QPUs
-    test_complex_matrix_multiplication( 1,    16,   1, 8);
-    test_complex_matrix_multiplication( 2,  3*16,   2, 8, {-1.0f, 2.0f});
-    test_complex_matrix_multiplication( 2,  3*16,   2, 8, {-1.0f, 2.0f}, { 1.0f, -1.0f });
+    test(1);
+    test(8);
+
+    breakpoint
+    test(1, 2);
   }
 
 

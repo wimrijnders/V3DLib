@@ -785,10 +785,8 @@ struct {
  * Loop optimization: skip For-loop if only 1 iteration
  */
 void Loop(int count, std::function<void(Int const &)> f) {
-  assert(count >= 0);
-  if (count == 0) {
-    // Do nothing
-  } else if (count == 1) {
+  assert(count > 0);
+  if (count == 1) {
     f(0);
   } else {
     For (Int j = 0, j < count, j++)
@@ -954,7 +952,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     return;
   }
 
-  int last_s        = -1;
+  int last_s = -1;
 
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
@@ -962,8 +960,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     assert(item.k_16.first() == 0);
     assert(last_s != item.s);
     last_s = item.s;
-
-
 
     int same_count        = fft_context.same_index_count(i);
     int same_count_skipjs = fft_context.same_index_count(i, true);  // Always same per s for given log2n
@@ -1020,7 +1016,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
 
 
     Loop(j_length, [&] (Int const &j) {
-      Int k_off = k_init + (j_start + j)*j_offset + k_start*index_offset;
+      Int k_off     = k_init + (j_start + j)*j_offset + k_start*index_offset;
       Int k_off_out = k_off;
 
       fetch(b + k_off);      // Prefetch
@@ -1032,7 +1028,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
         fetch(b + k_off);
         fft_step(b + k_off_out, w, fft_context.m2_offset(i));
 
-        k_off += index_offset;
+        k_off     += index_offset;
         k_off_out += index_offset;
       });
 
@@ -1170,7 +1166,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     // FFT multi works for >=  10 (might be tweakable)
     // Error             for >= 18 (heap not big enough)
     // Compile Seg fault for >= 32 (not enough memory)
-    int log2n = 8; //16;
+    int log2n = 10; //16;
 
     int Dim = 1 << log2n;
     set_precision(log2n);
