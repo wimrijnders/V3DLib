@@ -125,21 +125,16 @@ LIB = $(patsubst %,$(OBJ_DIR)/Lib/%,$(OBJ))
 
 EXAMPLE_TARGETS = $(patsubst %,$(OBJ_DIR)/bin/%,$(EXAMPLES))
 TESTS_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(TESTS_FILES))
-#$(info $(TESTS_OBJ))
-
-
-# Example object files
 EXAMPLES_OBJ = $(patsubst %,$(OBJ_DIR)/%,$(EXAMPLES_EXTRA))
 #$(info $(EXAMPLES_OBJ))
 
+#
 # Dependencies from list of object files
-DEPS := $(LIB:.o=.d)
--include $(DEPS)
+#
+-include $(LIB:.o=.d)
+-include $(EXAMPLES_OBJ:.o=.d)
+-include $(TESTS_OBJ:.o=.d)
 
-# Dependencies for the include files in the Examples directory.
-# Basically, every .h file under examples has a .d in the build directory
-EXAMPLES_DEPS = $(EXAMPLES_OBJ:.o=.d)
--include $(EXAMPLES_DEPS)
 
 V3DLIB=$(OBJ_DIR)/libv3dlib.a
 MESA_LIB = obj/mesa/bin/libmesa.a
