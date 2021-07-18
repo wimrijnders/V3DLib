@@ -2,6 +2,7 @@
 #define _V3DLIB_KERNELS_MATRIX_H_
 #include <type_traits>
 #include "V3DLib.h"
+#include "Support/basics.h"
 #include "Support/Helpers.h"
 #include "ComplexDotVector.h"
 
@@ -31,6 +32,7 @@ struct matrix_settings {
    */
   int rows_result() const { return rows; }
 
+  int width() const;
 
   /**
    * The column size of the result array needs to be a multiple of 16, i.e. vector size.
@@ -103,6 +105,7 @@ void init_result_array(Array2D &result) {
  */
 template<typename Ptr>
 void matrix_mult(Ptr dst, Ptr a, Ptr b) {
+  //debug("matrix_mult kernel");
   auto &settings = get_matrix_settings();
 
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
@@ -110,10 +113,7 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
   using T          = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, Float, Complex>::type;
   using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
 
-
-  int const DIM = settings.inner;
-
-  DotVecType vec(settings.inner/16);
+  DotVecType vec(settings.width()/16);
   T result = 0;  // NOTE explicit init required (TODO enforce)
 
   For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
@@ -135,7 +135,7 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
       pre_write(dst_local, result, settings.add_result);
     End
 
-    a+= DIM;
+    a+= settings.inner;  // jump to next row
   End
 }
 
@@ -392,6 +392,15 @@ public:
     assert(DEFAULT_NUM_BLOCKS == val || 0 < val);
     if (val > 0) {
       assertq(val == 1 || val == 2, "Number of block matrices can only be 1 or 2" );
+      if (m_a.columns()/val % 16 != 0) {
+        using ::operator<<;  // C++ weirdness
+
+        std::string msg;
+        msg << "Inner dimension (" << m_a.columns() << ") "
+            << "must be a multiple of 16*<number of blocks> (" << val << ") "
+            << "for block multiplication to work";
+        assertq(false, msg);
+      } 
     }
 
     m_num_blocks = val;
@@ -419,6 +428,7 @@ public:
     m_result.fill(0.0f);        // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
 
     if (Platform::has_vc4() && do_call) {
+      //debug("vc4 mult_block");
       // This part required for vc4 hardware; see header of kernel matrix_mult_block().
       assert(m_k_first_vc4.get() != nullptr);
 
@@ -427,7 +437,7 @@ public:
       m_k_first_vc4->call();
 
       if (num_blocks() == 2) {
-        //debug("Calling second block");
+        debug("Calling second block");
         auto &settings = kernels::get_matrix_settings();
         int offset = settings.block_rowsize;
         m_k->load(&m_result, &m_a, &m_b, offset);
@@ -435,6 +445,7 @@ public:
       }
     } else {
       // This part would also work for interpret() and emu()
+      //debug("v3d mult_block");
       m_k->load(&m_result, &m_a, &m_b, 0);
       m_k->call();
     }
@@ -453,6 +464,7 @@ protected:
     auto &settings = kernels::get_matrix_settings();
 
     if (m_k.get() != nullptr) {
+      // Kernel already compiled. Don't recompile if nothing changed
       if (settings.num_blocks == num_blocks()) {
         return;
       }
@@ -460,15 +472,15 @@ protected:
     }
 
     settings.set(m_a.rows(), m_a.columns(), m_b.rows());
+
     int new_block_size = m_a.columns()/num_blocks();
+    assertq(new_block_size % 16 == 0, "New block size must be a multiple of 16");
     settings.num_blocks = num_blocks();
     settings.set_blockrowsize(new_block_size);
     kernels::init_result_array(m_result);
 
     settings.add_result = false;
-    m_k_first_vc4.reset(
-      new BlockKernelType(V3DLib::compile(kernel))
-    );
+    m_k_first_vc4.reset(new BlockKernelType(V3DLib::compile(kernel)));
 
     if (m_k_first_vc4->has_errors()) {
       warning("compile failed of first kernel");
@@ -477,9 +489,7 @@ protected:
     }
 
     settings.add_result = true;
-    m_k.reset(
-      new BlockKernelType(V3DLib::compile(kernel))
-    );
+    m_k.reset(new BlockKernelType(V3DLib::compile(kernel)));
     //m_k->pretty(true, "block_mult_vc4.txt");
     //m_k->pretty(false, "block_mult_v3d.txt");
     //m_k->dump_compile_data(true, "block_mult_data_vc4.txt");

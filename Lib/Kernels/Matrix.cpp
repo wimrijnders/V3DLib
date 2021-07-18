@@ -29,9 +29,18 @@ void matrix_settings::set(int in_rows, int in_inner, int in_columns, int in_bloc
 
 void matrix_settings::set_blockrowsize(int in_block_rowsize) {
   assertq(inner > 0 && inner % 16 == 0, "Inner dimension must be a multiple of 16");
-  assertq(inner % in_block_rowsize == 0, "Expecting block rows to be a multiple of inner");
+  assertq(inner % in_block_rowsize == 0, "Expecting block row size to be a multiple of inner");
 
   block_rowsize = in_block_rowsize;
+}
+
+
+/**
+ * The number of consecutive values within a matrix row to handle
+ * in the matrix multiplication
+ */
+int matrix_settings::width() const {
+  return block_rowsize;
 }
 
 

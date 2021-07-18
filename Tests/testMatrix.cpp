@@ -246,8 +246,7 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
 
   REQUIRE(a.columns() == b.columns());
 
-  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols
-    << ", num QPUs: " << num_qpus);  // NOTE repeated below
+  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols << ", num QPUs: " << num_qpus);
 
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
   REQUIRE(!k.has_errors());
@@ -258,13 +257,11 @@ void test_matrix_multiplication(int rows, int inner, int cols, float init_a = 1,
   k.load(&result, &a, &b);
   k.call();
 
-  INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols
-    << ", num QPUs: " << num_qpus);
-
   // NOTE: this does not compare the entire results array, just the relevant bit(s)
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
       INFO("r: " << r << ", c: " << c);
+      INFO("result array:\n" << result.dump());
       REQUIRE(result[r][c] == ((float) inner)*init_a*init_b);
     }
   }
@@ -484,9 +481,11 @@ void check_complex_matrix_multiplication(
   complex expected
 ) {
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
+
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
       INFO("r: " << r << ", c: " << c);
+      INFO("result array:\n" << result.dump());
       INFO("result: " << result[r][c].dump() << ", expected: " << (((float) inner)*expected).dump());
       REQUIRE(result[r][c] == ((float) inner)*expected);
     }
@@ -494,6 +493,10 @@ void check_complex_matrix_multiplication(
 }
 
 
+/**
+ * Test multiplication with all values in input arrays the same.
+ * This is just to make result checking simple.
+ */
 void test_complex_matrix_multiplication(
   int rows, int inner, int cols,
   int num_qpus = 1,
@@ -507,13 +510,11 @@ void test_complex_matrix_multiplication(
   REQUIRE(inner % 16 == 0);
 
   Complex::Array2D a(rows, inner); a.fill(init_a);
-  Complex::Array2D b(inner, cols); b.fill(init_b);
+  Complex::Array2D b(cols, inner); b.fill(init_b);  // Remember, b transposed
   Complex::Array2D result;
 
-  REQUIRE(a.columns() == b.rows());
-
   //
-  // Test using decorator
+  // Test using decorator - this ignores num_blocks, not intended to be used in this case.
   //
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
   k.setNumQPUs(num_qpus);
@@ -526,7 +527,7 @@ void test_complex_matrix_multiplication(
   //
   // Test using class Matrix
   //
-  debug("Matrix");
+  //debug("Matrix");
   Matrix m(a, b);
   m.setNumQPUs(num_qpus);
   m.num_blocks(num_blocks);
@@ -544,17 +545,17 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
 
   SUBCASE("Check complex matrix multiplication") {
     auto test = [] (int num_qpus, int num_blocks = 1) {
-      test_complex_matrix_multiplication( 1,    2*16,   1, num_qpus, num_blocks);
-      //test_complex_matrix_multiplication( 1,    16,   1, num_qpus, num_blocks);
-      //test_complex_matrix_multiplication( 2,  3*16,   2, num_qpus, num_blocks, {-1.0f, 2.0f});
-      //test_complex_matrix_multiplication( 2,  3*16,   2, num_qpus, num_blocks, {-1.0f, 2.0f}, { 1.0f, -1.0f });
+      // num_blocks factor for inner dimension is there to ensure block sizes are always valid
+      test_complex_matrix_multiplication(  1,    16*num_blocks,  1, num_qpus, num_blocks);
+      test_complex_matrix_multiplication(  2,  2*16*num_blocks,  2, num_qpus, num_blocks, {-1.0f, 2.0f});
+      test_complex_matrix_multiplication(  2,  3*16*num_blocks,  2, num_qpus, num_blocks, {-1.0f, 2.0f}, { 1.0f, -1.0f });
+      //test_complex_matrix_multiplication( 16,  2*16*num_blocks, 16, num_qpus, num_blocks);
     };
 
     test(1);
     test(8);
-
-    breakpoint
     test(1, 2);
+    test(8, 2);
   }
 
 
