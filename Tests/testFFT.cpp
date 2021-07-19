@@ -972,7 +972,6 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
           << ", same_count skipjs: " << same_count_skipjs;
       debug(msg);
     }
-
     int j_count  = same_count_skipjs/same_count;
     int j_offset = item.k_count;
     int index_offset = fft_context.vectors16[i + 1].index_offset(item);
@@ -1039,7 +1038,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
       w_phase += wm_phase*toFloat(j_offset);
     });
 
-    sync_qpus(signal);
+    sync_qpus(signal);  // Interesting: kernel runs fine without this
     i += same_count_skipjs - 1;
   }
 }
@@ -1126,6 +1125,10 @@ TEST_CASE("FFT test with scalar [fft]") {
 }
 
 
+//
+// Will sometimes timeout (Pi4 64-bit) when run in combination with rest of unit tests.
+// See runTests rule in Makefile for solution, namely run it separately
+//
 TEST_CASE("FFT test with DFT [fft][test2]") {
   if (!running_on_v3d()) return;  // FFT works only on v3d
 
@@ -1234,44 +1237,44 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
     Complex::Array devnull(16);
     Int::Array signal(16);
-    Complex::Array result_inline(size);
+    Complex::Array result_fft(size);
 
     {
-      init_result(result_inline, a, Dim, log2n);
+      init_result(result_fft, a, Dim, log2n);
 
       fft_context.init(log2n);
 
-      Timer timer1("FFT inline compile time");
+      Timer timer1("FFT compile time");
       fft_context.num_qpus = 8;
       auto k = compile(fft_kernel, V3D);
-      k.pretty(false, "./obj/test/fft_inline_v3d.txt", true);
-      k.dump_compile_data(false, "./obj/test/fft_inline_dump_v3d.txt");
+      k.pretty(false, "./obj/test/fft_v3d.txt", true);
+      k.dump_compile_data(false, "./obj/test/fft_dump_v3d.txt");
       timer1.end();
-      std::cout << "FFT inline kernel size: " << k.v3d_kernel_size() << std::endl;
+      std::cout << "FFT kernel size: " << k.v3d_kernel_size() << std::endl;
       std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
 
-      Timer timer2("FFT inline run time");
+      Timer timer2("FFT run time");
       k.setNumQPUs(fft_context.num_qpus);
-      k.load(&result_inline, &devnull, &signal);
+      k.load(&result_fft, &devnull, &signal);
       k.call();
       timer2.end();
 
       {
         std::string msg;
-        msg << "Max diff: " << max_mag_diff(scalar_result, result_inline) << ", "
+        msg << "Max diff: " << max_mag_diff(scalar_result, result_fft) << ", "
             << "used precision: " << precision;
         debug(msg);
       }
 
-      INFO("comparing FFT inline with scalar");
-      check_result2(scalar_result, result_inline, Dim, precision);
+      INFO("comparing FFT with scalar");
+      check_result2(scalar_result, result_fft, Dim, precision);
     }
 
     // Plot output
     {
       float real_result[Dim];
       for (int c = 0; c < Dim; ++c) {
-        real_result[c] = result_inline[c].to_complex().magnitude();
+        real_result[c] = result_fft[c].to_complex().magnitude();
       }
 
       char const *file_prefix = "fft";

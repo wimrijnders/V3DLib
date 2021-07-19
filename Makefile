@@ -243,9 +243,15 @@ runTests: $(UNIT_TESTS)
 
 make_test: runTests ID Hello Rot3D ReqRecv GCD Tri detectPlatform OET
 
+#
+# Running unit test [fft][test2] in combination with the rest *sometimes* results in IO timeouts (Pi4 64bit).
+# Running it separately appears to work fine.
+# The infuriating bit is 'sometimes'.
+#
 test : make_test
 	@echo Running unit tests with \'$(SUDO) $(UNIT_TESTS)\'
-	@$(SUDO) $(UNIT_TESTS)
+	@$(SUDO) $(UNIT_TESTS) -tce=*[fft][test2]*
+	@$(SUDO) $(UNIT_TESTS) -tc=*[fft][test2]*
 
 
 ###############################
