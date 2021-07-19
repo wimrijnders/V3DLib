@@ -222,7 +222,7 @@ void dft_kernel(Complex::Ptr dst, Ptr a) {
 
   int const DIM = settings.inner;
 
-  DotVecType vec(settings.inner/16);
+  DotVecType vec(settings.width()/16);
 
   Complex result(0,0);  // init required! Otherwise, var not added here in target lang
                         // This also applies to other local variables
@@ -233,14 +233,12 @@ void dft_kernel(Complex::Ptr dst, Ptr a) {
     vec.load(a);
 
     // b_index: column index of block of 16 columns to process by 1 QPU
-    Int b_index = 0;
-    For (b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
+    For (Int b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
       Int offset = (a_index*settings.cols_result() + b_index);  // Calculating offset first is slightly more efficient
       Complex::Ptr dst_local = dst + offset;
-  
-      Int j;
-      For (j = 0,  j < 16, j += 1)
-        Complex tmp(0,0);
+
+      Complex tmp(0,0);
+      For (Int j = 0,  j < 16, j += 1)
         vec.dft_dot_product(b_index + j, tmp);
         result.set_at(j & 0xf, tmp);
       End
@@ -250,6 +248,14 @@ void dft_kernel(Complex::Ptr dst, Ptr a) {
 
     a+= DIM;
   End
+}
+
+
+template<typename Ptr>
+void dft_kernel_block(Complex::Ptr in_dst, Ptr in_a, Int in_offset) {
+  create_block_kernel(in_offset, [&] (Int const &offset) {
+     dft_kernel<Ptr>(in_dst, in_a + offset);
+  });
 }
 
 
@@ -277,6 +283,8 @@ auto dft_decorator(Array &a, Complex::Array2D &result) -> decltype(*dft_kernel<P
 }
 
 
+void create_block_kernel(Int const &in_offset, std::function<void (Int const &offset)> f);
+
 
 /**
  * The v3d part of the kernel does not work on vc4, even though the target lang code
@@ -295,49 +303,9 @@ auto dft_decorator(Array &a, Complex::Array2D &result) -> decltype(*dft_kernel<P
  */ 
 template<typename Ptr>
 void matrix_mult_block(Ptr in_dst, Ptr in_a, Ptr in_b, Int in_offset) {
-  auto call = [&in_offset] (std::function<void (Int const &offset)> f) {
-    if (Platform::compiling_for_vc4()) {
-      f(in_offset);
-    } else {
-      // Offset param ignored here
-      auto &settings = get_matrix_settings();
-
-      // First call doesn't need to get the result values for addition; they are zero anyway
-      settings.add_result = false;
-      f(0);
-
-      assert(settings.num_blocks == 1 || settings.num_blocks == 2);
-      if (settings.num_blocks == 2) {
-        settings.add_result = true;
-        Int offset = settings.block_rowsize;
-        f(offset);
-      }
-    }
-  };
-
-  call([&in_dst, &in_a , &in_b] (Int const &offset) {
+  create_block_kernel(in_offset, [&] (Int const &offset) {
      matrix_mult<Ptr>(in_dst, in_a + offset, in_b + offset);
   });
-
-/*
-  if (Platform::compiling_for_vc4()) {
-    matrix_mult<Ptr>(in_dst, in_a + in_offset, in_b + in_offset);
-  } else {
-    // Offset param ignored here
-    auto &settings = get_matrix_settings();
-
-    // First call doesn't need to get the result values for addition; they are zero anyway
-    settings.add_result = false;
-    matrix_mult<Ptr>(in_dst, in_a, in_b);
-
-    assert(settings.num_blocks == 1 || settings.num_blocks == 2);
-    if (settings.num_blocks == 2) {
-      settings.add_result = true;
-      Int offset = settings.block_rowsize;
-      matrix_mult<Ptr>(in_dst, in_a + offset, in_b + offset);
-    }
-  }
-*/
 }
 
 }  // namespace kernels
@@ -350,17 +318,19 @@ namespace V3DLib {
 ///////////////////////////////////////////////////////////////////////////////
 
 /**
- * Do block matrix multiplication
+ * Base class for  block matrix support
  *
- * Currently, the matrices are each split into 2 blocks.
+ * Currently, the matrices are each split into  at most 2 blocks.
+ *
  * This serves as a proof of concept; in due time it, is possible
  * to split them into any number of block matrices, thereby allowing
  * arbitrary dimensions for the matrices (multiples of 16, always).
  */
 template<
-  typename Array2D,
+  typename Array,
   typename Ptr,
-  typename BlockKernelType
+  typename BlockKernelType,
+  typename ResultArray = Array
 >
 class BlockMatrix {
 public:
@@ -373,10 +343,10 @@ public:
     MAX_FULL_BLOCKS_V3D = 800,  // Highest dimension where full mult can be used for v3d
   };
 
+  using BlockKernelPtr = std::unique_ptr<BlockKernelType>;
 
-  BlockMatrix(Array2D &a, Array2D &b) : m_a(a), m_b(b) { }
 
-  Array2D &result() { return m_result; }
+  ResultArray &result() { return m_result; }
   BlockKernelType &kernel() { return *m_k; }
   void compile()  { init_block(); }
   bool has_errors() const { return m_k_first_vc4->has_errors() || m_k->has_errors(); }
@@ -392,11 +362,13 @@ public:
     assert(DEFAULT_NUM_BLOCKS == val || 0 < val);
     if (val > 0) {
       assertq(val == 1 || val == 2, "Number of block matrices can only be 1 or 2" );
-      if (m_a.columns()/val % 16 != 0) {
+      auto &settings = kernels::get_matrix_settings();
+
+      if (settings.inner/val % 16 != 0) {
         using ::operator<<;  // C++ weirdness
 
         std::string msg;
-        msg << "Inner dimension (" << m_a.columns() << ") "
+        msg << "Inner dimension (" << settings.inner << ") "
             << "must be a multiple of 16*<number of blocks> (" << val << ") "
             << "for block multiplication to work";
         assertq(false, msg);
@@ -433,20 +405,20 @@ public:
       assert(m_k_first_vc4.get() != nullptr);
 
       // First call doesn't need to get the result values for addition; they are zero anyway
-      m_k_first_vc4->load(&m_result, &m_a, &m_b, 0);
+      load(m_k_first_vc4, 0);
       m_k_first_vc4->call();
 
       if (num_blocks() == 2) {
         debug("Calling second block");
         auto &settings = kernels::get_matrix_settings();
         int offset = settings.block_rowsize;
-        m_k->load(&m_result, &m_a, &m_b, offset);
+        load(m_k, offset);
         m_k->call();
       }
     } else {
       // This part would also work for interpret() and emu()
       //debug("v3d mult_block");
-      m_k->load(&m_result, &m_a, &m_b, 0);
+      load(m_k, 0);
       m_k->call();
     }
   }
@@ -466,40 +438,43 @@ protected:
     if (m_k.get() != nullptr) {
       // Kernel already compiled. Don't recompile if nothing changed
       if (settings.num_blocks == num_blocks()) {
+        //debug("Unchanged block");
         return;
       }
       //debug("Recompiling block");
     }
 
-    settings.set(m_a.rows(), m_a.columns(), m_b.rows());
-
-    int new_block_size = m_a.columns()/num_blocks();
+    int new_block_size = settings.inner/num_blocks();
     assertq(new_block_size % 16 == 0, "New block size must be a multiple of 16");
     settings.num_blocks = num_blocks();
     settings.set_blockrowsize(new_block_size);
     kernels::init_result_array(m_result);
 
-    settings.add_result = false;
-    m_k_first_vc4.reset(new BlockKernelType(V3DLib::compile(kernel)));
-
-    if (m_k_first_vc4->has_errors()) {
-      warning("compile failed of first kernel");
-      m_k.reset(nullptr);
-      return;
+    if (num_blocks() ==2) {
+      debug("Doing 2 blocks");
     }
+
+    //if (Platform::has_vc4()) {  TODO
+      settings.add_result = false;
+      m_k_first_vc4.reset(new BlockKernelType(V3DLib::compile(kernel)));
+
+      if (m_k_first_vc4->has_errors()) {
+        warning("compile failed of first kernel");
+        m_k.reset(nullptr);
+        return;
+      }
+    //}
 
     settings.add_result = true;
     m_k.reset(new BlockKernelType(V3DLib::compile(kernel)));
-    //m_k->pretty(true, "block_mult_vc4.txt");
-    //m_k->pretty(false, "block_mult_v3d.txt");
-    //m_k->dump_compile_data(true, "block_mult_data_vc4.txt");
   }
+
+protected:
+  virtual void load(BlockKernelPtr &k, int offset) = 0;
 
 private:
   int m_num_blocks = DEFAULT_NUM_BLOCKS;
-  Array2D &m_a;
-  Array2D &m_b;
-  Array2D m_result;
+  ResultArray m_result;
 
   std::unique_ptr<BlockKernelType> m_k;
   std::unique_ptr<BlockKernelType> m_k_first_vc4;
@@ -512,8 +487,9 @@ private:
     assert(MAX_FULL_BLOCKS_VC4 == MAX_FULL_BLOCKS_V3D);  // Handle this when it happens
 
     if (m_num_blocks == DEFAULT_NUM_BLOCKS) {
-      assert(m_a.columns() > 0);
-      return (m_a.columns() <= MAX_FULL_BLOCKS_VC4)? 1: 2;
+      auto &settings = kernels::get_matrix_settings();
+      assert(settings.inner > 0);
+      return (settings.inner <= MAX_FULL_BLOCKS_VC4)? 1: 2;
     }
 
     return m_num_blocks;
@@ -521,19 +497,64 @@ private:
 };
 
 
+/**
+ * Do block matrix multiplication
+ */
 template<
   typename Array2D,
   typename Ptr = typename std::conditional<std::is_same<Array2D, Float::Array2D>::value, Float::Ptr, Complex::Ptr>::type,
-  typename Parent = BlockMatrix<Array2D, Ptr, V3DLib::Kernel<Ptr, Ptr, Ptr, Int> >
+  typename BlockKernelType = V3DLib::Kernel<Ptr, Ptr, Ptr, Int>,
+  typename Parent = BlockMatrix<Array2D, Ptr, BlockKernelType>
 >
 class Matrix : public Parent {
 public:
-  Matrix(Array2D &a, Array2D &b) : Parent(a, b)  { }
-  void mult() { Parent::call(); }
+  Matrix(Array2D &a, Array2D &b) : m_a(a), m_b(b) {
+    auto &settings = kernels::get_matrix_settings();
+    settings.set(m_a.rows(), m_a.columns(), m_b.rows());
+  }
+
+  void load(std::unique_ptr<BlockKernelType> &k, int offset) override {
+    k->load(&Parent::result(), &m_a, &m_b, offset);
+  } 
 
   void init_block() override {
     Parent::init_block_kernels(kernels::matrix_mult_block<Ptr>);
   }
+
+private:
+  Array2D &m_a;
+  Array2D &m_b;
+};
+
+
+/**
+ * DFT with block matrix support
+ *
+ * Output is always a complex 2D array.
+ */
+template<
+  typename Array,
+  typename Ptr = typename std::conditional<std::is_same<Array, Float::Array>::value, Float::Ptr, Complex::Ptr>::type,
+  typename BlockKernelType = V3DLib::Kernel<Complex::Ptr, Ptr, Int>,
+  typename Parent = BlockMatrix<Array, Ptr, BlockKernelType, Complex::Array2D>
+>
+class DFT : public Parent {
+public:
+  DFT(Array &a) : m_a(a) {
+    auto &settings = kernels::get_matrix_settings();
+    settings.set(1, m_a.size(), m_a.size());
+  }
+
+  void load(std::unique_ptr<BlockKernelType> &k, int offset) override {
+    k->load(&Parent::result(), &m_a, offset);
+  } 
+
+  void init_block() override {
+    Parent::init_block_kernels(kernels::dft_kernel_block<Ptr>);
+  }
+
+private:
+  Array &m_a;
 };
 
 }  // namespace V3DLib

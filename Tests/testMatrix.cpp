@@ -529,6 +529,7 @@ void test_complex_matrix_multiplication(
   //
   //debug("Matrix");
   Matrix m(a, b);
+  //m.compile();  // Not really required, added to trigger debug statements for recompile
   m.setNumQPUs(num_qpus);
   m.num_blocks(num_blocks);
   m.call();
@@ -655,7 +656,7 @@ bool profile_block_mult(int dimension) {
 
       profile_output.run(dimension, label1, [&m] (int numQPUs) {
         m.setNumQPUs(numQPUs);
-        m.mult();
+        m.call();
       });
 
       // Sanity check
@@ -676,7 +677,7 @@ bool profile_block_mult(int dimension) {
 
     profile_output.run(dimension, label2, [&m] (int numQPUs) {
       m.setNumQPUs(numQPUs);
-      m.mult();
+      m.call();
     });
 
     // Sanity check
@@ -703,7 +704,7 @@ void test_simple_block(int dimension) {
       a.make_unit_matrix();
       check_unitary(a);
 
-      m.mult();
+      m.call();
       //std::cout << m.result().dump() << std::endl;
       INFO("Checking mult unit matrix");
       check_unitary(m.result());
@@ -714,7 +715,7 @@ void test_simple_block(int dimension) {
     //
     {
       a.fill(1);
-      m.mult();
+      m.call();
       INFO("Checking mult all ones");
       compare_array_scalar(m.result(), (float) dimension);
     }
@@ -727,7 +728,7 @@ void test_simple_block(int dimension) {
       std::vector<float> expected;
       prepare_random(a, expected, dimension);
 
-      m.mult();
+      m.call();
       INFO("Checking mult random values");
 
       float precision = -1.0f;

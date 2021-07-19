@@ -134,4 +134,25 @@ void matrix_mult_scalar(int N, float *dst, float *a, float *b) {
   }
 }
 
+
+void create_block_kernel(Int const &in_offset, std::function<void (Int const &offset)> f) {
+  if (Platform::compiling_for_vc4()) {
+    f(in_offset);
+  } else {
+    // Offset param ignored here
+    auto &settings = get_matrix_settings();
+
+    // First call doesn't need to get the result values for addition; they are zero anyway
+    settings.add_result = false;
+    f(0);
+
+    assert(settings.num_blocks == 1 || settings.num_blocks == 2);
+    if (settings.num_blocks == 2) {
+      settings.add_result = true;
+      Int offset = settings.block_rowsize;
+      f(offset);
+    }
+  }
+}
+
 }  // namespace kernels
