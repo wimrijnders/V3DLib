@@ -83,7 +83,7 @@ void run_scalar_kernel() {
 
   Timer timer;
   for (int i = 0; i < settings.repeats; ++i) {
-    kernels::square_matrix_mult_scalar(settings.dimension, result, a, b);
+    kernels::matrix_mult_scalar(settings.dimension, result, a, b);
   }
   timer.end(!settings.silent);
 

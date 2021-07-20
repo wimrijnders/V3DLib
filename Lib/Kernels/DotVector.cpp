@@ -46,17 +46,22 @@ void DotVector::dot_product(Float::Ptr rhs, Float &result) {
 
 
 /**
- * Multiply current instance with the DFT elements of line `k`.
+ * Multiply current instance with the DFT elements of column `col`.
+ *
+ * Due to array symmetry, `col` and `row` can be interchanged.
  *
  * The DFT matrix elements are calculated inline.
  * Note that low-precision sin/cos is used for vc4.
+ *
+ * @param row  index of row in dft array to process
  */
-void DotVector::dft_dot_product(Int const &k, Complex &result) {
+void DotVector::dft_dot_product(Int const &row, Complex &result, Int const &offset) {
   Complex tmp(0, 0);               comment("DotVector::dft_dot_product()");
 
-  int num_elements = ((int) size())* 16;
+  int num_elements = ((int) size())*16;
   for (int i = 0; i < (int) size(); ++i) {
-    Float param = -1.0f*toFloat(k*(i*16 + index()))/toFloat(num_elements);
+    Int col = (i*16 + index() + offset);  // Index of row to process
+    Float param = -1.0f*toFloat(row*col)/toFloat(num_elements);
     Complex tmp1(elements[i]*cos(param), elements[i]*sin(param));
 
     tmp += tmp1;

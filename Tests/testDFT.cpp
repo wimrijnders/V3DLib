@@ -147,6 +147,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
   //
   // Run the kernels
   //
+  int const run_kernels = 31;  // bit field specifying which kernels to run 
   int compiled = 0;
 
   auto run = [&profile_output, &Dim] (BaseKernel &k, std::string const &label) {
@@ -156,7 +157,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     });
   };
 
-  {
+  if (run_kernels & 1) {
     std::string label = "matrix mult";
     Timer timer1;
 
@@ -173,7 +174,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     }
   }
 
-  {
+  if (run_kernels & 2) {
     std::string label = "complex";
     Timer timer1;
     auto k = compile(kernels::dft_decorator(input, result_complex), for_platform);
@@ -185,13 +186,13 @@ bool compare_dfts(int Dim, bool do_profiling) {
       run(k, label);
 
       if (!do_profiling) {
-        INFO("Comparing" << label << " with mult");
+        INFO("Comparing " << label << " with mult");
         compare_arrays(result_complex, result_mult, 0.02f);
       }
     }
   }
 
-  {
+  if (run_kernels & 4) {
     std::string label = "float";
     Timer timer1;
 
@@ -211,7 +212,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     }
   }
 
-  {
+  if (run_kernels & 8) {
     std::string label = "DFT float";
     Timer timer1;
 
@@ -234,8 +235,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     }
   }
 
-/*
-  {
+  if (run_kernels & 16) {
     std::string label = "DFT float 2 blocks";
     Timer timer1;
 
@@ -245,7 +245,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
-      compiled += 8;
+      compiled += 16;
       //run(k, label);
       profile_output.run(Dim, label, [&k] (int numQPUs) {
         k.setNumQPUs(numQPUs);
@@ -253,17 +253,16 @@ bool compare_dfts(int Dim, bool do_profiling) {
       });
 
       if (!do_profiling) {
-        INFO("Comparing" << label << " with float");
+        INFO("Comparing " << label << " with float");
         compare_arrays(k.result(), result_float, 0.0f);  // Match should be exact
       }
     }
   }
-*/
 
   if (do_profiling) {
       std::cout << profile_output.dump();
   } else {
-    REQUIRE(compiled == 15);  // All bits for all kernels should be set
+    REQUIRE(compiled == run_kernels);  // All bits for all kernels should be set
   }
 
   //std::cout << "compiled: " << compiled;
@@ -416,7 +415,7 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
   }
 
   SUBCASE("All DFT calculations should return the same") {
-    bool do_profiling = true;
+    bool do_profiling = false;
 
     if (!do_profiling) {
       // Following is enough for the unit test
@@ -432,9 +431,9 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
       int N = 1;
       bool can_continue = true;
       while (can_continue) {
-        can_continue = compare_dfts(16*N, true);
+        can_continue = compare_dfts(2*16*N, true);
         N += Step;
-        //if (N > 6*Step) break;  // Comment this out for full profiling
+        if (N > 6*Step) break;  // Comment this out for full profiling
       }
     }
   }

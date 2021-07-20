@@ -16,37 +16,26 @@ using namespace V3DLib;
 
 struct matrix_settings {
   int rows;                                   // Num rows of the result array
-  int num_blocks = -1;
-  int block_rowsize;                          // Row size for the (block array) multiplication
   int inner;                                  // Inner dimension of the multiplication
                                               // inner == columns of a == rows of b (which is transposed)
   int columns;                                // Num columns of the result array
   bool add_result = false;
 
-  void set(int in_rows, int in_inner, int in_columns, int in_block_rowsize = -1);
-  void set_blockrowsize(int in_block_rowsize);
+  void set(int in_rows, int in_inner, int in_columns);
 
-
-  /**
-   * Return the number of rows in the result array
-   */
-  int rows_result() const { return rows; }
-
+  int rows_result() const { return rows; }        //< Return the number of rows in the result array
   int width() const;
-
-  /**
-   * The column size of the result array needs to be a multiple of 16, i.e. vector size.
-   */
-  int cols_result() const { return adjust_dimension(columns, 16); }
-
-
-  /**
-   * Number of cells till next row
-   */
-  int stride() { return rows; }
+  int cols_result() const;
+  int stride() const { return rows; }             //< Number of cells till next row
+  int num_blocks() const;
+  void num_blocks(int val);
 
 private:
+  int m_num_blocks  = -1;
+  int block_rowsize = -1;                         // Row size for the (block array) multiplication
+
   int adjust_dimension(int val, int multiple) const;
+  void set_blockrowsize(int in_block_rowsize);
 };
 
 
@@ -135,7 +124,7 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
       pre_write(dst_local, result, settings.add_result);
     End
 
-    a+= settings.inner;  // jump to next row
+    a += settings.inner;  // jump to next row
   End
 }
 
@@ -212,15 +201,13 @@ inline auto matrix_mult_decorator(Array2D &a, Array2D &b, Array2D &result) -> de
  * Tried moving local vars out of the loops to avoid 'register allocation failed', didn't work 
  */
 template<typename Ptr>
-void dft_kernel(Complex::Ptr dst, Ptr a) {
+void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
   auto &settings = get_matrix_settings();
 
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
   assert(settings.columns > 0 && (settings.columns % 16 == 0));
 
   using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
-
-  int const DIM = settings.inner;
 
   DotVecType vec(settings.width()/16);
 
@@ -234,27 +221,33 @@ void dft_kernel(Complex::Ptr dst, Ptr a) {
 
     // b_index: column index of block of 16 columns to process by 1 QPU
     For (Int b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
-      Int offset = (a_index*settings.cols_result() + b_index);  // Calculating offset first is slightly more efficient
-      Complex::Ptr dst_local = dst + offset;
+      Int dst_offset = (a_index*settings.cols_result() + b_index);  // Calculating offset first is slightly more efficient
+      Complex::Ptr dst_local = dst + dst_offset;
 
       Complex tmp(0,0);
       For (Int j = 0,  j < 16, j += 1)
-        vec.dft_dot_product(b_index + j, tmp);
+        vec.dft_dot_product(b_index + j, tmp, offset);
         result.set_at(j & 0xf, tmp);
       End
 
       pre_write(dst_local, result, settings.add_result);
     End
 
-    a+= DIM;
+    a += settings.inner;  // jump to next row
   End
+}
+
+
+template<typename Ptr>
+void dft_kernel(Complex::Ptr dst, Ptr a) {
+  dft_kernel_intern(dst, a, 0);
 }
 
 
 template<typename Ptr>
 void dft_kernel_block(Complex::Ptr in_dst, Ptr in_a, Int in_offset) {
   create_block_kernel(in_offset, [&] (Int const &offset) {
-     dft_kernel<Ptr>(in_dst, in_a + offset);
+     dft_kernel_intern<Ptr>(in_dst, in_a + offset, offset);
   });
 }
 
@@ -411,7 +404,7 @@ public:
       if (num_blocks() == 2) {
         debug("Calling second block");
         auto &settings = kernels::get_matrix_settings();
-        int offset = settings.block_rowsize;
+        int offset = settings.width();
         load(m_k, offset);
         m_k->call();
       }
@@ -437,17 +430,14 @@ protected:
 
     if (m_k.get() != nullptr) {
       // Kernel already compiled. Don't recompile if nothing changed
-      if (settings.num_blocks == num_blocks()) {
+      if (settings.num_blocks() == num_blocks()) {
         //debug("Unchanged block");
         return;
       }
       //debug("Recompiling block");
     }
 
-    int new_block_size = settings.inner/num_blocks();
-    assertq(new_block_size % 16 == 0, "New block size must be a multiple of 16");
-    settings.num_blocks = num_blocks();
-    settings.set_blockrowsize(new_block_size);
+    settings.num_blocks(num_blocks());
     kernels::init_result_array(m_result);
 
     if (num_blocks() ==2) {

@@ -9,7 +9,7 @@ namespace kernels {
 // struct matrix_settings
 ////////////////////////////////////////////////////////////////////////////////
 
-void matrix_settings::set(int in_rows, int in_inner, int in_columns, int in_block_rowsize) {
+void matrix_settings::set(int in_rows, int in_inner, int in_columns) {
   assert(in_rows > 0);
   assert(in_columns > 0);
   assertq(in_inner % 16 == 0, "Inner dimension must be a multiple of 16");
@@ -18,12 +18,6 @@ void matrix_settings::set(int in_rows, int in_inner, int in_columns, int in_bloc
   inner         = in_inner;
   columns       = in_columns;
   add_result    = false;       // override after this call to explicitly set
-
-  if (in_block_rowsize == -1) {
-    block_rowsize = in_inner;
-  } else {
-    set_blockrowsize(in_block_rowsize);
-  }
 }
 
 
@@ -40,7 +34,34 @@ void matrix_settings::set_blockrowsize(int in_block_rowsize) {
  * in the matrix multiplication
  */
 int matrix_settings::width() const {
+  if (m_num_blocks == -1 ) {
+    return inner;
+  }
+
+  assert(block_rowsize != -1);
   return block_rowsize;
+}
+
+
+/**
+ * The column size of the result array needs to be a multiple of 16, i.e. vector size.
+ */
+int matrix_settings::cols_result() const { return adjust_dimension(columns, 16); }
+
+
+int matrix_settings::num_blocks() const {
+  assert(m_num_blocks == 1 || m_num_blocks == 2);
+  return m_num_blocks;
+}
+
+
+void matrix_settings::num_blocks(int val) {
+  assert(val == 1 || val == 2);
+
+  int new_block_size = inner/val;
+  assertq(new_block_size % 16 == 0, "New block size must be a multiple of 16");
+  m_num_blocks = val;
+  set_blockrowsize(new_block_size);
 }
 
 
@@ -146,10 +167,9 @@ void create_block_kernel(Int const &in_offset, std::function<void (Int const &of
     settings.add_result = false;
     f(0);
 
-    assert(settings.num_blocks == 1 || settings.num_blocks == 2);
-    if (settings.num_blocks == 2) {
+    if (settings.num_blocks() == 2) {
       settings.add_result = true;
-      Int offset = settings.block_rowsize;
+      Int offset = settings.width();
       f(offset);
     }
   }
