@@ -7,29 +7,20 @@ using namespace V3DLib;
 V3DLib::Settings settings;
 
 void dma(Int::Ptr p) {
-  // Setup load of 16 vectors into VPM, starting at word address 0
-  dmaSetReadPitch(64);
+  dmaSetReadPitch(64);               // Setup load of 16 vectors into VPM, starting at word address 0
   dmaSetupRead(HORIZ, 16, 0);
-  // Start loading from memory at address 'p'
-  dmaStartRead(p);
-  // Wait until load complete
-  dmaWaitRead();
+  dmaStartRead(p);                   // Start loading from memory at address 'p'
+  dmaWaitRead();                     // Wait until load complete
 
-  // Setup load of 16 vectors from VPM, starting at vector address 0
-  vpmSetupRead(HORIZ, 16, 0);
-  // Setup store to VPM, starting at vector address 16
-  vpmSetupWrite(HORIZ, 16);
+  vpmSetupRead(HORIZ, 16, 0);        // Setup load of 16 vectors from VPM, starting at vector address 0
+  vpmSetupWrite(HORIZ, 16);          // Setup store to VPM, starting at vector address 16
 
-  // Read each vector, increment it, and write it back
-  for (int i = 0; i < 16; i++)
+  for (int i = 0; i < 16; i++)       // Read each vector, increment it, and write it back
     vpmPut(vpmGetInt() + 1);
 
-  // Setup store of 16 vectors into VPM, starting at word address 256
-  dmaSetupWrite(HORIZ, 16, 256);
-  // Start writing to memory at address 'p'
-  dmaStartWrite(p);
-  // Wait until store complete
-  dmaWaitWrite();
+  dmaSetupWrite(HORIZ, 16, 256);     // Setup store of 16 vectors from VPM, starting at word address 256
+  dmaStartWrite(p);                  // Start writing to memory at address 'p'
+  dmaWaitWrite();                    // Wait until store complete
 }
 
 

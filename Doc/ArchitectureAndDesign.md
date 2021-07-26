@@ -145,6 +145,189 @@ void kernel(Ptr<Float> x) {
 }
 ```
 
+# DMA and VPM (`vc4` only)
+
+*There's a shitload of complexity here, most of which I don't want to deal with.
+This section documents the stuff I need to know now ('now' being a moving target).*
+
+See the example program `DMA` for basic usage, which is a level deeper than the regular use in the
+source language. Normally, you won't explicitly use DMA and VPM at all.
+
+`DMA` is just what you would expect, given the acronym.
+
+The `VPM` (Vertex Pipe Memory) is a 12KB storage buffer, used to load and save data processed by the QPUs.
+This buffer is shared by all QPUs, so there's plenty of opportunity for screwups in accessing it in a 
+multi-QPU situation.
+
+There are several memory mappings possible for the VPM, use of which is pretty arcane
+(see the `VC IV Architecture reference Guide`).
+I don't want to delve into this and just stick to the way `V3DLib` uses the VPM (which has been
+inherited from `QPULib`). In particular, `V3DLib` restricts itself to *horizontal* memory accesses.
+
+Loading values from shared main memory to QPUs is a two-stage process:
+
+1. Start a DMA load to VPM
+2. Load values from VPM into QPU registers
+
+Saving values from QPUs to shared main memory is the process in reverse.
+
+## DMA Usage
+
+DMA deals with *bytes*.
+
+- DMA read/write can operate in parallel with QPU execution. You will need to juggle a bit for
+  optimal performance.
+- Per QPU, a single DMA read and a single DMA write can execute in parallel.
+- Multiple reads need to be processed sequentially. Either you wait for the previous read to finish,
+  of the subsequent read blocks until the current read is finished.
+- Likewise for multiple writes.
+
+
+### Load example in source language (taken from example `DMA`)
+
+The DMA load is first configured, then you start it and wait for it to complete.
+
+To load 16 consecutive 16-byte vectors from shared main memory to (byte) address 0 in the VPM:
+
+```c++
+dmaSetReadPitch(64);               // 64: size of one 16-byte vector
+dmaSetupRead(HORIZ, 16, 0);        // 16: number of vectors to load; 0: target address in VPM
+
+dmaStartRead(p);                   // p:  source pointer in shared memory
+dmaWaitRead();                     // Wait until load complete
+```
+
+C++ pseudo code:
+```c++
+byte *p         = <assigned value>;
+byte *vpm       = 0;
+int pitch       = 64;
+int num_vectors = 16;
+
+for (int i = 0; i < num_vectors; i++) {
+  for (int j = 0; j < pitch; j++) {
+    *(vpm + j) = *(p + j);
+  }
+  vpm += pitch;
+  p   += pitch;
+}
+
+```
+
+
+### Store example in source language (adapted from example `DMA`)
+
+The DMA store is first configured, then you start it and wait for it to complete.
+
+This example is a bit more elaborate, to better illustrate how the stride works.
+For full vector transfers, the call to `dmaSetWriteStride()` is removed, as well as 
+the last parameter to `dmaSetupWrite()` (see example program `DMA`).
+
+To move **the first 3 values** of 16 consecutive 16-byte vectors
+from (byte) address 256 in VPM to shared main memory:
+
+```c++
+dmaSetWriteStride(13*4);           // Skip 13 values of vector
+dmaSetupWrite(HORIZ, 16, 256, 3);  // 16:  number of vectors to handle;
+                                   // 256: start address for read;
+                                   // 3:   number of consecutive value to transfer
+dmaStartWrite(p);                  // p:   target address in shared main memory
+dmaWaitWrite();                    // Wait until store complete
+```
+
+Note the discrepancy in parameter types:
+- in `dmaSetWriteStride()`, the parameter is in **bytes**
+- in `dmaSetupWrite()`, the final parameter is in **words**, i.e. the number of 4-byte elements
+
+This is a source language thing which could be changed, but I don't want to go there.
+I just want to understand it.
+
+C++ pseudo code:
+```c++
+// Assume that word size is 4 bytes
+
+byte *p         = <assigned value>;
+byte *vpm       = 256;
+int num_elems   = 3;
+int stride      = 13*4;  // i.e. 16 - num_bytes
+int num_vectors = 16;
+
+for (int i = 0; i < num_vectors; i++) {
+  for (int j = 0; j < num_elems; j++) {
+    *((word *) p) = *((word *) vpm);
+    vpm += sizeof(word);
+    p   += sizeof(word);
+  }
+  vpm += stride;
+  p   += stride;
+}
+
+```
+
+
+## VPM Usage
+
+VPM deals with 64-byte *vectors*.
+
+Sizes and VPM addresses are defined in terms of these vectors, i.e. a size of '1' means one 64-byte vector,
+and and address of '1' means the VPM data location of the second vector in a sequence.
+
+VPM load/store is configured initially; this sets up offset values which are updated on every access.
+
+The example `DMA` combines the load and store in an artful manner
+
+### Example of loading values to QPU:
+
+Load 16 consecutive values from VPM into a QPU register:
+
+```c++
+  Int a;                             // Variable which is assigned to a QPU register on compile
+  vpmSetupRead(HORIZ, 16, 0);        // 16: num vectors to load; 0: start index of vectors
+
+  for (int i = 0; i < 16; i++) {     // Read each vector
+   a = vpmGetInt();
+   // Do some operation on value here
+  }
+```
+
+C++ pseudo code:
+```c++
+vector *vpm_in  = 0;   // vector: 64-byte data structure; 0: starting index of vectors
+int num_vectors = 16;
+
+for (int i = 0; i < num_vectors; i++) {
+  a = *vpm_in;
+  vpm_in++;
+  // Do some operation on value here
+}
+```
+
+
+### Example of saving values from QPU:
+```c++
+  vpmSetupWrite(HORIZ, 16);          // 16: vector index to store at
+
+  Int a = 0;
+  for (int i = 0; i < 16; i++) {     // Read each vector, increment it, and write it back
+    vpmPut(a);
+    a++;
+  }
+```
+
+C++ pseudo code:
+```c++
+vector *vpm_out  = 16;               // vector: 64-byte data structure; 16: starting index of vectors
+int num_vectors = 16;
+
+Int a = 0;
+for (int i = 0; i < num_vectors; i++) {
+  *vpm_out = a;
+  vpm_out++;
+  a += 1;
+}
+```
+
+
 
 # Design decisions
 
@@ -158,12 +341,12 @@ In effect, all uniform pointers get adjusted as follows:
 There is therefore no need to explicitly do this yourself.
 It is useful to be aware of this pointer adjustment, as it is conceivable
 that you might need to adjust it in your own code.
-For most purposes, however, the adjustment is useful and recurs frequently - almost always,
-I have not encountered a counter-example yet.
+For most purposes, the adjustment is useful and almost always required
+(calculating FFT is an example where it is not desirable).
 
 Automatic uniform pointer initialization places restrictions on pointer usage:
 
-- All accessed memory blocks must a number of elements which is a multiple of 16.
+- All accessed memory blocks must be a number of elements which is a multiple of 16.
 
 Not adhering to this will lead to reads and writes outside the memory blocks.
 This is not necessarily fatal, but you can expect wild and unexpected results.
