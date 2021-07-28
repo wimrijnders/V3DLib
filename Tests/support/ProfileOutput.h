@@ -35,8 +35,9 @@ public:
     num_iterations = 10
   };
 
-  void use_max_qpus(bool val) { m_use_max_qpus = val; }
-  void show_compile(bool val) { ShowCompile = val; }
+  void use_single_qpu(bool val) { m_use_single_qpu = val; }
+  void use_max_qpus(bool val)   { m_use_max_qpus = val; }
+  void show_compile(bool val)   { ShowCompile = val; }
   void add_compile(std::string const &label, std::string const &timer_val, int Dim);
   void add_compile(std::string const &label, Timer &timer, int Dim);
   void run(int Dim, std::string const &label, std::function<void(int numQPUs)> f);
@@ -47,8 +48,9 @@ public:
 
 private:
   std::vector<int> num_qpus() const;
-  bool ShowCompile = false;
-  bool m_use_max_qpus = false;
+  bool ShowCompile      = false;
+  bool m_use_single_qpu = false;  // Takes precedence over m_use_max_qpus
+  bool m_use_max_qpus   = false;
   std::vector<out_data> output;
 
   void add_call(std::string const &label, Timer &timer, int Dim, int num_qpus);

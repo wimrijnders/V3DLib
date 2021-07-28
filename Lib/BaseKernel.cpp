@@ -79,7 +79,7 @@ void BaseKernel::emu() {
   }
 
   assert(uniforms.size() != 0);
-  emulate(numQPUs, vc4().targetCode(), vc4().numVars(), uniforms, getBufferObject());
+  emulate(m_numQPUs, vc4().targetCode(), vc4().numVars(), uniforms, getBufferObject());
 }
 
 
@@ -93,7 +93,7 @@ void BaseKernel::interpret() {
   }
 
   assert(uniforms.size() != 0);
-  interpreter(numQPUs, vc4().sourceCode(), vc4().numVars(), uniforms, getBufferObject());
+  interpreter(m_numQPUs, vc4().sourceCode(), vc4().numVars(), uniforms, getBufferObject());
 }
 
 
@@ -103,9 +103,9 @@ void BaseKernel::interpret() {
  */
 void BaseKernel::qpu() {
   if (Platform::has_vc4()) {
-    vc4().invoke(numQPUs, uniforms);
+    vc4().invoke(m_numQPUs, uniforms);
   } else {
-    v3d().invoke(numQPUs, uniforms);
+    v3d().invoke(m_numQPUs, uniforms);
   }
 }
 #endif  // QPU_MODE

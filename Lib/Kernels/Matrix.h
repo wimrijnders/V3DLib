@@ -19,7 +19,8 @@ struct matrix_settings {
   int inner;                                  // Inner dimension of the multiplication
                                               // inner == columns of a == rows of b (which is transposed)
   int columns;                                // Num columns of the result array
-  bool add_result = false;
+  bool add_result  = false;
+  bool multi_block = false;
 
   void set(int in_rows, int in_inner, int in_columns);
 
@@ -29,6 +30,8 @@ struct matrix_settings {
   int stride() const { return rows; }             //< Number of cells till next row
   int num_blocks() const;
   void num_blocks(int val);
+
+  std::string dump() const;
 
 private:
   int m_num_blocks  = -1;
@@ -93,7 +96,7 @@ void init_result_array(Array2D &result) {
  * - All QPU's iterate over b together -> increase cache hits
  */
 template<typename Ptr>
-void matrix_mult(Ptr dst, Ptr a, Ptr b) {
+void matrix_mult_multi(Ptr dst, Ptr a, Ptr b) {
   //debug("matrix_mult kernel");
   auto &settings = get_matrix_settings();
 
@@ -125,6 +128,55 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
     End
 
     a += settings.inner;  // jump to next row
+  End
+}
+
+
+template<typename Ptr>
+void matrix_mult(Ptr dst, Ptr a, Ptr b) {
+  //debug("matrix_mult kernel");
+  auto &settings = get_matrix_settings();
+
+  assert(settings.inner > 0 && (settings.inner % 16 == 0));
+
+  using T          = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, Float, Complex>::type;
+  using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
+  debug(settings.dump());
+
+  Int a_init = 0; 
+  Int a_inc = 1;
+  if (settings.rows >= settings.columns) {
+    debug("matrix_mult QPUs iterating over rows");
+    a_init = me();
+    a_inc  = numQPUs();
+  } else {
+    warning("matrix_mult iterating over columns not done yet!");
+  }
+
+  DotVecType vec(settings.width()/16);
+  T result = 0;  // NOTE explicit init required (TODO enforce)
+
+  For (Int a_index = a_init, a_index < settings.rows, a_index += a_inc)
+    vec.load(a + a_index*settings.inner);
+
+    Int b_index = 0;
+    For (b_index = 0,  b_index < settings.columns, b_index += 1)
+      Ptr b_local = b + b_index*settings.inner;
+  
+      T tmp;
+      vec.dot_product(b_local, tmp);
+      result.set_at(b_index & 0xf, tmp);
+
+      If (b_index > 0 && (b_index & 0xf) == 15)
+        Ptr dst_local = dst + a_index*settings.cols_result() + ((b_index >> 4) << 4);
+        pre_write(dst_local, result, settings.add_result);
+      End
+    End
+
+    If ((b_index & 0xf) != 0)
+      Ptr dst_local = dst + a_index*settings.cols_result() + ((b_index >> 4) << 4);
+      pre_write(dst_local, result, settings.add_result);
+    End
   End
 }
 
@@ -201,7 +253,7 @@ inline auto matrix_mult_decorator(Array2D &a, Array2D &b, Array2D &result) -> de
  * Tried moving local vars out of the loops to avoid 'register allocation failed', didn't work 
  */
 template<typename Ptr>
-void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
+void dft_kernel_intern_multi(Complex::Ptr dst, Ptr a, Int const &offset) {
   auto &settings = get_matrix_settings();
 
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
@@ -230,6 +282,47 @@ void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
         result.set_at(j & 0xf, tmp);
       End
 
+      pre_write(dst_local, result, settings.add_result);
+    End
+
+    a += settings.inner;  // jump to next row
+  End
+}
+
+
+template<typename Ptr>
+void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
+  auto &settings = get_matrix_settings();
+
+  assert(settings.inner > 0 && (settings.inner % 16 == 0));
+  assert(settings.columns > 0 && (settings.columns % 16 == 0));
+
+  using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
+
+  DotVecType vec(settings.width()/16);
+
+  Complex result(0,0);  // init required! Otherwise, var not added here in target lang
+                        // This also applies to other local variables
+                        // It's sort of a bug, but I'll live with it for now
+                        // TODO examine in due time
+
+  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
+    vec.load(a);
+
+    Int b_index = 0;
+    For (b_index = 0,  b_index < settings.columns, b_index += 1)
+      Complex tmp(0,0);
+      vec.dft_dot_product(b_index, tmp, settings.inner, offset);
+      result.set_at(b_index & 0xf, tmp);
+
+      If (b_index > 0 && (b_index & 0xf) == 15)
+        Complex::Ptr dst_local = dst + a_index*settings.cols_result() + ((b_index >> 4) << 4);
+        pre_write(dst_local, result, settings.add_result);
+      End
+    End
+
+    If ((b_index & 0xf) != 0)
+      Complex::Ptr dst_local = dst + a_index*settings.cols_result() + ((b_index >> 4) << 4);
       pre_write(dst_local, result, settings.add_result);
     End
 
@@ -323,7 +416,8 @@ template<
   typename Array,
   typename Ptr,
   typename BlockKernelType,
-  typename ResultArray = Array
+  typename ResultArray = Array,
+  typename Type = typename std::conditional<std::is_same<Array, Float::Array2D>::value, float, complex>::type
 >
 class BlockMatrix {
 public:
@@ -342,12 +436,26 @@ public:
   ResultArray &result() { return m_result; }
   BlockKernelType &kernel() { return *m_k; }
   void compile()  { init_block(); }
-  bool has_errors() const { return m_k_first_vc4->has_errors() || m_k->has_errors(); }
+  bool has_errors() const { return (m_k_first && m_k_first->has_errors()) || m_k->has_errors(); }
 
+  void multi_block(bool val) { m_multi_block = val; }
 
   void setNumQPUs(int val) {
-    if (m_k_first_vc4.get() != nullptr) m_k_first_vc4->setNumQPUs(val);
+    if (m_k_first.get() != nullptr) m_k_first->setNumQPUs(val);
     if (m_k.get() != nullptr) m_k->setNumQPUs(val);
+  }
+
+
+  int numQPUs() const {
+    int val1 = -1;
+    int val2 = -1;
+    if (m_k_first.get() != nullptr) val1 = m_k_first->numQPUs();
+    if (m_k.get() != nullptr)       val2 = m_k->numQPUs();
+
+    assert(val1 != -1 || val2 != -1);
+    if (val1 != -1 && val2 != -1) assert(val1 = val2);
+
+    return (val1 != -1)? val1: val2;
   }
 
 
@@ -388,21 +496,24 @@ public:
     init_block();
     assertq(!has_errors(), "Can not run Matrix::mult(), there are errors");
     assert(m_k.get() != nullptr);
-    bool const do_call = true;  // Can be set to false when using interpret() or emu() instead of call() below
 
-    m_result.fill(0.0f);        // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
+    Type zero;
+    if constexpr (std::is_same<Array, Float::Array2D>::value) {
+      zero = 0.0f;
+    }
+    m_result.fill(zero);  // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
 
-    if (Platform::has_vc4() && do_call) {
-      //debug("vc4 mult_block");
+    if (m_multi_block) {
+      //debug("multi block");
       // This part required for vc4 hardware; see header of kernel matrix_mult_block().
-      assert(m_k_first_vc4.get() != nullptr);
+      assert(m_k_first.get() != nullptr);
 
       // First call doesn't need to get the result values for addition; they are zero anyway
-      load(m_k_first_vc4, 0);
-      m_k_first_vc4->call();
+      load(m_k_first, 0);
+      m_k_first->call();
 
       if (num_blocks() == 2) {
-        debug("Calling second block");
+        //debug("Calling second block");
         auto &settings = kernels::get_matrix_settings();
         int offset = settings.width();
         load(m_k, offset);
@@ -410,7 +521,7 @@ public:
       }
     } else {
       // This part would also work for interpret() and emu()
-      //debug("v3d mult_block");
+      //debug("single block");
       load(m_k, 0);
       m_k->call();
     }
@@ -427,6 +538,7 @@ protected:
   template<typename KernelType>  
   void init_block_kernels(KernelType kernel) {
     auto &settings = kernels::get_matrix_settings();
+    settings.multi_block = m_multi_block;
 
     if (m_k.get() != nullptr) {
       // Kernel already compiled. Don't recompile if nothing changed
@@ -444,30 +556,33 @@ protected:
       debug("Doing 2 blocks");
     }
 
-    //if (Platform::has_vc4()) {  TODO
+    if (m_multi_block) {
       settings.add_result = false;
-      m_k_first_vc4.reset(new BlockKernelType(V3DLib::compile(kernel)));
+      m_k_first.reset(new BlockKernelType(V3DLib::compile(kernel)));
 
-      if (m_k_first_vc4->has_errors()) {
+      if (m_k_first->has_errors()) {
         warning("compile failed of first kernel");
         m_k.reset(nullptr);
         return;
       }
-    //}
+    }
 
     settings.add_result = true;
     m_k.reset(new BlockKernelType(V3DLib::compile(kernel)));
   }
 
 protected:
+  bool m_multi_block = false;  // If true, use multiple kernel calls for block matrix mult.
+                               // Otherwise, combine the block matrix steps in a single kernel (v3d only) 
+
   virtual void load(BlockKernelPtr &k, int offset) = 0;
 
 private:
   int m_num_blocks = DEFAULT_NUM_BLOCKS;
   ResultArray m_result;
 
+  std::unique_ptr<BlockKernelType> m_k_first;
   std::unique_ptr<BlockKernelType> m_k;
-  std::unique_ptr<BlockKernelType> m_k_first_vc4;
 
 
   /**
@@ -508,6 +623,9 @@ public:
   } 
 
   void init_block() override {
+    auto &settings = kernels::get_matrix_settings();
+    settings.multi_block = Parent::m_multi_block;
+
     Parent::init_block_kernels(kernels::matrix_mult_block<Ptr>);
   }
 
@@ -540,6 +658,9 @@ public:
   } 
 
   void init_block() override {
+    auto &settings = kernels::get_matrix_settings();
+    settings.multi_block = Parent::m_multi_block;
+
     Parent::init_block_kernels(kernels::dft_kernel_block<Ptr>);
   }
 

@@ -13,7 +13,12 @@ std::string ProfileOutput::out_data::str() const {
 
 
 std::vector<int> ProfileOutput::num_qpus() const {
+  if (m_use_single_qpu) {
+    return {1};
+  }
+
   std::vector<int> ret;
+  
 
   if (m_use_max_qpus) {
     if (Platform::has_vc4()) {
@@ -23,9 +28,9 @@ std::vector<int> ProfileOutput::num_qpus() const {
     }
   } else {
     if (Platform::has_vc4()) {
-      ret = {1,4,8,12};
+      ret = {1, 4, 8, 12};
     } else {
-      ret = {1,8};
+      ret = {1, 8};
     }
   }
 

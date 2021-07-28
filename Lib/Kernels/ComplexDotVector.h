@@ -19,7 +19,7 @@ public:
   }
 
   void dot_product(Complex::Ptr rhs, Complex &result);
-  void dft_dot_product(Int const &row, Complex &result, Int const &offset = 0);
+  void dft_dot_product(Int const &row, Complex &result, int num_elements, Int const &offset = 0);
 
 private:
   DotVector re;

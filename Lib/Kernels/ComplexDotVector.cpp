@@ -47,7 +47,13 @@ void ComplexDotVector::load(Float::Ptr const &rhs) {
 
 
 void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
-  //debug("complex dot_product");
+  debug("complex dot_product");
+  {
+    std::string msg;
+    msg << "size: " << size();
+    debug(msg);
+  }
+
   int label = prefetch_label();
   Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");
   Complex tmp2(0, 0);
@@ -65,19 +71,22 @@ void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
 /**
  * Multiply current instance with the DFT elements of column `col`.
  *
- * Due to array symmetry, `col` and `row` can be interchanged.
- *
  * The DFT matrix elements are calculated inline.
  * Note that low-precision sin/cos is used for vc4.
  *
- * @param row  index of row in dft array to process
+ * @param row          index of row in dft array to process
+ * @param result       out parameter, to which result of dot product will be stored
+ * @param num_elements total number of elements to use in divisor for phase.
+ *                     For full multiplication, this will be the same as the dot vector size;
+ *                     for block multiplication, this will be a multiple of size, the multiple
+ *                     being the number of blocks.
+ * @param offset       offset of num elements to use in columns for block matrix multiplication
  */
-void ComplexDotVector::dft_dot_product(Int const &row, Complex &result, Int const &offset) {
+void ComplexDotVector::dft_dot_product(Int const &row, Complex &result, int num_elements, Int const &offset) {
   Complex tmp(0, 0);               comment("ComplexDotVector::dft_dot_product()");
 
-  int num_elements = ((int) size())*16;
   for (int i = 0; i < (int) size(); ++i) {
-    Int col = (i*16 + index() + offset);  // Index of row to process
+    Int col = (i*16 + index() + offset);  // Index of column to process
     Float param = -1.0f*toFloat(row*col)/toFloat(num_elements);
     Complex tmp1(re[i], im[i]);
     Complex tmp2(cos(param), sin(param));

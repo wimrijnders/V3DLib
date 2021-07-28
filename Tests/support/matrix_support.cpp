@@ -16,9 +16,28 @@ void compare_arrays(Float::Array2D &a, float const *b, float precision) {
     }
   }
 
+  float max_diff = -1;
+
+  for (int r = 0; r < a.rows(); r++) {
+    for (int c = 0; c < a.columns(); c++) {
+      float diff = abs(a[r][c] - b[r*a.columns() + c]);
+      if (max_diff == -1 || max_diff < diff) {
+        max_diff = diff;
+      }
+    }
+  }
+
+  {
+    std::string msg; 
+    msg << "Max diff: " << max_diff << ", precision: " << precision;
+    debug(msg);
+  }
+
   for (int r = 0; r < a.rows(); r++) {
     for (int c = 0; c < a.columns(); c++) {
       INFO("r: " << r << ", c: " << c);
+      //INFO("Result: " << a.dump());
+      INFO("result: " << a[r][c] << ", expected: " << b[r*a.columns() + c]);
       REQUIRE(abs(a[r][c] - b[r*a.columns() + c]) < precision);
     }
   }
@@ -64,6 +83,34 @@ void compare_arrays(Complex::Array2D &a, Complex::Array2D &b, float precision) {
     precision = 4.0e-1f;     // for low  precision sin/cos in kernels
   }
 
+  float max_diff_re = -1;
+  float max_diff_im = -1;
+
+  for (int r = 0; r < a.rows(); r++) {
+    for (int c = 0; c < a.columns(); c++) {
+      float diff_re = abs(a[r][c].re() - b[r][c].re());
+      if (max_diff_re == -1 || max_diff_re < diff_re) {
+        max_diff_re = diff_re;
+      }
+
+      float diff_im = abs(a[r][c].im() - b[r][c].im());
+      if (max_diff_im == -1 || max_diff_im < diff_im) {
+        max_diff_im = diff_im;
+      }
+    }
+  }
+
+  // Do an overall check
+  if (max_diff_re <= precision && max_diff_im <= precision) {
+    return; // All is well
+  }
+
+  INFO("Max diff re: "   << max_diff_re
+    << ", max diff im: " << max_diff_im
+    << ", precision: "   << precision);
+
+
+  // Do a specific check to find the (r,c) coordinate where it goes wrong
   for (int r = 0; r < a.rows(); ++r) {
     for (int c = 0; c < a.columns(); ++c) {
       INFO("(r, c): ( " << r << ", " << c << ")");

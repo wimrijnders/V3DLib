@@ -9,6 +9,9 @@ namespace kernels {
 // struct matrix_settings
 ////////////////////////////////////////////////////////////////////////////////
 
+/**
+ * NOTE: Strictly speaking, this is a reset.
+ */
 void matrix_settings::set(int in_rows, int in_inner, int in_columns) {
   assert(in_rows > 0);
   assert(in_columns > 0);
@@ -18,6 +21,9 @@ void matrix_settings::set(int in_rows, int in_inner, int in_columns) {
   inner         = in_inner;
   columns       = in_columns;
   add_result    = false;       // override after this call to explicitly set
+
+  m_num_blocks  = -1;
+  block_rowsize = -1;
 }
 
 
@@ -50,7 +56,7 @@ int matrix_settings::cols_result() const { return adjust_dimension(columns, 16);
 
 
 int matrix_settings::num_blocks() const {
-  assert(m_num_blocks == 1 || m_num_blocks == 2);
+  assertq(m_num_blocks == 1 || m_num_blocks == 2, "Num blocks can only be 1 or 2", true);
   return m_num_blocks;
 }
 
@@ -62,6 +68,18 @@ void matrix_settings::num_blocks(int val) {
   assertq(new_block_size % 16 == 0, "New block size must be a multiple of 16");
   m_num_blocks = val;
   set_blockrowsize(new_block_size);
+}
+
+
+std::string matrix_settings::dump() const {
+  std::string msg;
+
+  msg << "settings "
+      << "rows: " << rows << ", columns: " << columns
+      << ", width: " << width() << ", inner: " << inner
+      << ", num blocks: " << m_num_blocks;
+
+  return msg;
 }
 
 
@@ -157,11 +175,15 @@ void matrix_mult_scalar(int N, float *dst, float *a, float *b) {
 
 
 void create_block_kernel(Int const &in_offset, std::function<void (Int const &offset)> f) {
-  if (Platform::compiling_for_vc4()) {
+  auto &settings = get_matrix_settings();
+
+  if (settings.multi_block) {
+    // Use a separate kernel for every offset
     f(in_offset);
   } else {
+    // Use a single block for the offsets
+
     // Offset param ignored here
-    auto &settings = get_matrix_settings();
 
     // First call doesn't need to get the result values for addition; they are zero anyway
     settings.add_result = false;

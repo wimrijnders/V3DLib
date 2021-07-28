@@ -481,6 +481,7 @@ void check_complex_matrix_multiplication(
   complex expected
 ) {
   INFO("rows: " << rows << ", inner: " << inner << ", cols: " << cols);
+  INFO("result rows: " << result.rows() << ", result columns: " << result.columns());
 
   for (int r = 0; r < rows; ++r) {
     for (int c = 0; c < cols; ++c) {
@@ -514,7 +515,7 @@ void test_complex_matrix_multiplication(
   Complex::Array2D result;
 
   //
-  // Test using decorator - this ignores num_blocks, not intended to be used in this case.
+  // Test using decorator - this does not use num_blocks
   //
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
   k.setNumQPUs(num_qpus);
@@ -522,6 +523,7 @@ void test_complex_matrix_multiplication(
 
   k.load(&result, &a, &b);
   k.call();
+  INFO("num QPUs:" << num_qpus << ", num blocks: " << num_blocks);
   check_complex_matrix_multiplication(rows, inner, cols, result, init_a*init_b);
 
   //
@@ -628,7 +630,8 @@ bool profile_block_mult(int dimension) {
 
   ProfileOutput profile_output;
   profile_output.show_compile(false);
-  profile_output.use_max_qpus(true);
+  //profile_output.use_max_qpus(true);
+  //profile_output.use_single_qpu(true);
 
   // Prepare input and expected result
   Float::Array2D a(dimension);
@@ -659,8 +662,8 @@ bool profile_block_mult(int dimension) {
         m.call();
       });
 
-      // Sanity check
       INFO("Compare 1 block result with expected");
+      INFO("num QPUs: " << m.numQPUs());
       compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
     }
   }
@@ -682,6 +685,7 @@ bool profile_block_mult(int dimension) {
 
     // Sanity check
     INFO("Compare 2 blocks result with expected");
+    INFO("num QPUs: " << m.numQPUs());
     compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
   }
 

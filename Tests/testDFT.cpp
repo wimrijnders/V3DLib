@@ -106,6 +106,24 @@ void output_dft(Complex::Array2D &input, Complex::Array2D &result, char const *f
 
 
 /**
+ * Helper function for compare_dfts()
+ */
+void compare_arrays_dft(
+  V3DLib::Complex::Array2D &result,
+  V3DLib::Complex::Array2D &expected,
+  std::string const &result_label,
+  std::string const &expected_label,
+  float precision = -1.0f
+) {
+  INFO("Comparing " << result_label << " with " << expected_label);
+  INFO("Result  : " << result.dump());
+  INFO("Expected: " << expected.dump());
+
+  compare_arrays(result, expected, precision);
+}
+
+
+/**
  * @return  true if all kernels compiled something,
  *          false if any kernel failed compilation for vc4 as well as v3d
  */ 
@@ -144,10 +162,30 @@ bool compare_dfts(int Dim, bool do_profiling) {
   Complex::Array2D result_complex;
   Complex::Array2D result_float;
 
+  // Selector for kernel tests to run
+  // The goal is to make it easy to enable/disable isub-tests; this encompassing test is real heavy
+  enum {
+    FLOAT_MULT      = 1,         // Tests using DFT decorators
+    COMPLEX_MULT    = 2,
+    FLOAT_DFT       = 4,
+    FLOAT_DFT_CLASS = 8,         // Tests using DFT class
+    FLOAT_DFT_CLASS_BLOCKS = 16,
+    FLOAT_DFT_CLASS_BLOCKS_MULTI = 32
+  };
+    
+
   //
   // Run the kernels
   //
-  int const run_kernels = 31;  // bit field specifying which kernels to run 
+  //int const run_kernels = 31;  // bit field specifying which kernels to run 
+  int const run_kernels =     // bit field specifying which kernels to run 
+      FLOAT_MULT              // Decorator calls
+    + COMPLEX_MULT
+    + FLOAT_DFT               // DFT class calls
+    + FLOAT_DFT_CLASS
+    + FLOAT_DFT_CLASS_BLOCKS
+    + FLOAT_DFT_CLASS_BLOCKS_MULTI
+  ;
   int compiled = 0;
 
   auto run = [&profile_output, &Dim] (BaseKernel &k, std::string const &label) {
@@ -157,8 +195,8 @@ bool compare_dfts(int Dim, bool do_profiling) {
     });
   };
 
-  if (run_kernels & 1) {
-    std::string label = "matrix mult";
+  if (run_kernels & FLOAT_MULT) {
+    std::string label = "float mult";
     Timer timer1;
 
     // Do regular complex matrix multiplication
@@ -168,20 +206,20 @@ bool compare_dfts(int Dim, bool do_profiling) {
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
-      compiled += 1;
+      compiled += FLOAT_MULT;
       k.load(&result_mult, &input, &dft_matrix);
       run(k, label);
     }
   }
 
-  if (run_kernels & 2) {
-    std::string label = "complex";
+  if (run_kernels & COMPLEX_MULT) {
+    std::string label = "complex mult";
     Timer timer1;
     auto k = compile(kernels::dft_decorator(input, result_complex), for_platform);
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
-      compiled += 2;
+      compiled += COMPLEX_MULT;
       k.load(&result_complex, &input);
       run(k, label);
 
@@ -192,28 +230,29 @@ bool compare_dfts(int Dim, bool do_profiling) {
     }
   }
 
-  if (run_kernels & 4) {
-    std::string label = "float";
+  if (run_kernels & FLOAT_DFT) {
+    std::string label = "dft float";
     Timer timer1;
 
     auto k = compile(kernels::dft_decorator(input_float, result_float), for_platform);
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
-      compiled += 4;
+      compiled += FLOAT_DFT;
       k.load(&result_float, &input_float);
       run(k, label);
+      //debug(result_float.dump());
 
       if (!do_profiling) {
-        INFO("Comparing float with complex");
+        INFO("Comparing " << label << " with complex");
         // No need to compare inline float with mult, identical to inline complex (see previous)");
         compare_arrays(result_float, result_complex);
       }
     }
   }
 
-  if (run_kernels & 8) {
-    std::string label = "DFT float";
+  if (run_kernels & FLOAT_DFT_CLASS) {
+    std::string label = "DFT class float";
     Timer timer1;
 
     DFT k(input_float);
@@ -221,7 +260,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
-      compiled += 8;
+      compiled += FLOAT_DFT_CLASS;
       //run(k, label);
       profile_output.run(Dim, label, [&k] (int numQPUs) {
         k.setNumQPUs(numQPUs);
@@ -229,13 +268,14 @@ bool compare_dfts(int Dim, bool do_profiling) {
       });
 
       if (!do_profiling) {
-        INFO("Comparing DFT float with float");
+        INFO("Comparing " << label << " with float");
+        INFO(k.result().dump());
         compare_arrays(k.result(), result_float, 0.0f);  // Match should be exact
       }
     }
   }
 
-  if (run_kernels & 16) {
+  if (run_kernels & FLOAT_DFT_CLASS_BLOCKS) {
     std::string label = "DFT float 2 blocks";
     Timer timer1;
 
@@ -245,16 +285,45 @@ bool compare_dfts(int Dim, bool do_profiling) {
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
-      compiled += 16;
+      compiled += FLOAT_DFT_CLASS_BLOCKS;
       //run(k, label);
+      profile_output.use_single_qpu(true);
       profile_output.run(Dim, label, [&k] (int numQPUs) {
         k.setNumQPUs(numQPUs);
         k.call();
       });
+      profile_output.use_single_qpu(false);
 
       if (!do_profiling) {
-        INFO("Comparing " << label << " with float");
-        compare_arrays(k.result(), result_float, 0.0f);  // Match should be exact
+        INFO("num QPUs: " << k.numQPUs());
+        compare_arrays_dft(k.result(), result_float, label, "float", 2.0e-6f);  // Match should be exact, tiny diff
+      }
+    }
+  }
+
+  if (run_kernels & FLOAT_DFT_CLASS_BLOCKS_MULTI) {
+    std::string label = "DFT float 2 blocks multi call";
+    Timer timer1;
+
+    DFT k(input_float);
+    k.num_blocks(2);
+    k.multi_block(true);
+    k.compile();
+    profile_output.add_compile(label, timer1, Dim);
+
+    if (!k.has_errors()) {
+      compiled += FLOAT_DFT_CLASS_BLOCKS_MULTI;
+      //run(k, label);
+      profile_output.use_single_qpu(true);
+      profile_output.run(Dim, label, [&k] (int numQPUs) {
+        k.setNumQPUs(numQPUs);
+        k.call();
+      });
+      profile_output.use_single_qpu(false);
+
+      if (!do_profiling) {
+        INFO("num QPUs: " << k.numQPUs());
+        compare_arrays_dft(k.result(), result_float, label, "float", 2.0e-6f);  // Match should be exact, tiny diff
       }
     }
   }
@@ -390,8 +459,6 @@ TEST_CASE("Discrete Fourier Transform [dft]") {
 
 
 TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
-//  Platform::use_main_memory(true);
-
   SUBCASE("Check DFT with inline sin/cos") {
     int const Dim = 16*2;  // max vc4: 16*4. Max v3d is higher, at least 64*8
 
@@ -403,24 +470,20 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
     Timer timer1("DFT compile time");
     auto k = compile(kernels::dft_decorator(input, result));
     timer1.end();
-/*
-    k.pretty(true,  "obj/test/dft_vc4.txt", false);
-    k.dump_compile_data(true, "obj/test/dft_compile_data_vc4.txt");
-    k.pretty(false, "obj/test/dft_v3d.txt", false);
-    std::cout << k.compile_info() << std::endl;
-*/
+
     k.load(&result, &input);
     k.call();
     output_dft(input, result, "dft");
   }
 
+
   SUBCASE("All DFT calculations should return the same") {
-    bool do_profiling = false;
+    bool do_profiling = true;
 
     if (!do_profiling) {
       // Following is enough for the unit test
       for (int N = 1; N < 4; ++N) {
-        bool no_errors = compare_dfts(2*16*N, false);  // 2* for block kernels
+        bool no_errors = compare_dfts(2*16*N, false);  // 2* for block kernels, to avoid width restrictions
         REQUIRE(no_errors);
       }
     } else {
@@ -431,12 +494,10 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
       int N = 1;
       bool can_continue = true;
       while (can_continue) {
-        can_continue = compare_dfts(2*16*N, true);
+        can_continue = compare_dfts(2*16*N, true);  // 2* for block kernels, to avoid width restrictions
         N += Step;
         if (N > 6*Step) break;  // Comment this out for full profiling
       }
     }
   }
-
-//  Platform::use_main_memory(false);
 }

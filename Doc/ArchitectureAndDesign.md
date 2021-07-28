@@ -274,7 +274,7 @@ and and address of '1' means the VPM data location of the second vector in a seq
 
 VPM load/store is configured initially; this sets up offset values which are updated on every access.
 
-The example `DMA` combines the load and store in an artful manner
+The example `DMA` combines the load and store in an artful manner.
 
 ### Example of loading values to QPU:
 
@@ -282,7 +282,7 @@ Load 16 consecutive values from VPM into a QPU register:
 
 ```c++
   Int a;                             // Variable which is assigned to a QPU register on compile
-  vpmSetupRead(HORIZ, 16, 0);        // 16: num vectors to load; 0: start index of vectors
+  vpmSetupRead(HORIZ, 16, 0);        // 16: number of vectors to load; 0: start index of vectors
 
   for (int i = 0; i < 16; i++) {     // Read each vector
    a = vpmGetInt();
@@ -308,7 +308,7 @@ for (int i = 0; i < num_vectors; i++) {
   vpmSetupWrite(HORIZ, 16);          // 16: vector index to store at
 
   Int a = 0;
-  for (int i = 0; i < 16; i++) {     // Read each vector, increment it, and write it back
+  for (int i = 0; i < 16; i++) {     // write back values of a
     vpmPut(a);
     a++;
   }
@@ -316,7 +316,7 @@ for (int i = 0; i < num_vectors; i++) {
 
 C++ pseudo code:
 ```c++
-vector *vpm_out  = 16;               // vector: 64-byte data structure; 16: starting index of vectors
+vector *vpm_out = 16;                // vector: 64-byte data structure; 16: starting index of vectors
 int num_vectors = 16;
 
 Int a = 0;

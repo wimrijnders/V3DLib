@@ -67,7 +67,8 @@ public:
   void compile_init(bool do_vc4);
   void pretty(bool output_for_vc4, const char *filename = nullptr, bool output_qpu_code = true);
 
-  BaseKernel &setNumQPUs(int n) { numQPUs = n; return *this; }
+  BaseKernel &setNumQPUs(int n) { m_numQPUs = n; return *this; }
+  int numQPUs() const { return m_numQPUs; }
 
   void emu();
   void interpret();
@@ -83,7 +84,7 @@ public:
   std::string get_errors() const;
 
 protected:
-  int numQPUs = 1;                 // Number of QPUs to run on
+  int m_numQPUs = 1;               // Number of QPUs to run on
   IntList uniforms;                // Parameters to be passed to kernel
 
   // Defined as unique pointers so that they easily survive the std::move

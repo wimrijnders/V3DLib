@@ -24,7 +24,7 @@ public:
   void load(Float::Ptr input);
   void save(Float::Ptr dst);
   void dot_product(Float::Ptr rhs, Float &result);
-  void dft_dot_product(Int const &row, Complex &result, Int const &offset = 0);
+  void dft_dot_product(Int const &row, Complex &result, int num_elements, Int const &offset = 0);
   size_t size() const { return elements.size(); }
   Float &operator[] (int index) { return elements[index]; }
   Float const &operator[] (int index) const { return elements[index]; }
