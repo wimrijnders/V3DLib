@@ -17,7 +17,7 @@ public:
   void setupVPMRead(int n, Expr::Ptr addr, bool hor, int stride);
   void setupVPMWrite(Expr::Ptr addr, bool hor, int stride);
   void setupDMARead(bool is_horizontal, int numRows, Expr::Ptr addr, int rowLen, int vpitch);
-  void setupDMAWrite(bool is_horizontal, int numRows, Expr::Ptr addr, int rowLen);
+  void setupDMAWrite(bool is_horizontal, int numRows, Expr::Ptr addr, IntExpr rowLen);
 
   Expr::Ptr stride_internal();
   bool address(int in_tag, Expr::Ptr e0);
@@ -57,7 +57,7 @@ private:
   // DMA write setup
   struct {
     int numRows;
-    int rowLen;
+    IntExpr rowLen;
     int hor;
   } m_setupDMAWrite;
 

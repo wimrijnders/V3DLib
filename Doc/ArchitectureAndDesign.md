@@ -230,7 +230,7 @@ from (byte) address 256 in VPM to shared main memory:
 dmaSetWriteStride(13*4);           // Skip 13 values of vector
 dmaSetupWrite(HORIZ, 16, 256, 3);  // 16:  number of vectors to handle;
                                    // 256: start address for read;
-                                   // 3:   number of consecutive value to transfer
+                                   // 3:   number of consecutive values to transfer
 dmaStartWrite(p);                  // p:   target address in shared main memory
 dmaWaitWrite();                    // Wait until store complete
 ```

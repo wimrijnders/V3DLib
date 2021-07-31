@@ -13,7 +13,8 @@ namespace V3DLib {
 // Reserved general-purpose vars
 enum ReservedVarId : VarId {
   RSV_QPU_ID   = 0,
-  RSV_NUM_QPUS = 1
+  RSV_NUM_QPUS = 1,
+  RSV_DEVNULL  = 2
 };
 
 template <typename T> struct Deref; // Forward declaration template class
@@ -80,7 +81,7 @@ IntExpr max(IntExpr a, IntExpr b);
 IntExpr shr(IntExpr a, IntExpr b);
 IntExpr ror(IntExpr a, IntExpr b);
 
-IntExpr operator%(IntExpr a, int b);
+IntExpr operator%(IntExpr a, IntExpr b);
 
 }  // namespace V3DLib
 

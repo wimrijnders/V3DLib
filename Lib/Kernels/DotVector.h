@@ -34,6 +34,7 @@ private:
 };
 
 void pre_write(Float::Ptr &dst, Float &src, bool add_result);
+void pre_write(Float::Ptr &dst, Float &src, bool add_result, Int const &j);
 
 }  // namespace kernels
 

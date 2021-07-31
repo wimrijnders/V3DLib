@@ -32,7 +32,7 @@ void Stmt::setupDMARead(bool is_horizontal, int numRows, Expr::Ptr addr, int row
 }
 
 
-void Stmt::setupDMAWrite(bool is_horizontal, int numRows, Expr::Ptr addr, int rowLen) {
+void Stmt::setupDMAWrite(bool is_horizontal, int numRows, Expr::Ptr addr, IntExpr rowLen) {
   m_setupDMAWrite.hor = is_horizontal? 1 : 0;
   m_setupDMAWrite.numRows = numRows;
   m_setupDMAWrite.rowLen = rowLen;
@@ -146,14 +146,25 @@ std::string Stmt::pretty(int indent, int in_tag) {
           << ");";
       break;
 
-    case V3DLib::Stmt::SETUP_DMA_WRITE:
+    case V3DLib::Stmt::SETUP_DMA_WRITE: {
+      breakpoint
+
+      Expr::Ptr rle = m_setupDMAWrite.rowLen.expr();
+      std::string rl_str;
+      if (rle->tag() == Expr::INT_LIT) {
+        rl_str << rle->intLit;
+      } else {
+        rl_str << "var/expr";
+      }
+
       ret << indentBy(indent)
           << "dmaSetupWrite("
           << "numRows=" << m_setupDMAWrite.numRows                  << ","
-          << "rowLen="  << m_setupDMAWrite.rowLen                   << ","
+          << "rowLen="  << rl_str                                   << ","
           << "dir="     << (m_setupDMAWrite.hor ? "HORIZ" : "VERT") << ","
           << address_internal()->pretty()
           << ");";
+      }
       break;
 
     default:

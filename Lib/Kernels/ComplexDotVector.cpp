@@ -1,4 +1,5 @@
 #include "ComplexDotVector.h"
+#include "vc4/DMA/Operations.h"
 
 namespace kernels {
 namespace {
@@ -14,6 +15,47 @@ void pre_read(Complex &dst, Complex::Ptr &src, int prefetch_label) {
 void pre_write(Complex::Ptr &dst, Complex &src, bool add_result) {
   pre_write(dst.re(), src.re(), add_result);
   pre_write(dst.im(), src.im(), add_result);
+}
+
+
+void pre_write(Complex::Ptr &dst, Complex &src, bool add_result, Int const &j) {
+  if (Platform::compiling_for_vc4()) {
+    Complex tmp = 0;
+
+    if (add_result) {
+      int pre_label = prefetch_label();
+      Complex::Ptr dst_read = dst;
+      pre_read(tmp, dst_read, pre_label);
+
+      tmp += src;
+    } else {
+      tmp = src;
+    }
+
+    vpmSetupWrite(HORIZ, 2*me());
+    vpmPut(tmp.re());
+    vpmPut(tmp.im());
+
+    dmaSetWriteStride((16 - j)*4);
+    dmaSetupWrite(HORIZ, 1, 4*2*me(), j);
+    dmaStartWrite(dst.re());
+    dmaWaitWrite();   
+    dmaSetupWrite(HORIZ, 1, 4*(2*me() + 1), j);
+    dmaStartWrite(dst.im());
+    dmaWaitWrite();   
+
+    dst.inc();
+  } else {
+    Complex::Ptr local_dst = dst;
+
+    Where (index() >= j)
+      local_dst.re() = devnull();  comment("pre_write complex set top bits dst to devnull");
+      local_dst.im() = devnull();
+    End
+
+    pre_write(local_dst, src, add_result);
+  }
+
 }
 
 
@@ -47,12 +89,14 @@ void ComplexDotVector::load(Float::Ptr const &rhs) {
 
 
 void ComplexDotVector::dot_product(Complex::Ptr rhs, Complex &result) {
+/*
   debug("complex dot_product");
   {
     std::string msg;
     msg << "size: " << size();
     debug(msg);
   }
+*/
 
   int label = prefetch_label();
   Complex tmp(0, 0);               comment("ComplexDotVector::dot_product()");

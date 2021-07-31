@@ -98,6 +98,7 @@ private:
  */
 class IntExpr : public BaseExpr {
 public:
+  IntExpr() = default;
   IntExpr(int x);
   IntExpr(Expr::Ptr e) : BaseExpr(e) {}
 };

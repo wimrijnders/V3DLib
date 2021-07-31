@@ -142,10 +142,6 @@ KernelDriver::~KernelDriver() {}
 /**
  * Reset the state for compilation
  *
- * The parameters are only here for autotest unit test.
- *
- * @param set_qpu_uniforms  if true, initialize the uniforms for QPU ID and number of QPU's
- * @param numVars           number of variables already assigned prior to compilation
  */
 void KernelDriver::init_compile() {
   initStack(m_stmtStack);
@@ -156,8 +152,12 @@ void KernelDriver::init_compile() {
 
   // Initialize reserved general-purpose variables
   Int qpuId, qpuCount;
-  qpuId    = getUniformInt();
-  qpuCount = getUniformInt();
+  qpuId    = getUniformInt();  comment("QPU id");
+  qpuCount = getUniformInt();  comment("Num QPUs");
+
+  if (!Platform::compiling_for_vc4()) {
+    Int devnull = getUniformInt();  comment("devnull");
+  }
 }
 
 

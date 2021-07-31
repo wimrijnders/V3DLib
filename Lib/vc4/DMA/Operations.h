@@ -43,7 +43,7 @@ void vpmSetupWrite(Dir dir, IntExpr addr, int stride = 1);
 void dmaSetReadPitch(IntExpr n);
 void dmaSetWriteStride(IntExpr n);
 void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr, int rowLen = 16, int vpitch = 1);
-void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen = 16);
+void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, IntExpr rowLen = 16);
 void dmaWaitRead();
 void dmaWaitWrite();
 void semaInc(int semaId);

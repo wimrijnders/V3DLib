@@ -216,6 +216,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     std::string label = "complex mult";
     Timer timer1;
     auto k = compile(kernels::dft_decorator(input, result_complex), for_platform);
+    k.pretty(false, "dft_complex.txt");
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
@@ -287,12 +288,12 @@ bool compare_dfts(int Dim, bool do_profiling) {
     if (!k.has_errors()) {
       compiled += FLOAT_DFT_CLASS_BLOCKS;
       //run(k, label);
-      profile_output.use_single_qpu(true);
+      //profile_output.use_single_qpu(true);
       profile_output.run(Dim, label, [&k] (int numQPUs) {
         k.setNumQPUs(numQPUs);
         k.call();
       });
-      profile_output.use_single_qpu(false);
+      //profile_output.use_single_qpu(false);
 
       if (!do_profiling) {
         INFO("num QPUs: " << k.numQPUs());
@@ -314,12 +315,12 @@ bool compare_dfts(int Dim, bool do_profiling) {
     if (!k.has_errors()) {
       compiled += FLOAT_DFT_CLASS_BLOCKS_MULTI;
       //run(k, label);
-      profile_output.use_single_qpu(true);
+      //profile_output.use_single_qpu(true);
       profile_output.run(Dim, label, [&k] (int numQPUs) {
         k.setNumQPUs(numQPUs);
         k.call();
       });
-      profile_output.use_single_qpu(false);
+      //profile_output.use_single_qpu(false);
 
       if (!do_profiling) {
         INFO("num QPUs: " << k.numQPUs());
@@ -478,7 +479,7 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
 
 
   SUBCASE("All DFT calculations should return the same") {
-    bool do_profiling = true;
+    bool do_profiling = false;
 
     if (!do_profiling) {
       // Following is enough for the unit test

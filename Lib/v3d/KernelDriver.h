@@ -37,6 +37,7 @@ private:
   Instructions  instructions;
   BufferObject  code_bo;
   Code          qpuCodeMem;
+  SharedArray<uint32_t> devnull;
 
   void compile_intern() override;
   void invoke_intern(int numQPUs, IntList &params) override;

@@ -42,13 +42,13 @@ void BaseKernel::compile_init(bool do_vc4) {
   if (do_vc4) {
     assert(!has_vc4());
     m_vc4_driver.reset(new vc4::KernelDriver);
-    vc4().init_compile();
     Platform::compiling_for_vc4(true);
+    vc4().init_compile();
   } else {
     assert(!has_v3d());
     m_v3d_driver.reset(new v3d::KernelDriver);
-    v3d().init_compile();
     Platform::compiling_for_vc4(false);
+    v3d().init_compile();
   }
 }
 

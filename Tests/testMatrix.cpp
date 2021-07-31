@@ -435,6 +435,7 @@ void test_complex_dotvector() {
   REQUIRE(a.size() == b.size());
 
   auto k = compile(check_complex_dotvector<N>);
+  k.pretty(false, "check_complex_dotvector.txt");
   k.load(&b, &a, &result);
   k.call();
 
@@ -518,12 +519,14 @@ void test_complex_matrix_multiplication(
   // Test using decorator - this does not use num_blocks
   //
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
+  k.pretty(false, "mult_complex.txt");
   k.setNumQPUs(num_qpus);
   result.fill({-1.0f, -1.0f});
 
   k.load(&result, &a, &b);
   k.call();
   INFO("num QPUs:" << num_qpus << ", num blocks: " << num_blocks);
+  //debug(result.dump());
   check_complex_matrix_multiplication(rows, inner, cols, result, init_a*init_b);
 
   //
@@ -552,7 +555,8 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
       test_complex_matrix_multiplication(  1,    16*num_blocks,  1, num_qpus, num_blocks);
       test_complex_matrix_multiplication(  2,  2*16*num_blocks,  2, num_qpus, num_blocks, {-1.0f, 2.0f});
       test_complex_matrix_multiplication(  2,  3*16*num_blocks,  2, num_qpus, num_blocks, {-1.0f, 2.0f}, { 1.0f, -1.0f });
-      //test_complex_matrix_multiplication( 16,  2*16*num_blocks, 16, num_qpus, num_blocks);
+      test_complex_matrix_multiplication( 16,  2*16*num_blocks, 16, num_qpus, num_blocks);
+      test_complex_matrix_multiplication( 14,  2*16*num_blocks, 17, num_qpus, num_blocks);
     };
 
     test(1);

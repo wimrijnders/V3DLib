@@ -180,16 +180,133 @@ Instr genWaitDMALoad(bool might_be_end = false) {
 
 // Generate instructions to do DMA store.
 
-Instr genSetupDMAStore(int numRows, int rowLen, int hor, int vpmAddr) {
-  assert(vpmAddr < 2048);
-  int setup = dmaSetupStoreCode(numRows, rowLen, hor);
-  setup |= vpmAddr << 3;
+Instr::List genSetupDMAStore(int numRows, IntExpr rowLen, int hor, Reg vpm_reg) {
+  Instr::List ret;
 
-  return li(WR_SETUP, setup);
+  auto rle    = rowLen.expr();
+  int  setup  = 0;
+  bool rl_lit = false;
+
+  if (rle->tag() == Expr::INT_LIT) {
+    setup = dmaSetupStoreCode(numRows, rle->intLit, hor);
+    rl_lit = true;
+  } else {
+    setup = dmaSetupStoreCode(numRows, 128, hor);  // rowLen == 128 is dummyto force zero in that field 
+  }
+
+  Reg rl_reg;
+
+  if (rle->tag() == Expr::VAR) {
+    rl_reg = rle->var();
+  } else if (!rl_lit) {
+  breakpoint
+    Var v = VarGen::fresh();
+    ret << varAssign(v, rle);
+    rl_reg = v;
+  }
+
+  if (rl_lit) {
+      Reg tmp0 = freshReg();
+      Reg tmp1 = freshReg();
+
+      ret << li(tmp0, setup)
+          << shl(tmp1, vpm_reg, 3)
+          << bor(WR_SETUP, tmp0, tmp1);
+
+    return ret;
+  }
+
+
+  Reg tmp  = freshReg();
+  Reg tmp0 = freshReg();
+  Reg tmp1 = freshReg();
+  Reg tmp2 = freshReg();
+
+  ret << li(tmp0, setup)
+      << shl(tmp1, vpm_reg, 3)
+      << bor(tmp, tmp0, tmp1)
+      << li(tmp2, 0x7f)
+      << band(rl_reg, rl_reg, tmp2)       // To convert 128 to zero
+      << shl(rl_reg, rl_reg, 8)           // Can't shl 16 in one go (small imms)
+      << shl(rl_reg, rl_reg, 8)
+      << bor(WR_SETUP, tmp, rl_reg);
+
+  return ret;
 }
 
 
-Instr::List genSetupDMAStore(int numRows, int rowLen, int hor, Reg vpmAddr) {
+/**
+ * What a convoluted clusterfuck this has become.
+ */
+Instr::List genSetupDMAStore(int numRows, IntExpr rowLen, int hor, Expr::Ptr e) {
+
+  Instr::List ret;
+
+  bool vpm_lit = (e->tag() == Expr::INT_LIT);
+
+  if (!vpm_lit) {
+    Var v = (e->tag() == Expr::VAR)?e->var():VarGen::fresh();
+
+    if (e->tag() != Expr::VAR) {
+      ret << varAssign(v, e);
+    } else {
+      breakpoint
+    }
+
+    ret <<  genSetupDMAStore(numRows, rowLen, hor, v);
+    return ret;
+  }
+
+  breakpoint
+
+  int setup  = 0;
+  int rl_lit = false;
+  Reg rl_reg;
+
+  auto rle = rowLen.expr();
+
+  if (rle->tag() == Expr::INT_LIT) {
+    setup = dmaSetupStoreCode(numRows, rle->intLit, hor);
+    rl_lit = true;
+  } else {
+    setup = dmaSetupStoreCode(numRows, 128, hor);  // rowLen == 128 is dummyto force zero in that field 
+  }
+
+  if (rle->tag() == Expr::VAR) {
+    rl_reg = rle->var();
+  } else if (!rl_lit) {
+    Var v = VarGen::fresh();
+    ret << varAssign(v, rle);
+    rl_reg = v;
+  }
+
+
+  int vpmAddr = e->intLit;
+  assert(vpmAddr < 2048);
+  setup |= vpmAddr << 3;
+
+  if (rl_lit) {
+    ret << li(WR_SETUP, setup);
+    return ret;
+  }
+
+
+  Reg tmp  = freshReg();
+  Reg tmp2 = freshReg();
+
+  ret << li(tmp, setup)
+      << li(tmp2, 0x7f)
+      << band(rl_reg, rl_reg, tmp2)       // To convert 128 to zero
+      << shl(rl_reg, rl_reg, 8)           // Can't shl 16 in one go (small imms)
+      << shl(rl_reg, rl_reg, 8)
+      << bor(WR_SETUP, tmp, rl_reg);
+
+  return ret;
+}
+
+
+/*
+Instr::List genSetupDMAStore(int numRows, IntExpr rowLen, int hor, Reg vpmAddr) {
   int setup = dmaSetupStoreCode(numRows, rowLen, hor);
 
   Reg tmp0 = freshReg();
@@ -203,6 +320,7 @@ Instr::List genSetupDMAStore(int numRows, int rowLen, int hor, Reg vpmAddr) {
 
   return ret;
 }
+*/
 
 
 Instr genStartDMAStore(Reg memAddr) {
@@ -403,10 +521,13 @@ Instr::List Stmt::setupDMARead() {
 
 Instr::List Stmt::setupDMAWrite() {
   int numRows = m_setupDMAWrite.numRows;
-  int rowLen  = m_setupDMAWrite.rowLen;
+  IntExpr rowLen  = m_setupDMAWrite.rowLen;
   int hor     = m_setupDMAWrite.hor;
   Expr::Ptr e = address_internal();
 
+  return genSetupDMAStore(numRows, rowLen, hor, e);
+
+/*
   Instr::List ret;
 
   if (e->tag() == Expr::INT_LIT) {
@@ -421,6 +542,7 @@ Instr::List Stmt::setupDMAWrite() {
   }
 
   return ret;
+*/
 }
 
 

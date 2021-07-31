@@ -159,8 +159,8 @@ IntExpr shr(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(USHR, INT32),
 IntExpr ror(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(ROR,  INT32), b); }
 
 
-IntExpr operator%(IntExpr a, int b) {
-  assert(b != 0);
+IntExpr operator%(IntExpr a, IntExpr b) {
+  // b == 0 a bad idea, assert() won't work for testing
   using functions::operator/;
 
   return a - b*(a/b);

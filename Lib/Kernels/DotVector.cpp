@@ -1,5 +1,6 @@
 #include "DotVector.h"
 #include "Support/basics.h"
+#include "vc4/DMA/Operations.h"
 
 namespace kernels {
 
@@ -77,17 +78,54 @@ void DotVector::dft_dot_product(Int const &row, Complex &result, int num_element
  */
 void pre_write(Float::Ptr &dst, Float &src, bool add_result) {
   if (add_result) {
-    //Intention: *dst = *dst + src;
-
     int pre_label = prefetch_label();
     Float::Ptr dst_read = dst;
 
     Float tmp = 0;
     prefetch(tmp, dst_read, pre_label);
     *dst = tmp + src;
+    dst.inc();
   } else {
     *dst = src;
     dst.inc();
+  }
+}
+
+
+/**
+ * Write first j values of src vector to dst
+ */
+void pre_write(Float::Ptr &dst, Float &src, bool add_result, Int const &j) {
+  if (Platform::compiling_for_vc4()) {
+    Float tmp = 0;
+
+    if (add_result) {
+      int pre_label = prefetch_label();
+      Float::Ptr dst_read = dst;
+
+      prefetch(tmp, dst_read, pre_label);
+      tmp += src;
+    } else {
+      tmp = src;
+    }
+
+    vpmSetupWrite(HORIZ, me());
+    vpmPut(tmp);
+
+    dmaSetWriteStride((16 - j)*4);
+    dmaSetupWrite(HORIZ, 1, 4*me(), j);
+    dmaStartWrite(dst);
+    dmaWaitWrite();   
+
+    dst.inc();
+  } else {
+    Float::Ptr local_dst = dst;
+
+    Where (index() >= j)
+      local_dst = devnull();
+    End
+
+    pre_write(local_dst, src, add_result);
   }
 }
 

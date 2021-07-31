@@ -99,4 +99,11 @@ bool Pointer::passParam(IntList &uniforms, BaseSharedArray const *p) {
   return true;
 }
 
+
+PointerExpr devnull() {
+  assertq(!Platform::compiling_for_vc4(), "devnull() is for v3d only", true);
+  Expr::Ptr e = std::make_shared<Expr>(Var(STANDARD, RSV_DEVNULL));
+  return PointerExpr(e);
+}
+
 }  // namespace V3DLib

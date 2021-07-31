@@ -1182,22 +1182,22 @@ using Code       = SharedArray<uint64_t>;
 using UniformArr = SharedArray<uint32_t>;
 
 
-void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList &params) {
+void invoke(int numQPUs, SharedArray<uint32_t> &devnull, Code &codeMem, int qpuCodeMemOffset, IntList &params) {
 #ifndef QPU_MODE
   assertq(false, "Cannot run v3d invoke(), QPU_MODE not enabled");
 #else
   assert(codeMem.size() != 0);
 
-  UniformArr unif(params.size() + 3);
+  UniformArr unif(params.size() + 4);
   UniformArr done(1);
   done[0] = 0;
 
-  // The first two slots in uniforms for vc4 are used for qpu number and num qpu's respectively
-  // We do the same for v3d, so as not to screw up the logic too much.
   int offset = 0;
 
-  unif[offset++] = 0;        // qpu number (id for current qpu) - 0 is for 1 QPU
-  unif[offset++] = numQPUs;  // num qpu's running for this job
+  // Add the common uniforms
+  unif[offset++] = 0;                     // qpu number (id for current qpu) - 0 is for 1 QPU
+  unif[offset++] = numQPUs;               // num qpu's running for this job
+  unif[offset++] = devnull.getAddress();  // Memory location for values to be discarded
 
   for (int j = 0; j < params.size(); j++) {
     unif[offset++] = params[j];
@@ -1320,6 +1320,10 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   allocate();
   assert(qpuCodeMem.allocated());
 
+  if (!devnull.allocated()) {
+    devnull.alloc(16);
+  }
+
   // Allocate memory for the parameters if not done already
   // TODO Not used in v3d, do we need this?
   unsigned numWords = (12*MAX_KERNEL_PARAMS + 12*2);
@@ -1335,7 +1339,7 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   //       calling Driver::add_bo() in next call.
   //       This is something to keep in mind; it might go awkwards later on.
   //
-  v3d::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, params);
+  v3d::invoke(numQPUs, devnull, qpuCodeMem, qpuCodeMemOffset, params);
 }
 
 

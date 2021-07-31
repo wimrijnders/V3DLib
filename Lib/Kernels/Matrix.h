@@ -141,16 +141,31 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
 
   using T          = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, Float, Complex>::type;
   using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
-  debug(settings.dump());
+  //debug(settings.dump());
 
   Int a_init = 0; 
   Int a_inc = 1;
+  Int b_init = 0; 
+  Int b_count = settings.columns;
   if (settings.rows >= settings.columns) {
-    debug("matrix_mult QPUs iterating over rows");
+    //debug("matrix_mult QPUs iterating over rows");
     a_init = me();
     a_inc  = numQPUs();
   } else {
-    warning("matrix_mult iterating over columns not done yet!");
+    debug("matrix_mult iterating over columns");
+    using functions::operator/;
+
+    Int cols = Int(settings.columns);
+    Int cols_div  = settings.columns / numQPUs();   // TODO inefficient! Make single operation for div and rest?
+    Int cols_rest = cols % numQPUs();
+
+    If (me() < cols_rest)
+      b_init  = me()*(cols_div + 1);
+      b_count = b_init + (cols_div + 1);
+    Else
+      b_init  = cols_rest + me()*cols_div;
+      b_count = b_init + cols_div;
+    End
   }
 
   DotVecType vec(settings.width()/16);
@@ -159,23 +174,24 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
   For (Int a_index = a_init, a_index < settings.rows, a_index += a_inc)
     vec.load(a + a_index*settings.inner);
 
-    Int b_index = 0;
-    For (b_index = 0,  b_index < settings.columns, b_index += 1)
+    Int bit_count = 0;
+    Ptr dst_local = dst + a_index*settings.cols_result() + b_init;
+    For (Int b_index = b_init,  b_index < b_count, b_index += 1)
       Ptr b_local = b + b_index*settings.inner;
   
       T tmp;
       vec.dot_product(b_local, tmp);
-      result.set_at(b_index & 0xf, tmp);
+      result.set_at(bit_count & 0xf, tmp);
 
-      If (b_index > 0 && (b_index & 0xf) == 15)
-        Ptr dst_local = dst + a_index*settings.cols_result() + ((b_index >> 4) << 4);
+      bit_count++;
+
+      If (bit_count > 0 && (bit_count & 0xf) == 0)
         pre_write(dst_local, result, settings.add_result);
       End
     End
 
-    If ((b_index & 0xf) != 0)
-      Ptr dst_local = dst + a_index*settings.cols_result() + ((b_index >> 4) << 4);
-      pre_write(dst_local, result, settings.add_result);
+    If ((bit_count & 0xf) != 0)
+      pre_write(dst_local, result, settings.add_result, bit_count & 0xf);
     End
   End
 }
@@ -299,6 +315,31 @@ void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
 
   using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
 
+  Int a_init = 0; 
+  Int a_inc = 1;
+  Int b_init = 0; 
+  Int b_count = settings.columns;
+  if (settings.rows >= settings.columns) {
+    //debug("matrix_mult QPUs iterating over rows");
+    a_init = me();
+    a_inc  = numQPUs();
+  } else {
+    debug("matrix_mult iterating over columns");
+    using functions::operator/;
+
+    Int cols = Int(settings.columns);
+    Int cols_div  = settings.columns / numQPUs();   // TODO inefficient! Make single operation for div and rest?
+    Int cols_rest = cols % numQPUs();
+
+    If (me() < cols_rest)
+      b_init  = me()*(cols_div + 1);
+      b_count = b_init + (cols_div + 1);
+    Else
+      b_init  = cols_rest + me()*cols_div;
+      b_count = b_init + cols_div;
+    End
+  }
+
   DotVecType vec(settings.width()/16);
 
   Complex result(0,0);  // init required! Otherwise, var not added here in target lang
@@ -306,27 +347,26 @@ void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
                         // It's sort of a bug, but I'll live with it for now
                         // TODO examine in due time
 
-  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
-    vec.load(a);
+  For (Int a_index = a_init, a_index < settings.rows, a_index += a_inc)
+    vec.load(a + a_index*settings.inner);
 
-    Int b_index = 0;
-    For (b_index = 0,  b_index < settings.columns, b_index += 1)
+    Int bit_count = 0;
+    Complex::Ptr dst_local = dst + a_index*settings.cols_result() + b_init;
+    For (Int b_index = b_init,  b_index < b_count, b_index += 1)
       Complex tmp(0,0);
       vec.dft_dot_product(b_index, tmp, settings.inner, offset);
-      result.set_at(b_index & 0xf, tmp);
+      result.set_at(bit_count & 0xf, tmp);
 
-      If (b_index > 0 && (b_index & 0xf) == 15)
-        Complex::Ptr dst_local = dst + a_index*settings.cols_result() + ((b_index >> 4) << 4);
+      bit_count++;
+
+      If (bit_count > 0 && (bit_count & 0xf) == 0)
         pre_write(dst_local, result, settings.add_result);
       End
     End
 
-    If ((b_index & 0xf) != 0)
-      Complex::Ptr dst_local = dst + a_index*settings.cols_result() + ((b_index >> 4) << 4);
-      pre_write(dst_local, result, settings.add_result);
+    If ((bit_count & 0xf) != 0)
+      pre_write(dst_local, result, settings.add_result, bit_count & 0xf);
     End
-
-    a += settings.inner;  // jump to next row
   End
 }
 
@@ -551,10 +591,11 @@ protected:
 
     settings.num_blocks(num_blocks());
     kernels::init_result_array(m_result);
-
+/*
     if (num_blocks() ==2) {
       debug("Doing 2 blocks");
     }
+*/
 
     if (m_multi_block) {
       settings.add_result = false;

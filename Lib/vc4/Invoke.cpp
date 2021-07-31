@@ -43,11 +43,14 @@ void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList *params) {
 
   // Copy parameters to instruction memory
   int offset = qpuCodeMemOffset;
+
   uint32_t** paramsPtr = new uint32_t* [numQPUs];  // TODO check shouldn't this be deleted?
   for (int i = 0; i < numQPUs; i++) {
     paramsPtr[i] = qpuCodePtr + offset;
+
     codeMem[offset++] = (uint32_t) i;              // Unique QPU ID
     codeMem[offset++] = (uint32_t) numQPUs;        // QPU count
+
     for (int j = 0; j < params->size(); j++)
       codeMem[offset++] = params->get(j);
     codeMem[offset++] = 0;                         // Dummy final parameter, see Note 1.

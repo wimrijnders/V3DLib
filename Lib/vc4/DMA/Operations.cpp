@@ -72,7 +72,7 @@ void dmaSetupRead(Dir dir, int numRows, IntExpr vpmAddr, int rowLen, int vpitch)
 }
 
 
-void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, int rowLen) {
+void dmaSetupWrite(Dir dir, int numRows, IntExpr vpmAddr, IntExpr rowLen) {
   Stmt::Ptr s = Stmt::create(Stmt::SETUP_DMA_WRITE);
   s->dma.setupDMAWrite(dir == HORIZ, numRows, vpmAddr.expr(), rowLen);
   stmtStack() << s;

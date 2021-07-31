@@ -162,6 +162,7 @@ public:
   }
 
   Ptr<T>(PtrExpr<T> rhs) : Pointer(rhs) {}
+  Ptr<T>(PointerExpr rhs) : Pointer(rhs) {}
 
   static Ptr<T> mkArg();
 
@@ -205,6 +206,8 @@ Ptr<T> Ptr<T>::mkArg() {
 }
 
 }  // namespace Ptr
+
+PointerExpr devnull();
 
 }  // namespace V3DLib
 

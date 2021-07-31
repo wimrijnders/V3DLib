@@ -28,6 +28,7 @@ private:
 
 
 void pre_write(Complex::Ptr &dst, Complex &src, bool add_result);
+void pre_write(Complex::Ptr &dst, Complex &src, bool add_result, Int const &j);
 
 }  // namespace kernels
 
