@@ -100,12 +100,15 @@ void pre_write(Float::Ptr &dst, Float &src, bool add_result, Int const &j) {
     Float tmp = 0;
 
     if (add_result) {
+      comment("vc4 float pre_write with add");
       int pre_label = prefetch_label();
+
       Float::Ptr dst_read = dst;
 
       prefetch(tmp, dst_read, pre_label);
       tmp += src;
     } else {
+      comment("vc4 float pre_write no add");
       tmp = src;
     }
 

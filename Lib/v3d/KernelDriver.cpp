@@ -717,6 +717,11 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
         continue;  // as expected
       }
 
+      {
+        std::string msg;
+        msg << "checkUniformAtTop() failed at position " << i;
+        warning(msg);
+      }
       return false;  // Encountered uniform NOT at the top of the instruction list
     }
   }
@@ -731,7 +736,7 @@ bool checkUniformAtTop(V3DLib::Instr::List const &instrs) {
  * Translate instructions from target to v3d
  */
 void _encode(V3DLib::Instr::List const &instrs, Instructions &instructions) {
-  assert(checkUniformAtTop(instrs));
+  assertq(checkUniformAtTop(instrs), "_encode(): checkUniformAtTop() failed (v3d)", true);
   bool prev_was_init_begin = false;
   bool prev_was_init_end    = false;
 

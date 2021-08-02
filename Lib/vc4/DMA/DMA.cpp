@@ -147,20 +147,16 @@ std::string Stmt::pretty(int indent, int in_tag) {
       break;
 
     case V3DLib::Stmt::SETUP_DMA_WRITE: {
-      breakpoint
-
       Expr::Ptr rle = m_setupDMAWrite.rowLen.expr();
-      std::string rl_str;
+
       if (rle->tag() == Expr::INT_LIT) {
-        rl_str << rle->intLit;
-      } else {
-        rl_str << "var/expr";
+        breakpoint
       }
 
       ret << indentBy(indent)
           << "dmaSetupWrite("
           << "numRows=" << m_setupDMAWrite.numRows                  << ","
-          << "rowLen="  << rl_str                                   << ","
+          << "rowLen="  << rle->dump()                              << ","
           << "dir="     << (m_setupDMAWrite.hor ? "HORIZ" : "VERT") << ","
           << address_internal()->pretty()
           << ");";

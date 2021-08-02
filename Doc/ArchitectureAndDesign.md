@@ -13,16 +13,13 @@ In conformance with the linux kernel, the following naming is use within the pro
 # Support
 
 `V3DLib` is supported for Raspbian distributions from  `wheezy` onwards.
-It has been tested on the:
+Unit tests are run regularly on the following platforms:
 
 - `Pi 1 Model B`
 - `Pi 2`
 - `Pi 3 Model B`
-- `Pi 4 Model B`
-
-*....although I must confess that my Pi 1 and Pi 2 have died in the meantime. I will get new Pi's to make the test platform complete.*
-
-**TODO** setup full hardware testing.
+- `Pi 4 Model B 32-bits`
+- `Pi 4 Model B 64-bits`
 
 
 # VideoCore Background

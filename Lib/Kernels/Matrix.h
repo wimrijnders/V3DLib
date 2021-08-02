@@ -20,7 +20,7 @@ struct matrix_settings {
                                               // inner == columns of a == rows of b (which is transposed)
   int columns;                                // Num columns of the result array
   bool add_result  = false;
-  bool multi_block = false;
+  bool use_multi_kernel_calls = false;
 
   void set(int in_rows, int in_inner, int in_columns);
 
@@ -96,43 +96,6 @@ void init_result_array(Array2D &result) {
  * - All QPU's iterate over b together -> increase cache hits
  */
 template<typename Ptr>
-void matrix_mult_multi(Ptr dst, Ptr a, Ptr b) {
-  //debug("matrix_mult kernel");
-  auto &settings = get_matrix_settings();
-
-  assert(settings.inner > 0 && (settings.inner % 16 == 0));
-
-  using T          = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, Float, Complex>::type;
-  using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
-
-  DotVecType vec(settings.width()/16);
-  T result = 0;  // NOTE explicit init required (TODO enforce)
-
-  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
-    vec.load(a);
-
-    // b_index: column index of block of 16 columns to process by 1 QPU
-    For (Int b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
-      Ptr b_local   = b + b_index*settings.inner;
-      Ptr dst_local = dst + a_index*settings.cols_result() + b_index;
-  
-      T tmp;
-      For (Int j = 0,  j < 16, j += 1)
-        vec.dot_product(b_local, tmp);
-
-        result.set_at(j & 0xf, tmp);
-        b_local += settings.inner;
-      End
-
-      pre_write(dst_local, result, settings.add_result);
-    End
-
-    a += settings.inner;  // jump to next row
-  End
-}
-
-
-template<typename Ptr>
 void matrix_mult(Ptr dst, Ptr a, Ptr b) {
   //debug("matrix_mult kernel");
   auto &settings = get_matrix_settings();
@@ -169,12 +132,14 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
   }
 
   DotVecType vec(settings.width()/16);
-  T result = 0;  // NOTE explicit init required (TODO enforce)
+
+  T result = 0;  // Explicit init required, for T == Complex '0' is interpreted as phase
 
   For (Int a_index = a_init, a_index < settings.rows, a_index += a_inc)
     vec.load(a + a_index*settings.inner);
 
     Int bit_count = 0;
+    Int j = 0;
     Ptr dst_local = dst + a_index*settings.cols_result() + b_init;
     For (Int b_index = b_init,  b_index < b_count, b_index += 1)
       Ptr b_local = b + b_index*settings.inner;
@@ -184,14 +149,15 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
       result.set_at(bit_count & 0xf, tmp);
 
       bit_count++;
+      j = bit_count & 0xf;
 
-      If (bit_count > 0 && (bit_count & 0xf) == 0)
+      If (j == 0)
         pre_write(dst_local, result, settings.add_result);
       End
     End
 
-    If ((bit_count & 0xf) != 0)
-      pre_write(dst_local, result, settings.add_result, bit_count & 0xf);
+    If (j != 0)
+      pre_write(dst_local, result, settings.add_result, j);
     End
   End
 }
@@ -268,44 +234,6 @@ inline auto matrix_mult_decorator(Array2D &a, Array2D &b, Array2D &result) -> de
  *
  * Tried moving local vars out of the loops to avoid 'register allocation failed', didn't work 
  */
-template<typename Ptr>
-void dft_kernel_intern_multi(Complex::Ptr dst, Ptr a, Int const &offset) {
-  auto &settings = get_matrix_settings();
-
-  assert(settings.inner > 0 && (settings.inner % 16 == 0));
-  assert(settings.columns > 0 && (settings.columns % 16 == 0));
-
-  using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
-
-  DotVecType vec(settings.width()/16);
-
-  Complex result(0,0);  // init required! Otherwise, var not added here in target lang
-                        // This also applies to other local variables
-                        // It's sort of a bug, but I'll live with it for now
-                        // TODO examine in due time
-
-  For (Int a_index = 0,  a_index < settings.rows, a_index += 1)
-    vec.load(a);
-
-    // b_index: column index of block of 16 columns to process by 1 QPU
-    For (Int b_index = 16*me(), b_index < settings.columns, b_index += 16*numQPUs())
-      Int dst_offset = (a_index*settings.cols_result() + b_index);  // Calculating offset first is slightly more efficient
-      Complex::Ptr dst_local = dst + dst_offset;
-
-      Complex tmp(0,0);
-      For (Int j = 0,  j < 16, j += 1)
-        vec.dft_dot_product(b_index + j, tmp, offset);
-        result.set_at(j & 0xf, tmp);
-      End
-
-      pre_write(dst_local, result, settings.add_result);
-    End
-
-    a += settings.inner;  // jump to next row
-  End
-}
-
-
 template<typename Ptr>
 void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
   auto &settings = get_matrix_settings();
@@ -439,6 +367,13 @@ void matrix_mult_block(Ptr in_dst, Ptr in_a, Ptr in_b, Int in_offset) {
 
 namespace V3DLib {
 
+enum CallType {
+  CALL,
+  INTERPRET,
+  EMULATE
+};
+
+
 ///////////////////////////////////////////////////////////////////////////////
 // Class Matrix
 ///////////////////////////////////////////////////////////////////////////////
@@ -475,10 +410,22 @@ public:
 
   ResultArray &result() { return m_result; }
   BlockKernelType &kernel() { return *m_k; }
-  void compile()  { init_block(); }
+  void compile()  { init_block(CALL); }
   bool has_errors() const { return (m_k_first && m_k_first->has_errors()) || m_k->has_errors(); }
 
-  void multi_block(bool val) { m_multi_block = val; }
+  /**
+   * If set to true, force multiple kernel calls if possible.
+   *
+   * This option only actually does something for v3d if multiple blocks are used.
+   * Normally, multiple kernel calls are only used for vc4 when there are multiple blocks.
+   *
+   * This option allows multi kernel calls to be tested on v3d hardware, which should also just work.
+   */
+  BlockMatrix &force_multi_kernel_calls(bool val) {
+    m_force_multi_kernels_calls = val;
+    return *this;
+  }
+
 
   void setNumQPUs(int val) {
     if (m_k_first.get() != nullptr) m_k_first->setNumQPUs(val);
@@ -499,7 +446,7 @@ public:
   }
 
 
-  void num_blocks(int val) {
+  BlockMatrix &num_blocks(int val) {
     assert(DEFAULT_NUM_BLOCKS == val || 0 < val);
     if (val > 0) {
       assertq(val == 1 || val == 2, "Number of block matrices can only be 1 or 2" );
@@ -517,6 +464,8 @@ public:
     }
 
     m_num_blocks = val;
+
+    return *this;
   }
 
 
@@ -532,8 +481,8 @@ public:
    * 
    * Further splitting is possible, but this serves our purposes for now.
    */
-  void call() {
-    init_block();
+  void call(CallType call_type = CALL) {
+    init_block(call_type);
     assertq(!has_errors(), "Can not run Matrix::mult(), there are errors");
     assert(m_k.get() != nullptr);
 
@@ -543,80 +492,91 @@ public:
     }
     m_result.fill(zero);  // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
 
-    if (m_multi_block) {
-      //debug("multi block");
+    if (use_multi_kernel_calls(call_type)) {
+      debug("multi block");
       // This part required for vc4 hardware; see header of kernel matrix_mult_block().
       assert(m_k_first.get() != nullptr);
 
       // First call doesn't need to get the result values for addition; they are zero anyway
       load(m_k_first, 0);
-      m_k_first->call();
+      k_first_call(call_type);
+      debug(m_result.dump());
 
       if (num_blocks() == 2) {
-        //debug("Calling second block");
+        debug("Calling second block");
         auto &settings = kernels::get_matrix_settings();
         int offset = settings.width();
         load(m_k, offset);
-        m_k->call();
+        k_call(call_type);
       }
     } else {
-      // This part would also work for interpret() and emu()
       //debug("single block");
       load(m_k, 0);
-      m_k->call();
+      k_call(call_type);
     }
   }
 
 
 protected:
-  virtual void init_block() = 0;
+  bool m_force_multi_kernels_calls = false;
+
+  virtual void init_block(CallType call_type) = 0;
+  virtual void load(BlockKernelPtr &k, int offset) = 0;
+
+
+  bool use_multi_kernel_calls(CallType call_type) const {
+    if (call_type == CALL && !Platform::has_vc4()) {
+      return m_force_multi_kernels_calls;
+    }
+
+    return true;  // For vc4 hardware, interpreter and emulator
+  }
 
 
   /**
    * Prepare the block matrix multiplication
    */
   template<typename KernelType>  
-  void init_block_kernels(KernelType kernel) {
+  void init_block_kernels(KernelType kernel, CallType call_type) {
     auto &settings = kernels::get_matrix_settings();
-    settings.multi_block = m_multi_block;
+    //settings.multi_block = Parent::m_multi_block;
 
     if (m_k.get() != nullptr) {
       // Kernel already compiled. Don't recompile if nothing changed
-      if (settings.num_blocks() == num_blocks()) {
+      if (settings.num_blocks() == num_blocks()
+       && settings.use_multi_kernel_calls == use_multi_kernel_calls(call_type)) {
         //debug("Unchanged block");
         return;
       }
-      //debug("Recompiling block");
+      debug("Recompiling block");
     }
 
     settings.num_blocks(num_blocks());
+    settings.use_multi_kernel_calls = use_multi_kernel_calls(call_type);
     kernels::init_result_array(m_result);
-/*
-    if (num_blocks() ==2) {
-      debug("Doing 2 blocks");
+
+    if (num_blocks() != 1) {
+      using ::operator<<;  // C++ weirdness
+
+      std::string msg;
+      msg << "Doing " << num_blocks() << " blocks";
+      debug(msg);
     }
-*/
 
-    if (m_multi_block) {
-      settings.add_result = false;
-      m_k_first.reset(new BlockKernelType(V3DLib::compile(kernel)));
 
-      if (m_k_first->has_errors()) {
-        warning("compile failed of first kernel");
-        m_k.reset(nullptr);
-        return;
-      }
+    settings.add_result = false;
+    m_k_first.reset(new BlockKernelType(V3DLib::compile(kernel)));
+
+    if (m_k_first->has_errors()) {
+      warning("compile failed of first kernel");
+      m_k.reset(nullptr);
+      return;
     }
 
     settings.add_result = true;
     m_k.reset(new BlockKernelType(V3DLib::compile(kernel)));
   }
 
-protected:
-  bool m_multi_block = false;  // If true, use multiple kernel calls for block matrix mult.
-                               // Otherwise, combine the block matrix steps in a single kernel (v3d only) 
-
-  virtual void load(BlockKernelPtr &k, int offset) = 0;
 
 private:
   int m_num_blocks = DEFAULT_NUM_BLOCKS;
@@ -639,6 +599,28 @@ private:
     }
 
     return m_num_blocks;
+  }
+
+
+  void k_first_call(CallType call_type) {
+    assert(m_k_first);
+
+    switch(call_type) {
+      case CALL:      debug("Doing call on k_first");      m_k_first->call();      break;
+      case INTERPRET: debug("Doing interpret on k_first"); m_k_first->interpret(); break;
+      case EMULATE:   debug("Doing emulate on k_first");   m_k_first->emu();       break;
+    }
+  }
+
+
+  void k_call(CallType call_type) {
+    assert(m_k);
+
+    switch(call_type) {
+      case CALL:      debug("Doing call on k");      m_k->call();      break;
+      case INTERPRET: debug("Doing interpret on k"); m_k->interpret(); break;
+      case EMULATE:   debug("Doing emulate on k");   m_k->emu();       break;
+    }
   }
 };
 
@@ -663,11 +645,10 @@ public:
     k->load(&Parent::result(), &m_a, &m_b, offset);
   } 
 
-  void init_block() override {
+  void init_block(CallType call_type) override {
     auto &settings = kernels::get_matrix_settings();
-    settings.multi_block = Parent::m_multi_block;
-
-    Parent::init_block_kernels(kernels::matrix_mult_block<Ptr>);
+    settings.use_multi_kernel_calls = Parent::use_multi_kernel_calls(call_type); 
+    Parent::init_block_kernels(kernels::matrix_mult_block<Ptr>, call_type);
   }
 
 private:
@@ -698,11 +679,10 @@ public:
     k->load(&Parent::result(), &m_a, offset);
   } 
 
-  void init_block() override {
+  void init_block(CallType call_type) override {
     auto &settings = kernels::get_matrix_settings();
-    settings.multi_block = Parent::m_multi_block;
-
-    Parent::init_block_kernels(kernels::dft_kernel_block<Ptr>);
+    settings.use_multi_kernel_calls = Parent::use_multi_kernel_calls(call_type); 
+    Parent::init_block_kernels(kernels::dft_kernel_block<Ptr>, call_type);
   }
 
 private:

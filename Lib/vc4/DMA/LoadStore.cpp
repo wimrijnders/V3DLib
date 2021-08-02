@@ -183,39 +183,32 @@ Instr genWaitDMALoad(bool might_be_end = false) {
 Instr::List genSetupDMAStore(int numRows, IntExpr rowLen, int hor, Reg vpm_reg) {
   Instr::List ret;
 
-  auto rle    = rowLen.expr();
-  int  setup  = 0;
-  bool rl_lit = false;
+  auto rle   = rowLen.expr();
+  int  setup = 0;
 
   if (rle->tag() == Expr::INT_LIT) {
     setup = dmaSetupStoreCode(numRows, rle->intLit, hor);
-    rl_lit = true;
-  } else {
-    setup = dmaSetupStoreCode(numRows, 128, hor);  // rowLen == 128 is dummyto force zero in that field 
-  }
 
-  Reg rl_reg;
+    Reg tmp0 = freshReg();
+    Reg tmp1 = freshReg();
 
-  if (rle->tag() == Expr::VAR) {
-    rl_reg = rle->var();
-  } else if (!rl_lit) {
-  breakpoint
-    Var v = VarGen::fresh();
-    ret << varAssign(v, rle);
-    rl_reg = v;
-  }
-
-  if (rl_lit) {
-      Reg tmp0 = freshReg();
-      Reg tmp1 = freshReg();
-
-      ret << li(tmp0, setup)
-          << shl(tmp1, vpm_reg, 3)
-          << bor(WR_SETUP, tmp0, tmp1);
+    ret << li(tmp0, setup)
+        << shl(tmp1, vpm_reg, 3)
+        << bor(WR_SETUP, tmp0, tmp1);
 
     return ret;
   }
 
+  // At this point, VAR and ASSIGN are left for rle tag
+
+  setup = dmaSetupStoreCode(numRows, 128, hor);  // rowLen == 128 is dummy to force zero in that field 
+
+  Reg rl_reg;
+
+  Var v = VarGen::fresh();  // Need to copy for VAR as well, *otherwise* original value is changed!
+                            // (days of my life)
+  ret << varAssign(v, rle);
+  rl_reg = v;
 
   Reg tmp  = freshReg();
   Reg tmp0 = freshReg();
@@ -231,6 +224,7 @@ Instr::List genSetupDMAStore(int numRows, IntExpr rowLen, int hor, Reg vpm_reg) 
       << shl(rl_reg, rl_reg, 8)
       << bor(WR_SETUP, tmp, rl_reg);
 
+  ret.front().comment("genSetupDMAStore() with vpmAddr in register");
   return ret;
 }
 
@@ -253,11 +247,10 @@ Instr::List genSetupDMAStore(int numRows, IntExpr rowLen, int hor, Expr::Ptr e) 
       breakpoint
     }
 
-    ret <<  genSetupDMAStore(numRows, rowLen, hor, v);
+    ret << genSetupDMAStore(numRows, rowLen, hor, v);
     return ret;
   }
 
-  breakpoint
 
   int setup  = 0;
   int rl_lit = false;
@@ -269,12 +262,15 @@ Instr::List genSetupDMAStore(int numRows, IntExpr rowLen, int hor, Expr::Ptr e) 
     setup = dmaSetupStoreCode(numRows, rle->intLit, hor);
     rl_lit = true;
   } else {
-    setup = dmaSetupStoreCode(numRows, 128, hor);  // rowLen == 128 is dummyto force zero in that field 
+    breakpoint
+    setup = dmaSetupStoreCode(numRows, 128, hor);  // rowLen == 128 is dummy to force zero in that field 
   }
 
   if (rle->tag() == Expr::VAR) {
+    breakpoint
     rl_reg = rle->var();
   } else if (!rl_lit) {
+    breakpoint
     Var v = VarGen::fresh();
     ret << varAssign(v, rle);
     rl_reg = v;
@@ -290,6 +286,7 @@ Instr::List genSetupDMAStore(int numRows, IntExpr rowLen, int hor, Expr::Ptr e) 
     return ret;
   }
 
+  breakpoint
 
   Reg tmp  = freshReg();
   Reg tmp2 = freshReg();

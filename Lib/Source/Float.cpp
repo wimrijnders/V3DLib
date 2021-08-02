@@ -25,15 +25,33 @@ FloatExpr FloatExpr::operator-() { return (*this)*-1.0f; }
 // Class Float
 // ============================================================================
 
-Float::Float()               { assign_intern(); }
-Float::Float(FloatExpr e)    { assign_intern(e.expr()); }
-Float::Float(Deref<Float> d) { assign_intern(d.expr()); }
-Float::Float(Float const &x) { assign_intern(x.expr()); }
+/**
+ * Default ctor
+ *
+ * This is required for the creating of temp variables in expressions.
+ *
+ * There is an issue with initialization of variables without a value in the code, e.g.:
+ *
+ *     Float a;
+ *
+ * Variables need an explicit init, e.g.  '= 0', otherwise var will not be created and compilation fails.
+ * This is slightly bothersome when using it in templates where the var type is a template parameter,
+ * e.g. type could also be Complex.
+ *
+ * I have not found a resolution for this yet, but would love to fix it eventually.
+ */
+Float::Float() { assign_intern(); }
+
 
 Float::Float(float x) {
   auto a = std::make_shared<Expr>(x);
   assign_intern(a);
 }
+
+
+Float::Float(FloatExpr e)    { assign_intern(e.expr()); }
+Float::Float(Deref<Float> d) { assign_intern(d.expr()); }
+Float::Float(Float const &x) { assign_intern(x.expr()); }
 
 
 bool Float::passParam(IntList &uniforms, float val) {

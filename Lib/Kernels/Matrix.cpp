@@ -21,6 +21,7 @@ void matrix_settings::set(int in_rows, int in_inner, int in_columns) {
   inner         = in_inner;
   columns       = in_columns;
   add_result    = false;       // override after this call to explicitly set
+  use_multi_kernel_calls = false;
 
   m_num_blocks  = -1;
   block_rowsize = -1;
@@ -177,13 +178,12 @@ void matrix_mult_scalar(int N, float *dst, float *a, float *b) {
 void create_block_kernel(Int const &in_offset, std::function<void (Int const &offset)> f) {
   auto &settings = get_matrix_settings();
 
-  if (settings.multi_block) {
+  if (settings.use_multi_kernel_calls) {
     // Use a separate kernel for every offset
     f(in_offset);
   } else {
     // Use a single block for the offsets
-
-    // Offset param ignored here
+    // param in_offset ignored here
 
     // First call doesn't need to get the result values for addition; they are zero anyway
     settings.add_result = false;

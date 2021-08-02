@@ -176,12 +176,17 @@ void Liveness::compute_liveness(Instr::List &instrs) {
           also_set_used = (item.first_dst() < i);
 
           if (!also_set_used) {
+            //
             // Sanity check: in this case, we expect the variable to be in the condition assign block only
+            //
+            // Notably, this assertion fails for init of variables without an explicit init value.
+            // This can be extremely confusing, hence this comment.
+            //
             AssignCond assign_cond = instr.assign_cond();
             for (int j = item.first_usage(); j <= item.last_usage(); j++) {
               assertq((assign_cond == instrs[j].assign_cond())            // expected usage
                    || (instrs[j].is_always() && !instrs[j].is_branch()),  // Interim basic usage allowed (happens)
-                ""
+                "Expected variable to be in condition assign block only", true
               );
             }
           }
@@ -327,7 +332,6 @@ std::string Liveness::dump() {
  */
 void Liveness::optimize(Instr::List &instrs, int numVars) {
   assertq(count_skips(instrs) == 0, "optimize(): SKIPs detected in instruction list");
-
   compile_data.target_code_before_optimization = instrs.dump();
 
   //Timer t1("live compute");

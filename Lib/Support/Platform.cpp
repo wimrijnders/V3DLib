@@ -171,7 +171,6 @@ public:
   bool is_pi_platform;
   bool m_use_main_memory   = false;
   bool m_compiling_for_vc4 = true;
-  bool m_running_on_v3d    = false;
 
   std::string output() const;
 };

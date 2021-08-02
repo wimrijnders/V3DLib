@@ -504,7 +504,8 @@ void test_complex_matrix_multiplication(
   int num_qpus = 1,
   int num_blocks = 1,
   complex init_a = {1, 0},
-  complex init_b = {1, 0}
+  complex init_b = {1, 0},
+  CallType call_type = CALL
 ) {
   REQUIRE(rows > 0);
   REQUIRE(inner > 0);
@@ -518,26 +519,32 @@ void test_complex_matrix_multiplication(
   //
   // Test using decorator - this does not use num_blocks
   //
+  debug("Decorator");
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
-  k.pretty(false, "mult_complex.txt");
+  k.pretty(true, "mult_complex_vc4.txt");
   k.setNumQPUs(num_qpus);
   result.fill({-1.0f, -1.0f});
 
   k.load(&result, &a, &b);
-  k.call();
+
+  switch(call_type) {
+    case CALL:      k.call();      break;
+    case INTERPRET: k.interpret(); break;
+    case EMULATE:   k.emu();       break;
+  }
+
   INFO("num QPUs:" << num_qpus << ", num blocks: " << num_blocks);
-  //debug(result.dump());
   check_complex_matrix_multiplication(rows, inner, cols, result, init_a*init_b);
 
   //
   // Test using class Matrix
   //
-  //debug("Matrix");
+  debug("Matrix");
   Matrix m(a, b);
   //m.compile();  // Not really required, added to trigger debug statements for recompile
   m.setNumQPUs(num_qpus);
   m.num_blocks(num_blocks);
-  m.call();
+  m.call(call_type);
   check_complex_matrix_multiplication(rows, inner, cols, m.result(), init_a*init_b);
 }
 
@@ -763,8 +770,6 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
 
 
 TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
-//  Platform::use_main_memory(true);
-
   SUBCASE("Profile") {
     bool do_profiling = false;
     if (!do_profiling) return; 
@@ -784,6 +789,18 @@ TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
       //if (N > (992 >> 4)) break;
     }
   }
+}
 
-//  Platform::use_main_memory(false);
+
+TEST_CASE("Test matrix mult on emulator [matrix][emu]") {
+  Platform::use_main_memory(true);
+
+  // NOTES:
+  //   - Interpreter will not work, because VPM operations are not supported in it
+  //   - Multi-QPU not working yet on emulator, gives uncalculated results for most array elements
+  //     It works perfectly, though, when using CALL on v3d, so it's likely an emulator issue.
+  test_complex_matrix_multiplication(  2,  3*16,  2, 1, 1, {-1.0f, 2.0f}, { 1.0f, -1.0f }, EMULATE);
+  test_complex_matrix_multiplication(  2,  4*16,  5, 1, 2, {-1.0f, 2.0f}, { 1.0f, -1.0f }, EMULATE);
+
+  Platform::use_main_memory(false);
 }

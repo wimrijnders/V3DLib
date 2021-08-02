@@ -324,7 +324,7 @@ void assignToVar(CoreState* s, Vec cond, Var v, Vec x) {
     }
 
     default:
-      assertq(false, "assignToVar(): unhandled var-tag");
+      assertq(false, "assignToVar(): unhandled var-tag", true);
       break;
   }
 }

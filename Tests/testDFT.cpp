@@ -307,9 +307,10 @@ bool compare_dfts(int Dim, bool do_profiling) {
     Timer timer1;
 
     DFT k(input_float);
-    k.num_blocks(2);
-    k.multi_block(true);
-    k.compile();
+    k.num_blocks(2)
+     .force_multi_kernel_calls(true)
+     .compile();
+
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
