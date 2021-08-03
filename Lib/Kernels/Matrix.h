@@ -115,7 +115,7 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
     a_init = me();
     a_inc  = numQPUs();
   } else {
-    debug("matrix_mult iterating over columns");
+    //debug("matrix_mult iterating over columns");
     using functions::operator/;
 
     Int cols = Int(settings.columns);
@@ -155,6 +155,7 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
         pre_write(dst_local, result, settings.add_result);
       End
     End
+
 
     If (j != 0)
       pre_write(dst_local, result, settings.add_result, j);
@@ -248,11 +249,11 @@ void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
   Int b_init = 0; 
   Int b_count = settings.columns;
   if (settings.rows >= settings.columns) {
-    //debug("matrix_mult QPUs iterating over rows");
+    //debug("dft iterating over rows");
     a_init = me();
     a_inc  = numQPUs();
   } else {
-    debug("matrix_mult iterating over columns");
+    //debug("dft iterating over columns");
     using functions::operator/;
 
     Int cols = Int(settings.columns);
@@ -427,23 +428,8 @@ public:
   }
 
 
-  void setNumQPUs(int val) {
-    if (m_k_first.get() != nullptr) m_k_first->setNumQPUs(val);
-    if (m_k.get() != nullptr) m_k->setNumQPUs(val);
-  }
-
-
-  int numQPUs() const {
-    int val1 = -1;
-    int val2 = -1;
-    if (m_k_first.get() != nullptr) val1 = m_k_first->numQPUs();
-    if (m_k.get() != nullptr)       val2 = m_k->numQPUs();
-
-    assert(val1 != -1 || val2 != -1);
-    if (val1 != -1 && val2 != -1) assert(val1 = val2);
-
-    return (val1 != -1)? val1: val2;
-  }
+  void setNumQPUs(int val) { m_num_qpus = val; }
+  int  numQPUs() const { return m_num_qpus; }
 
 
   BlockMatrix &num_blocks(int val) {
@@ -492,18 +478,21 @@ public:
     }
     m_result.fill(zero);  // Apparently necessary; 1-ones mult -> final element is + 1 for some reason
 
+    if (m_k_first.get() != nullptr) m_k_first->setNumQPUs(m_num_qpus);
+    if (m_k.get() != nullptr) m_k->setNumQPUs(m_num_qpus);
+
     if (use_multi_kernel_calls(call_type)) {
-      debug("multi block");
+      //debug("multi kernel calls");
       // This part required for vc4 hardware; see header of kernel matrix_mult_block().
       assert(m_k_first.get() != nullptr);
 
       // First call doesn't need to get the result values for addition; they are zero anyway
       load(m_k_first, 0);
       k_first_call(call_type);
-      debug(m_result.dump());
+      //debug(m_result.dump());
 
       if (num_blocks() == 2) {
-        debug("Calling second block");
+        //debug("Calling second block");
         auto &settings = kernels::get_matrix_settings();
         int offset = settings.width();
         load(m_k, offset);
@@ -518,6 +507,7 @@ public:
 
 
 protected:
+  int m_num_qpus = 1;
   bool m_force_multi_kernels_calls = false;
 
   virtual void init_block(CallType call_type) = 0;
@@ -555,6 +545,7 @@ protected:
     settings.use_multi_kernel_calls = use_multi_kernel_calls(call_type);
     kernels::init_result_array(m_result);
 
+/*
     if (num_blocks() != 1) {
       using ::operator<<;  // C++ weirdness
 
@@ -562,6 +553,7 @@ protected:
       msg << "Doing " << num_blocks() << " blocks";
       debug(msg);
     }
+*/
 
 
     settings.add_result = false;
@@ -606,7 +598,7 @@ private:
     assert(m_k_first);
 
     switch(call_type) {
-      case CALL:      debug("Doing call on k_first");      m_k_first->call();      break;
+      case CALL:      /* debug("Doing call on k_first"); */      m_k_first->call();      break;
       case INTERPRET: debug("Doing interpret on k_first"); m_k_first->interpret(); break;
       case EMULATE:   debug("Doing emulate on k_first");   m_k_first->emu();       break;
     }
@@ -617,7 +609,7 @@ private:
     assert(m_k);
 
     switch(call_type) {
-      case CALL:      debug("Doing call on k");      m_k->call();      break;
+      case CALL:      /* debug("Doing call on k"); */      m_k->call();      break;
       case INTERPRET: debug("Doing interpret on k"); m_k->interpret(); break;
       case EMULATE:   debug("Doing emulate on k");   m_k->emu();       break;
     }

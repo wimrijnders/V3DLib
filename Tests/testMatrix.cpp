@@ -519,7 +519,7 @@ void test_complex_matrix_multiplication(
   //
   // Test using decorator - this does not use num_blocks
   //
-  debug("Decorator");
+  INFO("Decorator");
   auto k = compile(kernels::matrix_mult_decorator(a, b, result));
   k.pretty(true, "mult_complex_vc4.txt");
   k.setNumQPUs(num_qpus);
@@ -539,7 +539,7 @@ void test_complex_matrix_multiplication(
   //
   // Test using class Matrix
   //
-  debug("Matrix");
+  INFO("Matrix");
   Matrix m(a, b);
   //m.compile();  // Not really required, added to trigger debug statements for recompile
   m.setNumQPUs(num_qpus);
@@ -797,10 +797,9 @@ TEST_CASE("Test matrix mult on emulator [matrix][emu]") {
 
   // NOTES:
   //   - Interpreter will not work, because VPM operations are not supported in it
-  //   - Multi-QPU not working yet on emulator, gives uncalculated results for most array elements
-  //     It works perfectly, though, when using CALL on v3d, so it's likely an emulator issue.
-  test_complex_matrix_multiplication(  2,  3*16,  2, 1, 1, {-1.0f, 2.0f}, { 1.0f, -1.0f }, EMULATE);
-  test_complex_matrix_multiplication(  2,  4*16,  5, 1, 2, {-1.0f, 2.0f}, { 1.0f, -1.0f }, EMULATE);
+  test_complex_matrix_multiplication(  2,  3*16,  2,  1, 1, {-1.0f, 2.0f}, { 1.0f, -1.0f }, EMULATE);
+  test_complex_matrix_multiplication(  2,  4*16,  5,  1, 2, {-1.0f, 2.0f}, { 1.0f, -1.0f }, EMULATE);
+  test_complex_matrix_multiplication(  3,  4*16,  17, 7, 1, {-1.0f, 2.0f}, { 1.0f, -1.0f }, EMULATE);
 
   Platform::use_main_memory(false);
 }

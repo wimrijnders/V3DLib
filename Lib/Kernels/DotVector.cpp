@@ -112,13 +112,14 @@ void pre_write(Float::Ptr &dst, Float &src, bool add_result, Int const &j) {
       tmp = src;
     }
 
+    dmaWaitWrite();
+
     vpmSetupWrite(HORIZ, me());
     vpmPut(tmp);
 
     dmaSetWriteStride((16 - j)*4);
-    dmaSetupWrite(HORIZ, 1, 4*me(), j);
+    dmaSetupWrite(HORIZ, 1, 16*me(), j);
     dmaStartWrite(dst);
-    dmaWaitWrite();   
 
     dst.inc();
   } else {

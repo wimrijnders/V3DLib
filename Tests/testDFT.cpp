@@ -216,7 +216,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
     std::string label = "complex mult";
     Timer timer1;
     auto k = compile(kernels::dft_decorator(input, result_complex), for_platform);
-    k.pretty(false, "dft_complex.txt");
+    //k.pretty(false, "dft_complex.txt");
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
