@@ -771,7 +771,7 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
 
 TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
   SUBCASE("Profile") {
-    bool do_profiling = false;
+    bool do_profiling = true;
     if (!do_profiling) return; 
 
     //LibSettings::heap_size(64 << 20);  // works! :-)

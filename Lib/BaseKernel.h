@@ -82,6 +82,7 @@ public:
   int v3d_kernel_size() const;
   bool has_errors() const;
   std::string get_errors() const;
+  std::string info() const;
 
 protected:
   int m_numQPUs = 1;               // Number of QPUs to run on

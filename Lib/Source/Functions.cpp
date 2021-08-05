@@ -143,52 +143,53 @@ IntExpr topmost_bit(IntExpr in_a) {
 
 
 /**
- * Uses Long division
+ * Long integer division, returning quotient and remainder
+ *
+ * There is no support for hardware integer division on the VideoCores, this is an implementation for
+ * when you really need it (costly).
+ *
  * Source: https://en.wikipedia.org/wiki/Division_algorithm#Integer_division_(unsigned)_with_remainder
  */
-IntExpr operator/(IntExpr in_a, IntExpr in_b) {
-  return create_function_snippet([in_a, in_b] {
-    Int N = in_a;  comment("Start long integer divide");
-    Int D = in_b;
+void integer_division(Int &Q, Int &R, IntExpr in_a, IntExpr in_b) {
+  Int N = in_a;  comment("Start long integer division");
+  Int D = in_b;
 
-    Int sign = 1;
+  Int sign = 1;
 
-    Where ((N >= 0) != (D >= 0))       // Determine sign
-      sign = -1;
-    End
+  Where ((N >= 0) != (D >= 0))       // Determine sign
+    sign = -1;
+  End
  
-    N = abs(N);
-    D = abs(D);
+  N = abs(N);
+  D = abs(D);
 
-    Int Q = 0;                         // Initialize quotient and remainder to zero
+  Q = 0;                             // Initialize quotient and remainder to zero
+  R = 0;
 
-    IntExpr top_bit = topmost_bit(N);  // Find first non-zero bit
+  IntExpr top_bit = topmost_bit(N);  // Find first non-zero bit
 
-    Int R = 0;
 
-    For (Int i = 30, i >= 0, i--)
-      Where (D == 0)
-        Q = MAX_INT;                   // Indicates infinity
-      Else
-        Where (top_bit >= i)
-          R = R << 1;                  // Left-shift R by 1 bit (lsb == 0)
-          R |= (N >> i) & 1;           // Set the least-significant bit of R equal to bit i of the numerator
-          Where (R >= D)
-            R -= D;
-            Q |= (1 << i);
-          End
+  For (Int i = 30, i >= 0, i--)
+    Where (D == 0)
+      Q = MAX_INT;                   // Indicates infinity
+    Else
+      Where (top_bit >= i)
+        R = R << 1;                  // Left-shift R by 1 bit (lsb == 0)
+        R |= (N >> i) & 1;           // Set the least-significant bit of R equal to bit i of the numerator
+        Where (R >= D)
+          R -= D;
+          Q |= (1 << i);
         End
       End
     End
+  End
 
-    Where (sign == -1)
-      Q = two_complement(Q);
-    End
+  Where (sign == -1)
+    Q = two_complement(Q);
+  End
  
-    comment("End integer divide");
-
-    Return(Q);
-  });
+  comment("End long integer division");  // For some reason, phantom instances of this comment can pop up elsewhere
+                                         // in code dumps. Not bothering with correcting this.
 }
 
 

@@ -159,11 +159,33 @@ IntExpr shr(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(USHR, INT32),
 IntExpr ror(IntExpr a, IntExpr b)        { return mkIntApply(a, Op(ROR,  INT32), b); }
 
 
+/**
+ * Return division of values
+ *
+ * Integer division is costly; should you need both quotient and remainder,
+ * It is better to call integer_division() directly.
+ */
+IntExpr operator/(IntExpr a, IntExpr b) {
+  // b == 0 a bad idea, assert() won't work for testing
+  using functions::integer_division;
+  Int quotient;
+  Int remainder;
+  integer_division(quotient, remainder, a, b);
+  return quotient;
+}
+/**
+ * Return remainder of values
+ *
+ * Integer division is costly; should you need both quotient and remainder,
+ * It is better to call integer_division() directly.
+ */
 IntExpr operator%(IntExpr a, IntExpr b) {
   // b == 0 a bad idea, assert() won't work for testing
-  using functions::operator/;
-
-  return a - b*(a/b);
+  using functions::integer_division;
+  Int quotient;
+  Int remainder;
+  integer_division(quotient, remainder, a, b);
+  return remainder;
 }
 
 }  // namespace V3DLib

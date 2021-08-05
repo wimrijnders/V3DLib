@@ -78,49 +78,59 @@ void init_result_array(Array2D &result) {
 
 
 /**
- * Multiply two matrixes
+ * Loop for Matrix mult and DFT kernels.
  *
- * Does a matrix multiplication of `a` and `b` and puts the result in `dst`.
+ * The loop is identical for both cases. The only difference is how the dotvector is calculated,
+ * which in the code is a one-liner.
  *
- * Input matrix `b` needs to be in transposed form before usage.
- * Template parameters N is dimension of square matrix in blocks of 16 values.
+ * Defined as a template so that float and complex input/output is possible.
+ * Not all combinations of input/output type are possible.
  *
  * ----------------------------------------------------------------------------
  * Optimizations
  * =============
  *
  * - Load one entire row of a into the QPU for fetching one single time
- * - Use prefetching on the TMU
- * - unroll the internal loop (tried it but does not help, not added)
+ * - Use prefetching for TMU reads
+ * - unroll the internal loop (tried it but does not help, discarded)
  * - Use all QPU's
- * - All QPU's iterate over b together -> increase cache hits
+ * - All QPU's iterate over b together -> increase cache hits (when iterating over rows)
  */
-template<typename Ptr>
-void matrix_mult(Ptr dst, Ptr a, Ptr b) {
-  //debug("matrix_mult kernel");
+template<
+ typename DstPtr,
+ typename Ptr,
+ typename T,
+ typename DotVecType
+>
+void blockmatrix_loop(
+  DstPtr dst,
+  Ptr a,
+  std::function<void(DotVecType &dot_vector, Int &, T &)> core
+) {
   auto &settings = get_matrix_settings();
-
   assert(settings.inner > 0 && (settings.inner % 16 == 0));
 
-  using T          = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, Float, Complex>::type;
-  using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
-  //debug(settings.dump());
-
+  //
+  // Initialize loops
+  //
+  // This determines if multi-QPU iteration should go over a-rows or b-columns,
+  // and adjusts loop parameters accordingly.
+  //
   Int a_init = 0; 
   Int a_inc = 1;
   Int b_init = 0; 
   Int b_count = settings.columns;
   if (settings.rows >= settings.columns) {
-    //debug("matrix_mult QPUs iterating over rows");
+    //debug("blockmatrix_loop iterating over rows");
     a_init = me();
     a_inc  = numQPUs();
   } else {
-    //debug("matrix_mult iterating over columns");
-    using functions::operator/;
+    //debug("blockmatrix_loop iterating over columns");
+    using functions::integer_division;
 
-    Int cols = Int(settings.columns);
-    Int cols_div  = settings.columns / numQPUs();   // TODO inefficient! Make single operation for div and rest?
-    Int cols_rest = cols % numQPUs();
+    Int cols_div;
+    Int cols_rest;
+    integer_division(cols_div, cols_rest, settings.columns, numQPUs());
 
     If (me() < cols_rest)
       b_init  = me()*(cols_div + 1);
@@ -131,7 +141,11 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
     End
   }
 
-  DotVecType vec(settings.width()/16);
+
+  //
+  // The actual kernel loop
+  //
+  DotVecType vec(settings.width() >> 4);
 
   T result = 0;  // Explicit init required, for T == Complex '0' is interpreted as phase
 
@@ -139,28 +153,47 @@ void matrix_mult(Ptr dst, Ptr a, Ptr b) {
     vec.load(a + a_index*settings.inner);
 
     Int bit_count = 0;
-    Int j = 0;
-    Ptr dst_local = dst + a_index*settings.cols_result() + b_init;
+    DstPtr dst_local = dst + a_index*settings.cols_result() + b_init;
+
     For (Int b_index = b_init,  b_index < b_count, b_index += 1)
-      Ptr b_local = b + b_index*settings.inner;
-  
-      T tmp;
-      vec.dot_product(b_local, tmp);
-      result.set_at(bit_count & 0xf, tmp);
+      T tmp = 0;
+      core(vec, b_index, tmp);
+      result.set_at(bit_count, tmp);
 
-      bit_count++;
-      j = bit_count & 0xf;
+      bit_count = (bit_count + 1) & 0xf;
 
-      If (j == 0)
+      If (bit_count == 0)
         pre_write(dst_local, result, settings.add_result);
       End
     End
 
-
-    If (j != 0)
-      pre_write(dst_local, result, settings.add_result, j);
+    If (bit_count != 0)
+      pre_write(dst_local, result, settings.add_result, bit_count);
     End
   End
+}
+
+
+/**
+ * Multiply two matrixes
+ *
+ * Does a matrix multiplication of `a` and `b` and puts the result in `dst`.
+ *
+ * Input matrix `b` needs to be in transposed form before usage.
+ * Template parameters N is dimension of square matrix in blocks of 16 values.
+ */
+template<
+  typename Ptr,
+  typename T = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, Float, Complex>::type
+>
+void matrix_mult(Ptr dst, Ptr a, Ptr b) {
+  using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
+  auto &settings = get_matrix_settings();
+
+  blockmatrix_loop<Ptr, Ptr, T, DotVecType>(dst, a, [&settings, &b] (DotVecType &dot_vector, Int &b_index, T &dst) {
+    Ptr b_local = b + b_index*settings.inner;
+    dot_vector.dot_product(b_local, dst);
+  });
 }
 
 
@@ -229,74 +262,23 @@ inline auto matrix_mult_decorator(Array2D &a, Array2D &b, Array2D &result) -> de
 // DFT
 ///////////////////////////////////////////////////////////////////////////////
 
+
+
 /**
- * Defined as a template so that complex input is possible.
- * This is useful if the reverse DFT is ever needed.
+ * DFT kernel.
  *
- * Tried moving local vars out of the loops to avoid 'register allocation failed', didn't work 
+ * It should be possible to use this for reverse DFT as well, if needed.
+ *
+ * Aaargh! These templates! My eyes, they burn!
  */
 template<typename Ptr>
 void dft_kernel_intern(Complex::Ptr dst, Ptr a, Int const &offset) {
+  using  DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
   auto &settings = get_matrix_settings();
 
-  assert(settings.inner > 0 && (settings.inner % 16 == 0));
-  assert(settings.columns > 0 && (settings.columns % 16 == 0));
-
-  using DotVecType = typename std::conditional<std::is_same<Ptr, Float::Ptr>::value, DotVector, ComplexDotVector>::type;
-
-  Int a_init = 0; 
-  Int a_inc = 1;
-  Int b_init = 0; 
-  Int b_count = settings.columns;
-  if (settings.rows >= settings.columns) {
-    //debug("dft iterating over rows");
-    a_init = me();
-    a_inc  = numQPUs();
-  } else {
-    //debug("dft iterating over columns");
-    using functions::operator/;
-
-    Int cols = Int(settings.columns);
-    Int cols_div  = settings.columns / numQPUs();   // TODO inefficient! Make single operation for div and rest?
-    Int cols_rest = cols % numQPUs();
-
-    If (me() < cols_rest)
-      b_init  = me()*(cols_div + 1);
-      b_count = b_init + (cols_div + 1);
-    Else
-      b_init  = cols_rest + me()*cols_div;
-      b_count = b_init + cols_div;
-    End
-  }
-
-  DotVecType vec(settings.width()/16);
-
-  Complex result(0,0);  // init required! Otherwise, var not added here in target lang
-                        // This also applies to other local variables
-                        // It's sort of a bug, but I'll live with it for now
-                        // TODO examine in due time
-
-  For (Int a_index = a_init, a_index < settings.rows, a_index += a_inc)
-    vec.load(a + a_index*settings.inner);
-
-    Int bit_count = 0;
-    Complex::Ptr dst_local = dst + a_index*settings.cols_result() + b_init;
-    For (Int b_index = b_init,  b_index < b_count, b_index += 1)
-      Complex tmp(0,0);
-      vec.dft_dot_product(b_index, tmp, settings.inner, offset);
-      result.set_at(bit_count & 0xf, tmp);
-
-      bit_count++;
-
-      If (bit_count > 0 && (bit_count & 0xf) == 0)
-        pre_write(dst_local, result, settings.add_result);
-      End
-    End
-
-    If ((bit_count & 0xf) != 0)
-      pre_write(dst_local, result, settings.add_result, bit_count & 0xf);
-    End
-  End
+  blockmatrix_loop<Complex::Ptr, Ptr, Complex, DotVecType>(dst, a, [&settings, &offset] (DotVecType &dot_vector, Int &b_index, Complex &dst ) {
+    dot_vector.dft_dot_product(b_index, dst, settings.inner, offset);
+  });
 }
 
 
@@ -503,6 +485,32 @@ public:
       load(m_k, 0);
       k_call(call_type);
     }
+  }
+
+
+  std::string info() const {
+    using ::operator<<;  // C++ weirdness
+
+    std::string ret;
+
+    ret << "Num blocks       : " << m_num_blocks  << "\n"
+        << "Num QPUs         : " << m_num_qpus    << "\n"
+        << "Kernel calls     : " << (use_multi_kernel_calls(CALL)?"multi":"single") << "\n"
+        << "Force multi-calls: " << (m_force_multi_kernels_calls?"true":"false") << "\n";
+
+    if (m_k_first) {
+      ret << "First kernel:\n" << m_k_first->info();
+    } else {
+      ret << "First kernel: not compiled\n" ;
+    }
+
+    if (m_k) {
+      ret << "Block kernel:\n" << m_k->info();
+    } else {
+      ret << "Block kernel: not compiled\n" ;
+    }
+
+    return ret;
   }
 
 

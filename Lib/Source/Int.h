@@ -81,6 +81,7 @@ IntExpr max(IntExpr a, IntExpr b);
 IntExpr shr(IntExpr a, IntExpr b);
 IntExpr ror(IntExpr a, IntExpr b);
 
+IntExpr operator/(IntExpr a, IntExpr b);
 IntExpr operator%(IntExpr a, IntExpr b);
 
 }  // namespace V3DLib

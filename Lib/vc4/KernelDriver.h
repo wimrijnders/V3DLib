@@ -16,6 +16,7 @@ public:
   KernelDriver(KernelDriver &&k) = default;
 
   void encode() override;
+  int kernel_size() const { return (int) code.size()/2; }
 
 private:
   Code qpuCodeMem;     // Memory region for QPU code and parameters

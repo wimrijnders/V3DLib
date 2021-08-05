@@ -268,6 +268,8 @@ bool compare_dfts(int Dim, bool do_profiling) {
         k.call();
       });
 
+      debug(k.info());
+
       if (!do_profiling) {
         INFO("Comparing " << label << " with float");
         INFO(k.result().dump());
@@ -498,7 +500,7 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
       while (can_continue) {
         can_continue = compare_dfts(2*16*N, true);  // 2* for block kernels, to avoid width restrictions
         N += Step;
-        if (N > 6*Step) break;  // Comment this out for full profiling
+        if (N > 4*Step) break;  // Comment this out for full profiling
       }
     }
   }

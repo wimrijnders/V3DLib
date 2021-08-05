@@ -1265,3 +1265,36 @@ TEST_CASE("Test sin/cos instructions [dsl][sincos]") {
     REQUIRE(abs(result[2*N + i] + result[3*N + i]) < neg_precision);
   }
 }
+
+
+void int_div_kernel(Int::Ptr quotient, Int::Ptr remainder, Int a, Int b) {
+  *quotient  = a / b;
+  *remainder = a % b;
+}
+
+TEST_CASE("Test integer division and remainder [dsl][intdiv]") {
+  int const MAX_INT = 2147483647;  // inicates infinity
+
+  Int::Array quotient(16);
+  Int::Array remainder(16);
+
+  auto k = compile(int_div_kernel);
+
+  auto test = [&k, &quotient, &remainder] (int a, int b, int quotient_expected, int remainder_expected) {
+    k.load(&quotient, &remainder, a, b).call();
+    INFO(quotient.dump());
+    INFO(remainder.dump());
+    REQUIRE(quotient[0]  == quotient_expected);
+    REQUIRE(remainder[0] == remainder_expected);
+  };
+
+  test( 22,   7,   3, 1);
+  test(-22,   7,  -3, 1);
+  test( 22,  -7,  -3, 1);
+  test( 22,   5,   4, 2);
+  test(128,   1, 128, 0);
+  test(  1, 128,   0, 1);
+  test( 33,  33,   1, 0);
+  test(  0,   1,   0, 0);
+  test( 32,   0,   MAX_INT, 0);
+}

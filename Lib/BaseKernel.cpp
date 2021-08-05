@@ -181,6 +181,25 @@ std::string BaseKernel::get_errors() const {
 }
 
 
+std::string BaseKernel::info() const {
+  std::string ret;
+
+  if (has_vc4()) {
+    ret << "  vc4 kernel: " << m_vc4_driver->kernel_size() << " instructions\n";
+  } else {
+    ret << "  vc4 kernel: not present\n";
+  }
+
+  if (has_v3d()) {
+    ret << "  v3d kernel: " << m_v3d_driver->kernel_size() << " instructions\n";
+  } else {
+    ret << "  v3d kernel: not present\n";
+  }
+
+  return ret;
+}
+
+
 int BaseKernel::v3d_kernel_size() const {
   assert(m_v3d_driver.get() != nullptr);
   return m_v3d_driver->kernel_size();
