@@ -44,6 +44,7 @@ void check_result1(cx const *expected, Complex::Array2D const &result, int Dim, 
 void check_result2(cx const *expected, Complex::Array const &result, int Dim, float precision) {
   REQUIRE(precision > 0.0f);
   INFO("Max diff: " << max_mag_diff(expected, result) << ", " << "used precision: " << precision);
+
   for (int i = 0; i < Dim; ++i) {
     float diff = (float) abs(expected[i] - result[i].to_complex());
     INFO("diff " << i << ": " << diff);
@@ -943,6 +944,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
   }
 
   int last_s = -1;
+  bool show = false;
 
   for (int i = 0; i < (int) fft_context.vectors16.size(); i++) {
     auto &item = fft_context.vectors16[i];
@@ -954,7 +956,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     int same_count        = fft_context.same_index_count(i);
     int same_count_skipjs = fft_context.same_index_count(i, true);  // Always same per s for given log2n
 
-    {
+    if (show) {
       std::string msg;
       msg << "s: " << item.s << ", j: " << item.j << ", k: " << item.k_count
           << ", step: " << item.step
@@ -970,7 +972,7 @@ void fft_kernel(Complex::Ptr b, Complex::Ptr devnull, Int::Ptr signal) {
     Int j_start = 0;
 
     int k_length = same_count/fft_context.num_qpus;
-    {
+    if (show) {
       std::string msg;
       msg << "k_length: " << k_length;
       debug(msg);
@@ -1131,27 +1133,12 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     }
   };
 
-  float precision = 0.0f;
 
   //
   // Precision improved something awesome due to adding phases instead of multiplying resulting sin/cos
-  // in FFT calculation
+  // in FFT calculation. Following catch-all is for the worst possible case, i.e. vc4. 
   //
-  auto set_precision = [&precision] (int log2n) {
-    precision = 1.5e-4f;  // for vc4
- /*
-    // The higher log2n, the more divergence of FFT results with scalar
-    if (log2n <= 8) {
-      precision = 8.0e-5f;
-    } else if (log2n <= 9) {
-      precision = 5.0e-4f;
-    } else if (log2n <= 11) {
-      precision = 5.0e-3f;
-    } else {  // Tested for log2n = 12 
-      precision = 3e-2f;  // Pretty crappy precision here
-    }
-  */
-  };
+  float const precision = 1.5e-4f;  // Value adequate for vc4
 
 
   SUBCASE("Compare FFT and DFT output") {
@@ -1168,7 +1155,6 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     int log2n = 10; //16;
 
     int Dim = 1 << log2n;
-    set_precision(log2n);
     REQUIRE(precision > 0.0f);
 
     int size = Dim;
@@ -1196,9 +1182,9 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
         a_scalar[c] = cx(a[c], 0.0f);
       }
 
-      Timer timer1("scalar FFT run time");
+      //Timer timer1("scalar FFT run time");
       fft(a_scalar, scalar_result, log2n);
-      timer1.end();
+      //timer1.end();
       //scalar_dump(scalar_result, Dim);
     }
 
@@ -1216,8 +1202,8 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
       auto k = compile(kernels::dft_decorator(a, result_dft), V3D);
       k.pretty(false, "obj/test/dft_compare_v3d.txt");
       timer1.end();
-      std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
-      std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
+      //std::cout << "DFT kernel size: " << k.v3d_kernel_size() << std::endl;
+      //std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
 
       Timer timer2("DFT run time");
       k.load(&result_dft, &a);
@@ -1240,27 +1226,20 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
       fft_context.init(log2n);
 
-      Timer timer1("FFT compile time");
+      //Timer timer1("FFT compile time");
       fft_context.num_qpus = 8;
       auto k = compile(fft_kernel, V3D);
       k.pretty(false, "./obj/test/fft_v3d.txt", true);
       k.dump_compile_data(false, "./obj/test/fft_dump_v3d.txt");
-      timer1.end();
-      std::cout << "FFT kernel size: " << k.v3d_kernel_size() << std::endl;
-      std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
+      //timer1.end();
+      //std::cout << "FFT kernel size: " << k.v3d_kernel_size() << std::endl;
+      //std::cout << "combined " << compile_data.num_instructions_combined << " instructions" << std::endl;
 
-      Timer timer2("FFT run time");
+      //Timer timer2("FFT run time");
       k.setNumQPUs(fft_context.num_qpus);
       k.load(&result_fft, &devnull, &signal);
       k.call();
-      timer2.end();
-
-      {
-        std::string msg;
-        msg << "Max diff: " << max_mag_diff(scalar_result, result_fft) << ", "
-            << "used precision: " << precision;
-        debug(msg);
-      }
+      //timer2.end();
 
       INFO("comparing FFT with scalar");
       check_result2(scalar_result, result_fft, Dim, precision);

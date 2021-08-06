@@ -607,8 +607,8 @@ private:
 
     switch(call_type) {
       case CALL:      /* debug("Doing call on k_first"); */      m_k_first->call();      break;
-      case INTERPRET: debug("Doing interpret on k_first"); m_k_first->interpret(); break;
-      case EMULATE:   debug("Doing emulate on k_first");   m_k_first->emu();       break;
+      case INTERPRET: debug("Doing interpret on k_first");       m_k_first->interpret(); break;  // Doesn't work, not expecting it to be called
+      case EMULATE:   /* debug("Doing emulate on k_first"); */   m_k_first->emu();       break;
     }
   }
 
@@ -618,8 +618,8 @@ private:
 
     switch(call_type) {
       case CALL:      /* debug("Doing call on k"); */      m_k->call();      break;
-      case INTERPRET: debug("Doing interpret on k"); m_k->interpret(); break;
-      case EMULATE:   debug("Doing emulate on k");   m_k->emu();       break;
+      case INTERPRET: debug("Doing interpret on k");       m_k->interpret(); break; // Doesn't work, not expecting it to be called
+      case EMULATE:   /* debug("Doing emulate on k"); */   m_k->emu();       break;
     }
   }
 };

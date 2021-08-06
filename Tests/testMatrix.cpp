@@ -600,7 +600,7 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
     copy_array(a.re(), scalar);
     a.im().fill(0.0f);
     {
-      Timer("Real only", true);
+      //Timer("Real only", true);
       k.call();
     }
     compare_arrays(result.re(), scalar_result);
@@ -613,7 +613,7 @@ TEST_CASE("Test complex matrix algebra with varying sizes [matrix][complex]") {
     copy_array(a.im(), scalar);
     a.re().fill(0.0f);
     {
-      Timer("Im only", true);
+      //Timer("Im only", true);
       k.call();
     }
 
@@ -773,7 +773,7 @@ TEST_CASE("Test block matrix multiplication [matrix][block]") {
 
 TEST_CASE("Profile block matrix multiplication [matrix][block][profile]") {
   SUBCASE("Profile") {
-    bool do_profiling = true;
+    bool do_profiling = false;
     if (!do_profiling) return; 
 
     //LibSettings::heap_size(64 << 20);  // works! :-)
