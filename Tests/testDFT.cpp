@@ -156,7 +156,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
 
   // Prepare DFT matrix
   Complex::Array2D dft_matrix(Dim);
-  create_dft_matrix(dft_matrix);
+  create_dft_matrix(dft_matrix, true);  // high precision for vc4, otherwise cumulative error really bad
 
   Complex::Array2D result_mult;  // Will be Dimx1
   Complex::Array2D result_complex;
@@ -166,7 +166,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
   // The goal is to make it easy to enable/disable isub-tests; this encompassing test is real heavy
   enum {
     FLOAT_MULT      = 1,         // Tests using DFT decorators
-    COMPLEX_MULT    = 2,
+    COMPLEX_DFT     = 2,
     FLOAT_DFT       = 4,
     FLOAT_DFT_CLASS = 8,         // Tests using DFT class
     FLOAT_DFT_CLASS_BLOCKS = 16,
@@ -177,10 +177,9 @@ bool compare_dfts(int Dim, bool do_profiling) {
   //
   // Run the kernels
   //
-  //int const run_kernels = 31;  // bit field specifying which kernels to run 
   int const run_kernels =     // bit field specifying which kernels to run 
       FLOAT_MULT              // Decorator calls
-    + COMPLEX_MULT
+    + COMPLEX_DFT
     + FLOAT_DFT               // DFT class calls
     + FLOAT_DFT_CLASS
     + FLOAT_DFT_CLASS_BLOCKS
@@ -212,29 +211,48 @@ bool compare_dfts(int Dim, bool do_profiling) {
     }
   }
 
-  if (run_kernels & COMPLEX_MULT) {
-    std::string label = "complex mult";
+  //
+  // Use high-precision sin/cos in kernel creation, otherwise the cumulative error is really really bad for vc4.
+  // Even with this, the error is bad.
+  //
+  // v3d does a much better job at it, even low precision sin/cos is then acceptable.
+  // The difference here is that vc4 round downward in float mult, and v3d uses the same rounding scheme as the CPU.
+  // The DFT uses a shitton of float mults and you really notice the effect.
+  //
+  // As a special note, all DFT calls, including via the DFT class have pretty much the same output, since they
+  // all use the same kernel internally and thus have the same cumulative error.
+  // The difference becomes apparent when comparing DFT agains mult (first option tested), which uses sin/cos
+  // values precalculated on the CPU.
+  //
+  bool prev_precision = LibSettings::use_high_precision_sincos();
+  LibSettings::use_high_precision_sincos(true);
+
+  if (run_kernels & COMPLEX_DFT) {
+    std::string label = "dft complex";
+
     Timer timer1;
     auto k = compile(kernels::dft_decorator(input, result_complex), for_platform);
-    //k.pretty(false, "dft_complex.txt");
     profile_output.add_compile(label, timer1, Dim);
 
     if (!k.has_errors()) {
-      compiled += COMPLEX_MULT;
+      compiled += COMPLEX_DFT;
       k.load(&result_complex, &input);
       run(k, label);
 
-      if (!do_profiling) {
+      if (!do_profiling && (run_kernels & FLOAT_MULT)) {
         INFO("Comparing " << label << " with mult");
-        compare_arrays(result_complex, result_mult, 0.02f);
+        INFO("result: " << result_complex.dump() << ", expected: " << result_mult.dump());
+
+        float precision = Platform::has_vc4()? 0.2f : 0.02f;
+        compare_arrays(result_complex, result_mult, precision);
       }
     }
   }
 
   if (run_kernels & FLOAT_DFT) {
     std::string label = "dft float";
-    Timer timer1;
 
+    Timer timer1;
     auto k = compile(kernels::dft_decorator(input_float, result_float), for_platform);
     profile_output.add_compile(label, timer1, Dim);
 
@@ -242,10 +260,9 @@ bool compare_dfts(int Dim, bool do_profiling) {
       compiled += FLOAT_DFT;
       k.load(&result_float, &input_float);
       run(k, label);
-      //debug(result_float.dump());
 
       if (!do_profiling) {
-        INFO("Comparing " << label << " with complex");
+        INFO("Comparing " << label << " with dft complex");
         // No need to compare inline float with mult, identical to inline complex (see previous)");
         compare_arrays(result_float, result_complex);
       }
@@ -262,13 +279,13 @@ bool compare_dfts(int Dim, bool do_profiling) {
 
     if (!k.has_errors()) {
       compiled += FLOAT_DFT_CLASS;
-      //run(k, label);
+
       profile_output.run(Dim, label, [&k] (int numQPUs) {
         k.setNumQPUs(numQPUs);
         k.call();
       });
 
-      debug(k.info());
+      //debug(k.info());
 
       if (!do_profiling) {
         INFO("Comparing " << label << " with float");
@@ -299,7 +316,7 @@ bool compare_dfts(int Dim, bool do_profiling) {
 
       if (!do_profiling) {
         INFO("num QPUs: " << k.numQPUs());
-        compare_arrays_dft(k.result(), result_float, label, "float", 2.0e-6f);  // Match should be exact, tiny diff
+        compare_arrays_dft(k.result(), result_float, label, "float", 3.0e-6f);  // Match should be exact, tiny diff
       }
     }
   }
@@ -327,10 +344,12 @@ bool compare_dfts(int Dim, bool do_profiling) {
 
       if (!do_profiling) {
         INFO("num QPUs: " << k.numQPUs());
-        compare_arrays_dft(k.result(), result_float, label, "float", 2.0e-6f);  // Match should be exact, tiny diff
+        compare_arrays_dft(k.result(), result_float, label, "float", 3.0e-6f);  // Match should be exact, tiny diff
       }
     }
   }
+
+  LibSettings::use_high_precision_sincos(prev_precision);
 
   if (do_profiling) {
       std::cout << profile_output.dump();
@@ -471,9 +490,9 @@ TEST_CASE("Discrete Fourier Transform tmp [dft][dft2]") {
 
     Complex::Array2D result;
 
-    Timer timer1("DFT compile time");
+    //Timer timer1("DFT compile time");
     auto k = compile(kernels::dft_decorator(input, result));
-    timer1.end();
+    //timer1.end();
 
     k.load(&result, &input);
     k.call();

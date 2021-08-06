@@ -35,9 +35,9 @@ public:
     num_iterations = 10
   };
 
-  void use_single_qpu(bool val) { m_use_single_qpu = val; }
-  void use_max_qpus(bool val)   { m_use_max_qpus = val; }
-  void show_compile(bool val)   { ShowCompile = val; }
+  void use_single_qpu(bool val)  { m_use_single_qpu = val; }
+  void use_max_qpus(bool val)    { m_use_max_qpus = val; }
+  void show_compile(bool val)    { ShowCompile = val; }
   void add_compile(std::string const &label, std::string const &timer_val, int Dim);
   void add_compile(std::string const &label, Timer &timer, int Dim);
   void run(int Dim, std::string const &label, std::function<void(int numQPUs)> f);

@@ -660,6 +660,8 @@ bool profile_block_mult(int dimension) {
   std::string label1 = "Mult 1 block";
   m.num_blocks(1);
 
+  float precision = 1.5e-4f;  // Works for vc4
+
   if (true) {
     Timer timer1;
     m.compile();
@@ -675,7 +677,7 @@ bool profile_block_mult(int dimension) {
 
       INFO("Compare 1 block result with expected");
       INFO("num QPUs: " << m.numQPUs());
-      compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
+      compare_arrays(m.result(), expected, precision);
     }
   }
 
@@ -697,7 +699,7 @@ bool profile_block_mult(int dimension) {
     // Sanity check
     INFO("Compare 2 blocks result with expected");
     INFO("num QPUs: " << m.numQPUs());
-    compare_arrays(m.result(), expected, 1e-3f);   // just using same precision as full mult
+    compare_arrays(m.result(), expected, precision);
   }
 
 

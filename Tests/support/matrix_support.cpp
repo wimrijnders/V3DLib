@@ -27,11 +27,7 @@ void compare_arrays(Float::Array2D &a, float const *b, float precision) {
     }
   }
 
-  {
-    std::string msg; 
-    msg << "Max diff: " << max_diff << ", precision: " << precision;
-    debug(msg);
-  }
+  INFO("Max diff: " << max_diff << ", precision: " << precision);
 
   for (int r = 0; r < a.rows(); r++) {
     for (int c = 0; c < a.columns(); c++) {
@@ -57,8 +53,7 @@ void compare_arrays(Float::Array2D &a, Float::Array2D &b, float precision) {
 
   if ( precision == -1.0f) {
     //precision = 1.0e-4f;   // for high precision sin/cos in kernels
-    //precision = 4.0e-1f;     // for low  precision sin/cos in kernels (yeah, it sucks)
-    precision = 4.1e-1f;     // for low  precision sin/cos in vc4 kernels (sucks a bit moe)
+    precision = 4.1e-1f;     // for low  precision sin/cos in vc4 kernels (yeah, it sucks)
   }
 
   for (int r = 0; r < a.rows(); ++r) {

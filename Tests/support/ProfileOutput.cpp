@@ -13,13 +13,16 @@ std::string ProfileOutput::out_data::str() const {
 
 
 std::vector<int> ProfileOutput::num_qpus() const {
+  // There are various flags for selecting num qpus;
+  // these should actually exclude each other.
+  // TODO: perhaps make this better
+
   if (m_use_single_qpu) {
     return {1};
   }
 
   std::vector<int> ret;
   
-
   if (m_use_max_qpus) {
     if (Platform::has_vc4()) {
       ret = {12};

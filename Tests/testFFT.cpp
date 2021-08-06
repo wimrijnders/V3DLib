@@ -43,23 +43,13 @@ void check_result1(cx const *expected, Complex::Array2D const &result, int Dim, 
 
 void check_result2(cx const *expected, Complex::Array const &result, int Dim, float precision) {
   REQUIRE(precision > 0.0f);
+  INFO("Max diff: " << max_mag_diff(expected, result) << ", " << "used precision: " << precision);
   for (int i = 0; i < Dim; ++i) {
     float diff = (float) abs(expected[i] - result[i].to_complex());
     INFO("diff " << i << ": " << diff);
     REQUIRE(diff < precision);
   }
 }
-
-/*
-void check_result(Complex::Array2D const &expected, Complex::Array const &result, int Dim, float precision) {
-  REQUIRE(precision > 0.0f);
-  for (int i = 0; i < Dim; ++i) {
-    float diff = (expected[0][i] - result[i].to_complex()).magnitude();
-    INFO("diff " << i << ": " << diff);
-    REQUIRE(diff < precision);
-  }
-}
-*/
 
 
 #ifdef DEBUG
@@ -1143,8 +1133,14 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
 
   float precision = 0.0f;
 
-  // The higher log2n, the more divergence of FFT results with scalar
+  //
+  // Precision improved something awesome due to adding phases instead of multiplying resulting sin/cos
+  // in FFT calculation
+  //
   auto set_precision = [&precision] (int log2n) {
+    precision = 1.5e-4f;  // for vc4
+ /*
+    // The higher log2n, the more divergence of FFT results with scalar
     if (log2n <= 8) {
       precision = 8.0e-5f;
     } else if (log2n <= 9) {
@@ -1154,6 +1150,7 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     } else {  // Tested for log2n = 12 
       precision = 3e-2f;  // Pretty crappy precision here
     }
+  */
   };
 
 
@@ -1162,7 +1159,6 @@ TEST_CASE("FFT test with DFT [fft][test2]") {
     // TODO reason why this happens
     //
     // TODO Profile timing for various combinations
-    // TODO Adjust used precision for adding phases
     //
     //   - REDO FFT single beats DFT single for >=  8
     //   - REDO FFT multi beats scalar for >=  11 
