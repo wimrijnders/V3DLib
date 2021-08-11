@@ -31,21 +31,6 @@ developed by [Broadcom](http://www.broadcom.com/) with
 instructions that operate on 16-element vectors of 32-bit integer or
 floating point values.
 
-For example, given two 16-element vectors
-
-`10 11 12 13` `14 15 16 17` `18 19 20 21` `22 23 24 25`
-
-and
-
-`20 21 22 23` `24 25 26 27` `28 29 30 31` `32 33 34 35`
-
-the QPU's *integer-add* instruction computes a third vector
-
-`30 32 34 36` `38 40 42 44` `46 48 50 52` `54 56 58 60`
-
-where each element in the output is the sum of the
-corresponding two elements in the inputs.
-
 Each 16-element vector is comprised of four *quads*.  This is where
 the name "Quad Processing Unit" comes from: a QPU processes one quad
 per clock cycle, and a QPU instruction takes four consecutive clock
@@ -69,12 +54,6 @@ The added value of `V3DLib` is accelerating non-graphics parts of your Pi projec
 
 
 # QPU Registers
-
-**TODO:** Make this a coherent text.
-
-All registers within a QPU are actually a stack of 16 registers. This is referred to as a **vector** in the code and  documentation.
-The vector elements may contains different values, but the exact same code is used in parallel to perform calculations with them.
-
 
 ## Vector Offsets
 
