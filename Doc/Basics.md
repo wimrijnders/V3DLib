@@ -62,23 +62,22 @@ some extended operations.
 ## Arithmetic Logic Units
 
 Logically, there are two ALUs associated with the registers, the **Add ALU** and the **Mul ALU**.
-They each execute different operations. Input values are read from the registers, processed, and
-the output is again stored in a register.
+They each have a set of different operations they can perform.
+Input values are read from the registers, processed, and the output is again stored in a register.
 
 ![Arithmetic Logic Units](./images/basics/alus.png)
 
-The naming stems from the fact that, originally, the Add ALU
-performed the addition operations and the Mul ALU performed the multiplication operations
-*(on `v3d`, this is not true any more; the Mul ALU can also do addition)*.
+The naming comes from the fact that, originally, the Add ALU
+performed the addition operations and the Mul ALU performed the multiplication operations.
+On `v3d`, this is not true any more; the Mul ALU can also do addition.
 
-The ALUS work independently can execute in parallel. By carefully combining operations,
+The ALUS work independently and execute in parallel. By carefully combining operations,
 the performance can be improved.
 
 
 ## Processing Units
 
-At the risk of complicating the simple model I am trying to convey, I feel obliged to take it one step
-deeper.
+At the risk of complicating the simple model, I it is necessary to take it one step deeper.
 
 Instead of one Add and one Mul ALU, there are actually four **processing units** that perform the ALU operations.
 
@@ -95,9 +94,9 @@ with one Add and one Mul ALU is sufficient. Regard it as an explanation for why 
 ## Quad Processing Unit (QPU)
 
 The basic hardware unit in the VideoCore is called a **Quad Processing Unit (QPU)**.
-The name comes from the fact that each unit contains four processing unit performing the operations.
+The name comes from the fact that each unit contains four processing units performing the operations.
 
-There are multiple QPUs present in the VodeoCore, `vc4` has 12 and `v3d` has 8.
+There are multiple QPUs present in the VideoCore, `vc4` has 12 and `v3d` has 8.
 The reason that `v3d` is faster anyway is largely due to hardware improvements.
 
 QPUs operate totally independently, even if they are executing the same program.
@@ -108,7 +107,7 @@ Every QPU has an associated index, which in the source language code can be
 obtained with **me()**. In addition, the number of running QPUs per program is given by **numQPUs()**.
 These can be used to distribute a given calculation over multiple QPUs.
 
-For example, consider an two-dimensional array, of which each row is processed by one QPU.
+For example, consider a two-dimensional array, of which each row is processed by one QPU.
 The following loop can be specified:
 
     For (Int row = me(), row < row_size, row += numQPUs())
