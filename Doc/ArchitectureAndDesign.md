@@ -5,7 +5,7 @@ This document explains the basics of the QPU architecture and documents some des
 -----
 # Naming
 
-In conformance with the linux kernel, the following naming is use within the project:
+In conformance with the linux kernel, the following naming is used within the project:
 
 - the `VideoCore IV` is referred to as `vc4`,
 - the `VideoCore VI` as `v3d`.
@@ -23,6 +23,9 @@ Unit tests are run regularly on the following platforms:
 
 
 # VideoCore Background
+
+
+For an overview of the VideoCore functionality, please view the [Basics Page](Doc/Basics.md).
 
 The
 [VideoCore IV](http://www.broadcom.com/docs/support/videocore/VideoCoreIV-AG100-R.pdf)

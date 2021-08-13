@@ -101,9 +101,9 @@ Source code:
 ## Documentation
 
 - [ ] Explanation code
-  - [ ] 16-item vectors (see below)
+  - [x] 16-item vectors (see below)
   - [ ] Code generation, not direct execution
-- [ ] Drill-down of the bare essentials for understanding `VideoCore`
+- [x] Drill-down of the bare essentials for understanding `VideoCore`
 - [x] Examples to separate page under Docs
 - [ ] Mailbox functions link to reference and explanation two size fields
 - [x] QPUs always round *downward* *(in Issues)*

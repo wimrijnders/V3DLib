@@ -24,6 +24,13 @@ This follows the naming convention as used in the linux kernel code and in the `
 
 ## Getting Started
 
+Before trying to understand anything about the code, take a moment to view the [Basics Page](Doc/Basics.md).
+This will supply you with a working model of the VideoCore and will facilitate your understanding.
+Please do this, I'm trying hard not to beg.
+
+
+### Compiling and Building
+
 This assumes that you are building on a Raspberry Pi.
 
 - Please look at the [Known Issues](Doc/BuildInstructions.md#known-issues), so you have an idea what to expect.

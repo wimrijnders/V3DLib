@@ -74,7 +74,7 @@ The naming comes from the fact that, originally, the Add ALU
 performed the addition operations and the Mul ALU performed the multiplication operations.
 On `v3d`, this is not true any more; the Mul ALU can also do addition.
 
-The ALUS work independently and execute in parallel. By carefully combining operations,
+The ALUS work independently and execute in parallel. By combining operations,
 the performance can be improved by using the Add and Mul ALUs simultaneously.
 
 
@@ -129,15 +129,62 @@ The QPUs are organized into **slices**. Each slice contains four QPUs.
 
 `vc4` has three slices, `v3d` has two.
 
-A slice had some additional functionality, shared by the QPUs within the slice.
-The important bit for us is the **Texture and Memory Lookup Unt (TMU)**, which fetches and stores value to/from main memory.
+A slice has additional functionality, shared by the QPUs within the slice.
+The important bit for our purposes is the **Texture and Memory Lookup Unit (TMU)**, which fetches and stores value to/from main memory.
 The name implies that it is used for textures, but any kind of value can be fetched and stored.
 
 The TMU is a FIFO buffer for memory lookups. You specify the addresses of the values you want and
 do a fetch request.
-The values are stored sequentially in the TMU and are read in the order they are retrieved.
+The values are stored sequentially in the TMU and are read in the order they are fetched.
 
-TMU fetch operates independently from the QPUs. It is possible to prefetch values, continue with
-calculations on the QPUs and load the values later on. This is a neat way to increase throughput.
+TMU fetch operates independently from the QPUs. It is possible to prefetch values, do some
+calculations on the QPUs and load the values after. This is a neat way to increase throughput.
 
 On `vc4`, the TMU is *read-only*. On `v3d`, you can also do TMU writes.
+
+-----
+
+**Unfortunately, there are differences between `vc4` and `v3d` which you must be aware of. The following two sections name the two most essential ones.**
+
+
+## DMA/VPM memory fetch and store (`vc4` only)
+
+The **Vertex Pipe Memory (VPM)** is a data buffer *shared by all QPUs*.
+
+![VPM](./images/basics/vpm.png)
+
+In order to use it for loads, you first issue a DMA request to put data into the VPM.
+Afterwards, the QPUs query the VPM to load the data.
+A store works similar in reverse order.
+
+A single DMA read and a single DMA write can be performed in parallel with QPU operations.
+Multiple DMA reads need to wait for previous reads to complete; the same is true for DMA writes.
+
+Since `vc4` can not do TMU writes, this is the way to store data.
+It is, unfortunately, intricate and has quite a bit of overhead for performing the DMA/VPM operations.
+
+DMA/VPM reads have the potential to be faster that TMU reads for large chunks of data.
+In regular use, however, TMU is faster.
+
+
+## Cores (`v3d` only)
+
+On `v3d`, the slices are organized into **cores**.
+There are two slices per core, `v3d` has a single core.
+
+This is an indication of how the VideoCore architecture may evolve.
+It is entirely plausible that future versions will have multiple cores.
+
+-----
+
+## Performance Optimizations
+
+In general, there are three great ways to improve performance and throughput on VideoCores:
+
+1. Prefetch values using the TMU
+2. Use multiple QPUs for a given calculation
+3. Use the Add and Mul ALUs simultaneously
+
+Combining these results in a program running on a Pi which tears my Intel i7 to shreds.
+
+*(...okay, let's be honest about this: single thread, CPU only, no SSE. In this case, the i7 is eating dust)*
