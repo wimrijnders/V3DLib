@@ -33,7 +33,7 @@ For example, an add operation working on two registers `RF0` and `RF1`:
 with:
 
     RF0 = <10 11 12 13 14 15 16 17 18 19 20 21 22 23 24 25>
-	RF1 = <20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35>
+    RF1 = <20 21 22 23 24 25 26 27 28 29 30 31 32 33 34 35>
 
 ...will result in `RF0` having a value:
 
@@ -43,7 +43,7 @@ Every location in the vector has an associated offset, which in the source langu
 specified with **index()**. For example:
 
     Where (index() < 8)
-      RF0 = 2
+      RF0 = 2;
     End
    
 ...will set locations 0..7 to value 2 in register `RF0`. The remaining locations will be unchanged.
@@ -130,7 +130,7 @@ The QPUs are organized into **slices**. Each slice contains four QPUs.
 `vc4` has three slices, `v3d` has two.
 
 A slice has additional functionality, shared by the QPUs within the slice.
-The important bit for our purposes is the **Texture and Memory Lookup Unit (TMU)**, which fetches and stores value to/from main memory.
+The important bit for our purposes is the **Texture and Memory Lookup Unit (TMU)**, which fetches and stores values to/from main memory.
 The name implies that it is used for textures, but any kind of value can be fetched and stored.
 
 The TMU is a FIFO buffer for memory lookups. You specify the addresses of the values you want and

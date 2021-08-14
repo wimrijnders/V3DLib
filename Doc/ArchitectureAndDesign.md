@@ -1,4 +1,5 @@
 # Architecture and Design
+cycles to deliver a full 16-element result vector.
 
 This document explains the basics of the QPU architecture and documents some design decisions within `V3DLib` to deal with it.
 
@@ -10,9 +11,15 @@ In conformance with the linux kernel, the following naming is used within the pr
 - the `VideoCore IV` is referred to as `vc4`,
 - the `VideoCore VI` as `v3d`.
 
+By convention:
+
+- A program running on a VideoCore is called a [(compute) kernel](https://en.wikipedia.org/wiki/Compute_kernel). I tend to leave out 'compute' when describing kernels.
+- Values passed from a CPU program into a kernel are called *uniform values* or **uniforms**.
+
+
 # Support
 
-`V3DLib` is supported for Raspbian distributions from  `wheezy` onwards.
+`V3DLib` is supported for Raspbian distributions from `wheezy` onwards.
 Unit tests are run regularly on the following platforms:
 
 - `Pi 1 Model B`
@@ -24,31 +31,19 @@ Unit tests are run regularly on the following platforms:
 
 # VideoCore Background
 
+For an overview of the VideoCore functionality, please view the [Basics Page](Basics.md).
 
-For an overview of the VideoCore functionality, please view the [Basics Page](Doc/Basics.md).
-
-The
-[VideoCore IV](http://www.broadcom.com/docs/support/videocore/VideoCoreIV-AG100-R.pdf)
-is a [vector processor](https://en.wikipedia.org/wiki/Vector_processor)
+The VideoCore is a [vector processor](https://en.wikipedia.org/wiki/Vector_processor)
 developed by [Broadcom](http://www.broadcom.com/) with
 instructions that operate on 16-element vectors of 32-bit integer or
 floating point values.
 
-Each 16-element vector is comprised of four *quads*.  This is where
-the name "Quad Processing Unit" comes from: a QPU processes one quad
-per clock cycle, and a QPU instruction takes four consecutive clock
-cycles to deliver a full 16-element result vector.
+All Pi's prior to the `Pi 4` have a **VideoCore IV**. The `Pi 4` itself has a **VideoCore VI**,
+which has many improvements. 
 
-The Pis prior to `Pi 4` contain 12 QPUs in total, each running at 250MHz.
-That is a maximum throughput of 750M vector instructions per second (250M cycles
-divided by 4 cycles-per-instruction times 12 QPUs).
-Or: 12B operations per second (750M instructions times 16 vector elements).
-QPU instructions can in some cases deliver two results at a
-time, so the Pi's QPUs are often advertised at 24
-[GFLOPS](https://en.wikipedia.org/wiki/FLOPS).
-
-The `Pi 4` has 8 QPUs, also running at 250MHz. Due to hardware improvements, the GPU
-is still faster than in previous versions of the Pi.
+The basic hardware unit in the VideoCore is the **Quad Processing Unit (QPU)**.
+The `Pi 4` had 8 of these, all previous Pi's have 12.
+Due to the hardware improvements, the `Pi 4` GPU is still faster than in previous versions of the Pi.
 
 The QPUs are part of the Raspberry Pi's graphics pipeline.  If you're
 interested in doing efficient graphics on the Pi then you probably want
@@ -60,13 +55,18 @@ The added value of `V3DLib` is accelerating non-graphics parts of your Pi projec
 
 ## Vector Offsets
 
-When uniform values are loaded, all elements of a vector receive the same value.
-If you then run a kernel, all vector elements will have identical values at every step of the way;
-this makes for boring duplication.
+In a kernel, when loading values in a register in what would be considered intuitive for a programmer:
 
-In addition, when using multiple QPU's for a calculation, this would result in each QPU performing exactly the
-same calculation.
+```c++
+  Int a = 2;
+```
 
+...you end up with a 16-vector containing the same values:
+
+    a = <2 2 2 2 2 2 2 2 2 2 2 2 2 2 2 2>
+
+In order to use the vector processing capabalities effectively, you want to be able to perform the calculations
+with different values.
 The following functions at source code level are supplied to deal this:
 
 ### Function `index()`
@@ -77,7 +77,7 @@ Returns an index value unique to each vector element, in the range `0..15`.
 ### Function `me()`
 
 Returns an index value unique to each QPU participating an a calculation.
-A single running QPU would have `me() ==0`, any further QPU's are indexed sequentially.
+A single running QPU would have `me() == 0`, any further QPU's are indexed sequentially.
 
 ### Function `numQPUs()` 
 
@@ -88,41 +88,56 @@ The participating QPU's would then have `me() == 0, 1, 2...` up to the selected 
 
 For `v3d`, you can use either 1 or 8 QPU's. In the latter case, `me()` would return 0, 1, 2, 3, 4, 5, 6 or 7 per QPU.
 
+
 ### Vector offset calculation
 
-The functions are used to differentiate pointers to memory addresses, in the following way:
+The previous functions are useful to differentiate pointers to memory addresses.
+The following is a method to load in consective values from shared main memory:
 
 ```c++
-void kernel(Ptr<Float> x) {
-  x = x + index() + (me() << 4);
-  ...
+void kernel(Ptr<Int> x) {
+  x = x + index();
+  a = *x;
 }
 ```
+
+*Keep in mind that Int and Float values are 4 bytes. Pointer arithmetic takes this into account.*
 
 The incoming value `x` is a pointer to an address in shared memory (i.e. accessible by both the CPU and the QPU's).
-It is assumed that this points to a memory block containing values which need to be processed by the QPU's.
+By adding `index()`, each vector element of `x` will point to consecutive values.
+On the assignment to `a`, these consecutive values will be loaded into the vector elements of `a`.
 
-What happens here, is that each vector element gets assigned an offset into this memory block. Therefore,
-each vector element will access a different consecutive value.
-In addition, an offset is added in jumps of 16 items per QPU, according to the QPU ID.
-Each QPU will thus handle a distinct block of 16 consecutive values.
 
-For multiple QPU's, you would need to take an offset per QPU into account (called 'stride' in the code).
-This can be done as follows:
+When using multiple QPUs, you could load consecutive blocks of values into separate QPUs int the following way:
 
 ```c++
 void kernel(Ptr<Float> x) {
-  Int stride = numQPUs() << 4;
   x = x + index() + (me() << 4);
-
-  ...
-	// Perform some calculation
-  ...
-
-	x = x + stride;   // Prepare for handling the next block 
-  ...
+  a = *x;
 }
 ```
+
+
+## Automatic uniform pointer initialization
+
+Adding `index()` to uniform pointers is so common in kernel code, that I made the following design decision:
+
+*all uniform pointers are initialized with an index offset*
+
+I.e. you don't need to do it yourself.
+
+For most applications, the adjustment is useful and required.
+However, it is good to be aware of this pointer adjustment, as it is conceivable
+that you might need something different in your own code.
+(the FFT calculation is an example of this).
+
+Automatic uniform pointer initialization places restrictions on pointer usage:
+
+- All accessed memory blocks must be a number of elements which is a multiple of 16.
+
+Not adhering to this will lead to reads and writes outside the memory blocks.
+This is not necessarily fatal, but you can expect wild and unexpected results.
+
 
 # DMA and VPM (`vc4` only)
 
@@ -307,28 +322,38 @@ for (int i = 0; i < num_vectors; i++) {
 ```
 
 
+-----
 
-# Design decisions
+# Setting of Branch Conditions
 
-## Automatic uniform pointer initialization
+**TODO:** Make this a coherent text.
 
-The uniform pointers are initialized with vector offsets on the execution of a kernel.
-In effect, all uniform pointers get adjusted as follows:
+Source: qpu_instr.h, line 74, enum v3d_qpu_uf:
 
-    ptr += 4*index()
+How I interpret this:
+  - AND: if all bits set
+  - NOR: if no bits set
+  - N  : field not set
+  - Z  : Field zero
+  - N  : field negative set
+  - C  : Field negative cleared
 
-There is therefore no need to explicitly do this yourself.
-It is useful to be aware of this pointer adjustment, as it is conceivable
-that you might need to adjust it in your own code.
-For most purposes, the adjustment is useful and almost always required
-(calculating FFT is an example where it is not desirable).
+What the bits are is not clear at this point.
+These assumptions are probably wrong, but I need a starting point.
 
-Automatic uniform pointer initialization places restrictions on pointer usage:
+**TODO:** make tests to verify these assumptions (how? No clue right now)
 
-- All accessed memory blocks must be a number of elements which is a multiple of 16.
+So:
+  - vc4 `if all(nc)...` -> ANDC
+  - vc4 `nc` - negative clear, ie. >= 0
+  - vc4 `ns` - negative set,   ie.  < 0
 
-Not adhering to this will lead to reads and writes outside the memory blocks.
-This is not necessarily fatal, but you can expect wild and unexpected results.
+
+-----
+
+# Things to Remember
+
+*Just plain skip this if you're browsing. It's only useful for archaological purposes. Must rid myself of this hoarding tendency one day.*
 
 ## vc4 DMA write: destination pointer is impervious to offset changes
 
@@ -358,12 +383,8 @@ The DMA write ignores this offset and writes to the correct location, i.e. just 
 My working hypothesis is that only the pointer value for vector index 0 is used to
 initialize DMA.
 
-### Previous Attempts
 
-Code here has been preserved for sentimental and archaological reasons.
-I'm retaining it to preserve the insights encountered along the way, should I ever need to do something similar again.
-
-#### Initialization of stride for `vc4` at the level of the target language
+## Initialization of stride for `vc4` at the level of the target language
 
 This places the initialization code in the INIT-block, after translation of source to target.
 The INIT-block therefore needs to be added first.
@@ -398,54 +419,3 @@ void SourceTranslate::add_init(Seq<Instr> &code) {
 
 	code.insert(insert_index + 1, ret);  // Insert init code after the INIT_BEGIN marker
 }
-```
-
-## Strict versus Relaxed Definition of the Target Language
-
-*Adapted from text by Matthew Naylor, originally in `Target/Syntax.h`*
-
-This abstract syntax is a balance between a strict and relaxed
-definition of the target language:
- 
-- a "strict" definition would allow only instructions that can run on
-the target machine to be expressed
-- a "relaxed" one allows
-instructions that have no direct mapping to machine instructions.
-
-A relaxed definition allows the compilation process to be incremental:
-after each pass, the target code gets closer to being executable, by
-transforming away constructs that do not have a direct mapping to
-hardware.  However, we do not want to be too relaxed, otherwise we
-lose scope for the type checker to help us.
-
-For example, the definition below allows an instruction to read two
-operands from the *same* register file.  In fact, two operands must be
-taken from different register files in the target language. It is the
-job of a compiler pass to enforce such a constraint.
-
-
------
-
-# Setting of Branch Conditions
-
-**TODO:** Make this a coherent text.
-
-Source: qpu_instr.h, line 74, enum v3d_qpu_uf:
-
-How I interpret this:
-  - AND: if all bits set
-  - NOR: if no bits set
-  - N  : field not set
-  - Z  : Field zero
-  - N  : field negative set
-  - C  : Field negative cleared
-
-What the bits are is not clear at this point.
-These assumptions are probably wrong, but I need a starting point.
-
-**TODO:** make tests to verify these assumptions (how? No clue right now)
-
-So:
-  - vc4 `if all(nc)...` -> ANDC
-  - vc4 `nc` - negative clear, ie. >= 0
-  - vc4 `ns` - negative set,   ie.  < 0

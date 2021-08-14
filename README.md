@@ -12,21 +12,22 @@ Kernel programs compile dynamically, so that a given program can run unchanged o
 The kernels are generated inline and offloaded to the GPU's at runtime.
 
 
------
-In this project:
+## Motivation for this Project
 
-- `VideoCore IV` is referred to as `vc4`
-- `VideoCore VI` is referred to as `v3d`
+The Raspberry Pi's have pretty nifty on-chip capabilities for SIMD vector processing.
+It bothered me to no end that this is largely unused; the only thing really using it is `OpenGL`.
 
-This follows the naming convention as used in the linux kernel code and in the `Mesa` library.
+The goal of this project is to **make the SIMD vector processing accessible** for a larger audience, and
+to **ease the pain of programming** it.
 
------
 
 ## Getting Started
 
-Before trying to understand anything about the code, take a moment to view the [Basics Page](Doc/Basics.md).
+Before trying to deal with any code, take a moment to view the [Basics Page](Doc/Basics.md).
 This will supply you with a working model of the VideoCore and will facilitate your understanding.
-Please do this, I'm trying hard not to beg.
+
+Also, for starters, scan the naming conventions at the top of the
+[Architecture and Design Page](Doc/ArchitectureAndDesign.md). Read the rest at your own leisure.
 
 
 ### Compiling and Building
@@ -45,8 +46,8 @@ See the Build Instructions for details.
 
 > git clone --depth 1 https://github.com/wimrijnders/V3DLib.git  # Get only latest commit
 > cd V3DLib
-> make QPU=1 DEBUG=1 all                                         # Make debug version with hardware
-                                                                 # GPU support.
+> make QPU=1 DEBUG=1 all                                         # Make debug versions with hardware
+                                                                 # GPU support of all examples.
     
 > make QPU=1 DEBUG=1 test                                        # Build and run the tests
 ```

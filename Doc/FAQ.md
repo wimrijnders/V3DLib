@@ -227,7 +227,7 @@ From the [VideoCore® IV 3D Architecture Reference Guide](https://docs.broadcom.
 So:
 
 - 4 operations per clock cycle, when properly pipelined
-- 2 ALU's per operation, when instructions uses both
+- 2 ALU's per operation, when instructions use both
 
 So, calculation:
 
@@ -239,8 +239,8 @@ So, calculation:
 - Pi3+ : 400x3x4x8 = 38.4 GFLOPs
 - Pi4  : 500x2x4x8 = 32.0 GFLOPs (less!)
 
-- The improved hardware in `v3d` may compensate for performance.
-- v3d adds multi-gpu-core support, each with their own set of QPUs. However, there is only one core in `v3d`.
+- The improved hardware in `v3d` compensates for performance.
+- v3d adds multi-gpu core support, each with their own set of QPUs. However, there is only one core in `v3d`.
 
 
 -----
