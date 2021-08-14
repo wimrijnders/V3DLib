@@ -55,7 +55,7 @@ The added value of `V3DLib` is accelerating non-graphics parts of your Pi projec
 
 ## Vector Offsets
 
-In a kernel, when loading values in a register in what would be considered intuitive for a programmer:
+In a kernel, when loading values in a register in a manner that would be considered intuitive for a programmer:
 
 ```c++
   Int a = 2;
@@ -118,24 +118,24 @@ void kernel(Ptr<Float> x) {
 ```
 
 
-## Automatic uniform pointer initialization
+## Automatic Uniform Pointer Initialization
 
 Adding `index()` to uniform pointers is so common in kernel code, that I made the following design decision:
 
-*all uniform pointers are initialized with an index offset*
+**all uniform pointers are initialized with an index offset**
 
 I.e. you don't need to do it yourself.
 
 For most applications, the adjustment is useful and required.
 However, it is good to be aware of this pointer adjustment, as it is conceivable
-that you might need something different in your own code.
+that you might need something different in your own code
 (the FFT calculation is an example of this).
 
 Automatic uniform pointer initialization places restrictions on pointer usage:
 
 - All accessed memory blocks must be a number of elements which is a multiple of 16.
 
-Not adhering to this will lead to reads and writes outside the memory blocks.
+Not adhering to this may lead to reads and writes outside the memory blocks.
 This is not necessarily fatal, but you can expect wild and unexpected results.
 
 

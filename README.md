@@ -93,7 +93,7 @@ int main(int argc, const char *argv[]) {
 
 ## Credit where Credit is Due
 This project builds upon the [QPULib](https://github.com/mn416/QPULib) project, by **Matthew Naylor**.
-I fully acknowledge his work for the Videcore 4 and am grateful for what he has achieved in setting
+I fully acknowledge his work for the `VideoCore IV` and am grateful for what he has achieved in setting
 up the compilation and assembly.
 
 `QPULib`, however, is no longer under development, and I felt the need to expand it to support
