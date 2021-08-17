@@ -3,14 +3,18 @@
 #include "vc4.h"
 #include "defines.h"
 #include "LibSettings.h"
+#include "Support/Platform.h"
 
 namespace V3DLib {
-
-using Code = SharedArray<uint32_t>;
+namespace  {
 
 
 /**
- * TODO rewrite to shared array holding the parameters
+ * Number of 32-bit words needed for the parameters (uniforms)
+ *
+ * - First two values are always the QPU ID and num QPU's
+ * - Next come the actual kernel parameters, as defined in the user code
+ * - This is terminated by a dummy uniform value, see Note 1.
  *
  * ----------------------------------------------------------------------------
  * Notes
@@ -22,58 +26,98 @@ using Code = SharedArray<uint32_t>;
  *    After spending days on this with paranoid debugging, I could not find the
  *    cause and gave up. Instead, I'll just pass a final dummy uniform value,
  *    which can be mangled to the heart's content of the hardware.
- */
-void invoke(int numQPUs, Code &codeMem, int qpuCodeMemOffset, IntList *params) {
+*/
+int num_params(IntList const &params) {
+  breakpoint
+  assert(!params.empty());
+  return (2 + params.size() + 1);
+}
 
-#ifdef DEBUG
-  //
-  // Number of 32-bit words needed for kernel code & parameters
-  // - First two values are always the QPU ID and num QPU's
-  // - Next come the actual kernel parameters, as defined in the user code
-  // - This is terminated by a dummy uniform value, see Note 1.
-  // - The final two words are the pointer to the parameters per QPU, and
-  //   the pointer to the kernel program to execute.
-  //
-  unsigned numWords = qpuCodeMemOffset + (2 + params->size() + 1)*numQPUs + 2*numQPUs;
-  assert(numWords < codeMem.size());
-#endif  // DEBUG
+
+/**
+ * Initialize uniforms to pass into running QPUs
+ *
+ * The number and types of parameters will not change for a given kernel.
+ * The value of the parameters, however, can change, so this needs to be reset every time.
+ *
+ * All uniform values are the same for all QPUs, *except* the qpu id.
+ */
+void init_uniforms(Data &uniforms, IntList const &params, int numQPUs) {
+  breakpoint
+  assert(0 < numQPUs && numQPUs <= Platform::max_qpus());
+
+  if (!uniforms.allocated()) {
+    uniforms.alloc(num_params(params)*Platform::max_qpus());
+  } else {
+    assert((int) uniforms.size() == num_params(params)*Platform::max_qpus());
+  }
+
+
+  int offset = 0;
+  for (int i = 0; i < numQPUs; i++) {
+    uniforms[offset++] = (uint32_t) i;              // Unique QPU ID
+    uniforms[offset++] = (uint32_t) numQPUs;        // QPU count
+
+    for (int j = 0; j < params.size(); j++) {
+      uniforms[offset++] = params[j];
+    }
+
+    uniforms[offset++] = 0;                         // Dummy final parameter, see Note 1.
+  }
+
+  assert(offset == num_params(params)*numQPUs);
+}
+
+
+/**
+ * Initialize launch messages, if not already done so
+ *
+ * Doing this for max number of QPUs, so that num QPUs can be changed dynamically on calls.
+ */
+void init_launch_messages(Data &launch_messages, uint32_t *qpuCodePtr, int num_params, Data &uniforms) {
+  breakpoint
+  if (launch_messages.allocated()) {
+    return;
+  }
+
+  launch_messages.alloc(2*Platform::max_qpus());
+  for (int i = 0; i < Platform::max_qpus(); i++) {
+    launch_messages[2*i]     = (uint32_t) uniforms.getPointer() + i*num_params;
+    launch_messages[2*i + 1] = (uint32_t) qpuCodePtr;
+  }
+}
+
+}  // anon namespace
+
+/**
+ * TODO rewrite to shared array holding the parameters
+ */
+void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, Data &launch_messages) {
+  breakpoint
+
+#ifndef ARM32
+  error("invoke() will not run on this platform, only on ARM 32-bits");
+  error("Failed to invoke kernel on QPUs\n");
+  return;
+#endif
 
   // Pointer to start of code
   uint32_t *qpuCodePtr = codeMem.getPointer();
 
-  // Copy parameters to instruction memory
-  int offset = qpuCodeMemOffset;
+  init_uniforms(uniforms, params, numQPUs);
 
-  uint32_t** paramsPtr = new uint32_t* [numQPUs];  // TODO check shouldn't this be deleted?
-  for (int i = 0; i < numQPUs; i++) {
-    paramsPtr[i] = qpuCodePtr + offset;
-
-    codeMem[offset++] = (uint32_t) i;              // Unique QPU ID
-    codeMem[offset++] = (uint32_t) numQPUs;        // QPU count
-
-    for (int j = 0; j < params->size(); j++)
-      codeMem[offset++] = params->get(j);
-    codeMem[offset++] = 0;                         // Dummy final parameter, see Note 1.
-  }
-
-#ifdef ARM32
   int mb = getMailbox();  // Open mailbox for talking to vc4
 
-  // Copy launch messages
-  uint32_t* launchMsgsPtr = qpuCodePtr + offset;
-  for (int i = 0; i < numQPUs; i++) {
-    codeMem[offset++] = (uint32_t) paramsPtr[i];
-    codeMem[offset++] = (uint32_t) qpuCodePtr;
-  }
-
-  assertq(offset == (int) numWords, "Check final offset failed");
+  init_launch_messages(launch_messages, qpuCodePtr, num_params(params), uniforms);
 
   // Launch QPUs
-  unsigned result = execute_qpu(mb, numQPUs, (uint32_t) launchMsgsPtr, 1, LibSettings::qpu_timeout()*1000);
-#else
-  error("invoke() will not run on this platform, only on ARM 32-bits");
-  unsigned result = 1;  // Force error message
-#endif
+  unsigned result = execute_qpu(
+    mb,
+    numQPUs,
+    (uint32_t) launch_messages.getPointer(),
+    1,
+    LibSettings::qpu_timeout()*1000
+  );
 
   if (result != 0) {
     error("Failed to invoke kernel on QPUs\n");

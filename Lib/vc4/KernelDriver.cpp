@@ -113,6 +113,8 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   if (qpuCodeMem.allocated()) {
     //debug("vc4 KernelDriver::invoke() code and parameters memory already allocated");
     assert(qpuCodeMem.size() == numWords);
+    assert(launch_messages.allocated());
+    assert(uniforms.allocated());
   } else {
     // Allocate memory for QPU code and parameters
     qpuCodeMem.alloc(numWords);
@@ -123,11 +125,10 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
     for (int i = 0; i < code.size(); i++) {
       qpuCodeMem[offset++] = code[i];
     }
-    qpuCodeMemOffset = offset;
   }
 
   enableQPUs();
-  V3DLib::invoke(numQPUs, qpuCodeMem, qpuCodeMemOffset, &params);
+  V3DLib::invoke(numQPUs, qpuCodeMem, params, uniforms, launch_messages);
   disableQPUs();
 }
 

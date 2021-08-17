@@ -220,4 +220,5 @@ Error(s) on command line:
 
 - [ ] Add optional doc generation with `doxygen`.
       This is only useful if there are a sufficient number of header comments.
+      Will be using the Javadoc style; it might be necessary to set `JAVADOC_AUTOBRIEF to YES` in the config.
 - [ ] Scheduling of kernels - see VideoCore `fft` project.
