@@ -98,9 +98,6 @@ void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, D
   init_uniforms(uniforms, params, numQPUs);
   init_launch_messages(launch_messages, codeMem.getPointer(), num_params(params), uniforms);
 
-  debug(uniforms.dump());
-  debug(launch_messages.dump());
-
   int mb = getMailbox();  // Open mailbox for talking to vc4
 
   unsigned result = execute_qpu(

@@ -3,6 +3,7 @@
 #include "../KernelDriver.h"
 #include "Common/SharedArray.h"
 #include "Invoke.h"
+#include "Encode.h"
 
 namespace V3DLib {
 namespace vc4 {
@@ -15,12 +16,13 @@ public:
   KernelDriver(KernelDriver &&k) = default;
 
   void encode() override;
-  int kernel_size() const { return (int) code.size()/2; }
+  int kernel_size() const { return (int) code.size(); }
 
 private:
-  Code qpuCodeMem;     // Memory region for QPU code and parameters
+  Code qpuCodeMem;     // Memory region for QPU code
                        // Doesn't survive std::move, dtor gets called despite move ctor present
-  Data uniforms;
+  Data uniforms;       // Memory region for QPU parameters
+
 
   /**
    * Container for launch info per QPU to run
@@ -36,8 +38,8 @@ private:
    */
   Data launch_messages;
 
-  UIntList code;       // opcodes for vc4; can't convert this to uint64_t because qpuCodeMem
-                       // needs to be uint32_t for invoking (tried it, don't try again!).
+  CodeList code;       // opcodes for vc4
+
   void kernelFinish();
   void compile_intern() override;
   void invoke_intern(int numQPUs, IntList &params) override;

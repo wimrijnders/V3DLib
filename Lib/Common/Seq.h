@@ -237,7 +237,6 @@ private:
 
 
 using IntList  = Seq<int32_t>;
-using UIntList = Seq<uint32_t>;
 
 }  // namespace V3DLib
 

@@ -5,7 +5,6 @@
 #include "Source/Translate.h"
 #include "Target/RemoveLabels.h"
 #include "vc4.h"
-#include "Encode.h"
 #include "DMA/Operations.h"
 #include "dump_instr.h"
 #include "Target/instr/Mnemonics.h"
@@ -107,17 +106,14 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   //debug("Called vc4 KernelDriver::invoke()");  
   assertq(code.size() > 0, "invoke_intern() vc4: no code to invoke", true );
 
-  unsigned numWords = code.size() + 12*MAX_KERNEL_PARAMS + 12*2;
-
   // Assumption: code in a kernel, once allocated, doesnt' change
   if (qpuCodeMem.allocated()) {
     //debug("vc4 KernelDriver::invoke() code and parameters memory already allocated");
-    assert(qpuCodeMem.size() == numWords);
     assert(launch_messages.allocated());
     assert(uniforms.allocated());
   } else {
     // Allocate memory for QPU code and parameters
-    qpuCodeMem.alloc(numWords);
+    qpuCodeMem.alloc(code.size());
     assert(qpuCodeMem.size() > 0);
 
     // Copy kernel to code memory

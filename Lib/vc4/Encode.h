@@ -6,7 +6,9 @@
 namespace V3DLib {
 namespace vc4 {
 
-UIntList encode(Instr::List &instrs);
+using CodeList = Seq<uint64_t>;
+
+CodeList encode(Instr::List &instrs);
 
 }  // namespace vc4
 }  // namespace V3DLib

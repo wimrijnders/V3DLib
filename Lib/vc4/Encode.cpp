@@ -569,8 +569,8 @@ uint64_t encodeInstr(Instr instr) {
 // Top-level encoder
 // ============================================================================
 
-UIntList encode(Instr::List &instrs) {
-  UIntList code;
+CodeList encode(Instr::List &instrs) {
+  CodeList code;
 
   for (int i = 0; i < instrs.size(); i++) {
     Instr instr = instrs.get(i);
@@ -581,8 +581,7 @@ UIntList encode(Instr::List &instrs) {
     }
 
     uint64_t opcode = encodeInstr(instr);
-    code << (uint32_t) (opcode & 0xffffffff);;
-    code << (uint32_t) (opcode >> 32);
+    code << opcode;
   }
 
   return code;

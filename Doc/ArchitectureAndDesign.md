@@ -22,11 +22,13 @@ By convention:
 `V3DLib` is supported for Raspbian distributions from `wheezy` onwards.
 Unit tests are run regularly on the following platforms:
 
-- `Pi 1 Model B`
-- `Pi 2`
-- `Pi 3 Model B`
-- `Pi 4 Model B 32-bits`
-- `Pi 4 Model B 64-bits`
+| Platform             | Last unit test run |
+| -------------------- | ------------------ |
+| Pi 1 Model B         | |
+| Pi 2                 | |
+| Pi 3 Model B         | 20210718           |
+| Pi 4 Model B 32-bits | |
+| Pi 4 Model B 64-bits | |
 
 
 # VideoCore Background
