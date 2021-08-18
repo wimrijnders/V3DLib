@@ -16,6 +16,12 @@ namespace vc4 {
 KernelDriver::KernelDriver() : V3DLib::KernelDriver(Vc4Buffer) {}
 
 
+int KernelDriver::kernel_size() const {
+  assert(qpuCodeMem.allocated());
+  return qpuCodeMem.size();
+}
+
+
 /**
  * Add the postfix code to the kernel.
  *
@@ -40,13 +46,24 @@ void KernelDriver::kernelFinish() {
 
 /**
  * Encode target instrs into array of 32-bit ints
+ *
+ * Assumption: code in a kernel, once allocated, doesnt' change.
  */
 void KernelDriver::encode() {
-  if (code.size() > 0) return;      // Don't bother if already encoded
+  if (!qpuCodeMem.empty()) return;  // Don't bother if already encoded
   if (has_errors()) return;         // Don't do this if compile errors occured
-  assert(!qpuCodeMem.allocated());
 
-  code = V3DLib::vc4::encode(m_targetCode);
+  CodeList code = V3DLib::vc4::encode(m_targetCode);
+
+  // Allocate memory for QPU code and parameters
+  qpuCodeMem.alloc(code.size());
+  assert(qpuCodeMem.size() > 0);
+
+  // Copy kernel to code memory
+  int offset = 0;
+  for (int i = 0; i < code.size(); i++) {
+    qpuCodeMem[offset++] = code[i];
+  }
 }
 
 
@@ -57,10 +74,10 @@ void KernelDriver::emit_opcodes(FILE *f) {
 
   encode();
 
-  if (code.empty()) {
+  if (qpuCodeMem.empty()) {
     fprintf(f, "<No opcodes to print>\n");
   } else {
-    dump_instr(f, (uint64_t const *) code.data(), code.size()/2);
+    dump_instr(f, qpuCodeMem.ptr(), qpuCodeMem.size());
   }
 }
 
@@ -104,24 +121,7 @@ void KernelDriver::compile_intern() {
 
 void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   //debug("Called vc4 KernelDriver::invoke()");  
-  assertq(code.size() > 0, "invoke_intern() vc4: no code to invoke", true );
-
-  // Assumption: code in a kernel, once allocated, doesnt' change
-  if (qpuCodeMem.allocated()) {
-    //debug("vc4 KernelDriver::invoke() code and parameters memory already allocated");
-    assert(launch_messages.allocated());
-    assert(uniforms.allocated());
-  } else {
-    // Allocate memory for QPU code and parameters
-    qpuCodeMem.alloc(code.size());
-    assert(qpuCodeMem.size() > 0);
-
-    // Copy kernel to code memory
-    int offset = 0;
-    for (int i = 0; i < code.size(); i++) {
-      qpuCodeMem[offset++] = code[i];
-    }
-  }
+  assertq(!qpuCodeMem.empty(), "invoke_intern() vc4: no code to invoke", true );
 
   enableQPUs();
   V3DLib::invoke(numQPUs, qpuCodeMem, params, uniforms, launch_messages);

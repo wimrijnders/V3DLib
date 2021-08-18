@@ -16,7 +16,7 @@ public:
   KernelDriver(KernelDriver &&k) = default;
 
   void encode() override;
-  int kernel_size() const { return (int) code.size(); }
+  int kernel_size() const;
 
 private:
   Code qpuCodeMem;     // Memory region for QPU code
@@ -37,8 +37,6 @@ private:
    * Haven't tried this yet, till now all the QPUs run the same code.
    */
   Data launch_messages;
-
-  CodeList code;       // opcodes for vc4
 
   void kernelFinish();
   void compile_intern() override;

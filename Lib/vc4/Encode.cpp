@@ -580,8 +580,7 @@ CodeList encode(Instr::List &instrs) {
       continue;  // Don't encode these block markers
     }
 
-    uint64_t opcode = encodeInstr(instr);
-    code << opcode;
+    code << encodeInstr(instr);
   }
 
   return code;
