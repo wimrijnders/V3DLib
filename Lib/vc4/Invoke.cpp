@@ -28,7 +28,6 @@ namespace  {
  *    which can be mangled to the heart's content of the hardware.
 */
 int num_params(IntList const &params) {
-  breakpoint
   assert(!params.empty());
   return (2 + params.size() + 1);
 }
@@ -43,7 +42,6 @@ int num_params(IntList const &params) {
  * All uniform values are the same for all QPUs, *except* the qpu id.
  */
 void init_uniforms(Data &uniforms, IntList const &params, int numQPUs) {
-  breakpoint
   assert(0 < numQPUs && numQPUs <= Platform::max_qpus());
 
   if (!uniforms.allocated()) {
@@ -51,7 +49,6 @@ void init_uniforms(Data &uniforms, IntList const &params, int numQPUs) {
   } else {
     assert((int) uniforms.size() == num_params(params)*Platform::max_qpus());
   }
-
 
   int offset = 0;
   for (int i = 0; i < numQPUs; i++) {
@@ -75,12 +72,12 @@ void init_uniforms(Data &uniforms, IntList const &params, int numQPUs) {
  * Doing this for max number of QPUs, so that num QPUs can be changed dynamically on calls.
  */
 void init_launch_messages(Data &launch_messages, uint32_t *qpuCodePtr, int num_params, Data &uniforms) {
-  breakpoint
   if (launch_messages.allocated()) {
     return;
   }
 
   launch_messages.alloc(2*Platform::max_qpus());
+
   for (int i = 0; i < Platform::max_qpus(); i++) {
     launch_messages[2*i]     = (uint32_t) uniforms.getPointer() + i*num_params;
     launch_messages[2*i + 1] = (uint32_t) qpuCodePtr;
@@ -93,24 +90,16 @@ void init_launch_messages(Data &launch_messages, uint32_t *qpuCodePtr, int num_p
  * TODO rewrite to shared array holding the parameters
  */
 void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, Data &launch_messages) {
-  breakpoint
-
 #ifndef ARM32
   error("invoke() will not run on this platform, only on ARM 32-bits");
   error("Failed to invoke kernel on QPUs\n");
   return;
-#endif
-
-  // Pointer to start of code
-  uint32_t *qpuCodePtr = codeMem.getPointer();
-
+#else
   init_uniforms(uniforms, params, numQPUs);
+  init_launch_messages(launch_messages, codeMem.getPointer(), num_params(params), uniforms);
 
   int mb = getMailbox();  // Open mailbox for talking to vc4
 
-  init_launch_messages(launch_messages, qpuCodePtr, num_params(params), uniforms);
-
-  // Launch QPUs
   unsigned result = execute_qpu(
     mb,
     numQPUs,
@@ -122,6 +111,7 @@ void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, D
   if (result != 0) {
     error("Failed to invoke kernel on QPUs\n");
   }
+#endif
 }
 
 }  // namespace V3DLib
