@@ -45,9 +45,9 @@ void KernelDriver::kernelFinish() {
 
 
 /**
- * Encode target instrs into array of 32-bit ints
+ * Encode target instructions
  *
- * Assumption: code in a kernel, once allocated, doesnt' change.
+ * Assumption: code in a kernel, once allocated, does not change.
  */
 void KernelDriver::encode() {
   if (!qpuCodeMem.empty()) return;  // Don't bother if already encoded
@@ -55,7 +55,7 @@ void KernelDriver::encode() {
 
   CodeList code = V3DLib::vc4::encode(m_targetCode);
 
-  // Allocate memory for QPU code and parameters
+  // Allocate memory for QPU code
   qpuCodeMem.alloc(code.size());
   assert(qpuCodeMem.size() > 0);
 
@@ -70,7 +70,6 @@ void KernelDriver::encode() {
 void KernelDriver::emit_opcodes(FILE *f) {
   fprintf(f, "Opcodes for vc4\n");
   fprintf(f, "===============\n\n");
-  fflush(f);
 
   encode();
 
@@ -79,6 +78,8 @@ void KernelDriver::emit_opcodes(FILE *f) {
   } else {
     dump_instr(f, qpuCodeMem.ptr(), qpuCodeMem.size());
   }
+
+  fflush(f);
 }
 
 

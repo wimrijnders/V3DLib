@@ -33,7 +33,7 @@ private:
    *
    * The uniforms are essentially the same for all QPUs, *except* qpu id, the first parameter.
    *
-   * It should thus be possible to run different code per QPU.
+   * It thus be possible to run different code per QPU.
    * Haven't tried this yet, till now all the QPUs run the same code.
    */
   Data launch_messages;
