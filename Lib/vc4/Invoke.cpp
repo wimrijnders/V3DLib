@@ -79,7 +79,7 @@ void init_launch_messages(Data &launch_messages, uint32_t *qpuCodePtr, int num_p
   launch_messages.alloc(2*Platform::max_qpus());
 
   for (int i = 0; i < Platform::max_qpus(); i++) {
-    launch_messages[2*i]     = (uint32_t) uniforms.getPointer() + i*num_params;
+    launch_messages[2*i]     = (uint32_t) (uniforms.getPointer() + i*num_params);  // Braces are sneaky! Required
     launch_messages[2*i + 1] = (uint32_t) qpuCodePtr;
   }
 }
@@ -97,6 +97,9 @@ void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, D
 #else
   init_uniforms(uniforms, params, numQPUs);
   init_launch_messages(launch_messages, codeMem.getPointer(), num_params(params), uniforms);
+
+  debug(uniforms.dump());
+  debug(launch_messages.dump());
 
   int mb = getMailbox();  // Open mailbox for talking to vc4
 
