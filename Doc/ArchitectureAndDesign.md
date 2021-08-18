@@ -27,7 +27,7 @@ Unit tests are run regularly on the following platforms:
 | Pi 1 Model B         | |
 | Pi 2                 | |
 | Pi 3 Model B         | 20210718           |
-| Pi 4 Model B 32-bits | |
+| Pi 4 Model B 32-bits | 20210718           |
 | Pi 4 Model B 64-bits | |
 
 
