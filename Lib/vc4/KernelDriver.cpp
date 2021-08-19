@@ -124,6 +124,9 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
   //debug("Called vc4 KernelDriver::invoke()");  
   assertq(!qpuCodeMem.empty(), "invoke_intern() vc4: no code to invoke", true );
 
+  init_uniforms(uniforms, params, numQPUs);
+  init_launch_messages(launch_messages, codeMem, num_params(params), uniforms);
+
   enableQPUs();
   V3DLib::invoke(numQPUs, qpuCodeMem, params, uniforms, launch_messages);
   disableQPUs();

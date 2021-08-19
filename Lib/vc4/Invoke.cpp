@@ -32,6 +32,8 @@ int num_params(IntList const &params) {
   return (2 + params.size() + 1);
 }
 
+}  // anon namespace
+
 
 /**
  * Initialize uniforms to pass into running QPUs
@@ -71,7 +73,7 @@ void init_uniforms(Data &uniforms, IntList const &params, int numQPUs) {
  *
  * Doing this for max number of QPUs, so that num QPUs can be changed dynamically on calls.
  */
-void init_launch_messages(Data &launch_messages, Code const &code, int num_params, Data const &uniforms) {
+void init_launch_messages(Data &launch_messages, Code const &code, IntList const &params, Data const &uniforms) {
   if (launch_messages.allocated()) {
     return;
   }
@@ -79,12 +81,10 @@ void init_launch_messages(Data &launch_messages, Code const &code, int num_param
   launch_messages.alloc(2*Platform::max_qpus());
 
   for (int i = 0; i < Platform::max_qpus(); i++) {
-    launch_messages[2*i]     = uniforms.getAddress() + 4*i*num_params;  // 4* for uint32_t offset
+    launch_messages[2*i]     = uniforms.getAddress() + 4*i*num_params(params);  // 4* for uint32_t offset
     launch_messages[2*i + 1] = code.getAddress();
   }
 }
-
-}  // anon namespace
 
 
 /**
@@ -96,8 +96,6 @@ void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, D
   error("Failed to invoke kernel on QPUs\n");
   return;
 #else
-  init_uniforms(uniforms, params, numQPUs);
-  init_launch_messages(launch_messages, codeMem, num_params(params), uniforms);
 
   unsigned result = execute_qpu(
     getMailbox(),
