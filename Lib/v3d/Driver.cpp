@@ -49,8 +49,6 @@ namespace v3d {
 /**
  * Execute a kernel on v3d hardware
  *
- * Needs two buffer objects, one for the kernel code, one for data.
- *
  * @return true if execution went well and no timeout,
  *         false otherwise
  *
@@ -58,13 +56,13 @@ namespace v3d {
  * NOTES
  * =====
  *
- * 1. TODO use following for next step:
- *
- * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
- *
- * 2. It doesn't appear to be necessary to add the code BO to the bo handles list.
+ * 1. It doesn't appear to be necessary to add the code BO to the bo handles list.
  *    All unit tests pass without doing this.
  *    This is something to keep in mind; it might go awkwards later on.
+ *
+ * 2. Totally no clue what the workgroup if for and what it does.
+ *    Can't find anything about it online, just what `py-videocore6` gives,
+ *    which I plain took over.
  */
 bool Driver::execute(Code &code, Data *uniforms, uint32_t thread) {
   uint32_t code_phyaddr = code.getAddress();
@@ -73,18 +71,10 @@ bool Driver::execute(Code &code, Data *uniforms, uint32_t thread) {
   // If there are none, set the address to zero.
   uint32_t unif_phyaddr = (uniforms == nullptr)?0u:uniforms->getAddress();
 
-  assertq(m_bo_handles.size() >= 1, "v3d execute: Expecting least one buffer object on execution");  // See Note 2
+  assertq(m_bo_handles.size() >= 1, "v3d execute: Expecting least one buffer object on execution");  // See Note 1
 
-  // See Note 1
-
-  // BUG, this init was wrong
-  //
-  // TODO test this again with different values
-  //WorkGroup workgroup = (1, 1, 0);
-  //
-  WorkGroup workgroup(0);           // Setting first param to 0 ensures all QPU's return all registers
-
-  uint32_t wgs_per_sg = 16;         // Has no effect if previous (1, 1, 0)
+  WorkGroup workgroup;
+  uint32_t wgs_per_sg = 16;
 
   st_v3d_submit_csd st = {
     {
