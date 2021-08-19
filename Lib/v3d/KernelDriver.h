@@ -22,8 +22,6 @@ class KernelDriver : public V3DLib::KernelDriver {
   using Parent       = V3DLib::KernelDriver;
   using Instruction  = V3DLib::v3d::instr::Instr;
   using Instructions = V3DLib::v3d::Instructions;
-  using Code         = SharedArray<uint64_t>;
-  using Params       = SharedArray<uint32_t>;
 
 public:
   KernelDriver();
@@ -33,11 +31,10 @@ public:
   int kernel_size() const { return (int) instructions.size(); }
 
 private:
-  Params        paramMem;
   Instructions  instructions;
   BufferObject  code_bo;
   Code          qpuCodeMem;
-  SharedArray<uint32_t> devnull;
+  Data          devnull;
 
   void compile_intern() override;
   void invoke_intern(int numQPUs, IntList &params) override;

@@ -14,21 +14,17 @@
 #include "instr/OpItems.h"
 
 namespace V3DLib {
-
-// WEIRDNESS, due to changes, this file did not compile because it suddenly couldn't find
-// the relevant overload of operator <<.
-// Adding this solved it. HUH??
-// Also: the << definitions in `basics.h` DID get picked up; the std::string versions did not.
-using ::operator<<; // C++ weirdness
-
 namespace v3d {
-
 
 using namespace V3DLib::v3d::instr;
 using Instructions = V3DLib::v3d::Instructions;
 
 namespace {
 
+// WEIRDNESS, due to changes, this file did not compile because it suddenly couldn't find
+// the relevant overload of operator <<.
+// Adding this solved it. HUH??
+// Also: the << definitions in `basics.h` DID get picked up; the std::string versions did not.
 using ::operator<<; // C++ weirdness
 
 std::vector<std::string> local_errors;
@@ -1183,16 +1179,7 @@ void combine(Instructions &instructions) {
 }
 
 
-void invoke(int numQPUs, Data &devnull, Code &codeMem, IntList &params) {
-#ifndef QPU_MODE
-  assertq(false, "Cannot run v3d invoke(), QPU_MODE not enabled");
-#else
-  assert(!codeMem.empty());
-
-  Data unif(params.size() + 4);
-  Data done(1);
-  done[0] = 0;
-
+void load_uniforms(Data &unif, int numQPUs, Data const &devnull, Data const &done, IntList const &params) {
   int offset = 0;
 
   // Add the common uniforms
@@ -1206,13 +1193,25 @@ void invoke(int numQPUs, Data &devnull, Code &codeMem, IntList &params) {
 
   // The last item is for the 'done' location;
   unif[offset] = (uint32_t) done.getAddress();
+}
+
+void invoke(int numQPUs, Data &devnull, Code &codeMem, IntList &params) {
+#ifndef QPU_MODE
+  assertq(false, "Cannot run v3d invoke(), QPU_MODE not enabled");
+#else
+  assert(!codeMem.empty());
+
+  Data unif(params.size() + 4);
+  Data done(1);
+  done[0] = 0;
+
+  load_uniforms(unif, numQPUs, devnull, done, params);
 
   Driver drv;
   drv.add_bo(getBufferObject().getHandle());
   drv.execute(codeMem, &unif, numQPUs);
 #endif  // QPU_MODE
 }
-
 
 }  // anon namespace
 
