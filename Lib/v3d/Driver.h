@@ -14,15 +14,13 @@ namespace v3d {
  */
 class Driver {
   using BoHandles  = std::vector<uint32_t>;
-  using Code       = SharedArray<uint64_t>;
-  using UniformArr = SharedArray<uint32_t>;
 
 public:
   void add_bo(uint32_t handle) {
     m_bo_handles.push_back(handle);
   }
 
-  bool execute(Code &code, UniformArr *uniforms = nullptr, uint32_t thread = 1);
+  bool execute(Code &code, Data *uniforms = nullptr, uint32_t thread = 1);
 
 private:
   BoHandles m_bo_handles;

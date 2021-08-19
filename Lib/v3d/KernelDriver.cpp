@@ -1183,18 +1183,14 @@ void combine(Instructions &instructions) {
 }
 
 
-using Code       = SharedArray<uint64_t>;
-using UniformArr = SharedArray<uint32_t>;
-
-
-void invoke(int numQPUs, SharedArray<uint32_t> &devnull, Code &codeMem, int qpuCodeMemOffset, IntList &params) {
+void invoke(int numQPUs, Data &devnull, Code &codeMem, IntList &params) {
 #ifndef QPU_MODE
   assertq(false, "Cannot run v3d invoke(), QPU_MODE not enabled");
 #else
-  assert(codeMem.size() != 0);
+  assert(!codeMem.empty());
 
-  UniformArr unif(params.size() + 4);
-  UniformArr done(1);
+  Data unif(params.size() + 4);
+  Data done(1);
   done[0] = 0;
 
   int offset = 0;
@@ -1209,8 +1205,6 @@ void invoke(int numQPUs, SharedArray<uint32_t> &devnull, Code &codeMem, int qpuC
   }
 
   // The last item is for the 'done' location;
-  // Not sure if this is the correct slot to put it
-  // TODO: scrutinize the python project for this
   unif[offset] = (uint32_t) done.getAddress();
 
   Driver drv;
@@ -1309,8 +1303,6 @@ void KernelDriver::allocate() {
     code_bo.alloc(size_in_bytes);
     qpuCodeMem.alloc((uint32_t) code.size());
     qpuCodeMem.copyFrom(code);  // Copy kernel to code memory
-
-    qpuCodeMemOffset = (int) size_in_bytes;
   }
 }
 
@@ -1329,22 +1321,7 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
     devnull.alloc(16);
   }
 
-  // Allocate memory for the parameters if not done already
-  // TODO Not used in v3d, do we need this?
-  unsigned numWords = (12*MAX_KERNEL_PARAMS + 12*2);
-  if (paramMem.allocated()) {
-    assert(paramMem.size() == numWords);
-  } else {
-    paramMem.alloc(numWords);
-  }
-
-  //
-  // NOTE: it doesn't appear to be necessary to add the BO for the code to the
-  //       used BO list in Driver (used in next call). All unit tests pass without
-  //       calling Driver::add_bo() in next call.
-  //       This is something to keep in mind; it might go awkwards later on.
-  //
-  v3d::invoke(numQPUs, devnull, qpuCodeMem, qpuCodeMemOffset, params);
+  v3d::invoke(numQPUs, devnull, qpuCodeMem, params);
 }
 
 
@@ -1355,6 +1332,8 @@ void KernelDriver::emit_opcodes(FILE *f) {
   if (instructions.empty()) {
     fprintf(f, "<No opcodes to print>\n");
   } else {
+    // You could also print from the code SharedArray,
+    // but then you lose the comments.
     for (auto const &instr : instructions) {
       fprintf(f, "%s\n", instr.mnemonic(true).c_str());
     }

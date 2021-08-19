@@ -30,8 +30,6 @@ public:
   void dump_compile_data(char const *filename) const;
 
 protected:
-  const int MAX_KERNEL_PARAMS = 128;  // Maximum number of kernel parameters allowed
-
   Instr::List m_targetCode;           // Target code generated from AST
   Stmts       m_body;
 

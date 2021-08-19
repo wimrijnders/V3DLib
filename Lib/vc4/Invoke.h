@@ -6,9 +6,6 @@
 
 namespace V3DLib {
 
-using Code   = SharedArray<uint64_t>;
-using Data   = SharedArray<uint32_t>;
-
 void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, Data &launch_messages); 
 
 }  // namespace V3DLib
