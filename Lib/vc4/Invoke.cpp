@@ -90,12 +90,13 @@ void init_launch_messages(Data &launch_messages, Code const &code, IntList const
 /**
  * Run the kernel on vc4 hardware
  */
-void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, Data &launch_messages) {
+void invoke(int numQPUs, Data const &launch_messages) {
 #ifndef ARM32
   error("invoke() will not run on this platform, only on ARM 32-bits");
   error("Failed to invoke kernel on QPUs\n");
   return;
 #else
+  enableQPUs();
 
   unsigned result = execute_qpu(
     getMailbox(),
@@ -104,6 +105,8 @@ void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, D
     1,
     LibSettings::qpu_timeout()*1000
   );
+
+  disableQPUs();
 
   if (result != 0) {
     error("Failed to invoke kernel on QPUs\n");

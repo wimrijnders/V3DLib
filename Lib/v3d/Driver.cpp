@@ -47,6 +47,10 @@ namespace V3DLib {
 namespace v3d {
 
 /**
+ * Execute a kernel on v3d hardware
+ *
+ * Needs two buffer objects, one for the kernel code, one for data.
+ *
  * @return true if execution went well and no timeout,
  *         false otherwise
  *
@@ -54,15 +58,22 @@ namespace v3d {
  * NOTES
  * =====
  *
- * * TODO use following for next step:
+ * 1. TODO use following for next step:
  *
  * https://github.com/Idein/py-videocore6/blob/master/benchmarks/test_gpu_clock.py
+ *
+ * 2. It doesn't appear to be necessary to add the code BO to the bo handles list.
+ *    All unit tests pass without doing this.
+ *    This is something to keep in mind; it might go awkwards later on.
  */
-bool Driver::execute(Code &code, UniformArr *uniforms, uint32_t thread) {
+bool Driver::execute(Code &code, Data *uniforms, uint32_t thread) {
   uint32_t code_phyaddr = code.getAddress();
+
+  // Technically, you are not required to pass in uniforms.
+  // If there are none, set the address to zero.
   uint32_t unif_phyaddr = (uniforms == nullptr)?0u:uniforms->getAddress();
 
-  assertq(m_bo_handles.size() > 0, "v3d execute: There should be at least one buffer object present on execution");
+  assertq(m_bo_handles.size() >= 1, "v3d execute: Expecting least one buffer object on execution");  // See Note 2
 
   // See Note 1
 

@@ -8,7 +8,7 @@ namespace V3DLib {
 
 void init_uniforms(Data &uniforms, IntList const &params, int numQPUs);
 void init_launch_messages(Data &launch_messages, Code const &code, IntList const &params, Data const &uniforms);
-void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, Data &launch_messages); 
+void invoke(int numQPUs, Data const &launch_messages); 
 
 }  // namespace V3DLib
 

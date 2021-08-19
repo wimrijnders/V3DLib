@@ -120,21 +120,6 @@ public:
     }
   }
 
-/*
-  // Compile conflict with Shared2DArray::copyTo
-
-  void copyTo(std::vector<T> &dst) {
-    assert(!empty());
-
-    dst.resize(size());
-
-    // TODO: consider using memcpy() instead
-    for (uint32_t offset = 0; offset < size(); ++offset) {
-      dst[offset] = (*this)[offset];
-    }
-  }
-*/
-
 
   /**
    * Debug method for showing a range in a shared array
@@ -360,6 +345,7 @@ inline bool no_fractions(V3DLib::SharedArray<float> const &a) {
 }
 
 
+using Code = SharedArray<uint64_t>;
 using Data = SharedArray<uint32_t>;
 
 }  // namespace V3DLib
