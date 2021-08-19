@@ -18,7 +18,6 @@ public:
   uint32_t getAddress() const { return m_phyaddr; }
   uint32_t size() const { return m_size; }
   bool empty() const { return size() == 0; }
-  uint32_t *getPointer();
 
   void heap_view(BufferObject &heap);
 

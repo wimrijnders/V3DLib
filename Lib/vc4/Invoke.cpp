@@ -71,7 +71,7 @@ void init_uniforms(Data &uniforms, IntList const &params, int numQPUs) {
  *
  * Doing this for max number of QPUs, so that num QPUs can be changed dynamically on calls.
  */
-void init_launch_messages(Data &launch_messages, uint32_t *qpuCodePtr, int num_params, Data &uniforms) {
+void init_launch_messages(Data &launch_messages, Code const &code, int num_params, Data const &uniforms) {
   if (launch_messages.allocated()) {
     return;
   }
@@ -79,15 +79,16 @@ void init_launch_messages(Data &launch_messages, uint32_t *qpuCodePtr, int num_p
   launch_messages.alloc(2*Platform::max_qpus());
 
   for (int i = 0; i < Platform::max_qpus(); i++) {
-    launch_messages[2*i]     = (uint32_t) (uniforms.getPointer() + i*num_params);  // Braces are sneaky! Required
-    launch_messages[2*i + 1] = (uint32_t) qpuCodePtr;
+    launch_messages[2*i]     = uniforms.getAddress() + 4*i*num_params;  // 4* for uint32_t offset
+    launch_messages[2*i + 1] = code.getAddress();
   }
 }
 
 }  // anon namespace
 
+
 /**
- * TODO rewrite to shared array holding the parameters
+ * Run the kernel on vc4 hardware
  */
 void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, Data &launch_messages) {
 #ifndef ARM32
@@ -96,14 +97,12 @@ void invoke(int numQPUs, Code &codeMem, IntList const &params, Data &uniforms, D
   return;
 #else
   init_uniforms(uniforms, params, numQPUs);
-  init_launch_messages(launch_messages, codeMem.getPointer(), num_params(params), uniforms);
-
-  int mb = getMailbox();  // Open mailbox for talking to vc4
+  init_launch_messages(launch_messages, codeMem, num_params(params), uniforms);
 
   unsigned result = execute_qpu(
-    mb,
+    getMailbox(),
     numQPUs,
-    (uint32_t) launch_messages.getPointer(),
+    launch_messages.getAddress(),
     1,
     LibSettings::qpu_timeout()*1000
   );
