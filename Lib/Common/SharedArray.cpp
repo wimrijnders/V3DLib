@@ -64,32 +64,6 @@ void BaseSharedArray::dealloc() {
 }
 
 
-/**
- * Get starting address of the section in question
- *
- * Needed for vc4, emulator and interpreter mode.
- *
- * TODO my god this is so ugly, can we please clean it up??
- */
-uint32_t *BaseSharedArray::getPointer() {
-#ifdef QPU_MODE
-  if (Platform::has_vc4()) {
-#ifdef ARM64
-    // This part is useless, it will in fact never be called.
-    // It's only here for successful compilation.
-    return (uint32_t *) (uint64_t) m_phyaddr;  // Double cast to prevent conversion warning
-#else
-    return (uint32_t *) m_phyaddr;
-#endif
-  } else {
-    return (uint32_t *) m_usraddr;
-  }
-#else
-  return (uint32_t *) m_usraddr;
-#endif
-}
-
-
 void BaseSharedArray::heap_view(BufferObject &heap) {
   assert(!allocated());
   assert(m_heap == nullptr);
