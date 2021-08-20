@@ -9,7 +9,6 @@
 #include "dump_instr.h"
 #include "Target/instr/Mnemonics.h"
 #include "SourceTranslate.h"  // add_uniform_pointer_offset()
-#include "Invoke.h"
 
 namespace V3DLib {
 namespace vc4 {
@@ -122,12 +121,8 @@ void KernelDriver::compile_intern() {
 
 
 void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
-  assertq(!qpuCodeMem.empty(), "invoke_intern() vc4: no code to invoke", true );
-
-  init_uniforms(uniforms, params, numQPUs);
-  init_launch_messages(launch_messages, qpuCodeMem, params, uniforms);
-
-  V3DLib::invoke(numQPUs, launch_messages);
+  load_uniforms(uniforms(), params, numQPUs);
+  MailBoxInvoke::invoke(numQPUs, qpuCodeMem, params);
 }
 
 }  // namespace vc4

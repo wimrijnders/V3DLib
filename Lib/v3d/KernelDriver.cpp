@@ -1195,6 +1195,7 @@ void load_uniforms(Data &unif, int numQPUs, Data const &devnull, Data const &don
   unif[offset] = (uint32_t) done.getAddress();
 }
 
+
 void invoke(int numQPUs, Data &devnull, Code &codeMem, IntList &params) {
 #ifndef QPU_MODE
   assertq(false, "Cannot run v3d invoke(), QPU_MODE not enabled");
@@ -1320,7 +1321,12 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
     devnull.alloc(16);
   }
 
+#ifdef USE_MAILBOX_V3D
+  load_uniforms(uniforms(), params, numQPUs);
+  MailBoxInvoke::invoke(numQPUs, qpuCodeMem, params);
+#else
   v3d::invoke(numQPUs, devnull, qpuCodeMem, params);
+#endif
 }
 
 

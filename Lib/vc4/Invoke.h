@@ -6,9 +6,37 @@
 
 namespace V3DLib {
 
-void init_uniforms(Data &uniforms, IntList const &params, int numQPUs);
-void init_launch_messages(Data &launch_messages, Code const &code, IntList const &params, Data const &uniforms);
-void invoke(int numQPUs, Data const &launch_messages); 
+/**
+ * Mixin class for Mailbox invocation
+ *
+ * Prepares the data for the call and executes the call.
+ */
+class MailBoxInvoke {
+public:
+  Data &uniforms() { return m_uniforms; }
+  void invoke(int numQPUs, Code const &code, IntList const &params);
+
+private:
+  Data m_uniforms;  // Memory region for QPU parameters
+
+
+  /**
+   * Container for launch info per QPU to run
+   *
+   * Array consecutively containing two values per QPU to run:
+   *  - pointer to uniform parameters to pass per QPU
+   *  - Start of code block to run per QPU
+   *
+   * The uniforms are essentially the same for all QPUs, *except* qpu id, the first parameter.
+   *
+   * It thus be possible to run different code per QPU.
+   * Haven't tried this yet, till now all the QPUs run the same code.
+   */
+  Data launch_messages;
+};
+
+
+void load_uniforms(Data &uniforms, IntList const &params, int numQPUs);
 
 }  // namespace V3DLib
 

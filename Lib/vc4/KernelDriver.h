@@ -3,11 +3,12 @@
 #include "../KernelDriver.h"
 #include "Common/SharedArray.h"
 #include "Encode.h"
+#include "Invoke.h"
 
 namespace V3DLib {
 namespace vc4 {
 
-class KernelDriver : public V3DLib::KernelDriver {
+class KernelDriver : public V3DLib::KernelDriver, private MailBoxInvoke {
   using Parent = V3DLib::KernelDriver;
 
 public:
@@ -20,22 +21,6 @@ public:
 private:
   Code qpuCodeMem;     // Memory region for QPU code
                        // Doesn't survive std::move, dtor gets called despite move ctor present
-  Data uniforms;       // Memory region for QPU parameters
-
-
-  /**
-   * Container for launch info per QPU to run
-   *
-   * Array consecutively containing two values per QPU to run:
-   *  - pointer to uniform parameters to pass per QPU
-   *  - Start of code block to run per QPU
-   *
-   * The uniforms are essentially the same for all QPUs, *except* qpu id, the first parameter.
-   *
-   * It thus be possible to run different code per QPU.
-   * Haven't tried this yet, till now all the QPUs run the same code.
-   */
-  Data launch_messages;
 
   void kernelFinish();
   void compile_intern() override;
