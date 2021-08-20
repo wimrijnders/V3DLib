@@ -1321,12 +1321,7 @@ void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
     devnull.alloc(16);
   }
 
-#ifdef USE_MAILBOX_V3D
-  load_uniforms(uniforms(), params, numQPUs);
-  MailBoxInvoke::invoke(numQPUs, qpuCodeMem, params);
-#else
   v3d::invoke(numQPUs, devnull, qpuCodeMem, params);
-#endif
 }
 
 

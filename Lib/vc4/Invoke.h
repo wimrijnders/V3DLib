@@ -13,7 +13,6 @@ namespace V3DLib {
  */
 class MailBoxInvoke {
 public:
-  Data &uniforms() { return m_uniforms; }
   void invoke(int numQPUs, Code const &code, IntList const &params);
 
 private:
@@ -34,9 +33,6 @@ private:
    */
   Data launch_messages;
 };
-
-
-void load_uniforms(Data &uniforms, IntList const &params, int numQPUs);
 
 }  // namespace V3DLib
 

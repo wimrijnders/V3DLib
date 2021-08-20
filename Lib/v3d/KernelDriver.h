@@ -5,12 +5,6 @@
 #include "instr/Instr.h"
 #include "BufferObject.h"
 
-#define USE_MAILBOX_V3D
-
-#ifdef USE_MAILBOX_V3D
-#include "../vc4/Invoke.h"
-#endif
-
 namespace V3DLib {
 namespace v3d {
 
@@ -24,11 +18,7 @@ namespace v3d {
  * and resulted in run timeouts and eventually locked up the pi4.
  * vc4 does not have this issue.
  */
-class KernelDriver : public V3DLib::KernelDriver
-#ifdef USE_MAILBOX_V3D
-  , private MailBoxInvoke
-#endif
-{
+class KernelDriver : public V3DLib::KernelDriver {
   using Parent       = V3DLib::KernelDriver;
   using Instruction  = V3DLib::v3d::instr::Instr;
   using Instructions = V3DLib::v3d::Instructions;

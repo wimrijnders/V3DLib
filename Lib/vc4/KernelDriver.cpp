@@ -121,7 +121,6 @@ void KernelDriver::compile_intern() {
 
 
 void KernelDriver::invoke_intern(int numQPUs, IntList &params) {
-  load_uniforms(uniforms(), params, numQPUs);
   MailBoxInvoke::invoke(numQPUs, qpuCodeMem, params);
 }
 
