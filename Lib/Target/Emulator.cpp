@@ -341,29 +341,35 @@ inline bool checkAssignCond(QPUState* s, AssignCond cond, int i) {
  */
 inline bool checkBranchCond(QPUState* s, BranchCond cond) {
   bool bools[NUM_LANES];
-  switch (cond.tag) {
-    case COND_ALWAYS: return true;
-    case COND_NEVER: return false;
-    case COND_ALL:
-    case COND_ANY:
-      for (int i = 0; i < NUM_LANES; i++)
-        switch (cond.flag) {
-          case ZS: bools[i] =  s->zeroFlags[i]; break;
-          case ZC: bools[i] = !s->zeroFlags[i]; break;
-          case NS: bools[i] =  s->negFlags[i];  break;
-          case NC: bools[i] = !s->negFlags[i];  break;
-          default: assert(false); break;
-        }
 
-      if (cond.tag == COND_ALL) {
-        for (int i = 0; i < NUM_LANES; i++)
-          if (! bools[i]) return false;
-        return true;
-      } else if (cond.tag == COND_ANY) {
-        for (int i = 0; i < NUM_LANES; i++)
-          if (bools[i]) return true;
-        return false;
+  auto set_bools = [&bools] (QPUState *s, BranchCond const &cond) {
+    for (int i = 0; i < NUM_LANES; i++)
+      switch (cond.flag) {
+        case ZS: bools[i] =  s->zeroFlags[i]; break;
+        case ZC: bools[i] = !s->zeroFlags[i]; break;
+        case NS: bools[i] =  s->negFlags[i];  break;
+        case NC: bools[i] = !s->negFlags[i];  break;
+        default: assert(false); break;
       }
+  };
+
+  switch (cond.tag) {
+    case BranchCond::COND_ALWAYS: return true;
+    case BranchCond::COND_NEVER: return false;
+    case BranchCond::COND_ALL:
+      set_bools(s, cond);
+
+      for (int i = 0; i < NUM_LANES; i++)
+        if (!bools[i]) return false;
+      return true;
+
+    case BranchCond::COND_ANY:
+      set_bools(s, cond);
+
+      for (int i = 0; i < NUM_LANES; i++)
+        if (bools[i]) return true;
+      return false;
+
     default:
       assertq(false, "checkBranchCond(): unexpected value");
       return false;

@@ -138,62 +138,6 @@ private:
   }
 };
 
-// ===============
-// Condition flags
-// ===============
-
-uint32_t encodeAssignCond(AssignCond cond) {
-  switch (cond.tag) {
-    case AssignCond::Tag::NEVER:  return 0;
-    case AssignCond::Tag::ALWAYS: return 1;
-    case AssignCond::Tag::FLAG:
-      switch (cond.flag) {
-        case ZS: return 2;
-        case ZC: return 3;
-        case NS: return 4;
-        case NC: return 5;
-     }
-
-    default:
-      fatal("V3DLib: missing case in encodeAssignCond");
-      return 0;
-  }
-}
-
-
-// =================
-// Branch conditions
-// =================
-
-uint32_t encodeBranchCond(BranchCond cond) {
-  switch (cond.tag) {
-    case COND_NEVER:
-      fatal("V3DLib: 'never' condition not supported");
-    case COND_ALWAYS: return 15;
-    case COND_ALL:
-      switch (cond.flag) {
-        case ZS: return 0;
-        case ZC: return 1;
-        case NS: return 4;
-        case NC: return 5;
-        default: break;
-      }
-    case COND_ANY:
-      switch (cond.flag) {
-        case ZS: return 2;
-        case ZC: return 3;
-        case NS: return 6;
-        case NC: return 7;
-        default: break;
-      }
-
-    default:
-      breakpoint
-      fatal("V3DLib: missing case in encodeBranchCond");
-      return 0;
-  }
-}
-
 
 // ================
 // Register encoder
@@ -472,7 +416,7 @@ uint64_t encodeInstr(Instr instr) {
       RegTag file;
 
       vc4_instr.tag(vc4_Instr::LI);
-      vc4_instr.cond_add  = encodeAssignCond(instr.assign_cond());
+      vc4_instr.cond_add  = instr.assign_cond().encode();
       vc4_instr.waddr_add = encodeDestReg(instr.dest(), &file);
       vc4_instr.ws(file != REG_A);
       vc4_instr.li_imm = li.imm.encode();
@@ -484,7 +428,7 @@ uint64_t encodeInstr(Instr instr) {
       assertq(!instr.branch_target().useRegOffset, "Register offset not yet supported");
 
       vc4_instr.tag(vc4_Instr::BR);
-      vc4_instr.cond_add = encodeBranchCond(instr.branch_cond());
+      vc4_instr.cond_add = instr.branch_cond().encode();
       vc4_instr.rel(instr.branch_target().relative);
       vc4_instr.li_imm = 8*instr.branch_target().immOffset;
     break;
@@ -496,11 +440,11 @@ uint64_t encodeInstr(Instr instr) {
       uint32_t dest  = encodeDestReg(instr.dest(), &file);
 
       if (alu.op.isMul()) {
-        vc4_instr.cond_mul  = encodeAssignCond(instr.assign_cond());
+        vc4_instr.cond_mul  = instr.assign_cond().encode();
         vc4_instr.waddr_mul = dest;
         vc4_instr.ws(file != REG_B);
       } else {
-        vc4_instr.cond_add  = encodeAssignCond(instr.assign_cond());
+        vc4_instr.cond_add  = instr.assign_cond().encode();
         vc4_instr.waddr_add = dest;
         vc4_instr.ws(file != REG_A);
       }
