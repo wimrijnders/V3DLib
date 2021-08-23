@@ -10,8 +10,10 @@ class ALUOp {
 public:
   //
   // Prefixes:
-  // A_: for 'add' ALU
-  // M_: for 'mul' ALU
+  //   A_: for 'add' ALU
+  //   M_: for 'mul' ALU
+  //
+  // Up to Mul, opcodes are values as used directly by vc4.
   //
   enum Enum :uint32_t {
     NONE = (uint32_t) -1,
@@ -27,7 +29,7 @@ public:
     A_FMAXABS,      // Floating-point max of absolute values
     A_FtoI,         // Float to signed integer
     A_ItoF,         // Signed integer to float
-    A_ADD,          // Integer add
+    A_ADD = 12,     // Integer add
     A_SUB,          // Integer subtract
     A_SHR,          // Integer shift right
     A_ASR,          // Integer arithmetic shift right
@@ -40,10 +42,13 @@ public:
     A_BXOR,         // Bitwise xor
     A_BNOT,         // Bitwise not
     A_CLZ,          // Count leading zeros
-    A_V8ADDS,       // Add with saturation per 8-bit element
-    A_V8SUBS,       // Subtract with saturation per 8-bit element
+    A_V8ADDS = 30,  // Add with saturation per 8-bit element; vc4 only
+    A_V8SUBS,       // Subtract with saturation per 8-bit element; vc4 only
+
+    // End correspondence with vc4 opcodes
 
     // Opcodes for the 'mul' ALU
+    // V8 values are vc4 only
     M_FMUL,        // Floating-point multiply
     M_MUL24,       // 24-bit integer multiply
     M_V8MUL,       // Multiply per 8-bit element

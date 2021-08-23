@@ -1,6 +1,7 @@
 #include "Conditions.h"
 #include "Support/basics.h"
 #include "Source/BExpr.h"
+#include "Support/Platform.h"
 
 namespace V3DLib {
 namespace {
@@ -52,6 +53,37 @@ BranchCond BranchCond::negate() const {
   }
 
   return ret;
+}
+
+
+uint32_t BranchCond::encode() const {
+  assertq(Platform::compiling_for_vc4(), "BranchCond::encode(): this call is vc4 only");
+
+  switch (tag) {
+    case COND_NEVER:
+      fatal("V3DLib: 'never' condition not supported");
+    case COND_ALWAYS: return 15;
+    case COND_ALL:
+      switch (flag) {
+        case ZS: return 0;
+        case ZC: return 1;
+        case NS: return 4;
+        case NC: return 5;
+        default: break;
+      }
+    case COND_ANY:
+      switch (flag) {
+        case ZS: return 2;
+        case ZC: return 3;
+        case NS: return 6;
+        case NC: return 7;
+        default: break;
+      }
+
+    default:
+      fatal("BranchCond::encode(): missing case");
+      return 0;
+  }
 }
 
 
@@ -187,6 +219,27 @@ std::string AssignCond::to_string() const {
 }
 
 
+uint32_t AssignCond::encode() const {
+  assertq(Platform::compiling_for_vc4(), "AssignCond::encode(): this call is vc4 only");
+
+  switch (tag) {
+    case NEVER:  return 0;
+    case ALWAYS: return 1;
+    case FLAG:
+      switch (flag) {
+        case ZS: return 2;
+        case ZC: return 3;
+        case NS: return 4;
+        case NC: return 5;
+     }
+
+    default:
+      fatal("AssignCond::encode(): missing case in");
+      return 0;
+  }
+}
+
+
 /**
  * Translate an AssignCond instance to a BranchCond instance
  *
@@ -194,17 +247,17 @@ std::string AssignCond::to_string() const {
  */
 BranchCond AssignCond::to_branch_cond(bool do_all) const {
   BranchCond bcond;
-  if (is_always()) { bcond.tag = COND_ALWAYS; return bcond; }
-  if (is_never())  { bcond.tag = COND_NEVER; return bcond; }
+  if (is_always()) { bcond.tag = BranchCond::COND_ALWAYS; return bcond; }
+  if (is_never())  { bcond.tag = BranchCond::COND_NEVER; return bcond; }
 
-  assert(tag == AssignCond::Tag::FLAG);
+  assert(tag == AssignCond::FLAG);
 
   bcond.flag = flag;
 
   if (do_all) {
-    bcond.tag = COND_ALL;
+    bcond.tag = BranchCond::COND_ALL;
   } else {
-    bcond.tag = COND_ANY;
+    bcond.tag = BranchCond::COND_ANY;
   }
 
   return bcond;

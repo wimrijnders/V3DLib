@@ -2,7 +2,6 @@
 #define _LIB_VC4_KERNELDRIVER_H
 #include "../KernelDriver.h"
 #include "Common/SharedArray.h"
-#include "Encode.h"
 #include "Invoke.h"
 
 namespace V3DLib {

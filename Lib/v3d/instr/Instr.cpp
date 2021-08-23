@@ -359,9 +359,9 @@ void Instr::set_branch_condition(V3DLib::BranchCond src_cond) {
   //      instr.na0();
   //      instr.a0();
 
-  if (src_cond.tag == COND_ALWAYS) {
+  if (src_cond.tag == BranchCond::COND_ALWAYS) {
     return;  // nothing to do
-  } else if (src_cond.tag == COND_ALL) {
+  } else if (src_cond.tag == BranchCond::COND_ALL) {
     switch (src_cond.flag) {
       case ZC:
       case NC:
@@ -372,9 +372,9 @@ void Instr::set_branch_condition(V3DLib::BranchCond src_cond) {
         set_branch_condition(V3D_QPU_BRANCH_COND_ALLA);
         break;
       default:
-        debug_break("Unknown branch condition under COND_ALL");  // Warn me if this happens
+        assertq(false, "Unknown branch condition under COND_ALL");
     }
-  } else if (src_cond.tag == COND_ANY) {
+  } else if (src_cond.tag == BranchCond::COND_ANY) {
     switch (src_cond.flag) {
       case ZC:
       case NC:
@@ -385,10 +385,10 @@ void Instr::set_branch_condition(V3DLib::BranchCond src_cond) {
         set_branch_condition(V3D_QPU_BRANCH_COND_ANYA);   // TODO: verify
         break;
       default:
-        debug_break("Unknown branch condition under COND_ANY");  // Warn me if this happens
+        assertq(false, "Unknown branch condition under COND_ANY");
     }
   } else {
-    debug_break("Branch condition not COND_ALL or COND_ANY");  // Warn me if this happens
+    assertq(false, "Branch condition not COND_ALL or COND_ANY");
   }
 }
 

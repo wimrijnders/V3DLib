@@ -17,24 +17,34 @@ enum Flag {
   , NC              // Negative clear
 };
 
-// Branch conditions
 
-enum BranchCondTag {
-    COND_ALL         // Reduce vector of bits to a single
-  , COND_ANY         // bit using AND/OR reduction
-  , COND_ALWAYS
-  , COND_NEVER
-};
+///////////////////////////////////////////////////////////////////////////////
+// Class BranchCond
+///////////////////////////////////////////////////////////////////////////////
 
 
 struct BranchCond {
-  BranchCondTag tag;  // ALL or ANY reduction?
+  enum Tag {
+    COND_ALL,         // Reduce vector of bits to a single
+    COND_ANY,         // bit using AND/OR reduction
+    COND_ALWAYS,
+    COND_NEVER
+  };
+
+  Tag tag;            // ALL or ANY reduction?
   Flag flag;          // Condition flag
 
   BranchCond negate() const;
+  bool is_always() const { return tag == COND_ALWAYS; }
+
+  uint32_t encode() const;
   std::string to_string() const;
 };
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Class SetCond
+///////////////////////////////////////////////////////////////////////////////
 
 // v3d only
 struct SetCond {
@@ -58,6 +68,10 @@ private:
   const char *to_string() const;
 };
 
+
+///////////////////////////////////////////////////////////////////////////////
+// Class AssignCond
+///////////////////////////////////////////////////////////////////////////////
 
 /**
  * Assignment conditions
@@ -83,6 +97,7 @@ struct AssignCond {
   bool operator==(AssignCond rhs) const { return (tag == rhs.tag && flag == rhs.flag); }
   bool operator!=(AssignCond rhs) const { return !(*this == rhs); }
 
+  uint32_t encode() const;
   std::string to_string() const;
   BranchCond to_branch_cond(bool do_all) const;
 };

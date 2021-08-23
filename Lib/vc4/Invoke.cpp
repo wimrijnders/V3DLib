@@ -95,8 +95,10 @@ void invoke(int numQPUs, Data const &launch_messages) {
 #else
   enableQPUs();
 
+  auto mb = getMailbox();
+
   unsigned result = execute_qpu(
-    getMailbox(),
+    mb,
     numQPUs,
     launch_messages.getAddress(),
     1,
@@ -115,7 +117,7 @@ void invoke(int numQPUs, Data const &launch_messages) {
 
 
 void MailBoxInvoke::invoke(int numQPUs, Code const &code, IntList const &params) {
-  debug("Calling MailBoxInvoke::invoke()");
+  //debug("Calling MailBoxInvoke::invoke()");
   assertq(!code.empty(), "MailBoxInvoke::invoke(): no code to invoke", true );
 
   load_uniforms(m_uniforms, params, numQPUs);

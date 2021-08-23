@@ -9,9 +9,71 @@
 #include "dump_instr.h"
 #include "Target/instr/Mnemonics.h"
 #include "SourceTranslate.h"  // add_uniform_pointer_offset()
+#include "Instr.h"
 
 namespace V3DLib {
 namespace vc4 {
+namespace {
+
+using CodeList = Seq<uint64_t>;
+
+
+/**
+ * Convert intermediate instruction into core instruction
+ */
+void convertInstr(V3DLib::Instr &instr) {
+  switch (instr.tag) {
+    case IRQ:
+      instr.tag           = LI;
+      instr.LI.imm        = Imm(1);
+      instr.set_cond_clear();
+      instr.assign_cond(AssignCond(AssignCond::Tag::ALWAYS));
+      instr.dest(Reg(SPECIAL, SPECIAL_HOST_INT));
+      break;
+
+    case DMA_LOAD_WAIT:
+    case DMA_STORE_WAIT: {
+      RegId src = instr.tag == DMA_LOAD_WAIT ? SPECIAL_DMA_LD_WAIT : SPECIAL_DMA_ST_WAIT;
+
+      instr.tag     = ALU;
+      instr.ALU.op  = ALUOp(ALUOp::A_BOR);
+      instr.set_cond_clear();
+      instr.assign_cond(AssignCond(AssignCond::Tag::NEVER));
+
+      instr.ALU.srcA = Reg(SPECIAL, src);  // srcA is same as srcB
+      instr.ALU.srcB = Reg(SPECIAL, src);
+      instr.dest(Reg(NONE, 0));
+      break;
+    }
+
+    default:
+      break;  // rest passes through
+  }
+}
+
+
+CodeList encode_instructions(V3DLib::Instr::List &instrs) {
+  CodeList code;
+
+  for (int i = 0; i < instrs.size(); i++) {
+    V3DLib::Instr instr = instrs.get(i);
+    check_instruction_tag_for_platform(instr.tag, true);
+
+    if (instr.tag == INIT_BEGIN || instr.tag == INIT_END) {
+      continue;  // Don't encode these block markers
+    }
+
+    convertInstr(instr);
+    vc4::Instr vc4_instr;
+    vc4_instr.encode(instr);
+    code << vc4_instr.code();
+  }
+
+  return code;
+}
+
+
+} // anon namespace
 
 KernelDriver::KernelDriver() : V3DLib::KernelDriver(Vc4Buffer) {}
 
@@ -53,7 +115,7 @@ void KernelDriver::encode() {
   if (!qpuCodeMem.empty()) return;  // Don't bother if already encoded
   if (has_errors()) return;         // Don't do this if compile errors occured
 
-  CodeList code = V3DLib::vc4::encode(m_targetCode);
+  CodeList code = encode_instructions(m_targetCode);
 
   // Allocate memory for QPU code
   qpuCodeMem.alloc(code.size());
@@ -84,6 +146,8 @@ void KernelDriver::emit_opcodes(FILE *f) {
 
 
 void KernelDriver::compile_intern() {
+  using Instr = V3DLib::Instr;
+
   kernelFinish();
 
   // NOTE During debugging, I noticed that the sequence on the statement stack is duplicated here.

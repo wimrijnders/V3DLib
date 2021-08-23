@@ -48,7 +48,7 @@ Instr::Instr(InstrTag in_tag) {
 
   case InstrTag::BRL:
     tag               = in_tag;
-    m_branch_cond.tag = COND_ALWAYS;
+    m_branch_cond.tag = BranchCond::COND_ALWAYS;
     break;
 
   case InstrTag::INIT_BEGIN:
@@ -309,7 +309,7 @@ Instr &Instr::pushz() {
 
 Instr &Instr::allzc() {
   assert(tag == InstrTag::BRL);
-  m_branch_cond.tag  = COND_ALL;
+  m_branch_cond.tag  = BranchCond::COND_ALL;
   m_branch_cond.flag = Flag::ZC;
   return *this;
 }
