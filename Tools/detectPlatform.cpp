@@ -126,37 +126,23 @@ void showSchedulerRegisters() {
 
 
 /**
- * This should compare with:
+ * Another similar way to do it:
  *
- *     > sudo cat /sys/kernel/debug/dri/0/v3d_ident
- *     Revision:   4.2.14.0
- *     MMU:        yes
- *     TFU:        yes
- *     TSY:        yes
- *     MSO:        yes
- *     L3C:        no (0kb)
- *     Core 0:
- *       Revision:     4.2
- *       Slices:       2
- *       TMUs:         2
- *       QPUs:         8
- *       Semaphores:   0
- *       BCG int:      0
- *       Override TMU: 0
- *      
- *
- * However, at time of writing, while testing this method, this generated multiple
- * errors:
- *
- *     ....quite a few more before this....
- *     Message from syslogd@pi4-3 at Jun  1 12:10:59 ...
- *     kernel:[69733.669058] 1fe0: 0000006c be858550 0001438c b6e9b880 60000010 00000003 00000000 00000000
- *    
- *    Message from syslogd@pi4-3 at Jun  1 12:10:59 ...
- *     kernel:[69733.669496] Code: e5933000 e593300c e5933018 e5933014 (e5933008) 
- *    Segmentation fault
+ *     sudo cat /sys/kernel/debug/dri/0/v3d_ident
  */
 void detect_v3d() {
+/*
+  // Check to see if mailbox works on v3d
+  // Result: yes, it does, but execute_qpu() does not work
+
+  //enableQPUs();
+  int mb = getMailbox();  
+  printf("%d\n", mb);
+  unsigned revision = get_version(mb);
+  printf("Hardware revision        : %04x\n", revision);
+  //disableQPUs();
+*/
+
   if (settings.reset_scheduler) {
     printf("WARNING: The reset scheduler flag doesn't do anything for v3d.\n\n");
   }
@@ -167,7 +153,7 @@ void detect_v3d() {
   if (settings.reset_gpu) {
     printf("Resetting the v3d GPU.\n");
     map_v3d.reset_v3d();
-    printf("Reset the v3d GPU.\n");
+    printf("The v3d GPU has been reset.\n");
     return;    
   }
   

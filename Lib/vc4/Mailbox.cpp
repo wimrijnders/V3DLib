@@ -89,9 +89,6 @@ static int mbox_property(int file_desc, void *buf)
    int ret_val = ioctl(file_desc, IOCTL_MBOX_PROPERTY, buf);
 
    if (ret_val < 0) {
-
-//breakpoint
-
       printf("ioctl_set_msg failed: %d\n", ret_val);
    }
 
@@ -119,7 +116,6 @@ unsigned get_version(int file_desc)
    p[0] = i * (unsigned) sizeof(*p); // actual size
 
    mbox_property(file_desc, p);
-   //printf("get_version returns %d\n", p[5]);
    return p[5];
 }
 
