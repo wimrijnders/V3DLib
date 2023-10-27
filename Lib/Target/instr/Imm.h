@@ -1,6 +1,7 @@
 #ifndef _V3DLIB_TARGET_INSTR_IMM_H_
 #define _V3DLIB_TARGET_INSTR_IMM_H_
 #include <string>
+#include <stdint.h>
 
 namespace V3DLib {
 

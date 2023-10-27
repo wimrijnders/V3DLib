@@ -3,6 +3,7 @@
 #include <vector>
 #include "Exception.h"
 #include "debug.h"
+#include <stdint.h>
 
 namespace V3DLib {
 
